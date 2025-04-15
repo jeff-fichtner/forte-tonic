@@ -1,0 +1,15 @@
+<script>
+    function getTextInputForId(id) {
+        return $('#text_' + id);
+    }
+
+    function createTextInput(id, name, placeholder) {
+        return $('<input>', {
+            type: 'text',
+            id: id,
+            name: name,
+            placeholder: placeholder
+        });
+    }
+    
+</script>

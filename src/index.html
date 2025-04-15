@@ -1,41 +1,127 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <script type="importmap">
-      {
-        "imports": {
-          "@material/web/": "https://esm.run/@material/web/"
-        }
-      }
-    </script>
-    <script type="module">
-      import '@material/web/all.js';
-      import {styles as typescaleStyles} from '@material/web/typography/md-typescale-styles.js';
+    <?!= include('css/libraries'); ?>
 
-      document.adoptedStyleSheets.push(typescaleStyles.styleSheet);
-    </script>
-  </head>
-  <body>
-    <h1 class="md-typescale-display-medium">Hello Material!</h1>
-    <form>
-      <p class="md-typescale-body-medium">Check out these controls in a form!</p>
-      <md-checkbox></md-checkbox>
-      <div>
-        <md-radio name="group"></md-radio>
-        <md-radio name="group"></md-radio>
-        <md-radio name="group"></md-radio>
-      </div>
-      <md-outlined-text-field label="Favorite color" value="Purple"></md-outlined-text-field>
-      <md-outlined-button type="reset">Reset</md-outlined-button>
-    </form>
+    <?!= include('js/libraries'); ?>
+    <?!= include('js/formComponents'); ?>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
     <style>
-      form {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
+      li.delete-lesson-icon, li.add-lesson-icon {
+        cursor: pointer;
       }
     </style>
+
+    <script>
+      const currentEmail = <?= Session.getActiveUser().getEmail() ?>;
+      console.log(currentEmail);
+      // initialize
+      $(() => {
+        const $instruments = $('select').formSelect();
+        $instruments.on('change', function() {
+          debugger
+        });
+        // $("#section").append(createTextInput(1, "test", "Test Placeholder"));
+        $('.add-lesson-icon').on(
+          'click',
+          function() {
+            debugger
+            // google.script.run
+            //   .withSuccessHandler(displayLessons)
+            //   // .withFailureHandler(showLessonError)
+            //   .getCurrentLessonsForStudent("testing");
+          });
+
+        $('.delete-lesson-icon').on(
+          'click',
+          function() {
+            debugger
+            // google.script.run
+            //   .withSuccessHandler(displayLessons)
+            //   // .withFailureHandler(showLessonError)
+            //   .getCurrentLessonsForStudent("testing");
+          });
+        // manipulate select => $('select').formSelect('methodName'); var instance = M.FormSelect.getInstance(elem);
+      });
+
+      const displayCurrentLessons =
+        (lessons) => {
+          console.log(lessons);
+          // $('#add-lessons').append(createTextInput(1, "test", "Test Placeholder"));
+        };
+
+      const displayAvailableLessons =
+        (lessons) => {
+          console.log(lessons);
+          const lessonElements = lessons.map(x => "<li class=\"collection-item\" id=\"lesson_1\"><div>Monday: 3:00pm - 3:30pm, Piano (Private) with Lang Lang<a href=\"#!\" class=\"secondary-content\"><i class=\"add-lesson-icon material-icons green-text text-darken-2\">add_circle</i></a></div></li>")
+          
+          // $('#add-lessons').append(createTextInput(1, "test", "Test Placeholder"));
+        };
+    </script>
+
+  </head>
+  <body>
+    <div class="container">
+
+      <h1>Lessons</h1>
+
+      <div class="card">
+        <div class="card-content">
+          <p>You: <?= Session.getActiveUser().getEmail() ?></p>
+          <ul hidden class="tabs">
+            <li class="tab"><a class="active" href="#">Student 1</a></li>
+            <li class="tab"><a href="#">Student 2</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-content">
+          <span class="card-title">Currently Enrolled Lessons</span>
+          <p>Not enrolled in any lessons.</p>
+          <ul hidden class="current-lessons-list collection">
+            <li class="collection-item"><div>Monday: 3:00pm - 3:30pm, Piano (Private) with Lang Lang<a href="#!" class="secondary-content"><i class="delete-lesson-icon material-icons red-text text-darken-4">delete_forever</i></a></div></li>
+          </ul>
+        </div>
+      </div>
+
+      <div id="add-lessons-card" class="card">
+        <div class="card-content">
+          <span class="card-title">Add A Lesson</span>
+          <div class="input-field">
+            <select class="instrument-options">
+              <option value="" disabled selected>Pick an instrument</option>
+              <option value="1">Rock Band</option>
+              <option value="2">Songwriting</option>
+              <option value="3">Class Drums</option>
+              <option value="3">Taylor Swift Choir</option>
+              <option value="3">Class Ukulele</option>
+              <option value="3">Class Guitar</option>
+              <option value="3">Class Voice</option>
+              <option value="3">Digital Music</option>
+              <option value="3">Class Piano</option>
+              <option value="3">SF Jazz</option>
+            </select>
+            <label>Instrument</label>
+          </div>
+          <p hidden>No matching lessons.</p>
+          <ul hidden class="available-lesson-list collection with-header">
+            <li class="collection-item" id="lesson_1"><div>Monday: 3:00pm - 3:30pm, Piano (Private) with Lang Lang<a href="#!" class="secondary-content"><i class="add-lesson-icon material-icons green-text text-darken-2">add_circle</i></a></div></li>
+          </ul>
+        </div>
+      </div>
+      
+      <div id="display-alert" class="modal">
+        <div class="modal-content">
+          <h4>Modal Header</h4>
+          <p>A bunch of text</p>
+        </div>
+        <div class="modal-footer">
+          <a href="#!" class="modal-close waves-effect waves-green btn-flat">Agree</a>
+        </div>
+      </div>
+      
+    </div>
   </body>
 </html>
