@@ -1,29 +1,40 @@
-function doGet(request) {
-  return HtmlService.createTemplateFromFile('index')
-      .evaluate();
-}
+// save data?
 
-function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename)
-      .getContent();
-}
+const doGet =
+  (request) => {
+    return HtmlService.createTemplateFromFile('index')
+        .evaluate();
+  }
 
-function getStudentsForEmail(email) {
-  return email;
-}
+const include =
+  (filename) => {
+    return HtmlService.createHtmlOutputFromFile(filename)
+        .getContent();
+  }
 
-function getCurrentLessonsForStudent(studentId) {
-  return studentId;
-}
+const initialize =
+  () => {
+    // ensure all tables exist
 
-function addLessonForStudent(studentId, lessonId) {
-  return studentId;
-}
+    // check existing email
+    const activeUserEmail = Session.getActiveUser().getEmail();
+    console.log(`active user email: ${activeUserEmail}`);
+    // get all teachers
+    // get all students/parents
+    // get all lessons
+  };
 
-function deleteLessonForStudent(studentId, lessonId) {
-  return studentId;
-}
+const addLesson =
+  (studentId, lessonId) => {
+    return studentId;
+  }
 
-function loadLessonsForInstrument(studentId, instrumentId) {
-  return studentId;
-}
+const deleteLesson =
+  (studentId, lessonId) => {
+    return studentId;
+  }
+
+const calculateAvailableLessons =
+  (studentId, instrumentId, length) => {
+    return studentId;
+  }
