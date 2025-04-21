@@ -4,7 +4,7 @@
     <?!= include('css/libraries'); ?>
 
     <?!= include('js/libraries'); ?>
-    <?!= include('js/formComponents'); ?>
+    <?!= include('js/modelRegistration'); ?>
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
@@ -15,68 +15,18 @@
     </style>
 
     <script>
-      const currentStudentId = "1";
-      initialize();
-
-      $(() => {
-        const $instruments = $('select').formSelect();
-        $instruments.on(
-          'change',
-          function() {
-            const $item = $(this);
-            google.script.run
-              .withSuccessHandler(displayLessons)
-              // .withFailureHandler(showLessonError)
-              .loadLessonsForInstrument(currentStudentId);
-          });
-
-        // $("#section").append(createTextInput(1, "test", "Test Placeholder"));
-        // propogation
-        $('.add-lesson-icon').on(
-          'click',
-          function() {
-            const $item = $(this);
-            google.script.run
-              .withSuccessHandler(displayLessons)
-              // .withFailureHandler(showLessonError)
-              .getCurrentLessonsForStudent(currentStudentId);
-          });
-
-        // propogation
-        $('.delete-lesson-icon').on(
-          'click',
-          function() {
-            const $item = $(this);
+      google.script.run
+        .withSuccessHandler(
+          (response) => {
+            console.log(response);
             debugger
-            // google.script.run
-            //   .withSuccessHandler(displayLessons)
-            //   // .withFailureHandler(showLessonError)
-            //   .getCurrentLessonsForStudent("testing");
-          });
-        // manipulate select => $('select').formSelect('methodName'); var instance = M.FormSelect.getInstance(elem);
-      });
 
-      const initialize =
-        () => {
-          // get/set bulk initialization data from server
+          }
+        )
+        .initialize();
 
-          // const currentEmail = <?= Session.getActiveUser().getEmail() ?>;
-          // console.log(currentEmail);
-        };
-
-      const displayCurrentLessons =
-        (lessons) => {
-          console.log(lessons);
-          // $('#add-lessons').append(createTextInput(1, "test", "Test Placeholder"));
-        };
-
-      const displayAvailableLessons =
-        (lessons) => {
-          console.log(lessons);
-          const lessonElements = lessons.map(x => "<li class=\"collection-item\" id=\"lesson_1\"><div>Monday: 3:00pm - 3:30pm, Piano (Private) with Lang Lang<a href=\"#!\" class=\"secondary-content\"><i class=\"add-lesson-icon material-icons green-text text-darken-2\">add_circle</i></a></div></li>")
-          
-          // $('#add-lessons').append(createTextInput(1, "test", "Test Placeholder"));
-        };
+      // const display = new Display();
+      // display.initialize();
     </script>
 
   </head>
@@ -88,7 +38,7 @@
       <div class="card">
         <div class="card-content">
           <p id="active-email-title">You: <?= Session.getActiveUser().getEmail() ?></p>
-          <ul class="tabs">
+          <ul hidden class="tabs">
             <li class="tab"><a class="active" href="#">Student 1</a></li>
             <li class="tab"><a href="#">Student 2</a></li>
           </ul>

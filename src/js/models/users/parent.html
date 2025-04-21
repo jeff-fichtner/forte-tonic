@@ -1,6 +1,14 @@
 <script>
-    class Parent {
-        constructor() {
+    class Parent extends Person {
+        #students;
+
+        constructor(person, students) {
+            super(person);
+            this.#students = students;
+        }
+
+        get students() {
+            return this.#students;
         }
     }
 </script>

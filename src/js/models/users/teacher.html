@@ -1,6 +1,20 @@
 <script>
-    class Teacher {
-        constructor() {
+    class Teacher extends Person {
+        #students;
+        #lessons;
+
+        constructor(person, students, lessons) {
+            super(person);
+            this.#students = students;
+            this.#lessons = lessons;
+        }
+
+        get students() {
+            return this.#students;
+        }
+
+        get lessons() {
+            return this.#lessons;
         }
     }
 </script>

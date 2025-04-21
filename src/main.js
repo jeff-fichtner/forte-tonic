@@ -1,40 +1,24 @@
-// save data?
 
+// mandatory to be deployed as a web app
 const doGet =
   (request) => {
     return HtmlService.createTemplateFromFile('index')
-        .evaluate();
+      .evaluate();
   }
 
+// used for including client-side scripts outside of the main HTML file
 const include =
   (filename) => {
-    return HtmlService.createHtmlOutputFromFile(filename)
-        .getContent();
+    return HtmlService.createTemplateFromFile(filename)
+      .evaluate()
+      .getContent();
   }
 
 const initialize =
   () => {
-    // ensure all tables exist
-
-    // check existing email
-    const activeUserEmail = Session.getActiveUser().getEmail();
-    console.log(`active user email: ${activeUserEmail}`);
-    // get all teachers
-    // get all students/parents
-    // get all lessons
+    const userRepository = new UserRepository(new DbClient());
+    debugger
+    return {
+      email: userRepository.getSignedInUser()
+    }
   };
-
-const addLesson =
-  (studentId, lessonId) => {
-    return studentId;
-  }
-
-const deleteLesson =
-  (studentId, lessonId) => {
-    return studentId;
-  }
-
-const calculateAvailableLessons =
-  (studentId, instrumentId, length) => {
-    return studentId;
-  }

@@ -1,0 +1,29 @@
+<script>
+    class Person {
+        #id;
+        #firstName;
+        #lastName;
+
+        constructor({ id, firstName, lastName }) {
+            this.#id = id;
+            this.#firstName = firstName;
+            this.#lastName = lastName;
+        }
+
+        get id() {
+            return this.#id;
+        }
+
+        get firstName() {
+            return this.#firstName;
+        }
+
+        get lastName() {
+            return this.#lastName;
+        }
+
+        get fullName() {
+            return `${this.#firstName} ${this.#lastName}`;
+        }
+    }
+</script>
