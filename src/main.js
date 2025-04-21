@@ -16,6 +16,7 @@ const include =
 
 const initialize =
   () => {
+    // This is a note
     const userRepository = new UserRepository(new DbClient());
     debugger
     return {
