@@ -6,7 +6,6 @@ class UserRepository {
     }
 
     getSignedInUser() {
-        debugger
         this.throwIfNoUser_();
 
         return this.authenticatedUser;
@@ -37,12 +36,12 @@ class UserRepository {
         this.throwIfNoUser_();
 
         // get admins
-        this.admins = this.dbClient.getAdminEmails();
-        this.throwIfNoAdmins_();
+        // this.admins = this.dbClient.getAdminEmails();
+        // this.throwIfNoAdmins_();
         
-        // get users
-        this.users = this.dbClient.getAllUsers();
-        throwIfNoPeople_();
+        // // get users
+        // this.users = this.dbClient.getAllUsers();
+        // throwIfNoPeople_();
     }
 
     throwIfNoUser_() {
