@@ -18,8 +18,17 @@ const initialize =
   () => {
     // This is a note
     const userRepository = new UserRepository(new DbClient());
-    debugger
-    return {
+    
+    // if (!userRepository.isAdmin()) {
+    //   throw new Error('User is not an admin');
+    // }
+    
+    const response = {
       email: userRepository.getSignedInUser()
-    }
+    };
+    debugger
+    return response;
   };
+
+  // addLesson
+  // removeLesson
