@@ -1,0 +1,36 @@
+<script>
+    function getTextInputForId(id) {
+        return $('#text_' + id);
+    }
+
+    function createTextInput(id, name, placeholder) {
+        return $('<input>', {
+            type: 'text',
+            id: id,
+            name: name,
+            placeholder: placeholder
+        });
+    }
+
+    function buildTableForRegistrations(listOfRegistrations, headerInfo) {
+        const table = $('<table>');
+        const headerRow = $('<tr>');
+        headerInfo.forEach(header => {
+            const th = $('<th>').text(header);
+            headerRow.append(th);
+        });
+        table.append(headerRow);
+
+        listOfRegistrations.forEach(registration => {
+            const row = $('<tr>');
+            Object.values(registration).forEach(value => {
+                const td = $('<td>').text(value);
+                row.append(td);
+            });
+            table.append(row);
+        });
+
+        return table;
+    }
+
+</script>

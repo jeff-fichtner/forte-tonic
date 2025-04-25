@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <?!= include('web/css/libraries'); ?>
+
+  <?!= include('web/js/libraries'); ?>
+  <?!= include('web/js/modelRegistration'); ?>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    li.delete-lesson-icon,
+    li.add-lesson-icon {
+      cursor: pointer;
+    }
+  </style>
+
+  <script>
+    google.script.run
+      .withSuccessHandler(
+        (response) => {
+          console.log(response);
+          response.authenticatedUser
+
+        }
+      )
+      .checkAuthentication();
+    
+    let instructors = [];
+    google.script.run
+      .withSuccessHandler(
+        (response) => {
+          console.log(response);
+          instructors = response.instructors;
+        }
+      )
+      .getAllInstructors();
+      
+    const display = new Display();
+    display.initialize();
+  </script>
+
+</head>
+
+<body>
+  <div class="container">
+
+    <h1>Lessons</h1>
+
+    <div class="card">
+      <div class="card-content">
+        <ul hidden class="tabs">
+          <li class="tab"><a class="active" href="#">Student 1</a></li>
+          <li class="tab"><a href="#">Student 2</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-content">
+        <span class="card-title">Currently Enrolled Lessons</span>
+        <p>Not enrolled in any lessons.</p>
+        <ul class="current-lessons-list collection">
+          <li class="collection-item">
+            <div>Monday: 3:00pm - 3:30pm, Piano (Private) with Lang Lang<a href="#!" class="secondary-content"><i
+                  class="delete-lesson-icon material-icons red-text text-darken-4">delete_forever</i></a></div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="add-private-lessons-card" class="card">
+      <div class="card-content">
+        <span class="card-title">Add a Private Lesson</span>
+        <div class="input-field">
+          <select class="instrument-options">
+            <option value="" disabled selected>Pick an instrument</option>
+            <option value="3">Drums</option>
+            <option value="3">Ukulele</option>
+            <option value="3">Guitar</option>
+            <option value="3">Voice</option>
+            <option value="3">Piano</option>
+          </select>
+          <label>Instrument</label>
+        </div>
+        <p hidden>No matching lessons.</p>
+        <ul class="available-lesson-list collection with-header">
+          <li class="collection-item" id="lesson_1">
+            <div>Monday: 3:00pm - 3:30pm, Piano (Private) with Lang Lang<a href="#!" class="secondary-content"><i
+                  class="add-lesson-icon material-icons green-text text-darken-2">add_circle</i></a></div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="add-group-lessons-card" class="card">
+      <div class="card-content">
+        <span class="card-title">Add a Group Class</span>
+        <div class="input-field">
+          <select class="instrument-options">
+            <option value="" disabled selected>Pick an instrument</option>
+            <option value="1">Rock Band</option>
+            <option value="2">Songwriting</option>
+            <option value="3">Class Drums</option>
+            <option value="3">Taylor Swift Choir</option>
+            <option value="3">Class Ukulele</option>
+            <option value="3">Class Guitar</option>
+            <option value="3">Class Voice</option>
+            <option value="3">Digital Music</option>
+            <option value="3">Class Piano</option>
+            <option value="3">SF Jazz</option>
+          </select>
+          <label>Instrument</label>
+        </div>
+        <p hidden>No matching lessons.</p>
+        <ul hidden class="available-lesson-list collection with-header">
+          <li class="collection-item" id="lesson_1">
+            <div>Monday: 3:00pm - 3:30pm, Piano (Private) with Lang Lang<a href="#!" class="secondary-content"><i
+                  class="add-lesson-icon material-icons green-text text-darken-2">add_circle</i></a></div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="display-alert" class="modal">
+      <div class="modal-content">
+        <h4>Modal Header</h4>
+        <p>A bunch of text</p>
+      </div>
+      <div class="modal-footer">
+        <a href="#!" class="modal-close waves-effect waves-green btn-flat">Agree</a>
+      </div>
+    </div>
+
+  </div>
+</body>
+
+</html>

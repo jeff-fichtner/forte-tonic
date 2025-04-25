@@ -1,0 +1,80 @@
+class Instructor {
+
+    constructor(
+        id,
+        email,
+        lastName,
+        firstName,
+        phone,
+        isDeactivated,
+        minimumGrade,
+        maximumGrade,
+        instrument1,
+        instrument2,
+        instrument3,
+        instrument4,
+        mondayStartTime,
+        mondayEndTime,
+        mondayRoomId,
+        tuesdayStartTime,
+        tuesdayEndTime,
+        tuesdayRoomId,
+        wednesdayStartTime,
+        wednesdayEndTime,
+        wednesdayRoomId,
+        thursdayStartTime,
+        thursdayEndTime,
+        thursdayRoomId,
+        fridayStartTime,
+        fridayEndTime,
+        fridayRoomId) {
+
+        this.id = id;
+        this.email = email;
+        this.lastName = lastName;
+        this.firstName = firstName;
+        this.phone = phone;
+        this.isDeactivated = isDeactivated;
+        this.minimumGrade = minimumGrade;
+        this.maximumGrade = maximumGrade;
+        this.instrument1 = instrument1;
+        this.instrument2 = instrument2;
+        this.instrument3 = instrument3;
+        this.instrument4 = instrument4;
+        this.mondayStartTime = mondayStartTime;
+        this.mondayEndTime = mondayEndTime;
+        this.mondayRoomId = mondayRoomId;
+        this.tuesdayStartTime = tuesdayStartTime;
+        this.tuesdayEndTime = tuesdayEndTime;
+        this.tuesdayRoomId = tuesdayRoomId;
+        this.wednesdayStartTime = wednesdayStartTime;
+        this.wednesdayEndTime = wednesdayEndTime;
+        this.wednesdayRoomId = wednesdayRoomId;
+        this.thursdayStartTime = thursdayStartTime;
+        this.thursdayEndTime = thursdayEndTime;
+        this.thursdayRoomId = thursdayRoomId;
+        this.fridayStartTime = fridayStartTime;
+        this.fridayEndTime = fridayEndTime;
+        this.fridayRoomId = fridayRoomId;
+    }
+
+    get isAvailableMonday() {
+        return this.mondayStartTime && this.mondayEndTime;
+    }
+
+    get isAvailableTuesday() {
+        return this.tuesdayStartTime && this.tuesdayEndTime;
+    }
+
+    get isAvailableWednesday() {
+        return this.wednesdayStartTime && this.wednesdayEndTime;
+    }
+
+    get isAvailableThursday() {
+        return this.thursdayStartTime && this.thursdayEndTime;
+    }
+
+    get isAvailableFriday() {
+        return this.fridayStartTime && this.fridayEndTime;
+    }
+}
