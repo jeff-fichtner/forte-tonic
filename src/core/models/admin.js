@@ -13,4 +13,8 @@ class Admin {
         this.firstName = firstName;
         this.phone = phone;
     }
+
+    get fullName() {
+        return `${this.firstName} ${this.lastName}`;
+    }
 }

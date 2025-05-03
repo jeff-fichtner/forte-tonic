@@ -7,6 +7,18 @@
         "version": "v3",
         "serviceId": "drive"
       }
+    ],
+    "libraries": [
+      {
+        "userSymbol": "Underscore",
+        "version": "4",
+        "libraryId": "1PcEHcGVC1njZd8SfXtmgQk19djwVd2GrrW1gd7U5hNk033tzi6IUvIAV"
+      },
+      {
+        "userSymbol": "UnderscoreString",
+        "version": "1",
+        "libraryId": "1079zoOjHTmZlFVUqIE_OTd_uvqvqsO3iXxzGrlIc3DRtlBDKc0guJL9I"
+      }
     ]
   },
   "oauthScopes": [

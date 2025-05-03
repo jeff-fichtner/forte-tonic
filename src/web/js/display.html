@@ -1,99 +1,132 @@
 <script>
     class Display {
-        #currentLessons = [];
-        #availableLessons = [];
+        constructor() { }
 
-        #instrument;
-        #student;
-        #lengthOption;
-
-        constructor() {
-            this.lessons = [];
-        }
-
-        initialize() {
-            $(() => {
-                const $instruments = $('select').formSelect();
-                $instruments.on(
-                    'change',
-                    function () {
-                        const $item = $(this);
-                        debugger
-                        // google.script.run
-                        //     .withSuccessHandler(displayLessons)
-                        //     // .withFailureHandler(showLessonError)
-                        //     .loadLessonsForInstrument(currentStudentId);
-                    });
-
-                // $("#section").append(createTextInput(1, "test", "Test Placeholder"));
-                // propogation
-                $('.add-lesson-icon').on(
-                    'click',
-                    function () {
-                        const $item = $(this);
-                        debugger
-                        // google.script.run
-                        //     .withSuccessHandler(displayLessons)
-                        //     // .withFailureHandler(showLessonError)
-                        //     .getCurrentLessonsForStudent(currentStudentId);
-                    });
-
-                // propogation
-                $('.delete-lesson-icon').on(
-                    'click',
-                    function () {
-                        const $item = $(this);
-                        debugger
-                        // google.script.run
-                        //   .withSuccessHandler(displayLessons)
-                        //   // .withFailureHandler(showLessonError)
-                        //   .getCurrentLessonsForStudent("testing");
-                    });
-                // manipulate select => $('select').formSelect('methodName'); var instance = M.FormSelect.getInstance(elem);
+        initialize = () => {
+            document.addEventListener('DOMContentLoaded', () => {
+                this.initTabs();
             });
-        }
-
-        displayCurrentLessons(lessons) {
-            console.log(lessons);
-            // $('#add-lessons').append(createTextInput(1, "test", "Test Placeholder"));
-            // update UI
-        }
-
-        displayAvailableLessons(lessons) {
-            console.log(lessons);
-            const lessonElements = lessons.map(x => "<li class=\"collection-item\" id=\"lesson_1\"><div>Monday: 3:00pm - 3:30pm, Piano (Private) with Lang Lang<a href=\"#!\" class=\"secondary-content\"><i class=\"add-lesson-icon material-icons green-text text-darken-2\">add_circle</i></a></div></li>")
-
-            // $('#add-lessons').append(createTextInput(1, "test", "Test Placeholder"));
-            // update UI
         };
 
-        get currentInstrument() {
-            return this.#instrument;
+        initTabs() {
+            const tabsContainer = document.querySelector('.tabs');
+            const tabs = document.querySelectorAll('.tabs .tab a');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            if (!tabsContainer || tabs.length === 0) return;
+
+            tabs.forEach((tab) => {
+                tab.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const targetTab = tab.getAttribute('href');
+                    const targetContent = document.querySelector(targetTab);
+
+                    // Hide all tab contents
+                    tabContents.forEach((content) => {
+                        content.style.display = 'none';
+                    });
+
+                    // Show the selected tab content
+                    if (targetContent) {
+                        targetContent.style.display = 'block';
+                    }
+
+                    // Remove active class from all tabs and add it to the clicked tab
+                    tabs.forEach((t) => t.classList.remove('active'));
+                    tab.classList.add('active');
+                });
+            });
+
+            // Show the first tab and its content by default
+            if (tabs.length > 0) {
+                tabs[0].click();
+            }
         }
 
-        set currentInstrument(instrument) {
-            this.#instrument = instrument;
-            // update UI
+        setLoading(isLoading) {
+            const loadingElement = document.getElementById('loading');
+            const tablesElement = document.getElementById('tables');
+            const errorMessageElement = document.getElementById('error-message');
+
+            loadingElement.style.display = isLoading ? 'block' : 'none';
+            tablesElement.style.display = isLoading ? 'none' : 'block';
+            errorMessageElement.style.display = 'none'; // Hide error message when loading
         }
 
-        get currentStudent() {
-            return this.#student;
+        showErrorMessage(message) {
+            const errorMessageElement = document.getElementById('error-message');
+            const tablesElement = document.getElementById('tables');
+
+            errorMessageElement.textContent = message;
+            errorMessageElement.style.display = 'block';
+            tablesElement.style.display = 'none';
         }
 
-        set currentStudent(student) {
-            this.#student = student;
-            // update UI
+        updateTableAndMessage(tbodyId, emptyMessageId, data, valueExtractor) {
+            const tbody = document.getElementById(tbodyId);
+            const emptyMessage = document.getElementById(emptyMessageId);
+            const table = tbody.closest('table');
+
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                emptyMessage.hidden = false;
+                table.hidden = true;
+            } else {
+                emptyMessage.hidden = true;
+                table.hidden = false;
+
+                data.forEach((item) => {
+                    const row = document.createElement('tr');
+                    valueExtractor(item).forEach((value) => {
+                        const cell = document.createElement('td');
+                        cell.textContent = value;
+                        row.appendChild(cell);
+                    });
+                    tbody.appendChild(row);
+                });
+            }
         }
 
-        get currentLengthOption() {
-            return this.#lengthOption;
+        setInstructors(instructors) {
+            this.updateTableAndMessage(
+                'instructors-tbody',
+                'instructors-empty-message',
+                instructors,
+                (instructor) => [instructor.fullName, instructor.email, instructor.instrument1]
+            );
         }
 
-        set currentLengthOption(lengthOption) {
-            this.#lengthOption = lengthOption;
-            // update UI
-        }
+        // setStudents(students) {
+        //     this.updateTableAndMessage(
+        //         'students-tbody',
+        //         'students-empty-message',
+        //         students,
+        //         (student) => {debugger}//[`${student.firstName} ${student.lastName}`, student.studentId, student.grade]
+        //     );
+        // }
 
+        // setClasses(classes) {
+        //     this.updateTableAndMessage(
+        //         'classes-tbody',
+        //         'classes-empty-message',
+        //         classes,
+        //         (classItem) => [classItem.formattedName, classItem.instructor.fullName, classItem.day]
+        //     );
+        // }
+
+        // setRegistrations(registrations) {
+        //     this.updateTableAndMessage(
+        //         'registrations-tbody',
+        //         'registrations-empty-message',
+        //         registrations,
+        //         (registration) => [`${registration.student.firstName} ${registration.student.lastName}`, registration.room.formattedName, registration.date]
+        //     );
+        // }
+
+        getCurrentTab() {
+            const activeTab = document.querySelector('.tabs .tab a.active');
+            return activeTab ? activeTab.getAttribute('id') : null;
+        }
     }
-
 </script>

@@ -58,6 +58,10 @@ class Instructor {
         this.fridayRoomId = fridayRoomId;
     }
 
+    get fullName() {
+        return `${this.firstName} ${this.lastName}`;
+    }
+
     get isAvailableMonday() {
         return this.mondayStartTime && this.mondayEndTime;
     }

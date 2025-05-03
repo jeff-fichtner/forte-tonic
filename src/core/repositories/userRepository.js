@@ -53,8 +53,15 @@ class UserRepository {
             () => this.students =
                 this.dbClient.getAllRecords(
                     Keys.STUDENTS,
-                    x => new Student(...x)),
-            Keys.STUDENTS);
+                    record => {
+                        const student = new Student(...record);
+                        student.parent1 = this.getParentById(student.parent1Id);
+                        student.parent2 = this.getParentById(student.parent2Id);
+
+                        return student;
+                    }),
+            Keys.STUDENTS,
+            () => this.getParents());
     }
 
     getStudentById(id) {
@@ -67,13 +74,8 @@ class UserRepository {
             () => this.parents =
                 this.dbClient.getAllRecords(
                     Keys.PARENTS,
-                    record => {
-                        const parent = new Parent(...record);
-                        parent.students = this.getStudents().filter(x => x.parent1Id === parent.id || x.parent2Id === parent.id);
-                        return parent;
-                    }),
-            Keys.PARENTS,
-            () => this.getStudents());
+                    x => new Parent(...x)), // TODO to map students in the future, you'll need to map it externally
+            Keys.PARENTS);
     }
 
     getParentById(id) {

@@ -21,4 +21,8 @@ class Student {
         this.parent1Id = parent1Id;
         this.parent2Id = parent2Id;
     }
+
+    get parents() {
+        return [this.parent1Id, this.parent2Id];
+    }
 }

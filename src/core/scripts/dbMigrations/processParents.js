@@ -15,26 +15,29 @@ function processParents() {
 
   for (let i = 0; i < studentData.length; i++) {
     const student = studentData[i];
-    const parent1Id = `${student.parent1Email}_${student.parent1LastName}_${student.parent1FirstName}`;
-    const parent2Id = `${student.parent2Email}_${student.parent2LastName}_${student.parent2FirstName}`;
+    
+    const parent1Id = student.parent1Email ? `${student.parent1Email}_${student.parent1LastName}_${student.parent1FirstName}` : null;
+    const parent2Id = student.parent2Email ? `${student.parent2Email}_${student.parent2LastName}_${student.parent2FirstName}` : null;
 
     let parent1;
-    if (!parentMap.has(parent1Id)) {
+    if (parent1Id && !parentMap.has(parent1Id)) {
       parent1 = { email: student.parent1Email, lastName: student.parent1LastName, firstName: student.parent1FirstName, phone: student.parent1Phone };
       parentMap.set(parent1Id, parent1);
-      parentsSheet.appendRow([parent1Id, parent1.email, parent1.lastName, parent1.firstName, parent1.phone]);
+      parentsSheet.appendRow([parent1Id, parent1.email, parent1.lastName, parent1.firstName, parent1.phone ? parent1.phone : '']);
+      Logger.log(`Appending row ${parentMap.size} - ${parent1Id}`);
     }
 
     let parent2;
-    if (!parentMap.has(parent2Id)) {
+    if (parent2Id && !parentMap.has(parent2Id)) {
       parent2 = { email: student.parent2Email, lastName: student.parent2LastName, firstName: student.parent2FirstName, phone: student.parent2Phone };
       parentMap.set(parent2Id, parent2);
-      parentsSheet.appendRow([parent2Id, parent2.email, parent2.lastName, parent2.firstName, parent2.phone]);
+      parentsSheet.appendRow([parent2Id, parent2.email, parent2.lastName, parent2.firstName, parent2.phone ? parent2.phone : '']);
+      Logger.log(`Appending row ${parentMap.size} - ${parent2Id}`);
     }
 
     const parentMapLength = parentMap.size;
     const totalStudentsLength = studentData.length;
-    debugger
+    
     studentsSheet.getRange(i + 2, 14 + 1).setValue(parent1Id);
     studentsSheet.getRange(i + 2, 14 + 2).setValue(parent2Id);
   }

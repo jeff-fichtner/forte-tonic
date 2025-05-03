@@ -1,8 +1,11 @@
+const _ = UnderscoreString.load(Underscore.load());
+const worker = new UnitOfWork();
+
 // main entry point for the web app
 // mandatory to be deployed as a web app
 const doGet =
   (request) => {
-    return HtmlService.createTemplateFromFile('web/index')
+    return HtmlService.createTemplateFromFile('web/incomingIndex')
       .evaluate();
   }
 
@@ -14,59 +17,38 @@ const include =
       .getContent();
   }
 
-// data load requested from the client-side
-const checkAuthentication =
+const getAuthenticatedUser =
   () => {
-    throwIfNotAdmin();
+    return fetchData(Authenticator.getSignedInUser);
+  };
 
-    return respond({
-      authenticatedUser: Authenticator.getSignedInUser()
-    });
-  }
+const getInstructors =
+  ({ page, pageSize }) => {
+    return fetchData(() => {
+      return worker.userRepositoryInstance.getInstructors();
+    }, page, pageSize);
+  };
 
-const getAllInstructors =
-  () => {
-    throwIfNotAdmin();
+const getStudents =
+  ({ page, pageSize }) => {
+    return fetchData(() => {
+      return worker.userRepositoryInstance.getStudents();
+    }, page, pageSize);
+  };
 
-    const worker = new UnitOfWork();
+const getClasses =
+  ({ page, pageSize }) => {
+    return fetchData(() => {
+      return worker.lessonRepositoryInstance.getClasses();
+    }, page, pageSize);
+  };
 
-    return respond({
-      instructors: worker.userRepositoryInstance.getInstructors()
-    });
-  }
-
-const getAllStudents =
-  () => {
-    throwIfNotAdmin();
-
-    const worker = new UnitOfWork();
-
-    return respond({
-      students: worker.userRepositoryInstance.getStudents()
-    });
-  }
-
-const getAllClasses =
-  () => {
-    throwIfNotAdmin();
-
-    const worker = new UnitOfWork();
-
-    return respond({
-      classes: worker.lessonRepositoryInstance.getClasses()
-    });
-  }
-
-const getAllRegistrations =
-  () => {
-    throwIfNotAdmin();
-
-    const worker = new UnitOfWork();
-
-    return respond({
-      registrations: worker.lessonRepositoryInstance.getRegistrations()
-    });
-  }
+const getRegistrations =
+  ({ page, pageSize }) => {
+    return fetchData(() => {
+      return worker.lessonRepositoryInstance.getRegistrations();
+    }, page, pageSize);
+  };
 
 // const register =
 //   () => {
@@ -110,16 +92,44 @@ const getAllRegistrations =
 
 const throwIfNotAdmin =
   (user) => {
-    const worker = new UnitOfWork();
-
     // only permit admins
     if (!worker.userRepositoryInstance.isAdmin(Authenticator.getSignedInUser())) {
       throw new Error('User is not an admin');
     }
   }
+  
+// Shared method for fetching data with optional pagination
+const fetchData = (dataFunction, page, pageSize) => {
+  console.log(`page ${page}, pageSize ${pageSize}`);
+  
+  throwIfNotAdmin(); // Ensure the user is authorized
+  const data = dataFunction(); // Execute the data-fetching logic
+
+  if (page == null || !pageSize) {
+    return respond(data); // Return full data if no pagination is requested
+  }
+  
+  // Apply pagination if page and pageSize are provided
+  return respond(paginate(data, page, pageSize));
+};
 
 const respond =
   (response) => {
-    console.log(`Response: ${JSON.stringify(response)}`);
-    return response;
+    const serializedResponse = JSON.stringify(response);
+    console.log(`Response: ${serializedResponse}`);
+    return serializedResponse;
   };
+
+// Utility function for pagination
+const paginate = (data, page = 0, pageSize = 10) => {
+  const startIndex = page * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedData = data.slice(startIndex, endIndex);
+
+  return {
+    data: paginatedData,
+    total: data.length,
+    page,
+    pageSize,
+  };
+};
