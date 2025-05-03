@@ -21,6 +21,57 @@
         font-variation-settings:
           "wdth" 100;
       }
+
+      header {
+        background-color: #2c3e50;
+        color: white;
+        padding: 20px;
+        text-align: center;
+      }
+
+      .day-tabs {
+        display: flex;
+        justify-content: center;
+        background: #ecf0f1;
+        padding: 10px 0;
+      }
+
+      .tab {
+        padding: 10px 20px;
+        border: none;
+        background: transparent;
+        font-weight: bold;
+        cursor: pointer;
+        color: #2c3e50;
+        transition: background 0.3s;
+      }
+
+      .tab:hover, .tab.active {
+        background-color: #3498db;
+        color: white;
+        border-radius: 4px;
+      }
+
+      #schedule-content {
+        padding: 20px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        overflow-x: auto;
+      }
+
+      th, td {
+        border: 1px solid #ccc;
+        padding: 8px;
+        text-align: center;
+      }
+
+      th {
+        background-color: #2980b9;
+        color: white;
+      }
     </style>
 
     <script>
@@ -36,6 +87,77 @@
 
       const display = new Display();
       display.initialize();
+
+      // Initialize Materialize CSS collapsible component
+      document.addEventListener('DOMContentLoaded', function() {
+        const elems = document.querySelectorAll('.collapsible');
+        M.Collapsible.init(elems);
+      });
+
+      const scheduleData = {
+    Monday: [
+      { time: "3:00 PM", length: "30 min", student: "Alice", grade: "3", instrument: "Piano" },
+      { time: "3:30 PM", length: "30 min", student: "Ben", grade: "4", instrument: "Voice" }
+    ],
+    Tuesday: [],
+    Wednesday: [],
+    Thursday: [],
+    Friday: []
+  };
+  
+    const tabs = document.querySelectorAll(".tab");
+    const content = document.getElementById("schedule-content");
+  
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelector(".tab.active").classList.remove("active");
+        tab.classList.add("active");
+    
+        const day = tab.getAttribute("data-day");
+        renderTable(day);
+      });
+    });
+  
+    function renderTable(day) {
+      const lessons = scheduleData[day] || [];
+    
+      if (lessons.length === 0) {
+        content.innerHTML = `<p>No data for ${day} yet.</p>`;
+        return;
+      }
+    
+      let html = `
+        <table>
+          <thead>
+            <tr>
+              <th>Start Time</th>
+              <th>Length</th>
+              <th>Student</th>
+              <th>Grade</th>
+              <th>Instrument</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+    
+      lessons.forEach(lesson => {
+        html += `
+          <tr>
+            <td>${lesson.time}</td>
+            <td>${lesson.length}</td>
+            <td>${lesson.student}</td>
+            <td>${lesson.grade}</td>
+            <td>${lesson.instrument}</td>
+          </tr>
+        `;
+      });
+    
+      html += `</tbody></table>`;
+      content.innerHTML = html;
+    }
+  
+    // Load Monday by default
+    renderTable("Monday");
     </script>
 
   </head>
@@ -64,33 +186,637 @@
         <div class="card-content">
           <span class="card-title" style="color: #2b68a4"><b>Currently Enrolled Lessons</b></span>
           <p>Not enrolled in any lessons.</p>
+          <div class="row">
+            <div class="col s12" style="background-color: #3a7953; color: #fefefe; text-align: center">Monday</div>
+            <div class="col s6" style="background-color: #3a7953; color: #fefefe; text-align: center">Andrew Kunz</div>
+            <div class="col s6" style="background-color: #3a7953; color: #fefefe; text-align: center">Piano, Ukulele, Guitar</div>
+          </div>
           <table>
             <thead>
               <tr>
-                  <th>Name</th>
-                  <th>Item Name</th>
-                  <th>Item Price</th>
+                  <th>Weekday</th>
+                  <th>Start Time</th>
+                  <th>Length</th>
+                  <th>Student</th>
+                  <th>Grade</th>
+                  <th>Teacher</th>
+                  <th>Instrument</th>
               </tr>
             </thead>
     
             <tbody>
               <tr>
-                <td>Alvin</td>
-                <td>Eclair</td>
-                <td>$0.87</td>
+                <td>Monday</td>
+                <td>3:00pm</td>
+                <td>30 minutes</td>
+                <td>Johnny Herrick</td>
+                <td>K</td>
+                <td>Andrew Kunz</td>
+                <td>Piano</td>
               </tr>
               <tr>
-                <td>Alan</td>
-                <td>Jellybean</td>
-                <td>$3.76</td>
+                <td>Monday</td>
+                <td>3:30pm</td>
+                <td>30 minutes</td>
+                <td>Oliver Lo</td>
+                <td>2</td>
+                <td>Andrew Kunz</td>
+                <td>Piano</td>
               </tr>
               <tr>
-                <td>Jonathan</td>
-                <td>Lollipop</td>
-                <td>$7.00</td>
+                <td>Monday</td>
+                <td>4:00pm</td>
+                <td>45 minutes</td>
+                <td>Heath Paidipaty</td>
+                <td>4</td>
+                <td>Andrew Kunz</td>
+                <td>Piano</td>
+              </tr>
+              <tr>
+                <td>Monday</td>
+                <td>4:45pm</td>
+                <td>45 minutes</td>
+                <td>Spencer Swift</td>
+                <td>5</td>
+                <td>Andrew Kunz</td>
+                <td>Piano</td>
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-content">
+          <span class="card-title" style="color: #2b68a4"><b>Currently Enrolled Lessons</b></span>
+          <p>Not enrolled in any lessons.</p>
+          <ul class="collapsible expandable">
+            <li>
+              <div class="collapsible-header"><i class="material-icons">filter_drama</i>Monday</div>
+              <div class="collapsible-body"><span>
+                <ul class="collapsible expandable">
+                  <li>
+                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Andrew Kunz</div>
+                    <div class="collapsible-body"><span>
+                      <table>
+                        <thead>
+                          <tr>
+                              <th>Start Time</th>
+                              <th>Length</th>
+                              <th>Student</th>
+                              <th>Grade</th>
+                              <th>Instrument</th>
+                          </tr>
+                        </thead>
+                
+                        <tbody>
+                          <tr>
+                            <td>3:00pm</td>
+                            <td>30 minutes</td>
+                            <td>Johnny Herrick</td>
+                            <td>K</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>3:30pm</td>
+                            <td>30 minutes</td>
+                            <td>Oliver Lo</td>
+                            <td>2</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:00pm</td>
+                            <td>45 minutes</td>
+                            <td>Heath Paidipaty</td>
+                            <td>4</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:45pm</td>
+                            <td>45 minutes</td>
+                            <td>Spencer Swift</td>
+                            <td>5</td>
+                            <td>Piano</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </span></div>
+                  </li>
+                  <li>
+                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Melody Nishinaga</div>
+                    <div class="collapsible-body"><span>
+                      <table>
+                        <thead>
+                          <tr>
+                              <th>Start Time</th>
+                              <th>Length</th>
+                              <th>Student</th>
+                              <th>Grade</th>
+                              <th>Instrument</th>
+                          </tr>
+                        </thead>
+                
+                        <tbody>
+                          <tr>
+                            <td>3:00pm</td>
+                            <td>30 minutes</td>
+                            <td>Johnny Herrick</td>
+                            <td>K</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>3:30pm</td>
+                            <td>30 minutes</td>
+                            <td>Oliver Lo</td>
+                            <td>2</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:00pm</td>
+                            <td>45 minutes</td>
+                            <td>Heath Paidipaty</td>
+                            <td>4</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:45pm</td>
+                            <td>45 minutes</td>
+                            <td>Spencer Swift</td>
+                            <td>5</td>
+                            <td>Piano</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </span></div>
+                  </li>
+                  <li>
+                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Ruth Chou</div>
+                    <div class="collapsible-body"><span>
+                      <table>
+                        <thead>
+                          <tr>
+                              <th>Start Time</th>
+                              <th>Length</th>
+                              <th>Student</th>
+                              <th>Grade</th>
+                              <th>Instrument</th>
+                          </tr>
+                        </thead>
+                
+                        <tbody>
+                          <tr>
+                            <td>3:00pm</td>
+                            <td>30 minutes</td>
+                            <td>Johnny Herrick</td>
+                            <td>K</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>3:30pm</td>
+                            <td>30 minutes</td>
+                            <td>Oliver Lo</td>
+                            <td>2</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:00pm</td>
+                            <td>45 minutes</td>
+                            <td>Heath Paidipaty</td>
+                            <td>4</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:45pm</td>
+                            <td>45 minutes</td>
+                            <td>Spencer Swift</td>
+                            <td>5</td>
+                            <td>Piano</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </span></div>
+                  </li>
+                  <li>
+                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Cal Reichenbach</div>
+                    <div class="collapsible-body"><span>
+                      <table>
+                        <thead>
+                          <tr>
+                              <th>Start Time</th>
+                              <th>Length</th>
+                              <th>Student</th>
+                              <th>Grade</th>
+                              <th>Instrument</th>
+                          </tr>
+                        </thead>
+                
+                        <tbody>
+                          <tr>
+                            <td>3:00pm</td>
+                            <td>30 minutes</td>
+                            <td>Johnny Herrick</td>
+                            <td>K</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>3:30pm</td>
+                            <td>30 minutes</td>
+                            <td>Oliver Lo</td>
+                            <td>2</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:00pm</td>
+                            <td>45 minutes</td>
+                            <td>Heath Paidipaty</td>
+                            <td>4</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:45pm</td>
+                            <td>45 minutes</td>
+                            <td>Spencer Swift</td>
+                            <td>5</td>
+                            <td>Piano</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </span></div>
+                  </li>
+                  <li>
+                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Rob Thomure</div>
+                    <div class="collapsible-body"><span>
+                      <table>
+                        <thead>
+                          <tr>
+                              <th>Start Time</th>
+                              <th>Length</th>
+                              <th>Student</th>
+                              <th>Grade</th>
+                              <th>Instrument</th>
+                          </tr>
+                        </thead>
+                
+                        <tbody>
+                          <tr>
+                            <td>3:00pm</td>
+                            <td>30 minutes</td>
+                            <td>Johnny Herrick</td>
+                            <td>K</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>3:30pm</td>
+                            <td>30 minutes</td>
+                            <td>Oliver Lo</td>
+                            <td>2</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:00pm</td>
+                            <td>45 minutes</td>
+                            <td>Heath Paidipaty</td>
+                            <td>4</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:45pm</td>
+                            <td>45 minutes</td>
+                            <td>Spencer Swift</td>
+                            <td>5</td>
+                            <td>Piano</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </span></div>
+                  </li>
+                  <li>
+                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Paul Montes</div>
+                    <div class="collapsible-body"><span>
+                      <table>
+                        <thead>
+                          <tr>
+                              <th>Start Time</th>
+                              <th>Length</th>
+                              <th>Student</th>
+                              <th>Grade</th>
+                              <th>Instrument</th>
+                          </tr>
+                        </thead>
+                
+                        <tbody>
+                          <tr>
+                            <td>3:00pm</td>
+                            <td>30 minutes</td>
+                            <td>Johnny Herrick</td>
+                            <td>K</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>3:30pm</td>
+                            <td>30 minutes</td>
+                            <td>Oliver Lo</td>
+                            <td>2</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:00pm</td>
+                            <td>45 minutes</td>
+                            <td>Heath Paidipaty</td>
+                            <td>4</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:45pm</td>
+                            <td>45 minutes</td>
+                            <td>Spencer Swift</td>
+                            <td>5</td>
+                            <td>Piano</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </span></div>
+                  </li>
+                  <li>
+                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Lisa Gorman</div>
+                    <div class="collapsible-body"><span>
+                      <table>
+                        <thead>
+                          <tr>
+                              <th>Start Time</th>
+                              <th>Length</th>
+                              <th>Student</th>
+                              <th>Grade</th>
+                              <th>Instrument</th>
+                          </tr>
+                        </thead>
+                
+                        <tbody>
+                          <tr>
+                            <td>3:00pm</td>
+                            <td>30 minutes</td>
+                            <td>Johnny Herrick</td>
+                            <td>K</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>3:30pm</td>
+                            <td>30 minutes</td>
+                            <td>Oliver Lo</td>
+                            <td>2</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:00pm</td>
+                            <td>45 minutes</td>
+                            <td>Heath Paidipaty</td>
+                            <td>4</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:45pm</td>
+                            <td>45 minutes</td>
+                            <td>Spencer Swift</td>
+                            <td>5</td>
+                            <td>Piano</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </span></div>
+                  </li>
+                  <li>
+                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Phoebe Dinga</div>
+                    <div class="collapsible-body"><span>
+                      <table>
+                        <thead>
+                          <tr>
+                              <th>Start Time</th>
+                              <th>Length</th>
+                              <th>Student</th>
+                              <th>Grade</th>
+                              <th>Instrument</th>
+                          </tr>
+                        </thead>
+                
+                        <tbody>
+                          <tr>
+                            <td>3:00pm</td>
+                            <td>30 minutes</td>
+                            <td>Johnny Herrick</td>
+                            <td>K</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>3:30pm</td>
+                            <td>30 minutes</td>
+                            <td>Oliver Lo</td>
+                            <td>2</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:00pm</td>
+                            <td>45 minutes</td>
+                            <td>Heath Paidipaty</td>
+                            <td>4</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:45pm</td>
+                            <td>45 minutes</td>
+                            <td>Spencer Swift</td>
+                            <td>5</td>
+                            <td>Piano</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </span></div>
+                  </li>
+                </ul>
+                </span></div>
+            </li>
+            <li>
+              <div class="collapsible-header"><i class="material-icons">filter_drama</i>Tuesday</div>
+              <div class="collapsible-body"><span>
+                <ul class="collapsible expandable">
+                  <li>
+                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Andrew Kunz</div>
+                    <div class="collapsible-body"><span>
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Start Time</th>
+                            <th>Length</th>
+                            <th>Student</th>
+                            <th>Grade</th>
+                            <th>Instrument</th>
+                          </tr>
+                        </thead>
+                
+                        <tbody>
+                          <tr>
+                            <td>3:00pm</td>
+                            <td>30 minutes</td>
+                            <td>Johnny Herrick</td>
+                            <td>K</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>3:30pm</td>
+                            <td>30 minutes</td>
+                            <td>Oliver Lo</td>
+                            <td>2</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:00pm</td>
+                            <td>45 minutes</td>
+                            <td>Heath Paidipaty</td>
+                            <td>4</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:45pm</td>
+                            <td>45 minutes</td>
+                            <td>Spencer Swift</td>
+                            <td>5</td>
+                            <td>Piano</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </span></div>
+                  </li>
+                </ul>
+                </span></div>
+            </li>
+            <li>
+              <div class="collapsible-header"><i class="material-icons">filter_drama</i>Wednesday</div>
+              <div class="collapsible-body"><span>
+                <ul class="collapsible expandable">
+                  <li>
+                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Andrew Kunz</div>
+                    <div class="collapsible-body"><span>
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Start Time</th>
+                            <th>Length</th>
+                            <th>Student</th>
+                            <th>Grade</th>
+                            <th>Instrument</th>
+                          </tr>
+                        </thead>
+                
+                        <tbody>
+                          <tr>
+                            <td>3:00pm</td>
+                            <td>30 minutes</td>
+                            <td>Johnny Herrick</td>
+                            <td>K</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>3:30pm</td>
+                            <td>30 minutes</td>
+                            <td>Oliver Lo</td>
+                            <td>2</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:00pm</td>
+                            <td>45 minutes</td>
+                            <td>Heath Paidipaty</td>
+                            <td>4</td>
+                            <td>Piano</td>
+                          </tr>
+                          <tr>
+                            <td>4:45pm</td>
+                            <td>45 minutes</td>
+                            <td>Spencer Swift</td>
+                            <td>5</td>
+                            <td>Piano</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </span></div>
+                  </li>
+                </ul>
+              </span></div>
+            </li>
+          </ul>
+          <table>
+            <thead>
+              <tr>
+                  <th>Weekday</th>
+                  <th>Start Time</th>
+                  <th>Length</th>
+                  <th>Student</th>
+                  <th>Grade</th>
+                  <th>Teacher</th>
+                  <th>Instrument</th>
+              </tr>
+            </thead>
+    
+            <tbody>
+              <tr>
+                <td>Monday</td>
+                <td>3:00pm</td>
+                <td>30 minutes</td>
+                <td>Johnny Herrick</td>
+                <td>K</td>
+                <td>Andrew Kunz</td>
+                <td>Piano</td>
+              </tr>
+              <tr>
+                <td>Monday</td>
+                <td>3:30pm</td>
+                <td>30 minutes</td>
+                <td>Oliver Lo</td>
+                <td>2</td>
+                <td>Andrew Kunz</td>
+                <td>Piano</td>
+              </tr>
+              <tr>
+                <td>Monday</td>
+                <td>4:00pm</td>
+                <td>45 minutes</td>
+                <td>Heath Paidipaty</td>
+                <td>4</td>
+                <td>Andrew Kunz</td>
+                <td>Piano</td>
+              </tr>
+              <tr>
+                <td>Monday</td>
+                <td>4:45pm</td>
+                <td>45 minutes</td>
+                <td>Spencer Swift</td>
+                <td>5</td>
+                <td>Andrew Kunz</td>
+                <td>Piano</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+
+      <div class="card">
+        <div class="card-content">
+          <span class="card-title" style="color: #2b68a4"><b>Currently Enrolled Lessons</b></span>
+          <p>Not enrolled in any lessons.</p>
+          <div class="section">
+            <h5>Section 1</h5>
+            <p>Stuff</p>
+          </div>
+          <div class="divider"></div>
+          <div class="section">
+            <h5>Section 2</h5>
+            <p>Stuff</p>
+          </div>
+          <div class="divider"></div>
+          <div class="section">
+            <h5>Section 3</h5>
+            <p>Stuff</p>
+          </div>
         </div>
       </div>
 
@@ -152,5 +878,22 @@
       </div>
       
     </div>
+    <header>
+      <h1>Forte Weekly Schedule</h1>
+    </header>
+  
+    <nav class="day-tabs">
+      <button class="tab active" data-day="Monday">Monday</button>
+      <button class="tab" data-day="Tuesday">Tuesday</button>
+      <button class="tab" data-day="Wednesday">Wednesday</button>
+      <button class="tab" data-day="Thursday">Thursday</button>
+      <button class="tab" data-day="Friday">Friday</button>
+    </nav>
+  
+    <section id="schedule-content">
+      <!-- Dynamic content will load here -->
+    </section>
+  
+    <script src="main.js"></script>
   </body>
 </html>
