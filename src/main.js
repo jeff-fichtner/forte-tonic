@@ -39,14 +39,21 @@ const getStudents =
 const getClasses =
   ({ page, pageSize }) => {
     return fetchData(() => {
-      return worker.lessonRepositoryInstance.getClasses();
+      return worker.programRepositoryInstance.getClasses();
     }, page, pageSize);
   };
 
 const getRegistrations =
   ({ page, pageSize }) => {
     return fetchData(() => {
-      return worker.lessonRepositoryInstance.getRegistrations();
+      return worker.programRepositoryInstance.getRegistrations();
+    }, page, pageSize);
+  };
+
+const getRooms =
+  ({ page, pageSize }) => {
+    return fetchData(() => {
+      return worker.userRepositoryInstance.getRooms();
     }, page, pageSize);
   };
 
@@ -63,7 +70,7 @@ const getRegistrations =
 //       throw new Error('Lesson ID is required');
 //     }
 
-//     const registration = worker.lessonRepositoryInstance.register(user, lessonId);
+//     const registration = worker.programRepositoryInstance.register(user, lessonId);
 
 //     return respond({
 //       registration
@@ -83,7 +90,7 @@ const getRegistrations =
 //       throw new Error('Lesson ID is required');
 //     }
 
-//     const registration = worker.lessonRepositoryInstance.unregister(user, lessonId);
+//     const registration = worker.programRepositoryInstance.unregister(user, lessonId);
 
 //     return respond({
 //       registration

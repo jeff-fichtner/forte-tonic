@@ -7,7 +7,7 @@ class Registration {
         length,
         lessonType,
         day,
-        teacherId,
+        instructorId,
         roomId,
         instrument,
         cost,
@@ -24,7 +24,7 @@ class Registration {
         this.length = length;
         this.lessonType = lessonType;
         this.day = day;
-        this.teacherId = teacherId;
+        this.instructorId = instructorId;
         this.roomId = roomId;
         this.instrument = instrument;
         this.cost = cost;

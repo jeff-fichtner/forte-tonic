@@ -13,12 +13,12 @@ class UnitOfWork {
         return this.userRepository;
     }
 
-    get lessonRepositoryInstance() {
-        if (!this.lessonRepository) {
-            this.lessonRepository = new LessonRepository(this.dbClient);
+    get programRepositoryInstance() {
+        if (!this.programRepository) {
+            this.programRepository = new ProgramRepository(this.dbClient);
         }
 
-        return this.lessonRepository;
+        return this.programRepository;
     }
 
     isRelease_() {

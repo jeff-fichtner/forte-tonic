@@ -28,19 +28,8 @@ class UserRepository {
             () => this.instructors =
                 this.dbClient.getAllRecords(
                     Keys.INSTRUCTORS,
-                    record => {
-                        const instructor = new Instructor(...record);
-
-                        instructor.mondayRoom = this.getRoomById_(instructor.mondayRoomId);
-                        instructor.tuesdayRoom = this.getRoomById_(instructor.tuesdayRoomId);
-                        instructor.wednesdayRoom = this.getRoomById_(instructor.wednesdayRoomId);
-                        instructor.thursdayRoom = this.getRoomById_(instructor.thursdayRoomId);
-                        instructor.fridayRoom = this.getRoomById_(instructor.fridayRoomId);
-
-                        return instructor;
-                    }),
-            Keys.INSTRUCTORS,
-            () => this.getRooms_());
+                    x => new Instructor(...x)),
+            Keys.INSTRUCTORS);
     }
 
     getInstructorById(id) {
@@ -53,15 +42,8 @@ class UserRepository {
             () => this.students =
                 this.dbClient.getAllRecords(
                     Keys.STUDENTS,
-                    record => {
-                        const student = new Student(...record);
-                        student.parent1 = this.getParentById(student.parent1Id);
-                        student.parent2 = this.getParentById(student.parent2Id);
-
-                        return student;
-                    }),
-            Keys.STUDENTS,
-            () => this.getParents());
+                    x => new Student(...x)),
+            Keys.STUDENTS);
     }
 
     getStudentById(id) {
@@ -74,7 +56,7 @@ class UserRepository {
             () => this.parents =
                 this.dbClient.getAllRecords(
                     Keys.PARENTS,
-                    x => new Parent(...x)), // TODO to map students in the future, you'll need to map it externally
+                    x => new Parent(...x)),
             Keys.PARENTS);
     }
 
@@ -82,7 +64,7 @@ class UserRepository {
         return this.getParents().find(x => x.id === id);
     }
 
-    getRooms_() {
+    getRooms() {
         return RepositoryHelper.getAndSetData(
             () => this.rooms,
             () => this.rooms =
@@ -92,7 +74,7 @@ class UserRepository {
             Keys.ROOMS);
     }
 
-    getRoomById_(id) {
-        return this.getRooms_().find(x => x.id === id);
+    getRoomById(id) {
+        return this.getRooms().find(x => x.id === id);
     }
 }
