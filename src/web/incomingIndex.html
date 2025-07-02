@@ -4,7 +4,7 @@
 <head>
   <?!= include('web/css/libraries'); ?>
   <?!= include('web/js/libraries'); ?>
-  <?!= include('web/js/modelRegistration'); ?>
+  <?!= include('web/js/includes'); ?>
   <style>
     li.delete-lesson-icon,
     li.add-lesson-icon {
@@ -17,122 +17,43 @@
       getInstructors: 'getInstructors',
       getStudents: 'getStudents',
       getClasses: 'getClasses',
-      getRegistrations: 'getRegistrations'
+      getRegistrations: 'getRegistrations',
+      getRooms: 'getRooms'
     };
-
-    const fetch = (serverFunctionName, mapper = null, context = null, paginationOptions = {}, ...args) => {
-      return new Promise((resolve, reject) => {
-        google.script.run
-          .withSuccessHandler((response) => {
-            if (!response) {
-              reject(new Error('Successful but empty response'));
-              return;
-            }
-
-            try {
-              const parsedResponse = JSON.parse(response);
-              resolve(mapper ? mapper(parsedResponse) : parsedResponse);
-
-            } catch (e) {
-              reject(new Error(`Error - ${e}: ${response}`));
-            }
-          })
-          .withFailureHandler((error) => reject(error))
-          .withUserObject(context)[serverFunctionName](
-            ...(paginationOptions ? [paginationOptions, ...args] : args)
-          );
-      });
-    };
-
-    const fetchAllPages = async (serverFunctionName, mapper, context = null, pageSize = 10, ...args) => {
-      let allResults = [];
-      let currentPage = 0;
-      let totalPages = null;
-      while (!totalPages || currentPage < totalPages) {
-        try {
-          const paginationOptions = { page: currentPage, pageSize };
-          const response = await fetch(serverFunctionName, null, context, paginationOptions, ...args);
-          if (!response) {
-            break;
-          }
-
-          // set total
-          if (!totalPages && response.total !== undefined) {
-            totalPages = Math.ceil(response.total / pageSize);
-          }
-
-          // if total pages is not defined, throw an error
-          if (!totalPages) {
-            throw new Error('Total pages not defined');
-          }
-
-          const parsedResults = response.data.map(y => mapper(y));
-          if (!parsedResults || parsedResults.length == 0) {
-            break;
-          }
-
-          allResults = allResults.concat(parsedResults);
-          currentPage++;
-
-        } catch (error) {
-          console.error(`Error fetching page ${currentPage}:`, error);
-          return [];
-        }
-      }
-      return allResults;
-    };
-
-    const promisify = (fn) => (...args) =>
-      new Promise((resolve, reject) => {
-        try {
-          fn(...args);
-          resolve(true);
-        } catch (error) {
-          reject(error);
-        }
-      });
-
-    const promisifyWithResult = (fn) => (...args) =>
-      new Promise((resolve, reject) => {
-        try {
-          const result = fn(...args);
-          resolve(result);
-        } catch (error) {
-          reject(error);
-        }
-      });
 
     (async () => {
       const display = new Display();
 
       try {
-
         const [
           initializeDisplay_,
           authenticatedUser,
           allInstructors,
           // allStudents,
-          allClasses,
-          allRegistrations
+          // allClasses,
+          // allRegistrations,
+          // allRooms
         ] =
           await Promise.all([
-            promisify(display.initialize)(),
-            fetch(ServerFunctions.getAuthenticatedUser, x => new AuthenticatedUserResponse(x)),
-            fetchAllPages(ServerFunctions.getInstructors, x => new Instructor(x)),
+            TaskHelpers.promisify(() => display.initialize())(),
+            HttpClient.fetch(ServerFunctions.getAuthenticatedUser, x => new AuthenticatedUserResponse(x)),
+            HttpClient.fetchAllPages(ServerFunctions.getInstructors, x => new Instructor(x)),
             // fetchAllPages(ServerFunctions.getStudents),
             // fetchAllPages(ServerFunctions.getClasses, x => new Class(x)),
-            // fetchAllPages(ServerFunctions.getRegistrations, x => new Registration(x))
+            // fetchAllPages(ServerFunctions.getRegistrations, x => new Registration(x)),
+            // fetchAllPages(ServerFunctions.getRooms, x => new Room(x))
           ]);
 
         display.setInstructors(allInstructors);
-        // display.setStudents(allStudents);
-        display.setClasses(allClasses);
-        // display.setRegistrations(allRegistrations);
+        // display.setStudents([]); // allStudents);
+        // display.setClasses(allClasses, allInstructors);
+        // display.setRegistrations(allRegistrations, [] /* allStudents */, allInstructors, allRooms);
+        // display.setRooms(allRooms);
         display.setLoading(false);
 
       } catch (error) {
         console.error(error);
-        display.showErrorMessage('An error occurred while loading data.');
+        display.showErrorMessage(`An error occurred while loading data: ${error.message}`);
       }
     })();
   </script>
@@ -200,6 +121,7 @@
         <li class="tab"><a href="#students-tab">Students</a></li>
         <li class="tab"><a href="#classes-tab">Classes</a></li>
         <li class="tab"><a href="#registrations-tab">Registrations</a></li>
+        <li class="tab"><a href="#rooms-tab">Rooms</a></li>
       </ul>
       <div id="instructors-tab" class="tab-content">
         <h2>Instructors</h2>
@@ -214,6 +136,7 @@
           <tbody id="instructors-tbody"></tbody>
         </table>
         <p id="instructors-empty-message" hidden>No instructors.</p>
+        <div id="instructors-pagination" class="pagination-container"></div>
       </div>
       <div id="students-tab" class="tab-content">
         <h2>Students</h2>
@@ -228,6 +151,7 @@
           <tbody id="students-tbody"></tbody>
         </table>
         <p id="students-empty-message" hidden>No students.</p>
+        <div id="students-pagination" class="pagination-container"></div>
       </div>
       <div id="classes-tab" class="tab-content">
         <h2>Classes</h2>
@@ -242,6 +166,7 @@
           <tbody id="classes-tbody"></tbody>
         </table>
         <p id="classes-empty-message" hidden>No classes.</p>
+        <div id="classes-pagination" class="pagination-container"></div>
       </div>
       <div id="registrations-tab" class="tab-content">
         <h2>Registrations</h2>
@@ -249,17 +174,31 @@
           <thead>
             <tr>
               <th>Student</th>
-              <th>Teacher</th>
+              <th>Instructor</th>
+              <th>Room</th>
               <th>Instrument</th>
             </tr>
           </thead>
           <tbody id="registrations-tbody"></tbody>
         </table>
         <p id="registrations-empty-message" hidden>No registrations.</p>
+        <div id="registrations-pagination" class="pagination-container"></div>
       </div>
+      <div id="rooms-tab" class="tab-content">
+        <h2>Rooms</h2>
+        <table hidden>
+          <thead>
+            <tr>
+              <th>Name</th>
+            </tr>
+          </thead>
+          <tbody id="rooms-tbody"></tbody>
+        </table>
+        <p id="rooms-empty-message" hidden>No rooms.</p>
+        <div id="rooms-pagination" class="pagination-container"></div>
+      </div>
+      <div id="error-message" hidden>An error occurred.</div>
     </div>
-    <div id="error-message" hidden>An error occurred.</div>
-  </div>
 </body>
 
 </html>

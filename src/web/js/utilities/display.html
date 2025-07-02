@@ -1,0 +1,218 @@
+<script>
+    class Display {
+
+        initialize() {
+            document.addEventListener('DOMContentLoaded', () => this.initTabs());
+        }
+
+        initTabs() {
+            const tabsContainer = document.querySelector('.tabs');
+            const tabs = document.querySelectorAll('.tabs .tab a');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            if (!tabsContainer || tabs.length === 0) return;
+
+            tabs.forEach((tab) => {
+                tab.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const targetTab = tab.getAttribute('href');
+                    const targetContent = document.querySelector(targetTab);
+
+                    // Hide all tab contents
+                    tabContents.forEach((content) => {
+                        content.style.display = 'none';
+                    });
+
+                    // Show the selected tab content
+                    if (targetContent) {
+                        targetContent.style.display = 'block';
+                    }
+
+                    // Remove active class from all tabs and add it to the clicked tab
+                    tabs.forEach((t) => t.classList.remove('active'));
+                    tab.classList.add('active');
+                });
+            });
+
+            // Show the first tab and its content by default
+            if (tabs.length > 0) {
+                tabs[0].click();
+            }
+        }
+
+        setLoading(isLoading) {
+            const loadingElement = document.getElementById('loading');
+            const tablesElement = document.getElementById('tables');
+            const errorMessageElement = document.getElementById('error-message');
+
+            loadingElement.style.display = isLoading ? 'block' : 'none';
+            tablesElement.style.display = isLoading ? 'none' : 'block';
+            errorMessageElement.style.display = 'none'; // Hide error message when loading
+        }
+
+        showErrorMessage(message) {
+            const errorMessageElement = document.getElementById('error-message');
+            const tablesElement = document.getElementById('tables');
+
+            errorMessageElement.textContent = message;
+            errorMessageElement.style.display = 'block';
+            tablesElement.style.display = 'none';
+        }
+
+        updateTableAndMessage(tbodyId, data, valueExtractor, rowsPerPage = 10) {
+            const tbody = document.getElementById(`${tbodyId}-tbody`);
+            const emptyMessage = document.getElementById(`${tbodyId}-empty-message`);
+            const paginationContainer = document.getElementById(`${tbodyId}-pagination`);
+            const table = tbody.closest('table');
+            
+            if (!data || data.length === 0) {
+                emptyMessage.hidden = false;
+                table.hidden = true;
+                paginationContainer.innerHTML = '';
+                return;
+            }
+
+            emptyMessage.hidden = true;
+            table.hidden = false;
+
+            // Pagination logic
+            const totalPages = Math.ceil(data.length / rowsPerPage);
+            let currentPage = 1;
+            
+            const renderTableRows = (page) => {
+                tbody.innerHTML = '';
+                const start = (page - 1) * rowsPerPage;
+                const end = start + rowsPerPage;
+                const rows = data.slice(start, end).map(valueExtractor).map(
+                    cells => {
+                        const tr = document.createElement('tr');
+                        cells.forEach((cell) => {
+                            const td = document.createElement('td');
+                            td.textContent = cell;
+                            tr.appendChild(td);
+                        });
+                        return tr;
+                    });
+                rows.forEach((row) => tbody.appendChild(row));
+            };
+
+            const renderPagination = () => {
+                paginationContainer.innerHTML = '';
+                const ul = document.createElement('ul');
+                ul.className = 'pagination';
+
+                // Previous button
+                const prevLi = document.createElement('li');
+                prevLi.className = currentPage === 1 ? 'disabled' : 'waves-effect';
+                prevLi.innerHTML = `<a href="#!"><i class="material-icons">chevron_left</i></a>`;
+                prevLi.addEventListener('click', () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        renderTableRows(currentPage);
+                        renderPagination();
+                    }
+                });
+                ul.appendChild(prevLi);
+
+                // Page numbers
+                for (let i = 1; i <= totalPages; i++) {
+                    const pageLi = document.createElement('li');
+                    pageLi.className = i === currentPage ? 'active' : 'waves-effect';
+                    pageLi.innerHTML = `<a href="#!">${i}</a>`;
+                    pageLi.addEventListener('click', () => {
+                        currentPage = i;
+                        renderTableRows(currentPage);
+                        renderPagination();
+                    });
+                    ul.appendChild(pageLi);
+                }
+
+                // Next button
+                const nextLi = document.createElement('li');
+                nextLi.className = currentPage === totalPages ? 'disabled' : 'waves-effect';
+                nextLi.innerHTML = `<a href="#!"><i class="material-icons">chevron_right</i></a>`;
+                nextLi.addEventListener('click', () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        renderTableRows(currentPage);
+                        renderPagination();
+                    }
+                });
+                ul.appendChild(nextLi);
+
+                paginationContainer.appendChild(ul);
+            };
+
+            renderTableRows(currentPage);
+            renderPagination();
+        }
+
+        setInstructors(instructors) {
+            this.updateTableAndMessage(
+                'instructors',
+                instructors,
+                (instructor) => [instructor.fullName, instructor.email, instructor.instrument1]
+            );
+        }
+
+        // setStudents(students) {
+        //     this.updateTableAndMessage(
+        //         'students-tbody',
+        //         'students-empty-message',
+        //         studentsData,
+        //         (student) => {
+        //             const tr = document.createElement('tr');
+        //             tr.innerHTML = `
+        //                 <td>${student.fullName}</td>
+        //                 <td>${student.studentId}</td>
+        //                 <td>${student.grade}</td>
+        //             `;
+        //             return tr;
+        //         }
+        //     );
+        // }
+
+        // setClasses(classes, instructors) {
+        //     this.updateTableAndMessage(
+        //         'classes-tbody',
+        //         'classes-empty-message',
+        //         classes,
+        //         (classItem) => [classItem.title, instructors.find(x => x.id === classItem.instructorId).fullName, classItem.day]
+        //     );
+        // }
+
+        // setRegistrations(registrations, students, instructors, rooms) {
+        //     this.updateTableAndMessage(
+        //         'registrations-tbody',
+        //         'registrations-empty-message',
+        //         registrations,
+        //         (registration) => {
+        //             const student = students.find(x => x.id === registration.studentId);
+        //             const instructor = instructors.find(x => x.id === registration.instructorId);
+        //             const room = rooms.find(x => x.id === registration.roomId);
+
+        //             return [
+        //                 student.fullName,
+        //                 instructor.fullName,
+        //                 room.formattedName,
+        //                 registration.instrument
+        //             ];
+        //         }
+        //     );
+        // }
+
+        // setRooms(rooms) {
+        //     this.updateTableAndMessage(
+        //         'rooms-tbody',
+        //         'rooms-empty-message',
+        //         rooms,
+        //         (room) => [room.formattedName]
+        //     );
+        // }
+
+        getCurrentTab() {
+            const activeTab = document.querySelector('.tabs .tab a.active');
+            return activeTab ? activeTab.getAttribute('id') : null;
+        }
+    }
+</script>

@@ -1,0 +1,29 @@
+<script>
+    class TaskHelpers {
+        // returns a function that can be used to execute a task and return a promise
+        static promisify(fn) {
+            return (...args) =>
+                new Promise((resolve, reject) => {
+                    try {
+                        fn(...args);
+                        resolve(true);
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+        }
+
+        // returns a function that can be used to execute a task and return a promise with the result
+        static promisifyWithResult(fn) {
+            return (...args) =>
+                new Promise((resolve, reject) => {
+                    try {
+                        const result = fn(...args);
+                        resolve(result);
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+        }
+    }
+</script>
