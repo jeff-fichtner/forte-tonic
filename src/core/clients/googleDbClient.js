@@ -61,7 +61,23 @@ class GoogleDbClient {
     return mappedData;
   }
 
-  insertRecord(sheetKey, record) {
+  /**
+   * Get filtered records from a sheet.
+   * @param {string} sheetKey - The key of the sheet to retrieve data from.
+   * @param {function} mapFunc - Function to map rows to objects.
+   * @param {function} filterFunc - Function to filter rows.
+   * @returns {Array} - Filtered and mapped records.
+   */
+  getFilteredRecords(sheetKey, mapFunc, filterFunc) {
+    const allRecords = this.getAllRecords(sheetKey, mapFunc);
+
+    // Apply the filter function to the mapped records
+    const filteredRecords = allRecords.filter(filterFunc);
+
+    return filteredRecords;
+  }
+  
+  insertRecord(sheetKey, record, index = -1) {
     // const sheet = this.getSheetByNameOrCreate_(sheetKey);
     // const lastRow = sheet.getLastRow();
     // const newRow = lastRow + 1;

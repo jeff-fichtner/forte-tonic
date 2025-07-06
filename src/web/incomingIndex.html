@@ -13,192 +13,278 @@
   </style>
   <script>
     const ServerFunctions = {
-      getAuthenticatedUser: 'getAuthenticatedUser',
-      getInstructors: 'getInstructors',
-      getStudents: 'getStudents',
-      getClasses: 'getClasses',
-      getRegistrations: 'getRegistrations',
-      getRooms: 'getRooms'
+        getAuthenticatedUser: 'getAuthenticatedUser',
+        getInstructors: 'getInstructors',
+        getStudents: 'getStudents',
+        getClasses: 'getClasses',
+        getRegistrations: 'getRegistrations',
+        getRooms: 'getRooms',
+        searchStudentsByName: 'searchStudentsByName'
     };
 
-    (async () => {
-      const display = new Display();
+    const viewModel = new ViewModel();
+    viewModel.initializeAsync()
+      .catch(error => {
+        console.error('Error initializing ViewModel:', error);
+      });
 
-      try {
-        const [
-          initializeDisplay_,
-          authenticatedUser,
-          allInstructors,
-          // allStudents,
-          // allClasses,
-          // allRegistrations,
-          // allRooms
-        ] =
-          await Promise.all([
-            TaskHelpers.promisify(() => display.initialize())(),
-            HttpClient.fetch(ServerFunctions.getAuthenticatedUser, x => new AuthenticatedUserResponse(x)),
-            HttpClient.fetchAllPages(ServerFunctions.getInstructors, x => new Instructor(x)),
-            // fetchAllPages(ServerFunctions.getStudents),
-            // fetchAllPages(ServerFunctions.getClasses, x => new Class(x)),
-            // fetchAllPages(ServerFunctions.getRegistrations, x => new Registration(x)),
-            // fetchAllPages(ServerFunctions.getRooms, x => new Room(x))
-          ]);
-
-        display.setInstructors(allInstructors);
-        // display.setStudents([]); // allStudents);
-        // display.setClasses(allClasses, allInstructors);
-        // display.setRegistrations(allRegistrations, [] /* allStudents */, allInstructors, allRooms);
-        // display.setRooms(allRooms);
-        display.setLoading(false);
-
-      } catch (error) {
-        console.error(error);
-        display.showErrorMessage(`An error occurred while loading data: ${error.message}`);
-      }
-    })();
   </script>
 </head>
 
 <body>
   <div class="container">
     <h1>Tonic</h1>
-
-    <div class="valign-wrapper">
-      <div id="loading" class="preloader-wrapper big active center-align">
-        <div class="spinner-layer spinner-blue">
-          <div class="circle-clipper left">
-            <div class="circle"></div>
+    
+    <div hidden id="new-registration-form">
+      <h4 class="center-align">Student Registration Form</h4>
+      <!-- Students -->
+      <!-- Modal Trigger -->
+      <div style="border: 1px solid #2d2828; padding: 10px;">
+        <a id="student-select-modal-btn" class="waves-effect waves-light btn modal-trigger"
+          href="#student-select-modal">Select Student</a>
+        <div id="student-select-modal" class="modal modal-fixed-footer">
+          <div class="modal-content">
+        <div class="input-field" style="display: flex; align-items: center;">
+          <input type="text" id="student-search" class="autocomplete" style="flex: 1; margin-right: 10px;">
+          <button id="student-search-btn" class="btn waves-effect waves-light disabled">Search</button>
+          <label for="student-search">Search Students</label>
+        </div>
+        <div class="input-field col s12" id="student-select-options-container">
+          <select id="student-select">
+            <option value="" disabled selected>Select a student</option>
+          </select>
+          <label>Student</label>
+        </div>
           </div>
-          <div class="gap-patch">
-            <div class="circle"></div>
-          </div>
-          <div class="circle-clipper right">
-            <div class="circle"></div>
+          <div class="modal-footer">
+        <a id="select-student-modal-submit-btn" class="modal-close waves-effect waves-light btn disabled">Select
+          Student</a>
           </div>
         </div>
+        <p id="selected-student-name-span-container" hidden data-student-id="">
+          <strong>Selected Student: </strong><span id="selected-student-name-span"></span>
+        </p>
+      </div>
 
-        <div class="spinner-layer spinner-red">
-          <div class="circle-clipper left">
-            <div class="circle"></div>
-          </div>
-          <div class="gap-patch">
-            <div class="circle"></div>
-          </div>
-          <div class="circle-clipper right">
-            <div class="circle"></div>
-          </div>
+      <!-- Instrument -->
+      <div class="input-field">
+        <select id="instrument-select">
+          <option value="" disabled selected>Choose an instrument</option>
+        </select>
+        <label for="instrument-select">Instrument</label>
+      </div>
+
+      <!-- Instructor -->
+      <div class="input-field">
+        <select id="instructor-select">
+          <option value="" disabled selected>Choose an instructor</option>
+        </select>
+        <label for="instructor-select">Instructor</label>
+      </div>
+
+      <!-- Day -->
+      <div class="input-field">
+        <select id="day-select">
+          <option value="" disabled selected>Choose a day</option>
+          <option value="1">Monday</option>
+          <option value="2">Tuesday</option>
+          <option value="3">Wednesday</option>
+          <option value="4">Thursday</option>
+          <option value="5">Friday</option>
+        </select>
+        <label for="day-select">Day</label>
+      </div>
+
+      <!-- Length -->
+      <p>Lesson Length</p>
+      <p>
+        <label>
+          <input name="length" type="radio" value="30" checked />
+          <span>30 Minutes</span>
+        </label>
+      </p>
+      <p>
+        <label>
+          <input name="length" type="radio" value="45" />
+          <span>45 Minutes</span>
+        </label>
+      </p>
+      <p>
+        <label>
+          <input name="length" type="radio" value="60" />
+          <span>60 Minutes</span>
+        </label>
+      </p>
+
+      <!-- Start Time -->
+      <div class="input-field">
+        <select id="start-time-select">
+          <option value="" disabled selected>Choose a start time</option>
+          <option value="15">3:00 PM</option>
+          <option value="16">4:00 PM</option>
+          <option value="17">5:00 PM</option>
+        </select>
+        <label for="start-time-select">Start Time</label>
+      </div>
+
+      <!-- Transportation Type -->
+      <p>Transportation Type</p>
+      <p>
+        <label>
+          <input name="transportation" type="radio" value="pickup" checked />
+          <span>Pickup</span>
+        </label>
+      </p>
+      <p>
+        <label>
+          <input name="transportation" type="radio" value="bus" />
+          <span>Late Bus</span>
+        </label>
+      </p>
+
+      <!-- Save Button -->
+      <div class="center-align">
+        <button class="btn waves-effect waves-light" type="submit" id="create-submit">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="valign-wrapper center-align">
+    <div id="loading" class="preloader-wrapper big active center-align">
+      <div class="spinner-layer spinner-blue">
+        <div class="circle-clipper left">
+          <div class="circle"></div>
         </div>
-
-        <div class="spinner-layer spinner-yellow">
-          <div class="circle-clipper left">
-            <div class="circle"></div>
-          </div>
-          <div class="gap-patch">
-            <div class="circle"></div>
-          </div>
-          <div class="circle-clipper right">
-            <div class="circle"></div>
-          </div>
+        <div class="gap-patch">
+          <div class="circle"></div>
         </div>
+        <div class="circle-clipper right">
+          <div class="circle"></div>
+        </div>
+      </div>
 
-        <div class="spinner-layer spinner-green">
-          <div class="circle-clipper left">
-            <div class="circle"></div>
-          </div>
-          <div class="gap-patch">
-            <div class="circle"></div>
-          </div>
-          <div class="circle-clipper right">
-            <div class="circle"></div>
-          </div>
+      <div class="spinner-layer spinner-red">
+        <div class="circle-clipper left">
+          <div class="circle"></div>
+        </div>
+        <div class="gap-patch">
+          <div class="circle"></div>
+        </div>
+        <div class="circle-clipper right">
+          <div class="circle"></div>
+        </div>
+      </div>
+
+      <div class="spinner-layer spinner-yellow">
+        <div class="circle-clipper left">
+          <div class="circle"></div>
+        </div>
+        <div class="gap-patch">
+          <div class="circle"></div>
+        </div>
+        <div class="circle-clipper right">
+          <div class="circle"></div>
+        </div>
+      </div>
+
+      <div class="spinner-layer spinner-green">
+        <div class="circle-clipper left">
+          <div class="circle"></div>
+        </div>
+        <div class="gap-patch">
+          <div class="circle"></div>
+        </div>
+        <div class="circle-clipper right">
+          <div class="circle"></div>
         </div>
       </div>
     </div>
-
-    <div hidden id="tables" class="center-align">
-      <ul class="tabs">
-        <li class="tab"><a href="#instructors-tab">Instructors</a></li>
-        <li class="tab"><a href="#students-tab">Students</a></li>
-        <li class="tab"><a href="#classes-tab">Classes</a></li>
-        <li class="tab"><a href="#registrations-tab">Registrations</a></li>
-        <li class="tab"><a href="#rooms-tab">Rooms</a></li>
-      </ul>
-      <div id="instructors-tab" class="tab-content">
-        <h2>Instructors</h2>
-        <table hidden>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Instruments</th>
-            </tr>
-          </thead>
-          <tbody id="instructors-tbody"></tbody>
-        </table>
-        <p id="instructors-empty-message" hidden>No instructors.</p>
-        <div id="instructors-pagination" class="pagination-container"></div>
-      </div>
-      <div id="students-tab" class="tab-content">
-        <h2>Students</h2>
-        <table hidden>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Student ID</th>
-              <th>Grade</th>
-            </tr>
-          </thead>
-          <tbody id="students-tbody"></tbody>
-        </table>
-        <p id="students-empty-message" hidden>No students.</p>
-        <div id="students-pagination" class="pagination-container"></div>
-      </div>
-      <div id="classes-tab" class="tab-content">
-        <h2>Classes</h2>
-        <table hidden>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Instructor</th>
-              <th>Day</th>
-            </tr>
-          </thead>
-          <tbody id="classes-tbody"></tbody>
-        </table>
-        <p id="classes-empty-message" hidden>No classes.</p>
-        <div id="classes-pagination" class="pagination-container"></div>
-      </div>
-      <div id="registrations-tab" class="tab-content">
-        <h2>Registrations</h2>
-        <table hidden>
-          <thead>
-            <tr>
-              <th>Student</th>
-              <th>Instructor</th>
-              <th>Room</th>
-              <th>Instrument</th>
-            </tr>
-          </thead>
-          <tbody id="registrations-tbody"></tbody>
-        </table>
-        <p id="registrations-empty-message" hidden>No registrations.</p>
-        <div id="registrations-pagination" class="pagination-container"></div>
-      </div>
-      <div id="rooms-tab" class="tab-content">
-        <h2>Rooms</h2>
-        <table hidden>
-          <thead>
-            <tr>
-              <th>Name</th>
-            </tr>
-          </thead>
-          <tbody id="rooms-tbody"></tbody>
-        </table>
-        <p id="rooms-empty-message" hidden>No rooms.</p>
-        <div id="rooms-pagination" class="pagination-container"></div>
-      </div>
-      <div id="error-message" hidden>An error occurred.</div>
+  </div>
+<!-- 
+  <div hidden id="tables" class="center-align">
+    <ul class="tabs">
+      <li class="tab"><a href="#instructors-tab">Instructors</a></li>
+      <li class="tab"><a href="#students-tab">Students</a></li>
+      <li class="tab"><a href="#classes-tab">Classes</a></li>
+      <li class="tab"><a href="#registrations-tab">Registrations</a></li>
+      <li class="tab"><a href="#rooms-tab">Rooms</a></li>
+    </ul>
+    <div id="instructors-tab" class="tab-content">
+      <h2>Instructors</h2>
+      <table hidden>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Instruments</th>
+          </tr>
+        </thead>
+        <tbody id="instructors-tbody"></tbody>
+      </table>
+      <p id="instructors-empty-message" hidden>No instructors.</p>
+      <div id="instructors-pagination" class="pagination-container"></div>
     </div>
+    <div id="students-tab" class="tab-content">
+      <h2>Students</h2>
+      <table hidden>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Student ID</th>
+            <th>Grade</th>
+          </tr>
+        </thead>
+        <tbody id="students-tbody"></tbody>
+      </table>
+      <p id="students-empty-message" hidden>No students.</p>
+      <div id="students-pagination" class="pagination-container"></div>
+    </div>
+    <div id="classes-tab" class="tab-content">
+      <h2>Classes</h2>
+      <table hidden>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Instructor</th>
+            <th>Day</th>
+          </tr>
+        </thead>
+        <tbody id="classes-tbody"></tbody>
+      </table>
+      <p id="classes-empty-message" hidden>No classes.</p>
+      <div id="classes-pagination" class="pagination-container"></div>
+    </div>
+    <div id="registrations-tab" class="tab-content">
+      <h2>Registrations</h2>
+      <table hidden>
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Instructor</th>
+            <th>Room</th>
+            <th>Instrument</th>
+          </tr>
+        </thead>
+        <tbody id="registrations-tbody"></tbody>
+      </table>
+      <p id="registrations-empty-message" hidden>No registrations.</p>
+      <div id="registrations-pagination" class="pagination-container"></div>
+    </div>
+    <div id="rooms-tab" class="tab-content">
+      <h2>Rooms</h2>
+      <table hidden>
+        <thead>
+          <tr>
+            <th>Name</th>
+          </tr>
+        </thead>
+        <tbody id="rooms-tbody"></tbody>
+      </table>
+      <p id="rooms-empty-message" hidden>No rooms.</p>
+      <div id="rooms-pagination" class="pagination-container"></div>
+    </div>
+  </div> -->
+
 </body>
 
 </html>

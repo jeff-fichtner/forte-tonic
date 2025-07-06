@@ -50,6 +50,13 @@ class UserRepository {
         return this.getStudents().find(x => x.id === id);
     }
 
+    searchStudentsByName(name) {
+        return this.dbClient.getFilteredRecords(
+            Keys.STUDENTS,
+            x => new Student(...x),
+            x => x.firstName.toLowerCase().includes(name.toLowerCase()) || x.lastName.toLowerCase().includes(name.toLowerCase()));
+    }
+
     getParents() {
         return RepositoryHelper.getAndSetData(
             () => this.parents,
