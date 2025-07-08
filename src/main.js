@@ -59,6 +59,8 @@ const getRooms =
 
 const searchStudentsByName =
   (request) => {
+    throwIfNotAdmin();
+
     const data = retrieveDataFromRequest(request);
     console.log('Search students with name:', data.name);
 
@@ -68,25 +70,19 @@ const searchStudentsByName =
     });
   };
 
-// const register =
-//   () => {
-//     throwIfNotAdmin();
 
-//     const worker = new UnitOfWork();
+const register =
+  (request) => {
+    throwIfNotAdmin();
 
-//     const user = Authenticator.getSignedInUser();
-//     const lessonId = ;
+    const data = retrieveDataFromRequest(request);
 
-//     if (!lessonId) {
-//       throw new Error('Lesson ID is required');
-//     }
+    const registration = worker.programRepositoryInstance.register(user, data);
 
-//     const registration = worker.programRepositoryInstance.register(user, lessonId);
-
-//     return respond({
-//       registration
-//     });
-//   }
+    return respond({
+      registration
+    });
+  }
 
 // const unregister =
 //   () => {

@@ -40,13 +40,23 @@ class ProgramRepository {
     return this.getRegistrations().find(x => x.id === id);
   }
 
+  register(studentId, registration) {
+    ErrorHandling.throwIfNo(studentId, `Student ID is required`);
+    ErrorHandling.throwIfNo(registration, `Registration data is required`);
+
+    const registrations = this.getRegistrations();
+    const newRegistration = new Registration(studentId, registration);
+    
+    registrations.push(newRegistration);
+    this.dbClient.saveRecord(Keys.REGISTRATIONS, newRegistration);
+
+    return newRegistration;
+  }
   /*
   
     calculateRegistrationOptions(studentId, instrument, length) {
     }
       
-    register(studentId, lessonId) {
-    }
   
     unregister(studentId, lessonId) {
     }

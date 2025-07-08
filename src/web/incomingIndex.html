@@ -10,16 +10,31 @@
     li.add-lesson-icon {
       cursor: pointer;
     }
+
+    #loading-container {
+      display: flex;
+      justify-content: flex-start;
+      /* Align to the top */
+      align-items: center;
+      /* Center horizontally */
+      height: 100vh;
+      /* Full viewport height */
+      flex-direction: column;
+      /* Ensure vertical stacking */
+      padding-top: 20px;
+      /* Optional spacing from the top */
+    }
   </style>
   <script>
     const ServerFunctions = {
-        getAuthenticatedUser: 'getAuthenticatedUser',
-        getInstructors: 'getInstructors',
-        getStudents: 'getStudents',
-        getClasses: 'getClasses',
-        getRegistrations: 'getRegistrations',
-        getRooms: 'getRooms',
-        searchStudentsByName: 'searchStudentsByName'
+      getAuthenticatedUser: 'getAuthenticatedUser',
+      getInstructors: 'getInstructors',
+      getStudents: 'getStudents',
+      getClasses: 'getClasses',
+      getRegistrations: 'getRegistrations',
+      getRooms: 'getRooms',
+      searchStudentsByName: 'searchStudentsByName',
+      createRegistration: 'createRegistration'
     };
 
     const viewModel = new ViewModel();
@@ -33,32 +48,39 @@
 
 <body>
   <div class="container">
+
     <h1>Tonic</h1>
-    
+
+    <div hidden id="current-registrations">
+      <ul id="current-registrations-collection" class="collection">
+      </ul>
+    </div>
+
     <div hidden id="new-registration-form">
+
       <h4 class="center-align">Student Registration Form</h4>
+
       <!-- Students -->
-      <!-- Modal Trigger -->
       <div style="border: 1px solid #2d2828; padding: 10px;">
         <a id="student-select-modal-btn" class="waves-effect waves-light btn modal-trigger"
           href="#student-select-modal">Select Student</a>
         <div id="student-select-modal" class="modal modal-fixed-footer">
           <div class="modal-content">
-        <div class="input-field" style="display: flex; align-items: center;">
-          <input type="text" id="student-search" class="autocomplete" style="flex: 1; margin-right: 10px;">
-          <button id="student-search-btn" class="btn waves-effect waves-light disabled">Search</button>
-          <label for="student-search">Search Students</label>
-        </div>
-        <div class="input-field col s12" id="student-select-options-container">
-          <select id="student-select">
-            <option value="" disabled selected>Select a student</option>
-          </select>
-          <label>Student</label>
-        </div>
+            <div class="input-field" style="display: flex; align-items: center;">
+              <input type="text" id="student-search" class="autocomplete" style="flex: 1; margin-right: 10px;">
+              <button id="student-search-btn" class="btn waves-effect waves-light disabled">Search</button>
+              <label for="student-search">Search Students</label>
+            </div>
+            <div class="input-field" id="student-select-options-container">
+              <select id="student-select">
+                <option value="" disabled selected>Select a student</option>
+              </select>
+              <label>Student</label>
+            </div>
           </div>
           <div class="modal-footer">
-        <a id="select-student-modal-submit-btn" class="modal-close waves-effect waves-light btn disabled">Select
-          Student</a>
+            <a id="select-student-modal-submit-btn" class="modal-close waves-effect waves-light btn disabled">Select
+              Student</a>
           </div>
         </div>
         <p id="selected-student-name-span-container" hidden data-student-id="">
@@ -66,90 +88,104 @@
         </p>
       </div>
 
-      <!-- Instrument -->
-      <div class="input-field">
-        <select id="instrument-select">
-          <option value="" disabled selected>Choose an instrument</option>
-        </select>
-        <label for="instrument-select">Instrument</label>
-      </div>
+      <div style="border: 1px solid #2d2828; padding: 10px;">
+        <a id="instruction-select-modal-btn" class="waves-effect waves-light btn modal-trigger"
+          href="#instruction-select-modal">Select Instruction</a>
+        <div id="instruction-select-modal" class="modal modal-fixed-footer">
+          <div class="modal-content">
 
-      <!-- Instructor -->
-      <div class="input-field">
-        <select id="instructor-select">
-          <option value="" disabled selected>Choose an instructor</option>
-        </select>
-        <label for="instructor-select">Instructor</label>
-      </div>
+            <!-- Instructor -->
+            <div class="input-field" id="instructor-select-options-container">
+              <select id="instructor-select">
+              </select>
+              <label for="instructor-select">Instructor</label>
+            </div>
 
-      <!-- Day -->
-      <div class="input-field">
-        <select id="day-select">
-          <option value="" disabled selected>Choose a day</option>
-          <option value="1">Monday</option>
-          <option value="2">Tuesday</option>
-          <option value="3">Wednesday</option>
-          <option value="4">Thursday</option>
-          <option value="5">Friday</option>
-        </select>
-        <label for="day-select">Day</label>
-      </div>
+            <div id="instructor-selected-info-container" hidden>
 
-      <!-- Length -->
-      <p>Lesson Length</p>
-      <p>
-        <label>
-          <input name="length" type="radio" value="30" checked />
-          <span>30 Minutes</span>
-        </label>
-      </p>
-      <p>
-        <label>
-          <input name="length" type="radio" value="45" />
-          <span>45 Minutes</span>
-        </label>
-      </p>
-      <p>
-        <label>
-          <input name="length" type="radio" value="60" />
-          <span>60 Minutes</span>
-        </label>
-      </p>
+              <!-- Instrument -->
+              <div class="input-field" id="instrument-select-options-container">
+                <select id="instrument-select">
+                </select>
+                <label for="instrument-select">Instrument</label>
+              </div>
 
-      <!-- Start Time -->
-      <div class="input-field">
-        <select id="start-time-select">
-          <option value="" disabled selected>Choose a start time</option>
-          <option value="15">3:00 PM</option>
-          <option value="16">4:00 PM</option>
-          <option value="17">5:00 PM</option>
-        </select>
-        <label for="start-time-select">Start Time</label>
+              <!-- Day -->
+              <div class="input-field" id="instructor-day-select-options-container">
+                <select id="day-select">
+                </select>
+                <label for="day-select">Day</label>
+              </div>
+
+              <div id="instructor-day-selected-info-container" hidden>
+
+                <!-- Start Time -->
+                <div class="input-field" id="instructor-day-start-time-container">
+                  <select id="start-time-select">
+                  </select>
+                  <label for="start-time-select">Start Time</label>
+                </div>
+
+                <!-- Length -->
+                <div id="lesson-length-container">
+                  <p>Lesson Length</p>
+                  <p>
+                    <label>
+                      <input name="lesson-length" type="radio" value="30" checked />
+                      <span>30 Minutes</span>
+                    </label>
+                  </p>
+                  <p>
+                    <label>
+                      <input name="lesson-length" type="radio" value="45" />
+                      <span>45 Minutes</span>
+                    </label>
+                  </p>
+                  <p>
+                    <label>
+                      <input name="lesson-length" type="radio" value="60" />
+                      <span>60 Minutes</span>
+                    </label>
+                  </p>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+          <div class="modal-footer">
+            <a id="select-instruction-modal-submit-btn" class="modal-close waves-effect waves-light btn disabled">Select
+              Instruction</a>
+          </div>
+        </div>
+        <p id="selected-instruction-span-container" hidden data-student-id="">
+          <strong>Selected Instruction: </strong><span id="selected-instruction-span"></span>
+        </p>
       </div>
 
       <!-- Transportation Type -->
       <p>Transportation Type</p>
       <p>
         <label>
-          <input name="transportation" type="radio" value="pickup" checked />
+          <input name="transportation-type" type="radio" value="pickup" checked />
           <span>Pickup</span>
         </label>
       </p>
       <p>
         <label>
-          <input name="transportation" type="radio" value="bus" />
+          <input name="transportation-type" type="radio" value="bus" />
           <span>Late Bus</span>
         </label>
       </p>
 
       <!-- Save Button -->
       <div class="center-align">
-        <button class="btn waves-effect waves-light" type="submit" id="create-submit">Create</button>
+        <button class="btn waves-effect waves-light disabled" type="submit" id="create-registration-submit">Create</button>
       </div>
     </div>
   </div>
 
-  <div class="valign-wrapper center-align">
+  <div id="loading-container">
     <div id="loading" class="preloader-wrapper big active center-align">
       <div class="spinner-layer spinner-blue">
         <div class="circle-clipper left">
@@ -200,7 +236,7 @@
       </div>
     </div>
   </div>
-<!-- 
+  <!-- 
   <div hidden id="tables" class="center-align">
     <ul class="tabs">
       <li class="tab"><a href="#instructors-tab">Instructors</a></li>
