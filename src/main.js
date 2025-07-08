@@ -5,7 +5,7 @@ const worker = new UnitOfWork();
 // mandatory to be deployed as a web app
 const doGet =
   (request) => {
-    return HtmlService.createTemplateFromFile('web/incomingIndex')
+    return HtmlService.createTemplateFromFile('web/index')
       .evaluate();
   }
 

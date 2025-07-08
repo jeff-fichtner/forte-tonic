@@ -19,13 +19,14 @@
                     // fetchAllPages(ServerFunctions.getRooms, x => new Room(x))
                 ]);
 
+            M.AutoInit();
+
             this.instructors = instructors;
             this._setInstructorOptions(instructors);
 
             this.registrations = registrations;
             this._setRegistrations(registrations);
 
-            M.AutoInit();
             this.initTabs();
 
             this.registerListeners();
@@ -34,6 +35,73 @@
         }
 
         initTabs() {
+            // TODO MOVE
+            // const scheduleData = {
+            //     Monday: [
+            //         { time: "3:00 PM", length: "30 min", student: "Alice", grade: "3", instrument: "Piano" },
+            //         { time: "3:30 PM", length: "30 min", student: "Ben", grade: "4", instrument: "Voice" }
+            //     ],
+            //     Tuesday: [],
+            //     Wednesday: [],
+            //     Thursday: [],
+            //     Friday: []
+            // };
+
+            // const tabs = document.querySelectorAll(".tab");
+            // const content = document.getElementById("schedule-content");
+
+            // tabs.forEach(tab => {
+            //     tab.addEventListener("click", () => {
+            //         document.querySelector(".tab.active").classList.remove("active");
+            //         tab.classList.add("active");
+
+            //         const day = tab.getAttribute("data-day");
+            //         renderTable(day);
+            //     });
+            // });
+
+
+    //         function renderTable(day) {
+    //             const lessons = scheduleData[day] || [];
+
+    //             if (lessons.length === 0) {
+    //                 content.innerHTML = `<p>No data for ${day} yet.</p>`;
+    //                 return;
+    //             }
+
+    //             let html = `
+    //     <table>
+    //       <thead>
+    //         <tr>
+    //           <th>Start Time</th>
+    //           <th>Length</th>
+    //           <th>Student</th>
+    //           <th>Grade</th>
+    //           <th>Instrument</th>
+    //         </tr>
+    //       </thead>
+    //       <tbody>
+    //   `;
+
+    //             lessons.forEach(lesson => {
+    //                 html += `
+    //       <tr>
+    //         <td>${lesson.time}</td>
+    //         <td>${lesson.length}</td>
+    //         <td>${lesson.student}</td>
+    //         <td>${lesson.grade}</td>
+    //         <td>${lesson.instrument}</td>
+    //       </tr>
+    //     `;
+    //             });
+
+    //             html += `</tbody></table>`;
+    //             content.innerHTML = html;
+    //         }
+
+    //         // Load Monday by default
+    //         renderTable("Monday");
+
             const tabsContainer = document.querySelector('.tabs');
             const tabs = document.querySelectorAll('.tabs .tab a');
             const tabContents = document.querySelectorAll('.tab-content');
@@ -372,16 +440,16 @@
         _validateRegistration() {
             // get transportation type response
             const transportationType = document.querySelector('input[name="transportation-type"]:checked');
-            
+
             // enable submit button if all fields are valid
             const submitButton = document.getElementById('create-registration-submit');
             submitButton.classList.toggle('disabled',
                 !(this.selectedStudentId
                     && this.selectedInstructionInfo
                     && transportationType.value));
-            return ;
+            return;
         }
-        
+
         _getInstructionInfo() {
             // get selected instructor
             const instructorSelect = document.getElementById('instructor-select');
@@ -443,7 +511,7 @@
                 currentRegistrations.hidden = false;
                 return;
             }
-            
+
             // clear all children in 'current-registrations-collection'
             this._clearCurrentRegistrations();
             // for each registration
@@ -461,7 +529,7 @@
                     </div>`;
                 currentRegistrationsCollection.appendChild(li);
             });
-            
+
             currentRegistrations.hidden = false;
         }
 
