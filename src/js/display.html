@@ -95,5 +95,31 @@
         }
 
     }
+    document.addEventListener('DOMContentLoaded', function() {
+        M.Tabs.init(document.querySelectorAll('.tabs'));
 
+        const sections = document.querySelectorAll('.section-content');
+        const links = document.querySelectorAll('.section-link');
+
+        function showSection(sectionId) {
+            sections.forEach(section => {
+            section.classList.remove('active');
+            });
+            const activeSection = document.getElementById(sectionId);
+            activeSection.classList.add('active');
+            // reinitialize tabs for the newly displayed section
+            M.Tabs.init(activeSection.querySelectorAll('.tabs'));
+        }
+
+        // Optional: show Admin by default when page loads
+        showSection('admin');
+
+        links.forEach(link => {
+            link.addEventListener('click', () => {
+            const section = link.getAttribute('data-section');
+            showSection(section);
+            });
+        });
+    });
+    
 </script>
