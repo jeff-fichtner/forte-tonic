@@ -1,0 +1,19 @@
+<script>
+    class DurationHelpers {
+        // convert string time into duration
+        static stringToDuration(timeString) {
+            if (!timeString) {
+                return null;
+            }
+
+            // Parse the date-time string
+            const dateTime = DateTime.fromISO(timeString, { zone: 'utc' });
+
+            // Dynamically calculate midnight based on the date in the string
+            const midnight = dateTime.startOf('day');
+
+            // Calculate and return the duration
+            return Duration.fromMillis(dateTime.diff(midnight).toMillis());
+        }
+    }
+</script>

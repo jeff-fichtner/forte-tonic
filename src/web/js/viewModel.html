@@ -54,7 +54,7 @@
 
             tabsContainer.addEventListener('click', (event) => {
                 event.preventDefault();
-                
+
                 // return if not a tab link
                 const tabLink = event.target.closest('.tab a');
                 if (!tabLink) return;
@@ -77,7 +77,7 @@
                 console.warn(`No links found.`);
                 return;
             }
-            
+
             links.forEach(link => {
                 link.addEventListener('click', (event) => {
                     event.preventDefault();
@@ -107,7 +107,7 @@
                     }
                 });
             });
-            
+
             const firstLink = links[0];
             if (firstLink) {
                 firstLink.click();
@@ -126,109 +126,24 @@
             navMobile.hidden = isLoading;
         }
 
-        // updateTableAndMessage(tbodyId, data, valueExtractor, rowsPerPage = 10) {
-        //     const tbody = document.getElementById(`${tbodyId}-tbody`);
-        //     const emptyMessage = document.getElementById(`${tbodyId}-empty-message`);
-        //     const paginationContainer = document.getElementById(`${tbodyId}-pagination`);
-        //     const table = tbody.closest('table');
-
-        //     if (!data || data.length === 0) {
-        //         emptyMessage.hidden = false;
-        //         table.hidden = true;
-        //         paginationContainer.innerHTML = '';
-        //         return;
-        //     }
-
-        //     emptyMessage.hidden = true;
-        //     table.hidden = false;
-
-        //     // Pagination logic
-        //     const totalPages = Math.ceil(data.length / rowsPerPage);
-        //     let currentPage = 1;
-
-        //     const renderTableRows = (page) => {
-        //         tbody.innerHTML = '';
-        //         const start = (page - 1) * rowsPerPage;
-        //         const end = start + rowsPerPage;
-        //         const rows = data.slice(start, end).map(valueExtractor).map(
-        //             cells => {
-        //                 const tr = document.createElement('tr');
-        //                 cells.forEach((cell) => {
-        //                     const td = document.createElement('td');
-        //                     td.textContent = cell;
-        //                     tr.appendChild(td);
-        //                 });
-        //                 return tr;
-        //             });
-        //         rows.forEach((row) => tbody.appendChild(row));
-        //     };
-
-        //     const renderPagination = () => {
-        //         paginationContainer.innerHTML = '';
-        //         const ul = document.createElement('ul');
-        //         ul.className = 'pagination';
-
-        //         // Previous button
-        //         const prevLi = document.createElement('li');
-        //         prevLi.className = currentPage === 1 ? 'disabled' : 'waves-effect';
-        //         prevLi.innerHTML = `<a href="#!"><i class="material-icons">chevron_left</i></a>`;
-        //         prevLi.addEventListener('click', () => {
-        //             if (currentPage > 1) {
-        //                 currentPage--;
-        //                 renderTableRows(currentPage);
-        //                 renderPagination();
-        //             }
-        //         });
-        //         ul.appendChild(prevLi);
-
-        //         // Page numbers
-        //         for (let i = 1; i <= totalPages; i++) {
-        //             const pageLi = document.createElement('li');
-        //             pageLi.className = i === currentPage ? 'active' : 'waves-effect';
-        //             pageLi.innerHTML = `<a href="#!">${i}</a>`;
-        //             pageLi.addEventListener('click', () => {
-        //                 currentPage = i;
-        //                 renderTableRows(currentPage);
-        //                 renderPagination();
-        //             });
-        //             ul.appendChild(pageLi);
-        //         }
-
-        //         // Next button
-        //         const nextLi = document.createElement('li');
-        //         nextLi.className = currentPage === totalPages ? 'disabled' : 'waves-effect';
-        //         nextLi.innerHTML = `<a href="#!"><i class="material-icons">chevron_right</i></a>`;
-        //         nextLi.addEventListener('click', () => {
-        //             if (currentPage < totalPages) {
-        //                 currentPage++;
-        //                 renderTableRows(currentPage);
-        //                 renderPagination();
-        //             }
-        //         });
-        //         ul.appendChild(nextLi);
-
-        //         paginationContainer.appendChild(ul);
-        //     };
-
-        //     renderTableRows(currentPage);
-        //     renderPagination();
-        // }
-
-        _setInstructors(instructors) {
-            this.updateTableAndMessage(
-                'instructors',
-                instructors,
-                (instructor) => [instructor.fullName, instructor.email, instructor.instrument1]
-            );
-        }
-
         _registerListeners() {
-
             document.getElementById('student-search-btn').addEventListener('click', (event) => {
                 event.preventDefault();
+                const searchInput = document.getElementById('student-search');
+                searchInput.classList.remove('invalid');
+
+                const searchValue = searchInput.value.trim();
+
+                // validate search button
+                if (searchValue.length < 2) {
+                    // add invalid class to search input
+                    searchInput.classList.add('invalid');
+
+                    return;
+                }
 
                 let data = {
-                    name: document.getElementById('student-search').value
+                    name: searchValue
                 };
 
                 ApiClient.post(ServerFunctions.searchStudentsByName, data, x => x.map(y => new Student(y)))
@@ -242,157 +157,86 @@
                     });
             });
 
-            document.getElementById('student-search').addEventListener('input', (event) => {
-                event.preventDefault();
-                const searchValue = event.target.value.trim();
-                const searchButton = document.getElementById('student-search-btn');
-                searchButton.classList.toggle('disabled', searchValue.length < 2);
-            });
-
-            document.getElementById('student-select-options-container').addEventListener('change', (event) => {
-                event.preventDefault();
-                if (event.target.id === 'student-select') {
-                    const selectedValue = event.target.value;
-                    const submitButton = document.getElementById('select-student-modal-submit-btn');
-                    submitButton.classList.toggle('disabled', !selectedValue);
-                }
-            });
-
-            document.getElementById('select-student-modal-submit-btn').addEventListener('click', (event) => {
-                event.preventDefault();
-                const select = document.getElementById('student-select');
-                const selectedOption = select.options[select.selectedIndex];
-                const selectedStudentId = select.value;
-
-                if (!selectedStudentId) {
-                    M.toast({ html: 'Please select a student.' });
-                    return;
-                }
-
-                const modalInstance = M.Modal.getInstance(document.getElementById('student-select-modal'));
-                modalInstance.close();
-
-                this.selectedStudentId = selectedStudentId;
-                const studentNameSpan = document.getElementById('selected-student-name-span');
-                studentNameSpan.textContent = selectedOption.textContent;
-
-                const studentNameSpanContainer = document.getElementById('selected-student-name-span-container');
-                studentNameSpanContainer.hidden = false;
-
-                this._setStudentOptions([]);
-
-                // validate page
-                this._validateRegistration();
-            });
-
             document.getElementById('instructor-select-options-container').addEventListener('change', (event) => {
-                event.preventDefault();
-                if (event.target.id === 'instructor-select') {
-                    const selectedValue = event.target.value;
-
-                    const currentInstructor = this.instructors.find(x => x.id === selectedValue);
-                    this._setInstructorInstrumentOptions(currentInstructor);
-                    this._setInstructorDayOptions(currentInstructor);
-
-                    this._validateInstructionInfo();
-
-                    const instructorDaySelectedInfoContainer = document.getElementById('instructor-day-selected-info-container');
-                    instructorDaySelectedInfoContainer.hidden = true;
-
-                    const infoContainer = document.getElementById('instructor-selected-info-container');
-                    infoContainer.hidden = !selectedValue;
+                if (event.target.id !== 'instructor-select') {
                 }
+
+                event.preventDefault();
+                const selectedValue = event.target.value;
+
+                const currentInstructor = this.instructors.find(x => x.id === selectedValue);
+                this._setInstructorInstrumentOptions(currentInstructor);
+                this._setInstructorDayOptions(currentInstructor);
+
+                const instructorDaySelectedInfoContainer = document.getElementById('instructor-day-selected-info-container');
+                instructorDaySelectedInfoContainer.hidden = true;
+
+                const infoContainer = document.getElementById('instructor-selected-info-container');
+                infoContainer.hidden = !selectedValue;
             });
 
             document.getElementById('instructor-day-select-options-container').addEventListener('change', (event) => {
-                event.preventDefault();
-                if (event.target.id === 'day-select') {
-                    const selectedValue = event.target.value;
-                    const selectedInstructorId = selectedValue.split('_')[0];
-                    const selectedDay = selectedValue.split('_')[1];
-
-                    const currentInstructor = this.instructors.find(x => x.id === selectedInstructorId);
-                    this._setInstructorDayStartTimeOptions(currentInstructor, selectedDay);
-
-                    this._validateInstructionInfo();
-
-                    const instructorDaySelectedInfoContainer = document.getElementById('instructor-day-selected-info-container');
-                    instructorDaySelectedInfoContainer.hidden = !selectedValue;
+                if (event.target.id !== 'day-select') {
                 }
+
+                event.preventDefault();
+                const selectedValue = event.target.value;
+                const selectedInstructorId = selectedValue.split('_')[0];
+                const selectedDay = selectedValue.split('_')[1];
+
+                const currentInstructor = this.instructors.find(x => x.id === selectedInstructorId);
+                this._setInstructorDayStartTimeOptions(currentInstructor, selectedDay);
+
+                const instructorDaySelectedInfoContainer = document.getElementById('instructor-day-selected-info-container');
+                instructorDaySelectedInfoContainer.hidden = !selectedValue;
             });
 
             document.getElementById('instrument-select-options-container').addEventListener('change', (event) => {
-                event.preventDefault();
-                if (event.target.id === 'instrument-select') {
-                    const selectedValue = event.target.value;
-                    console.log('Instrument changed to:', selectedValue);
-
-                    this._validateInstructionInfo();
+                if (event.target.id !== 'instrument-select') {
+                    return;
                 }
+
+                event.preventDefault();
+                const selectedValue = event.target.value;
+                console.log('Instrument changed to:', selectedValue);
             });
 
             document.getElementById('instructor-day-start-time-container').addEventListener('change', (event) => {
-                if (event.target.id === 'start-time-select') {
-                    const selectedValue = event.target.value;
-                    console.log('Start time changed to:', selectedValue);
-                    this._validateInstructionInfo();
+                if (event.target.id !== 'start-time-select') {
+                    return;
                 }
+
+                const selectedValue = event.target.value;
+                console.log('Start time changed to:', selectedValue);
             });
 
             document.getElementById('lesson-length-container').addEventListener('change', (event) => {
-                if (event.target.type === 'radio') {
-                    const selectedValue = event.target.value;
-                    console.log('Radio changed to:', selectedValue);
-
-                    this._validateInstructionInfo();
+                if (event.target.type !== 'radio') {
+                    return;
                 }
+
+                const selectedValue = event.target.value;
+                console.log('Radio changed to:', selectedValue);
             });
 
-            document.getElementById('select-instruction-modal-submit-btn').addEventListener('click', (event) => {
+            document.getElementById('create-registration-submit-btn').addEventListener('click', (event) => {
                 event.preventDefault();
-                this.selectedInstructionInfo = this._getInstructionInfo();
 
-                const modalInstance = M.Modal.getInstance(document.getElementById('instruction-select-modal'));
-                modalInstance.close();
+                if (!this._validateRegistration()) {
+                    M.toast({ html: 'Please fill out all fields.' });
+                    return;
+                }
 
-                const instructionSpan = document.getElementById('selected-instruction-span');
-                instructionSpan.textContent = `${this.selectedInstructionInfo.instrument} with ${this.selectedInstructionInfo.instructorId} on ${this.selectedInstructionInfo.day} at ${this.selectedInstructionInfo.startTime} for ${this.selectedInstructionInfo.length} minutes`;
+                const data = this._getCreateRegistrationData();
 
-                const instructionSpanContainer = document.getElementById('selected-instruction-span-container');
-                instructionSpanContainer.hidden = false;
-
-                // validate page
-                this._validateRegistration();
-            });
-
-            document.getElementById('create-registration-submit').addEventListener('click', (event) => {
-                // get all data
-                event.preventDefault();
-                const data = {
-                    studentId: this.selectedStudentId,
-                    ...this.selectedInstructionInfo,
-                    transportationType: document.querySelector('input[name="transportation-type"]:checked').value
-                };
-                debugger
                 // post
                 ApiClient.post(ServerFunctions.createRegistration, data, x => new Registration(x))
                     .then(response => {
                         // handle response
-                        console.log('Registration created:', response);
+                        console.log('Registration created:', response.registration);
                         M.toast({ html: 'Registration created successfully.' });
 
-                        // reset form
-                        this.selectedStudentId = null;
-                        this.selectedInstructionInfo = null;
-
-                        const studentNameSpanContainer = document.getElementById('selected-student-name-span-container');
-                        studentNameSpanContainer.hidden = true;
-
-                        const instructionSpanContainer = document.getElementById('selected-instruction-span-container');
-                        instructionSpanContainer.hidden = true;
-
-                        // clear current registrations
-                        this._clearCurrentRegistrations();
+                        this.registrations.push(response.registration);
                         this._setRegistrations(this.registrations);
                     })
                     .catch(error => {
@@ -400,39 +244,94 @@
                         M.toast({ html: 'Error creating registration.' });
                     });
             });
+
+            // when delete icon tapped
+            document.getElementById('current-registrations-collection').addEventListener('click', (event) => {
+                if (!event.target.classList.contains('delete-registration-icon')) {
+                    return;
+                }
+
+                event.preventDefault();
+                const registrationItem = event.target.closest('.collection-item');
+                const registrationIndex = Array.from(registrationItem.parentNode.children).indexOf(registrationItem);
+                const registrationToDelete = this.registrations[registrationIndex];
+
+                if (!registrationToDelete) return;
+
+                // confirm delete
+                if (!confirm(`Are you sure you want to delete?`)) {
+                    return;
+                }
+
+                ApiClient.post(ServerFunctions.deleteRegistration, { id: registrationToDelete.id })
+                    .then(() => {
+                        M.toast({ html: 'Registration deleted successfully.' });
+                        this.registrations.splice(registrationIndex, 1);
+                        this._setRegistrations(this.registrations);
+                    })
+                    .catch(error => {
+                        console.error('Error deleting registration:', error);
+                        M.toast({ html: 'Error deleting registration.' });
+                    });
+            });
         };
 
-        _validateInstructionInfo() {
-            const instructionInfo = this._getInstructionInfo();
-
-            // additional validation for start time/length is valid
-            // TODO
-
-            // enable submit button if all fields are valid
-            const submitButton = document.getElementById('select-instruction-modal-submit-btn');
-            submitButton.classList.toggle('disabled',
-                !(instructionInfo.instructorId
-                    && instructionInfo.instrument
-                    && instructionInfo.day
-                    && instructionInfo.startTime
-                    && instructionInfo.length
-                ));
-        }
-
         _validateRegistration() {
-            // get transportation type response
-            const transportationType = document.querySelector('input[name="transportation-type"]:checked');
+            // reset validation
+            const invalidInputs = document.querySelectorAll('.invalid');
+            invalidInputs.forEach(input => input.classList.remove('invalid'));
 
-            // enable submit button if all fields are valid
-            const submitButton = document.getElementById('create-registration-submit');
-            submitButton.classList.toggle('disabled',
-                !(this.selectedStudentId
-                    && this.selectedInstructionInfo
-                    && transportationType.value));
-            return;
+            const registrationData = this._getCreateRegistrationData();
+
+            const isValid =
+                registrationData.selectedStudentId
+                && registrationData.transportationType
+                && registrationData.instructorId
+                && registrationData.instrument
+                && registrationData.day
+                && registrationData.startTime
+                && registrationData.length;
+
+            // TODO additional validation for start time/length is valid
+
+            if (!isValid) {
+                const studentSelect = document.getElementById('student-select');
+                studentSelect.classList.toggle('invalid', !registrationData.selectedStudentId);
+
+                if (!registrationData.transportationType) {
+                    M.toast({ html: 'Please select a transportation type.' });
+                }
+
+                // set invalid class on inputs
+                const instructorSelect = document.getElementById('instructor-select');
+                instructorSelect.classList.toggle('invalid', !registrationData.instructorId);
+
+                const instrumentSelect = document.getElementById('instrument-select');
+                instrumentSelect.classList.toggle('invalid', !registrationData.instrument);
+
+                const daySelect = document.getElementById('day-select');
+                daySelect.classList.toggle('invalid', !registrationData.day);
+
+                const startTimeSelect = document.getElementById('start-time-select');
+                startTimeSelect.classList.toggle('invalid', !registrationData.startTime);
+
+                if (!registrationData.length) {
+                    M.toast({ html: 'Please select a lesson length.' });
+                }
+            }
+
+            return isValid;
         }
 
-        _getInstructionInfo() {
+        _getCreateRegistrationData() {
+            // get student
+            const studentSelect = document.getElementById('student-select');
+            const selectedStudentId = studentSelect.value;
+
+            // get selected length
+            const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
+            const checkedRadio = Array.from(lessonLengthRadios).find(radio => radio.checked);
+
             // get selected instructor
             const instructorSelect = document.getElementById('instructor-select');
 
@@ -445,12 +344,13 @@
             // get selected start time
             const startTimeSelect = document.getElementById('start-time-select');
 
-            // get selected length
-            const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
-            const checkedRadio = Array.from(lessonLengthRadios).find(radio => radio.checked);
+            // get transportation type response
+            const transportationType = document.querySelector('input[name="transportation-type"]:checked');
 
             // add to object
             return {
+                selectedStudentId: selectedStudentId,
+                transportationType: transportationType ? transportationType.value : null,
                 instructorId: instructorSelect.value,
                 instrument: instrumentSelect.value,
                 day: daySelect.value.split('_')[1], // get the day index
@@ -480,27 +380,24 @@
             const currentRegistrations = document.getElementById('current-registrations');
             const currentRegistrationsCollection = document.getElementById('current-registrations-collection');
 
-            if (!registrations || registrations.length === 0) {
-                // clear collection
+            try {
                 this._clearCurrentRegistrations();
 
-                // add no registrations message
-                const li = document.createElement('li');
-                li.className = 'collection-item';
-                li.innerHTML = '<div>No current registrations.</div>';
-                currentRegistrationsCollection.appendChild(li);
+                // if there are none
+                if (!registrations || registrations.length === 0) {
+                    // add no registrations message
+                    const li = document.createElement('li');
+                    li.className = 'collection-item';
+                    li.innerHTML = '<div>No current registrations.</div>';
+                    currentRegistrationsCollection.appendChild(li);
 
-                currentRegistrations.hidden = false;
-                return;
-            }
+                    return;
+                }
 
-            // clear all children in 'current-registrations-collection'
-            this._clearCurrentRegistrations();
-            // for each registration
-            registrations.forEach(registration => {
-                const li = document.createElement('a');
-                li.className = 'collection-item';
-                li.innerHTML = `
+                registrations.forEach(registration => {
+                    const li = document.createElement('a');
+                    li.className = 'collection-item';
+                    li.innerHTML = `
                     <div>
                         ${registration.day}: ${registration.startTime} - ${registration.endTime}, 
                         ${registration.instrument} (${registration.lessonType}) with 
@@ -509,10 +406,12 @@
                             <i class="delete-registration-icon material-icons red-text text-darken-4">delete_forever</i>
                         </a>
                     </div>`;
-                currentRegistrationsCollection.appendChild(li);
-            });
+                    currentRegistrationsCollection.appendChild(li);
+                });
 
-            currentRegistrations.hidden = false;
+            } finally {
+                currentRegistrations.hidden = false;
+            }
         }
 
         _clearCurrentRegistrations() {
@@ -586,6 +485,7 @@
         }
 
         _setInstructorDayStartTimeOptions(instructor, day) {
+            debugger
             if (!instructor || !day) {
                 this._updateSelectOptions(
                     'start-time-select',
@@ -614,22 +514,33 @@
                 instructor.thursdayEndTime,
                 instructor.fridayEndTime
             ];
-
+            
             const startTime = startTimes[day * 1];
-            const startHour = parseInt(startTime.split(':')[0], 10);
-            const startMinute = parseInt(startTime.split(':')[1], 10);
+            const startTimeDuration = DurationHelpers.stringToDuration(startTime);
             const options = [];
 
             const endTime = endTimes[day * 1];
-            const endHour = parseInt(endTime.split(':')[0], 10);
-            const endMinute = parseInt(endTime.split(':')[1], 10);
+            const endTimeDuration = DurationHelpers.stringToDuration(endTime);
 
-            for (let i = 0; i <= (endHour * 60 + endMinute); i += 15) {
-                const hour = Math.floor(i / 60) % 24;
-                const minute = i % 60;
-                const formattedTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+            if (!startTimeDuration || !endTimeDuration) {
+                this._updateSelectOptions(
+                    'start-time-select',
+                    [],
+                    'Not available');
+                return;
+            }
+
+            for (let i = (startTimeDuration.hours * 60 + startTimeDuration.minutes); i < (endTimeDuration.hours * 60 + endTimeDuration.minutes); i += 15) {
+                const duration = Duration.fromObject({ minutes: i });
+
+                // Add the duration to midnight (start of the day)
+                const dateTime = DateTime.fromObject({ hour: 0, minute: 0 }).plus(duration);
+                const formattedTime = dateTime.toFormat('h:mm a');
+
                 options.push(formattedTime);
             }
+
+            debugger
 
             this._updateSelectOptions(
                 'start-time-select',
@@ -742,6 +653,103 @@
                     constrainWidth: false
                 }
             });
+        }
+
+
+        // updateTableAndMessage(tbodyId, data, valueExtractor, rowsPerPage = 10) {
+        //     const tbody = document.getElementById(`${tbodyId}-tbody`);
+        //     const emptyMessage = document.getElementById(`${tbodyId}-empty-message`);
+        //     const paginationContainer = document.getElementById(`${tbodyId}-pagination`);
+        //     const table = tbody.closest('table');
+
+        //     if (!data || data.length === 0) {
+        //         emptyMessage.hidden = false;
+        //         table.hidden = true;
+        //         paginationContainer.innerHTML = '';
+        //         return;
+        //     }
+
+        //     emptyMessage.hidden = true;
+        //     table.hidden = false;
+
+        //     // Pagination logic
+        //     const totalPages = Math.ceil(data.length / rowsPerPage);
+        //     let currentPage = 1;
+
+        //     const renderTableRows = (page) => {
+        //         tbody.innerHTML = '';
+        //         const start = (page - 1) * rowsPerPage;
+        //         const end = start + rowsPerPage;
+        //         const rows = data.slice(start, end).map(valueExtractor).map(
+        //             cells => {
+        //                 const tr = document.createElement('tr');
+        //                 cells.forEach((cell) => {
+        //                     const td = document.createElement('td');
+        //                     td.textContent = cell;
+        //                     tr.appendChild(td);
+        //                 });
+        //                 return tr;
+        //             });
+        //         rows.forEach((row) => tbody.appendChild(row));
+        //     };
+
+        //     const renderPagination = () => {
+        //         paginationContainer.innerHTML = '';
+        //         const ul = document.createElement('ul');
+        //         ul.className = 'pagination';
+
+        //         // Previous button
+        //         const prevLi = document.createElement('li');
+        //         prevLi.className = currentPage === 1 ? 'disabled' : 'waves-effect';
+        //         prevLi.innerHTML = `<a href="#!"><i class="material-icons">chevron_left</i></a>`;
+        //         prevLi.addEventListener('click', () => {
+        //             if (currentPage > 1) {
+        //                 currentPage--;
+        //                 renderTableRows(currentPage);
+        //                 renderPagination();
+        //             }
+        //         });
+        //         ul.appendChild(prevLi);
+
+        //         // Page numbers
+        //         for (let i = 1; i <= totalPages; i++) {
+        //             const pageLi = document.createElement('li');
+        //             pageLi.className = i === currentPage ? 'active' : 'waves-effect';
+        //             pageLi.innerHTML = `<a href="#!">${i}</a>`;
+        //             pageLi.addEventListener('click', () => {
+        //                 currentPage = i;
+        //                 renderTableRows(currentPage);
+        //                 renderPagination();
+        //             });
+        //             ul.appendChild(pageLi);
+        //         }
+
+        //         // Next button
+        //         const nextLi = document.createElement('li');
+        //         nextLi.className = currentPage === totalPages ? 'disabled' : 'waves-effect';
+        //         nextLi.innerHTML = `<a href="#!"><i class="material-icons">chevron_right</i></a>`;
+        //         nextLi.addEventListener('click', () => {
+        //             if (currentPage < totalPages) {
+        //                 currentPage++;
+        //                 renderTableRows(currentPage);
+        //                 renderPagination();
+        //             }
+        //         });
+        //         ul.appendChild(nextLi);
+
+        //         paginationContainer.appendChild(ul);
+        //     };
+
+        //     renderTableRows(currentPage);
+        //     renderPagination();
+        // }
+
+        _setInstructors(instructors) {
+            this.updateTableAndMessage(
+                'instructors',
+                instructors,
+                (instructor) => [instructor.fullName, instructor.email, instructor.instrument1]
+            );
         }
     }
 </script>

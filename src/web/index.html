@@ -144,10 +144,13 @@
   </style>
 
   <script>
+    const DateTime = window.luxon.DateTime;
+    const Duration = window.luxon.Duration;
+    
     const Sections = {
-        ADMIN: 'admin',
-        INSTRUCTOR: 'instructor',
-        PARENT: 'parent'
+      ADMIN: 'admin',
+      INSTRUCTOR: 'instructor',
+      PARENT: 'parent'
     };
 
     const ServerFunctions = {
@@ -301,22 +304,31 @@
       </div>
     </div>
 
-    <div hidden id="page-content">
+    <div hidden id="page-content" style="padding-bottom: 40px;">
       <ul class="tabs">
 
-        <li hidden class="tab col s3 admin-tab"><a href="#admin-master-schedule" style="color: #2b68a4"><b>Master Schedule</b></a></li>
-        <li hidden class="tab col s3 admin-tab"><a href="#admin-registration" style="color: #2b68a4"><b>Registration</b></a></li>
+        <li hidden class="tab col s3 admin-tab"><a href="#admin-master-schedule" style="color: #2b68a4"><b>Master
+              Schedule</b></a></li>
+        <li hidden class="tab col s3 admin-tab"><a href="#admin-registration"
+            style="color: #2b68a4"><b>Registration</b></a></li>
         <li hidden class="tab col s3 admin-tab"><a href="#admin-tab3" style="color: #2b68a4"><b>Tab 3</b></a></li>
         <li hidden class="tab col s3 admin-tab"><a href="#admin-tab4" style="color: #2b68a4"><b>Tab 4</b></a></li>
 
-        <li hidden class="tab col s3 instructor-tab"><a href="#instructor-weekly-schedule" style="color: #2b68a4"><b>Weekly Schedule</b></a></li>
-        <li hidden class="tab col s3 instructor-tab"><a href="#instructor-attendance" style="color: #2b68a4"><b>Attendance</b></a></li>
-        <li hidden class="tab col s3 instructor-tab"><a href="#instructor-forte-directory" style="color: #2b68a4"><b>Forte Directory</b></a></li>
-        <li hidden class="tab col s3 instructor-tab"><a href="#instructor-paylocity" style="color: #2b68a4"><b>Paylocity</b></a></li>
+        <li hidden class="tab col s3 instructor-tab"><a href="#instructor-weekly-schedule"
+            style="color: #2b68a4"><b>Weekly Schedule</b></a></li>
+        <li hidden class="tab col s3 instructor-tab"><a href="#instructor-attendance"
+            style="color: #2b68a4"><b>Attendance</b></a></li>
+        <li hidden class="tab col s3 instructor-tab"><a href="#instructor-forte-directory"
+            style="color: #2b68a4"><b>Forte Directory</b></a></li>
+        <li hidden class="tab col s3 instructor-tab"><a href="#instructor-paylocity"
+            style="color: #2b68a4"><b>Paylocity</b></a></li>
 
-        <li hidden class="tab col s4 parent-tab"><a href="#parent-weekly-schedule" style="color: #2b68a4"><b>Weekly Schedule</b></a></li>
-        <li hidden class="tab col s4 parent-tab"><a href="#parent-registration" style="color: #2b68a4"><b>Registration</b></a></li>
-        <li hidden class="tab col s4 parent-tab"><a href="#parent-contact-us" style="color: #2b68a4"><b>Contact Us</b></a></li>
+        <li hidden class="tab col s4 parent-tab"><a href="#parent-weekly-schedule" style="color: #2b68a4"><b>Weekly
+              Schedule</b></a></li>
+        <li hidden class="tab col s4 parent-tab"><a href="#parent-registration"
+            style="color: #2b68a4"><b>Registration</b></a></li>
+        <li hidden class="tab col s4 parent-tab"><a href="#parent-contact-us" style="color: #2b68a4"><b>Contact
+              Us</b></a></li>
 
       </ul>
 
@@ -382,7 +394,7 @@
           </div>
         </div>
       </div>
-      <div hidden class="tab-content" id="admin-registration" class="col s12" style="background-color: #fefefe">
+      <div hidden class="tab-content" id="admin-registration" class="col s12" style="background-color: #fefefe; ">
 
         <div id="current-registrations">
           <ul id="current-registrations-collection" class="collection">
@@ -391,110 +403,19 @@
 
         <div id="new-registration-form">
 
-          <h4 class="center-align">Student Registration Form</h4>
-
           <!-- Students -->
-          <div style="border: 1px solid #2d2828; padding: 10px;">
-            <a id="student-select-modal-btn" class="waves-effect waves-light btn modal-trigger"
-              href="#student-select-modal">Select Student</a>
-            <div id="student-select-modal" class="modal modal-fixed-footer">
-              <div class="modal-content">
-                <div class="input-field" style="display: flex; align-items: center;">
-                  <input type="text" id="student-search" class="autocomplete" style="flex: 1; margin-right: 10px;">
-                  <button id="student-search-btn" class="btn waves-effect waves-light disabled">Search</button>
-                  <label for="student-search">Search Students</label>
-                </div>
-                <div class="input-field" id="student-select-options-container">
-                  <select id="student-select">
-                    <option value="" disabled selected>Select a student</option>
-                  </select>
-                  <label>Student</label>
-                </div>
-              </div>
-              <div class="modal-footer">
-                <a id="select-student-modal-submit-btn" class="modal-close waves-effect waves-light btn disabled">Select
-                  Student</a>
-              </div>
-            </div>
-            <p id="selected-student-name-span-container" hidden data-student-id="">
-              <strong>Selected Student: </strong><span id="selected-student-name-span"></span>
-            </p>
+          <div class="input-field" style="display: flex; align-items: center;">
+            <input type="text" id="student-search" class="autocomplete" style="flex: 1; margin-right: 10px;">
+            <button id="student-search-btn" class="btn waves-effect waves-light">Search</button>
+            <label for="student-search">Search Students</label>
           </div>
-
-          <div style="border: 1px solid #2d2828; padding: 10px;">
-            <a id="instruction-select-modal-btn" class="waves-effect waves-light btn modal-trigger"
-              href="#instruction-select-modal">Select Instruction</a>
-            <div id="instruction-select-modal" class="modal modal-fixed-footer">
-              <div class="modal-content">
-
-                <!-- Instructor -->
-                <div class="input-field" id="instructor-select-options-container">
-                  <select id="instructor-select">
-                  </select>
-                  <label for="instructor-select">Instructor</label>
-                </div>
-
-                <div id="instructor-selected-info-container" hidden>
-
-                  <!-- Instrument -->
-                  <div class="input-field" id="instrument-select-options-container">
-                    <select id="instrument-select">
-                    </select>
-                    <label for="instrument-select">Instrument</label>
-                  </div>
-
-                  <!-- Day -->
-                  <div class="input-field" id="instructor-day-select-options-container">
-                    <select id="day-select">
-                    </select>
-                    <label for="day-select">Day</label>
-                  </div>
-
-                  <div id="instructor-day-selected-info-container" hidden>
-
-                    <!-- Start Time -->
-                    <div class="input-field" id="instructor-day-start-time-container">
-                      <select id="start-time-select">
-                      </select>
-                      <label for="start-time-select">Start Time</label>
-                    </div>
-
-                    <!-- Length -->
-                    <div id="lesson-length-container">
-                      <p>Lesson Length</p>
-                      <p>
-                        <label>
-                          <input name="lesson-length" type="radio" value="30" checked />
-                          <span>30 Minutes</span>
-                        </label>
-                      </p>
-                      <p>
-                        <label>
-                          <input name="lesson-length" type="radio" value="45" />
-                          <span>45 Minutes</span>
-                        </label>
-                      </p>
-                      <p>
-                        <label>
-                          <input name="lesson-length" type="radio" value="60" />
-                          <span>60 Minutes</span>
-                        </label>
-                      </p>
-                    </div>
-                  </div>
-
-                </div>
-
-              </div>
-              <div class="modal-footer">
-                <a id="select-instruction-modal-submit-btn"
-                  class="modal-close waves-effect waves-light btn disabled">Select
-                  Instruction</a>
-              </div>
-            </div>
-            <p id="selected-instruction-span-container" hidden data-student-id="">
-              <strong>Selected Instruction: </strong><span id="selected-instruction-span"></span>
-            </p>
+          
+          <div class="input-field" id="student-select-options-container">
+            <select id="student-select" required>
+              <option value="" disabled selected>Select a student</option>
+            </select>
+            <label>Student</label>
+            <span class="helper-text" data-error="Please select a student"></span>
           </div>
 
           <!-- Transportation Type -->
@@ -512,34 +433,106 @@
             </label>
           </p>
 
+          <!-- Instructor -->
+          <div class="input-field" id="instructor-select-options-container">
+            <select id="instructor-select" required>
+            </select>
+            <label for="instructor-select">Instructor</label>
+            <span class="helper-text" data-error="Please select an instructor"></span>
+          </div>
+
+          <div id="instructor-selected-info-container" hidden>
+
+            <!-- Instrument -->
+            <div class="input-field" id="instrument-select-options-container">
+              <select id="instrument-select" required>
+              </select>
+              <label for="instrument-select">Instrument</label>
+              <span class="helper-text" data-error="Please select an instrument"></span>
+            </div>
+
+            <!-- Day -->
+            <div class="input-field" id="instructor-day-select-options-container">
+              <select id="day-select" required>
+              </select>
+              <label for="day-select">Day</label>
+              <span class="helper-text" data-error="Please select a day"></span>
+            </div>
+
+            <div id="instructor-day-selected-info-container" hidden>
+
+              <!-- Start Time -->
+              <div class="input-field" id="instructor-day-start-time-container">
+                <select id="start-time-select" required>
+                </select>
+                <label for="start-time-select">Start Time</label>
+                <span class="helper-text" data-error="Please select a start time"></span>
+              </div>
+
+              <!-- Length -->
+              <div id="lesson-length-container">
+                <p>Lesson Length</p>
+                <p>
+                  <label>
+                    <input name="lesson-length" type="radio" value="30" checked />
+                    <span>30 Minutes</span>
+                  </label>
+                </p>
+                <p>
+                  <label>
+                    <input name="lesson-length" type="radio" value="45" />
+                    <span>45 Minutes</span>
+                  </label>
+                </p>
+                <p>
+                  <label>
+                    <input name="lesson-length" type="radio" value="60" />
+                    <span>60 Minutes</span>
+                  </label>
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+
           <!-- Save Button -->
           <div class="center-align">
-            <button class="btn waves-effect waves-light disabled" type="submit"
-              id="create-registration-submit">Create</button>
+            <button class="btn waves-effect waves-light" type="submit"
+              id="create-registration-submit-btn">Create</button>
           </div>
         </div>
       </div>
-      <div hidden class="tab-content" id="admin-tab3" class="col s12" style="background-color: #fefefe">Content for Admin Tab 3
+      <div hidden class="tab-content" id="admin-tab3" class="col s12" style="background-color: #fefefe">Content for
+        Admin Tab 3
       </div>
-      <div hidden class="tab-content" id="admin-tab4" class="col s12" style="background-color: #fefefe">Content for Admin Tab 4
+      <div hidden class="tab-content" id="admin-tab4" class="col s12" style="background-color: #fefefe">Content for
+        Admin Tab 4
       </div>
 
       <!-- Instructor Section -->
-      <div hidden class="tab-content" id="instructor-weekly-schedule" class="col s12" style="background-color: #fefefe">Content
+      <div hidden class="tab-content" id="instructor-weekly-schedule" class="col s12" style="background-color: #fefefe">
+        Content
         for Weekly Schedule</div>
-      <div hidden class="tab-content" id="instructor-attendance" class="col s12" style="background-color: #fefefe">Content for
+      <div hidden class="tab-content" id="instructor-attendance" class="col s12" style="background-color: #fefefe">
+        Content for
         Attendance</div>
-      <div hidden class="tab-content" id="instructor-forte-directory" class="col s12" style="background-color: #fefefe">Content
+      <div hidden class="tab-content" id="instructor-forte-directory" class="col s12" style="background-color: #fefefe">
+        Content
         for Forte Directory</div>
-      <div hidden class="tab-content" id="instructor-paylocity" class="col s12" style="background-color: #fefefe">Content for
+      <div hidden class="tab-content" id="instructor-paylocity" class="col s12" style="background-color: #fefefe">
+        Content for
         Paylocity</div>
 
       <!-- Parent Section -->
-      <div hidden class="tab-content" id="parent-weekly-schedule" class="col s12" style="background-color: #fefefe">Content for
+      <div hidden class="tab-content" id="parent-weekly-schedule" class="col s12" style="background-color: #fefefe">
+        Content for
         Weekly Schedule</div>
-      <div hidden class="tab-content" id="parent-registration" class="col s12" style="background-color: #fefefe">Content for
+      <div hidden class="tab-content" id="parent-registration" class="col s12" style="background-color: #fefefe">Content
+        for
         Registration</div>
-      <div hidden class="tab-content" id="parent-contact-us" class="col s12" style="background-color: #fefefe">Content for
+      <div hidden class="tab-content" id="parent-contact-us" class="col s12" style="background-color: #fefefe">Content
+        for
         Contact Us</div>
 
     </div>
