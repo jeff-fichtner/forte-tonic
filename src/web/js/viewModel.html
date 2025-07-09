@@ -19,129 +19,111 @@
                     // fetchAllPages(ServerFunctions.getRooms, x => new Room(x))
                 ]);
 
+            this._setPageLoading(true);
+
             M.AutoInit();
+
+            this._initTabContent(authenticatedUser, instructors, registrations);
+
+            this._initTabs();
+
+            this._registerListeners();
+
+            this._setPageLoading(false);
+        }
+
+        _initTabContent(currentUser, instructors, registrations) {
+            this.currentUser = currentUser;
 
             this.instructors = instructors;
             this._setInstructorOptions(instructors);
 
             this.registrations = registrations;
             this._setRegistrations(registrations);
-
-            this.initTabs();
-
-            this.registerListeners();
-
-            this.setLoading(false);
         }
 
-        initTabs() {
-            // TODO MOVE
-            // const scheduleData = {
-            //     Monday: [
-            //         { time: "3:00 PM", length: "30 min", student: "Alice", grade: "3", instrument: "Piano" },
-            //         { time: "3:30 PM", length: "30 min", student: "Ben", grade: "4", instrument: "Voice" }
-            //     ],
-            //     Tuesday: [],
-            //     Wednesday: [],
-            //     Thursday: [],
-            //     Friday: []
-            // };
-
-            // const tabs = document.querySelectorAll(".tab");
-            // const content = document.getElementById("schedule-content");
-
-            // tabs.forEach(tab => {
-            //     tab.addEventListener("click", () => {
-            //         document.querySelector(".tab.active").classList.remove("active");
-            //         tab.classList.add("active");
-
-            //         const day = tab.getAttribute("data-day");
-            //         renderTable(day);
-            //     });
-            // });
-
-
-    //         function renderTable(day) {
-    //             const lessons = scheduleData[day] || [];
-
-    //             if (lessons.length === 0) {
-    //                 content.innerHTML = `<p>No data for ${day} yet.</p>`;
-    //                 return;
-    //             }
-
-    //             let html = `
-    //     <table>
-    //       <thead>
-    //         <tr>
-    //           <th>Start Time</th>
-    //           <th>Length</th>
-    //           <th>Student</th>
-    //           <th>Grade</th>
-    //           <th>Instrument</th>
-    //         </tr>
-    //       </thead>
-    //       <tbody>
-    //   `;
-
-    //             lessons.forEach(lesson => {
-    //                 html += `
-    //       <tr>
-    //         <td>${lesson.time}</td>
-    //         <td>${lesson.length}</td>
-    //         <td>${lesson.student}</td>
-    //         <td>${lesson.grade}</td>
-    //         <td>${lesson.instrument}</td>
-    //       </tr>
-    //     `;
-    //             });
-
-    //             html += `</tbody></table>`;
-    //             content.innerHTML = html;
-    //         }
-
-    //         // Load Monday by default
-    //         renderTable("Monday");
-
+        _initTabs() {
             const tabsContainer = document.querySelector('.tabs');
-            const tabs = document.querySelectorAll('.tabs .tab a');
+            const tabs = document.querySelectorAll('.tabs .tab');
+            const tabLinks = document.querySelectorAll('.tabs .tab a');
             const tabContents = document.querySelectorAll('.tab-content');
+
+            const links = document.querySelectorAll('.section-link');
 
             if (!tabsContainer || tabs.length === 0) return;
 
-            tabs.forEach((tab) => {
-                tab.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    const targetTab = tab.getAttribute('href');
-                    const targetContent = document.querySelector(targetTab);
+            tabsContainer.addEventListener('click', (event) => {
+                event.preventDefault();
+                
+                // return if not a tab link
+                const tabLink = event.target.closest('.tab a');
+                if (!tabLink) return;
 
-                    // Hide all tab contents
-                    tabContents.forEach((content) => {
-                        content.style.display = 'none';
-                    });
+                const targetTab = tabLink.getAttribute('href');
+                const targetContent = document.querySelector(targetTab);
 
-                    // Show the selected tab content
-                    if (targetContent) {
-                        targetContent.style.display = 'block';
-                    }
+                // Remove active class from all tabs and add it to the clicked tab
+                tabLinks.forEach((t) => {
+                    t.classList.toggle('active', t.getAttribute('href') === tabLink.getAttribute('href'))
+                });
 
-                    // Remove active class from all tabs and add it to the clicked tab
-                    tabs.forEach((t) => t.classList.remove('active'));
-                    tab.classList.add('active');
+                // Toggle all tab contents
+                tabContents.forEach((content) => {
+                    content.hidden = content.id !== targetContent.id;
                 });
             });
 
-            // Show the first tab and its content by default
-            if (tabs.length > 0) {
-                tabs[0].click();
+            if (links.length === 0) {
+                console.warn(`No links found.`);
+                return;
+            }
+            
+            links.forEach(link => {
+                link.addEventListener('click', (event) => {
+                    event.preventDefault();
+
+                    const dataSection = link.getAttribute('data-section');
+                    const tabSectionClass = `${dataSection}-tab`;
+                    tabs.forEach(section => {
+                        section.style.display = section.classList.contains(tabSectionClass)
+                            ? 'inline-block'
+                            : 'none';
+                    });
+
+                    const showingTabs = document.getElementsByClassName(tabSectionClass);
+                    if (showingTabs.length === 0) {
+                        console.warn(`No tabs found for section: ${sectionId}`);
+                        return;
+                    }
+
+                    // reinitialize tabs for the newly displayed section
+                    M.Tabs.init(tabsContainer);
+                    links.forEach(l => l.classList.toggle('active', l.getAttribute('data-section') === dataSection));
+
+                    // initialize first tab within the section
+                    const firstTabLink = showingTabs[0]?.querySelector('a');
+                    if (firstTabLink) {
+                        firstTabLink.click();
+                    }
+                });
+            });
+            
+            const firstLink = links[0];
+            if (firstLink) {
+                firstLink.click();
             }
         }
 
-        setLoading(isLoading) {
-            const loadingElement = document.getElementById('loading');
-            const registrationForm = document.getElementById('new-registration-form');
+        _setPageLoading(isLoading) {
+            const loadingContainer = document.getElementById('loading-container');
+            const loading = document.getElementById('loading');
+            const pageContent = document.getElementById('page-content');
+            const navMobile = document.getElementById('nav-mobile');
 
-            loadingElement.style.display = isLoading ? 'block' : 'none';
-            registrationForm.hidden = isLoading;
+            loadingContainer.style.display = isLoading ? 'flex' : 'none';
+            loading.hidden = !isLoading;
+            pageContent.hidden = isLoading;
+            navMobile.hidden = isLoading;
         }
 
         // updateTableAndMessage(tbodyId, data, valueExtractor, rowsPerPage = 10) {
@@ -232,7 +214,7 @@
         //     renderPagination();
         // }
 
-        setInstructors(instructors) {
+        _setInstructors(instructors) {
             this.updateTableAndMessage(
                 'instructors',
                 instructors,
@@ -240,7 +222,7 @@
             );
         }
 
-        registerListeners() {
+        _registerListeners() {
 
             document.getElementById('student-search-btn').addEventListener('click', (event) => {
                 event.preventDefault();
@@ -726,11 +708,6 @@
         //         (room) => [room.formattedName]
         //     );
         // }
-
-        getCurrentTab() {
-            const activeTab = document.querySelector('.tabs .tab a.active');
-            return activeTab ? activeTab.getAttribute('id') : null;
-        }
 
         _updateSelectOptions(selectId, options, defaultOptionText, selectClasses = '') {
             const select = document.getElementById(selectId);

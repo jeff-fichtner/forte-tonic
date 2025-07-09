@@ -13,14 +13,6 @@
   <link rel="icon" href="images/forte (favicon).png" type="image/png">
 
   <style>
-    .section-content {
-      display: none;
-    }
-
-    .section-content.active {
-      display: block;
-    }
-
     li.delete-lesson-icon,
     li.add-lesson-icon {
       cursor: pointer;
@@ -144,19 +136,20 @@
     #loading-container {
       display: flex;
       justify-content: flex-start;
-      /* Align to the top */
       align-items: center;
-      /* Center horizontally */
       height: 100vh;
-      /* Full viewport height */
       flex-direction: column;
-      /* Ensure vertical stacking */
       padding-top: 20px;
-      /* Optional spacing from the top */
     }
   </style>
 
   <script>
+    const Sections = {
+        ADMIN: 'admin',
+        INSTRUCTOR: 'instructor',
+        PARENT: 'parent'
+    };
+
     const ServerFunctions = {
       getAuthenticatedUser: 'getAuthenticatedUser',
       getInstructors: 'getInstructors',
@@ -242,11 +235,12 @@
   <nav>
     <div class="nav-wrapper" style="background-color: #3a7953;">
       <h1 style="display: inline-block; margin-left: 60px; vertical-align: middle; color: #fefefe; font-size: 1.5rem;">
-        <b>Forte</b></h1>
-      <ul id="nav-mobile" class="right">
+        <b>Forte</b>
+      </h1>
+      <ul hidden id="nav-mobile" class="right">
         <li><a class="section-link" data-section="admin">Admin</a></li>
-        <li><a class="section-link" data-section="instructors">Instructors</a></li>
-        <li><a class="section-link" data-section="families">Families</a></li>
+        <li><a class="section-link" data-section="instructor">Instructors</a></li>
+        <li><a class="section-link" data-section="parent">Families</a></li>
       </ul>
     </div>
   </nav>
@@ -254,24 +248,148 @@
   <!-- Main Content -->
   <div class="container" style="margin-top: 20px;">
 
-    <!-- Admin Section -->
-    <div id="admin" class="section-content">
-      <ul class="tabs">
-        <li class="tab col s3"><a class="active" href="#admin-tab1" style="color: #2b68a4"><b>Master Schedule</b></a>
-        </li>
-        <li class="tab col s3"><a href="#admin-tab2" style="color: #2b68a4"><b>Registration</b></a></li>
-        <li class="tab col s3"><a href="#admin-tab3" style="color: #2b68a4"><b>Tab 3</b></a></li>
-        <li class="tab col s3"><a href="#admin-tab4" style="color: #2b68a4"><b>Tab 4</b></a></li>
-      </ul>
-      <div id="admin-tab1" class="col s12" style="background-color: #fefefe">Content for Master Schedule</div>
-      <div id="admin-tab2" class="col s12" style="background-color: #fefefe">
+    <!-- Loading Spinner -->
+    <div id="loading-container">
+      <div id="loading" class="preloader-wrapper big active center-align">
+        <div class="spinner-layer spinner-blue">
+          <div class="circle-clipper left">
+            <div class="circle"></div>
+          </div>
+          <div class="gap-patch">
+            <div class="circle"></div>
+          </div>
+          <div class="circle-clipper right">
+            <div class="circle"></div>
+          </div>
+        </div>
 
-        <div hidden id="current-registrations">
+        <div class="spinner-layer spinner-red">
+          <div class="circle-clipper left">
+            <div class="circle"></div>
+          </div>
+          <div class="gap-patch">
+            <div class="circle"></div>
+          </div>
+          <div class="circle-clipper right">
+            <div class="circle"></div>
+          </div>
+        </div>
+
+        <div class="spinner-layer spinner-yellow">
+          <div class="circle-clipper left">
+            <div class="circle"></div>
+          </div>
+          <div class="gap-patch">
+            <div class="circle"></div>
+          </div>
+          <div class="circle-clipper right">
+            <div class="circle"></div>
+          </div>
+        </div>
+
+        <div class="spinner-layer spinner-green">
+          <div class="circle-clipper left">
+            <div class="circle"></div>
+          </div>
+          <div class="gap-patch">
+            <div class="circle"></div>
+          </div>
+          <div class="circle-clipper right">
+            <div class="circle"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div hidden id="page-content">
+      <ul class="tabs">
+
+        <li hidden class="tab col s3 admin-tab"><a href="#admin-master-schedule" style="color: #2b68a4"><b>Master Schedule</b></a></li>
+        <li hidden class="tab col s3 admin-tab"><a href="#admin-registration" style="color: #2b68a4"><b>Registration</b></a></li>
+        <li hidden class="tab col s3 admin-tab"><a href="#admin-tab3" style="color: #2b68a4"><b>Tab 3</b></a></li>
+        <li hidden class="tab col s3 admin-tab"><a href="#admin-tab4" style="color: #2b68a4"><b>Tab 4</b></a></li>
+
+        <li hidden class="tab col s3 instructor-tab"><a href="#instructor-weekly-schedule" style="color: #2b68a4"><b>Weekly Schedule</b></a></li>
+        <li hidden class="tab col s3 instructor-tab"><a href="#instructor-attendance" style="color: #2b68a4"><b>Attendance</b></a></li>
+        <li hidden class="tab col s3 instructor-tab"><a href="#instructor-forte-directory" style="color: #2b68a4"><b>Forte Directory</b></a></li>
+        <li hidden class="tab col s3 instructor-tab"><a href="#instructor-paylocity" style="color: #2b68a4"><b>Paylocity</b></a></li>
+
+        <li hidden class="tab col s4 parent-tab"><a href="#parent-weekly-schedule" style="color: #2b68a4"><b>Weekly Schedule</b></a></li>
+        <li hidden class="tab col s4 parent-tab"><a href="#parent-registration" style="color: #2b68a4"><b>Registration</b></a></li>
+        <li hidden class="tab col s4 parent-tab"><a href="#parent-contact-us" style="color: #2b68a4"><b>Contact Us</b></a></li>
+
+      </ul>
+
+      <!-- Admin Section -->
+
+      <div hidden class="tab-content" id="admin-master-schedule" class="col s12" style="background-color: #fefefe">
+        <div class="card">
+          <div class="card-content">
+            <span class="card-title" style="color: #2b68a4"><b>Currently Enrolled Lessons</b></span>
+            <p hidden id="master-schedule-no-lessons-message">Not enrolled in any lessons.</p>
+            <table hidden id="master-schedule-table">
+              <thead>
+                <tr>
+                  <th>Weekday</th>
+                  <th>Start Time</th>
+                  <th>Length</th>
+                  <th>Student</th>
+                  <th>Grade</th>
+                  <th>Teacher</th>
+                  <th>Instrument</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <tr>
+                  <td>Monday</td>
+                  <td>3:00pm</td>
+                  <td>30 minutes</td>
+                  <td>Johnny Herrick</td>
+                  <td>K</td>
+                  <td>Andrew Kunz</td>
+                  <td>Piano</td>
+                </tr>
+                <tr>
+                  <td>Monday</td>
+                  <td>3:30pm</td>
+                  <td>30 minutes</td>
+                  <td>Oliver Lo</td>
+                  <td>2</td>
+                  <td>Andrew Kunz</td>
+                  <td>Piano</td>
+                </tr>
+                <tr>
+                  <td>Monday</td>
+                  <td>4:00pm</td>
+                  <td>45 minutes</td>
+                  <td>Heath Paidipaty</td>
+                  <td>4</td>
+                  <td>Andrew Kunz</td>
+                  <td>Piano</td>
+                </tr>
+                <tr>
+                  <td>Monday</td>
+                  <td>4:45pm</td>
+                  <td>45 minutes</td>
+                  <td>Spencer Swift</td>
+                  <td>5</td>
+                  <td>Andrew Kunz</td>
+                  <td>Piano</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div hidden class="tab-content" id="admin-registration" class="col s12" style="background-color: #fefefe">
+
+        <div id="current-registrations">
           <ul id="current-registrations-collection" class="collection">
           </ul>
         </div>
 
-        <div hidden id="new-registration-form">
+        <div id="new-registration-form">
 
           <h4 class="center-align">Student Registration Form</h4>
 
@@ -401,820 +519,34 @@
           </div>
         </div>
       </div>
-      <div id="admin-tab3" class="col s12" style="background-color: #fefefe">Content for Tab 3</div>
-      <div id="admin-tab4" class="col s12" style="background-color: #fefefe">Content for Tab 4</div>
-    </div>
-
-    <!-- Instructors Section -->
-    <div id="instructors" class="section-content">
-      <ul class="tabs">
-        <li class="tab col s3"><a class="active" href="#instructors-tab1" style="color: #2b68a4"><b>Weekly
-              Schedule</b></a></li>
-        <li class="tab col s3"><a href="#instructors-tab2" style="color: #2b68a4"><b>Attendance</b></a></li>
-        <li class="tab col s3"><a href="#instructors-tab3" style="color: #2b68a4"><b>Forte Directory</b></a></li>
-        <li class="tab col s3"><a href="#instructors-tab4" style="color: #2b68a4"><b>Paylocity</b></a></li>
-      </ul>
-      <div id="instructors-tab1" class="col s12" style="background-color: #fefefe">Content for Weekly Schedule</div>
-      <div id="instructors-tab2" class="col s12" style="background-color: #fefefe">Content for Attendance</div>
-      <div id="instructors-tab3" class="col s12" style="background-color: #fefefe">Content for Forte Directory</div>
-      <div id="instructors-tab4" class="col s12" style="background-color: #fefefe">Content for Paylocity</div>
-    </div>
-
-    <!-- Families Section -->
-    <div id="families" class="section-content">
-      <ul class="tabs">
-        <li class="tab col s4"><a class="active" href="#families-tab1" style="color: #2b68a4"><b>Weekly Schedule</b></a>
-        </li>
-        <li class="tab col s4"><a href="#families-tab2" style="color: #2b68a4"><b>Registration</b></a></li>
-        <li class="tab col s4"><a href="#families-tab3" style="color: #2b68a4"><b>Contact Us</b></a></li>
-      </ul>
-      <div id="families-tab1" class="col s12" style="background-color: #fefefe">Content for Weekly Schedule</div>
-      <div id="families-tab2" class="col s12" style="background-color: #fefefe">Content for Registration</div>
-      <div id="families-tab3" class="col s12" style="background-color: #fefefe">Content for Contact Us</div>
-    </div>
-
-    <div class="card">
-      <div class="card-content">
-        <p id="active-email-title">You:
-          <?= Session.getActiveUser().getEmail() ?>
-        </p>
-        <ul hidden class="tabs">
-          <li class="tab"><a class="active" href="#">Student 1</a></li>
-          <li class="tab"><a href="#">Student 2</a></li>
-        </ul>
+      <div hidden class="tab-content" id="admin-tab3" class="col s12" style="background-color: #fefefe">Content for Admin Tab 3
       </div>
-    </div>
-
-    <div class="card">
-      <div class="card-content">
-        <span class="card-title" style="color: #2b68a4"><b>Currently Enrolled Lessons</b></span>
-        <p>Not enrolled in any lessons.</p>
-        <div class="row">
-          <div class="col s12" style="background-color: #3a7953; color: #fefefe; text-align: center">Monday</div>
-          <div class="col s6" style="background-color: #3a7953; color: #fefefe; text-align: center">Andrew Kunz</div>
-          <div class="col s6" style="background-color: #3a7953; color: #fefefe; text-align: center">Piano, Ukulele,
-            Guitar</div>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Weekday</th>
-              <th>Start Time</th>
-              <th>Length</th>
-              <th>Student</th>
-              <th>Grade</th>
-              <th>Teacher</th>
-              <th>Instrument</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            <tr>
-              <td>Monday</td>
-              <td>3:00pm</td>
-              <td>30 minutes</td>
-              <td>Johnny Herrick</td>
-              <td>K</td>
-              <td>Andrew Kunz</td>
-              <td>Piano</td>
-            </tr>
-            <tr>
-              <td>Monday</td>
-              <td>3:30pm</td>
-              <td>30 minutes</td>
-              <td>Oliver Lo</td>
-              <td>2</td>
-              <td>Andrew Kunz</td>
-              <td>Piano</td>
-            </tr>
-            <tr>
-              <td>Monday</td>
-              <td>4:00pm</td>
-              <td>45 minutes</td>
-              <td>Heath Paidipaty</td>
-              <td>4</td>
-              <td>Andrew Kunz</td>
-              <td>Piano</td>
-            </tr>
-            <tr>
-              <td>Monday</td>
-              <td>4:45pm</td>
-              <td>45 minutes</td>
-              <td>Spencer Swift</td>
-              <td>5</td>
-              <td>Andrew Kunz</td>
-              <td>Piano</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-content">
-        <span class="card-title" style="color: #2b68a4"><b>Currently Enrolled Lessons</b></span>
-        <p>Not enrolled in any lessons.</p>
-        <ul class="collapsible expandable">
-          <li>
-            <div class="collapsible-header"><i class="material-icons">filter_drama</i>Monday</div>
-            <div class="collapsible-body"><span>
-                <ul class="collapsible expandable">
-                  <li>
-                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Andrew Kunz</div>
-                    <div class="collapsible-body"><span>
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Start Time</th>
-                              <th>Length</th>
-                              <th>Student</th>
-                              <th>Grade</th>
-                              <th>Instrument</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            <tr>
-                              <td>3:00pm</td>
-                              <td>30 minutes</td>
-                              <td>Johnny Herrick</td>
-                              <td>K</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>3:30pm</td>
-                              <td>30 minutes</td>
-                              <td>Oliver Lo</td>
-                              <td>2</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:00pm</td>
-                              <td>45 minutes</td>
-                              <td>Heath Paidipaty</td>
-                              <td>4</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:45pm</td>
-                              <td>45 minutes</td>
-                              <td>Spencer Swift</td>
-                              <td>5</td>
-                              <td>Piano</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </span></div>
-                  </li>
-                  <li>
-                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Melody Nishinaga</div>
-                    <div class="collapsible-body"><span>
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Start Time</th>
-                              <th>Length</th>
-                              <th>Student</th>
-                              <th>Grade</th>
-                              <th>Instrument</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            <tr>
-                              <td>3:00pm</td>
-                              <td>30 minutes</td>
-                              <td>Johnny Herrick</td>
-                              <td>K</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>3:30pm</td>
-                              <td>30 minutes</td>
-                              <td>Oliver Lo</td>
-                              <td>2</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:00pm</td>
-                              <td>45 minutes</td>
-                              <td>Heath Paidipaty</td>
-                              <td>4</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:45pm</td>
-                              <td>45 minutes</td>
-                              <td>Spencer Swift</td>
-                              <td>5</td>
-                              <td>Piano</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </span></div>
-                  </li>
-                  <li>
-                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Ruth Chou</div>
-                    <div class="collapsible-body"><span>
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Start Time</th>
-                              <th>Length</th>
-                              <th>Student</th>
-                              <th>Grade</th>
-                              <th>Instrument</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            <tr>
-                              <td>3:00pm</td>
-                              <td>30 minutes</td>
-                              <td>Johnny Herrick</td>
-                              <td>K</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>3:30pm</td>
-                              <td>30 minutes</td>
-                              <td>Oliver Lo</td>
-                              <td>2</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:00pm</td>
-                              <td>45 minutes</td>
-                              <td>Heath Paidipaty</td>
-                              <td>4</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:45pm</td>
-                              <td>45 minutes</td>
-                              <td>Spencer Swift</td>
-                              <td>5</td>
-                              <td>Piano</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </span></div>
-                  </li>
-                  <li>
-                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Cal Reichenbach</div>
-                    <div class="collapsible-body"><span>
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Start Time</th>
-                              <th>Length</th>
-                              <th>Student</th>
-                              <th>Grade</th>
-                              <th>Instrument</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            <tr>
-                              <td>3:00pm</td>
-                              <td>30 minutes</td>
-                              <td>Johnny Herrick</td>
-                              <td>K</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>3:30pm</td>
-                              <td>30 minutes</td>
-                              <td>Oliver Lo</td>
-                              <td>2</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:00pm</td>
-                              <td>45 minutes</td>
-                              <td>Heath Paidipaty</td>
-                              <td>4</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:45pm</td>
-                              <td>45 minutes</td>
-                              <td>Spencer Swift</td>
-                              <td>5</td>
-                              <td>Piano</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </span></div>
-                  </li>
-                  <li>
-                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Rob Thomure</div>
-                    <div class="collapsible-body"><span>
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Start Time</th>
-                              <th>Length</th>
-                              <th>Student</th>
-                              <th>Grade</th>
-                              <th>Instrument</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            <tr>
-                              <td>3:00pm</td>
-                              <td>30 minutes</td>
-                              <td>Johnny Herrick</td>
-                              <td>K</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>3:30pm</td>
-                              <td>30 minutes</td>
-                              <td>Oliver Lo</td>
-                              <td>2</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:00pm</td>
-                              <td>45 minutes</td>
-                              <td>Heath Paidipaty</td>
-                              <td>4</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:45pm</td>
-                              <td>45 minutes</td>
-                              <td>Spencer Swift</td>
-                              <td>5</td>
-                              <td>Piano</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </span></div>
-                  </li>
-                  <li>
-                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Paul Montes</div>
-                    <div class="collapsible-body"><span>
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Start Time</th>
-                              <th>Length</th>
-                              <th>Student</th>
-                              <th>Grade</th>
-                              <th>Instrument</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            <tr>
-                              <td>3:00pm</td>
-                              <td>30 minutes</td>
-                              <td>Johnny Herrick</td>
-                              <td>K</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>3:30pm</td>
-                              <td>30 minutes</td>
-                              <td>Oliver Lo</td>
-                              <td>2</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:00pm</td>
-                              <td>45 minutes</td>
-                              <td>Heath Paidipaty</td>
-                              <td>4</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:45pm</td>
-                              <td>45 minutes</td>
-                              <td>Spencer Swift</td>
-                              <td>5</td>
-                              <td>Piano</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </span></div>
-                  </li>
-                  <li>
-                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Lisa Gorman</div>
-                    <div class="collapsible-body"><span>
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Start Time</th>
-                              <th>Length</th>
-                              <th>Student</th>
-                              <th>Grade</th>
-                              <th>Instrument</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            <tr>
-                              <td>3:00pm</td>
-                              <td>30 minutes</td>
-                              <td>Johnny Herrick</td>
-                              <td>K</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>3:30pm</td>
-                              <td>30 minutes</td>
-                              <td>Oliver Lo</td>
-                              <td>2</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:00pm</td>
-                              <td>45 minutes</td>
-                              <td>Heath Paidipaty</td>
-                              <td>4</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:45pm</td>
-                              <td>45 minutes</td>
-                              <td>Spencer Swift</td>
-                              <td>5</td>
-                              <td>Piano</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </span></div>
-                  </li>
-                  <li>
-                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Phoebe Dinga</div>
-                    <div class="collapsible-body"><span>
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Start Time</th>
-                              <th>Length</th>
-                              <th>Student</th>
-                              <th>Grade</th>
-                              <th>Instrument</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            <tr>
-                              <td>3:00pm</td>
-                              <td>30 minutes</td>
-                              <td>Johnny Herrick</td>
-                              <td>K</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>3:30pm</td>
-                              <td>30 minutes</td>
-                              <td>Oliver Lo</td>
-                              <td>2</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:00pm</td>
-                              <td>45 minutes</td>
-                              <td>Heath Paidipaty</td>
-                              <td>4</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:45pm</td>
-                              <td>45 minutes</td>
-                              <td>Spencer Swift</td>
-                              <td>5</td>
-                              <td>Piano</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </span></div>
-                  </li>
-                </ul>
-              </span></div>
-          </li>
-          <li>
-            <div class="collapsible-header"><i class="material-icons">filter_drama</i>Tuesday</div>
-            <div class="collapsible-body"><span>
-                <ul class="collapsible expandable">
-                  <li>
-                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Andrew Kunz</div>
-                    <div class="collapsible-body"><span>
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Start Time</th>
-                              <th>Length</th>
-                              <th>Student</th>
-                              <th>Grade</th>
-                              <th>Instrument</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            <tr>
-                              <td>3:00pm</td>
-                              <td>30 minutes</td>
-                              <td>Johnny Herrick</td>
-                              <td>K</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>3:30pm</td>
-                              <td>30 minutes</td>
-                              <td>Oliver Lo</td>
-                              <td>2</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:00pm</td>
-                              <td>45 minutes</td>
-                              <td>Heath Paidipaty</td>
-                              <td>4</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:45pm</td>
-                              <td>45 minutes</td>
-                              <td>Spencer Swift</td>
-                              <td>5</td>
-                              <td>Piano</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </span></div>
-                  </li>
-                </ul>
-              </span></div>
-          </li>
-          <li>
-            <div class="collapsible-header"><i class="material-icons">filter_drama</i>Wednesday</div>
-            <div class="collapsible-body"><span>
-                <ul class="collapsible expandable">
-                  <li>
-                    <div class="collapsible-header"><i class="material-icons">filter_drama</i>Andrew Kunz</div>
-                    <div class="collapsible-body"><span>
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Start Time</th>
-                              <th>Length</th>
-                              <th>Student</th>
-                              <th>Grade</th>
-                              <th>Instrument</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            <tr>
-                              <td>3:00pm</td>
-                              <td>30 minutes</td>
-                              <td>Johnny Herrick</td>
-                              <td>K</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>3:30pm</td>
-                              <td>30 minutes</td>
-                              <td>Oliver Lo</td>
-                              <td>2</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:00pm</td>
-                              <td>45 minutes</td>
-                              <td>Heath Paidipaty</td>
-                              <td>4</td>
-                              <td>Piano</td>
-                            </tr>
-                            <tr>
-                              <td>4:45pm</td>
-                              <td>45 minutes</td>
-                              <td>Spencer Swift</td>
-                              <td>5</td>
-                              <td>Piano</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </span></div>
-                  </li>
-                </ul>
-              </span></div>
-          </li>
-        </ul>
-        <table>
-          <thead>
-            <tr>
-              <th>Weekday</th>
-              <th>Start Time</th>
-              <th>Length</th>
-              <th>Student</th>
-              <th>Grade</th>
-              <th>Teacher</th>
-              <th>Instrument</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            <tr>
-              <td>Monday</td>
-              <td>3:00pm</td>
-              <td>30 minutes</td>
-              <td>Johnny Herrick</td>
-              <td>K</td>
-              <td>Andrew Kunz</td>
-              <td>Piano</td>
-            </tr>
-            <tr>
-              <td>Monday</td>
-              <td>3:30pm</td>
-              <td>30 minutes</td>
-              <td>Oliver Lo</td>
-              <td>2</td>
-              <td>Andrew Kunz</td>
-              <td>Piano</td>
-            </tr>
-            <tr>
-              <td>Monday</td>
-              <td>4:00pm</td>
-              <td>45 minutes</td>
-              <td>Heath Paidipaty</td>
-              <td>4</td>
-              <td>Andrew Kunz</td>
-              <td>Piano</td>
-            </tr>
-            <tr>
-              <td>Monday</td>
-              <td>4:45pm</td>
-              <td>45 minutes</td>
-              <td>Spencer Swift</td>
-              <td>5</td>
-              <td>Andrew Kunz</td>
-              <td>Piano</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-
-    <div class="card">
-      <div class="card-content">
-        <span class="card-title" style="color: #2b68a4"><b>Currently Enrolled Lessons</b></span>
-        <p>Not enrolled in any lessons.</p>
-        <div class="section">
-          <h5>Section 1</h5>
-          <p>Stuff</p>
-        </div>
-        <div class="divider"></div>
-        <div class="section">
-          <h5>Section 2</h5>
-          <p>Stuff</p>
-        </div>
-        <div class="divider"></div>
-        <div class="section">
-          <h5>Section 3</h5>
-          <p>Stuff</p>
-        </div>
-      </div>
-    </div>
-
-    <div id="add-private-lessons-card" class="card">
-      <div class="card-content">
-        <span class="card-title" style="color: #2b68a4"><b>Add a Private Lesson</b></span>
-        <div class="input-field">
-          <select class="instrument-options">
-            <option value="" disabled selected>Pick an instrument</option>
-            <option value="3">Drums</option>
-            <option value="3">Ukulele</option>
-            <option value="3">Guitar</option>
-            <option value="3">Voice</option>
-            <option value="3">Piano</option>
-          </select>
-          <label>Instrument</label>
-        </div>
-        <p hidden>No matching lessons.</p>
-        <ul class="available-lesson-list collection with-header">
-          <li class="collection-item" id="lesson_1">
-            <div>Monday: 3:00pm - 3:30pm, Piano (Private) with Lang Lang<a href="#!" class="secondary-content"><i
-                  class="add-lesson-icon material-icons green-text text-darken-2">add_circle</i></a></div>
-          </li>
-        </ul>
-      </div>
-    </div>
-
-    <div id="add-group-lessons-card" class="card">
-      <div class="card-content">
-        <span class="card-title" style="color: #2b68a4"><b>Add a Group Class</b></span>
-        <div class="input-field">
-          <select class="instrument-options">
-            <option value="" disabled selected>Pick an instrument</option>
-            <option value="1">Rock Band</option>
-            <option value="2">Songwriting</option>
-            <option value="3">Class Drums</option>
-            <option value="3">Taylor Swift Choir</option>
-            <option value="3">Class Ukulele</option>
-            <option value="3">Class Guitar</option>
-            <option value="3">Class Voice</option>
-            <option value="3">Digital Music</option>
-            <option value="3">Class Piano</option>
-            <option value="3">SF Jazz</option>
-          </select>
-          <label>Instrument</label>
-        </div>
-        <p hidden>No matching lessons.</p>
-        <ul hidden class="available-lesson-list collection with-header">
-          <li class="collection-item" id="lesson_1">
-            <div>Monday: 3:00pm - 3:30pm, Piano (Private) with Lang Lang<a href="#!" class="secondary-content"><i
-                  class="add-lesson-icon material-icons green-text text-darken-2">add_circle</i></a></div>
-          </li>
-        </ul>
-      </div>
-    </div>
-
-    <div id="display-alert" class="modal">
-      <div class="modal-content">
-        <h4>Modal Header</h4>
-        <p>A bunch of text</p>
-      </div>
-      <div class="modal-footer">
-        <a href="#!" class="modal-close waves-effect waves-green btn-flat">Agree</a>
-      </div>
-    </div>
-
-  </div>
-  <header>
-    <h1>Forte Weekly Schedule</h1>
-  </header>
-
-  <nav class="day-tabs">
-    <button class="tab active" data-day="Monday">Monday</button>
-    <button class="tab" data-day="Tuesday">Tuesday</button>
-    <button class="tab" data-day="Wednesday">Wednesday</button>
-    <button class="tab" data-day="Thursday">Thursday</button>
-    <button class="tab" data-day="Friday">Friday</button>
-  </nav>
-
-  <section id="schedule-content">
-    <!-- Dynamic content will load here -->
-  </section>
-
-  <div id="loading-container">
-    <div id="loading" class="preloader-wrapper big active center-align">
-      <div class="spinner-layer spinner-blue">
-        <div class="circle-clipper left">
-          <div class="circle"></div>
-        </div>
-        <div class="gap-patch">
-          <div class="circle"></div>
-        </div>
-        <div class="circle-clipper right">
-          <div class="circle"></div>
-        </div>
+      <div hidden class="tab-content" id="admin-tab4" class="col s12" style="background-color: #fefefe">Content for Admin Tab 4
       </div>
 
-      <div class="spinner-layer spinner-red">
-        <div class="circle-clipper left">
-          <div class="circle"></div>
-        </div>
-        <div class="gap-patch">
-          <div class="circle"></div>
-        </div>
-        <div class="circle-clipper right">
-          <div class="circle"></div>
-        </div>
-      </div>
+      <!-- Instructor Section -->
+      <div hidden class="tab-content" id="instructor-weekly-schedule" class="col s12" style="background-color: #fefefe">Content
+        for Weekly Schedule</div>
+      <div hidden class="tab-content" id="instructor-attendance" class="col s12" style="background-color: #fefefe">Content for
+        Attendance</div>
+      <div hidden class="tab-content" id="instructor-forte-directory" class="col s12" style="background-color: #fefefe">Content
+        for Forte Directory</div>
+      <div hidden class="tab-content" id="instructor-paylocity" class="col s12" style="background-color: #fefefe">Content for
+        Paylocity</div>
 
-      <div class="spinner-layer spinner-yellow">
-        <div class="circle-clipper left">
-          <div class="circle"></div>
-        </div>
-        <div class="gap-patch">
-          <div class="circle"></div>
-        </div>
-        <div class="circle-clipper right">
-          <div class="circle"></div>
-        </div>
-      </div>
+      <!-- Parent Section -->
+      <div hidden class="tab-content" id="parent-weekly-schedule" class="col s12" style="background-color: #fefefe">Content for
+        Weekly Schedule</div>
+      <div hidden class="tab-content" id="parent-registration" class="col s12" style="background-color: #fefefe">Content for
+        Registration</div>
+      <div hidden class="tab-content" id="parent-contact-us" class="col s12" style="background-color: #fefefe">Content for
+        Contact Us</div>
 
-      <div class="spinner-layer spinner-green">
-        <div class="circle-clipper left">
-          <div class="circle"></div>
-        </div>
-        <div class="gap-patch">
-          <div class="circle"></div>
-        </div>
-        <div class="circle-clipper right">
-          <div class="circle"></div>
-        </div>
-      </div>
     </div>
   </div>
+
+  <!-- <div>Monday: 3:00pm - 3:30pm, Piano (Private) with Lang Lang<a href="#!" class="secondary-content"><i
+        class="add-lesson-icon material-icons green-text text-darken-2">add_circle</i></a></div> -->
 
   <!-- 
   <div hidden id="tables" class="center-align">
