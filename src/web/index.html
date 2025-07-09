@@ -146,7 +146,7 @@
   <script>
     const DateTime = window.luxon.DateTime;
     const Duration = window.luxon.Duration;
-    
+
     const Sections = {
       ADMIN: 'admin',
       INSTRUCTOR: 'instructor',
@@ -409,7 +409,7 @@
             <button id="student-search-btn" class="btn waves-effect waves-light">Search</button>
             <label for="student-search">Search Students</label>
           </div>
-          
+
           <div class="input-field" id="student-select-options-container">
             <select id="student-select" required>
               <option value="" disabled selected>Select a student</option>
@@ -461,14 +461,6 @@
 
             <div id="instructor-day-selected-info-container" hidden>
 
-              <!-- Start Time -->
-              <div class="input-field" id="instructor-day-start-time-container">
-                <select id="start-time-select" required>
-                </select>
-                <label for="start-time-select">Start Time</label>
-                <span class="helper-text" data-error="Please select a start time"></span>
-              </div>
-
               <!-- Length -->
               <div id="lesson-length-container">
                 <p>Lesson Length</p>
@@ -490,6 +482,14 @@
                     <span>60 Minutes</span>
                   </label>
                 </p>
+              </div>
+
+              <!-- Start Time -->
+              <div class="input-field" id="instructor-day-start-time-container">
+                <select id="start-time-select" required>
+                </select>
+                <label for="start-time-select">Start Time</label>
+                <span class="helper-text" data-error="Please select a start time"></span>
               </div>
             </div>
 

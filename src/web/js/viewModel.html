@@ -159,6 +159,7 @@
 
             document.getElementById('instructor-select-options-container').addEventListener('change', (event) => {
                 if (event.target.id !== 'instructor-select') {
+                    return;
                 }
 
                 event.preventDefault();
@@ -177,18 +178,16 @@
 
             document.getElementById('instructor-day-select-options-container').addEventListener('change', (event) => {
                 if (event.target.id !== 'day-select') {
+                    return;
                 }
 
                 event.preventDefault();
-                const selectedValue = event.target.value;
-                const selectedInstructorId = selectedValue.split('_')[0];
-                const selectedDay = selectedValue.split('_')[1];
+                const selectedDay = event.target.value;
 
-                const currentInstructor = this.instructors.find(x => x.id === selectedInstructorId);
-                this._setInstructorDayStartTimeOptions(currentInstructor, selectedDay);
+                this._setInstructorDayStartTimeOptions();
 
                 const instructorDaySelectedInfoContainer = document.getElementById('instructor-day-selected-info-container');
-                instructorDaySelectedInfoContainer.hidden = !selectedValue;
+                instructorDaySelectedInfoContainer.hidden = !selectedDay;
             });
 
             document.getElementById('instrument-select-options-container').addEventListener('change', (event) => {
@@ -215,8 +214,9 @@
                     return;
                 }
 
-                const selectedValue = event.target.value;
-                console.log('Radio changed to:', selectedValue);
+                console.log('Lesson length changed to:', event.target.value);
+
+                this._setInstructorDayStartTimeOptions();
             });
 
             document.getElementById('create-registration-submit-btn').addEventListener('click', (event) => {
@@ -353,7 +353,7 @@
                 transportationType: transportationType ? transportationType.value : null,
                 instructorId: instructorSelect.value,
                 instrument: instrumentSelect.value,
-                day: daySelect.value.split('_')[1], // get the day index
+                day: daySelect.value,
                 startTime: startTimeSelect.value,
                 length: checkedRadio ? checkedRadio.value : null
             };
@@ -449,55 +449,65 @@
         }
 
         _setInstructorDayOptions(instructor) {
-            if (!instructor) {
+            try {
+                if (!instructor) {
+                    this._updateSelectOptions(
+                        'day-select',
+                        [],
+                        'Select a day');
+                    return;
+                }
+
+                const weekDays = {
+                    0: { label: 'Monday', startTime: instructor.mondayStartTime },
+                    1: { label: 'Tuesday', startTime: instructor.tuesdayStartTime },
+                    2: { label: 'Wednesday', startTime: instructor.wednesdayStartTime },
+                    3: { label: 'Thursday', startTime: instructor.thursdayStartTime },
+                    4: { label: 'Friday', startTime: instructor.fridayStartTime }
+                };
+
+                let days = [];
+                for (const [index, day] of Object.entries(weekDays)) {
+                    if (day.startTime) {
+                        days.push({
+                            value: index,
+                            label: day.label
+                        });
+                    }
+                }
+
                 this._updateSelectOptions(
                     'day-select',
-                    [],
+                    days,
                     'Select a day');
-                return;
+
+            } finally {
+                const daySelectedInfoContainer = document.getElementById('instructor-day-selected-info-container');
+                daySelectedInfoContainer.hidden = true;
             }
-
-            const weekDays = {
-                0: { label: 'Monday', startTime: instructor.mondayStartTime },
-                1: { label: 'Tuesday', startTime: instructor.tuesdayStartTime },
-                2: { label: 'Wednesday', startTime: instructor.wednesdayStartTime },
-                3: { label: 'Thursday', startTime: instructor.thursdayStartTime },
-                4: { label: 'Friday', startTime: instructor.fridayStartTime }
-            };
-
-            let days = [];
-            for (const [index, day] of Object.entries(weekDays)) {
-                if (day.startTime) {
-                    days.push({
-                        value: `${instructor.id}_${index}`,
-                        label: day.label
-                    });
-                }
-            }
-
-            this._updateSelectOptions(
-                'day-select',
-                days,
-                'Select a day');
-
-            const daySelectedInfoContainer = document.getElementById('instructor-day-selected-info-container');
-            daySelectedInfoContainer.hidden = false;
         }
 
-        _setInstructorDayStartTimeOptions(instructor, day) {
-            debugger
-            if (!instructor || !day) {
+        _setInstructorDayStartTimeOptions() {
+
+            const selectedInstructorId = document.getElementById('instructor-select').value;
+            const selectedDay = document.getElementById('day-select').value;
+            const selectedLength = document.querySelector('input[name="lesson-length"]:checked')?.value * 1;
+
+            if (!selectedInstructorId || !selectedDay || !selectedLength) {
                 this._updateSelectOptions(
                     'start-time-select',
                     [],
                     'Select a start time');
-                // default to first radio
+
+                // reset to first option
                 const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
                 if (lessonLengthRadios.length > 0) {
                     lessonLengthRadios[0].checked = true;
                 }
                 return;
             }
+
+            const instructor = this.instructors.find(x => x.id === selectedInstructorId);
 
             const startTimes = [
                 instructor.mondayStartTime,
@@ -514,15 +524,13 @@
                 instructor.thursdayEndTime,
                 instructor.fridayEndTime
             ];
-            
-            const startTime = startTimes[day * 1];
-            const startTimeDuration = DurationHelpers.stringToDuration(startTime);
+
+            const dayIndex = selectedDay * 1; // Convert string to number
+            const startTime = startTimes[dayIndex];
+            const endTime = endTimes[dayIndex];
             const options = [];
 
-            const endTime = endTimes[day * 1];
-            const endTimeDuration = DurationHelpers.stringToDuration(endTime);
-
-            if (!startTimeDuration || !endTimeDuration) {
+            if (!startTime || !endTime) {
                 this._updateSelectOptions(
                     'start-time-select',
                     [],
@@ -530,24 +538,21 @@
                 return;
             }
 
-            for (let i = (startTimeDuration.hours * 60 + startTimeDuration.minutes); i < (endTimeDuration.hours * 60 + endTimeDuration.minutes); i += 15) {
-                const duration = Duration.fromObject({ minutes: i });
+            const startTimeDuration = DurationHelpers.stringToDuration(startTime);
+            const endTimeDuration = DurationHelpers.stringToDuration(endTime);
 
-                // Add the duration to midnight (start of the day)
-                const dateTime = DateTime.fromObject({ hour: 0, minute: 0 }).plus(duration);
-                const formattedTime = dateTime.toFormat('h:mm a');
+            for (let i = (startTimeDuration.hours * 60 + startTimeDuration.minutes); i <= (endTimeDuration.hours * 60 + endTimeDuration.minutes) - selectedLength; i += 15) {
+                const duration = DurationHelpers.minutesToDuration(i);
 
-                options.push(formattedTime);
+                options.push({
+                    value: i,
+                    label: DurationHelpers.formatDuration(duration)
+                });
             }
-
-            debugger
 
             this._updateSelectOptions(
                 'start-time-select',
-                options.map(time => ({
-                    value: time,
-                    label: time
-                })),
+                options,
                 'Select a start time');
         }
 
@@ -628,6 +633,9 @@
                 return;
             }
 
+            // get current selected option
+            const currentSelectedValue = select.value;
+
             // Clear existing options
             select.innerHTML = '';
 
@@ -642,6 +650,10 @@
                 const opt = document.createElement('option');
                 opt.value = option.value;
                 opt.textContent = option.label;
+
+                if (currentSelectedValue && option.value == currentSelectedValue) {
+                    opt.selected = true;
+                }
                 select.appendChild(opt);
             });
 
