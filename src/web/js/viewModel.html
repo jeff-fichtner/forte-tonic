@@ -115,20 +115,31 @@
         }
 
         _setPageLoading(isLoading) {
-            const loadingContainer = document.getElementById('loading-container');
-            const loading = document.getElementById('loading');
+            const loadingContainer = document.getElementById('page-loading-container');
             const pageContent = document.getElementById('page-content');
             const navMobile = document.getElementById('nav-mobile');
 
             loadingContainer.style.display = isLoading ? 'flex' : 'none';
-            loading.hidden = !isLoading;
+            loadingContainer.hidden = !isLoading;
+
             pageContent.hidden = isLoading;
             navMobile.hidden = isLoading;
         }
 
+        _setAdminRegistrationLoading(isLoading) {
+            const adminRegistrationLoadingContainer = document.getElementById('admin-registration-loading-container');
+            const adminRegistrationContainer = document.getElementById('admin-registration-container');
+
+            adminRegistrationLoadingContainer.hidden = !isLoading;
+            adminRegistrationContainer.hidden = isLoading;
+        }
+
         _registerListeners() {
-            document.getElementById('student-search-btn').addEventListener('click', (event) => {
+
+            // when student search button is clicked
+            document.getElementById('student-search-btn').addEventListener('click', async (event) => {
                 event.preventDefault();
+
                 const searchInput = document.getElementById('student-search');
                 searchInput.classList.remove('invalid');
 
@@ -142,21 +153,25 @@
                     return;
                 }
 
-                let data = {
-                    name: searchValue
-                };
+                try {
+                    this._setAdminRegistrationLoading(true);
+                    
+                    let data = {
+                        name: searchValue
+                    };
 
-                ApiClient.post(ServerFunctions.searchStudentsByName, data, x => x.map(y => new Student(y)))
-                    .then(students => {
-                        if (students.length) {
-                            this._setStudentOptions(students);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error searching students:', error);
-                    });
+                    const students = await ApiClient.post(ServerFunctions.searchStudentsByName, data, x => x.map(y => new Student(y)));
+
+                    this._setStudentOptions(students ?? []);
+                } catch (error) {
+                    console.error('Error searching students:', error);
+                }
+                finally {
+                    this._setAdminRegistrationLoading(false);
+                }
             });
 
+            // when instructor changes
             document.getElementById('instructor-select-options-container').addEventListener('change', (event) => {
                 if (event.target.id !== 'instructor-select') {
                     return;
@@ -176,6 +191,7 @@
                 infoContainer.hidden = !selectedValue;
             });
 
+            // when day changes
             document.getElementById('instructor-day-select-options-container').addEventListener('change', (event) => {
                 if (event.target.id !== 'day-select') {
                     return;
@@ -190,6 +206,7 @@
                 instructorDaySelectedInfoContainer.hidden = !selectedDay;
             });
 
+            // when instrument changes
             document.getElementById('instrument-select-options-container').addEventListener('change', (event) => {
                 if (event.target.id !== 'instrument-select') {
                     return;
@@ -200,6 +217,7 @@
                 console.log('Instrument changed to:', selectedValue);
             });
 
+            // when start time changes
             document.getElementById('instructor-day-start-time-container').addEventListener('change', (event) => {
                 if (event.target.id !== 'start-time-select') {
                     return;
@@ -209,6 +227,7 @@
                 console.log('Start time changed to:', selectedValue);
             });
 
+            // when lesson length changes
             document.getElementById('lesson-length-container').addEventListener('change', (event) => {
                 if (event.target.type !== 'radio') {
                     return;
@@ -219,7 +238,8 @@
                 this._setInstructorDayStartTimeOptions();
             });
 
-            document.getElementById('create-registration-submit-btn').addEventListener('click', (event) => {
+            // when create is clicked
+            document.getElementById('create-registration-submit-btn').addEventListener('click', async (event) => {
                 event.preventDefault();
 
                 if (!this._validateRegistration()) {
@@ -227,22 +247,26 @@
                     return;
                 }
 
-                const data = this._getCreateRegistrationData();
+                try {
+                    this._setAdminRegistrationLoading(true);
 
-                // post
-                ApiClient.post(ServerFunctions.createRegistration, data, x => new Registration(x))
-                    .then(response => {
-                        // handle response
-                        console.log('Registration created:', response.registration);
-                        M.toast({ html: 'Registration created successfully.' });
+                    const data = this._getCreateRegistrationData();
 
-                        this.registrations.push(response.registration);
-                        this._setRegistrations(this.registrations);
-                    })
-                    .catch(error => {
-                        console.error('Error creating registration:', error);
-                        M.toast({ html: 'Error creating registration.' });
-                    });
+                    const response = await ApiClient.post(ServerFunctions.createRegistration, data, x => new Registration(x));
+
+                    // handle response
+                    console.log('Registration created:', response.registration);
+                    M.toast({ html: 'Registration created successfully.' });
+
+                    this.registrations.push(response.registration);
+                    this._setRegistrations(this.registrations);
+
+                } catch (error) {
+                    console.error('Error creating registration:', error);
+                    M.toast({ html: 'Error creating registration.' });
+                } finally {
+                    this._setAdminRegistrationLoading(false);
+                }
             });
 
             // when delete icon tapped
@@ -565,65 +589,14 @@
                 })),
                 'Select a student');
 
+            // show/hide student container
+            const studentSelectContainer = document.getElementById('student-searched-options-container');
+            studentSelectContainer.hidden = students.length === 0;
+
             document.getElementById('student-select');
             document.getElementById('student-search').value = '';
             M.updateTextFields();
         }
-
-        // setStudents(students) {
-        //     this.updateTableAndMessage(
-        //         'students-tbody',
-        //         'students-empty-message',
-        //         studentsData,
-        //         (student) => {
-        //             const tr = document.createElement('tr');
-        //             tr.innerHTML = `
-        //                 <td>${student.fullName}</td>
-        //                 <td>${student.studentId}</td>
-        //                 <td>${student.grade}</td>
-        //             `;
-        //             return tr;
-        //         }
-        //     );
-        // }
-
-        // setClasses(classes, instructors) {
-        //     this.updateTableAndMessage(
-        //         'classes-tbody',
-        //         'classes-empty-message',
-        //         classes,
-        //         (classItem) => [classItem.title, instructors.find(x => x.id === classItem.instructorId).fullName, classItem.day]
-        //     );
-        // }
-
-        // setRegistrations(registrations, students, instructors, rooms) {
-        //     this.updateTableAndMessage(
-        //         'registrations-tbody',
-        //         'registrations-empty-message',
-        //         registrations,
-        //         (registration) => {
-        //             const student = students.find(x => x.id === registration.studentId);
-        //             const instructor = instructors.find(x => x.id === registration.instructorId);
-        //             const room = rooms.find(x => x.id === registration.roomId);
-
-        //             return [
-        //                 student.fullName,
-        //                 instructor.fullName,
-        //                 room.formattedName,
-        //                 registration.instrument
-        //             ];
-        //         }
-        //     );
-        // }
-
-        // setRooms(rooms) {
-        //     this.updateTableAndMessage(
-        //         'rooms-tbody',
-        //         'rooms-empty-message',
-        //         rooms,
-        //         (room) => [room.formattedName]
-        //     );
-        // }
 
         _updateSelectOptions(selectId, options, defaultOptionText, selectClasses = '') {
             const select = document.getElementById(selectId);
@@ -667,6 +640,13 @@
             });
         }
 
+        _setInstructors(instructors) {
+            this.updateTableAndMessage(
+                'instructors',
+                instructors,
+                (instructor) => [instructor.fullName, instructor.email, instructor.instrument1]
+            );
+        }
 
         // updateTableAndMessage(tbodyId, data, valueExtractor, rowsPerPage = 10) {
         //     const tbody = document.getElementById(`${tbodyId}-tbody`);
@@ -756,12 +736,59 @@
         //     renderPagination();
         // }
 
-        _setInstructors(instructors) {
-            this.updateTableAndMessage(
-                'instructors',
-                instructors,
-                (instructor) => [instructor.fullName, instructor.email, instructor.instrument1]
-            );
-        }
+        // setStudents(students) {
+        //     this.updateTableAndMessage(
+        //         'students-tbody',
+        //         'students-empty-message',
+        //         studentsData,
+        //         (student) => {
+        //             const tr = document.createElement('tr');
+        //             tr.innerHTML = `
+        //                 <td>${student.fullName}</td>
+        //                 <td>${student.studentId}</td>
+        //                 <td>${student.grade}</td>
+        //             `;
+        //             return tr;
+        //         }
+        //     );
+        // }
+
+        // setClasses(classes, instructors) {
+        //     this.updateTableAndMessage(
+        //         'classes-tbody',
+        //         'classes-empty-message',
+        //         classes,
+        //         (classItem) => [classItem.title, instructors.find(x => x.id === classItem.instructorId).fullName, classItem.day]
+        //     );
+        // }
+
+        // setRegistrations(registrations, students, instructors, rooms) {
+        //     this.updateTableAndMessage(
+        //         'registrations-tbody',
+        //         'registrations-empty-message',
+        //         registrations,
+        //         (registration) => {
+        //             const student = students.find(x => x.id === registration.studentId);
+        //             const instructor = instructors.find(x => x.id === registration.instructorId);
+        //             const room = rooms.find(x => x.id === registration.roomId);
+
+        //             return [
+        //                 student.fullName,
+        //                 instructor.fullName,
+        //                 room.formattedName,
+        //                 registration.instrument
+        //             ];
+        //         }
+        //     );
+        // }
+
+        // setRooms(rooms) {
+        //     this.updateTableAndMessage(
+        //         'rooms-tbody',
+        //         'rooms-empty-message',
+        //         rooms,
+        //         (room) => [room.formattedName]
+        //     );
+        // }
     }
 </script>

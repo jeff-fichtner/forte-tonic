@@ -133,7 +133,7 @@
       background-color: #2b68a4 !important;
     }
 
-    #loading-container {
+    #page-loading-container {
       display: flex;
       justify-content: flex-start;
       align-items: center;
@@ -252,8 +252,8 @@
   <div class="container" style="margin-top: 20px;">
 
     <!-- Loading Spinner -->
-    <div id="loading-container">
-      <div id="loading" class="preloader-wrapper big active center-align">
+    <div id="page-loading-container">
+      <div class="loading preloader-wrapper big active center-align">
         <div class="spinner-layer spinner-blue">
           <div class="circle-clipper left">
             <div class="circle"></div>
@@ -394,114 +394,176 @@
           </div>
         </div>
       </div>
+
       <div hidden class="tab-content" id="admin-registration" class="col s12" style="background-color: #fefefe; ">
 
-        <div id="current-registrations">
-          <ul id="current-registrations-collection" class="collection">
-          </ul>
+        <!-- student search loading Spinner -->
+        <div hidden id="admin-registration-loading-container">
+          <div class="loading preloader-wrapper big active center-align">
+            <div class="spinner-layer spinner-blue">
+              <div class="circle-clipper left">
+                <div class="circle"></div>
+              </div>
+              <div class="gap-patch">
+                <div class="circle"></div>
+              </div>
+              <div class="circle-clipper right">
+                <div class="circle"></div>
+              </div>
+            </div>
+
+            <div class="spinner-layer spinner-red">
+              <div class="circle-clipper left">
+                <div class="circle"></div>
+              </div>
+              <div class="gap-patch">
+                <div class="circle"></div>
+              </div>
+              <div class="circle-clipper right">
+                <div class="circle"></div>
+              </div>
+            </div>
+
+            <div class="spinner-layer spinner-yellow">
+              <div class="circle-clipper left">
+                <div class="circle"></div>
+              </div>
+              <div class="gap-patch">
+                <div class="circle"></div>
+              </div>
+              <div class="circle-clipper right">
+                <div class="circle"></div>
+              </div>
+            </div>
+
+            <div class="spinner-layer spinner-green">
+              <div class="circle-clipper left">
+                <div class="circle"></div>
+              </div>
+              <div class="gap-patch">
+                <div class="circle"></div>
+              </div>
+              <div class="circle-clipper right">
+                <div class="circle"></div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div id="new-registration-form">
+        <div id="admin-registration-container">
 
-          <!-- Students -->
-          <div class="input-field" style="display: flex; align-items: center;">
-            <input type="text" id="student-search" class="autocomplete" style="flex: 1; margin-right: 10px;">
-            <button id="student-search-btn" class="btn waves-effect waves-light">Search</button>
-            <label for="student-search">Search Students</label>
+          <div id="current-registrations">
+            <ul id="current-registrations-collection" class="collection">
+            </ul>
           </div>
 
-          <div class="input-field" id="student-select-options-container">
-            <select id="student-select" required>
-              <option value="" disabled selected>Select a student</option>
-            </select>
-            <label>Student</label>
-            <span class="helper-text" data-error="Please select a student"></span>
-          </div>
+          <div id="new-registration-form">
 
-          <!-- Transportation Type -->
-          <p>Transportation Type</p>
-          <p>
-            <label>
-              <input name="transportation-type" type="radio" value="pickup" checked />
-              <span>Pickup</span>
-            </label>
-          </p>
-          <p>
-            <label>
-              <input name="transportation-type" type="radio" value="bus" />
-              <span>Late Bus</span>
-            </label>
-          </p>
-
-          <!-- Instructor -->
-          <div class="input-field" id="instructor-select-options-container">
-            <select id="instructor-select" required>
-            </select>
-            <label for="instructor-select">Instructor</label>
-            <span class="helper-text" data-error="Please select an instructor"></span>
-          </div>
-
-          <div id="instructor-selected-info-container" hidden>
-
-            <!-- Instrument -->
-            <div class="input-field" id="instrument-select-options-container">
-              <select id="instrument-select" required>
-              </select>
-              <label for="instrument-select">Instrument</label>
-              <span class="helper-text" data-error="Please select an instrument"></span>
+            <!-- Students -->
+            <div class="input-field" style="display: flex; align-items: center;">
+              <input type="text" id="student-search" class="autocomplete" style="flex: 1; margin-right: 10px;">
+              <button id="student-search-btn" class="btn waves-effect waves-light">Search</button>
+              <label for="student-search">Search Students</label>
             </div>
 
-            <!-- Day -->
-            <div class="input-field" id="instructor-day-select-options-container">
-              <select id="day-select" required>
-              </select>
-              <label for="day-select">Day</label>
-              <span class="helper-text" data-error="Please select a day"></span>
-            </div>
+            <div hidden id="student-searched-options-container">
 
-            <div id="instructor-day-selected-info-container" hidden>
-
-              <!-- Length -->
-              <div id="lesson-length-container">
-                <p>Lesson Length</p>
-                <p>
-                  <label>
-                    <input name="lesson-length" type="radio" value="30" checked />
-                    <span>30 Minutes</span>
-                  </label>
-                </p>
-                <p>
-                  <label>
-                    <input name="lesson-length" type="radio" value="45" />
-                    <span>45 Minutes</span>
-                  </label>
-                </p>
-                <p>
-                  <label>
-                    <input name="lesson-length" type="radio" value="60" />
-                    <span>60 Minutes</span>
-                  </label>
-                </p>
-              </div>
-
-              <!-- Start Time -->
-              <div class="input-field" id="instructor-day-start-time-container">
-                <select id="start-time-select" required>
+              <div class="input-field" id="student-select-options-container">
+                <select id="student-select" required>
+                  <option value="" disabled selected>Select a student</option>
                 </select>
-                <label for="start-time-select">Start Time</label>
-                <span class="helper-text" data-error="Please select a start time"></span>
+                <label>Student</label>
+                <span class="helper-text" data-error="Please select a student"></span>
               </div>
+
+              <!-- Transportation Type -->
+              <p>Transportation Type</p>
+              <p>
+                <label>
+                  <input name="transportation-type" type="radio" value="pickup" checked />
+                  <span>Pickup</span>
+                </label>
+              </p>
+              <p>
+                <label>
+                  <input name="transportation-type" type="radio" value="bus" />
+                  <span>Late Bus</span>
+                </label>
+              </p>
+
             </div>
 
-          </div>
+            <!-- Instructor -->
+            <div class="input-field" id="instructor-select-options-container">
+              <select id="instructor-select" required>
+              </select>
+              <label for="instructor-select">Instructor</label>
+              <span class="helper-text" data-error="Please select an instructor"></span>
+            </div>
+
+            <div id="instructor-selected-info-container" hidden>
+
+              <!-- Instrument -->
+              <div class="input-field" id="instrument-select-options-container">
+                <select id="instrument-select" required>
+                </select>
+                <label for="instrument-select">Instrument</label>
+                <span class="helper-text" data-error="Please select an instrument"></span>
+              </div>
+
+              <!-- Day -->
+              <div class="input-field" id="instructor-day-select-options-container">
+                <select id="day-select" required>
+                </select>
+                <label for="day-select">Day</label>
+                <span class="helper-text" data-error="Please select a day"></span>
+              </div>
+
+              <div id="instructor-day-selected-info-container" hidden>
+
+                <!-- Length -->
+                <div id="lesson-length-container">
+                  <p>Lesson Length</p>
+                  <p>
+                    <label>
+                      <input name="lesson-length" type="radio" value="30" checked />
+                      <span>30 Minutes</span>
+                    </label>
+                  </p>
+                  <p>
+                    <label>
+                      <input name="lesson-length" type="radio" value="45" />
+                      <span>45 Minutes</span>
+                    </label>
+                  </p>
+                  <p>
+                    <label>
+                      <input name="lesson-length" type="radio" value="60" />
+                      <span>60 Minutes</span>
+                    </label>
+                  </p>
+                </div>
+
+                <!-- Start Time -->
+                <div class="input-field" id="instructor-day-start-time-container">
+                  <select id="start-time-select" required>
+                  </select>
+                  <label for="start-time-select">Start Time</label>
+                  <span class="helper-text" data-error="Please select a start time"></span>
+                </div>
+              </div>
+
+            </div>
 
 
-          <!-- Save Button -->
-          <div class="center-align">
-            <button class="btn waves-effect waves-light" type="submit"
-              id="create-registration-submit-btn">Create</button>
+            <!-- Save Button -->
+            <div class="center-align">
+              <button class="btn waves-effect waves-light" type="submit"
+                id="create-registration-submit-btn">Create</button>
+            </div>
           </div>
         </div>
+
       </div>
       <div hidden class="tab-content" id="admin-tab3" class="col s12" style="background-color: #fefefe">Content for
         Admin Tab 3
