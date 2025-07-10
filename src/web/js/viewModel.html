@@ -262,6 +262,7 @@
 
                     // clear students
                     this._setStudentOptions([]);
+                    // reset instructor select
 
                     // transportation type
                     const transportationTypeRadios = document.querySelectorAll('input[name="transportation-type"]');
@@ -404,8 +405,8 @@
 
             // get selected start time
             const startTimeSelect = document.getElementById('start-time-select');
-            const startTimeDuration = DurationHelpers.minutesToDuration(startTimeSelect.value);
-            const formattedStartTime = DurationHelpers.formatDurationTo24Hour(startTimeDuration);
+            const startTimeDuration = startTimeSelect.value ? DurationHelpers.minutesToDuration(startTimeSelect.value) : null;
+            const formattedStartTime = startTimeDuration ? DurationHelpers.formatDurationTo24Hour(startTimeDuration) : '';
 
             // get transportation type response
             const transportationType = document.querySelector('input[name="transportation-type"]:checked');

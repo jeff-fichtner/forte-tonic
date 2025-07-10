@@ -83,15 +83,6 @@ const registerPrivateLesson =
     throwIfNotAdmin();
 
     const data = retrieveDataFromRequest(request);
-    // const data = {
-    //   day: "2",
-    //   instructorId: "TEACHER8@EMAIL.COM",
-    //   instrument: "Voice",
-    //   length: "30",
-    //   startTime: "16:00",
-    //   studentId: "131509",
-    //   transportationType: "pickup",
-    // }
 
     const instructor = worker.userRepositoryInstance.getInstructorById(data.instructorId);
 

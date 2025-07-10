@@ -135,11 +135,12 @@ class GoogleDbClient {
   
   appendRecord(sheetKey, record, audit) {
     const { sheet, process } = this.workingSheetInfo[sheetKey];
-    const clonedRecord = CloneUtility.clone(record);
+    const clonedRecord = CloneUtility.clone(record, new Registration());
     const processedRecord = process(clonedRecord, audit);
     
     sheet.appendRow(Object.values(processedRecord));
     // TODO audit
+    return processedRecord;
   }
 
   deleteRecord(sheetKey, recordId, audit) {
