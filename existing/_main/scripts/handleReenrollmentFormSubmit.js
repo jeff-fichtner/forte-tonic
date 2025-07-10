@@ -96,7 +96,6 @@ function compileAndParseResponses() {
       ];
 
       allCompiledRows.push(compiledRow); // Store compiled row for later
-      debugger
     }
   });
 

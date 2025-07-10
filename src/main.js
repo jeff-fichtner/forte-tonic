@@ -108,7 +108,6 @@ const unregisterPrivateLesson =
 
     const data = retrieveDataFromRequest(request);
     const success = worker.programRepositoryInstance.unregister(data.id, currentUser);
-    debugger
 
     return respond({
       success
