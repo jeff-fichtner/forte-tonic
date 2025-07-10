@@ -1,0 +1,834 @@
+<script>
+    class ViewModel {
+
+        async initializeAsync() {
+
+            const [
+                _,
+                authenticatedUser,
+                instructors,
+                registrations
+            ] =
+                await Promise.all([
+                    PromiseHelpers.promisifyEvent('DOMContentLoaded', document),
+                    ApiClient.fetch(ServerFunctions.getAuthenticatedUser, x => new AuthenticatedUserResponse(x)),
+                    ApiClient.fetch(ServerFunctions.getInstructors, x => x.map(y => new Instructor(y))),
+                    ApiClient.fetch(ServerFunctions.getRegistrations, x => x.map(y => new Registration(y))),
+                    // fetchAllPages(ServerFunctions.getStudents),
+                    // fetchAllPages(ServerFunctions.getClasses, x => new Class(x)),
+                    // fetchAllPages(ServerFunctions.getRooms, x => new Room(x))
+                ]);
+            
+            this._setPageLoading(true);
+
+            M.AutoInit();
+
+            this._initTabContent(authenticatedUser, instructors, registrations);
+
+            this._initTabs();
+
+            this._registerListeners();
+
+            this._setPageLoading(false);
+        }
+
+        _initTabContent(currentUser, instructors, registrations) {
+            this.currentUser = currentUser;
+
+            this.instructors = instructors;
+            this._setInstructorOptions(instructors);
+
+            this.registrations = registrations;
+            this._setRegistrations(registrations);
+        }
+
+        _initTabs() {
+            const tabsContainer = document.querySelector('.tabs');
+            const tabs = document.querySelectorAll('.tabs .tab');
+            const tabLinks = document.querySelectorAll('.tabs .tab a');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            const links = document.querySelectorAll('.section-link');
+
+            if (!tabsContainer || tabs.length === 0) return;
+
+            tabsContainer.addEventListener('click', (event) => {
+                event.preventDefault();
+
+                // return if not a tab link
+                const tabLink = event.target.closest('.tab a');
+                if (!tabLink) return;
+
+                const targetTab = tabLink.getAttribute('href');
+                const targetContent = document.querySelector(targetTab);
+
+                // Remove active class from all tabs and add it to the clicked tab
+                tabLinks.forEach((t) => {
+                    t.classList.toggle('active', t.getAttribute('href') === tabLink.getAttribute('href'))
+                });
+
+                // Toggle all tab contents
+                tabContents.forEach((content) => {
+                    content.hidden = content.id !== targetContent.id;
+                });
+            });
+
+            if (links.length === 0) {
+                console.warn(`No links found.`);
+                return;
+            }
+
+            links.forEach(link => {
+                link.addEventListener('click', (event) => {
+                    event.preventDefault();
+
+                    const dataSection = link.getAttribute('data-section');
+                    const tabSectionClass = `${dataSection}-tab`;
+                    tabs.forEach(section => {
+                        section.style.display = section.classList.contains(tabSectionClass)
+                            ? 'inline-block'
+                            : 'none';
+                    });
+
+                    const showingTabs = document.getElementsByClassName(tabSectionClass);
+                    if (showingTabs.length === 0) {
+                        console.warn(`No tabs found for section: ${sectionId}`);
+                        return;
+                    }
+
+                    // reinitialize tabs for the newly displayed section
+                    M.Tabs.init(tabsContainer);
+                    links.forEach(l => l.classList.toggle('active', l.getAttribute('data-section') === dataSection));
+
+                    // initialize first tab within the section
+                    const firstTabLink = showingTabs[1]?.querySelector('a');
+                    if (firstTabLink) {
+                        firstTabLink.click();
+                    }
+                });
+            });
+
+            const firstLink = links[0];
+            if (firstLink) {
+                firstLink.click();
+            }
+        }
+
+        _setPageLoading(isLoading) {
+            const loadingContainer = document.getElementById('page-loading-container');
+            const pageContent = document.getElementById('page-content');
+            const navMobile = document.getElementById('nav-mobile');
+
+            loadingContainer.style.display = isLoading ? 'flex' : 'none';
+            loadingContainer.hidden = !isLoading;
+
+            pageContent.hidden = isLoading;
+            navMobile.hidden = isLoading;
+        }
+
+        _setAdminRegistrationLoading(isLoading) {
+            const adminRegistrationLoadingContainer = document.getElementById('admin-registration-loading-container');
+            const adminRegistrationContainer = document.getElementById('admin-registration-container');
+
+            adminRegistrationLoadingContainer.hidden = !isLoading;
+            adminRegistrationContainer.hidden = isLoading;
+        }
+
+        _registerListeners() {
+
+            // when student search button is clicked
+            document.getElementById('student-search-btn').addEventListener('click', async (event) => {
+                event.preventDefault();
+
+                const searchInput = document.getElementById('student-search');
+                searchInput.classList.remove('invalid');
+
+                const searchValue = searchInput.value.trim();
+
+                // validate search button
+                if (searchValue.length < 2) {
+                    // add invalid class to search input
+                    searchInput.classList.add('invalid');
+
+                    return;
+                }
+
+                try {
+                    this._setAdminRegistrationLoading(true);
+                    
+                    let data = {
+                        name: searchValue
+                    };
+
+                    const students = await ApiClient.post(ServerFunctions.searchStudentsByName, data, x => x.map(y => new Student(y)));
+
+                    this._setStudentOptions(students ?? []);
+                } catch (error) {
+                    console.error('Error searching students:', error);
+                }
+                finally {
+                    this._setAdminRegistrationLoading(false);
+                }
+            });
+
+            // when instructor changes
+            document.getElementById('instructor-select-options-container').addEventListener('change', (event) => {
+                if (event.target.id !== 'instructor-select') {
+                    return;
+                }
+
+                event.preventDefault();
+                const selectedValue = event.target.value;
+
+                const currentInstructor = this.instructors.find(x => x.id === selectedValue);
+                this._setInstructorInstrumentOptions(currentInstructor);
+                this._setInstructorDayOptions(currentInstructor);
+
+                const instructorDaySelectedInfoContainer = document.getElementById('instructor-day-selected-info-container');
+                instructorDaySelectedInfoContainer.hidden = true;
+
+                const infoContainer = document.getElementById('instructor-selected-info-container');
+                infoContainer.hidden = !selectedValue;
+            });
+
+            // when day changes
+            document.getElementById('instructor-day-select-options-container').addEventListener('change', (event) => {
+                if (event.target.id !== 'day-select') {
+                    return;
+                }
+
+                event.preventDefault();
+                const selectedDay = event.target.value;
+
+                this._setInstructorDayStartTimeOptions();
+
+                const instructorDaySelectedInfoContainer = document.getElementById('instructor-day-selected-info-container');
+                instructorDaySelectedInfoContainer.hidden = !selectedDay;
+            });
+
+            // when instrument changes
+            document.getElementById('instrument-select-options-container').addEventListener('change', (event) => {
+                if (event.target.id !== 'instrument-select') {
+                    return;
+                }
+
+                event.preventDefault();
+                const selectedValue = event.target.value;
+                console.log('Instrument changed to:', selectedValue);
+            });
+
+            // when start time changes
+            document.getElementById('instructor-day-start-time-container').addEventListener('change', (event) => {
+                if (event.target.id !== 'start-time-select') {
+                    return;
+                }
+
+                const selectedValue = event.target.value;
+                console.log('Start time changed to:', selectedValue);
+            });
+
+            // when lesson length changes
+            document.getElementById('lesson-length-container').addEventListener('change', (event) => {
+                if (event.target.type !== 'radio') {
+                    return;
+                }
+
+                console.log('Lesson length changed to:', event.target.value);
+
+                this._setInstructorDayStartTimeOptions();
+            });
+
+            // when create is clicked
+            document.getElementById('create-registration-submit-btn').addEventListener('click', async (event) => {
+                event.preventDefault();
+
+                if (!this._validateRegistration()) {
+                    return;
+                }
+
+                try {
+                    this._setAdminRegistrationLoading(true);
+
+                    const data = this._getCreateRegistrationData();
+                    
+                    const newRegistration = await ApiClient.post(ServerFunctions.registerPrivateLesson, data, x => new Registration(x.newRegistration));
+
+                    // handle response
+                    console.log('Registration created:', newRegistration);
+                    M.toast({ html: 'Registration created successfully.' });
+
+                    this.registrations.push(newRegistration);
+                    this._setRegistrations(this.registrations);
+
+                    // clear students
+                    this._setStudentOptions([]);
+
+                    // transportation type
+                    const transportationTypeRadios = document.querySelectorAll('input[name="transportation-type"]');
+                    // check first
+                    if (transportationTypeRadios.length > 0) {
+                        transportationTypeRadios[0].checked = true;
+                    }
+
+                    // reset instructor
+                    const instructorSelect = document.getElementById('instructor-select');
+                    instructorSelect.value = '';
+
+                    // instrument
+                    this._setInstructorInstrumentOptions(null);
+
+                    // day
+                    this._setInstructorDayOptions(null);
+
+                    // lesson length
+                    const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
+                    // check first
+                    if (lessonLengthRadios.length > 0) {
+                        lessonLengthRadios[0].checked = true;
+                    }
+
+                    // start time
+                    this._setInstructorDayStartTimeOptions();
+
+                } catch (error) {
+                    console.error('Error creating registration:', error);
+                    M.toast({ html: 'Error creating registration.' });
+                } finally {
+                    this._setAdminRegistrationLoading(false);
+                }
+            });
+
+            // when delete icon tapped
+            document.getElementById('current-registrations-collection').addEventListener('click', async (event) => {
+                if (!event.target.classList.contains('delete-registration-icon')) {
+                    return;
+                }
+
+                event.preventDefault();
+                const registrationItem = event.target.closest('.collection-item');
+                const registrationIndex = Array.from(registrationItem.parentNode.children).indexOf(registrationItem);
+                const registrationToDelete = this.registrations[registrationIndex];
+
+                if (!registrationToDelete) return;
+
+                // confirm delete
+                if (!confirm(`Are you sure you want to delete?`)) {
+                    return;
+                }
+
+                try {
+                    this._setAdminRegistrationLoading(true);
+                    
+                    await ApiClient.post(ServerFunctions.unregisterPrivateLesson, { id: registrationToDelete.id });
+
+                    M.toast({ html: 'Registration deleted successfully.' });
+                    this.registrations.splice(registrationIndex, 1);
+                    this._setRegistrations(this.registrations);
+                } catch (error) {
+                        console.error('Error deleting registration:', error);
+                        M.toast({ html: 'Error deleting registration.' });
+                } finally {
+                    this._setAdminRegistrationLoading(false);
+                }
+            });
+        };
+
+        _validateRegistration() {
+            const registrationData = this._getCreateRegistrationData();
+
+            const isValid =
+                registrationData.studentId
+                && registrationData.transportationType
+                && registrationData.instructorId
+                && registrationData.instrument
+                && registrationData.day
+                && registrationData.startTime
+                && registrationData.length;
+
+            // TODO additional validation for start time/length is valid (with api call/response)
+
+            if (!isValid) {
+                const errors = [];
+            
+                if (!registrationData.studentId) {
+                    errors.push('Student');
+                }
+
+                if (!registrationData.transportationType) {
+                    errors.push('Transportation Type');
+                }
+
+                if (!registrationData.instructorId) {
+                    errors.push('Instructor');
+                }
+
+                if (!registrationData.instrument) {
+                    errors.push('Instrument');
+                }
+                
+                if (!registrationData.day) {
+                    errors.push('Day');
+                }
+
+                if (!registrationData.startTime) {
+                    errors.push('Start Time');
+                }
+                
+                if (!registrationData.length) {
+                    errors.push('Lesson Length');
+                }
+
+                M.toast({ html: `Please fill out the following fields:<br>${errors.join('<br>')}` });
+            }
+
+            return isValid;
+        }
+
+        _getCreateRegistrationData() {
+            // get student
+            const studentSelect = document.getElementById('student-select');
+            const studentId = studentSelect.value;
+
+            // get selected length
+            const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
+            const checkedRadio = Array.from(lessonLengthRadios).find(radio => radio.checked);
+
+            // get selected instructor
+            const instructorSelect = document.getElementById('instructor-select');
+
+            // get selected instrument
+            const instrumentSelect = document.getElementById('instrument-select');
+
+            // get selected day
+            const daySelect = document.getElementById('day-select');
+
+            // get selected start time
+            const startTimeSelect = document.getElementById('start-time-select');
+            const startTimeDuration = DurationHelpers.minutesToDuration(startTimeSelect.value);
+            const formattedStartTime = DurationHelpers.formatDurationTo24Hour(startTimeDuration);
+
+            // get transportation type response
+            const transportationType = document.querySelector('input[name="transportation-type"]:checked');
+
+            // add to object
+            return {
+                studentId: studentId,
+                transportationType: transportationType ? transportationType.value : null,
+                instructorId: instructorSelect.value,
+                instrument: instrumentSelect.value,
+                day: daySelect.value,
+                startTime: formattedStartTime,
+                length: checkedRadio ? checkedRadio.value : null
+            };
+        }
+
+        _setInstructorOptions(instructors) {
+            if (!instructors || instructors.length === 0) {
+                this._updateSelectOptions(
+                    'instructor-select',
+                    [],
+                    'No instructors available');
+                return;
+            }
+            this._updateSelectOptions(
+                'instructor-select',
+                instructors.map(instructor => ({
+                    value: instructor.id,
+                    label: `${instructor.lastName}, ${instructor.firstName}`
+                })),
+                'Select an instructor');
+        }
+
+        _setRegistrations(registrations) {
+            const currentRegistrations = document.getElementById('current-registrations');
+            const currentRegistrationsCollection = document.getElementById('current-registrations-collection');
+
+            try {
+                this._clearCurrentRegistrations();
+
+                // if there are none
+                if (!registrations || registrations.length === 0) {
+                    // add no registrations message
+                    const li = document.createElement('li');
+                    li.className = 'collection-item';
+                    li.innerHTML = '<div>No current registrations.</div>';
+                    currentRegistrationsCollection.appendChild(li);
+
+                    return;
+                }
+
+                registrations.forEach(registration => {
+                    const li = document.createElement('a');
+                    li.className = 'collection-item';
+                    const instructor = this.instructors.find(x => x.id === registration.instructorId);
+                    li.innerHTML = `
+                    <div>
+                        ${registration.day}: ${registration.startTime} for ${registration.length} minutes, 
+                        ${registration.instrument} with 
+                        ${instructor.firstName} ${instructor.lastName}
+                        <a href="#!" class="secondary-content">
+                            <i class="delete-registration-icon material-icons red-text text-darken-4">delete_forever</i>
+                        </a>
+                    </div>`;
+                    currentRegistrationsCollection.appendChild(li);
+                });
+
+            } finally {
+                currentRegistrations.hidden = false;
+            }
+        }
+
+        _clearCurrentRegistrations() {
+            // clear collection
+            const currentRegistrationsCollection = document.getElementById('current-registrations-collection');
+            while (currentRegistrationsCollection.firstChild) {
+                currentRegistrationsCollection.removeChild(currentRegistrationsCollection.firstChild);
+            }
+        }
+
+        _setInstructorInstrumentOptions(instructor) {
+            if (!instructor) {
+                this._updateSelectOptions(
+                    'instrument-select',
+                    [],
+                    'Select an instrument');
+                return;
+            }
+
+            const instruments = [
+                instructor.instrument1,
+                instructor.instrument2,
+                instructor.instrument3,
+                instructor.instrument4
+            ]
+                .filter(x => x);
+
+            this._updateSelectOptions(
+                'instrument-select',
+                instruments.map(instrument => ({
+                    value: instrument,
+                    label: instrument
+                })),
+                'Select an instrument');
+        }
+
+        _setInstructorDayOptions(instructor) {
+            try {
+                if (!instructor) {
+                    this._updateSelectOptions(
+                        'day-select',
+                        [],
+                        'Select a day');
+                    return;
+                }
+
+                const weekDays = {
+                    0: { label: 'Monday', startTime: instructor.mondayStartTime },
+                    1: { label: 'Tuesday', startTime: instructor.tuesdayStartTime },
+                    2: { label: 'Wednesday', startTime: instructor.wednesdayStartTime },
+                    3: { label: 'Thursday', startTime: instructor.thursdayStartTime },
+                    4: { label: 'Friday', startTime: instructor.fridayStartTime }
+                };
+
+                let days = [];
+                for (const [index, day] of Object.entries(weekDays)) {
+                    if (day.startTime) {
+                        days.push({
+                            value: index,
+                            label: day.label
+                        });
+                    }
+                }
+
+                this._updateSelectOptions(
+                    'day-select',
+                    days,
+                    'Select a day');
+
+            } finally {
+                const daySelectedInfoContainer = document.getElementById('instructor-day-selected-info-container');
+                daySelectedInfoContainer.hidden = true;
+            }
+        }
+
+        _setInstructorDayStartTimeOptions() {
+
+            const selectedInstructorId = document.getElementById('instructor-select').value;
+            const selectedDay = document.getElementById('day-select').value;
+            const selectedLength = document.querySelector('input[name="lesson-length"]:checked')?.value * 1;
+
+            if (!selectedInstructorId || !selectedDay || !selectedLength) {
+                this._updateSelectOptions(
+                    'start-time-select',
+                    [],
+                    'Select a start time');
+
+                // reset to first option
+                const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
+                if (lessonLengthRadios.length > 0) {
+                    lessonLengthRadios[0].checked = true;
+                }
+                return;
+            }
+
+            const instructor = this.instructors.find(x => x.id === selectedInstructorId);
+
+            const startTimes = [
+                instructor.mondayStartTime,
+                instructor.tuesdayStartTime,
+                instructor.wednesdayStartTime,
+                instructor.thursdayStartTime,
+                instructor.fridayStartTime
+            ];
+
+            const endTimes = [
+                instructor.mondayEndTime,
+                instructor.tuesdayEndTime,
+                instructor.wednesdayEndTime,
+                instructor.thursdayEndTime,
+                instructor.fridayEndTime
+            ];
+
+            const dayIndex = selectedDay * 1; // Convert string to number
+            const startTime = startTimes[dayIndex];
+            const endTime = endTimes[dayIndex];
+            const options = [];
+
+            if (!startTime || !endTime) {
+                this._updateSelectOptions(
+                    'start-time-select',
+                    [],
+                    'Not available');
+                return;
+            }
+
+            const startTimeDuration = DurationHelpers.stringToDuration(startTime);
+            const endTimeDuration = DurationHelpers.stringToDuration(endTime);
+
+            for (let i = (startTimeDuration.hours * 60 + startTimeDuration.minutes); i <= (endTimeDuration.hours * 60 + endTimeDuration.minutes) - selectedLength; i += 15) {
+                const duration = DurationHelpers.minutesToDuration(i);
+
+                options.push({
+                    value: i,
+                    label: DurationHelpers.formatDurationTo12Hour(duration)
+                });
+            }
+
+            this._updateSelectOptions(
+                'start-time-select',
+                options,
+                'Select a start time');
+        }
+
+        _setStudentOptions(students) {
+            this._updateSelectOptions(
+                'student-select',
+                students.map(student => ({
+                    value: student.id,
+                    label: `${student.lastName}, ${student.firstName}`
+                })),
+                'Select a student');
+
+            // show/hide student container
+            const studentSelectContainer = document.getElementById('student-searched-options-container');
+            studentSelectContainer.hidden = students.length === 0;
+
+            document.getElementById('student-select');
+            document.getElementById('student-search').value = '';
+            M.updateTextFields();
+        }
+
+        _updateSelectOptions(selectId, options, defaultOptionText, selectClasses = '') {
+            const select = document.getElementById(selectId);
+
+            if (!select) {
+                console.error(`Select element with ID "${selectId}" not found.`);
+                return;
+            }
+
+            // get current selected option
+            const currentSelectedValue = select.value;
+
+            // Clear existing options
+            select.innerHTML = '';
+
+            // Create a default option
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = defaultOptionText;
+            select.appendChild(defaultOption);
+
+            // Populate new options
+            options.forEach((option) => {
+                const opt = document.createElement('option');
+                opt.value = option.value;
+                opt.textContent = option.label;
+
+                if (currentSelectedValue && option.value == currentSelectedValue) {
+                    opt.selected = true;
+                }
+                select.appendChild(opt);
+            });
+
+            M.FormSelect.init(select, {
+                classes: `${selectId} ${selectClasses}`,
+                dropdownOptions: {
+                    alignment: 'left',
+                    coverTrigger: false,
+                    constrainWidth: false
+                }
+            });
+        }
+
+        _setInstructors(instructors) {
+            this.updateTableAndMessage(
+                'instructors',
+                instructors,
+                (instructor) => [instructor.fullName, instructor.email, instructor.instrument1]
+            );
+        }
+
+        // updateTableAndMessage(tbodyId, data, valueExtractor, rowsPerPage = 10) {
+        //     const tbody = document.getElementById(`${tbodyId}-tbody`);
+        //     const emptyMessage = document.getElementById(`${tbodyId}-empty-message`);
+        //     const paginationContainer = document.getElementById(`${tbodyId}-pagination`);
+        //     const table = tbody.closest('table');
+
+        //     if (!data || data.length === 0) {
+        //         emptyMessage.hidden = false;
+        //         table.hidden = true;
+        //         paginationContainer.innerHTML = '';
+        //         return;
+        //     }
+
+        //     emptyMessage.hidden = true;
+        //     table.hidden = false;
+
+        //     // Pagination logic
+        //     const totalPages = Math.ceil(data.length / rowsPerPage);
+        //     let currentPage = 1;
+
+        //     const renderTableRows = (page) => {
+        //         tbody.innerHTML = '';
+        //         const start = (page - 1) * rowsPerPage;
+        //         const end = start + rowsPerPage;
+        //         const rows = data.slice(start, end).map(valueExtractor).map(
+        //             cells => {
+        //                 const tr = document.createElement('tr');
+        //                 cells.forEach((cell) => {
+        //                     const td = document.createElement('td');
+        //                     td.textContent = cell;
+        //                     tr.appendChild(td);
+        //                 });
+        //                 return tr;
+        //             });
+        //         rows.forEach((row) => tbody.appendChild(row));
+        //     };
+
+        //     const renderPagination = () => {
+        //         paginationContainer.innerHTML = '';
+        //         const ul = document.createElement('ul');
+        //         ul.className = 'pagination';
+
+        //         // Previous button
+        //         const prevLi = document.createElement('li');
+        //         prevLi.className = currentPage === 1 ? 'disabled' : 'waves-effect';
+        //         prevLi.innerHTML = `<a href="#!"><i class="material-icons">chevron_left</i></a>`;
+        //         prevLi.addEventListener('click', () => {
+        //             if (currentPage > 1) {
+        //                 currentPage--;
+        //                 renderTableRows(currentPage);
+        //                 renderPagination();
+        //             }
+        //         });
+        //         ul.appendChild(prevLi);
+
+        //         // Page numbers
+        //         for (let i = 1; i <= totalPages; i++) {
+        //             const pageLi = document.createElement('li');
+        //             pageLi.className = i === currentPage ? 'active' : 'waves-effect';
+        //             pageLi.innerHTML = `<a href="#!">${i}</a>`;
+        //             pageLi.addEventListener('click', () => {
+        //                 currentPage = i;
+        //                 renderTableRows(currentPage);
+        //                 renderPagination();
+        //             });
+        //             ul.appendChild(pageLi);
+        //         }
+
+        //         // Next button
+        //         const nextLi = document.createElement('li');
+        //         nextLi.className = currentPage === totalPages ? 'disabled' : 'waves-effect';
+        //         nextLi.innerHTML = `<a href="#!"><i class="material-icons">chevron_right</i></a>`;
+        //         nextLi.addEventListener('click', () => {
+        //             if (currentPage < totalPages) {
+        //                 currentPage++;
+        //                 renderTableRows(currentPage);
+        //                 renderPagination();
+        //             }
+        //         });
+        //         ul.appendChild(nextLi);
+
+        //         paginationContainer.appendChild(ul);
+        //     };
+
+        //     renderTableRows(currentPage);
+        //     renderPagination();
+        // }
+
+        // setStudents(students) {
+        //     this.updateTableAndMessage(
+        //         'students-tbody',
+        //         'students-empty-message',
+        //         studentsData,
+        //         (student) => {
+        //             const tr = document.createElement('tr');
+        //             tr.innerHTML = `
+        //                 <td>${student.fullName}</td>
+        //                 <td>${student.studentId}</td>
+        //                 <td>${student.grade}</td>
+        //             `;
+        //             return tr;
+        //         }
+        //     );
+        // }
+
+        // setClasses(classes, instructors) {
+        //     this.updateTableAndMessage(
+        //         'classes-tbody',
+        //         'classes-empty-message',
+        //         classes,
+        //         (classItem) => [classItem.title, instructors.find(x => x.id === classItem.instructorId).fullName, classItem.day]
+        //     );
+        // }
+
+        // setRegistrations(registrations, students, instructors, rooms) {
+        //     this.updateTableAndMessage(
+        //         'registrations-tbody',
+        //         'registrations-empty-message',
+        //         registrations,
+        //         (registration) => {
+        //             const student = students.find(x => x.id === registration.studentId);
+        //             const instructor = instructors.find(x => x.id === registration.instructorId);
+        //             const room = rooms.find(x => x.id === registration.roomId);
+
+        //             return [
+        //                 student.fullName,
+        //                 instructor.fullName,
+        //                 room.formattedName,
+        //                 registration.instrument
+        //             ];
+        //         }
+        //     );
+        // }
+
+        // setRooms(rooms) {
+        //     this.updateTableAndMessage(
+        //         'rooms-tbody',
+        //         'rooms-empty-message',
+        //         rooms,
+        //         (room) => [room.formattedName]
+        //     );
+        // }
+    }
+</script>

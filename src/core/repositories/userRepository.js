@@ -1,64 +1,87 @@
 class UserRepository {
-    
+
     constructor(dbClient) {
         this.dbClient = dbClient;
-        this.initialize_();
     }
 
-    getSignedInUser() {
-        this.throwIfNoUser_();
-
-        return this.authenticatedUser;
+    getAdmins() {
+        return RepositoryHelper.getAndSetData(
+            () => this.admins,
+            () => this.admins =
+                this.dbClient.getAllRecords(
+                    Keys.ADMINS,
+                    x => new Admin(...x)),
+            Keys.ADMINS);
     }
 
-    isAuthenticated() {
-        return !!this.authenticatedUser;
+    getAdminById(id) {
+        return this.getAdmins().find(x => x.id === id);
     }
 
-    isAdmin() {
-        this.throwIfNoUser_();
-        this.throwIfNoAdmins_();
-
-        return isAuthenticated() && this.admins.includes(this.authenticatedUser);
+    isAdmin(id) {
+        return id && this.getAdminById(id);
     }
 
-    addUsers(users) {
-        this.users = this.users.concat(users);
+    getInstructors() {
+        return RepositoryHelper.getAndSetData(
+            () => this.instructors,
+            () => this.instructors =
+                this.dbClient.getAllRecords(
+                    Keys.INSTRUCTORS,
+                    x => new Instructor(...x)),
+            Keys.INSTRUCTORS);
     }
 
-    findUserById(id) {
-        return this.users.find(user => user.id === id);
-    }
-    
-    initialize_() {
-        // set authenticated user
-        this.authenticatedUser = Authenticator.getSignedInUser();
-        this.throwIfNoUser_();
-
-        // get admins
-        // this.admins = this.dbClient.getAdminEmails();
-        // this.throwIfNoAdmins_();
-        
-        // // get users
-        // this.users = this.dbClient.getAllUsers();
-        // throwIfNoPeople_();
+    getInstructorById(id) {
+        return this.getInstructors().find(x => x.id === id);
     }
 
-    throwIfNoUser_() {
-        if (!this.authenticatedUser) {
-            throw new Error('No authenticated user found');
-        }
+    getStudents() {
+        return RepositoryHelper.getAndSetData(
+            () => this.students,
+            () => this.students =
+                this.dbClient.getAllRecords(
+                    Keys.STUDENTS,
+                    x => new Student(...x)),
+            Keys.STUDENTS);
     }
 
-    throwIfNoAdmins_() {
-        if (!this.admins || this.admins.length === 0) {
-            throw new Error('No admins found');
-        }
+    getStudentById(id) {
+        return this.getStudents().find(x => x.id === id);
     }
 
-    throwIfNoPeople_() {
-        if (!this.users || this.users.length === 0) {
-            throw new Error('No users found');
-        }
+    searchStudentsByName(name) {
+        return this.dbClient.getFilteredRecords(
+            Keys.STUDENTS,
+            x => new Student(...x),
+            x => x.firstName.toLowerCase().includes(name.toLowerCase()) || x.lastName.toLowerCase().includes(name.toLowerCase()));
+    }
+
+    getParents() {
+        return RepositoryHelper.getAndSetData(
+            () => this.parents,
+            () => this.parents =
+                this.dbClient.getAllRecords(
+                    Keys.PARENTS,
+                    x => new Parent(...x)),
+            Keys.PARENTS);
+    }
+
+    getParentById(id) {
+        return this.getParents().find(x => x.id === id);
+    }
+
+    getRooms() {
+        return RepositoryHelper.getAndSetData(
+            () => this.rooms,
+            () => this.rooms =
+                this.dbClient.getAllRecords(
+                    Keys.ROOMS,
+                    x => new Room(...x)),
+            Keys.ROOMS);
+    }
+
+    getRoomById(id) {
+        return this.getRooms().find(x => x.id === id);
     }
 }

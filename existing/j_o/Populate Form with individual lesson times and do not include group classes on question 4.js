@@ -7,7 +7,6 @@ function populateFormOnOpen() {
   // Gather student names dynamically from form questions only once
   let studentSelectionItem = form.getItems()[1].asListItem();
   let studentNames = studentSelectionItem.getChoices().map(x => x.getValue());
-  debugger
 
   // Cache form items to avoid multiple calls to getItems
   const formItems = form.getItems(FormApp.ItemType.CHECKBOX);
