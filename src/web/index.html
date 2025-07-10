@@ -161,7 +161,8 @@
       getRegistrations: 'getRegistrations',
       getRooms: 'getRooms',
       searchStudentsByName: 'searchStudentsByName',
-      createRegistration: 'createRegistration'
+      registerPrivateLesson: 'registerPrivateLesson',
+      unregisterPrivateLesson: 'unregisterPrivateLesson',
     };
 
     const viewModel = new ViewModel();
@@ -473,7 +474,6 @@
                   <option value="" disabled selected>Select a student</option>
                 </select>
                 <label>Student</label>
-                <span class="helper-text" data-error="Please select a student"></span>
               </div>
 
               <!-- Transportation Type -->
@@ -498,7 +498,6 @@
               <select id="instructor-select" required>
               </select>
               <label for="instructor-select">Instructor</label>
-              <span class="helper-text" data-error="Please select an instructor"></span>
             </div>
 
             <div id="instructor-selected-info-container" hidden>
@@ -508,7 +507,6 @@
                 <select id="instrument-select" required>
                 </select>
                 <label for="instrument-select">Instrument</label>
-                <span class="helper-text" data-error="Please select an instrument"></span>
               </div>
 
               <!-- Day -->
@@ -516,7 +514,6 @@
                 <select id="day-select" required>
                 </select>
                 <label for="day-select">Day</label>
-                <span class="helper-text" data-error="Please select a day"></span>
               </div>
 
               <div id="instructor-day-selected-info-container" hidden>
@@ -549,7 +546,6 @@
                   <select id="start-time-select" required>
                   </select>
                   <label for="start-time-select">Start Time</label>
-                  <span class="helper-text" data-error="Please select a start time"></span>
                 </div>
               </div>
 

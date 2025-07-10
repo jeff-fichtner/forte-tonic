@@ -6,7 +6,6 @@ class GoogleDbClient {
     this.externalSpreadsheet = SpreadsheetApp.openById(settings.externalSpreadsheetId);
     ErrorHandling.throwIfNo(this.externalSpreadsheet, 'No external spreadsheet found');
 
-
     this.workingSpreadsheet = SpreadsheetApp.openById(settings.workingSpreadsheetId);
     ErrorHandling.throwIfNo(this.workingSpreadsheet, 'No working spreadsheet found');
 
@@ -31,14 +30,71 @@ class GoogleDbClient {
     const registrationsSheet = this.workingSpreadsheet.getSheetByName(Keys.REGISTRATIONS);
     ErrorHandling.throwIfNo(registrationsSheet, `No ${Keys.REGISTRATIONS} sheet found`);
 
-    this.workingSheets = {
-      [Keys.ADMINS]: adminsSheet,
-      [Keys.INSTRUCTORS]: instructorsSheet,
-      [Keys.STUDENTS]: studentsSheet,
-      [Keys.PARENTS]: parentsSheet,
-      [Keys.ROOMS]: roomsSheet,
-      [Keys.CLASSES]: classesSheet,
-      [Keys.REGISTRATIONS]: registrationsSheet
+    this.workingSheetInfo = {
+      [Keys.ADMINS]: {
+        sheet: adminsSheet,
+        id: (record) => record.id,
+        process: (record, audit) => {
+          // record.createdAt = new Date();
+          // record.createdBy = audit;
+          return record;
+        }
+      },
+      [Keys.INSTRUCTORS]: {
+        sheet: instructorsSheet,
+        id: (record) => record.id,
+        process: (record, audit) => {
+          // record.createdAt = new Date();
+          // record.createdBy = audit;
+          return record;
+        }
+      },
+      [Keys.STUDENTS]: {
+        sheet: studentsSheet,
+        id: (record) => record.id,
+        process: (record, audit) => {
+          // record.createdAt = new Date();
+          // record.createdBy = audit;
+          return record;
+        }
+      },
+      [Keys.PARENTS]: {
+        sheet: parentsSheet,
+        id: (record) => record.id,
+        process: (record, audit) => {
+          // record.createdAt = new Date();
+          // record.createdBy = audit;
+          return record;
+        }
+      },
+      [Keys.ROOMS]: {
+        sheet: roomsSheet,
+        id: (record) => record.id,
+        process: (record, audit) => {
+          // record.createdAt = new Date();
+          // record.createdBy = audit;
+          return record;
+        }
+      },
+      [Keys.CLASSES]: {
+        sheet: classesSheet,
+        id: (record) => record.id,
+        process: (record, audit) => {
+          // record.createdAt = new Date();
+          // record.createdBy = audit;
+          return record;
+        }
+      },
+      [Keys.REGISTRATIONS]: {
+        sheet: registrationsSheet,
+        id: (record) => record.id,
+        process: (record, audit) => {
+          record.id = `${record.studentId}_${record.instructorId}_${record.day}_${record.startTime}`;
+          record.createdAt = new Date();
+          record.createdBy = audit;
+          return record;
+        }
+      }
     }
 
     // TODO: set up a cache separate from working sheet
@@ -50,7 +106,7 @@ class GoogleDbClient {
   }
 
   getAllRecords(sheetKey, mapFunc) {
-    const sheet = this.workingSheets[sheetKey];
+    const { sheet } = this.workingSheetInfo[sheetKey];
     const data = sheet.getDataRange().getValues();
 
     // Map the data to objects using the provided mapping function
@@ -77,16 +133,30 @@ class GoogleDbClient {
     return filteredRecords;
   }
   
-  insertRecord(sheetKey, record, index = -1) {
-    // const sheet = this.getSheetByNameOrCreate_(sheetKey);
-    // const lastRow = sheet.getLastRow();
-    // const newRow = lastRow + 1;
-    // const range = sheet.getRange(newRow, 1, 1, record.length);
-    // range.setValues([record]);
+  appendRecord(sheetKey, record, audit) {
+    const { sheet, process } = this.workingSheetInfo[sheetKey];
+    const clonedRecord = CloneUtility.clone(record);
+    const processedRecord = process(clonedRecord, audit);
+    
+    sheet.appendRow(Object.values(processedRecord));
+    // TODO audit
   }
 
-  deleteRecord(sheetKey, findFunc) {
+  deleteRecord(sheetKey, recordId, audit) {
+    const { sheet, id } = this.workingSheetInfo[sheetKey];
+    const data = sheet.getDataRange().getValues();
+    
+    // Find the row to delete based on the ID
+    const rowIndex = data.findIndex(row => row[0] === recordId);
+    
+    if (rowIndex !== -1) {
+      sheet.deleteRow(rowIndex + 1); // +1 because getDataRange() includes header
+      Logger.log(`Record with ID ${id} deleted from ${sheetKey}.`);
+    } else {
+      Logger.log(`Record with ID ${id} not found in ${sheetKey}.`);
+    }
 
+    // TODO audit
   }
 
   getOrCreateSpreadsheetByFolderAndName_(folder, spreadsheetName) {

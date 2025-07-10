@@ -1,21 +1,29 @@
 <script>
     class DurationHelpers {
-        // convert 15:00 into luxon duration
+        // Converts "HH:MM" to a Luxon Duration object
         static stringToDuration(timeString) {
             const [hours, minutes] = timeString.split(':').map(Number);
             return Duration.fromObject({ hours, minutes });
         }
 
-        // convert minutes into luxon duration
+        // Converts total minutes into a Luxon Duration object
         static minutesToDuration(minutes) {
             return Duration.fromObject({ minutes });
         }
-
-        static formatDuration(duration) {
+        
+        // Converts a Luxon Duration object to a string in "h:mm a" format
+        static formatDurationTo12Hour(duration) {
             // Add the duration to midnight (start of the day)
             const dateTime = DateTime.fromObject({ hour: 0, minute: 0 }).plus(duration);
 
             return dateTime.toFormat('h:mm a');
+        }
+
+        // Converts a Luxon Duration object to a string in "HH:mm" format
+        static formatDurationTo24Hour(duration) {
+            const dateTime = DateTime.fromObject({ hour: 0, minute: 0 }).plus(duration);
+
+            return dateTime.toFormat('HH:mm');
         }
     }
 </script>

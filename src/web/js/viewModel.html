@@ -12,13 +12,13 @@
                 await Promise.all([
                     PromiseHelpers.promisifyEvent('DOMContentLoaded', document),
                     ApiClient.fetch(ServerFunctions.getAuthenticatedUser, x => new AuthenticatedUserResponse(x)),
-                    ApiClient.fetchAllPages(ServerFunctions.getInstructors, x => new Instructor(x)),
-                    ApiClient.fetchAllPages(ServerFunctions.getRegistrations, x => new Registration(x)),
+                    ApiClient.fetch(ServerFunctions.getInstructors, x => x.map(y => new Instructor(y))),
+                    ApiClient.fetch(ServerFunctions.getRegistrations, x => x.map(y => new Registration(y))),
                     // fetchAllPages(ServerFunctions.getStudents),
                     // fetchAllPages(ServerFunctions.getClasses, x => new Class(x)),
                     // fetchAllPages(ServerFunctions.getRooms, x => new Room(x))
                 ]);
-
+            
             this._setPageLoading(true);
 
             M.AutoInit();
@@ -101,7 +101,7 @@
                     links.forEach(l => l.classList.toggle('active', l.getAttribute('data-section') === dataSection));
 
                     // initialize first tab within the section
-                    const firstTabLink = showingTabs[0]?.querySelector('a');
+                    const firstTabLink = showingTabs[1]?.querySelector('a');
                     if (firstTabLink) {
                         firstTabLink.click();
                     }
@@ -243,7 +243,6 @@
                 event.preventDefault();
 
                 if (!this._validateRegistration()) {
-                    M.toast({ html: 'Please fill out all fields.' });
                     return;
                 }
 
@@ -251,15 +250,45 @@
                     this._setAdminRegistrationLoading(true);
 
                     const data = this._getCreateRegistrationData();
-
-                    const response = await ApiClient.post(ServerFunctions.createRegistration, data, x => new Registration(x));
+                    
+                    const newRegistration = await ApiClient.post(ServerFunctions.registerPrivateLesson, data, x => new Registration(x.newRegistration));
 
                     // handle response
-                    console.log('Registration created:', response.registration);
+                    console.log('Registration created:', newRegistration);
                     M.toast({ html: 'Registration created successfully.' });
 
-                    this.registrations.push(response.registration);
+                    this.registrations.push(newRegistration);
                     this._setRegistrations(this.registrations);
+
+                    // clear students
+                    this._setStudentOptions([]);
+
+                    // transportation type
+                    const transportationTypeRadios = document.querySelectorAll('input[name="transportation-type"]');
+                    // check first
+                    if (transportationTypeRadios.length > 0) {
+                        transportationTypeRadios[0].checked = true;
+                    }
+
+                    // reset instructor
+                    const instructorSelect = document.getElementById('instructor-select');
+                    instructorSelect.value = '';
+
+                    // instrument
+                    this._setInstructorInstrumentOptions(null);
+
+                    // day
+                    this._setInstructorDayOptions(null);
+
+                    // lesson length
+                    const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
+                    // check first
+                    if (lessonLengthRadios.length > 0) {
+                        lessonLengthRadios[0].checked = true;
+                    }
+
+                    // start time
+                    this._setInstructorDayStartTimeOptions();
 
                 } catch (error) {
                     console.error('Error creating registration:', error);
@@ -270,7 +299,7 @@
             });
 
             // when delete icon tapped
-            document.getElementById('current-registrations-collection').addEventListener('click', (event) => {
+            document.getElementById('current-registrations-collection').addEventListener('click', async (event) => {
                 if (!event.target.classList.contains('delete-registration-icon')) {
                     return;
                 }
@@ -287,28 +316,28 @@
                     return;
                 }
 
-                ApiClient.post(ServerFunctions.deleteRegistration, { id: registrationToDelete.id })
-                    .then(() => {
-                        M.toast({ html: 'Registration deleted successfully.' });
-                        this.registrations.splice(registrationIndex, 1);
-                        this._setRegistrations(this.registrations);
-                    })
-                    .catch(error => {
+                try {
+                    this._setAdminRegistrationLoading(true);
+                    
+                    await ApiClient.post(ServerFunctions.unregisterPrivateLesson, { id: registrationToDelete.id });
+
+                    M.toast({ html: 'Registration deleted successfully.' });
+                    this.registrations.splice(registrationIndex, 1);
+                    this._setRegistrations(this.registrations);
+                } catch (error) {
                         console.error('Error deleting registration:', error);
                         M.toast({ html: 'Error deleting registration.' });
-                    });
+                } finally {
+                    this._setAdminRegistrationLoading(false);
+                }
             });
         };
 
         _validateRegistration() {
-            // reset validation
-            const invalidInputs = document.querySelectorAll('.invalid');
-            invalidInputs.forEach(input => input.classList.remove('invalid'));
-
             const registrationData = this._getCreateRegistrationData();
 
             const isValid =
-                registrationData.selectedStudentId
+                registrationData.studentId
                 && registrationData.transportationType
                 && registrationData.instructorId
                 && registrationData.instrument
@@ -316,32 +345,40 @@
                 && registrationData.startTime
                 && registrationData.length;
 
-            // TODO additional validation for start time/length is valid
+            // TODO additional validation for start time/length is valid (with api call/response)
 
             if (!isValid) {
-                const studentSelect = document.getElementById('student-select');
-                studentSelect.classList.toggle('invalid', !registrationData.selectedStudentId);
+                const errors = [];
+            
+                if (!registrationData.studentId) {
+                    errors.push('Student');
+                }
 
                 if (!registrationData.transportationType) {
-                    M.toast({ html: 'Please select a transportation type.' });
+                    errors.push('Transportation Type');
                 }
 
-                // set invalid class on inputs
-                const instructorSelect = document.getElementById('instructor-select');
-                instructorSelect.classList.toggle('invalid', !registrationData.instructorId);
+                if (!registrationData.instructorId) {
+                    errors.push('Instructor');
+                }
 
-                const instrumentSelect = document.getElementById('instrument-select');
-                instrumentSelect.classList.toggle('invalid', !registrationData.instrument);
+                if (!registrationData.instrument) {
+                    errors.push('Instrument');
+                }
+                
+                if (!registrationData.day) {
+                    errors.push('Day');
+                }
 
-                const daySelect = document.getElementById('day-select');
-                daySelect.classList.toggle('invalid', !registrationData.day);
-
-                const startTimeSelect = document.getElementById('start-time-select');
-                startTimeSelect.classList.toggle('invalid', !registrationData.startTime);
-
+                if (!registrationData.startTime) {
+                    errors.push('Start Time');
+                }
+                
                 if (!registrationData.length) {
-                    M.toast({ html: 'Please select a lesson length.' });
+                    errors.push('Lesson Length');
                 }
+
+                M.toast({ html: `Please fill out the following fields:<br>${errors.join('<br>')}` });
             }
 
             return isValid;
@@ -350,7 +387,7 @@
         _getCreateRegistrationData() {
             // get student
             const studentSelect = document.getElementById('student-select');
-            const selectedStudentId = studentSelect.value;
+            const studentId = studentSelect.value;
 
             // get selected length
             const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
@@ -367,18 +404,20 @@
 
             // get selected start time
             const startTimeSelect = document.getElementById('start-time-select');
+            const startTimeDuration = DurationHelpers.minutesToDuration(startTimeSelect.value);
+            const formattedStartTime = DurationHelpers.formatDurationTo24Hour(startTimeDuration);
 
             // get transportation type response
             const transportationType = document.querySelector('input[name="transportation-type"]:checked');
 
             // add to object
             return {
-                selectedStudentId: selectedStudentId,
+                studentId: studentId,
                 transportationType: transportationType ? transportationType.value : null,
                 instructorId: instructorSelect.value,
                 instrument: instrumentSelect.value,
                 day: daySelect.value,
-                startTime: startTimeSelect.value,
+                startTime: formattedStartTime,
                 length: checkedRadio ? checkedRadio.value : null
             };
         }
@@ -421,11 +460,12 @@
                 registrations.forEach(registration => {
                     const li = document.createElement('a');
                     li.className = 'collection-item';
+                    const instructor = this.instructors.find(x => x.id === registration.instructorId);
                     li.innerHTML = `
                     <div>
-                        ${registration.day}: ${registration.startTime} - ${registration.endTime}, 
-                        ${registration.instrument} (${registration.lessonType}) with 
-                        ${registration.instructorLastName}, ${registration.instructorFirstName}
+                        ${registration.day}: ${registration.startTime} for ${registration.length} minutes, 
+                        ${registration.instrument} with 
+                        ${instructor.firstName} ${instructor.lastName}
                         <a href="#!" class="secondary-content">
                             <i class="delete-registration-icon material-icons red-text text-darken-4">delete_forever</i>
                         </a>
@@ -570,7 +610,7 @@
 
                 options.push({
                     value: i,
-                    label: DurationHelpers.formatDuration(duration)
+                    label: DurationHelpers.formatDurationTo12Hour(duration)
                 });
             }
 

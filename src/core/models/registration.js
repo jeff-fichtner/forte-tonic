@@ -3,36 +3,32 @@ class Registration {
     constructor(
         id,
         studentId,
+        instructorId,
+        day,
         startTime,
         length,
-        lessonType,
-        day,
-        instructorId,
+        registrationType,
         roomId,
         instrument,
-        cost,
-        fallCost,
-        winterCost,
-        springCost,
-        enrollmentType,
         transportationType,
-        notes) {
+        notes,
+        expectedStartDate,
+        createdAt,
+        createdBy) {
 
         this.id = id;
         this.studentId = studentId;
+        this.instructorId = instructorId;
+        this.day = day;
         this.startTime = startTime;
         this.length = length;
-        this.lessonType = lessonType;
-        this.day = day;
-        this.instructorId = instructorId;
+        this.registrationType = registrationType;
         this.roomId = roomId;
         this.instrument = instrument;
-        this.cost = cost;
-        this.fallCost = fallCost;
-        this.winterCost = winterCost;
-        this.springCost = springCost;
-        this.enrollmentType = enrollmentType;
         this.transportationType = transportationType;
         this.notes = notes;
+        this.expectedStartDate = expectedStartDate;
+        this.createdAt = createdAt;
+        this.createdBy = createdBy;
     }
 }
