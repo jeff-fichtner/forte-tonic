@@ -47,24 +47,24 @@ class Instructor {
         this.instrument3 = instrument3;
         this.instrument4 = instrument4;
         this.isAvailableMonday = isAvailableMonday;
-        this.mondayStartTime = mondayStartTime;
-        this.mondayEndTime = mondayEndTime;
+        this.mondayStartTime = DateHelpers.parseGoogleSheetsDate(mondayStartTime);
+        this.mondayEndTime = DateHelpers.parseGoogleSheetsDate(mondayEndTime);
         this.mondayRoomId = mondayRoomId;
         this.isAvailableTuesday = isAvailableTuesday;
-        this.tuesdayStartTime = tuesdayStartTime;
-        this.tuesdayEndTime = tuesdayEndTime;
+        this.tuesdayStartTime = DateHelpers.parseGoogleSheetsDate(tuesdayStartTime);
+        this.tuesdayEndTime = DateHelpers.parseGoogleSheetsDate(tuesdayEndTime);
         this.tuesdayRoomId = tuesdayRoomId;
         this.isAvailableWednesday = isAvailableWednesday;
-        this.wednesdayStartTime = wednesdayStartTime;
-        this.wednesdayEndTime = wednesdayEndTime;
+        this.wednesdayStartTime = DateHelpers.parseGoogleSheetsDate(wednesdayStartTime);
+        this.wednesdayEndTime = DateHelpers.parseGoogleSheetsDate(wednesdayEndTime);
         this.wednesdayRoomId = wednesdayRoomId;
         this.isAvailableThursday = isAvailableThursday;
-        this.thursdayStartTime = thursdayStartTime;
-        this.thursdayEndTime = thursdayEndTime;
+        this.thursdayStartTime = DateHelpers.parseGoogleSheetsDate(thursdayStartTime);
+        this.thursdayEndTime = DateHelpers.parseGoogleSheetsDate(thursdayEndTime);
         this.thursdayRoomId = thursdayRoomId;
         this.isAvailableFriday = isAvailableFriday;
-        this.fridayStartTime = fridayStartTime;
-        this.fridayEndTime = fridayEndTime;
+        this.fridayStartTime = DateHelpers.parseGoogleSheetsDate(fridayStartTime);
+        this.fridayEndTime = DateHelpers.parseGoogleSheetsDate(fridayEndTime);
         this.fridayRoomId = fridayRoomId;
     }
 

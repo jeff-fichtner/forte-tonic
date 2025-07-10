@@ -12,13 +12,13 @@
                 await Promise.all([
                     PromiseHelpers.promisifyEvent('DOMContentLoaded', document),
                     ApiClient.fetch(ServerFunctions.getAuthenticatedUser, x => new AuthenticatedUserResponse(x)),
-                    ApiClient.fetchAllPages(ServerFunctions.getInstructors, x => new Instructor(x)),
-                    ApiClient.fetchAllPages(ServerFunctions.getRegistrations, x => new Registration(x)),
+                    ApiClient.fetch(ServerFunctions.getInstructors, x => x.map(y => new Instructor(y))),
+                    ApiClient.fetch(ServerFunctions.getRegistrations, x => x.map(y => new Registration(y))),
                     // fetchAllPages(ServerFunctions.getStudents),
                     // fetchAllPages(ServerFunctions.getClasses, x => new Class(x)),
                     // fetchAllPages(ServerFunctions.getRooms, x => new Room(x))
                 ]);
-
+            
             this._setPageLoading(true);
 
             M.AutoInit();
@@ -101,7 +101,7 @@
                     links.forEach(l => l.classList.toggle('active', l.getAttribute('data-section') === dataSection));
 
                     // initialize first tab within the section
-                    const firstTabLink = showingTabs[0]?.querySelector('a');
+                    const firstTabLink = showingTabs[1]?.querySelector('a');
                     if (firstTabLink) {
                         firstTabLink.click();
                     }
@@ -115,20 +115,31 @@
         }
 
         _setPageLoading(isLoading) {
-            const loadingContainer = document.getElementById('loading-container');
-            const loading = document.getElementById('loading');
+            const loadingContainer = document.getElementById('page-loading-container');
             const pageContent = document.getElementById('page-content');
             const navMobile = document.getElementById('nav-mobile');
 
             loadingContainer.style.display = isLoading ? 'flex' : 'none';
-            loading.hidden = !isLoading;
+            loadingContainer.hidden = !isLoading;
+
             pageContent.hidden = isLoading;
             navMobile.hidden = isLoading;
         }
 
+        _setAdminRegistrationLoading(isLoading) {
+            const adminRegistrationLoadingContainer = document.getElementById('admin-registration-loading-container');
+            const adminRegistrationContainer = document.getElementById('admin-registration-container');
+
+            adminRegistrationLoadingContainer.hidden = !isLoading;
+            adminRegistrationContainer.hidden = isLoading;
+        }
+
         _registerListeners() {
-            document.getElementById('student-search-btn').addEventListener('click', (event) => {
+
+            // when student search button is clicked
+            document.getElementById('student-search-btn').addEventListener('click', async (event) => {
                 event.preventDefault();
+
                 const searchInput = document.getElementById('student-search');
                 searchInput.classList.remove('invalid');
 
@@ -142,23 +153,28 @@
                     return;
                 }
 
-                let data = {
-                    name: searchValue
-                };
+                try {
+                    this._setAdminRegistrationLoading(true);
+                    
+                    let data = {
+                        name: searchValue
+                    };
 
-                ApiClient.post(ServerFunctions.searchStudentsByName, data, x => x.map(y => new Student(y)))
-                    .then(students => {
-                        if (students.length) {
-                            this._setStudentOptions(students);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error searching students:', error);
-                    });
+                    const students = await ApiClient.post(ServerFunctions.searchStudentsByName, data, x => x.map(y => new Student(y)));
+
+                    this._setStudentOptions(students ?? []);
+                } catch (error) {
+                    console.error('Error searching students:', error);
+                }
+                finally {
+                    this._setAdminRegistrationLoading(false);
+                }
             });
 
+            // when instructor changes
             document.getElementById('instructor-select-options-container').addEventListener('change', (event) => {
                 if (event.target.id !== 'instructor-select') {
+                    return;
                 }
 
                 event.preventDefault();
@@ -175,22 +191,22 @@
                 infoContainer.hidden = !selectedValue;
             });
 
+            // when day changes
             document.getElementById('instructor-day-select-options-container').addEventListener('change', (event) => {
                 if (event.target.id !== 'day-select') {
+                    return;
                 }
 
                 event.preventDefault();
-                const selectedValue = event.target.value;
-                const selectedInstructorId = selectedValue.split('_')[0];
-                const selectedDay = selectedValue.split('_')[1];
+                const selectedDay = event.target.value;
 
-                const currentInstructor = this.instructors.find(x => x.id === selectedInstructorId);
-                this._setInstructorDayStartTimeOptions(currentInstructor, selectedDay);
+                this._setInstructorDayStartTimeOptions();
 
                 const instructorDaySelectedInfoContainer = document.getElementById('instructor-day-selected-info-container');
-                instructorDaySelectedInfoContainer.hidden = !selectedValue;
+                instructorDaySelectedInfoContainer.hidden = !selectedDay;
             });
 
+            // when instrument changes
             document.getElementById('instrument-select-options-container').addEventListener('change', (event) => {
                 if (event.target.id !== 'instrument-select') {
                     return;
@@ -201,6 +217,7 @@
                 console.log('Instrument changed to:', selectedValue);
             });
 
+            // when start time changes
             document.getElementById('instructor-day-start-time-container').addEventListener('change', (event) => {
                 if (event.target.id !== 'start-time-select') {
                     return;
@@ -210,43 +227,79 @@
                 console.log('Start time changed to:', selectedValue);
             });
 
+            // when lesson length changes
             document.getElementById('lesson-length-container').addEventListener('change', (event) => {
                 if (event.target.type !== 'radio') {
                     return;
                 }
 
-                const selectedValue = event.target.value;
-                console.log('Radio changed to:', selectedValue);
+                console.log('Lesson length changed to:', event.target.value);
+
+                this._setInstructorDayStartTimeOptions();
             });
 
-            document.getElementById('create-registration-submit-btn').addEventListener('click', (event) => {
+            // when create is clicked
+            document.getElementById('create-registration-submit-btn').addEventListener('click', async (event) => {
                 event.preventDefault();
 
                 if (!this._validateRegistration()) {
-                    M.toast({ html: 'Please fill out all fields.' });
                     return;
                 }
 
-                const data = this._getCreateRegistrationData();
+                try {
+                    this._setAdminRegistrationLoading(true);
 
-                // post
-                ApiClient.post(ServerFunctions.createRegistration, data, x => new Registration(x))
-                    .then(response => {
-                        // handle response
-                        console.log('Registration created:', response.registration);
-                        M.toast({ html: 'Registration created successfully.' });
+                    const data = this._getCreateRegistrationData();
+                    
+                    const newRegistration = await ApiClient.post(ServerFunctions.registerPrivateLesson, data, x => new Registration(x.newRegistration));
 
-                        this.registrations.push(response.registration);
-                        this._setRegistrations(this.registrations);
-                    })
-                    .catch(error => {
-                        console.error('Error creating registration:', error);
-                        M.toast({ html: 'Error creating registration.' });
-                    });
+                    // handle response
+                    console.log('Registration created:', newRegistration);
+                    M.toast({ html: 'Registration created successfully.' });
+
+                    this.registrations.push(newRegistration);
+                    this._setRegistrations(this.registrations);
+
+                    // clear students
+                    this._setStudentOptions([]);
+
+                    // transportation type
+                    const transportationTypeRadios = document.querySelectorAll('input[name="transportation-type"]');
+                    // check first
+                    if (transportationTypeRadios.length > 0) {
+                        transportationTypeRadios[0].checked = true;
+                    }
+
+                    // reset instructor
+                    const instructorSelect = document.getElementById('instructor-select');
+                    instructorSelect.value = '';
+
+                    // instrument
+                    this._setInstructorInstrumentOptions(null);
+
+                    // day
+                    this._setInstructorDayOptions(null);
+
+                    // lesson length
+                    const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
+                    // check first
+                    if (lessonLengthRadios.length > 0) {
+                        lessonLengthRadios[0].checked = true;
+                    }
+
+                    // start time
+                    this._setInstructorDayStartTimeOptions();
+
+                } catch (error) {
+                    console.error('Error creating registration:', error);
+                    M.toast({ html: 'Error creating registration.' });
+                } finally {
+                    this._setAdminRegistrationLoading(false);
+                }
             });
 
             // when delete icon tapped
-            document.getElementById('current-registrations-collection').addEventListener('click', (event) => {
+            document.getElementById('current-registrations-collection').addEventListener('click', async (event) => {
                 if (!event.target.classList.contains('delete-registration-icon')) {
                     return;
                 }
@@ -263,28 +316,28 @@
                     return;
                 }
 
-                ApiClient.post(ServerFunctions.deleteRegistration, { id: registrationToDelete.id })
-                    .then(() => {
-                        M.toast({ html: 'Registration deleted successfully.' });
-                        this.registrations.splice(registrationIndex, 1);
-                        this._setRegistrations(this.registrations);
-                    })
-                    .catch(error => {
+                try {
+                    this._setAdminRegistrationLoading(true);
+                    
+                    await ApiClient.post(ServerFunctions.unregisterPrivateLesson, { id: registrationToDelete.id });
+
+                    M.toast({ html: 'Registration deleted successfully.' });
+                    this.registrations.splice(registrationIndex, 1);
+                    this._setRegistrations(this.registrations);
+                } catch (error) {
                         console.error('Error deleting registration:', error);
                         M.toast({ html: 'Error deleting registration.' });
-                    });
+                } finally {
+                    this._setAdminRegistrationLoading(false);
+                }
             });
         };
 
         _validateRegistration() {
-            // reset validation
-            const invalidInputs = document.querySelectorAll('.invalid');
-            invalidInputs.forEach(input => input.classList.remove('invalid'));
-
             const registrationData = this._getCreateRegistrationData();
 
             const isValid =
-                registrationData.selectedStudentId
+                registrationData.studentId
                 && registrationData.transportationType
                 && registrationData.instructorId
                 && registrationData.instrument
@@ -292,32 +345,40 @@
                 && registrationData.startTime
                 && registrationData.length;
 
-            // TODO additional validation for start time/length is valid
+            // TODO additional validation for start time/length is valid (with api call/response)
 
             if (!isValid) {
-                const studentSelect = document.getElementById('student-select');
-                studentSelect.classList.toggle('invalid', !registrationData.selectedStudentId);
+                const errors = [];
+            
+                if (!registrationData.studentId) {
+                    errors.push('Student');
+                }
 
                 if (!registrationData.transportationType) {
-                    M.toast({ html: 'Please select a transportation type.' });
+                    errors.push('Transportation Type');
                 }
 
-                // set invalid class on inputs
-                const instructorSelect = document.getElementById('instructor-select');
-                instructorSelect.classList.toggle('invalid', !registrationData.instructorId);
+                if (!registrationData.instructorId) {
+                    errors.push('Instructor');
+                }
 
-                const instrumentSelect = document.getElementById('instrument-select');
-                instrumentSelect.classList.toggle('invalid', !registrationData.instrument);
+                if (!registrationData.instrument) {
+                    errors.push('Instrument');
+                }
+                
+                if (!registrationData.day) {
+                    errors.push('Day');
+                }
 
-                const daySelect = document.getElementById('day-select');
-                daySelect.classList.toggle('invalid', !registrationData.day);
-
-                const startTimeSelect = document.getElementById('start-time-select');
-                startTimeSelect.classList.toggle('invalid', !registrationData.startTime);
-
+                if (!registrationData.startTime) {
+                    errors.push('Start Time');
+                }
+                
                 if (!registrationData.length) {
-                    M.toast({ html: 'Please select a lesson length.' });
+                    errors.push('Lesson Length');
                 }
+
+                M.toast({ html: `Please fill out the following fields:<br>${errors.join('<br>')}` });
             }
 
             return isValid;
@@ -326,7 +387,7 @@
         _getCreateRegistrationData() {
             // get student
             const studentSelect = document.getElementById('student-select');
-            const selectedStudentId = studentSelect.value;
+            const studentId = studentSelect.value;
 
             // get selected length
             const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
@@ -343,18 +404,20 @@
 
             // get selected start time
             const startTimeSelect = document.getElementById('start-time-select');
+            const startTimeDuration = DurationHelpers.minutesToDuration(startTimeSelect.value);
+            const formattedStartTime = DurationHelpers.formatDurationTo24Hour(startTimeDuration);
 
             // get transportation type response
             const transportationType = document.querySelector('input[name="transportation-type"]:checked');
 
             // add to object
             return {
-                selectedStudentId: selectedStudentId,
+                studentId: studentId,
                 transportationType: transportationType ? transportationType.value : null,
                 instructorId: instructorSelect.value,
                 instrument: instrumentSelect.value,
-                day: daySelect.value.split('_')[1], // get the day index
-                startTime: startTimeSelect.value,
+                day: daySelect.value,
+                startTime: formattedStartTime,
                 length: checkedRadio ? checkedRadio.value : null
             };
         }
@@ -397,11 +460,12 @@
                 registrations.forEach(registration => {
                     const li = document.createElement('a');
                     li.className = 'collection-item';
+                    const instructor = this.instructors.find(x => x.id === registration.instructorId);
                     li.innerHTML = `
                     <div>
-                        ${registration.day}: ${registration.startTime} - ${registration.endTime}, 
-                        ${registration.instrument} (${registration.lessonType}) with 
-                        ${registration.instructorLastName}, ${registration.instructorFirstName}
+                        ${registration.day}: ${registration.startTime} for ${registration.length} minutes, 
+                        ${registration.instrument} with 
+                        ${instructor.firstName} ${instructor.lastName}
                         <a href="#!" class="secondary-content">
                             <i class="delete-registration-icon material-icons red-text text-darken-4">delete_forever</i>
                         </a>
@@ -449,55 +513,65 @@
         }
 
         _setInstructorDayOptions(instructor) {
-            if (!instructor) {
+            try {
+                if (!instructor) {
+                    this._updateSelectOptions(
+                        'day-select',
+                        [],
+                        'Select a day');
+                    return;
+                }
+
+                const weekDays = {
+                    0: { label: 'Monday', startTime: instructor.mondayStartTime },
+                    1: { label: 'Tuesday', startTime: instructor.tuesdayStartTime },
+                    2: { label: 'Wednesday', startTime: instructor.wednesdayStartTime },
+                    3: { label: 'Thursday', startTime: instructor.thursdayStartTime },
+                    4: { label: 'Friday', startTime: instructor.fridayStartTime }
+                };
+
+                let days = [];
+                for (const [index, day] of Object.entries(weekDays)) {
+                    if (day.startTime) {
+                        days.push({
+                            value: index,
+                            label: day.label
+                        });
+                    }
+                }
+
                 this._updateSelectOptions(
                     'day-select',
-                    [],
+                    days,
                     'Select a day');
-                return;
+
+            } finally {
+                const daySelectedInfoContainer = document.getElementById('instructor-day-selected-info-container');
+                daySelectedInfoContainer.hidden = true;
             }
-
-            const weekDays = {
-                0: { label: 'Monday', startTime: instructor.mondayStartTime },
-                1: { label: 'Tuesday', startTime: instructor.tuesdayStartTime },
-                2: { label: 'Wednesday', startTime: instructor.wednesdayStartTime },
-                3: { label: 'Thursday', startTime: instructor.thursdayStartTime },
-                4: { label: 'Friday', startTime: instructor.fridayStartTime }
-            };
-
-            let days = [];
-            for (const [index, day] of Object.entries(weekDays)) {
-                if (day.startTime) {
-                    days.push({
-                        value: `${instructor.id}_${index}`,
-                        label: day.label
-                    });
-                }
-            }
-
-            this._updateSelectOptions(
-                'day-select',
-                days,
-                'Select a day');
-
-            const daySelectedInfoContainer = document.getElementById('instructor-day-selected-info-container');
-            daySelectedInfoContainer.hidden = false;
         }
 
-        _setInstructorDayStartTimeOptions(instructor, day) {
-            debugger
-            if (!instructor || !day) {
+        _setInstructorDayStartTimeOptions() {
+
+            const selectedInstructorId = document.getElementById('instructor-select').value;
+            const selectedDay = document.getElementById('day-select').value;
+            const selectedLength = document.querySelector('input[name="lesson-length"]:checked')?.value * 1;
+
+            if (!selectedInstructorId || !selectedDay || !selectedLength) {
                 this._updateSelectOptions(
                     'start-time-select',
                     [],
                     'Select a start time');
-                // default to first radio
+
+                // reset to first option
                 const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
                 if (lessonLengthRadios.length > 0) {
                     lessonLengthRadios[0].checked = true;
                 }
                 return;
             }
+
+            const instructor = this.instructors.find(x => x.id === selectedInstructorId);
 
             const startTimes = [
                 instructor.mondayStartTime,
@@ -514,15 +588,13 @@
                 instructor.thursdayEndTime,
                 instructor.fridayEndTime
             ];
-            
-            const startTime = startTimes[day * 1];
-            const startTimeDuration = DurationHelpers.stringToDuration(startTime);
+
+            const dayIndex = selectedDay * 1; // Convert string to number
+            const startTime = startTimes[dayIndex];
+            const endTime = endTimes[dayIndex];
             const options = [];
 
-            const endTime = endTimes[day * 1];
-            const endTimeDuration = DurationHelpers.stringToDuration(endTime);
-
-            if (!startTimeDuration || !endTimeDuration) {
+            if (!startTime || !endTime) {
                 this._updateSelectOptions(
                     'start-time-select',
                     [],
@@ -530,24 +602,21 @@
                 return;
             }
 
-            for (let i = (startTimeDuration.hours * 60 + startTimeDuration.minutes); i < (endTimeDuration.hours * 60 + endTimeDuration.minutes); i += 15) {
-                const duration = Duration.fromObject({ minutes: i });
+            const startTimeDuration = DurationHelpers.stringToDuration(startTime);
+            const endTimeDuration = DurationHelpers.stringToDuration(endTime);
 
-                // Add the duration to midnight (start of the day)
-                const dateTime = DateTime.fromObject({ hour: 0, minute: 0 }).plus(duration);
-                const formattedTime = dateTime.toFormat('h:mm a');
+            for (let i = (startTimeDuration.hours * 60 + startTimeDuration.minutes); i <= (endTimeDuration.hours * 60 + endTimeDuration.minutes) - selectedLength; i += 15) {
+                const duration = DurationHelpers.minutesToDuration(i);
 
-                options.push(formattedTime);
+                options.push({
+                    value: i,
+                    label: DurationHelpers.formatDurationTo12Hour(duration)
+                });
             }
-
-            debugger
 
             this._updateSelectOptions(
                 'start-time-select',
-                options.map(time => ({
-                    value: time,
-                    label: time
-                })),
+                options,
                 'Select a start time');
         }
 
@@ -560,65 +629,14 @@
                 })),
                 'Select a student');
 
+            // show/hide student container
+            const studentSelectContainer = document.getElementById('student-searched-options-container');
+            studentSelectContainer.hidden = students.length === 0;
+
             document.getElementById('student-select');
             document.getElementById('student-search').value = '';
             M.updateTextFields();
         }
-
-        // setStudents(students) {
-        //     this.updateTableAndMessage(
-        //         'students-tbody',
-        //         'students-empty-message',
-        //         studentsData,
-        //         (student) => {
-        //             const tr = document.createElement('tr');
-        //             tr.innerHTML = `
-        //                 <td>${student.fullName}</td>
-        //                 <td>${student.studentId}</td>
-        //                 <td>${student.grade}</td>
-        //             `;
-        //             return tr;
-        //         }
-        //     );
-        // }
-
-        // setClasses(classes, instructors) {
-        //     this.updateTableAndMessage(
-        //         'classes-tbody',
-        //         'classes-empty-message',
-        //         classes,
-        //         (classItem) => [classItem.title, instructors.find(x => x.id === classItem.instructorId).fullName, classItem.day]
-        //     );
-        // }
-
-        // setRegistrations(registrations, students, instructors, rooms) {
-        //     this.updateTableAndMessage(
-        //         'registrations-tbody',
-        //         'registrations-empty-message',
-        //         registrations,
-        //         (registration) => {
-        //             const student = students.find(x => x.id === registration.studentId);
-        //             const instructor = instructors.find(x => x.id === registration.instructorId);
-        //             const room = rooms.find(x => x.id === registration.roomId);
-
-        //             return [
-        //                 student.fullName,
-        //                 instructor.fullName,
-        //                 room.formattedName,
-        //                 registration.instrument
-        //             ];
-        //         }
-        //     );
-        // }
-
-        // setRooms(rooms) {
-        //     this.updateTableAndMessage(
-        //         'rooms-tbody',
-        //         'rooms-empty-message',
-        //         rooms,
-        //         (room) => [room.formattedName]
-        //     );
-        // }
 
         _updateSelectOptions(selectId, options, defaultOptionText, selectClasses = '') {
             const select = document.getElementById(selectId);
@@ -627,6 +645,9 @@
                 console.error(`Select element with ID "${selectId}" not found.`);
                 return;
             }
+
+            // get current selected option
+            const currentSelectedValue = select.value;
 
             // Clear existing options
             select.innerHTML = '';
@@ -642,6 +663,10 @@
                 const opt = document.createElement('option');
                 opt.value = option.value;
                 opt.textContent = option.label;
+
+                if (currentSelectedValue && option.value == currentSelectedValue) {
+                    opt.selected = true;
+                }
                 select.appendChild(opt);
             });
 
@@ -655,6 +680,13 @@
             });
         }
 
+        _setInstructors(instructors) {
+            this.updateTableAndMessage(
+                'instructors',
+                instructors,
+                (instructor) => [instructor.fullName, instructor.email, instructor.instrument1]
+            );
+        }
 
         // updateTableAndMessage(tbodyId, data, valueExtractor, rowsPerPage = 10) {
         //     const tbody = document.getElementById(`${tbodyId}-tbody`);
@@ -744,12 +776,59 @@
         //     renderPagination();
         // }
 
-        _setInstructors(instructors) {
-            this.updateTableAndMessage(
-                'instructors',
-                instructors,
-                (instructor) => [instructor.fullName, instructor.email, instructor.instrument1]
-            );
-        }
+        // setStudents(students) {
+        //     this.updateTableAndMessage(
+        //         'students-tbody',
+        //         'students-empty-message',
+        //         studentsData,
+        //         (student) => {
+        //             const tr = document.createElement('tr');
+        //             tr.innerHTML = `
+        //                 <td>${student.fullName}</td>
+        //                 <td>${student.studentId}</td>
+        //                 <td>${student.grade}</td>
+        //             `;
+        //             return tr;
+        //         }
+        //     );
+        // }
+
+        // setClasses(classes, instructors) {
+        //     this.updateTableAndMessage(
+        //         'classes-tbody',
+        //         'classes-empty-message',
+        //         classes,
+        //         (classItem) => [classItem.title, instructors.find(x => x.id === classItem.instructorId).fullName, classItem.day]
+        //     );
+        // }
+
+        // setRegistrations(registrations, students, instructors, rooms) {
+        //     this.updateTableAndMessage(
+        //         'registrations-tbody',
+        //         'registrations-empty-message',
+        //         registrations,
+        //         (registration) => {
+        //             const student = students.find(x => x.id === registration.studentId);
+        //             const instructor = instructors.find(x => x.id === registration.instructorId);
+        //             const room = rooms.find(x => x.id === registration.roomId);
+
+        //             return [
+        //                 student.fullName,
+        //                 instructor.fullName,
+        //                 room.formattedName,
+        //                 registration.instrument
+        //             ];
+        //         }
+        //     );
+        // }
+
+        // setRooms(rooms) {
+        //     this.updateTableAndMessage(
+        //         'rooms-tbody',
+        //         'rooms-empty-message',
+        //         rooms,
+        //         (room) => [room.formattedName]
+        //     );
+        // }
     }
 </script>
