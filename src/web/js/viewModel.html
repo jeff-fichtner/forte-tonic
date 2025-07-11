@@ -18,7 +18,7 @@
                     // fetchAllPages(ServerFunctions.getClasses, x => new Class(x)),
                     // fetchAllPages(ServerFunctions.getRooms, x => new Room(x))
                 ]);
-            
+
             this._setPageLoading(true);
 
             M.AutoInit();
@@ -101,7 +101,7 @@
                     links.forEach(l => l.classList.toggle('active', l.getAttribute('data-section') === dataSection));
 
                     // initialize first tab within the section
-                    const firstTabLink = showingTabs[1]?.querySelector('a');
+                    const firstTabLink = showingTabs[0]?.querySelector('a');
                     if (firstTabLink) {
                         firstTabLink.click();
                     }
@@ -155,7 +155,7 @@
 
                 try {
                     this._setAdminRegistrationLoading(true);
-                    
+
                     let data = {
                         name: searchValue
                     };
@@ -250,7 +250,7 @@
                     this._setAdminRegistrationLoading(true);
 
                     const data = this._getCreateRegistrationData();
-                    
+
                     const newRegistration = await ApiClient.post(ServerFunctions.registerPrivateLesson, data, x => new Registration(x.newRegistration));
 
                     // handle response
@@ -300,6 +300,21 @@
             });
 
             // when delete icon tapped
+            document.getElementById('master-schedule-table').addEventListener('click', async (event) => {
+                if (!event.target.classList.contains('delete-registration-table-icon')) {
+                    return;
+                }
+
+                event.preventDefault();
+                const registrationItem = event.target.closest('.collection-item');
+                const registrationIndex = Array.from(registrationItem.parentNode.children).indexOf(registrationItem);
+                const registrationToDelete = this.registrations[registrationIndex];
+
+                if (!registrationToDelete) return;
+
+            });
+
+            // when delete icon tapped
             document.getElementById('current-registrations-collection').addEventListener('click', async (event) => {
                 if (!event.target.classList.contains('delete-registration-icon')) {
                     return;
@@ -312,25 +327,7 @@
 
                 if (!registrationToDelete) return;
 
-                // confirm delete
-                if (!confirm(`Are you sure you want to delete?`)) {
-                    return;
-                }
-
-                try {
-                    this._setAdminRegistrationLoading(true);
-                    
-                    await ApiClient.post(ServerFunctions.unregisterPrivateLesson, { id: registrationToDelete.id });
-
-                    M.toast({ html: 'Registration deleted successfully.' });
-                    this.registrations.splice(registrationIndex, 1);
-                    this._setRegistrations(this.registrations);
-                } catch (error) {
-                        console.error('Error deleting registration:', error);
-                        M.toast({ html: 'Error deleting registration.' });
-                } finally {
-                    this._setAdminRegistrationLoading(false);
-                }
+                await this._requestDeleteRegistration(registrationToDelete.id);
             });
         };
 
@@ -350,7 +347,7 @@
 
             if (!isValid) {
                 const errors = [];
-            
+
                 if (!registrationData.studentId) {
                     errors.push('Student');
                 }
@@ -366,7 +363,7 @@
                 if (!registrationData.instrument) {
                     errors.push('Instrument');
                 }
-                
+
                 if (!registrationData.day) {
                     errors.push('Day');
                 }
@@ -374,7 +371,7 @@
                 if (!registrationData.startTime) {
                     errors.push('Start Time');
                 }
-                
+
                 if (!registrationData.length) {
                     errors.push('Lesson Length');
                 }
@@ -406,7 +403,7 @@
             // get selected start time
             const startTimeSelect = document.getElementById('start-time-select');
             const startTimeDuration = startTimeSelect.value ? DurationHelpers.minutesToDuration(startTimeSelect.value) : null;
-            const formattedStartTime = startTimeDuration ? DurationHelpers.formatDurationTo24Hour(startTimeDuration) : '';
+            const formattedStartTime = startTimeDuration ? startTimeDuration.to24HourFormat() : '';
 
             // get transportation type response
             const transportationType = document.querySelector('input[name="transportation-type"]:checked');
@@ -443,6 +440,8 @@
         _setRegistrations(registrations) {
             const currentRegistrations = document.getElementById('current-registrations');
             const currentRegistrationsCollection = document.getElementById('current-registrations-collection');
+            const masterScheduleTable = document.getElementById('master-schedule-table');
+            const masterScheduleTableBody = masterScheduleTable.querySelector('tbody');
 
             try {
                 this._clearCurrentRegistrations();
@@ -454,6 +453,8 @@
                     li.className = 'collection-item';
                     li.innerHTML = '<div>No current registrations.</div>';
                     currentRegistrationsCollection.appendChild(li);
+
+                    // default master schedule
 
                     return;
                 }
@@ -469,13 +470,53 @@
                         ${instructor.firstName} ${instructor.lastName}
                         <a href="#!" class="secondary-content">
                             <i class="delete-registration-icon material-icons red-text text-darken-4">delete_forever</i>
-                        </a>
-                    </div>`;
+                            </a>
+                            </div>`;
                     currentRegistrationsCollection.appendChild(li);
+
+                    // add to master schedule table
+                    const row = document.createElement('tr');
+                    // row.innerHTML = `
+                    //     <td>${registration.day}</td>
+                    //     <td>${DurationHelpers.stringToDuration(registration.startTime).to12HourFormat()}</td>
+                    //     <td>${registration.length} minutes</td>
+                    //     <td>${student.firstName} ${student.lastName}</td>
+                    //     <td>${student.grade.formatGrade()}</td>
+                    //     <td>${instructor.firstName} ${instructor.lastName}</td>
+                    //     <td>${registration.instrument}</td>
+                    // `;
+                    row.innerHTML = `
+                        <td>${registration.day}</td>
+                        <td>${DurationHelpers.stringToDuration(registration.startTime).to12HourFormat()}</td>
+                        <td>${registration.length} minutes</td>
+                        <td>${registration.studentId} student TODO</td>
+                        <td>grade TODO</td>
+                        <td>${instructor.firstName} ${instructor.lastName}</td>
+                        <td>${registration.instrument}</td>
+                        <td>
+                            <a href="#!" class="secondary-content">
+                                <i class="delete-registration-table-icon material-icons red-text text-darken-4">delete_forever</i>
+                            </a>
+                        </td>
+                    `;
+                    masterScheduleTableBody.appendChild(row);
+                    /*
+                    
+                <tr>
+                  <td>Monday</td>
+                  <td>3:00pm</td>
+                  <td>30 minutes</td>
+                  <td>Johnny Herrick</td>
+                  <td>K</td>
+                  <td>Andrew Kunz</td>
+                  <td>Piano</td>
+                </tr>
+                     */
                 });
 
             } finally {
                 currentRegistrations.hidden = false;
+                masterScheduleTable.hidden = false;
             }
         }
 
@@ -611,7 +652,7 @@
 
                 options.push({
                     value: i,
-                    label: DurationHelpers.formatDurationTo12Hour(duration)
+                    label: duration.to12HourFormat()
                 });
             }
 
@@ -689,6 +730,29 @@
             );
         }
 
+        async _requestDeleteRegistration(registrationToDeleteId) {
+            // registrationIndex 
+
+            // confirm delete
+            if (!confirm(`Are you sure you want to delete?`)) {
+                return;
+            }
+
+            try {
+                this._setAdminRegistrationLoading(true);
+
+                await ApiClient.post(ServerFunctions.unregisterPrivateLesson, { id: registrationToDeleteId });
+
+                M.toast({ html: 'Registration deleted successfully.' });
+                this.registrations.splice(registrationIndex, 1);
+                this._setRegistrations(this.registrations);
+            } catch (error) {
+                console.error('Error deleting registration:', error);
+                M.toast({ html: 'Error deleting registration.' });
+            } finally {
+                this._setAdminRegistrationLoading(false);
+            }
+        }
         // updateTableAndMessage(tbodyId, data, valueExtractor, rowsPerPage = 10) {
         //     const tbody = document.getElementById(`${tbodyId}-tbody`);
         //     const emptyMessage = document.getElementById(`${tbodyId}-empty-message`);
