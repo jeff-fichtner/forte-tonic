@@ -262,7 +262,7 @@
 
                     // clear students
                     this._setStudentOptions([]);
-                    // reset instructor select
+                    this._setInstructorOptions(this.instructors, true);
 
                     // transportation type
                     const transportationTypeRadios = document.querySelectorAll('input[name="transportation-type"]');
@@ -420,12 +420,13 @@
             };
         }
 
-        _setInstructorOptions(instructors) {
+        _setInstructorOptions(instructors, forceRefresh = false) {
             if (!instructors || instructors.length === 0) {
                 this._updateSelectOptions(
                     'instructor-select',
                     [],
-                    'No instructors available');
+                    'No instructors available',
+                    forceRefresh);
                 return;
             }
             this._updateSelectOptions(
@@ -434,7 +435,8 @@
                     value: instructor.id,
                     label: `${instructor.lastName}, ${instructor.firstName}`
                 })),
-                'Select an instructor');
+                'Select an instructor',
+                forceRefresh);
         }
 
         _setRegistrations(registrations) {
@@ -680,7 +682,7 @@
             M.updateTextFields();
         }
 
-        _updateSelectOptions(selectId, options, defaultOptionText, selectClasses = '') {
+        _updateSelectOptions(selectId, options, defaultOptionText, forceRefresh = false) {
             const select = document.getElementById(selectId);
 
             if (!select) {
@@ -706,7 +708,7 @@
                 opt.value = option.value;
                 opt.textContent = option.label;
 
-                if (currentSelectedValue && option.value == currentSelectedValue) {
+                if (!forceRefresh && currentSelectedValue && option.value == currentSelectedValue) {
                     opt.selected = true;
                 }
                 select.appendChild(opt);
