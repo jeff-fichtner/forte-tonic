@@ -425,8 +425,7 @@
                 this._updateSelectOptions(
                     'instructor-select',
                     [],
-                    'No instructors available',
-                    forceRefresh);
+                    'No instructors available');
                 return;
             }
             this._updateSelectOptions(
@@ -587,7 +586,8 @@
                 this._updateSelectOptions(
                     'day-select',
                     days,
-                    'Select a day');
+                    'Select a day',
+                    true);
 
             } finally {
                 const daySelectedInfoContainer = document.getElementById('instructor-day-selected-info-container');
@@ -661,7 +661,8 @@
             this._updateSelectOptions(
                 'start-time-select',
                 options,
-                'Select a start time');
+                'Select a start time',
+                true);
         }
 
         _setStudentOptions(students) {
