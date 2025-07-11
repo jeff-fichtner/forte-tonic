@@ -27,11 +27,15 @@ const include =
 
 const getAuthenticatedUser =
   () => {
+    throwIfNotAdmin();
+    
     return fetchData(Authenticator.getSignedInUser);
   };
 
 const getInstructors =
   () => {
+    throwIfNotAdmin();
+
     return fetchData(() => {
       return worker.userRepositoryInstance.getInstructors();
     });
@@ -39,6 +43,8 @@ const getInstructors =
 
 const getStudents =
   () => {
+    throwIfNotAdmin();
+
     return fetchData(() => {
       return worker.userRepositoryInstance.getStudents();
     });
@@ -46,6 +52,8 @@ const getStudents =
 
 const getClasses =
   () => {
+    throwIfNotAdmin();
+
     return fetchData(() => {
       return worker.programRepositoryInstance.getClasses();
     });
@@ -53,6 +61,8 @@ const getClasses =
 
 const getRegistrations =
   () => {
+    throwIfNotAdmin();
+
     return fetchData(() => {
       return worker.programRepositoryInstance.getRegistrations();
     });
@@ -60,6 +70,8 @@ const getRegistrations =
 
 const getRooms =
   () => {
+    throwIfNotAdmin();
+
     return fetchData(() => {
       return worker.userRepositoryInstance.getRooms();
     });
@@ -113,11 +125,9 @@ const throwIfNotAdmin =
     }
   }
 
-// Shared method for fetching data with optional pagination
 const fetchData = (dataFunction, page, pageSize) => {
   console.log(`page ${page}, pageSize ${pageSize}`);
 
-  throwIfNotAdmin(); // Ensure the user is authorized
   const data = dataFunction(); // Execute the data-fetching logic
 
   if (page == null || !pageSize) {
@@ -135,7 +145,6 @@ const respond =
     return serializedResponse;
   };
 
-// Utility function for pagination
 const paginate = (data, page = 0, pageSize = 10) => {
   const startIndex = page * pageSize;
   const endIndex = startIndex + pageSize;

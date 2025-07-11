@@ -12,18 +12,9 @@
         }
         
         // Converts a Luxon Duration object to a string in "h:mm a" format
-        static formatDurationTo12Hour(duration) {
+        static durationToDateTime(duration) {
             // Add the duration to midnight (start of the day)
-            const dateTime = DateTime.fromObject({ hour: 0, minute: 0 }).plus(duration);
-
-            return dateTime.toFormat('h:mm a');
-        }
-
-        // Converts a Luxon Duration object to a string in "HH:mm" format
-        static formatDurationTo24Hour(duration) {
-            const dateTime = DateTime.fromObject({ hour: 0, minute: 0 }).plus(duration);
-
-            return dateTime.toFormat('HH:mm');
+            return DateTime.fromObject({ hour: 0, minute: 0 }).plus(duration);
         }
     }
 </script>
