@@ -7,14 +7,15 @@
                 _,
                 authenticatedUser,
                 instructors,
-                registrations
+                students,
+                registrations,
             ] =
                 await Promise.all([
                     PromiseHelpers.promisifyEvent('DOMContentLoaded', document),
                     ApiClient.fetch(ServerFunctions.getAuthenticatedUser, x => new AuthenticatedUserResponse(x)),
                     ApiClient.fetch(ServerFunctions.getInstructors, x => x.map(y => new Instructor(y))),
+                    ApiClient.fetchAllPages(ServerFunctions.getStudents, x => new Student(x), 100),
                     ApiClient.fetch(ServerFunctions.getRegistrations, x => x.map(y => new Registration(y))),
-                    // fetchAllPages(ServerFunctions.getStudents),
                     // fetchAllPages(ServerFunctions.getClasses, x => new Class(x)),
                     // fetchAllPages(ServerFunctions.getRooms, x => new Room(x))
                 ]);
@@ -23,7 +24,7 @@
 
             M.AutoInit();
 
-            this._initTabContent(authenticatedUser, instructors, registrations);
+            this._initTabContent(authenticatedUser, instructors, students, registrations);
 
             this._initTabs();
 
@@ -32,11 +33,17 @@
             this._setPageLoading(false);
         }
 
-        _initTabContent(currentUser, instructors, registrations) {
+        _initTabContent(currentUser, instructors, students, registrations) {
             this.currentUser = currentUser;
 
             this.instructors = instructors;
             this._setInstructorOptions(instructors);
+
+            this.students = students.map(student => {
+                student.fullName = `${student.firstName} ${student.lastName}`;
+                return student;
+            });
+            this._setStudentAutocomplete(students);
 
             this.registrations = registrations;
             this._setRegistrations(registrations);
@@ -136,41 +143,6 @@
 
         _registerListeners() {
 
-            // when student search button is clicked
-            document.getElementById('student-search-btn').addEventListener('click', async (event) => {
-                event.preventDefault();
-
-                const searchInput = document.getElementById('student-search');
-                searchInput.classList.remove('invalid');
-
-                const searchValue = searchInput.value.trim();
-
-                // validate search button
-                if (searchValue.length < 2) {
-                    // add invalid class to search input
-                    searchInput.classList.add('invalid');
-
-                    return;
-                }
-
-                try {
-                    this._setAdminRegistrationLoading(true);
-
-                    let data = {
-                        name: searchValue
-                    };
-
-                    const students = await ApiClient.post(ServerFunctions.searchStudentsByName, data, x => x.map(y => new Student(y)));
-
-                    this._setStudentOptions(students ?? []);
-                } catch (error) {
-                    console.error('Error searching students:', error);
-                }
-                finally {
-                    this._setAdminRegistrationLoading(false);
-                }
-            });
-
             // when instructor changes
             document.getElementById('instructor-select-options-container').addEventListener('change', (event) => {
                 if (event.target.id !== 'instructor-select') {
@@ -261,7 +233,7 @@
                     this._setRegistrations(this.registrations);
 
                     // clear students
-                    this._setStudentOptions([]);
+                    this._setCurrentStudent(null);
                     this._setInstructorOptions(this.instructors, true);
 
                     // transportation type
@@ -306,23 +278,9 @@
                 }
 
                 event.preventDefault();
-                const registrationItem = event.target.closest('.collection-item');
-                const registrationIndex = Array.from(registrationItem.parentNode.children).indexOf(registrationItem);
-                const registrationToDelete = this.registrations[registrationIndex];
 
-                if (!registrationToDelete) return;
-
-            });
-
-            // when delete icon tapped
-            document.getElementById('current-registrations-collection').addEventListener('click', async (event) => {
-                if (!event.target.classList.contains('delete-registration-icon')) {
-                    return;
-                }
-
-                event.preventDefault();
-                const registrationItem = event.target.closest('.collection-item');
-                const registrationIndex = Array.from(registrationItem.parentNode.children).indexOf(registrationItem);
+                const row = event.target.closest('tr');
+                const registrationIndex = Array.from(row.parentNode.children).indexOf(row);
                 const registrationToDelete = this.registrations[registrationIndex];
 
                 if (!registrationToDelete) return;
@@ -384,8 +342,7 @@
 
         _getCreateRegistrationData() {
             // get student
-            const studentSelect = document.getElementById('student-select');
-            const studentId = studentSelect.value;
+            const studentId = this.selectedStudent ? this.selectedStudent.id : null;
 
             // get selected length
             const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
@@ -439,59 +396,36 @@
         }
 
         _setRegistrations(registrations) {
-            const currentRegistrations = document.getElementById('current-registrations');
-            const currentRegistrationsCollection = document.getElementById('current-registrations-collection');
             const masterScheduleTable = document.getElementById('master-schedule-table');
             const masterScheduleTableBody = masterScheduleTable.querySelector('tbody');
 
-            try {
-                this._clearCurrentRegistrations();
+            masterScheduleTableBody.innerHTML = ''; // Clear existing rows
 
+            try {
                 // if there are none
                 if (!registrations || registrations.length === 0) {
                     // add no registrations message
-                    const li = document.createElement('li');
-                    li.className = 'collection-item';
-                    li.innerHTML = '<div>No current registrations.</div>';
-                    currentRegistrationsCollection.appendChild(li);
-
-                    // default master schedule
 
                     return;
                 }
 
                 registrations.forEach(registration => {
-                    const li = document.createElement('a');
-                    li.className = 'collection-item';
                     const instructor = this.instructors.find(x => x.id === registration.instructorId);
-                    li.innerHTML = `
-                    <div>
-                        ${registration.day}: ${registration.startTime} for ${registration.length} minutes, 
-                        ${registration.instrument} with 
-                        ${instructor.firstName} ${instructor.lastName}
-                        <a href="#!" class="secondary-content">
-                            <i class="delete-registration-icon material-icons red-text text-darken-4">delete_forever</i>
-                            </a>
-                            </div>`;
-                    currentRegistrationsCollection.appendChild(li);
+                    const student = this.students.find(x => x.id === registration.studentId);
+
+                    if (!instructor || !student) {
+                        console.warn(`Instructor or student not found for registration: ${registration.id}`);
+                        return;
+                    }
 
                     // add to master schedule table
                     const row = document.createElement('tr');
-                    // row.innerHTML = `
-                    //     <td>${registration.day}</td>
-                    //     <td>${DurationHelpers.stringToDuration(registration.startTime).to12HourFormat()}</td>
-                    //     <td>${registration.length} minutes</td>
-                    //     <td>${student.firstName} ${student.lastName}</td>
-                    //     <td>${student.grade.formatGrade()}</td>
-                    //     <td>${instructor.firstName} ${instructor.lastName}</td>
-                    //     <td>${registration.instrument}</td>
-                    // `;
                     row.innerHTML = `
                         <td>${registration.day}</td>
                         <td>${DurationHelpers.stringToDuration(registration.startTime).to12HourFormat()}</td>
                         <td>${registration.length} minutes</td>
-                        <td>${registration.studentId} student TODO</td>
-                        <td>grade TODO</td>
+                        <td>${student.firstName} ${student.lastName}</td>
+                        <td>${formatGrade(student.grade)}</td>
                         <td>${instructor.firstName} ${instructor.lastName}</td>
                         <td>${registration.instrument}</td>
                         <td>
@@ -501,31 +435,10 @@
                         </td>
                     `;
                     masterScheduleTableBody.appendChild(row);
-                    /*
-                    
-                <tr>
-                  <td>Monday</td>
-                  <td>3:00pm</td>
-                  <td>30 minutes</td>
-                  <td>Johnny Herrick</td>
-                  <td>K</td>
-                  <td>Andrew Kunz</td>
-                  <td>Piano</td>
-                </tr>
-                     */
                 });
 
             } finally {
-                currentRegistrations.hidden = false;
                 masterScheduleTable.hidden = false;
-            }
-        }
-
-        _clearCurrentRegistrations() {
-            // clear collection
-            const currentRegistrationsCollection = document.getElementById('current-registrations-collection');
-            while (currentRegistrationsCollection.firstChild) {
-                currentRegistrationsCollection.removeChild(currentRegistrationsCollection.firstChild);
             }
         }
 
@@ -665,22 +578,41 @@
                 true);
         }
 
-        _setStudentOptions(students) {
-            this._updateSelectOptions(
-                'student-select',
-                students.map(student => ({
-                    value: student.id,
-                    label: `${student.lastName}, ${student.firstName}`
-                })),
-                'Select a student');
+        _setStudentAutocomplete(students) {
+            const elem = document.getElementById('student-autocomplete-input');
 
-            // show/hide student container
-            const studentSelectContainer = document.getElementById('student-searched-options-container');
-            studentSelectContainer.hidden = students.length === 0;
+            if (!students.length) {
+                this.studentMap = {};
+                this.selectedStudent = null;
+                M.Autocomplete.init(elem, { data: {} });
+                return;
+            }
 
-            document.getElementById('student-select');
-            document.getElementById('student-search').value = '';
-            M.updateTextFields();
+            const data = students.reduce((acc, student) => {
+                acc[student.fullName] = null;
+                return acc;
+            }, {});
+            this.studentMap = students.reduce((acc, student) => {
+                acc[student.fullName] = student.id;
+                return acc;
+            }, {});
+
+            const options = {
+                data: data,
+                limit: 20,
+                onAutocomplete: (selectedOption) => {
+                    const studentId = this.studentMap[selectedOption];
+                    this.selectedStudent = this.students.find(x => x.id === studentId);
+                }
+            }
+
+            M.Autocomplete.init(elem, options);
+        }
+
+        _setCurrentStudent(student) {
+            const elem = document.getElementById('student-autocomplete-input');
+            elem.value = student ? student.fullName : ''; // Set the input value
+            this.selectedStudent = student; // Update the selected student
         }
 
         _updateSelectOptions(selectId, options, defaultOptionText, forceRefresh = false) {
@@ -734,7 +666,6 @@
         }
 
         async _requestDeleteRegistration(registrationToDeleteId) {
-            // registrationIndex 
 
             // confirm delete
             if (!confirm(`Are you sure you want to delete?`)) {
@@ -744,8 +675,9 @@
             try {
                 this._setAdminRegistrationLoading(true);
 
-                await ApiClient.post(ServerFunctions.unregisterPrivateLesson, { id: registrationToDeleteId });
-
+                const response = await ApiClient.post(ServerFunctions.unregisterPrivateLesson, { id: registrationToDeleteId });
+                const registrationIndex = this.registrations.findIndex(x => x.id === registrationToDeleteId);
+                
                 M.toast({ html: 'Registration deleted successfully.' });
                 this.registrations.splice(registrationIndex, 1);
                 this._setRegistrations(this.registrations);

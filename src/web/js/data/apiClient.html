@@ -1,14 +1,14 @@
 <script>
     class ApiClient {
-        static fetch(serverFunctionName, mapper = null, context = null, paginationOptions = {}, ...args) {
+        static fetch(serverFunctionName, mapper = null, paginationOptions = {}, context = null, ...args) {
             const payload = paginationOptions ? [paginationOptions, ...args] : args;
             return this._callServerFunction(serverFunctionName, payload, mapper, context);
         }
 
-        static async fetchPage(serverFunctionName, mapper, context = null, page = 0, pageSize = 10, ...args) {
+        static async fetchPage(serverFunctionName, mapper, page = 0, pageSize = 10, context = null, ...args) {
             try {
                 const paginationOptions = { page, pageSize };
-                const response = await this.fetch(serverFunctionName, null, context, paginationOptions, ...args);
+                const response = await this.fetch(serverFunctionName, null, paginationOptions, context, ...args);
                 if (!response) {
                     return { data: [], total: 0 };
                 }
@@ -24,15 +24,14 @@
             }
         }
 
-        static async fetchAllPages(serverFunctionName, mapper, context = null, pageSize = 10, ...args) {
+        static async fetchAllPages(serverFunctionName, mapper, pageSize = 10, context = null, ...args) {
             let allResults = [];
             let currentPage = 0;
             let totalPages = null;
 
             while (!totalPages || currentPage < totalPages) {
                 try {
-                    const { data, total } = await this.fetchPage(serverFunctionName, mapper, context, currentPage, pageSize, ...args);
-
+                    const { data, total } = await this.fetchPage(serverFunctionName, mapper, currentPage, pageSize, context, ...args);
                     if (!data || data.length === 0) {
                         break;
                     }

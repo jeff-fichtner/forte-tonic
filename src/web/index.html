@@ -461,29 +461,16 @@
 
         <div id="admin-registration-container">
 
-          <div id="current-registrations">
-            <ul id="current-registrations-collection" class="collection">
-            </ul>
-          </div>
-
           <div id="new-registration-form">
 
             <!-- Students -->
-            <div class="input-field" style="display: flex; align-items: center;">
-              <input type="text" id="student-search" class="autocomplete" style="flex: 1; margin-right: 10px;">
-              <button id="student-search-btn" class="btn waves-effect waves-light"
-                style="background-color: #2b68a4"><b>Search</b></button>
-              <label for="student-search">Search Students</label>
+            <div class="input-field col s12">
+              <i class="material-icons prefix">account_circle</i>
+              <input type="text" id="student-autocomplete-input" class="autocomplete">
+              <label for="student-autocomplete-input">Student</label>
             </div>
 
             <div hidden id="student-searched-options-container">
-
-              <div class="input-field" id="student-select-options-container">
-                <select id="student-select" required>
-                  <option value="" disabled selected>Select a student</option>
-                </select>
-                <label>Student</label>
-              </div>
 
               <!-- Transportation Type -->
               <p>Transportation Type</p>

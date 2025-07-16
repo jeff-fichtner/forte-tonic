@@ -42,12 +42,13 @@ const getInstructors =
   };
 
 const getStudents =
-  () => {
+  (request) => {
     throwIfNotAdmin();
 
     return fetchData(() => {
-      return worker.userRepositoryInstance.getStudents();
-    });
+      const students = worker.userRepositoryInstance.getStudents();
+      return students.map(student => { return { id: student.id, firstName: student.firstName, lastName: student.lastName, grade: student.grade } });
+    }, request.page, request.pageSize);
   };
 
 const getClasses =
@@ -85,7 +86,7 @@ const searchStudentsByName =
     console.log('Search students with name:', data.name);
 
     return fetchData(() => {
-      let students = worker.userRepositoryInstance.searchStudentsByName(data.name);
+      const students = worker.userRepositoryInstance.searchStudentsByName(data.name);
       return students.map(student => { return { id: student.id, firstName: student.firstName, lastName: student.lastName } });
     });
   };
