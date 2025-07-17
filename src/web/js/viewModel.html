@@ -2,24 +2,43 @@
     class ViewModel {
 
         async initializeAsync() {
+            
+            const authenticatedUser = ApiClient.fetch(ServerFunctions.getAuthenticatedUser, x => new AuthenticatedUserResponse(x));
+            if (!authenticatedUser) {
+                console.error('Not authorized.');
+                return;
+            }
 
+            // const getOrRefreshItems = async (localFetchAsync, remoteFetchAsync, localSaveAsync) => {
+            //     const items = await localFetch();
+            //     if (!items) {
+            //         try {
+            //             const remoteItems = await remoteFetchAsync();
+            //             await localSaveAsync(remoteItems);
+            //             return remoteItems;
+            //         } catch (error) {
+            //             console.error('Error fetching items:', error);
+            //             M.toast({ html: 'Error fetching items.' });
+            //             return [];
+            //         }
+            //     }
+            // };
+            
             const [
                 _,
-                authenticatedUser,
                 instructors,
                 students,
                 registrations,
             ] =
                 await Promise.all([
                     PromiseHelpers.promisifyEvent('DOMContentLoaded', document),
-                    ApiClient.fetch(ServerFunctions.getAuthenticatedUser, x => new AuthenticatedUserResponse(x)),
                     ApiClient.fetch(ServerFunctions.getInstructors, x => x.map(y => new Instructor(y))),
                     ApiClient.fetchAllPages(ServerFunctions.getStudents, x => new Student(x), 100),
-                    ApiClient.fetch(ServerFunctions.getRegistrations, x => x.map(y => new Registration(y))),
+                    ApiClient.fetchAllPages(ServerFunctions.getRegistrations, x => new Registration(x), 20),
                     // fetchAllPages(ServerFunctions.getClasses, x => new Class(x)),
                     // fetchAllPages(ServerFunctions.getRooms, x => new Room(x))
                 ]);
-
+            
             this._setPageLoading(true);
 
             M.AutoInit();
@@ -287,6 +306,26 @@
 
                 await this._requestDeleteRegistration(registrationToDelete.id);
             });
+
+            // when checkboxes in days-of-week-filter-container change
+            document.getElementById('days-of-week-filter-container').addEventListener('change', (event) => {
+                if (event.target.type !== 'checkbox') {
+                    return;
+                }
+                
+                // re-render registrations
+                this._setRegistrations(this.registrations);
+            });
+
+            // when checkboxes in grade-filter-container change
+            document.getElementById('grade-filter-container').addEventListener('change', (event) => {
+                if (event.target.type !== 'checkbox') {
+                    return;
+                }
+                
+                // re-render registrations
+                this._setRegistrations(this.registrations);
+            });
         };
 
         _validateRegistration() {
@@ -409,33 +448,66 @@
                     return;
                 }
 
-                registrations.forEach(registration => {
-                    const instructor = this.instructors.find(x => x.id === registration.instructorId);
-                    const student = this.students.find(x => x.id === registration.studentId);
+                // get selected checkboxes within days-of-week-filter-container
+                const daysOfWeekCheckboxes = document.querySelectorAll('#days-of-week-filter-container input[type="checkbox"]');
+                const selectedDays = Array.from(daysOfWeekCheckboxes)
+                    .filter(checkbox => checkbox.checked)
+                    .map(checkbox => checkbox.id);
 
-                    if (!instructor || !student) {
-                        console.warn(`Instructor or student not found for registration: ${registration.id}`);
-                        return;
-                    }
+                // get selected checkboxes within grade-filter-container
+                const gradeCheckboxes = document.querySelectorAll('#grade-filter-container input[type="checkbox"]');
+                const selectedGrades = Array.from(gradeCheckboxes)
+                    .filter(checkbox => checkbox.checked)
+                    .map(checkbox => checkbox.id * 1);
+                
+                registrations
+                    .map(registration => {
+                        // ensure student is populated
+                        if (!registration.student) {
+                            registration.student = this.students.find(x => x.id === registration.studentId);
+                        }
+                        return registration;
+                    })
+                    .filter(registration => {
+                        // filter by selected days otherwise all
+                        if (selectedDays.length > 0 && !selectedDays.includes(registration.day)) {
+                            return false;
+                        }
+                        
+                        // filter by selected grades otherwise all
+                        if (selectedGrades.length > 0 && !selectedGrades.includes(registration.student.grade)) {
+                            return false;
+                        }
 
-                    // add to master schedule table
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${registration.day}</td>
-                        <td>${DurationHelpers.stringToDuration(registration.startTime).to12HourFormat()}</td>
-                        <td>${registration.length} minutes</td>
-                        <td>${student.firstName} ${student.lastName}</td>
-                        <td>${formatGrade(student.grade)}</td>
-                        <td>${instructor.firstName} ${instructor.lastName}</td>
-                        <td>${registration.instrument}</td>
-                        <td>
-                            <a href="#!" class="secondary-content">
-                                <i class="delete-registration-table-icon material-icons red-text text-darken-4">delete_forever</i>
-                            </a>
-                        </td>
-                    `;
-                    masterScheduleTableBody.appendChild(row);
-                });
+                        return true;
+                    })
+                    .forEach(registration => {
+                        const instructor = this.instructors.find(x => x.id === registration.instructorId);
+                        const student = this.students.find(x => x.id === registration.studentId);
+
+                        if (!instructor || !student) {
+                            console.warn(`Instructor or student not found for registration: ${registration.id}`);
+                            return;
+                        }
+
+                        // add to master schedule table
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${registration.day}</td>
+                            <td>${DurationHelpers.stringToDuration(registration.startTime).to12HourFormat()}</td>
+                            <td>${registration.length} minutes</td>
+                            <td>${student.firstName} ${student.lastName}</td>
+                            <td>${formatGrade(student.grade)}</td>
+                            <td>${instructor.firstName} ${instructor.lastName}</td>
+                            <td>${registration.instrument}</td>
+                            <td>
+                                <a href="#!" class="secondary-content">
+                                    <i class="delete-registration-table-icon material-icons red-text text-darken-4">delete_forever</i>
+                                </a>
+                            </td>
+                        `;
+                        masterScheduleTableBody.appendChild(row);
+                    });
 
             } finally {
                 masterScheduleTable.hidden = false;

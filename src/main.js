@@ -61,12 +61,12 @@ const getClasses =
   };
 
 const getRegistrations =
-  () => {
+  (request) => {
     throwIfNotAdmin();
 
     return fetchData(() => {
       return worker.programRepositoryInstance.getRegistrations();
-    });
+    }, request.page, request.pageSize);
   };
 
 const getRooms =
