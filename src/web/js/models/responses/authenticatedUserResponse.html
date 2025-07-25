@@ -1,7 +1,11 @@
 <script>
     class AuthenticatedUserResponse {
-        constructor(userId) {
-            this.userId = userId;
+        constructor({ email, isOperator, admin, instructor, parent }) {
+            this.email = email;
+            this.isOperator = isOperator;
+            this.admin = admin ? new Admin(admin) : null;
+            this.instructor = instructor ? new Instructor(instructor) : null;
+            this.parent = parent ? new Parent(parent) : null;
         }
     }
 </script>

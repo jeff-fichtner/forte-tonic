@@ -1,13 +1,14 @@
 const _ = UnderscoreString.load(Underscore.load());
 
-const RegistrationType = {
-  PRIVATE: 'private',
-  GROUP: 'group',
-}
-
 const worker = new UnitOfWork();
-const currentUser = Authenticator.getSignedInUser();
-const isAdmin = worker.userRepositoryInstance.isAdmin(Authenticator.getSignedInUser());
+const signedInEmail = Authenticator.getSignedInUser();
+const currentUser = new AuthenticatedUserResponse(
+    signedInEmail,
+    !!worker.userRepositoryInstance.isOperator(signedInEmail),
+    worker.userRepositoryInstance.getAdminByEmail(signedInEmail),
+    worker.userRepositoryInstance.getInstructorByEmail(signedInEmail),
+    worker.userRepositoryInstance.getParentByEmail(signedInEmail),
+);
 
 // main entry point for the web app
 // mandatory to be deployed as a web app
@@ -27,14 +28,14 @@ const include =
 
 const getAuthenticatedUser =
   () => {
-    throwIfNotAdmin();
-    
-    return fetchData(Authenticator.getSignedInUser);
+    throwIfNotAuthorized();
+
+    return fetchData(() => currentUser);
   };
 
 const getInstructors =
   () => {
-    throwIfNotAdmin();
+    throwIfNotAuthorized();
 
     return fetchData(() => {
       return worker.userRepositoryInstance.getInstructors();
@@ -43,7 +44,7 @@ const getInstructors =
 
 const getStudents =
   (request) => {
-    throwIfNotAdmin();
+    throwIfNotAuthorized();
 
     return fetchData(() => {
       const students = worker.userRepositoryInstance.getStudents();
@@ -53,7 +54,7 @@ const getStudents =
 
 const getClasses =
   () => {
-    throwIfNotAdmin();
+    throwIfNotAuthorized();
 
     return fetchData(() => {
       return worker.programRepositoryInstance.getClasses();
@@ -62,7 +63,7 @@ const getClasses =
 
 const getRegistrations =
   (request) => {
-    throwIfNotAdmin();
+    throwIfNotAuthorized();
 
     return fetchData(() => {
       return worker.programRepositoryInstance.getRegistrations();
@@ -71,7 +72,7 @@ const getRegistrations =
 
 const getRooms =
   () => {
-    throwIfNotAdmin();
+    throwIfNotAuthorized();
 
     return fetchData(() => {
       return worker.userRepositoryInstance.getRooms();
@@ -80,7 +81,7 @@ const getRooms =
 
 const searchStudentsByName =
   (request) => {
-    throwIfNotAdmin();
+    throwIfNotAuthorized();
 
     const data = retrieveDataFromRequest(request);
     console.log('Search students with name:', data.name);
@@ -93,7 +94,7 @@ const searchStudentsByName =
 
 const registerPrivateLesson =
   (request) => {
-    throwIfNotAdmin();
+    throwIfNotAuthorized();
 
     const data = retrieveDataFromRequest(request);
 
@@ -108,7 +109,7 @@ const registerPrivateLesson =
 
 const unregisterPrivateLesson =
   (request) => {
-    throwIfNotAdmin();
+    throwIfNotAuthorized();
 
     const data = retrieveDataFromRequest(request);
     const success = worker.programRepositoryInstance.unregister(data.id, currentUser);
@@ -118,11 +119,11 @@ const unregisterPrivateLesson =
     });
   }
 
-const throwIfNotAdmin =
-  (user) => {
-    // only permit admins
-    if (!isAdmin) {
-      throw new Error('User is not an admin');
+const throwIfNotAuthorized =
+  () => {
+    // only permit operators for now
+    if (!currentUser.isOperator) {
+      throw new Error(`User is not an operator: '${currentUser.email}'`);
     }
   }
 

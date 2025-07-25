@@ -10,25 +10,28 @@ class GoogleDbClient {
     ErrorHandling.throwIfNo(this.workingSpreadsheet, 'No working spreadsheet found');
 
     const adminsSheet = this.workingSpreadsheet.getSheetByName(Keys.ADMINS);
-    ErrorHandling.throwIfNo(adminsSheet, `No ${Keys.ADMINS} sheet found`);
+    ErrorHandling.throwIfNo(adminsSheet, `No '${Keys.ADMINS}' sheet found`);
 
     const instructorsSheet = this.workingSpreadsheet.getSheetByName(Keys.INSTRUCTORS);
-    ErrorHandling.throwIfNo(instructorsSheet, `No ${Keys.INSTRUCTORS} sheet found`);
+    ErrorHandling.throwIfNo(instructorsSheet, `No '${Keys.INSTRUCTORS}' sheet found`);
 
     const studentsSheet = this.workingSpreadsheet.getSheetByName(Keys.STUDENTS);
-    ErrorHandling.throwIfNo(studentsSheet, `No ${Keys.STUDENTS} sheet found`);
+    ErrorHandling.throwIfNo(studentsSheet, `No '${Keys.STUDENTS}' sheet found`);
 
     const parentsSheet = this.workingSpreadsheet.getSheetByName(Keys.PARENTS);
-    ErrorHandling.throwIfNo(parentsSheet, `No ${Keys.PARENTS} sheet found`);
+    ErrorHandling.throwIfNo(parentsSheet, `No '${Keys.PARENTS}' sheet found`);
 
     const roomsSheet = this.workingSpreadsheet.getSheetByName(Keys.ROOMS);
-    ErrorHandling.throwIfNo(roomsSheet, `No ${Keys.ROOMS} sheet found`);
+    ErrorHandling.throwIfNo(roomsSheet, `No '${Keys.ROOMS}' sheet found`);
 
     const classesSheet = this.workingSpreadsheet.getSheetByName(Keys.CLASSES);
-    ErrorHandling.throwIfNo(classesSheet, `No ${Keys.CLASSES} sheet found`);
+    ErrorHandling.throwIfNo(classesSheet, `No '${Keys.CLASSES}' sheet found`);
 
     const registrationsSheet = this.workingSpreadsheet.getSheetByName(Keys.REGISTRATIONS);
-    ErrorHandling.throwIfNo(registrationsSheet, `No ${Keys.REGISTRATIONS} sheet found`);
+    ErrorHandling.throwIfNo(registrationsSheet, `No '${Keys.REGISTRATIONS}' sheet found`);
+
+    const rolesSheet = this.workingSpreadsheet.getSheetByName(Keys.ROLES);
+    ErrorHandling.throwIfNo(rolesSheet, `No '${Keys.ROLES}' sheet found`);
 
     this.workingSheetInfo = {
       [Keys.ADMINS]: {
@@ -94,6 +97,15 @@ class GoogleDbClient {
           record.createdBy = audit;
           return record;
         }
+      },
+      [Keys.ROLES]: {
+        sheet: rolesSheet,
+        id: (record) => record.email,
+        process: (record, audit) => {
+          // record.createdAt = new Date();
+          // record.createdBy = audit;
+          return record;
+        }
       }
     }
 
@@ -101,8 +113,8 @@ class GoogleDbClient {
     // const workingFolder = DriveApp.getFolderById(settings.workingFolderId);
     // ErrorHandling.throwIfNo(workingFolder, 'No working folder found');
 
-    // const cacheSpreadsheet = this.getOrCreateSpreadsheetByFolderAndName_(workingFolder, settings.cacheSpreadsheetName);
-    // deleteAllSheetsExceptLast_(cacheSpreadsheet);
+    // const cacheSpreadsheet = this._getOrCreateSpreadsheetByFolderAndName(workingFolder, settings.cacheSpreadsheetName);
+    // _deleteAllSheetsExceptLast(cacheSpreadsheet);
   }
 
   getAllRecords(sheetKey, mapFunc) {
@@ -116,22 +128,6 @@ class GoogleDbClient {
 
     return mappedData;
   }
-
-  /**
-   * Get filtered records from a sheet.
-   * @param {string} sheetKey - The key of the sheet to retrieve data from.
-   * @param {function} mapFunc - Function to map rows to objects.
-   * @param {function} filterFunc - Function to filter rows.
-   * @returns {Array} - Filtered and mapped records.
-   */
-  getFilteredRecords(sheetKey, mapFunc, filterFunc) {
-    const allRecords = this.getAllRecords(sheetKey, mapFunc);
-
-    // Apply the filter function to the mapped records
-    const filteredRecords = allRecords.filter(filterFunc);
-
-    return filteredRecords;
-  }
   
   appendRecord(sheetKey, record, audit) {
     const { sheet, process } = this.workingSheetInfo[sheetKey];
@@ -139,7 +135,7 @@ class GoogleDbClient {
     const processedRecord = process(clonedRecord, audit);
     
     sheet.appendRow(Object.values(processedRecord));
-    // TODO audit
+    // TODO audit transaction
     return processedRecord;
   }
 
@@ -160,20 +156,20 @@ class GoogleDbClient {
     // TODO audit
   }
 
-  getOrCreateSpreadsheetByFolderAndName_(folder, spreadsheetName) {
+  _getOrCreateSpreadsheetByFolderAndName(folder, spreadsheetName) {
     let spreadsheet;
 
     const files = folder.getFilesByName(spreadsheetName);
     if (files.hasNext()) {
       spreadsheet = SpreadsheetApp.openById(files.next().getId());
     } else {
-      spreadsheet = createSpreadsheetWithinFolder_(folder, spreadsheetName);
+      spreadsheet = _createSpreadsheetWithinFolder(folder, spreadsheetName);
     }
 
     return spreadsheet;
   }
 
-  createSpreadsheetWithinFolder_(folder, spreadsheetName) {
+  _createSpreadsheetWithinFolder(folder, spreadsheetName) {
     const newSpreadsheet = SpreadsheetApp.create(spreadsheetName);
     const file = DriveApp.getFileById(newSpreadsheet.getId());
     folder.addFile(file);
@@ -181,7 +177,7 @@ class GoogleDbClient {
     Logger.log(`Spreadsheet "${spreadsheetName}" created and moved to folder "${folder.getName()}".`);
   }
 
-  deleteAllSheetsExceptLast_(spreadsheet) {
+  _deleteAllSheetsExceptLast(spreadsheet) {
     try {
       const sheets = spreadsheet.getSheets();
 

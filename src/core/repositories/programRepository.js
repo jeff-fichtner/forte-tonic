@@ -4,29 +4,22 @@ class ProgramRepository {
     this.dbClient = dbClient;
   }
 
-  initialize() {
-    const classes = this.getClasses();
-    ErrorHandling.throwIfNo(classes, `No classes found`);
-
-    const registrations = this.getRegistrations();
-    ErrorHandling.throwIfNo(registrations, `No registrations found`);
-  }
-
-  getClasses() {
+  getClasses(forceRefresh = false) {
     return RepositoryHelper.getAndSetData(
       () => this.classes,
       () => this.classes =
         this.dbClient.getAllRecords(
           Keys.CLASSES,
           x => new Class(...x)),
-      Keys.CLASSES);
+      Keys.CLASSES,
+      forceRefresh);
   }
 
   getClassById(id) {
     return this.getClasses().find(x => x.Id === id);
   }
 
-  getRegistrations() {
+  getRegistrations(forceRefresh = false) {
     return RepositoryHelper.getAndSetData(
       () => this.registrations,
       () => this.registrations =
@@ -37,7 +30,8 @@ class ProgramRepository {
             newRegistration.startTime = DateHelpers.parseGoogleSheetsDate(newRegistration.startTime);
             return newRegistration;
           }),
-      Keys.REGISTRATIONS);
+      Keys.REGISTRATIONS,
+      forceRefresh);
   }
 
   getRegistrationById(id) {
@@ -85,16 +79,15 @@ class ProgramRepository {
         registrationData.expectedStartDate,
       );
 
-    const savedRecord = this.dbClient.appendRecord(Keys.REGISTRATIONS, record, audit);
-
-    return savedRecord;
+    return this.dbClient.appendRecord(Keys.REGISTRATIONS, record, audit);
   }
 
   unregister(registrationId, audit) {
     try {
       this.dbClient.deleteRecord(Keys.REGISTRATIONS, registrationId, audit);
       return true;
-    } catch {
+    } catch (error) {
+      console.error(`Failed to unregister registration with ID ${registrationId}:`, error);
       return false;
     }
   }

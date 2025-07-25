@@ -2,28 +2,26 @@
     class ViewModel {
 
         async initializeAsync() {
+
+            const authenticatedUser = await ApiClient.fetch(ServerFunctions.getAuthenticatedUser, x => new AuthenticatedUserResponse(x));
+
+            const validations = [
+                [authenticatedUser, 'No authenticated user received.', `Must authorize use of email address.`],
+                [authenticatedUser.isOperator, 'Authenticated user is not an operator.', `You are not authorized.`]
+            ];
             
-            const authenticatedUser = ApiClient.fetch(ServerFunctions.getAuthenticatedUser, x => new AuthenticatedUserResponse(x));
-            if (!authenticatedUser) {
-                console.error('Not authorized.');
-                return;
+            for (const [condition, errorMessage, alertMessage] of validations) {
+                if (!condition) {
+                    console.error(errorMessage);
+                    alert(alertMessage);
+                    await this._waitForDocumentReady();
+                    await this._setPageLoading(false, errorMessage);
+                    return;
+                }
             }
 
-            // const getOrRefreshItems = async (localFetchAsync, remoteFetchAsync, localSaveAsync) => {
-            //     const items = await localFetch();
-            //     if (!items) {
-            //         try {
-            //             const remoteItems = await remoteFetchAsync();
-            //             await localSaveAsync(remoteItems);
-            //             return remoteItems;
-            //         } catch (error) {
-            //             console.error('Error fetching items:', error);
-            //             M.toast({ html: 'Error fetching items.' });
-            //             return [];
-            //         }
-            //     }
-            // };
-            
+            console.log(`Authenticated user: ${JSON.stringify(authenticatedUser)}`);
+
             const [
                 _,
                 instructors,
@@ -31,15 +29,13 @@
                 registrations,
             ] =
                 await Promise.all([
-                    PromiseHelpers.promisifyEvent('DOMContentLoaded', document),
+                    this._waitForDocumentReady(),
                     ApiClient.fetch(ServerFunctions.getInstructors, x => x.map(y => new Instructor(y))),
                     ApiClient.fetchAllPages(ServerFunctions.getStudents, x => new Student(x), 100),
                     ApiClient.fetchAllPages(ServerFunctions.getRegistrations, x => new Registration(x), 20),
                     // fetchAllPages(ServerFunctions.getClasses, x => new Class(x)),
                     // fetchAllPages(ServerFunctions.getRooms, x => new Room(x))
                 ]);
-            
-            this._setPageLoading(true);
 
             M.AutoInit();
 
@@ -140,16 +136,21 @@
             }
         }
 
-        _setPageLoading(isLoading) {
+        _setPageLoading(isLoading, errorMessage = '') {
             const loadingContainer = document.getElementById('page-loading-container');
             const pageContent = document.getElementById('page-content');
-            const navMobile = document.getElementById('nav-mobile');
+            const pageErrorContent = document.getElementById('page-error-content');
+            const pageErrorContentMessage = document.getElementById('page-error-content-message');
+            const nav = document.getElementById('nav-mobile');
 
             loadingContainer.style.display = isLoading ? 'flex' : 'none';
             loadingContainer.hidden = !isLoading;
 
-            pageContent.hidden = isLoading;
-            navMobile.hidden = isLoading;
+            pageContent.hidden =
+                nav.hidden = isLoading || errorMessage;
+
+            pageErrorContent.hidden = !errorMessage && !isLoading;
+            pageErrorContentMessage.textContent = errorMessage;
         }
 
         _setAdminRegistrationLoading(isLoading) {
@@ -312,7 +313,7 @@
                 if (event.target.type !== 'checkbox') {
                     return;
                 }
-                
+
                 // re-render registrations
                 this._setRegistrations(this.registrations);
             });
@@ -322,7 +323,7 @@
                 if (event.target.type !== 'checkbox') {
                     return;
                 }
-                
+
                 // re-render registrations
                 this._setRegistrations(this.registrations);
             });
@@ -459,7 +460,7 @@
                 const selectedGrades = Array.from(gradeCheckboxes)
                     .filter(checkbox => checkbox.checked)
                     .map(checkbox => checkbox.id * 1);
-                
+
                 registrations
                     .map(registration => {
                         // ensure student is populated
@@ -473,7 +474,7 @@
                         if (selectedDays.length > 0 && !selectedDays.includes(registration.day)) {
                             return false;
                         }
-                        
+
                         // filter by selected grades otherwise all
                         if (selectedGrades.length > 0 && !selectedGrades.includes(registration.student.grade)) {
                             return false;
@@ -749,7 +750,7 @@
 
                 const response = await ApiClient.post(ServerFunctions.unregisterPrivateLesson, { id: registrationToDeleteId });
                 const registrationIndex = this.registrations.findIndex(x => x.id === registrationToDeleteId);
-                
+
                 M.toast({ html: 'Registration deleted successfully.' });
                 this.registrations.splice(registrationIndex, 1);
                 this._setRegistrations(this.registrations);
@@ -759,6 +760,14 @@
             } finally {
                 this._setAdminRegistrationLoading(false);
             }
+        }
+
+        async _waitForDocumentReady() {
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                return true;
+            }
+
+            await PromiseHelpers.promisifyEvent('DOMContentLoaded', document);
         }
         // updateTableAndMessage(tbodyId, data, valueExtractor, rowsPerPage = 10) {
         //     const tbody = document.getElementById(`${tbodyId}-tbody`);

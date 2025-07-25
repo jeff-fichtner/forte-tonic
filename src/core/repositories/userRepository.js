@@ -4,46 +4,64 @@ class UserRepository {
         this.dbClient = dbClient;
     }
 
-    getAdmins() {
+    getAdmins(forceRefresh = false) {
         return RepositoryHelper.getAndSetData(
             () => this.admins,
             () => this.admins =
                 this.dbClient.getAllRecords(
                     Keys.ADMINS,
                     x => new Admin(...x)),
-            Keys.ADMINS);
+            Keys.ADMINS,
+            forceRefresh);
     }
 
-    getAdminById(id) {
-        return this.getAdmins().find(x => x.id === id);
+    getAdminByEmail(email) {
+        return this.getAdmins().find(x => x.email === email);
+    }
+    
+    _getRoles(forceRefresh = false) {
+        return RepositoryHelper.getAndSetData(
+            () => this.roles,
+            () => this.roles =
+                this.dbClient.getAllRecords(
+                    Keys.ROLES,
+                    x => new Role(...x)),
+            Keys.ROLES,
+            forceRefresh);
     }
 
-    isAdmin(id) {
-        return id && this.getAdminById(id);
+    isOperator(email) {
+        return email && this._getRoles().find(x => x.email === email && x.role === RoleType.OPERATOR);
     }
 
-    getInstructors() {
+    getInstructors(forceRefresh = false) {
         return RepositoryHelper.getAndSetData(
             () => this.instructors,
             () => this.instructors =
                 this.dbClient.getAllRecords(
                     Keys.INSTRUCTORS,
                     x => new Instructor(...x)),
-            Keys.INSTRUCTORS);
+            Keys.INSTRUCTORS,
+            forceRefresh);
     }
 
     getInstructorById(id) {
         return this.getInstructors().find(x => x.id === id);
     }
+    
+    getInstructorByEmail(email) {
+        return this.getInstructors().find(x => x.email === email);
+    }
 
-    getStudents() {
+    getStudents(forceRefresh = false) {
         return RepositoryHelper.getAndSetData(
             () => this.students,
             () => this.students =
                 this.dbClient.getAllRecords(
                     Keys.STUDENTS,
                     x => new Student(...x)),
-            Keys.STUDENTS);
+            Keys.STUDENTS,
+            forceRefresh);
     }
 
     getStudentById(id) {
@@ -51,34 +69,36 @@ class UserRepository {
     }
 
     searchStudentsByName(name) {
-        return this.dbClient.getFilteredRecords(
-            Keys.STUDENTS,
-            x => new Student(...x),
-            x => x.firstName.toLowerCase().includes(name.toLowerCase()) || x.lastName.toLowerCase().includes(name.toLowerCase()));
+        const students = this.getStudents();
+        return students.filter(x =>
+            x.firstName.toLowerCase().includes(name.toLowerCase())
+            || x.lastName.toLowerCase().includes(name.toLowerCase()));
     }
 
-    getParents() {
+    getParents(forceRefresh = false) {
         return RepositoryHelper.getAndSetData(
             () => this.parents,
             () => this.parents =
                 this.dbClient.getAllRecords(
                     Keys.PARENTS,
                     x => new Parent(...x)),
-            Keys.PARENTS);
+            Keys.PARENTS,
+            forceRefresh);
     }
 
-    getParentById(id) {
-        return this.getParents().find(x => x.id === id);
+    getParentByEmail(email) {
+        return this.getParents().find(x => x.email === email);
     }
 
-    getRooms() {
+    getRooms(forceRefresh = false) {
         return RepositoryHelper.getAndSetData(
             () => this.rooms,
             () => this.rooms =
                 this.dbClient.getAllRecords(
                     Keys.ROOMS,
                     x => new Room(...x)),
-            Keys.ROOMS);
+            Keys.ROOMS,
+            forceRefresh);
     }
 
     getRoomById(id) {

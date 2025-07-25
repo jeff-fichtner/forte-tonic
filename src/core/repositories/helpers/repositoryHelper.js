@@ -1,11 +1,7 @@
 class RepositoryHelper {
-  static getAndSetData(getFieldFunc, setFieldFunc, name, prepFunc = null) {
-    if (!getFieldFunc()) {
+  static getAndSetData(getFieldFunc, setFieldFunc, name, forceRefresh = false) {
+    if (forceRefresh || !getFieldFunc()) {
       console.log(`Loading ${name}`);
-      if (prepFunc) {
-        console.log(`Preparing ${name}`);
-        prepFunc();
-      }
       setFieldFunc();
       console.log(`${getFieldFunc().length} ${name} found`);
     }
