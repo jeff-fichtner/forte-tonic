@@ -39,7 +39,9 @@
 
             M.AutoInit();
 
-            this._initTabContent(authenticatedUser, instructors, students, registrations);
+            this.currentUser = authenticatedUser;
+
+            this._initTabContent(instructors, students, registrations);
 
             this._initTabs();
 
@@ -48,8 +50,9 @@
             this._setPageLoading(false);
         }
 
-        _initTabContent(currentUser, instructors, students, registrations) {
-            this.currentUser = currentUser;
+        _initTabContent(instructors, students, registrations) {
+
+            // list of tabs to enable
 
             this.instructors = instructors;
             this._setInstructorOptions(instructors);
@@ -147,7 +150,7 @@
             loadingContainer.hidden = !isLoading;
 
             pageContent.hidden =
-                nav.hidden = isLoading || errorMessage;
+                nav.hidden = !this.currentUser.isOperator || isLoading || errorMessage;
 
             pageErrorContent.hidden = !errorMessage && !isLoading;
             pageErrorContentMessage.textContent = errorMessage;
@@ -433,6 +436,9 @@
                 })),
                 'Select an instructor',
                 forceRefresh);
+
+            const infoContainer = document.getElementById('instructor-selected-info-container');
+            infoContainer.hidden = !document.getElementById('instructor-select').value;
         }
 
         _setRegistrations(registrations) {
