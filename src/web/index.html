@@ -192,12 +192,12 @@
 
     const ServerFunctions = {
       getAuthenticatedUser: 'getAuthenticatedUser',
+      getAdmins: 'getAdmins',
       getInstructors: 'getInstructors',
       getStudents: 'getStudents',
       getClasses: 'getClasses',
       getRegistrations: 'getRegistrations',
       getRooms: 'getRooms',
-      searchStudentsByName: 'searchStudentsByName',
       registerPrivateLesson: 'registerPrivateLesson',
       unregisterPrivateLesson: 'unregisterPrivateLesson',
     };
@@ -488,21 +488,8 @@
 
             <p hidden id="master-schedule-no-lessons-message">Not enrolled in any lessons.</p>
             <table hidden id="master-schedule-table">
-              <thead>
-                <tr>
-                  <th>Weekday</th>
-                  <th>Start Time</th>
-                  <th>Length</th>
-                  <th>Student</th>
-                  <th>Grade</th>
-                  <th>Teacher</th>
-                  <th>Instrument</th>
-                  <th></th> <!-- delete Column -->
-                </tr>
-              </thead>
-
-              <tbody>
-              </tbody>
+              <thead></thead>
+              <tbody></tbody>
             </table>
           </div>
         </div>

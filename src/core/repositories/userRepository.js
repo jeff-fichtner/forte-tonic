@@ -30,8 +30,8 @@ class UserRepository {
             forceRefresh);
     }
 
-    isOperator(email) {
-        return email && this._getRoles().find(x => x.email === email && x.role === RoleType.OPERATOR);
+    getOperatorByEmail(email) {
+        return this._getRoles().find(x => x.email === email && x.role === RoleType.OPERATOR);
     }
 
     getInstructors(forceRefresh = false) {
@@ -66,13 +66,6 @@ class UserRepository {
 
     getStudentById(id) {
         return this.getStudents().find(x => x.id === id);
-    }
-
-    searchStudentsByName(name) {
-        const students = this.getStudents();
-        return students.filter(x =>
-            x.firstName.toLowerCase().includes(name.toLowerCase())
-            || x.lastName.toLowerCase().includes(name.toLowerCase()));
     }
 
     getParents(forceRefresh = false) {

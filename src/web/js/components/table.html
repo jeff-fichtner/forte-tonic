@@ -1,0 +1,67 @@
+<script>
+    class Table {
+        constructor(tableId, headers, filterFunction, rowFunction, onClick, onFilterChanges, rows = null) {
+            
+            this.table = document.getElementById(tableId);
+            const head = this.table.querySelector('thead');
+            
+            for (const header of headers) {
+                const th = document.createElement('th'); // Create a new header cell
+                th.textContent = header; // Set the header text
+                head.appendChild(th); // Append the header to the header
+            }
+            this.table.header = head;
+            
+            this.filterFunction = filterFunction; // Store the filter function
+            this.rowFunction = rowFunction; // Store the row function
+
+            if (rows) {
+                this.replaceRange(rows); // Populate the table with initial rows
+            }
+
+            this.table.addEventListener('click', (event) => {
+                console.log(`${event.target.tagName} clicked in table ${tableId}`);
+                onClick(event); // Attach the click event handler
+            });
+
+            for (const onFilterChange of onFilterChanges) {
+                // when checkboxes in days-of-week-filter-container change
+                document.getElementById(onFilterChange.filterId).addEventListener('change', (event) => {
+                    if (event.target.type !== onFilterChange.type) {
+                        return;
+                    }
+
+                    // re-render registrations
+                    this.replaceRange(this.rows);
+                });
+            }
+        }
+
+        // Method to add a row with data
+        replaceRange(rows) {
+            this.rows = rows;
+            const body = this.table.querySelector('tbody');
+
+            body.innerHTML = ''; // Clear existing rows
+            
+            try {
+                if (!rows || rows.length === 0) {
+                    // no rows message
+                    return;
+                }
+
+                for (const row of rows) {
+                    if (this.filterFunction && !this.filterFunction(row)) {
+                        continue; // Skip rows that do not match the filter
+                    }
+                    
+                    const tr = document.createElement('tr'); // Create a new table row
+                    tr.innerHTML = this.rowFunction(row); // Get the row HTML using the provided function
+                    body.appendChild(tr); // Append the row to the table body
+                }
+            } finally {
+                this.table.hidden = false; // Ensure the table is visible after populating
+            }
+        }
+    }
+</script>

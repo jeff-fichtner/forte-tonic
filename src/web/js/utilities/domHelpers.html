@@ -1,0 +1,11 @@
+<script>
+    class DomHelpers {
+        static async _waitForDocumentReadyAsync() {
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                return true;
+            }
+
+            await PromiseHelpers.promisifyEvent('DOMContentLoaded', document);
+        }
+    }
+</script>

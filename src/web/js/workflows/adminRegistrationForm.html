@@ -1,0 +1,469 @@
+<script>
+    class AdminRegistrationForm {
+        constructor(instructors, students, sendDataFunction) {
+            
+            this.instructors = instructors;
+            this._setInstructorOptions(instructors);
+
+            this.students = students;
+            this._setStudentAutocomplete(students);
+
+            // when instructor changes
+            document.getElementById('instructor-select-options-container').addEventListener('change', (event) => {
+                if (event.target.id !== 'instructor-select') {
+                    return;
+                }
+
+                event.preventDefault();
+                const selectedValue = event.target.value;
+
+                const currentInstructor = this.instructors.find(x => x.id === selectedValue);
+                this._setInstructorInstrumentOptions(currentInstructor);
+                this._setInstructorDayOptions(currentInstructor);
+
+                const instructorDaySelectedInfoContainer = document.getElementById('instructor-day-selected-info-container');
+                instructorDaySelectedInfoContainer.hidden = true;
+
+                const infoContainer = document.getElementById('instructor-selected-info-container');
+                infoContainer.hidden = !selectedValue;
+            });
+
+            // when day changes
+            document.getElementById('instructor-day-select-options-container').addEventListener('change', (event) => {
+                if (event.target.id !== 'day-select') {
+                    return;
+                }
+
+                event.preventDefault();
+                const selectedDay = event.target.value;
+
+                this._setInstructorDayStartTimeOptions();
+
+                const instructorDaySelectedInfoContainer = document.getElementById('instructor-day-selected-info-container');
+                instructorDaySelectedInfoContainer.hidden = !selectedDay;
+            });
+
+            // when instrument changes
+            document.getElementById('instrument-select-options-container').addEventListener('change', (event) => {
+                if (event.target.id !== 'instrument-select') {
+                    return;
+                }
+
+                event.preventDefault();
+                const selectedValue = event.target.value;
+                console.log('Instrument changed to:', selectedValue);
+            });
+
+            // when start time changes
+            document.getElementById('instructor-day-start-time-container').addEventListener('change', (event) => {
+                if (event.target.id !== 'start-time-select') {
+                    return;
+                }
+
+                const selectedValue = event.target.value;
+                console.log('Start time changed to:', selectedValue);
+            });
+
+            // when lesson length changes
+            document.getElementById('lesson-length-container').addEventListener('change', (event) => {
+                if (event.target.type !== 'radio') {
+                    return;
+                }
+
+                console.log('Lesson length changed to:', event.target.value);
+
+                this._setInstructorDayStartTimeOptions();
+            });
+
+            // when create is clicked
+            document.getElementById('create-registration-submit-btn').addEventListener('click', async (event) => {
+                event.preventDefault();
+
+                if (!this._validateRegistration()) {
+                    return;
+                }
+
+                try {
+                    this._setAdminRegistrationLoading(true);
+
+                    const data = this._getCreateRegistrationData();
+
+                    await sendDataFunction(data);
+
+                    // clear students
+                    this._setCurrentStudent(null);
+                    this._setInstructorOptions(this.instructors, true);
+
+                    // transportation type
+                    const transportationTypeRadios = document.querySelectorAll('input[name="transportation-type"]');
+                    // check first
+                    if (transportationTypeRadios.length > 0) {
+                        transportationTypeRadios[0].checked = true;
+                    }
+
+                    // reset instructor
+                    const instructorSelect = document.getElementById('instructor-select');
+                    instructorSelect.value = '';
+
+                    // instrument
+                    this._setInstructorInstrumentOptions(null);
+
+                    // day
+                    this._setInstructorDayOptions(null);
+
+                    // lesson length
+                    const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
+                    // check first
+                    if (lessonLengthRadios.length > 0) {
+                        lessonLengthRadios[0].checked = true;
+                    }
+
+                    // start time
+                    this._setInstructorDayStartTimeOptions();
+
+                } catch (error) {
+                    console.error('Error creating registration:', error);
+                    M.toast({ html: 'Error creating registration.' });
+                } finally {
+                    this._setAdminRegistrationLoading(false);
+                }
+            });
+
+        }
+
+        // TODO duplicated
+        _setAdminRegistrationLoading(isLoading) {
+            const adminRegistrationLoadingContainer = document.getElementById('admin-registration-loading-container');
+            const adminRegistrationContainer = document.getElementById('admin-registration-container');
+
+            adminRegistrationLoadingContainer.hidden = !isLoading;
+            adminRegistrationContainer.hidden = isLoading;
+        }
+
+        _validateRegistration() {
+            const registrationData = this._getCreateRegistrationData();
+
+            const isValid =
+                registrationData.studentId
+                && registrationData.transportationType
+                && registrationData.instructorId
+                && registrationData.instrument
+                && registrationData.day
+                && registrationData.startTime
+                && registrationData.length;
+
+            // TODO additional validation for start time/length is valid (with api call/response)
+
+            if (!isValid) {
+                const errors = [];
+
+                if (!registrationData.studentId) {
+                    errors.push('Student');
+                }
+
+                if (!registrationData.transportationType) {
+                    errors.push('Transportation Type');
+                }
+
+                if (!registrationData.instructorId) {
+                    errors.push('Instructor');
+                }
+
+                if (!registrationData.instrument) {
+                    errors.push('Instrument');
+                }
+
+                if (!registrationData.day) {
+                    errors.push('Day');
+                }
+
+                if (!registrationData.startTime) {
+                    errors.push('Start Time');
+                }
+
+                if (!registrationData.length) {
+                    errors.push('Lesson Length');
+                }
+
+                M.toast({ html: `Please fill out the following fields:<br>${errors.join('<br>')}` });
+            }
+
+            return isValid;
+        }
+
+        _getCreateRegistrationData() {
+            // get student
+            const studentId = this.selectedStudent ? this.selectedStudent.id : null;
+
+            // get selected length
+            const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
+            const checkedRadio = Array.from(lessonLengthRadios).find(radio => radio.checked);
+
+            // get selected instructor
+            const instructorSelect = document.getElementById('instructor-select');
+
+            // get selected instrument
+            const instrumentSelect = document.getElementById('instrument-select');
+
+            // get selected day
+            const daySelect = document.getElementById('day-select');
+
+            // get selected start time
+            const startTimeSelect = document.getElementById('start-time-select');
+            const startTimeDuration = startTimeSelect.value ? DurationHelpers.minutesToDuration(startTimeSelect.value) : null;
+            const formattedStartTime = startTimeDuration ? startTimeDuration.to24HourFormat() : '';
+
+            // get transportation type response
+            const transportationType = document.querySelector('input[name="transportation-type"]:checked');
+
+            // add to object
+            return {
+                studentId: studentId,
+                transportationType: transportationType ? transportationType.value : null,
+                instructorId: instructorSelect.value,
+                instrument: instrumentSelect.value,
+                day: daySelect.value,
+                startTime: formattedStartTime,
+                length: checkedRadio ? checkedRadio.value : null
+            };
+        }
+
+        _setInstructorInstrumentOptions(instructor) {
+            if (!instructor) {
+                this._updateSelectOptions(
+                    'instrument-select',
+                    [],
+                    'Select an instrument');
+                return;
+            }
+
+            const instruments = [
+                instructor.instrument1,
+                instructor.instrument2,
+                instructor.instrument3,
+                instructor.instrument4
+            ]
+                .filter(x => x);
+
+            this._updateSelectOptions(
+                'instrument-select',
+                instruments.map(instrument => ({
+                    value: instrument,
+                    label: instrument
+                })),
+                'Select an instrument');
+        }
+
+        _setInstructorDayOptions(instructor) {
+            try {
+                if (!instructor) {
+                    this._updateSelectOptions(
+                        'day-select',
+                        [],
+                        'Select a day');
+                    return;
+                }
+
+                const weekDays = {
+                    0: { label: 'Monday', startTime: instructor.mondayStartTime },
+                    1: { label: 'Tuesday', startTime: instructor.tuesdayStartTime },
+                    2: { label: 'Wednesday', startTime: instructor.wednesdayStartTime },
+                    3: { label: 'Thursday', startTime: instructor.thursdayStartTime },
+                    4: { label: 'Friday', startTime: instructor.fridayStartTime }
+                };
+
+                let days = [];
+                for (const [index, day] of Object.entries(weekDays)) {
+                    if (day.startTime) {
+                        days.push({
+                            value: index,
+                            label: day.label
+                        });
+                    }
+                }
+
+                this._updateSelectOptions(
+                    'day-select',
+                    days,
+                    'Select a day',
+                    true);
+
+            } finally {
+                const daySelectedInfoContainer = document.getElementById('instructor-day-selected-info-container');
+                daySelectedInfoContainer.hidden = true;
+            }
+        }
+
+        _setInstructorDayStartTimeOptions() {
+
+            const selectedInstructorId = document.getElementById('instructor-select').value;
+            const selectedDay = document.getElementById('day-select').value;
+            const selectedLength = document.querySelector('input[name="lesson-length"]:checked')?.value * 1;
+
+            if (!selectedInstructorId || !selectedDay || !selectedLength) {
+                this._updateSelectOptions(
+                    'start-time-select',
+                    [],
+                    'Select a start time');
+
+                // reset to first option
+                const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
+                if (lessonLengthRadios.length > 0) {
+                    lessonLengthRadios[0].checked = true;
+                }
+                return;
+            }
+
+            const instructor = this.instructors.find(x => x.id === selectedInstructorId);
+
+            const startTimes = [
+                instructor.mondayStartTime,
+                instructor.tuesdayStartTime,
+                instructor.wednesdayStartTime,
+                instructor.thursdayStartTime,
+                instructor.fridayStartTime
+            ];
+
+            const endTimes = [
+                instructor.mondayEndTime,
+                instructor.tuesdayEndTime,
+                instructor.wednesdayEndTime,
+                instructor.thursdayEndTime,
+                instructor.fridayEndTime
+            ];
+
+            const dayIndex = selectedDay * 1; // Convert string to number
+            const startTime = startTimes[dayIndex];
+            const endTime = endTimes[dayIndex];
+            const options = [];
+
+            if (!startTime || !endTime) {
+                this._updateSelectOptions(
+                    'start-time-select',
+                    [],
+                    'Not available');
+                return;
+            }
+
+            const startTimeDuration = DurationHelpers.stringToDuration(startTime);
+            const endTimeDuration = DurationHelpers.stringToDuration(endTime);
+
+            for (let i = (startTimeDuration.hours * 60 + startTimeDuration.minutes); i <= (endTimeDuration.hours * 60 + endTimeDuration.minutes) - selectedLength; i += 15) {
+                const duration = DurationHelpers.minutesToDuration(i);
+
+                options.push({
+                    value: i,
+                    label: duration.to12HourFormat()
+                });
+            }
+
+            this._updateSelectOptions(
+                'start-time-select',
+                options,
+                'Select a start time',
+                true);
+        }
+        
+        _setCurrentStudent(student) {
+            const elem = document.getElementById('student-autocomplete-input');
+            elem.value = student ? student.fullName : ''; // Set the input value
+            this.selectedStudent = student; // Update the selected student
+        }
+
+        // TODO duplicated
+        _updateSelectOptions(selectId, options, defaultOptionText, forceRefresh = false) {
+            const select = document.getElementById(selectId);
+
+            if (!select) {
+                console.error(`Select element with ID "${selectId}" not found.`);
+                return;
+            }
+
+            // get current selected option
+            const currentSelectedValue = select.value;
+
+            // Clear existing options
+            select.innerHTML = '';
+
+            // Create a default option
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = defaultOptionText;
+            select.appendChild(defaultOption);
+
+            // Populate new options
+            options.forEach((option) => {
+                const opt = document.createElement('option');
+                opt.value = option.value;
+                opt.textContent = option.label;
+
+                if (!forceRefresh && currentSelectedValue && option.value == currentSelectedValue) {
+                    opt.selected = true;
+                }
+                select.appendChild(opt);
+            });
+
+            M.FormSelect.init(select, {
+                classes: selectId,
+                dropdownOptions: {
+                    alignment: 'left',
+                    coverTrigger: false,
+                    constrainWidth: false
+                }
+            });
+        }
+
+        _setStudentAutocomplete(students) {
+            const elem = document.getElementById('student-autocomplete-input');
+
+            if (!students.length) {
+                this.studentMap = {};
+                this.selectedStudent = null;
+                M.Autocomplete.init(elem, { data: {} });
+                return;
+            }
+
+            const data = students.reduce((acc, student) => {
+                acc[student.fullName] = null;
+                return acc;
+            }, {});
+
+            this.studentMap = students.reduce((acc, student) => {
+                acc[student.fullName] = student.id;
+                return acc;
+            }, {});
+
+            const options = {
+                data: data,
+                limit: 20,
+                onAutocomplete: (selectedOption) => {
+                    const studentId = this.studentMap[selectedOption];
+                    this.selectedStudent = this.students.find(x => x.id === studentId);
+                }
+            }
+
+            M.Autocomplete.init(elem, options);
+        }
+
+        _setInstructorOptions(instructors, forceRefresh = false) {
+            if (!instructors || instructors.length === 0) {
+                this._updateSelectOptions(
+                    'instructor-select',
+                    [],
+                    'No instructors available');
+                return;
+            }
+            this._updateSelectOptions(
+                'instructor-select',
+                instructors.map(instructor => ({
+                    value: instructor.id,
+                    label: `${instructor.lastName}, ${instructor.firstName}`
+                })),
+                'Select an instructor',
+                forceRefresh);
+
+            const infoContainer = document.getElementById('instructor-selected-info-container');
+            infoContainer.hidden = !document.getElementById('instructor-select').value;
+        }
+    }
+</script>

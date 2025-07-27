@@ -5,7 +5,7 @@
             return this._callServerFunction(serverFunctionName, payload, mapper, context);
         }
 
-        static async fetchPage(serverFunctionName, mapper, page = 0, pageSize = 10, context = null, ...args) {
+        static async fetchPage(serverFunctionName, mapper, page = 0, pageSize = 100, context = null, ...args) {
             try {
                 const paginationOptions = { page, pageSize };
                 const response = await this.fetch(serverFunctionName, null, paginationOptions, context, ...args);
@@ -24,7 +24,7 @@
             }
         }
 
-        static async fetchAllPages(serverFunctionName, mapper, pageSize = 10, context = null, ...args) {
+        static async fetchAllPages(serverFunctionName, mapper, pageSize = 100, context = null, ...args) {
             let allResults = [];
             let currentPage = 0;
             let totalPages = null;
