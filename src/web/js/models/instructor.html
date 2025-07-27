@@ -83,5 +83,14 @@
         get isAvailableFriday() {
             return this.fridayStartTime && this.fridayEndTime;
         }
+
+        get instruments() {
+            const instruments = [];
+            if (this.instrument1) instruments.push(this.instrument1);
+            if (this.instrument2) instruments.push(this.instrument2);
+            if (this.instrument3) instruments.push(this.instrument3);
+            if (this.instrument4) instruments.push(this.instrument4);
+            return instruments;
+        }
     }
 </script>

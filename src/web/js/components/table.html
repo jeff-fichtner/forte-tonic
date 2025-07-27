@@ -1,6 +1,6 @@
 <script>
     class Table {
-        constructor(tableId, headers, filterFunction, rowFunction, onClick, onFilterChanges, rows = null) {
+        constructor(tableId, headers, filterFunction, rowFunction, onClickFunction, onFilterChanges, rows = null) {
             
             this.table = document.getElementById(tableId);
             const head = this.table.querySelector('thead');
@@ -21,19 +21,21 @@
 
             this.table.addEventListener('click', (event) => {
                 console.log(`${event.target.tagName} clicked in table ${tableId}`);
-                onClick(event); // Attach the click event handler
+                onClickFunction(event); // Attach the click event handler
             });
 
-            for (const onFilterChange of onFilterChanges) {
-                // when checkboxes in days-of-week-filter-container change
-                document.getElementById(onFilterChange.filterId).addEventListener('change', (event) => {
-                    if (event.target.type !== onFilterChange.type) {
-                        return;
-                    }
+            if (onFilterChanges && onFilterChanges.length > 0) {
+                for (const onFilterChange of onFilterChanges) {
+                    // when checkboxes in days-of-week-filter-container change
+                    document.getElementById(onFilterChange.filterId).addEventListener('change', (event) => {
+                        if (event.target.type !== onFilterChange.type) {
+                            return;
+                        }
 
-                    // re-render registrations
-                    this.replaceRange(this.rows);
-                });
+                        // re-render registrations
+                        this.replaceRange(this.rows);
+                    });
+                }
             }
         }
 

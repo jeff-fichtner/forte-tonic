@@ -11,5 +11,9 @@
             this.firstName = firstName;
             this.grade = grade;
         }
+        
+        get fullName() {
+            return `${this.firstName} ${this.lastName}`;
+        }
     }
 </script>

@@ -23,8 +23,4 @@ class Class {
         this.minimumGrade = minimumGrade;
         this.maximumGrade = maximumGrade;
     }
-
-    // get endTime() {
-    //     return this.startTime + this.length;
-    // }
 }

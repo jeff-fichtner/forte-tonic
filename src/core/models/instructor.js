@@ -67,8 +67,4 @@ class Instructor {
         this.fridayEndTime = DateHelpers.parseGoogleSheetsDate(fridayEndTime);
         this.fridayRoomId = fridayRoomId;
     }
-
-    get fullName() {
-        return `${this.firstName} ${this.lastName}`;
-    }
 }

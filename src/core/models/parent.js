@@ -11,8 +11,4 @@ class Parent {
         this.firstName = firstName;
         this.phone = phone;
     }
-
-    get fullName() {
-        return `${this.firstName} ${this.lastName}`;
-    }
 }
