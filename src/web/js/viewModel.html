@@ -7,7 +7,6 @@
 
             const validations = [
                 [authenticatedUser, 'No authenticated user received.', `Must authorize use of email address.`],
-                [authenticatedUser.isOperator, 'Authenticated user is not an operator.', `You are not authorized.`]
             ];
 
             for (const [condition, errorMessage, alertMessage] of validations) {
@@ -44,23 +43,9 @@
             M.AutoInit();
 
             this.currentUser = authenticatedUser;
-
-            this._initContent(admins, instructors, students, registrations, classes, rooms);
-
-            this.navTabs = new NavTabs();
-
-            this._setPageLoading(false);
-        }
-
-        _initContent(admins, instructors, students, registrations, classes, rooms) {
-
             this.admins = admins;
-
             this.instructors = instructors;
-            this.directoryTable = this._buildDirectory(this.instructors);
-
             this.students = students;
-
             this.registrations =
                 registrations
                     .map(registration => {
@@ -70,12 +55,42 @@
                         }
                         return registration;
                     });
-            this.masterScheduleTable = this._buildRegistrationTable(this.registrations);
-
             this.classes = classes;
-
             this.rooms = rooms;
 
+            let defaultSection;
+            if (authenticatedUser.shouldShowAsOperator || authenticatedUser.admin) {
+                console.log('Initializing admin content...');
+                this._initAdminContent();
+                defaultSection = Sections.ADMIN;
+            }
+            
+            if (authenticatedUser.shouldShowAsOperator || authenticatedUser.instructor) {
+                console.log('Initializing instructor content...');
+                this._initInstructorContent();
+                defaultSection = Sections.INSTRUCTOR;
+            }
+            
+            if (authenticatedUser.shouldShowAsOperator || authenticatedUser.parent) {
+                console.log('Initializing parent content...');
+                this._initParentContent();
+                defaultSection = Sections.PARENT;
+            }
+
+            const defaultSectionToUse = !authenticatedUser.shouldShowAsOperator ? defaultSection : null;
+            console.log(`Default section to use: ${defaultSectionToUse}`);
+
+            this.navTabs = new NavTabs(defaultSectionToUse);
+
+            this._setPageLoading(false);
+        }
+
+        _initAdminContent() {
+
+            // master schedule tab
+            this.masterScheduleTable = this._buildRegistrationTable(this.registrations);
+
+            // registration form
             this.adminRegistrationForm = new AdminRegistrationForm(
                 this.instructors,
                 this.students,
@@ -90,6 +105,46 @@
                     this.masterScheduleTable.replaceRange(this.registrations);
                 }
             );
+
+            // weekly schedule
+
+            // directory
+            const mappedEmployees =
+                this.admins.map(this.adminToEmployee)
+                    .concat(this.instructors.map(this.instructorToEmployee));
+
+            this.employeeDirectoryTable = this._buildDirectory('employee-directory-table', mappedEmployees);
+        }
+
+        _initInstructorContent() {
+            // weekly schedule
+
+            // attendance
+
+            // directory
+            const mappedEmployees =
+                this.admins
+                    .map(this.adminToEmployee)
+                    .concat(this.instructors.map(this.instructorToEmployee));
+
+            // this may be set in admin section if user is operator
+            this.employeeDirectoryTable ??= this._buildDirectory('employee-directory-table', mappedEmployees);
+        }
+
+        _initParentContent() {
+            // weekly schedule
+
+            // registration
+
+            // directory
+            const mappedEmployees =
+                this.admins
+                    .map(this.adminToEmployee)
+                    .concat(this.instructors
+                        .filter(instructor => this.registrations.some(registration => registration.instructorId === instructor.id))
+                        .map(this.instructorToEmployee));
+            
+            this.parentDirectoryTable = this._buildDirectory('parent-directory-table', mappedEmployees);
         }
 
         _setPageLoading(isLoading, errorMessage = '') {
@@ -102,14 +157,14 @@
             loadingContainer.style.display = isLoading ? 'flex' : 'none';
             loadingContainer.hidden = !isLoading;
 
-            pageContent.hidden =
-                nav.hidden = !this.currentUser.isOperator || isLoading || errorMessage;
+            pageContent.hidden = isLoading || errorMessage;
+            nav.hidden = !this.currentUser.shouldShowAsOperator || isLoading || errorMessage;
 
             pageErrorContent.hidden = !errorMessage && !isLoading;
             pageErrorContentMessage.textContent = errorMessage;
         }
 
-        // TODO duplicated
+        // TODO duplicated (will be consolidated elsewhere)
         _setAdminRegistrationLoading(isLoading) {
             const adminRegistrationLoadingContainer = document.getElementById('admin-registration-loading-container');
             const adminRegistrationContainer = document.getElementById('admin-registration-container');
@@ -119,7 +174,7 @@
         }
 
         _buildRegistrationTable(defaultRegistrations) {
-            
+
             return new Table(
                 'master-schedule-table',
                 ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument', /* delete */''],
@@ -136,7 +191,7 @@
                     const selectedGrades = Array.from(gradeCheckboxes)
                         .filter(checkbox => checkbox.checked)
                         .map(checkbox => checkbox.id * 1);
-                    
+
                     // filter by selected days otherwise all
                     if (selectedDays.length > 0 && !selectedDays.includes(registration.day)) {
                         return false;
@@ -203,30 +258,30 @@
                 defaultRegistrations);
         }
 
-        _buildDirectory(instructors) {
-            
+        _buildDirectory(tableId, employees) {
+
             return new Table(
-                'directory-table',
-                ['Name', 'Email', 'Instrument(s)', 'Phone'],
+                tableId,
+                ['Name', 'Email', 'Role', 'Phone'],
                 // filter
-                instructor => {
+                employee => {
                     return true;
                 },
                 // row
-                instructor => {
+                employee => {
                     return `
-                        <td>${instructor.fullName}</td>
-                        <td>${instructor.email}</td>
-                        <td>${instructor.instruments.join(', ')}</td>
-                        <td>${instructor.phone}</td>
+                        <td>${employee.fullName}</td>
+                        <td>${employee.email}</td>
+                        <td>${employee.instruments.join(', ')}</td>
+                        <td>${employee.phone}</td>
                     `;
                 },
                 null,
                 null,
-                instructors);
+                employees);
         }
 
-        // TODO duplicated
+        // TODO duplicated (will be consolidated elsewhere)
         _updateSelectOptions(selectId, options, defaultOptionText, forceRefresh = false) {
             const select = document.getElementById(selectId);
 
@@ -293,147 +348,24 @@
             }
         }
 
-        // updateTableAndMessage(tbodyId, data, valueExtractor, rowsPerPage = 10) {
-        //     const tbody = document.getElementById(`${tbodyId}-tbody`);
-        //     const emptyMessage = document.getElementById(`${tbodyId}-empty-message`);
-        //     const paginationContainer = document.getElementById(`${tbodyId}-pagination`);
-        //     const table = tbody.closest('table');
+        adminToEmployee(admin) {
+            return {
+                id: admin.id,
+                fullName: admin.fullName,
+                email: admin.email,
+                phone: admin.phone,
+                instruments: ['Admin']
+            };
+        }
 
-        //     if (!data || data.length === 0) {
-        //         emptyMessage.hidden = false;
-        //         table.hidden = true;
-        //         paginationContainer.innerHTML = '';
-        //         return;
-        //     }
-
-        //     emptyMessage.hidden = true;
-        //     table.hidden = false;
-
-        //     // Pagination logic
-        //     const totalPages = Math.ceil(data.length / rowsPerPage);
-        //     let currentPage = 1;
-
-        //     const renderTableRows = (page) => {
-        //         tbody.innerHTML = '';
-        //         const start = (page - 1) * rowsPerPage;
-        //         const end = start + rowsPerPage;
-        //         const rows = data.slice(start, end).map(valueExtractor).map(
-        //             cells => {
-        //                 const tr = document.createElement('tr');
-        //                 cells.forEach((cell) => {
-        //                     const td = document.createElement('td');
-        //                     td.textContent = cell;
-        //                     tr.appendChild(td);
-        //                 });
-        //                 return tr;
-        //             });
-        //         rows.forEach((row) => tbody.appendChild(row));
-        //     };
-
-        //     const renderPagination = () => {
-        //         paginationContainer.innerHTML = '';
-        //         const ul = document.createElement('ul');
-        //         ul.className = 'pagination';
-
-        //         // Previous button
-        //         const prevLi = document.createElement('li');
-        //         prevLi.className = currentPage === 1 ? 'disabled' : 'waves-effect';
-        //         prevLi.innerHTML = `<a href="#!"><i class="material-icons">chevron_left</i></a>`;
-        //         prevLi.addEventListener('click', () => {
-        //             if (currentPage > 1) {
-        //                 currentPage--;
-        //                 renderTableRows(currentPage);
-        //                 renderPagination();
-        //             }
-        //         });
-        //         ul.appendChild(prevLi);
-
-        //         // Page numbers
-        //         for (let i = 1; i <= totalPages; i++) {
-        //             const pageLi = document.createElement('li');
-        //             pageLi.className = i === currentPage ? 'active' : 'waves-effect';
-        //             pageLi.innerHTML = `<a href="#!">${i}</a>`;
-        //             pageLi.addEventListener('click', () => {
-        //                 currentPage = i;
-        //                 renderTableRows(currentPage);
-        //                 renderPagination();
-        //             });
-        //             ul.appendChild(pageLi);
-        //         }
-
-        //         // Next button
-        //         const nextLi = document.createElement('li');
-        //         nextLi.className = currentPage === totalPages ? 'disabled' : 'waves-effect';
-        //         nextLi.innerHTML = `<a href="#!"><i class="material-icons">chevron_right</i></a>`;
-        //         nextLi.addEventListener('click', () => {
-        //             if (currentPage < totalPages) {
-        //                 currentPage++;
-        //                 renderTableRows(currentPage);
-        //                 renderPagination();
-        //             }
-        //         });
-        //         ul.appendChild(nextLi);
-
-        //         paginationContainer.appendChild(ul);
-        //     };
-
-        //     renderTableRows(currentPage);
-        //     renderPagination();
-        // }
-
-        // setStudents(students) {
-        //     this.updateTableAndMessage(
-        //         'students-tbody',
-        //         'students-empty-message',
-        //         studentsData,
-        //         (student) => {
-        //             const tr = document.createElement('tr');
-        //             tr.innerHTML = `
-        //                 <td>${student.fullName}</td>
-        //                 <td>${student.studentId}</td>
-        //                 <td>${student.grade}</td>
-        //             `;
-        //             return tr;
-        //         }
-        //     );
-        // }
-
-        // setClasses(classes, instructors) {
-        //     this.updateTableAndMessage(
-        //         'classes-tbody',
-        //         'classes-empty-message',
-        //         classes,
-        //         (classItem) => [classItem.title, instructors.find(x => x.id === classItem.instructorId).fullName, classItem.day]
-        //     );
-        // }
-
-        // setRegistrations(registrations, students, instructors, rooms) {
-        //     this.updateTableAndMessage(
-        //         'registrations-tbody',
-        //         'registrations-empty-message',
-        //         registrations,
-        //         (registration) => {
-        //             const student = students.find(x => x.id === registration.studentId);
-        //             const instructor = instructors.find(x => x.id === registration.instructorId);
-        //             const room = rooms.find(x => x.id === registration.roomId);
-
-        //             return [
-        //                 student.fullName,
-        //                 instructor.fullName,
-        //                 room.formattedName,
-        //                 registration.instrument
-        //             ];
-        //         }
-        //     );
-        // }
-
-        // setRooms(rooms) {
-        //     this.updateTableAndMessage(
-        //         'rooms-tbody',
-        //         'rooms-empty-message',
-        //         rooms,
-        //         (room) => [room.formattedName]
-        //     );
-        // }
+        instructorToEmployee(instructor) {
+            return {
+                id: instructor.id,
+                fullName: instructor.fullName,
+                email: instructor.email,
+                phone: instructor.phone,
+                instruments: instructor.instruments
+            };
+        }
     }
 </script>

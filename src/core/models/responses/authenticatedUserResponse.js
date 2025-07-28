@@ -6,4 +6,16 @@ class AuthenticatedUserResponse {
         this.instructor = instructor;
         this.parent = parent;
     }
+
+    isAdmin() {
+        return !!this.admin;
+    }
+
+    isInstructor() {
+        return !!this.instructor;
+    }
+
+    isParent() {
+        return !!this.parent;
+    }
 }

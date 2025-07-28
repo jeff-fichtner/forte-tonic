@@ -40,7 +40,8 @@ class UserRepository {
             () => this.instructors =
                 this.dbClient.getAllRecords(
                     Keys.INSTRUCTORS,
-                    x => new Instructor(...x)),
+                    x => new Instructor(...x))
+                    .filter(x => !x.isDeactivated),
             Keys.INSTRUCTORS,
             forceRefresh);
     }

@@ -7,5 +7,9 @@
             this.instructor = instructor ? new Instructor(instructor) : null;
             this.parent = parent ? new Parent(parent) : null;
         }
+
+        get shouldShowAsOperator() {
+            return this.isOperator && !this.admin && !this.instructor && !this.parent;
+        }
     }
 </script>

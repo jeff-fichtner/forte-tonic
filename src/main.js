@@ -30,7 +30,7 @@ const include =
 const getAuthenticatedUser =
     () => {
         _throwIfNotAuthorized();
-
+        
         return _fetchData(() => currentUser);
     };
 

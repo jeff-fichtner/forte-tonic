@@ -1,6 +1,6 @@
 <script>
     class NavTabs {
-        constructor() {
+        constructor(defaultSection) {
 
             const tabsContainer = document.querySelector('.tabs');
             const tabs = document.querySelectorAll('.tabs .tab');
@@ -67,9 +67,12 @@
                 });
             });
 
-            const firstLink = links[0];
-            if (firstLink) {
-                firstLink.click();
+            // find matching item
+            const defaultLink = Array.from(links).find(link => !defaultSection || link.getAttribute('data-section') === defaultSection);
+            if (defaultLink) {
+                defaultLink.click();
+            } else {
+                console.warn(`No link found for default section: ${defaultSection}`);
             }
         }
     }
