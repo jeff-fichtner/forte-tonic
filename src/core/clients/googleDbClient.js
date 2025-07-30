@@ -33,64 +33,49 @@ class GoogleDbClient {
     const rolesSheet = this.workingSpreadsheet.getSheetByName(Keys.ROLES);
     ErrorHandling.throwIfNo(rolesSheet, `No '${Keys.ROLES}' sheet found`);
 
+    const attendanceSheet = this.workingSpreadsheet.getSheetByName(Keys.ATTENDANCE);
+    ErrorHandling.throwIfNo(attendanceSheet, `No '${Keys.ATTENDANCE}' sheet found`);
+
     this.workingSheetInfo = {
       [Keys.ADMINS]: {
-        sheet: adminsSheet,
-        id: (record) => record.id,
-        process: (record, audit) => {
-          // record.createdAt = new Date();
-          // record.createdBy = audit;
-          return record;
-        }
+        sheet: adminsSheet
       },
       [Keys.INSTRUCTORS]: {
-        sheet: instructorsSheet,
-        id: (record) => record.id,
-        process: (record, audit) => {
-          // record.createdAt = new Date();
-          // record.createdBy = audit;
-          return record;
-        }
+        sheet: instructorsSheet
       },
       [Keys.STUDENTS]: {
-        sheet: studentsSheet,
-        id: (record) => record.id,
-        process: (record, audit) => {
-          // record.createdAt = new Date();
-          // record.createdBy = audit;
-          return record;
-        }
+        sheet: studentsSheet
       },
       [Keys.PARENTS]: {
-        sheet: parentsSheet,
-        id: (record) => record.id,
-        process: (record, audit) => {
-          // record.createdAt = new Date();
-          // record.createdBy = audit;
-          return record;
-        }
+        sheet: parentsSheet
       },
       [Keys.ROOMS]: {
-        sheet: roomsSheet,
-        id: (record) => record.id,
-        process: (record, audit) => {
-          // record.createdAt = new Date();
-          // record.createdBy = audit;
-          return record;
-        }
+        sheet: roomsSheet
       },
       [Keys.CLASSES]: {
-        sheet: classesSheet,
-        id: (record) => record.id,
-        process: (record, audit) => {
-          // record.createdAt = new Date();
-          // record.createdBy = audit;
-          return record;
-        }
+        sheet: classesSheet
       },
       [Keys.REGISTRATIONS]: {
         sheet: registrationsSheet,
         id: (record) => record.id,
+        extractValues: (record) => {
+          return [
+            record.id,
+            record.studentId,
+            record.instructorId,
+            record.day,
+            record.startTime,
+            record.length,
+            record.registrationType,
+            record.roomId,
+            record.instrument,
+            record.transportationType,
+            record.notes,
+            record.expectedStartDate,
+            record.createdAt,
+            record.createdBy
+          ];
+        },
         process: (record, audit) => {
           record.id = `${record.studentId}_${record.instructorId}_${record.day}_${record.startTime}`;
           record.createdAt = new Date();
@@ -99,11 +84,21 @@ class GoogleDbClient {
         }
       },
       [Keys.ROLES]: {
-        sheet: rolesSheet,
-        id: (record) => record.email,
+        sheet: rolesSheet
+      },
+      [Keys.ATTENDANCE]: {
+        sheet: attendanceSheet,
+        archive: (existingSheetName) => `${existingSheetName}_archived_${new Date().toISOString().slice(0, 10)}`,
+        extractValues: (record) => {
+          return [
+            record.registrationId,
+            record.createdAt,
+            record.createdBy
+          ];
+        },
         process: (record, audit) => {
-          // record.createdAt = new Date();
-          // record.createdBy = audit;
+          record.createdAt = new Date();
+          record.createdBy = audit;
           return record;
         }
       }
@@ -130,12 +125,23 @@ class GoogleDbClient {
   }
   
   appendRecord(sheetKey, record, audit) {
-    const { sheet, process } = this.workingSheetInfo[sheetKey];
+    const { sheet, process, extractValues } = this.workingSheetInfo[sheetKey];
+    if (!process) {
+      throw new Error(`No process function defined for sheet key: ${sheetKey}`);
+    }
+
+    if (!extractValues) {
+      throw new Error(`No extractValues function defined for sheet key: ${sheetKey}`);
+    }
+
     const clonedRecord = CloneUtility.clone(record, new Registration());
     const processedRecord = process(clonedRecord, audit);
+    const values = extractValues(processedRecord);
     
-    sheet.appendRow(Object.values(processedRecord));
+    sheet.appendRow(values);
+
     // TODO audit transaction
+
     return processedRecord;
   }
 
@@ -154,6 +160,32 @@ class GoogleDbClient {
     }
 
     // TODO audit
+  }
+
+  archiveSheet(sheetKey) {
+    const { sheet, archive } = this.workingSheetInfo[sheetKey];
+
+    if (!archive) {
+      throw new Error(`No archive function defined for sheet key: ${sheetKey}`);
+    }
+
+    // change the name of the sheet passing in existing sheet name
+    const newSheetName = archive(sheet.getName());
+    // check if the new sheet name already exists
+    const existingSheets = this.workingSpreadsheet.getSheets();
+    if (existingSheets.some(s => s.getName() === newSheetName)) {
+      throw new Error(`A sheet with the name "${newSheetName}" already exists.`);
+    }
+    
+    sheet.setName(newSheetName);
+
+    // create new sheet
+    const newSheet = this.workingSpreadsheet.insertSheet(sheetKey);
+    // copy the header row from the archived sheet to the new sheet
+    const headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues();
+    newSheet.getRange(1, 1, 1, headerRow[0].length).setValues(headerRow);
+    this.workingSheetInfo[sheetKey].sheet = newSheet;
+    Logger.log(`Sheet "${newSheetName}" archived and new sheet created.`);
   }
 
   _getOrCreateSpreadsheetByFolderAndName(folder, spreadsheetName) {

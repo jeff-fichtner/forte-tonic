@@ -7,4 +7,5 @@ const Keys = {
     CLASSES: "classes",
     REGISTRATIONS: "registrations",
     ROLES: "roles",
+    ATTENDANCE: "attendance",
 };

@@ -78,7 +78,14 @@ const getStudents =
             }
             console.log(`${filterMessage}: ${filteredStudents.length}`);
             
-            return filteredStudents.map(student => { return { id: student.id, firstName: student.firstName, lastName: student.lastName, grade: student.grade } });
+            return filteredStudents.map(student => {
+                return {
+                    id: student.id,
+                    firstName: student.firstNickname ? student.firstNickname : student.firstName,
+                    lastName: student.lastNickname ? student.lastNickname : student.lastName,
+                    grade: student.grade
+                };
+            });
         }, request.page, request.pageSize);
     };
 
@@ -137,7 +144,7 @@ const registerPrivateLesson =
 
         const instructor = worker.userRepositoryInstance.getInstructorById(data.instructorId);
 
-        const newRegistration = worker.programRepositoryInstance.register(data, instructor, currentUser);
+        const newRegistration = worker.programRepositoryInstance.register(data, instructor, currentUser.email);
 
         return _respond({
             newRegistration
@@ -151,6 +158,32 @@ const unregisterPrivateLesson =
         const data = _retrieveDataFromRequest(request);
 
         const success = worker.programRepositoryInstance.unregister(data.id, currentUser);
+
+        return _respond({
+            success
+        });
+    }
+
+const recordAttendance =
+    (request) => {
+        _throwIfNotAuthorized();
+
+        const data = _retrieveDataFromRequest(request);
+
+        const attendanceRecord = worker.programRepositoryInstance.recordAttendance(data.registrationId, currentUser.email);
+
+        return _respond({
+            attendanceRecord
+        });
+    }
+
+const removeAttendance =
+    (request) => {
+        _throwIfNotAuthorized();
+
+        const data = _retrieveDataFromRequest(request);
+        
+        const success = worker.programRepositoryInstance.removeAttendance(data.registrationId, currentUser.email);
 
         return _respond({
             success

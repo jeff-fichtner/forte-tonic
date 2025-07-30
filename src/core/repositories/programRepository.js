@@ -82,6 +82,18 @@ class ProgramRepository {
     return this.dbClient.appendRecord(Keys.REGISTRATIONS, record, audit);
   }
 
+  getAttendanceForRegistrations(registrationIds) {
+    const records = RepositoryHelper.getAndSetData(
+      () => this.attendanceRecords,
+      () => this.attendanceRecords =
+        this.dbClient.getAllRecords(
+          Keys.ATTENDANCE,
+          x => new AttendanceRecord(...x)),
+      Keys.ATTENDANCE);
+
+    return records.filter(x => registrationIds.includes(x.registrationId));
+  }
+
   unregister(registrationId, audit) {
     try {
       this.dbClient.deleteRecord(Keys.REGISTRATIONS, registrationId, audit);
@@ -90,5 +102,25 @@ class ProgramRepository {
       console.error(`Failed to unregister registration with ID ${registrationId}:`, error);
       return false;
     }
+  }
+
+  recordAttendance(registrationId, audit) {
+    const attendanceRecords = this.getAttendanceForRegistrations([registrationId]);
+    if (attendanceRecords.length > 0) {
+      console.warn(`Attendance already recorded for registration ID ${registrationId}`);
+      return attendanceRecords[0];
+    }
+
+    return this.dbClient.appendRecord(Keys.ATTENDANCE, new AttendanceRecord(registrationId), audit);
+  }
+
+  removeAttendance(registrationId) {
+    const attendanceRecords = this.getAttendanceForRegistrations([registrationId]);
+    if (attendanceRecords.length === 0) {
+      console.warn(`No attendance record found for registration ID ${registrationId}`);
+      return true;
+    }
+
+    this.dbClient.deleteRecord(Keys.ATTENDANCE, registrationId);
   }
 }
