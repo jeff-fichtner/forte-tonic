@@ -58,6 +58,7 @@ const getStudents =
 
         return _fetchData(() => {
             const allStudents = worker.userRepositoryInstance.getStudents();
+            const allParents = worker.userRepositoryInstance.getParents();
 
             let filteredStudents = [];
             let filterMessage = '';
@@ -79,11 +80,15 @@ const getStudents =
             console.log(`${filterMessage}: ${filteredStudents.length}`);
             
             return filteredStudents.map(student => {
+                const parent1 = allParents.find(parent => parent.id === student.parent1Id);
+                const parent2 = allParents.find(parent => parent.id === student.parent2Id);
+
                 return {
                     id: student.id,
                     firstName: student.firstNickname ? student.firstNickname : student.firstName,
                     lastName: student.lastNickname ? student.lastNickname : student.lastName,
-                    grade: student.grade
+                    grade: student.grade,
+                    parentEmails: [parent1?.email, parent2?.email].filter(email => email).join(', '),
                 };
             });
         }, request.page, request.pageSize);

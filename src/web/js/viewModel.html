@@ -64,13 +64,13 @@
                 this._initAdminContent();
                 defaultSection = Sections.ADMIN;
             }
-            
+
             if (authenticatedUser.shouldShowAsOperator || authenticatedUser.instructor) {
                 console.log('Initializing instructor content...');
                 this._initInstructorContent();
                 defaultSection = Sections.INSTRUCTOR;
             }
-            
+
             if (authenticatedUser.shouldShowAsOperator || authenticatedUser.parent) {
                 console.log('Initializing parent content...');
                 this._initParentContent();
@@ -110,7 +110,7 @@
 
             // directory
             const mappedEmployees =
-                this.admins.map(this.adminToEmployee)
+                this.adminEmployees()
                     .concat(this.instructors.map(this.instructorToEmployee));
 
             this.employeeDirectoryTable = this._buildDirectory('employee-directory-table', mappedEmployees);
@@ -123,8 +123,7 @@
 
             // directory
             const mappedEmployees =
-                this.admins
-                    .map(this.adminToEmployee)
+            this.adminEmployees()
                     .concat(this.instructors.map(this.instructorToEmployee));
 
             // this may be set in admin section if user is operator
@@ -138,12 +137,11 @@
 
             // directory
             const mappedEmployees =
-                this.admins
-                    .map(this.adminToEmployee)
+                this.adminEmployees()
                     .concat(this.instructors
                         .filter(instructor => this.registrations.some(registration => registration.instructorId === instructor.id))
                         .map(this.instructorToEmployee));
-            
+
             this.parentDirectoryTable = this._buildDirectory('parent-directory-table', mappedEmployees);
         }
 
@@ -177,7 +175,7 @@
 
             return new Table(
                 'master-schedule-table',
-                ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument', /* delete */''],
+                ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument', 'Contact', 'Remove'],
                 // filter
                 registration => {
                     // get selected checkboxes within days-of-week-filter-container
@@ -223,7 +221,12 @@
                         <td>${instructor.firstName} ${instructor.lastName}</td>
                         <td>${registration.instrument}</td>
                         <td>
-                            <a href="#!" class="secondary-content">
+                            <a href="#!">
+                                <i class="copy-parent-emails-table-icon material-icons gray-text text-darken-4">email</i>
+                            </a>
+                        </td>
+                        <td>
+                            <a href="#!">
                                 <i class="delete-registration-table-icon material-icons red-text text-darken-4">delete_forever</i>
                             </a>
                         </td>
@@ -231,7 +234,9 @@
                 },
                 // on click
                 async event => {
-                    if (!event.target.classList.contains('delete-registration-table-icon')) {
+                    const isCopy = event.target.classList.contains('copy-parent-emails-table-icon');
+                    const isDelete = event.target.classList.contains('delete-registration-table-icon');
+                    if (!isCopy && !isDelete) {
                         return;
                     }
 
@@ -239,11 +244,20 @@
 
                     const row = event.target.closest('tr');
                     const registrationIndex = Array.from(row.parentNode.children).indexOf(row);
-                    const registrationToDelete = this.registrations[registrationIndex];
+                    const currentRegistration = this.registrations[registrationIndex];
 
-                    if (!registrationToDelete) return;
+                    if (!currentRegistration) return;
 
-                    await this._requestDeleteRegistrationAsync(registrationToDelete.id);
+                    if (isCopy) {
+                        const parentEmails = currentRegistration.student.parentEmails;
+                        await this._copyToClipboard(parentEmails);
+                        return;
+                    }
+
+                    if (isDelete) {
+                        await this._requestDeleteRegistrationAsync(currentRegistration.id);
+                        return;
+                    }
                 },
                 [
                     {
@@ -262,7 +276,7 @@
 
             return new Table(
                 tableId,
-                ['Name', 'Email', 'Role', 'Phone'],
+                ['Name', 'Role', 'Email', 'Phone'],
                 // filter
                 employee => {
                     return true;
@@ -271,8 +285,8 @@
                 employee => {
                     return `
                         <td>${employee.fullName}</td>
+                        <td>${employee.roles.join(', ')}</td>
                         <td>${employee.email}</td>
-                        <td>${employee.instruments.join(', ')}</td>
                         <td>${employee.phone}</td>
                     `;
                 },
@@ -348,14 +362,52 @@
             }
         }
 
-        adminToEmployee(admin) {
-            return {
-                id: admin.id,
-                fullName: admin.fullName,
-                email: admin.email,
-                phone: admin.phone,
-                instruments: ['Admin']
-            };
+        async _copyToClipboard(text) {
+            try {
+                // Attempt to use the Clipboard API
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(text);
+                    M.toast({ html: `Copied '${text}' to clipboard.` });
+                    return;
+                }
+            } catch (error) {
+                console.error('Failed to copy text to clipboard WITH MODERN API:', error);
+            }
+
+            try {
+                // Fallback to execCommand for older browsers
+                const tempInput = document.createElement('textarea');
+                tempInput.value = text;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+
+                M.toast({ html: `Copied '${text}' to clipboard.` });
+            } catch (error) {
+                console.error('Failed to copy text to clipboard WITH FALLBACK:', error);
+                M.toast({ html: 'Failed to copy text to clipboard.' });
+            }
+        };
+
+        adminEmployees() {
+            // TODO migrate to data column
+            const noah = this.admins.find(admin => admin.email === 'ndemosslevy@mcds.org');
+            return [
+                {
+                    id: noah.id,
+                    fullName: noah.fullName,
+                    email: noah.email,
+                    phone: "(415) 945-5121",
+                    roles: ['Forte Director']
+                },
+                {
+                    id: "",
+                    fullName: "Joyous Bey and Kelli Fleitas",
+                    email: "forte@mcds.org",
+                    phone: "(415) 945-5122",
+                    roles: ['Forte Office']
+                }];
         }
 
         instructorToEmployee(instructor) {
@@ -364,7 +416,7 @@
                 fullName: instructor.fullName,
                 email: instructor.email,
                 phone: instructor.phone,
-                instruments: instructor.instruments
+                roles: instructor.instruments
             };
         }
     }
