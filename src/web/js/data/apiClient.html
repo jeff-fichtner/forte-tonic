@@ -9,6 +9,7 @@
             try {
                 const paginationOptions = { page, pageSize };
                 const response = await this.fetch(serverFunctionName, null, paginationOptions, context, ...args);
+                console.log(`Fetched page ${page} with size ${pageSize} from server function ${serverFunctionName}`);
                 if (!response) {
                     return { data: [], total: 0 };
                 }

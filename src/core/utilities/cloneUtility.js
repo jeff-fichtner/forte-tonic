@@ -1,5 +1,5 @@
 class CloneUtility {
-    static clone(obj, newObj = null) {
+    static clone(obj) {
         // make all null or undefined values inside the object serializable
         const replacer = (key, value) => {
             if (value === null || value === undefined) {
@@ -9,6 +9,8 @@ class CloneUtility {
         };
         
         const clonedObject = JSON.parse(JSON.stringify(obj, replacer));
-        return newObj ? Object.assign(newObj, clonedObject) : clonedObject;
+        return obj && obj.constructor
+            ? Object.assign(new obj.constructor(), clonedObject)
+            : clonedObject;
     }
 }

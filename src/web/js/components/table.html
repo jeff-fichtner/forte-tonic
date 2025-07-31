@@ -23,7 +23,7 @@
 
             this.table.addEventListener('click', (event) => {
                 console.log(`${event.target.tagName} clicked in table ${tableId}`);
-                onClickFunction(event); // Attach the click event handler
+                if (onClickFunction) onClickFunction(event); // Attach the click event handler
             });
 
             if (onFilterChanges && onFilterChanges.length > 0) {

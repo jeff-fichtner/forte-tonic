@@ -38,7 +38,7 @@ class ProgramRepository {
     return this.getRegistrations().find(x => x.id === id);
   }
 
-  register(registrationData, instructor, audit) {
+  register(registrationData, instructor, createdBy) {
     // TODO data validation
     registrationData.registrationType = RegistrationType.PRIVATE;
     const date = DateHelpers.getStartOfCurrentDayUTC();
@@ -79,7 +79,7 @@ class ProgramRepository {
         registrationData.expectedStartDate,
       );
 
-    return this.dbClient.appendRecord(Keys.REGISTRATIONS, record, audit);
+    return this.dbClient.appendRecord(Keys.REGISTRATIONS, record, createdBy);
   }
 
   getAttendanceForRegistrations(registrationIds) {
@@ -94,9 +94,9 @@ class ProgramRepository {
     return records.filter(x => registrationIds.includes(x.registrationId));
   }
 
-  unregister(registrationId, audit) {
+  unregister(registrationId, deletedBy) {
     try {
-      this.dbClient.deleteRecord(Keys.REGISTRATIONS, registrationId, audit);
+      this.dbClient.deleteRecord(Keys.REGISTRATIONS, registrationId, deletedBy);
       return true;
     } catch (error) {
       console.error(`Failed to unregister registration with ID ${registrationId}:`, error);
@@ -104,23 +104,23 @@ class ProgramRepository {
     }
   }
 
-  recordAttendance(registrationId, audit) {
+  recordAttendance(registrationId, createdBy) {
     const attendanceRecords = this.getAttendanceForRegistrations([registrationId]);
     if (attendanceRecords.length > 0) {
       console.warn(`Attendance already recorded for registration ID ${registrationId}`);
       return attendanceRecords[0];
     }
 
-    return this.dbClient.appendRecord(Keys.ATTENDANCE, new AttendanceRecord(registrationId), audit);
+    return this.dbClient.appendRecord(Keys.ATTENDANCE, new AttendanceRecord(registrationId), createdBy);
   }
 
-  removeAttendance(registrationId) {
+  removeAttendance(registrationId, deletedBy) {
     const attendanceRecords = this.getAttendanceForRegistrations([registrationId]);
     if (attendanceRecords.length === 0) {
       console.warn(`No attendance record found for registration ID ${registrationId}`);
       return true;
     }
 
-    this.dbClient.deleteRecord(Keys.ATTENDANCE, registrationId);
+    this.dbClient.deleteRecord(Keys.ATTENDANCE, registrationId, deletedBy);
   }
 }

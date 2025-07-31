@@ -1,11 +1,13 @@
 const Keys = {
+    ROLES: "roles",
     ADMINS: "admins",
     INSTRUCTORS: "instructors",
-    STUDENTS: "students",
     PARENTS: "parents",
-    ROOMS: "rooms",
+    STUDENTS: "students",
     CLASSES: "classes",
+    ROOMS: "rooms",
     REGISTRATIONS: "registrations",
-    ROLES: "roles",
+    REGISTRATIONSAUDIT: "registrations_audit",
     ATTENDANCE: "attendance",
+    ATTENDANCEAUDIT: "attendance_audit",
 };

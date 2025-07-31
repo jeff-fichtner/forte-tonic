@@ -162,7 +162,7 @@ const unregisterPrivateLesson =
 
         const data = _retrieveDataFromRequest(request);
 
-        const success = worker.programRepositoryInstance.unregister(data.id, currentUser);
+        const success = worker.programRepositoryInstance.unregister(data.id, currentUser.email);
 
         return _respond({
             success
@@ -176,7 +176,7 @@ const recordAttendance =
         const data = _retrieveDataFromRequest(request);
 
         const attendanceRecord = worker.programRepositoryInstance.recordAttendance(data.registrationId, currentUser.email);
-
+        
         return _respond({
             attendanceRecord
         });
@@ -187,7 +187,7 @@ const removeAttendance =
         _throwIfNotAuthorized();
 
         const data = _retrieveDataFromRequest(request);
-        
+
         const success = worker.programRepositoryInstance.removeAttendance(data.registrationId, currentUser.email);
 
         return _respond({
