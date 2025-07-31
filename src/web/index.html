@@ -202,6 +202,10 @@
       unregisterPrivateLesson: 'unregisterPrivateLesson',
     };
 
+    const DataStores = {
+      STUDENTS: 'students',
+    };
+
     const viewModel = new ViewModel();
     viewModel.initializeAsync()
       .catch(error => {
@@ -647,8 +651,8 @@
 
       <!-- Instructor Section -->
       <div hidden class="tab-content" id="instructor-weekly-schedule" class="col s12" style="background-color: #fefefe">
-        <table hidden id="instructor-weekly-schedule-table">
-        </table>
+        <div id="instructor-weekly-schedule-tables">
+        </div>
       </div>
       <div hidden class="tab-content" id="instructor-attendance" class="col s12" style="background-color: #fefefe">
         Content for
@@ -665,8 +669,8 @@
 
       <!-- Parent Section -->
       <div hidden class="tab-content" id="parent-weekly-schedule" class="col s12" style="background-color: #fefefe">
-        <table hidden id="parent-weekly-schedule-table">
-        </table>
+        <div id="parent-weekly-schedule-tables">
+        </div>
       </div>
       <div hidden class="tab-content" id="parent-registration" class="col s12" style="background-color: #fefefe">
         Parent Registration Form</div>

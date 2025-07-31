@@ -3,7 +3,7 @@
 
         async initializeAsync() {
 
-            const authenticatedUser = await ApiClient.fetch(ServerFunctions.getAuthenticatedUser, x => new AuthenticatedUserResponse(x));
+            const authenticatedUser = await HttpService.fetch(ServerFunctions.getAuthenticatedUser, x => new AuthenticatedUserResponse(x));
 
             const validations = [
                 [authenticatedUser, 'No authenticated user received.', `Must authorize use of email address.`],
@@ -21,6 +21,12 @@
 
             console.log(`Authenticated user: ${JSON.stringify(authenticatedUser)}`);
 
+            this.dbClient = new IndexedDbClient(
+                'forte',
+                [DataStores.STUDENTS]
+            );
+            await this.dbClient.init();
+            
             const [
                 _,
                 admins,
@@ -32,14 +38,14 @@
             ] =
                 await Promise.all([
                     DomHelpers._waitForDocumentReadyAsync(),
-                    ApiClient.fetch(ServerFunctions.getAdmins, x => x.map(y => new Admin(y))),
-                    ApiClient.fetch(ServerFunctions.getInstructors, x => x.map(y => new Instructor(y))),
-                    ApiClient.fetchAllPages(ServerFunctions.getStudents, x => new Student(x)),
-                    ApiClient.fetchAllPages(ServerFunctions.getRegistrations, x => new Registration(x)),
-                    ApiClient.fetch(ServerFunctions.getClasses, x => x.map(y => new Class(y))),
-                    ApiClient.fetch(ServerFunctions.getRooms, x => x.map(y => new Room(y)))
+                    HttpService.fetch(ServerFunctions.getAdmins, x => x.map(y => new Admin(y))),
+                    HttpService.fetch(ServerFunctions.getInstructors, x => x.map(y => new Instructor(y))),
+                    this._getStudents(),
+                    HttpService.fetchAllPages(ServerFunctions.getRegistrations, x => new Registration(x)),
+                    HttpService.fetch(ServerFunctions.getClasses, x => x.map(y => new Class(y))),
+                    HttpService.fetch(ServerFunctions.getRooms, x => x.map(y => new Room(y))),
                 ]);
-
+            
             M.AutoInit();
 
             this.currentUser = authenticatedUser;
@@ -95,7 +101,7 @@
                 this.instructors,
                 this.students,
                 async data => {
-                    const newRegistration = await ApiClient.post(ServerFunctions.registerPrivateLesson, data, x => new Registration(x.newRegistration));
+                    const newRegistration = await HttpService.post(ServerFunctions.registerPrivateLesson, data, x => new Registration(x.newRegistration));
 
                     // handle response
                     console.log('Registration created:', newRegistration);
@@ -118,12 +124,16 @@
 
         _initInstructorContent() {
             // weekly schedule
+            // unique days registrations
+            // const daysWithRegistrations = this.registrations
+            //     .map(registration => registration.day)
+            //     .filter((day, index, self) => self.indexOf(day) === index);
 
             // attendance
 
             // directory
             const mappedEmployees =
-            this.adminEmployees()
+                this.adminEmployees()
                     .concat(this.instructors.map(this.instructorToEmployee));
 
             // this may be set in admin section if user is operator
@@ -132,6 +142,7 @@
 
         _initParentContent() {
             // weekly schedule
+            // this.parentWeeklyScheduleTable = this._buildWeeklySchedule('parent-weekly-schedule-table', this.registrations);
 
             // registration
 
@@ -272,11 +283,45 @@
                 defaultRegistrations);
         }
 
+        _buildWeeklySchedule(tableId, enrollments) {
+
+            return new Table(
+                tableId,
+                ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument'],
+                // filter
+                enrollment => {
+                    return true;
+                },
+                // row
+                enrollment => {
+                    const instructor = this.instructors.find(x => x.id === enrollment.instructorId);
+                    const student = this.students.find(x => x.id === enrollment.studentId);
+
+                    if (!instructor || !student) {
+                        console.warn(`Instructor or student not found for enrollment: ${enrollment.id}`);
+                        return '';
+                    }
+
+                    return `
+                        <td>${enrollment.day}</td>
+                        <td>${DurationHelpers.stringToDuration(enrollment.startTime).to12HourFormat()}</td>
+                        <td>${enrollment.length} minutes</td>
+                        <td>${student.firstName} ${student.lastName}</td>
+                        <td>${formatGrade(student.grade)}</td>
+                        <td>${instructor.firstName} ${instructor.lastName}</td>
+                        <td>${enrollment.instrument}</td>
+                    `;
+                },
+                null,
+                null,
+                enrollments);
+        }
+
         _buildDirectory(tableId, employees) {
 
             return new Table(
                 tableId,
-                ['Name', 'Role', 'Email', 'Phone'],
+                ['Name', 'Role', 'Email', 'Phone', 'Contact'],
                 // filter
                 employee => {
                     return true;
@@ -288,6 +333,11 @@
                         <td>${employee.roles.join(', ')}</td>
                         <td>${employee.email}</td>
                         <td>${employee.phone}</td>
+                        <td>
+                            <a href="#!">
+                                <i class="copy-parent-emails-table-icon material-icons gray-text text-darken-4">email</i>
+                            </a>
+                        </td>
                     `;
                 },
                 null,
@@ -348,7 +398,7 @@
             try {
                 this._setAdminRegistrationLoading(true);
 
-                const response = await ApiClient.post(ServerFunctions.unregisterPrivateLesson, { id: registrationToDeleteId });
+                const response = await HttpService.post(ServerFunctions.unregisterPrivateLesson, { id: registrationToDeleteId });
                 const registrationIndex = this.registrations.findIndex(x => x.id === registrationToDeleteId);
 
                 M.toast({ html: 'Registration deleted successfully.' });
@@ -418,6 +468,32 @@
                 phone: instructor.phone,
                 roles: instructor.instruments
             };
+        }
+
+        async _getStudents(forceRefresh = false) {
+            // load students from indexeddb
+            if (!forceRefresh && await this.dbClient.hasItems(DataStores.STUDENTS)) {
+                console.log('Loading students from IndexedDB...');
+                const items = await this.dbClient.getAll(DataStores.STUDENTS);
+                if (!items || items.length === 0) {
+                    console.warn('No students found in IndexedDB.');
+                } else {
+                    console.log(`Loaded ${items.length} students from IndexedDB.`);
+                }
+                return items;
+            }
+
+            const students = await HttpService.fetchAllPages(ServerFunctions.getStudents, x => new Student(x));
+            console.log(`Fetched ${students.length} students from server.`);
+            if (students.length > 0) {
+                // save students to indexeddb
+                console.log('Saving students to IndexedDB...');
+                await this.dbClient.insertRange(DataStores.STUDENTS, students);
+            } else {
+                console.warn('No students found from server.');
+            }
+
+            return students;
         }
     }
 </script>

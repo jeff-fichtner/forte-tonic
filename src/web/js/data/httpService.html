@@ -1,0 +1,92 @@
+<script>
+    class HttpService {
+
+        static fetch(serverFunctionName, mapper = null, paginationOptions = {}, context = null, ...args) {
+            const payload = paginationOptions ? [paginationOptions, ...args] : args;
+            return this._callServerFunction(serverFunctionName, payload, mapper, context);
+        }
+
+        static async fetchPage(serverFunctionName, mapper, page = 0, pageSize = 100, context = null, ...args) {
+            try {
+                const paginationOptions = { page, pageSize };
+                const response = await this.fetch(serverFunctionName, null, paginationOptions, context, ...args);
+                console.log(`Fetched page ${page} with size ${pageSize} from server function ${serverFunctionName}`);
+                if (!response) {
+                    return { data: [], total: 0 };
+                }
+
+                const parsedResults = response.data.map(y => mapper(y));
+                return {
+                    data: parsedResults,
+                    total: response.total || 0,
+                };
+            } catch (error) {
+                console.error(`Error fetching page ${page}:`, error);
+                throw error;
+            }
+        }
+
+        static async fetchAllPages(serverFunctionName, mapper, pageSize = 100, context = null, ...args) {
+            let allResults = [];
+            let currentPage = 0;
+            let totalPages = null;
+
+            while (!totalPages || currentPage < totalPages) {
+                try {
+                    const { data, total } = await this.fetchPage(serverFunctionName, mapper, currentPage, pageSize, context, ...args);
+                    if (!data || data.length === 0) {
+                        break;
+                    }
+
+                    allResults = allResults.concat(data);
+
+                    if (!totalPages && total !== undefined) {
+                        totalPages = Math.ceil(total / pageSize);
+                    }
+
+                    if (!totalPages) {
+                        throw new Error('Total pages not defined');
+                    }
+
+                    currentPage++;
+                } catch (error) {
+                    console.error(`Error fetching all pages at page ${currentPage}:`, error);
+                    return [];
+                }
+            }
+
+            return allResults;
+        }
+
+        static post(serverFunctionName, data, mapper = null, context = null, ...args) {
+            const payload = [{ data }, ...args];
+            return this._callServerFunction(serverFunctionName, payload, mapper, context);
+        }
+
+        // Shared method for calling server functions
+        static _callServerFunction(serverFunctionName, payload, mapper = null, context = null) {
+            return new Promise((resolve, reject) => {
+                try {
+                    google.script.run
+                        .withSuccessHandler((response) => {
+                            if (!response) {
+                                reject(new Error('Successful but empty response'));
+                                return;
+                            }
+                            try {
+                                const parsedResponse = JSON.parse(response);
+                                resolve(mapper ? mapper(parsedResponse) : parsedResponse);
+                            } catch (e) {
+                                reject(new Error(`Error - ${e}: ${response}`));
+                            }
+                        })
+                        .withFailureHandler((error) => reject(error))
+                        .withUserObject(context)[serverFunctionName](...payload);
+                } catch (error) {
+                    console.error(`Error in server function call to ${serverFunctionName}:`, error);
+                    reject(error);
+                }
+            });
+        }
+    }
+</script>
