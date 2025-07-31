@@ -2,7 +2,7 @@
     class ViewModel {
 
         async initializeAsync() {
-
+            
             const authenticatedUser = await HttpService.fetch(ServerFunctions.getAuthenticatedUser, x => new AuthenticatedUserResponse(x));
 
             const validations = [
@@ -26,7 +26,7 @@
                 [DataStores.STUDENTS]
             );
             await this.dbClient.init();
-            
+
             const [
                 _,
                 admins,
@@ -45,7 +45,7 @@
                     HttpService.fetch(ServerFunctions.getClasses, x => x.map(y => new Class(y))),
                     HttpService.fetch(ServerFunctions.getRooms, x => x.map(y => new Room(y))),
                 ]);
-            
+
             M.AutoInit();
 
             this.currentUser = authenticatedUser;
@@ -441,23 +441,28 @@
         };
 
         adminEmployees() {
-            // TODO migrate to data column
-            const noah = this.admins.find(admin => admin.email === 'ndemosslevy@mcds.org');
-            return [
-                {
-                    id: noah.id,
-                    fullName: noah.fullName,
-                    email: noah.email,
-                    phone: "(415) 945-5121",
-                    roles: ['Forte Director']
-                },
-                {
-                    id: "",
-                    fullName: "Joyous Bey and Kelli Fleitas",
-                    email: "forte@mcds.org",
-                    phone: "(415) 945-5122",
-                    roles: ['Forte Office']
-                }];
+            const noah = this.admins.find(admin => admin.email === 'ndemosslevy@mcds.org'); // TODO migrate to data column
+
+            return this.admins
+                .map(x => {
+                    if (x === noah) {
+                        return {
+                            id: x.id,
+                            fullName: x.fullName,
+                            email: x.email,
+                            phone: '(415) 945-5121', // TODO migrate to data column
+                            roles: ['Forte Director'] // TODO migrate to data column
+                        };
+                    }
+
+                    return {
+                        id: x.id,
+                        fullName: x.fullName,
+                        email: 'forte@mcds.org', // TODO migrate to data column
+                        phone: '(415) 945-5122', // TODO migrate to data column
+                        roles: ['Forte Associate Manager'] // TODO migrate to data column
+                    };
+                });
         }
 
         instructorToEmployee(instructor) {
