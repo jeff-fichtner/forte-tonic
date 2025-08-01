@@ -126,10 +126,23 @@
         _initInstructorContent() {
             // weekly schedule
             // unique days registrations
-            // const daysWithRegistrations = this.registrations
-            //     .map(registration => registration.day)
-            //     .filter((day, index, self) => self.indexOf(day) === index);
+            const daysWithRegistrations = this.registrations
+                .map(registration => registration.day)
+                .filter((day, index, self) => self.indexOf(day) === index);
+            
+            const instructorWeeklyScheduleTables = document.getElementById('instructor-weekly-schedule-tables');
+            
+            // TODO future will allow redraw
+            daysWithRegistrations.forEach(day => {
+                const tableId = `instructor-weekly-schedule-table-${day}`;
+                const newTable = document.createElement('table');
+                newTable.id = tableId;
+                instructorWeeklyScheduleTables.appendChild(newTable);
+                debugger
+                this._buildWeeklySchedule(tableId, this.registrations.filter(x => x.day === day));
+            });
 
+            debugger
             // attendance
 
             // directory
@@ -301,11 +314,11 @@
 
                     return `
                         <td>${enrollment.day}</td>
-                        <td>${registration.formattedStartTime}</td>
+                        <td>${enrollment.formattedStartTime}</td>
                         <td>${enrollment.length} minutes</td>
-                        <td>${student.firstName} ${student.lastName}</td>
+                        <td>${student.fullName}</td>
                         <td>${student.formattedGrade}</td>
-                        <td>${instructor.firstName} ${instructor.lastName}</td>
+                        <td>${instructor.fullName}</td>
                         <td>${enrollment.instrument}</td>
                     `;
                 },
