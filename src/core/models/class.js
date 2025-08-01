@@ -6,6 +6,7 @@ class Class {
         day,
         startTime,
         length,
+        endTime,
         instrument,
         title,
         size,
@@ -17,6 +18,7 @@ class Class {
         this.day = day;
         this.startTime = DateHelpers.parseGoogleSheetsDate(startTime);
         this.length = length;
+        this.endTime = DateHelpers.parseGoogleSheetsDate(endTime);
         this.instrument = instrument;
         this.title = title;
         this.size = size;
