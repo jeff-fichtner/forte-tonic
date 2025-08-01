@@ -138,11 +138,9 @@
                 const newTable = document.createElement('table');
                 newTable.id = tableId;
                 instructorWeeklyScheduleTables.appendChild(newTable);
-                debugger
                 this._buildWeeklySchedule(tableId, this.registrations.filter(x => x.day === day));
             });
 
-            debugger
             // attendance
 
             // directory
@@ -156,7 +154,21 @@
 
         _initParentContent() {
             // weekly schedule
-            // this.parentWeeklyScheduleTable = this._buildWeeklySchedule('parent-weekly-schedule-table', this.registrations);
+            // students with registrations
+            const studentsWithRegistrations = this.registrations
+                .map(registration => registration.student)
+                .filter((student, index, self) => self.findIndex(s => s.id === student.id) === index);
+
+            const parentWeeklyScheduleTables = document.getElementById('parent-weekly-schedule-tables');
+            
+            // TODO future will allow redraw
+            studentsWithRegistrations.forEach(student => {
+                const tableId = `instructor-weekly-schedule-table-${student.id}`;
+                const newTable = document.createElement('table');
+                newTable.id = tableId;
+                parentWeeklyScheduleTables.appendChild(newTable);
+                this._buildWeeklySchedule(tableId, this.registrations.filter(x => x.studentId === student.id));
+            });
 
             // registration
 
