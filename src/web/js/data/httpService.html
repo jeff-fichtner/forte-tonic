@@ -21,7 +21,7 @@
                     total: response.total || 0,
                 };
             } catch (error) {
-                console.error(`Error fetching page ${page}:`, error);
+                console.error(`Error fetching ${serverFunctionName} page ${page}:`, error);
                 throw error;
             }
         }
@@ -50,7 +50,7 @@
 
                     currentPage++;
                 } catch (error) {
-                    console.error(`Error fetching all pages at page ${currentPage}:`, error);
+                    console.error(`Error fetching ${serverFunctionName} all pages at page ${currentPage}:`, error);
                     return [];
                 }
             }

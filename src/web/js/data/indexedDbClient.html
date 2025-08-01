@@ -41,13 +41,18 @@
             });
         }
 
-        async getAll(storeName) {
+        async getAll(storeName, mapFunction = null) {
             return new Promise((resolve, reject) => {
                 const transaction = this.db.transaction(storeName, 'readonly');
                 const store = transaction.objectStore(storeName);
 
                 const request = store.getAll();
-                request.onsuccess = () => resolve(request.result);
+                request.onsuccess = () => {
+                    resolve(
+                        mapFunction
+                            ? request.result.map(mapFunction)
+                            : request.result);
+                };
                 request.onerror = (event) => reject(`Get all error: ${event.target.errorCode}`);
             });
         }

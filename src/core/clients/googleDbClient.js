@@ -73,7 +73,10 @@ class GoogleDbClient {
                 auditSheet: registrationsAuditSheet,
                 id: (row) => row[0],
                 postProcess: (record) => {
-                    record.id = `${record.studentId}_${record.instructorId}_${record.day}_${record.startTime}`;
+                    record.id = 
+                        record.registrationType === RegistrationType.GROUP
+                            ? `${record.studentId}_${record.classId}`
+                            : `${record.studentId}_${record.instructorId}_${record.day}_${record.startTime}`;
                     return record;
                 }
             },

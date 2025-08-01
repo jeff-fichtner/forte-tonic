@@ -13,6 +13,7 @@
             instrument,
             transportationType,
             notes,
+            classId,
             expectedStartDate,
             createdDate,
             createdBy
@@ -29,9 +30,14 @@
             this.instrument = instrument;
             this.transportationType = transportationType;
             this.notes = notes;
+            this.classId = classId;
             this.expectedStartDate = expectedStartDate;
             this.createdDate = createdDate;
             this.createdBy = createdBy;
+        }
+
+        get formattedStartTime() {
+            return this.startTime ? DurationHelpers.stringToDuration(this.startTime).to12HourFormat() : '';
         }
     }
 </script>

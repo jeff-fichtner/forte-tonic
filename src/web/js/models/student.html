@@ -17,5 +17,9 @@
         get fullName() {
             return `${this.firstName} ${this.lastName}`;
         }
+
+        get formattedGrade() {
+            return this.grade.formatGrade();
+        }
     }
 </script>

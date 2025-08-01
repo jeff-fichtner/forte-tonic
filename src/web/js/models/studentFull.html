@@ -22,13 +22,17 @@
             this.parent1Id = parent1Id;
             this.parent2Id = parent2Id;
         }
-        
+
         get fullName() {
             return `${this.firstName} ${this.lastName}`;
         }
 
         get parents() {
             return [this.parent1Id, this.parent2Id];
+        }
+
+        get formattedGrade() {
+            return this.grade.formatGrade();
         }
     }
 </script>

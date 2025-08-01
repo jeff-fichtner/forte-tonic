@@ -1,6 +1,6 @@
 <script>
     class Table {
-        constructor(tableId, headers, filterFunction, rowFunction, onClickFunction, onFilterChanges, rows = null) {
+        constructor(tableId, headers, rowFunction, initialRows = null, onClickFunction = null, filterFunction = null, onFilterChanges = null) {
             
             this.table = document.getElementById(tableId);
             const head = document.createElement('thead'); // Create a new table header
@@ -17,8 +17,8 @@
             this.filterFunction = filterFunction; // Store the filter function
             this.rowFunction = rowFunction; // Store the row function
 
-            if (rows) {
-                this.replaceRange(rows); // Populate the table with initial rows
+            if (initialRows) {
+                this.replaceRange(initialRows); // Populate the table with initial rows
             }
 
             this.table.addEventListener('click', (event) => {
@@ -28,17 +28,22 @@
 
             if (onFilterChanges && onFilterChanges.length > 0) {
                 for (const onFilterChange of onFilterChanges) {
-                    // when checkboxes in days-of-week-filter-container change
+                    // when checkboxes in filterId change
                     document.getElementById(onFilterChange.filterId).addEventListener('change', (event) => {
                         if (event.target.type !== onFilterChange.type) {
                             return;
                         }
 
                         // re-render registrations
-                        this.replaceRange(this.rows);
+                        this.refresh();
                     });
                 }
             }
+        }
+
+        refresh() {
+            // Re-render the table with the current rows
+            this.replaceRange(this.rows);
         }
 
         // Method to add a row with data

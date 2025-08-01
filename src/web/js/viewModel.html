@@ -100,9 +100,10 @@
             this.adminRegistrationForm = new AdminRegistrationForm(
                 this.instructors,
                 this.students,
+                this.classes,
                 async data => {
-                    const newRegistration = await HttpService.post(ServerFunctions.registerPrivateLesson, data, x => new Registration(x.newRegistration));
-
+                    const newRegistration = await HttpService.post(ServerFunctions.register, data, x => new Registration(x.newRegistration));
+                    
                     // handle response
                     console.log('Registration created:', newRegistration);
                     M.toast({ html: 'Registration created successfully.' });
@@ -187,32 +188,6 @@
             return new Table(
                 'master-schedule-table',
                 ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument', 'Contact', 'Remove'],
-                // filter
-                registration => {
-                    // get selected checkboxes within days-of-week-filter-container
-                    const daysOfWeekCheckboxes = document.querySelectorAll('#days-of-week-filter-container input[type="checkbox"]');
-                    const selectedDays = Array.from(daysOfWeekCheckboxes)
-                        .filter(checkbox => checkbox.checked)
-                        .map(checkbox => checkbox.id);
-
-                    // get selected checkboxes within grade-filter-container
-                    const gradeCheckboxes = document.querySelectorAll('#grade-filter-container input[type="checkbox"]');
-                    const selectedGrades = Array.from(gradeCheckboxes)
-                        .filter(checkbox => checkbox.checked)
-                        .map(checkbox => checkbox.id * 1);
-
-                    // filter by selected days otherwise all
-                    if (selectedDays.length > 0 && !selectedDays.includes(registration.day)) {
-                        return false;
-                    }
-
-                    // filter by selected grades otherwise all
-                    if (selectedGrades.length > 0 && !selectedGrades.includes(registration.student.grade)) {
-                        return false;
-                    }
-
-                    return true;
-                },
                 // row
                 registration => {
                     const instructor = this.instructors.find(x => x.id === registration.instructorId);
@@ -225,10 +200,10 @@
 
                     return `
                         <td>${registration.day}</td>
-                        <td>${DurationHelpers.stringToDuration(registration.startTime).to12HourFormat()}</td>
-                        <td>${registration.length} minutes</td>
+                        <td>${registration.formattedStartTime}</td>
+                        <td>${registration.length} min</td>
                         <td>${student.firstName} ${student.lastName}</td>
-                        <td>${formatGrade(student.grade)}</td>
+                        <td>${student.formattedGrade}</td>
                         <td>${instructor.firstName} ${instructor.lastName}</td>
                         <td>${registration.instrument}</td>
                         <td>
@@ -243,6 +218,7 @@
                         </td>
                     `;
                 },
+                defaultRegistrations,
                 // on click
                 async event => {
                     const isCopy = event.target.classList.contains('copy-parent-emails-table-icon');
@@ -270,6 +246,32 @@
                         return;
                     }
                 },
+                // filter
+                registration => {
+                    // get selected checkboxes within days-of-week-filter-container
+                    const daysOfWeekCheckboxes = document.querySelectorAll('#days-of-week-filter-container input[type="checkbox"]');
+                    const selectedDays = Array.from(daysOfWeekCheckboxes)
+                        .filter(checkbox => checkbox.checked)
+                        .map(checkbox => checkbox.id);
+
+                    // get selected checkboxes within grade-filter-container
+                    const gradeCheckboxes = document.querySelectorAll('#grade-filter-container input[type="checkbox"]');
+                    const selectedGrades = Array.from(gradeCheckboxes)
+                        .filter(checkbox => checkbox.checked)
+                        .map(checkbox => checkbox.id * 1);
+
+                    // filter by selected days otherwise all
+                    if (selectedDays.length > 0 && !selectedDays.includes(registration.day)) {
+                        return false;
+                    }
+
+                    // filter by selected grades otherwise all
+                    if (selectedGrades.length > 0 && !selectedGrades.includes(registration.student.grade)) {
+                        return false;
+                    }
+
+                    return true;
+                },
                 [
                     {
                         filterId: 'days-of-week-filter-container',
@@ -279,8 +281,7 @@
                         filterId: 'grade-filter-container',
                         type: 'checkbox'
                     }
-                ],
-                defaultRegistrations);
+                ]);
         }
 
         _buildWeeklySchedule(tableId, enrollments) {
@@ -288,10 +289,6 @@
             return new Table(
                 tableId,
                 ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument'],
-                // filter
-                enrollment => {
-                    return true;
-                },
                 // row
                 enrollment => {
                     const instructor = this.instructors.find(x => x.id === enrollment.instructorId);
@@ -304,16 +301,14 @@
 
                     return `
                         <td>${enrollment.day}</td>
-                        <td>${DurationHelpers.stringToDuration(enrollment.startTime).to12HourFormat()}</td>
+                        <td>${registration.formattedStartTime}</td>
                         <td>${enrollment.length} minutes</td>
                         <td>${student.firstName} ${student.lastName}</td>
-                        <td>${formatGrade(student.grade)}</td>
+                        <td>${student.formattedGrade}</td>
                         <td>${instructor.firstName} ${instructor.lastName}</td>
                         <td>${enrollment.instrument}</td>
                     `;
                 },
-                null,
-                null,
                 enrollments);
         }
 
@@ -322,10 +317,6 @@
             return new Table(
                 tableId,
                 ['Name', 'Role', 'Email', 'Phone', 'Contact'],
-                // filter
-                employee => {
-                    return true;
-                },
                 // row
                 employee => {
                     return `
@@ -340,8 +331,6 @@
                         </td>
                     `;
                 },
-                null,
-                null,
                 employees);
         }
 
@@ -398,7 +387,7 @@
             try {
                 this._setAdminRegistrationLoading(true);
 
-                const response = await HttpService.post(ServerFunctions.unregisterPrivateLesson, { id: registrationToDeleteId });
+                const response = await HttpService.post(ServerFunctions.unregister, { id: registrationToDeleteId });
                 const registrationIndex = this.registrations.findIndex(x => x.id === registrationToDeleteId);
 
                 M.toast({ html: 'Registration deleted successfully.' });
@@ -479,7 +468,7 @@
             // load students from indexeddb
             if (!forceRefresh && await this.dbClient.hasItems(DataStores.STUDENTS)) {
                 console.log('Loading students from IndexedDB...');
-                const items = await this.dbClient.getAll(DataStores.STUDENTS);
+                const items = await this.dbClient.getAll(DataStores.STUDENTS, x => new Student(x));
                 if (!items || items.length === 0) {
                     console.warn('No students found in IndexedDB.');
                 } else {

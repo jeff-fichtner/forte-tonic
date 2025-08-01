@@ -64,6 +64,10 @@
             return `${this.firstName} ${this.lastName}`;
         }
 
+        get lastFirst() {
+            return `${this.lastName}, ${this.firstName}`;
+        }
+
         get isAvailableMonday() {
             return this.mondayStartTime && this.mondayEndTime;
         }

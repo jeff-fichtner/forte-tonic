@@ -30,7 +30,7 @@ const include =
 const getAuthenticatedUser =
     () => {
         _throwIfNotAuthorized();
-        
+
         return _fetchData(() => currentUser);
     };
 
@@ -78,7 +78,7 @@ const getStudents =
                 filteredStudents = allStudents;
             }
             console.log(`${filterMessage}: ${filteredStudents.length}`);
-            
+
             return filteredStudents.map(student => {
                 const parent1 = allParents.find(parent => parent.id === student.parent1Id);
                 const parent2 = allParents.find(parent => parent.id === student.parent2Id);
@@ -127,7 +127,7 @@ const getRegistrations =
                 filteredRegistrations = allRegistrations;
             }
             console.log(`${filterMessage}: ${filteredRegistrations.length}`);
-            
+
             return filteredRegistrations;
         }, request.page, request.pageSize);
     };
@@ -141,22 +141,31 @@ const getRooms =
         });
     };
 
-const registerPrivateLesson =
+const register =
     (request) => {
         _throwIfNotAuthorized();
 
         const data = _retrieveDataFromRequest(request);
 
-        const instructor = worker.userRepositoryInstance.getInstructorById(data.instructorId);
+        let matchingClass = null;
+        if (data.registrationType === RegistrationType.GROUP) {
+            matchingClass = worker.programRepositoryInstance.getClassById(data.classId);
+        }
 
-        const newRegistration = worker.programRepositoryInstance.register(data, instructor, currentUser.email);
+        const effectiveInstructorId = data.instructorId || matchingClass?.instructorId;
+        if (!effectiveInstructorId) {
+            throw new Error('No instructor specified or found for the registration');
+        }
+
+        const instructor = worker.userRepositoryInstance.getInstructorById(effectiveInstructorId);
+        const newRegistration = worker.programRepositoryInstance.register(data, matchingClass, instructor, currentUser.email);
 
         return _respond({
             newRegistration
         });
     }
 
-const unregisterPrivateLesson =
+const unregister =
     (request) => {
         _throwIfNotAuthorized();
 
@@ -176,7 +185,7 @@ const recordAttendance =
         const data = _retrieveDataFromRequest(request);
 
         const attendanceRecord = worker.programRepositoryInstance.recordAttendance(data.registrationId, currentUser.email);
-        
+
         return _respond({
             attendanceRecord
         });

@@ -15,7 +15,7 @@ class Class {
         this.id = id;
         this.instructorId = instructorId;
         this.day = day;
-        this.startTime = startTime;
+        this.startTime = DateHelpers.parseGoogleSheetsDate(startTime);
         this.length = length;
         this.instrument = instrument;
         this.title = title;

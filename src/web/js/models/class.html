@@ -24,5 +24,21 @@
             this.minimumGrade = minimumGrade;
             this.maximumGrade = maximumGrade;
         }
+
+        get formattedStartTime() {
+            return this.startTime ? DurationHelpers.stringToDuration(this.startTime).to12HourFormat() : '';
+        }
+
+        get formattedMinimumGrade() {
+            return this.minimumGrade.formatGrade();
+        }
+
+        get formattedMaximumGrade() {
+            return this.maximumGrade.formatGrade();
+        }
+
+        get formattedName() {
+            return `${this.title} (${this.formattedMinimumGrade}-${this.formattedMaximumGrade}): ${this.day} at ${this.formattedStartTime}`;
+        }
     }
 </script>
