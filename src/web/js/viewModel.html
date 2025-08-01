@@ -205,7 +205,7 @@
                         <td>${student.firstName} ${student.lastName}</td>
                         <td>${student.formattedGrade}</td>
                         <td>${instructor.firstName} ${instructor.lastName}</td>
-                        <td>${registration.instrument}</td>
+                        <td>${registration.registrationType === RegistrationType.GROUP ? registration.className : registration.instrument}</td>
                         <td>
                             <a href="#!">
                                 <i class="copy-parent-emails-table-icon material-icons gray-text text-darken-4">email</i>
