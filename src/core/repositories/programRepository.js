@@ -59,6 +59,7 @@ class ProgramRepository {
             registrationData.startTime = groupClass.startTime;
             registrationData.length = groupClass.length;
             registrationData.instrument = groupClass.instrument;
+            registrationData.className = groupClass.title;
         } else {
             weekDayIndex = registrationData.day * 1;
             weekDay = weekDays[weekDayIndex];
@@ -90,6 +91,7 @@ class ProgramRepository {
                 registrationData.transportationType,
                 registrationData.notes,
                 registrationData.classId,
+                registrationData.className,
                 registrationData.expectedStartDate,
             );
         

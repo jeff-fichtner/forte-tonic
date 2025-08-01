@@ -13,6 +13,7 @@ class Registration {
         transportationType,
         notes,
         classId,
+        className,
         expectedStartDate,
         createdAt,
         createdBy) {
@@ -29,6 +30,7 @@ class Registration {
         this.transportationType = transportationType;
         this.notes = notes;
         this.classId = classId; // For group registrations
+        this.className = className; // For group registrations
         this.expectedStartDate = expectedStartDate;
         this.createdAt = createdAt;
         this.createdBy = createdBy;

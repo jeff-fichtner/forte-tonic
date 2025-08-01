@@ -406,103 +406,39 @@
                     <div class="card-content">
                         <span class="card-title" style="color: #2b68a4"><b>Currently Enrolled Lessons</b></span>
 
-                        <div id="days-of-week-filter-container" class="input-field col s12">
-                            <p>Days of the Week</p>
-                            <div class="row">
-                                <div class="col s1">
-                                    <label>
-                                        <input type="checkbox" class="filled-in" id="Monday" />
-                                        <span>M</span>
-                                    </label>
-                                </div>
-                                <div class="col s1">
-                                    <label>
-                                        <input type="checkbox" class="filled-in" id="Tuesday" />
-                                        <span>TU</span>
-                                    </label>
-                                </div>
-                                <div class="col s1">
-                                    <label>
-                                        <input type="checkbox" class="filled-in" id="Wednesday" />
-                                        <span>W</span>
-                                    </label>
-                                </div>
-                                <div class="col s1">
-                                    <label>
-                                        <input type="checkbox" class="filled-in" id="Thursday" />
-                                        <span>TH</span>
-                                    </label>
-                                </div>
-                                <div class="col s1">
-                                    <label>
-                                        <input type="checkbox" class="filled-in" id="Friday" />
-                                        <span>F</span>
-                                    </label>
-                                </div>
+                        <div class="row">
+                            <div class="input-field col s4">
+                                <select multiple id="master-schedule-instructor-filter-select">
+                                    <option value="" disable selected> Choose instructor filter</option>
+                                    <option value="1">Jesse Brewster</option>
+                                    <option value="2">Cesar Cancino</option>
+                                    <option value="3">Rob Caniglia</option>
+                                </select>
+                                <label>Instructors</label>
+                            </div>
+
+                            <div class="input-field col s4">
+                                <select multiple id="master-schedule-day-filter-select">
+                                    <option value="" disable selected> Choose weekday filter</option>
+                                    <option value="1">Monday</option>
+                                    <option value="2">Tuesday</option>
+                                    <option value="3">Wednesday</option>
+                                </select>
+                                <label>Weekday</label>
+                            </div>
+
+                            <div class="input-field col s4">
+                                <select multiple id="master-schedule-grade-filter-select">
+                                    <option value="" disable selected> Choose grade level filter</option>
+                                    <option value="1">Kindergarten</option>
+                                    <option value="2">1st</option>
+                                    <option value="3">2nd</option>
+                                </select>
+                                <label>Grade Level</label>
                             </div>
                         </div>
 
-                        <div id="grade-filter-container" class="input-field col s12">
-                            <p>Grade</p>
-                            <div class="row">
-                                <div class="col s1">
-                                    <label>
-                                        <input type="checkbox" class="filled-in" id="0" />
-                                        <span>K</span>
-                                    </label>
-                                </div>
-                                <div class="col s1">
-                                    <label>
-                                        <input type="checkbox" class="filled-in" id="1" />
-                                        <span>1</span>
-                                    </label>
-                                </div>
-                                <div class="col s1">
-                                    <label>
-                                        <input type="checkbox" class="filled-in" id="2" />
-                                        <span>2</span>
-                                    </label>
-                                </div>
-                                <div class="col s1">
-                                    <label>
-                                        <input type="checkbox" class="filled-in" id="3" />
-                                        <span>3</span>
-                                    </label>
-                                </div>
-                                <div class="col s1">
-                                    <label>
-                                        <input type="checkbox" class="filled-in" id="4" />
-                                        <span>4</span>
-                                    </label>
-                                </div>
-                                <div class="col s1">
-                                    <label>
-                                        <input type="checkbox" class="filled-in" id="5" />
-                                        <span>5</span>
-                                    </label>
-                                </div>
-                                <div class="col s1">
-                                    <label>
-                                        <input type="checkbox" class="filled-in" id="6" />
-                                        <span>6</span>
-                                    </label>
-                                </div>
-                                <div class="col s1">
-                                    <label>
-                                        <input type="checkbox" class="filled-in" id="7" />
-                                        <span>7</span>
-                                    </label>
-                                </div>
-                                <div class="col s1">
-                                    <label>
-                                        <input type="checkbox" class="filled-in" id="8" />
-                                        <span>8</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <p hidden id="master-schedule-no-lessons-message">Not enrolled in any lessons.</p>
+                        <!-- <p hidden id="master-schedule-no-lessons-message">Not enrolled in any lessons.</p> -->
                         <table hidden id="master-schedule-table">
                         </table>
                     </div>
@@ -667,9 +603,9 @@
                                 </select>
                                 <label for="class-select">Classes</label>
                             </div>
-    
+
                         </div>
-                        
+
                         <!-- Save Button -->
                         <div class="center-align">
                             <button class="btn waves-effect waves-light" type="submit"
@@ -718,9 +654,6 @@
 
         </div>
     </div>
-
-    <!-- <div>Monday: 3:00pm - 3:30pm, Piano (Private) with Lang Lang<a href="#!" class="secondary-content"><i
-        class="add-lesson-icon material-icons green-text text-darken-2">add_circle</i></a></div> -->
 
     <!-- 
   <div hidden id="tables" class="center-align">

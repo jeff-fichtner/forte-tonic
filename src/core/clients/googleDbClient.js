@@ -73,7 +73,7 @@ class GoogleDbClient {
                 auditSheet: registrationsAuditSheet,
                 id: (row) => row[0],
                 postProcess: (record) => {
-                    record.id = 
+                    record.id =
                         record.registrationType === RegistrationType.GROUP
                             ? `${record.studentId}_${record.classId}`
                             : `${record.studentId}_${record.instructorId}_${record.day}_${record.startTime}`;
@@ -101,7 +101,7 @@ class GoogleDbClient {
         return mappedData;
     }
 
-    appendRecord(sheetKey, record,  createdBy) {
+    appendRecord(sheetKey, record, createdBy) {
         const { sheet, auditSheet, postProcess } = this.workingSheetInfo[sheetKey];
 
         const clonedRecord = CloneUtility.clone(record);
@@ -112,7 +112,7 @@ class GoogleDbClient {
         const values = Object.values(processedRecord);
 
         sheet.appendRow(values);
-        
+
         if (!auditSheet) {
             Logger.log(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
             return processedRecord;
@@ -122,6 +122,37 @@ class GoogleDbClient {
         auditSheet.appendRow(auditValues);
 
         return processedRecord;
+    }
+
+    // TODO in progress
+    updateRecord(sheetKey, record, updatedBy) {
+        const { sheet,/* auditSheet,*/ id } = this.workingSheetInfo[sheetKey];
+        const data = sheet.getDataRange().getValues();
+
+        // Find the row to update based on the ID
+        const rowIndex = data.findIndex(row => id(row) === record.id);
+
+        if (rowIndex === -1) {
+            Logger.log(`Record with ID ${record.id} not found in ${sheetKey}.`);
+            return;
+        }
+
+        // TODO process
+
+        // get values
+        const values = Object.values(record);
+        sheet.getRange(rowIndex + 2, 1, 1, values.length).setValues([values]); // +2 because getDataRange() includes header
+
+        Logger.log(`Record with ID ${record.id} updated in ${sheetKey}.`);
+
+        // if (!auditSheet) {
+        //     Logger.log(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
+        //     return;
+        // }
+
+        // todo include update
+        // const auditValues = this._convertToAuditValues(values);
+        // auditSheet.appendRow(auditValues);
     }
 
     deleteRecord(sheetKey, recordId, deletedBy) {
@@ -177,7 +208,7 @@ class GoogleDbClient {
         // copy the header row from the archived sheet to the new sheet
         const headerRow = existingSheet.getRange(1, 1, 1, existingSheet.getLastColumn()).getValues();
         newSheet.getRange(1, 1, 1, headerRow[0].length).setValues(headerRow);
-        
+
         this.workingSheetInfo[sheetKey].sheet = newSheet;
         Logger.log(`Sheet "${newSheetName}" archived and new sheet created.`);
     }

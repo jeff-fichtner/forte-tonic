@@ -187,7 +187,7 @@
 
             return new Table(
                 'master-schedule-table',
-                ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument', 'Contact', 'Remove'],
+                ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument/Class', 'Contact', 'Remove'],
                 // row
                 registration => {
                     const instructor = this.instructors.find(x => x.id === registration.instructorId);
@@ -248,39 +248,39 @@
                 },
                 // filter
                 registration => {
-                    // get selected checkboxes within days-of-week-filter-container
-                    const daysOfWeekCheckboxes = document.querySelectorAll('#days-of-week-filter-container input[type="checkbox"]');
-                    const selectedDays = Array.from(daysOfWeekCheckboxes)
-                        .filter(checkbox => checkbox.checked)
-                        .map(checkbox => checkbox.id);
+                    // // get selected checkboxes within days-of-week-filter-container
+                    // const daysOfWeekCheckboxes = document.querySelectorAll('#days-of-week-filter-container input[type="checkbox"]');
+                    // const selectedDays = Array.from(daysOfWeekCheckboxes)
+                    //     .filter(checkbox => checkbox.checked)
+                    //     .map(checkbox => checkbox.id);
 
-                    // get selected checkboxes within grade-filter-container
-                    const gradeCheckboxes = document.querySelectorAll('#grade-filter-container input[type="checkbox"]');
-                    const selectedGrades = Array.from(gradeCheckboxes)
-                        .filter(checkbox => checkbox.checked)
-                        .map(checkbox => checkbox.id * 1);
+                    // // get selected checkboxes within grade-filter-container
+                    // const gradeCheckboxes = document.querySelectorAll('#grade-filter-container input[type="checkbox"]');
+                    // const selectedGrades = Array.from(gradeCheckboxes)
+                    //     .filter(checkbox => checkbox.checked)
+                    //     .map(checkbox => checkbox.id * 1);
 
-                    // filter by selected days otherwise all
-                    if (selectedDays.length > 0 && !selectedDays.includes(registration.day)) {
-                        return false;
-                    }
+                    // // filter by selected days otherwise all
+                    // if (selectedDays.length > 0 && !selectedDays.includes(registration.day)) {
+                    //     return false;
+                    // }
 
-                    // filter by selected grades otherwise all
-                    if (selectedGrades.length > 0 && !selectedGrades.includes(registration.student.grade)) {
-                        return false;
-                    }
+                    // // filter by selected grades otherwise all
+                    // if (selectedGrades.length > 0 && !selectedGrades.includes(registration.student.grade)) {
+                    //     return false;
+                    // }
 
                     return true;
                 },
                 [
-                    {
-                        filterId: 'days-of-week-filter-container',
-                        type: 'checkbox'
-                    },
-                    {
-                        filterId: 'grade-filter-container',
-                        type: 'checkbox'
-                    }
+                    // {
+                    //     filterId: 'days-of-week-filter-container',
+                    //     type: 'checkbox'
+                    // },
+                    // {
+                    //     filterId: 'grade-filter-container',
+                    //     type: 'checkbox'
+                    // }
                 ]);
         }
 
