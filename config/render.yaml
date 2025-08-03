@@ -19,7 +19,7 @@ services:
     name: tonic-production
     env: node
     plan: starter # or standard, pro based on your needs
-    buildCommand: npm ci
+    buildCommand: npm ci && npm run build:production
     startCommand: npm start
     envVars:
       - key: NODE_ENV
@@ -44,7 +44,7 @@ services:
     name: tonic-staging
     env: node
     plan: starter
-    buildCommand: npm ci
+    buildCommand: npm ci && npm run build:staging
     startCommand: npm start
     envVars:
       - key: NODE_ENV
@@ -58,7 +58,7 @@ services:
     healthCheckPath: /api/health
     domains:
       - tonic-staging.yourschool.edu # Replace with your actual domain
-    branch: develop
+    branch: dev
     rootDir: .
     scaling:
       minInstances: 1
