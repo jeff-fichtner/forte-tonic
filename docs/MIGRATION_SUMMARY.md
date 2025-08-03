@@ -8,7 +8,7 @@
 - ✅ `src/core/clients/googleSheetsDbClient.js` - Completely rewritten to use Google Sheets/Drive APIs
 - ✅ `src/core/services/authenticator.js` - Simplified authentication service
 - ✅ `src/core/services/configurationService.js` - **NEW** - Centralized configuration management
-- ✅ `src/core/clients/emailClient.js` - **NEW** - Full-featured email service with nodemailer
+- ✅ `src/infrastructure/email/emailClient.js` - **NEW** - Full-featured email service with nodemailer
 - ✅ `src/configurations/settings.js` - **REMOVED** - Replaced by configurationService
 - ✅ `src/common/errorHandling.js` - Converted to ES6 module
 - ✅ `src/core/values/keys.js` - Converted to ES6 export

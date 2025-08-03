@@ -8,6 +8,7 @@ import staticRoutes from './routes/static.js';
 import { initializeUserContext, requireAuth, requireOperator } from './middleware/auth.js';
 import { configService } from './core/services/configurationService.js';
 import { createLogger } from './core/utilities/logger.js';
+import { serviceContainer } from './infrastructure/container/serviceContainer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -103,5 +104,12 @@ app.use((error, req, res, next) => {
     message: configService.isDevelopment() ? error.message : 'Something went wrong',
   });
 });
+
+/**
+ * Initialize the application services
+ */
+export async function initializeApp() {
+  await serviceContainer.initialize();
+}
 
 export { app, PORT };
