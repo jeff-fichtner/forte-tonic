@@ -1,0 +1,6 @@
+/**
+ *
+ */
+function setTrimester() {
+  // archive registrations
+}
