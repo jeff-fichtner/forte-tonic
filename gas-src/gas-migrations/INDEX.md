@@ -1,132 +1,167 @@
-# Google Apps Script Migrations Index
+# Go## 🔐 SECURITY UPDATE
 
-Quick reference for all available Google Apps Script migrations.
+**GLOBAL CONFIGURATION - ONE PLACE FOR ALL SPREADSHEET IDS**
+
+```javascript
+// ✅ Configure once in Config.js - affects ALL migrations
+var GLOBAL_SPREADSHEET_ID = "YOUR_SPREADSHEET_ID_HERE";
+
+// All migrations automatically use the global configuration
+runStructuralImprovements(); // Uses getSpreadsheetId()
+runRealisticFakeDataMigration(); // Uses getSpreadsheetId()
+validateConfiguration(); // Test your setup
+```
 
 ## 🚀 Quick Start
 
-1. **Open Google Sheets** → **Extensions** → **Apps Script**
-2. **Copy migration code** from the `.gs` files below
-3. **Always run preview first**: `preview[MigrationName]()`
-4. **Execute migration**: `run[MigrationName]()`
-5. **Rollback if needed**: `rollback[MigrationName]()`
+1. **Get Spreadsheet ID** from your Google Sheets URL
+2. **Open Google Sheets** → **Extensions** → **Apps Script**
+3. **Copy ALL migration files** to your Apps Script project
+4. **Configure ONCE**: Edit `Config.js` and replace `"YOUR_SPREADSHEET_ID_HERE"`
+5. **Validate setup**: Run `validateConfiguration()` function
+6. **Always run preview first**: `preview[MigrationName]()`
+7. **Execute migration**: `run[MigrationName]()`
+8. **Rollback if needed**: `rollback[MigrationName]()`rations Index
 
-## 📋 Available Migrations
+Quick reference for all available Google Apps Script migrations.
 
-### Migration 001: Structural Improvements
-**File:** `Migration001_StructuralImprovements.gs`
+## � SECURITY UPDATE
+
+**ALL MIGRATIONS NOW REQUIRE SPREADSHEET ID PARAMETER**
+
+```javascript
+// ✅ New secure usage
+runStructuralImprovements("your-spreadsheet-id");
+
+// ❌ Old usage no longer supported
+runStructuralImprovements();
+```
+
+## �🚀 Quick Start
+
+1. **Get Spreadsheet ID** from your Google Sheets URL
+2. **Open Google Sheets** → **Extensions** → **Apps Script**
+3. **Copy migration code** from the appropriate file below
+4. **Always run preview first**: `preview[MigrationName](spreadsheetId)`
+5. **Execute migration**: `run[MigrationName](spreadsheetId)`
+6. **Rollback if needed**: `rollback[MigrationName](spreadsheetId)`
+
+## 📋 Active Migrations
+
+### Migration 001: Structural Improvements ✅
+**File:** `Migration001_StructuralImprovements.js`
+**Status:** Production Ready
 **Functions:**
-- `previewStructuralImprovements()`
-- `runStructuralImprovements()`
-- `rollbackStructuralImprovements()`
+- `previewStructuralImprovements()` - Preview with StudentId deprecation
+- `runStructuralImprovements()` - Execute with StudentId deprecation
+- `previewStructuralImprovementsDeleteStudentId()` - Preview with StudentId deletion
+- `runStructuralImprovementsDeleteStudentId()` - Execute with StudentId deletion
+- `rollbackStructuralImprovements()` - Rollback changes
 
 **What it does:**
 - Standardizes header naming (removes spaces)
-- Marks deprecated columns 
+- **StudentId Column Options:**
+  - **Default**: Marks StudentId as deprecated (`StudentId_DEPRECATED`)
+  - **Deletion Option**: Completely removes StudentId column
 - Adds email validation
 - Adds grade validation dropdowns
 - Freezes header rows
 - Highlights duplicate IDs
 
----
+**⚠️ Important: StudentId Deletion**
+If you use `runStructuralImprovementsDeleteStudentId()`, the StudentId column and **all its data will be permanently deleted**. Make sure you have a backup!
 
-### Migration 002: Add Class Names to Registration
-**File:** `Migration002_AddClassNamesToRegistration.gs`
+## 📦 Archived Migrations
+
+### Migration 002: Add Class Names to Registration ⚠️
+**File:** `archive/Migration002_AddClassNamesToRegistration_ARCHIVED.js`
+**Status:** NOT PRODUCTION READY - ARCHIVED
+**Note:** This migration has been archived due to production readiness issues. Execution is blocked.
+
+### Migration 003: Process Parents ✅
+**File:** `archive/Migration003_ProcessParents_PROCESSED.js`
+**Status:** PROCESSED - ARCHIVED
+**Note:** This migration has been successfully completed and archived. Execution is blocked.
+
+## 🧪 Development Migrations
+
+### DEV001: Realistic Fake Data Generation 🧪
+**File:** `dev/Migration_DEV001_RealisticFakeData.js`
+**Status:** Development Only - Never use in production
 **Functions:**
-- `previewAddClassNamesToRegistration()`
-- `runAddClassNamesToRegistration()`
-- `rollbackAddClassNamesToRegistration()`
+- `safeExecuteRealisticFakeDataMigration()` (recommended)
+- `runRealisticFakeDataMigration()`
+- `previewRealisticFakeDataMigration()`
 
 **What it does:**
-- Populates class names in registration records
-- Creates ClassTitle column if missing
-- Maps class IDs to class names
-- Validates data relationships
+- Replaces "TEACHER11@EMAIL.COM" → "sarah.johnson@tonic.edu"
+- Replaces "Parent 1" → "Jennifer Adams" 
+- Replaces "Student A4" → "Alex Johnson"
+- Maintains all relational ID integrity
+- Generates realistic phone numbers
+## 📖 Migration Resources
 
----
+### Documentation Files
+- **[README.md](README.md)** - Complete overview and usage guide
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Step-by-step setup instructions
+- **[TEMPLATE_Migration.js](TEMPLATE_Migration.js)** - Template with detailed comments
 
-### Migration 003: Process Parents
-**File:** `Migration003_ProcessParents.gs`
-**Functions:**
-- `previewProcessParents()`
-- `runProcessParents()`
-- `rollbackProcessParents()`
-
-**What it does:**
-- Extracts parent information from student records
-- Creates separate parent records in parents sheet
-- Adds Parent1Id and Parent2Id columns to students
-- Links students to their respective parents
-- Handles various name formats and data inconsistencies
-
----
-
-### Migration Template
-**File:** `TEMPLATE_Migration.gs`
-**Purpose:** Template for creating new migrations
-
-**To use:**
-1. Copy the template file
-2. Rename to `Migration[XXX]_[Description].gs`
-3. Replace all placeholder text
-4. Test thoroughly with preview function
-
-## 🛠️ Utilities
-
-### Validation Functions
-
-Each migration includes validation helpers:
-
+### Validation Utilities
+Each migration includes built-in validation:
 ```javascript
-// Check if migration is needed
-previewStructuralImprovements();
+// Environment validation (dev migrations)
+validateDevelopmentEnvironment();
 
-// Validate sheet structure
+// Sheet structure validation
 validateSpreadsheetStructure();
 
-// Check specific requirements
+// Migration-specific validation
 validateSheetsForClassNameMigration();
 ```
 
-### Safety Features
+## ⚠️ Important Guidelines
 
-- **Preview mode** - See changes before applying
-- **Error handling** - Comprehensive error catching
-- **Rollback support** - Undo changes if needed
-- **Progress logging** - Detailed console output
+### Before Running ANY Migration
+1. **📋 Backup your spreadsheet** (File → Make a copy)
+2. **🔍 Run preview function** to see what will change
+3. **✅ Replace "YOUR_SPREADSHEET_ID_HERE"** with actual ID
+4. **🧪 Test on copy first** if possible
 
-## 📖 Documentation
+### Migration Execution Order
+1. **Migration001** - Structural Improvements (headers, validation)
+2. **Development migrations** - Only if populating test data
+3. **Future migrations** - In numerical order
 
-- **[README.md](README.md)** - Complete overview and usage guide
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Step-by-step setup instructions
-- **[TEMPLATE_Migration.gs](TEMPLATE_Migration.gs)** - Template with detailed comments
+### Security Best Practices
+- Always update hardcoded spreadsheet ID before running
+- Verify environment before running dev migrations
+- Never run development migrations in production
+- Use preview functions before execution
 
-## ⚠️ Important Notes
+## 🚨 Troubleshooting
 
-### Before Running Migrations
+### Common Issues
+- **"YOUR_SPREADSHEET_ID_HERE not replaced"** → Update hardcoded ID in migration
+- **"Not production ready"** → Migration is archived/blocked
+- **"Environment validation failed"** → Check spreadsheet title for prod indicators
 
-1. **Make a backup** of your Google Sheets document
-2. **Run preview functions** to understand what will change
-3. **Test on a copy** if possible
-4. **Read migration descriptions** carefully
+### Migration Status Meanings
+- ✅ **Production Ready** - Safe for production use
+- ⚠️ **Not Production Ready** - Archived due to issues
+- ✅ **Processed** - Successfully completed, archived
+- 🧪 **Development Only** - Never use in production
 
-### Execution Order
+## 📞 Support
 
-Migrations should generally be run in numerical order:
-1. Migration 001 (Structural Improvements)
-2. Migration 002 (Add Class Names)
-3. Migration 003 (Process Parents)
-4. Future migrations...
+For migration issues:
+1. Check migration logs for detailed error information
+2. Use rollback functions when available
+3. Restore from backup if needed
+4. Review preview output before re-running
 
-### Rollback Limitations
+---
 
-- Header changes can be rolled back
-- Data validation rules may need manual cleanup
-- Conditional formatting may need manual removal
-- New columns can be cleared but not automatically deleted
-
-## 🔧 Development Notes
-
-### Converting from Node.js
+**Last Updated:** Added security requirements and development migration support
 
 These migrations were converted from Node.js versions with these changes:
 - `googleapis` API → `SpreadsheetApp` methods

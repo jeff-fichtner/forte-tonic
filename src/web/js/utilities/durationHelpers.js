@@ -1,30 +1,32 @@
+import { Duration, DateHelpers } from '../constants.js';
+
 /**
- *
+ * Duration helpers using native JavaScript implementation
  */
 export class DurationHelpers {
-  // Converts "HH:MM" to a Luxon Duration object
+  // Converts "HH:MM" to a native Duration object
   /**
    *
    */
   static stringToDuration(timeString) {
-    const [hours, minutes] = timeString.split(':').map(Number);
-    return Duration.fromObject({ hours, minutes });
+    return Duration.fromTimeString(timeString);
   }
-  // Converts total minutes into a Luxon Duration object
+  
+  // Converts total minutes into a native Duration object
   /**
    *
    */
   static minutesToDuration(minutes) {
-    return Duration.fromObject({ minutes });
+    return Duration.fromMinutes(minutes);
   }
 
-  // Converts a Luxon Duration object to a string in "h:mm a" format
+  // Converts a native Duration object to a DateTime for formatting
   /**
    *
    */
   static durationToDateTime(duration) {
-    // Add the duration to midnight (start of the day)
-    return DateTime.fromObject({ hour: 0, minute: 0 }).plus(duration);
+    // Convert duration to a date at midnight plus the duration
+    return duration.toDate();
   }
 }
 

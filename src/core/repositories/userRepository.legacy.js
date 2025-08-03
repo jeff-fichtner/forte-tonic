@@ -77,7 +77,7 @@ export class UserRepository {
    * Legacy method - use specific repositories
    * @deprecated
    */
-  async _getRoles(forceRefresh = false) {
+  async #getRoles(forceRefresh = false) {
     console.warn('⚠️  _getRoles is deprecated and no longer supported');
     return [];
   }

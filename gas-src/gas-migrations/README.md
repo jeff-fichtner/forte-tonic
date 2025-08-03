@@ -1,191 +1,180 @@
-# Google Apps Script Migrations
+# Gas Migrations
 
-This directory contains database migrations converted to Google Apps Script format. These scripts are designed to be copied directly into a Google Apps Script project that is bound to your Google Sheets document.
+Google Apps Script migration system for Tonic spreadsheet data management.
 
-## How to Use These Migrations
+## 🔐 SECURITY UPDATE
 
-### Setup Instructions
-
-1. **Open your Google Sheets document**
-2. **Go to Extensions > Apps Script**
-3. **Create a new `.gs` file** for each migration
-4. **Copy the entire content** of the migration file into the Apps Script editor
-5. **Save the project**
-
-### Running Migrations
-
-Each migration provides three main functions:
-
-- **`preview[MigrationName]()`** - Shows what changes will be made (read-only)
-- **`run[MigrationName]()`** - Executes the migration
-- **`rollback[MigrationName]()`** - Undoes the migration changes
-
-### Example Usage
-
-For Migration 001 - Structural Improvements:
+**GLOBAL CONFIGURATION - ONE PLACE FOR ALL SPREADSHEET IDS**
 
 ```javascript
-// 1. First, preview the changes
+// ✅ Configure once in Config.js - affects ALL migrations
+var GLOBAL_SPREADSHEET_ID = "YOUR_SPREADSHEET_ID_HERE";
+
+// All migrations automatically use the global configuration
+runStructuralImprovements(); // Uses getSpreadsheetId()
+runRealisticFakeDataMigration(); // Uses getSpreadsheetId()
+validateConfiguration(); // Test your setup
+```
+
+## 🚀 Quick Start
+
+1. **Get Spreadsheet ID** from your Google Sheets URL
+2. **Open Google Sheets** → **Extensions** → **Apps Script**
+3. **Copy ALL migration files** to your Apps Script project
+4. **Configure ONCE**: Edit `Config.js` and replace `"YOUR_SPREADSHEET_ID_HERE"`
+5. **Validate setup**: Run `validateConfiguration()` function
+6. **Always run preview first**: `preview[MigrationName]()`
+7. **Execute migration**: `run[MigrationName]()`
+8. **Rollback if needed**: `rollback[MigrationName]()`
+
+## 📁 Directory Structure
+
+```
+gas-migrations/
+├── README.md                           # This file
+├── TEMPLATE_Migration.js               # Template for new migrations
+├── Migration001_StructuralImprovements.js  # Production ready
+├── archive/                            # Completed/archived migrations
+│   ├── Migration002_AddClassNamesToRegistration_ARCHIVED.js  # ⚠️ Not production ready
+│   └── Migration003_ProcessParents_PROCESSED.js              # ✅ Processed successfully
+└── dev/                               # Development-only migrations
+    └── Migration_DEV001_RealisticFakeData.js  # Fake data replacement
+```
+
+## 🚀 Available Migrations
+
+### Production Migrations
+- **Migration001**: Structural Improvements ✅
+  - Standardizes headers across all sheets
+  - **Two StudentId options**: deprecate or delete completely
+  - Adds data validation rules
+  - Implements formatting improvements
+  
+  **StudentId Column Handling:**
+  - `runStructuralImprovements()` - Marks StudentId as deprecated (safe)
+  - `runStructuralImprovementsDeleteStudentId()` - **DELETES StudentId column entirely** (permanent)
+  - Status: **Ready for production**
+
+### Archived Migrations
+- **Migration002**: Add Class Names to Registration ⚠️
+  - Status: **NOT PRODUCTION READY** - Archived
+  - Location: `archive/Migration002_AddClassNamesToRegistration_ARCHIVED.js`
+  
+- **Migration003**: Process Parents ✅
+  - Status: **PROCESSED** - Completed and archived
+  - Location: `archive/Migration003_ProcessParents_PROCESSED.js`
+
+### Development Migrations
+- **DEV001**: Realistic Fake Data Generation 🧪
+  - Replaces "Teacher 1", "Parent 1" style fake data with realistic names
+  - Maintains all relational integrity
+  - Status: **Development only** - Never use in production
+  - Location: `dev/Migration_DEV001_RealisticFakeData.js`
+
+## 📋 How to Run Migrations
+
+### 1. Setup Your Spreadsheet ID
+In each migration file, replace the placeholder:
+```javascript
+// TODO: Replace with your actual spreadsheet ID
+const spreadsheetId = "YOUR_SPREADSHEET_ID_HERE";
+```
+
+With your actual ID:
+```javascript
+const spreadsheetId = "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms";
+```
+
+### 2. Run Simple Functions
+```javascript
+// Preview first
 previewStructuralImprovements();
 
-// 2. If the preview looks good, run the migration
+// If preview looks good, execute
 runStructuralImprovements();
 
-// 3. If needed, rollback the changes
+// If you need to undo changes
 rollbackStructuralImprovements();
 ```
 
-## Available Migrations
+### 3. Development Environment Validation
+For development migrations, the system validates environment safety:
+```javascript
+// DEV migrations include environment checks
+safeExecuteRealisticFakeDataMigration();
+```
 
-### Migration 001: Structural Improvements
-**File:** `Migration001_StructuralImprovements.gs`
+## ⚠️ **Important Safety Notes**
 
-**Purpose:** Standardizes column headers, adds data validation, implements frozen headers, and adds conditional formatting.
+- **Always run `preview` first** to see what will change
+- **Make a backup** of your spreadsheet before running (File → Make a copy)
+- **Update spreadsheet ID** in the migration code
+- **Test on a copy** if you're unsure about the changes
 
-**Changes:**
-- Standardizes header naming (removes spaces)
-- Marks deprecated columns
-- Adds email validation for instructor and parent email fields
-- Adds grade validation dropdown (K, 1-12)
+## 📋 **What Migration001 Does**
+
+- Standardizes headers ("Last Name" → "LastName")
+- Marks deprecated columns (StudentId → StudentId_DEPRECATED)
+- Adds email validation to parent/instructor columns
+- Adds grade dropdown validation (K, 1-12)
 - Freezes header rows for better navigation
-- Highlights duplicate IDs in red
+- Highlights duplicate IDs with red background
 
-**Functions:**
-- `previewStructuralImprovements()` - Preview changes
-- `runStructuralImprovements()` - Execute migration
-- `rollbackStructuralImprovements()` - Undo changes
+## 🛠️ Creating New Migrations
 
-### Migration 002: Add Class Names to Registration
-**File:** `Migration002_AddClassNamesToRegistration.gs`
+1. Copy `TEMPLATE_Migration.js`
+2. Replace all `[PLACEHOLDER]` values:
+   - `[MIGRATION_NUMBER]` → Migration number (e.g., "004")
+   - `[MIGRATION_NAME]` → Descriptive name
+   - `[MIGRATION_FUNCTION_NAME]` → CamelCase function name
+   - `[MIGRATION_CLASS_NAME]` → Class name
+   - `[MIGRATION_DESCRIPTION]` → What the migration does
 
-**Purpose:** Populates class names in registration records based on class IDs.
+3. Update the spreadsheet ID in all functions
+4. Implement the three main methods:
+   - `preview()` - Show what would change (read-only)
+   - `execute()` - Perform the migration
+   - `rollback()` - Undo the changes
 
-**Changes:**
-- Maps class IDs to class titles from the classes sheet
-- Adds ClassTitle column to registrations if missing
-- Populates class names for all registration records
-- Validates data integrity and handles missing references
+5. Test thoroughly in development before production use
 
-**Functions:**
-- `previewAddClassNamesToRegistration()` - Preview changes
-- `runAddClassNamesToRegistration()` - Execute migration
-- `rollbackAddClassNamesToRegistration()` - Undo changes
+## 🔒 Security Features
 
-### Migration 003: Process Parents
-**File:** `Migration003_ProcessParents.gs`
+- **Hardcoded Spreadsheet ID**: Prevents accidental execution on wrong sheets
+- **Environment Validation**: DEV migrations check for production environments
+- **Execution Blocking**: Archived migrations prevent re-execution
+- **Preview Mode**: Always preview before executing
 
-**Purpose:** Extracts parent information from student records and creates separate parent records.
+## 📚 Migration Guidelines
 
-**Changes:**
-- Extracts parent data from student records (handles various name formats)
-- Creates unique parent records in the parents sheet
-- Adds Parent1Id and Parent2Id columns to students sheet
-- Links students to their respective parents
-- Handles data inconsistencies and missing information gracefully
+### Production Migrations
+- Must have comprehensive preview functionality
+- Must include rollback capability
+- Must handle errors gracefully
+- Must log all changes clearly
 
-**Functions:**
-- `previewProcessParents()` - Preview changes
-- `runProcessParents()` - Execute migration
-- `rollbackProcessParents()` - Undo changes
+### Development Migrations
+- Should include environment validation
+- Should have safety checks
+- Should never run in production
+- Should generate realistic test data
 
-## Safety Features
+### Archived Migrations
+- **ARCHIVED**: Not production ready, moved to archive
+- **PROCESSED**: Successfully completed, historical record only
 
-### Preview Mode
-Always run the preview function first to see what changes will be made:
-- Shows which sheets will be affected
-- Lists specific changes that will be applied
-- Identifies potential issues
+## 🚨 Important Notes
 
-### Rollback Support
-Each migration includes a rollback function to undo changes:
-- Restores original headers
-- Notes which advanced features need manual cleanup
-- Provides step-by-step rollback instructions
+1. **Always backup** your spreadsheet before running migrations
+2. **Use preview first** to understand what will change
+3. **Never run development migrations** in production
+4. **Update spreadsheet ID** in migration code before running
+5. **Test rollback functionality** in development
 
-### Error Handling
-- Comprehensive error catching and reporting
-- Detailed console logging
-- Graceful handling of missing sheets or data
+## 📞 Support
 
-## Best Practices
-
-### Before Running Migrations
-
-1. **Make a backup** of your Google Sheets document
-2. **Run the preview function** to understand what will change
-3. **Test on a copy** of your sheet first if possible
-4. **Read the migration description** thoroughly
-
-### During Migration
-
-1. **Monitor the console** for progress updates and any errors
-2. **Don't interrupt** the migration while it's running
-3. **Check the results** after completion
-
-### After Migration
-
-1. **Verify the changes** are working as expected
-2. **Test your application** to ensure compatibility
-3. **Document the migration** in your change log
-
-## Troubleshooting
-
-### Common Issues
-
-**"Sheet not found" errors:**
-- Ensure your sheet names match exactly (case-sensitive)
-- Check that all required sheets exist in your document
-
-**Permission errors:**
-- Make sure the Apps Script project has access to your Google Sheets
-- Try refreshing the authorization if needed
-
-**Validation not working:**
-- Check that the data validation rules were applied correctly
-- Verify the ranges are correct for your data
-
-### Getting Help
-
-1. **Check the console logs** for detailed error messages
-2. **Run the preview function** to diagnose issues
-3. **Use the rollback function** if you need to undo changes
-4. **Review the original migration** in the main codebase for reference
-
-## Development Notes
-
-### Converting Node.js Migrations to GAS
-
-These migrations were automatically converted from Node.js-based migrations that used the Google Sheets API. Key changes made:
-
-1. **API Differences:**
-   - Node.js `googleapis` → Google Apps Script `SpreadsheetApp`
-   - Authentication handled automatically by GAS
-   - Direct sheet manipulation instead of API calls
-
-2. **Functionality Preserved:**
-   - All validation logic maintained
-   - Same error handling patterns
-   - Identical migration outcomes
-
-3. **Enhanced Features:**
-   - Better integration with Google Sheets UI
-   - Simplified execution model
-   - Enhanced logging and feedback
-
-### Adding New Migrations
-
-When creating new GAS migrations:
-
-1. **Follow the naming pattern:** `Migration[XXX]_[Description].gs`
-2. **Include all three functions:** preview, run, rollback
-3. **Add comprehensive logging** and error handling
-4. **Test thoroughly** before deployment
-5. **Update this README** with the new migration details
-
-## Security Considerations
-
-- **Backup your data** before running any migration
-- **Test in a development environment** first
-- **Review all code** before copying into Apps Script
-- **Be cautious with data validation rules** that might block existing data
-- **Understand rollback limitations** for advanced formatting features
+If you encounter issues:
+1. Check the migration logs for error details
+2. Use the rollback function if available
+3. Restore from backup if needed
+4. Review the migration preview before re-running

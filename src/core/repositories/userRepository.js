@@ -1,7 +1,11 @@
 import { RepositoryHelper } from './helpers/repositoryHelper.js';
 import { Keys } from '../values/keys.js';
 import { RoleType } from '../values/roleType.js';
-import { Admin, Instructor, Student, Parent, Room } from '../../shared/models/index.js';
+import { Admin } from '../models/admin.js';
+import { Instructor } from '../models/instructor.js';
+import { Student } from '../models/student.js';
+import { Parent } from '../models/parent.js';
+import { Room } from '../models/room.js';
 import { Role } from '../models/role.js';
 
 /**
@@ -39,7 +43,7 @@ export class UserRepository {
   /**
    *
    */
-  async _getRoles(forceRefresh = false) {
+  async #getRoles(forceRefresh = false) {
     return await RepositoryHelper.getAndSetData(
       () => this.roles,
       async () => (this.roles = await this.dbClient.getAllRecords(Keys.ROLES, x => new Role(...x))),
@@ -52,7 +56,7 @@ export class UserRepository {
    *
    */
   async getOperatorByEmail(email) {
-    const roles = await this._getRoles();
+    const roles = await this.#getRoles();
     return roles.find(x => x.email === email && x.role === RoleType.OPERATOR);
   }
 

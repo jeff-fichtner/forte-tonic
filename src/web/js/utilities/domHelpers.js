@@ -5,7 +5,7 @@ export class DomHelpers {
   /**
    *
    */
-  static async _waitForDocumentReadyAsync() {
+  static async waitForDocumentReadyAsync() {
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
       return true;
     }

@@ -8,7 +8,14 @@
  * 1. Open your Google Sheets document
  * 2. Go to Extensions > Apps Script
  * 3. Copy this entire file content into a new .gs file
- * 4. Run the main function: runStructuralImprovements()
+ * 4. Configure spreadsheet ID in Config.js (loaded automatically)
+ * 5. Run the main function: runStructuralImprovements()
+ * 
+ * EXECUTION HISTORY:
+ * =================
+ * 2025-08-02: Executed runStructuralImprovementsDeleteStudentId() - DEV environment
+ *             - StudentId column deleted from students sheet
+ *             - Headers standardized across sheets
  */
 
 /**
@@ -16,7 +23,18 @@
  * This will be the entry point when run from Google Apps Script
  */
 function runStructuralImprovements() {
-  const migration = new StructuralImprovementsMigration();
+  const migration = new StructuralImprovementsMigration(getSpreadsheetId());
+  migration.execute();
+}
+
+/**
+ * Alternative function to execute structural improvements WITH StudentId column deletion
+ * Use this if you want to completely remove the StudentId column instead of deprecating it
+ */
+function runStructuralImprovementsDeleteStudentId() {
+  const migration = new StructuralImprovementsMigration(getSpreadsheetId(), {
+    deleteStudentIdColumn: true
+  });
   migration.execute();
 }
 
@@ -25,7 +43,18 @@ function runStructuralImprovements() {
  * Run this first to see what the migration will do
  */
 function previewStructuralImprovements() {
-  const migration = new StructuralImprovementsMigration();
+  const migration = new StructuralImprovementsMigration(getSpreadsheetId());
+  migration.preview();
+}
+
+/**
+ * Preview function to check what changes would be made WITH StudentId deletion
+ * Run this first to see what the migration will do when deleting StudentId column
+ */
+function previewStructuralImprovementsDeleteStudentId() {
+  const migration = new StructuralImprovementsMigration(getSpreadsheetId(), {
+    deleteStudentIdColumn: true
+  });
   migration.preview();
 }
 
@@ -34,7 +63,7 @@ function previewStructuralImprovements() {
  * Use this if you need to revert the changes
  */
 function rollbackStructuralImprovements() {
-  const migration = new StructuralImprovementsMigration();
+  const migration = new StructuralImprovementsMigration(getSpreadsheetId());
   migration.rollback();
 }
 
@@ -42,9 +71,15 @@ function rollbackStructuralImprovements() {
  * Migration class for structural improvements
  */
 class StructuralImprovementsMigration {
-  constructor() {
-    this.spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    this.description = 'Standardize headers, add validation, freeze rows, and highlight duplicates';
+  constructor(spreadsheetId, options = {}) {
+    this.spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    this.description = 'Standardize headers and handle StudentId column';
+    
+    // Configuration options
+    this.options = {
+      deleteStudentIdColumn: options.deleteStudentIdColumn || false, // Set to true to delete instead of deprecate
+      ...options
+    };
   }
 
   /**
@@ -86,7 +121,11 @@ class StructuralImprovementsMigration {
         if (sheetName === 'students') {
           if (headers.includes('StudentId') && headers.includes('Id')) {
             issues.push(`${sheetName}: Has redundant StudentId column`);
-            recommendations.push(`${sheetName}: Will mark StudentId as deprecated`);
+            if (this.options.deleteStudentIdColumn) {
+              recommendations.push(`${sheetName}: Will DELETE StudentId column completely`);
+            } else {
+              recommendations.push(`${sheetName}: Will mark StudentId as deprecated`);
+            }
           }
         }
       }
@@ -117,8 +156,6 @@ class StructuralImprovementsMigration {
     
     const results = {
       headersFixed: 0,
-      validationRulesAdded: 0,
-      formattingApplied: 0,
       errors: []
     };
 
@@ -135,99 +172,56 @@ class StructuralImprovementsMigration {
         results.headersFixed++;
       }
 
-      // Standardize Students headers (mark StudentId as deprecated)
+      // Standardize Students headers (handle StudentId column based on options)
       const studentsSheet = this.spreadsheet.getSheetByName('students');
       if (studentsSheet) {
         console.log('   Standardizing Students sheet headers...');
-        const headers = studentsSheet.getRange(1, 1, 1, 9);
-        headers.setValues([['Id', 'StudentId_DEPRECATED', 'LastName', 'FirstName', 'LastNickname', 'FirstNickname', 'Grade', 'Parent1Id', 'Parent2Id']]);
+        
+        if (this.options.deleteStudentIdColumn) {
+          // Option 1: Delete StudentId column completely
+          console.log('   🗑️ Deleting StudentId column...');
+          
+          // First, check if StudentId column exists
+          const currentHeaders = studentsSheet.getRange(1, 1, 1, studentsSheet.getLastColumn()).getValues()[0];
+          const studentIdIndex = currentHeaders.indexOf('StudentId');
+          
+          if (studentIdIndex !== -1) {
+            // Delete the StudentId column (index + 1 because Sheets is 1-indexed)
+            studentsSheet.deleteColumn(studentIdIndex + 1);
+            console.log(`   ✅ Deleted StudentId column (was at position ${studentIdIndex + 1})`);
+            
+            // Set headers for remaining columns (without StudentId)
+            const headers = studentsSheet.getRange(1, 1, 1, 8);
+            headers.setValues([['Id', 'LastName', 'FirstName', 'LastNickname', 'FirstNickname', 'Grade', 'Parent1Id', 'Parent2Id']]);
+          } else {
+            console.log('   ℹ️ StudentId column not found, skipping deletion');
+            // Set standard headers
+            const headers = studentsSheet.getRange(1, 1, 1, 8);
+            headers.setValues([['Id', 'LastName', 'FirstName', 'LastNickname', 'FirstNickname', 'Grade', 'Parent1Id', 'Parent2Id']]);
+          }
+        } else {
+          // Option 2: Mark StudentId as deprecated (original behavior)
+          const headers = studentsSheet.getRange(1, 1, 1, 9);
+          headers.setValues([['Id', 'StudentId_DEPRECATED', 'LastName', 'FirstName', 'LastNickname', 'FirstNickname', 'Grade', 'Parent1Id', 'Parent2Id']]);
+        }
+        
         results.headersFixed++;
       }
-
-      // PHASE 2: Advanced Google Sheets formatting
-      console.log('\n⚡ PHASE 2: Advanced Formatting & Validation...');
-      
-      // 2A. Freeze header rows on all sheets
-      console.log('   Adding frozen header rows...');
-      const sheets = [parentsSheet, studentsSheet, 
-                     this.spreadsheet.getSheetByName('instructors'),
-                     this.spreadsheet.getSheetByName('registrations')];
-      
-      sheets.forEach(sheet => {
-        if (sheet) {
-          sheet.setFrozenRows(1);
-          results.formattingApplied++;
-        }
-      });
-
-      // 2B. Add data validation for emails
-      console.log('   Adding email validation...');
-      
-      // Parents email validation (column B)
-      if (parentsSheet) {
-        const emailRange = parentsSheet.getRange(2, 2, parentsSheet.getMaxRows() - 1, 1);
-        const emailValidation = SpreadsheetApp.newDataValidation()
-          .requireTextIsEmail()
-          .setHelpText('Enter a valid email address')
-          .build();
-        emailRange.setDataValidation(emailValidation);
-        results.validationRulesAdded++;
-      }
-
-      // Instructors email validation (column B)
-      const instructorsSheet = this.spreadsheet.getSheetByName('instructors');
-      if (instructorsSheet) {
-        const emailRange = instructorsSheet.getRange(2, 2, instructorsSheet.getMaxRows() - 1, 1);
-        const emailValidation = SpreadsheetApp.newDataValidation()
-          .requireTextIsEmail()
-          .setHelpText('Enter a valid email address')
-          .build();
-        emailRange.setDataValidation(emailValidation);
-        results.validationRulesAdded++;
-      }
-
-      // 2C. Add grade validation (dropdown)
-      console.log('   Adding grade validation...');
-      if (studentsSheet) {
-        const gradeRange = studentsSheet.getRange(2, 7, studentsSheet.getMaxRows() - 1, 1);
-        const gradeValidation = SpreadsheetApp.newDataValidation()
-          .requireValueInList(['K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'])
-          .setHelpText('Select a valid grade: K, 1-12')
-          .build();
-        gradeRange.setDataValidation(gradeValidation);
-        results.validationRulesAdded++;
-      }
-
-      // 2D. Add conditional formatting for duplicate IDs
-      console.log('   Adding duplicate ID highlighting...');
-      sheets.forEach(sheet => {
-        if (sheet) {
-          const idRange = sheet.getRange(2, 1, sheet.getMaxRows() - 1, 1);
-          const rule = SpreadsheetApp.newConditionalFormatRule()
-            .whenFormulaSatisfied('=COUNTIF($A$2:$A,A2)>1')
-            .setBackground('#ff6666')
-            .setRanges([idRange])
-            .build();
-          const rules = sheet.getConditionalFormatRules();
-          rules.push(rule);
-          sheet.setConditionalFormatRules(rules);
-          results.formattingApplied++;
-        }
-      });
 
       console.log('\n✅ MIGRATION COMPLETED SUCCESSFULLY!');
       console.log('\n📋 SUMMARY OF CHANGES:');
       console.log(`   • Headers fixed: ${results.headersFixed} sheets`);
-      console.log(`   • Validation rules added: ${results.validationRulesAdded}`);
-      console.log(`   • Formatting applied: ${results.formattingApplied} improvements`);
       
       console.log('\n📋 WHAT WAS CHANGED:');
       console.log('   • Parents sheet: "Last Name" → "LastName", "First Name" → "FirstName"');
-      console.log('   • Students sheet: Headers standardized, StudentId marked as deprecated');
-      console.log('   • All sheets: Header rows frozen for better navigation');
-      console.log('   • Email columns: Validation added (parents, instructors)');
-      console.log('   • Grade column: Dropdown validation (K, 1-12)');
-      console.log('   • All ID columns: Duplicate highlighting in red');
+      
+      if (this.options.deleteStudentIdColumn) {
+        console.log('   • Students sheet: Headers standardized, StudentId column DELETED');
+        logMigrationResult('Migration001 executed with StudentId deletion - DEV environment');
+      } else {
+        console.log('   • Students sheet: Headers standardized, StudentId marked as deprecated');
+        logMigrationResult('Migration001 executed with StudentId deprecation - DEV environment');
+      }
 
       return results;
 
@@ -260,16 +254,26 @@ class StructuralImprovementsMigration {
       // Restore Students headers  
       const studentsSheet = this.spreadsheet.getSheetByName('students');
       if (studentsSheet) {
-        const headers = studentsSheet.getRange(1, 1, 1, 9);
-        headers.setValues([['Id', 'StudentId', 'LastName', 'FirstName', 'LastNickname', 'FirstNickname', 'Grade', 'Parent1Id', 'Parent2Id']]);
-        console.log('   ✅ Students sheet headers restored');
+        // Check current number of columns to determine if StudentId was deleted
+        const currentColumns = studentsSheet.getLastColumn();
+        
+        if (currentColumns === 8) {
+          // StudentId was likely deleted, need to insert it back
+          console.log('   🔄 StudentId column appears to have been deleted, inserting it back...');
+          studentsSheet.insertColumnAfter(1); // Insert after Id column
+          const headers = studentsSheet.getRange(1, 1, 1, 9);
+          headers.setValues([['Id', 'StudentId', 'LastName', 'FirstName', 'LastNickname', 'FirstNickname', 'Grade', 'Parent1Id', 'Parent2Id']]);
+          console.log('   ✅ Students sheet headers restored with StudentId column recreated');
+        } else {
+          // Normal case - just restore headers
+          const headers = studentsSheet.getRange(1, 1, 1, 9);
+          headers.setValues([['Id', 'StudentId', 'LastName', 'FirstName', 'LastNickname', 'FirstNickname', 'Grade', 'Parent1Id', 'Parent2Id']]);
+          console.log('   ✅ Students sheet headers restored');
+        }
       }
 
       console.log('\n✅ ROLLBACK COMPLETED');
-      console.log('\n⚠️  Note: The following items need manual cleanup:');
-      console.log('   • Data validation rules');
-      console.log('   • Frozen headers (can be unfrozen via View menu)');
-      console.log('   • Conditional formatting rules');
+      console.log('\n⚠️  Note: If StudentId column was deleted, data may need to be restored from backup');
       
       return true;
     } catch (error) {
@@ -284,16 +288,19 @@ class StructuralImprovementsMigration {
  * You can create a "Migration Log" sheet to track execution
  */
 function logMigrationResult(message) {
-  console.log(message);
+  const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+  const fullMessage = `${timestamp}: ${message}`;
+  
+  console.log(`📝 ${fullMessage}`);
   
   // Optional: Log to a dedicated sheet
   try {
-    const logSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Migration Log');
+    const logSheet = SpreadsheetApp.openById(getSpreadsheetId()).getSheetByName('Migration Log');
     if (logSheet) {
-      const timestamp = new Date();
-      logSheet.appendRow([timestamp, 'Migration001', message]);
+      logSheet.appendRow([new Date(), 'Migration001', message, 'SUCCESS']);
     }
   } catch (error) {
     // Ignore if log sheet doesn't exist
+    console.log('   (No Migration Log sheet found - skipping permanent log)');
   }
 }

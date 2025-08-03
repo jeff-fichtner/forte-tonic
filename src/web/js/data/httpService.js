@@ -12,7 +12,7 @@ export class HttpService {
    */
   static fetch(serverFunctionName, mapper = null, paginationOptions = {}, context = null, ...args) {
     const payload = paginationOptions ? [paginationOptions, ...args] : args;
-    return this._callServerFunction(serverFunctionName, payload, mapper, context);
+    return this.#callServerFunction(serverFunctionName, payload, mapper, context);
   }
 
   /**
@@ -103,14 +103,14 @@ export class HttpService {
    */
   static post(serverFunctionName, data, mapper = null, context = null, ...args) {
     const payload = [{ data }, ...args];
-    return this._callServerFunction(serverFunctionName, payload, mapper, context);
+    return this.#callServerFunction(serverFunctionName, payload, mapper, context);
   }
 
   // Updated method for calling Node.js server functions via HTTP
   /**
    *
    */
-  static _callServerFunction(serverFunctionName, payload, mapper = null, context = null) {
+  static #callServerFunction(serverFunctionName, payload, mapper = null, context = null) {
     return new Promise(async (resolve, reject) => {
       try {
         const response = await fetch(`/api/${serverFunctionName}`, {

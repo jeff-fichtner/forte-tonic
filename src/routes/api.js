@@ -2,6 +2,7 @@ import express from 'express';
 import { RegistrationType } from '../core/values/registrationType.js';
 import { _fetchData } from '../utils/helpers.js';
 import { configService } from '../core/services/configurationService.js';
+import { UserTransformService } from '../core/services/userTransformService.js';
 
 const router = express.Router();
 
@@ -122,7 +123,8 @@ router.post('/testSheetData', async (req, res) => {
 router.post('/getAdmins', async (req, res) => {
   try {
     const data = await req.userRepository.getAdmins();
-    res.json(data);
+    const transformedData = UserTransformService.transformArray(data, 'admin');
+    res.json(transformedData);
   } catch (error) {
     console.error('Error getting admins:', error);
     res.status(500).json({ error: error.message });
@@ -132,7 +134,8 @@ router.post('/getAdmins', async (req, res) => {
 router.post('/getInstructors', async (req, res) => {
   try {
     const data = await req.userRepository.getInstructors();
-    res.json(data);
+    const transformedData = UserTransformService.transformArray(data, 'instructor');
+    res.json(transformedData);
   } catch (error) {
     console.error('Error getting instructors:', error);
     res.status(500).json({ error: error.message });

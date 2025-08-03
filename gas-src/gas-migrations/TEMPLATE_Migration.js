@@ -6,48 +6,49 @@
  * 
  * To use:
  * 1. Copy this file and rename to Migration[XXX]_[Description].gs
- * 2. Replace all placeholder text with your specific migration logic
+ * 2. Configure spreadsheet ID in Config.js (loaded automatically)
  * 3. Update function names to match your migration
  * 4. Test thoroughly with preview function first
  */
 
 /**
- * Main function to execute the migration
- * Rename this function to match your migration: run[YourMigrationName]()
+ * Main function to execute YourMigrationName
+ * This will be the entry point when run from Google Apps Script
+ * TODO: Replace "YourMigrationName" with your actual migration name
  */
-function runTemplateMigration() {
-  const migration = new TemplateMigration();
+function runYourMigrationName() {
+  const migration = new YourMigrationNameClass(getSpreadsheetId());
   migration.execute();
 }
 
 /**
  * Preview function to check what changes would be made
- * Rename this function to match your migration: preview[YourMigrationName]()
+ * Run this first to see what the migration will do
+ * TODO: Replace "YourMigrationName" with your actual migration name
  */
-function previewTemplateMigration() {
-  const migration = new TemplateMigration();
+function previewYourMigrationName() {
+  const migration = new YourMigrationNameClass(getSpreadsheetId());
   migration.preview();
 }
 
 /**
  * Rollback function to undo the migration changes
- * Rename this function to match your migration: rollback[YourMigrationName]()
+ * Use this if you need to revert the changes
+ * TODO: Replace "YourMigrationName" with your actual migration name
  */
-function rollbackTemplateMigration() {
-  const migration = new TemplateMigration();
+function rollbackYourMigrationName() {
+  const migration = new YourMigrationNameClass(getSpreadsheetId());
   migration.rollback();
 }
 
 /**
- * Migration class template
- * Rename this class to match your migration: [YourMigrationName]Migration
+ * Migration class for Your Migration Description
+ * TODO: Replace "YourMigrationNameClass" and description with your actual migration details
  */
-class TemplateMigration {
-  constructor() {
-    this.spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    this.description = 'REPLACE: Brief description of what this migration does';
-    this.migrationName = 'REPLACE: Template Migration';
-    this.version = 'REPLACE: XXX';
+class YourMigrationNameClass {
+  constructor(spreadsheetId) {
+    this.spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    this.description = 'Your Migration Description Here';
   }
 
   /**

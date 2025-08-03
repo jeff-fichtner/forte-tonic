@@ -6,15 +6,14 @@
 // Import all required modules
 import './constants.js';
 import './data/httpService.js';
-import './models/responses/authenticatedUserResponse.js';
-import './models/admin.js';
-import './models/class.js';
-import './models/instructor.js';
-import './models/parent.js';
-import './models/registration.js';
-import './models/room.js';
-import './models/student.js';
-import './models/studentFull.js';
+import '/shared/models/responses/authenticatedUserResponse.js';
+import '/shared/models/admin.js';
+import '/shared/models/class.js';
+import '/shared/models/instructor.js';
+import '/shared/models/parent.js';
+import '/shared/models/registration.js';
+import '/shared/models/room.js';
+import '/shared/models/student.js';
 import './components/autocomplete.js';
 import './components/checkbox.js';
 import './components/input.js';

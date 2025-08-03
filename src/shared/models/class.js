@@ -1,4 +1,4 @@
-import { DateHelpers } from '../../core/helpers/dateHelpers.js';
+import { DateHelpers } from '../../core/helpers/nativeDateTimeHelpers.js';
 
 /**
  * Class model - unified for both backend and frontend use
@@ -58,9 +58,9 @@ export class Class {
             this.id = data;
             this.instructorId = instructorId;
             this.day = day;
-            this.startTime = DateHelpers?.parseGoogleSheetsDate ? DateHelpers.parseGoogleSheetsDate(startTime) : startTime;
+            this.startTime = DateHelpers?.parseTimeString ? DateHelpers.parseTimeString(startTime).to24Hour() : startTime;
             this.length = length;
-            this.endTime = DateHelpers?.parseGoogleSheetsDate ? DateHelpers.parseGoogleSheetsDate(endTime) : endTime;
+            this.endTime = DateHelpers?.parseTimeString ? DateHelpers.parseTimeString(endTime).to24Hour() : endTime;
             this.instrument = instrument;
             this.title = title;
             this.size = size;
@@ -79,10 +79,13 @@ export class Class {
     get formattedStartTime() {
         if (!this.startTime) return '';
         
-        // If DurationHelpers is available (frontend), use it
+        // Check if browser environment and DurationHelpers is available
         if (typeof window !== 'undefined' && window.DurationHelpers) {
-            return window.DurationHelpers.stringToDuration(this.startTime).to12HourFormat();
+            return DateHelpers.parseTimeString(this.startTime).to12Hour();
         }
+        
+        // Fallback for environments without DurationHelpers
+        return DateHelpers.convertTimeFormat(this.startTime, '12hour');
         
         // Fallback formatting
         if (this.startTime instanceof Date) {

@@ -7,7 +7,6 @@ export class Student {
      * Creates a Student API model instance
      * @param {Object} data - Student data object
      * @param {string} data.id - Unique identifier
-     * @param {string} data.studentId - Student ID number
      * @param {string} data.lastName - Last name
      * @param {string} data.firstName - First name
      * @param {string} [data.lastNickname] - Last nickname
@@ -31,7 +30,6 @@ export class Student {
 
         const {
             id,
-            studentId,
             lastName,
             firstName,
             lastNickname,
@@ -50,7 +48,6 @@ export class Student {
 
         // Required fields
         this.id = id;
-        this.studentId = studentId;
         this.lastName = lastName;
         this.firstName = firstName;
         this.email = email;
@@ -78,7 +75,6 @@ export class Student {
     static fromDatabase(dbStudent, additionalData = {}) {
         return new Student({
             id: dbStudent.id,
-            studentId: dbStudent.studentId,
             lastName: dbStudent.lastName,
             firstName: dbStudent.firstName,
             lastNickname: dbStudent.lastNickname,
@@ -97,7 +93,6 @@ export class Student {
     toDatabaseModel() {
         return {
             id: this.id,
-            studentId: this.studentId,
             lastName: this.lastName,
             firstName: this.firstName,
             lastNickname: this.lastNickname,
@@ -211,7 +206,6 @@ export class Student {
     toJSON() {
         return {
             id: this.id,
-            studentId: this.studentId,
             lastName: this.lastName,
             firstName: this.firstName,
             lastNickname: this.lastNickname,

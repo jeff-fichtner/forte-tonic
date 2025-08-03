@@ -1,7 +1,7 @@
 import { HttpService } from './data/httpService.js';
 import { ServerFunctions, DataStores, Sections, RegistrationType } from './constants.js';
-import { AuthenticatedUserResponse } from './models/responses/authenticatedUserResponse.js';
-import { Admin, Instructor, Student, Registration, Class, Room } from '../../shared/models/index.js';
+import { AuthenticatedUserResponse } from '/shared/models/responses/authenticatedUserResponse.js';
+import { Admin, Instructor, Student, Registration, Class, Room } from '/shared/models/index.js';
 import { IndexedDbClient } from './data/indexedDbClient.js';
 import { DomHelpers } from './utilities/domHelpers.js';
 import { NavTabs } from './components/navTabs.js';
@@ -20,7 +20,7 @@ export class ViewModel {
       ServerFunctions.getAuthenticatedUser,
       x => new AuthenticatedUserResponse(x)
     );
-    debugger;
+
     const validations = [
       [
         authenticatedUser,
@@ -32,8 +32,8 @@ export class ViewModel {
       if (!condition) {
         console.error(errorMessage);
         alert(alertMessage);
-        await DomHelpers._waitForDocumentReadyAsync();
-        await this._setPageLoading(false, errorMessage);
+        await DomHelpers.waitForDocumentReadyAsync();
+        await this.#setPageLoading(false, errorMessage);
         return;
       }
     }
@@ -41,10 +41,10 @@ export class ViewModel {
     this.dbClient = new IndexedDbClient('forte', [DataStores.STUDENTS]);
     await this.dbClient.init();
     const [_, admins, instructors, students, registrations, classes, rooms] = await Promise.all([
-      DomHelpers._waitForDocumentReadyAsync(),
+      DomHelpers.waitForDocumentReadyAsync(),
       HttpService.fetch(ServerFunctions.getAdmins, x => x.map(y => new Admin(y))),
       HttpService.fetch(ServerFunctions.getInstructors, x => x.map(y => new Instructor(y))),
-      this._getStudents(),
+      this.#getStudents(),
       HttpService.fetchAllPages(ServerFunctions.getRegistrations, x => new Registration(x)),
       HttpService.fetch(ServerFunctions.getClasses, x => x.map(y => new Class(y))),
       HttpService.fetch(ServerFunctions.getRooms, x => x.map(y => new Room(y))),
@@ -66,30 +66,30 @@ export class ViewModel {
     let defaultSection;
     if (authenticatedUser.shouldShowAsOperator || authenticatedUser.admin) {
       console.log('Initializing admin content...');
-      this._initAdminContent();
+      this.#initAdminContent();
       defaultSection = Sections.ADMIN;
     }
     if (authenticatedUser.shouldShowAsOperator || authenticatedUser.instructor) {
       console.log('Initializing instructor content...');
-      this._initInstructorContent();
+      this.#initInstructorContent();
       defaultSection = Sections.INSTRUCTOR;
     }
     if (authenticatedUser.shouldShowAsOperator || authenticatedUser.parent) {
       console.log('Initializing parent content...');
-      this._initParentContent();
+      this.#initParentContent();
       defaultSection = Sections.PARENT;
     }
     const defaultSectionToUse = !authenticatedUser.shouldShowAsOperator ? defaultSection : null;
     console.log(`Default section to use: ${defaultSectionToUse}`);
     this.navTabs = new NavTabs(defaultSectionToUse);
-    this._setPageLoading(false);
+    this.#setPageLoading(false);
   }
   /**
    *
    */
-  _initAdminContent() {
+  #initAdminContent() {
     // master schedule tab
-    this.masterScheduleTable = this._buildRegistrationTable(this.registrations);
+    this.masterScheduleTable = this.#buildRegistrationTable(this.registrations);
     // registration form
     this.adminRegistrationForm = new AdminRegistrationForm(
       this.instructors,
@@ -114,12 +114,12 @@ export class ViewModel {
     const mappedEmployees = this.adminEmployees().concat(
       this.instructors.map(this.instructorToEmployee)
     );
-    this.employeeDirectoryTable = this._buildDirectory('employee-directory-table', mappedEmployees);
+    this.employeeDirectoryTable = this.#buildDirectory('employee-directory-table', mappedEmployees);
   }
   /**
    *
    */
-  _initInstructorContent() {
+  #initInstructorContent() {
     // weekly schedule
     // unique days registrations
     const daysWithRegistrations = this.registrations
@@ -136,7 +136,7 @@ export class ViewModel {
       const newTable = document.createElement('table');
       newTable.id = tableId;
       instructorWeeklyScheduleTables.appendChild(newTable);
-      this._buildWeeklySchedule(
+      this.#buildWeeklySchedule(
         tableId,
         this.registrations.filter(x => x.day === day)
       );
@@ -147,7 +147,7 @@ export class ViewModel {
       this.instructors.map(this.instructorToEmployee)
     );
     // this may be set in admin section if user is operator
-    this.employeeDirectoryTable ??= this._buildDirectory(
+    this.employeeDirectoryTable ??= this.#buildDirectory(
       'employee-directory-table',
       mappedEmployees
     );
@@ -155,7 +155,7 @@ export class ViewModel {
   /**
    *
    */
-  _initParentContent() {
+  #initParentContent() {
     // weekly schedule
     // students with registrations
     const studentsWithRegistrations = this.registrations
@@ -169,7 +169,7 @@ export class ViewModel {
       const newTable = document.createElement('table');
       newTable.id = tableId;
       parentWeeklyScheduleTables.appendChild(newTable);
-      this._buildWeeklySchedule(
+      this.#buildWeeklySchedule(
         tableId,
         this.registrations.filter(x => x.studentId === student.id)
       );
@@ -183,12 +183,12 @@ export class ViewModel {
         )
         .map(this.instructorToEmployee)
     );
-    this.parentDirectoryTable = this._buildDirectory('parent-directory-table', mappedEmployees);
+    this.parentDirectoryTable = this.#buildDirectory('parent-directory-table', mappedEmployees);
   }
   /**
    *
    */
-  _setPageLoading(isLoading, errorMessage = '') {
+  #setPageLoading(isLoading, errorMessage = '') {
     const loadingContainer = document.getElementById('page-loading-container');
     const pageContent = document.getElementById('page-content');
     const pageErrorContent = document.getElementById('page-error-content');
@@ -205,7 +205,7 @@ export class ViewModel {
   /**
    *
    */
-  _setAdminRegistrationLoading(isLoading) {
+  #setAdminRegistrationLoading(isLoading) {
     const adminRegistrationLoadingContainer = document.getElementById(
       'admin-registration-loading-container'
     );
@@ -216,7 +216,7 @@ export class ViewModel {
   /**
    *
    */
-  _buildRegistrationTable(defaultRegistrations) {
+  #buildRegistrationTable(defaultRegistrations) {
     return new Table(
       'master-schedule-table',
       [
@@ -248,12 +248,12 @@ export class ViewModel {
                         <td>${registration.registrationType === RegistrationType.GROUP ? registration.className : registration.instrument}</td>
                         <td>
                             <a href="#!">
-                                <i class="copy-parent-emails-table-icon material-icons gray-text text-darken-4">email</i>
+                                <i class="copy-parent-emails-table-icon gray-text text-darken-4">✉</i>
                             </a>
                         </td>
                         <td>
                             <a href="#!">
-                                <i class="delete-registration-table-icon material-icons red-text text-darken-4">delete_forever</i>
+                                <i class="delete-registration-table-icon red-text text-darken-4">🗑</i>
                             </a>
                         </td>
                     `;
@@ -273,11 +273,11 @@ export class ViewModel {
         if (!currentRegistration) return;
         if (isCopy) {
           const parentEmails = currentRegistration.student.parentEmails;
-          await this._copyToClipboard(parentEmails);
+          await this.#copyToClipboard(parentEmails);
           return;
         }
         if (isDelete) {
-          await this._requestDeleteRegistrationAsync(currentRegistration.id);
+          await this.#requestDeleteRegistrationAsync(currentRegistration.id);
           return;
         }
       },
@@ -318,7 +318,7 @@ export class ViewModel {
   /**
    *
    */
-  _buildWeeklySchedule(tableId, enrollments) {
+  #buildWeeklySchedule(tableId, enrollments) {
     return new Table(
       tableId,
       ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument'],
@@ -344,19 +344,27 @@ export class ViewModel {
     );
   }
   /**
-   *
+   * Build directory table for employees (admins + instructors)
+   * @param {string} tableId - HTML table element ID
+   * @param {Array} employees - Array of employee objects
+   * @returns {Table} Table instance
    */
-  _buildDirectory(tableId, employees) {
+  #buildDirectory(tableId, employees) {
     return new Table(
       tableId,
       ['Name', 'Role', 'Email', 'Phone', 'Contact'],
-      // row
+      // row function with defensive programming
       employee => {
+        const fullName = employee.fullName || `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 'Unknown';
+        const roles = Array.isArray(employee.roles) ? employee.roles.join(', ') : (employee.roles || 'Unknown');
+        const email = employee.email || 'No email';
+        const phone = employee.phone || employee.phoneNumber || 'No phone';
+        
         return `
-                        <td>${employee.fullName}</td>
-                        <td>${employee.roles.join(', ')}</td>
-                        <td>${employee.email}</td>
-                        <td>${employee.phone}</td>
+                        <td>${fullName}</td>
+                        <td>${roles}</td>
+                        <td>${email}</td>
+                        <td>${phone}</td>
                         <td>
                             <a href="#!">
                                 <i class="copy-parent-emails-table-icon material-icons gray-text text-darken-4">email</i>
@@ -364,14 +372,14 @@ export class ViewModel {
                         </td>
                     `;
       },
-      employees
+      employees || []
     );
   }
   // TODO duplicated (will be consolidated elsewhere)
   /**
    *
    */
-  _updateSelectOptions(selectId, options, defaultOptionText, forceRefresh = false) {
+  #updateSelectOptions(selectId, options, defaultOptionText, forceRefresh = false) {
     const select = document.getElementById(selectId);
     if (!select) {
       console.error(`Select element with ID "${selectId}" not found.`);
@@ -408,13 +416,13 @@ export class ViewModel {
   /**
    *
    */
-  async _requestDeleteRegistrationAsync(registrationToDeleteId) {
+  async #requestDeleteRegistrationAsync(registrationToDeleteId) {
     // confirm delete
     if (!confirm(`Are you sure you want to delete?`)) {
       return;
     }
     try {
-      this._setAdminRegistrationLoading(true);
+      this.#setAdminRegistrationLoading(true);
       const response = await HttpService.post(ServerFunctions.unregister, {
         id: registrationToDeleteId,
       });
@@ -426,13 +434,13 @@ export class ViewModel {
       console.error('Error deleting registration:', error);
       M.toast({ html: 'Error deleting registration.' });
     } finally {
-      this._setAdminRegistrationLoading(false);
+      this.#setAdminRegistrationLoading(false);
     }
   }
   /**
    *
    */
-  async _copyToClipboard(text) {
+  async #copyToClipboard(text) {
     try {
       // Attempt to use the Clipboard API
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -482,21 +490,23 @@ export class ViewModel {
     });
   }
   /**
-   *
+   * Convert instructor to employee format for directory display
+   * @param {Object} instructor - Instructor object
+   * @returns {Object} Employee object for table display
    */
   instructorToEmployee(instructor) {
     return {
       id: instructor.id,
-      fullName: instructor.fullName,
+      fullName: instructor.fullName || `${instructor.firstName || ''} ${instructor.lastName || ''}`.trim(),
       email: instructor.email,
-      phone: instructor.phone,
-      roles: instructor.instruments,
+      phone: instructor.phone || instructor.phoneNumber,
+      roles: instructor.instruments || instructor.specialties || [],
     };
   }
   /**
    *
    */
-  async _getStudents(forceRefresh = false) {
+  async #getStudents(forceRefresh = false) {
     // load students from indexeddb
     if (!forceRefresh && (await this.dbClient.hasItems(DataStores.STUDENTS))) {
       console.log('Loading students from IndexedDB...');

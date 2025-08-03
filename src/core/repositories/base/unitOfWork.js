@@ -19,34 +19,34 @@ export class UnitOfWork {
      * Gets or creates the student repository
      */
     get students() {
-        return this._getRepository('students', () => new StudentRepository(this.dbClient));
+        return this.#getRepository('students', () => new StudentRepository(this.dbClient));
     }
 
     /**
      * Gets or creates the admin repository
      */
     get admins() {
-        return this._getRepository('admins', () => new AdminRepository(this.dbClient));
+        return this.#getRepository('admins', () => new AdminRepository(this.dbClient));
     }
 
     /**
      * Gets or creates the instructor repository
      */
     get instructors() {
-        return this._getRepository('instructors', () => new InstructorRepository(this.dbClient));
+        return this.#getRepository('instructors', () => new InstructorRepository(this.dbClient));
     }
 
     /**
      * Gets or creates the parent repository
      */
     get parents() {
-        return this._getRepository('parents', () => new ParentRepository(this.dbClient));
+        return this.#getRepository('parents', () => new ParentRepository(this.dbClient));
     }
 
     /**
      * Private method to get or create repositories
      */
-    _getRepository(key, factory) {
+    #getRepository(key, factory) {
         if (this._isDisposed) {
             throw new Error('UnitOfWork has been disposed');
         }

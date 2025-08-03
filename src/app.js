@@ -39,9 +39,23 @@ app.use(
           'https://cdnjs.cloudflare.com',
           'https://fonts.googleapis.com',
         ],
-        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://fonts.googleapis.com'],
+        fontSrc: [
+          "'self'", 
+          'https://fonts.gstatic.com', 
+          'https://fonts.googleapis.com',
+          'https://cdnjs.cloudflare.com',
+          'https://static.juicer.io',
+          'data:'
+        ],
         imgSrc: ["'self'", 'data:', 'https:'],
-        connectSrc: ["'self'"],
+        connectSrc: [
+          "'self'",
+          'https://fonts.googleapis.com',
+          'https://fonts.gstatic.com'
+        ],
+        frameSrc: ["'none'"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
       },
     },
   })
@@ -60,6 +74,12 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'web')));
+
+// Serve shared models for frontend access
+app.use('/shared', express.static(path.join(__dirname, 'shared')));
+
+// Serve core utilities for frontend access
+app.use('/core', express.static(path.join(__dirname, 'core')));
 
 // Apply authentication middleware to API routes
 app.use('/api', initializeUserContext);
