@@ -131,40 +131,6 @@ export class Registration {
   }
 
   /**
-   * @deprecated Use Registration.fromApiData() or Registration.fromDatabaseRow() instead
-   * Legacy constructor for backwards compatibility - will be removed in future version
-   */
-  static legacyConstructor(
-    data,
-    studentId,
-    instructorId,
-    day,
-    startTime,
-    length,
-    registrationType,
-    roomId,
-    instrument,
-    transportationType,
-    notes,
-    classId,
-    className,
-    expectedStartDate,
-    createdAt,
-    createdBy
-  ) {
-    console.warn('⚠️  Registration legacy constructor is deprecated. Use Registration.fromApiData() or Registration.fromDatabaseRow() instead.');
-    
-    if (typeof data === 'object' && data !== null) {
-      return Registration.fromApiData(data);
-    } else {
-      const row = [data, studentId, instructorId, day, startTime, length, registrationType, 
-                   roomId, instrument, transportationType, notes, classId, className, 
-                   expectedStartDate, createdAt, createdBy];
-      return Registration.fromDatabaseRow(row);
-    }
-  }
-
-  /**
    * Gets formatted start time
    * @returns {string} Formatted start time
    */

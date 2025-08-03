@@ -3,11 +3,9 @@
  */
 
 import { BaseRepository } from './base/baseRepository.js';
-import { Registration } from '../../domain/entities/registration.js';
+import { Registration } from '../models/registration.js';
 import { Keys } from '../values/keys.js';
 import { RegistrationType } from '../values/registrationType.js';
-import { RegistrationValidationService } from '../../domain/services/registrationValidationService.js';
-import { RegistrationConflictService } from '../../domain/services/registrationConflictService.js';
 
 export class RegistrationRepository extends BaseRepository {
   constructor(dbClient) {
@@ -16,36 +14,21 @@ export class RegistrationRepository extends BaseRepository {
 
   /**
    * Generate composite ID based on registration type
-   * Delegates to domain service for consistency
    */
   generateRegistrationId(data) {
-    return RegistrationConflictService.generateRegistrationId(data);
+    if (data.registrationType === RegistrationType.GROUP) {
+      return `${data.studentId}_${data.classId}`;
+    } else {
+      return `${data.studentId}_${data.instructorId}_${data.day}_${data.startTime}`;
+    }
   }
 
   /**
-   * Creates a new registration with validation and conflict checking
+   * Creates a new registration with proper ID generation
    */
   async create(registrationData) {
     try {
       console.log('📝 Creating new registration');
-
-      // Domain validation
-      const validation = RegistrationValidationService.validateRegistrationData(registrationData);
-      if (!validation.isValid) {
-        throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
-      }
-
-      // Check for conflicts
-      const existingRegistrations = await this.findAll();
-      const conflictCheck = await RegistrationConflictService.checkConflicts(
-        registrationData, 
-        existingRegistrations
-      );
-      
-      if (conflictCheck.hasConflicts) {
-        const conflictMessages = conflictCheck.conflicts.map(c => c.message).join('; ');
-        throw new Error(`Registration conflicts detected: ${conflictMessages}`);
-      }
 
       // Generate composite ID
       const id = this.generateRegistrationId(registrationData);

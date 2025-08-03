@@ -2,9 +2,9 @@
  * Instructor Repository - handles instructor-specific data operations
  */
 
-import { BaseRepository } from './base/baseRepository.js';
-import { Instructor } from '../../shared/models/instructor.js'; // Data layer model
-import { Keys } from '../values/keys.js';
+import { BaseRepository } from '../base/baseRepository.js';
+import { Instructor } from '../../models/instructor.js'; // Data layer model
+import { Keys } from '../../values/keys.js';
 
 export class InstructorRepository extends BaseRepository {
   constructor(dbClient) {

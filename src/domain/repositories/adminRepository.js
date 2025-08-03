@@ -2,9 +2,9 @@
  * Admin Repository - handles admin-specific data operations
  */
 
-import { BaseRepository } from './base/baseRepository.js';
-import { Admin } from '../../shared/models/admin.js'; // Data layer model
-import { Keys } from '../values/keys.js';
+import { BaseRepository } from '../base/baseRepository.js';
+import { Admin } from '../../models/admin.js'; // Data layer model
+import { Keys } from '../../values/keys.js';
 
 export class AdminRepository extends BaseRepository {
   constructor(dbClient) {

@@ -86,21 +86,6 @@ export class Room {
   }
 
   /**
-   * @deprecated Use Room.fromApiData() or Room.fromDatabaseRow() instead
-   * Legacy constructor for backwards compatibility - will be removed in future version
-   */
-  static legacyConstructor(data, name, altName, includeRoomId) {
-    console.warn('⚠️  Room legacy constructor is deprecated. Use Room.fromApiData() or Room.fromDatabaseRow() instead.');
-    
-    if (typeof data === 'object' && data !== null) {
-      return Room.fromApiData(data);
-    } else {
-      const row = [data, name, altName, includeRoomId];
-      return Room.fromDatabaseRow(row);
-    }
-  }
-
-  /**
    * Gets formatted room name with optional alternative name and ID
    * @returns {string} Formatted room name
    */

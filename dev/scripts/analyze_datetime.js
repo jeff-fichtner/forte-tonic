@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { GoogleSheetsDbClient } from '../../src/core/clients/googleSheetsDbClient.js';
+import { GoogleSheetsDbClient } from '../../src/infrastructure/database/googleSheetsDbClient.js';
 import { DateHelpers } from '../../src/core/helpers/dateHelpers.js';
 
 const dbClient = new GoogleSheetsDbClient();
