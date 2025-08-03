@@ -117,21 +117,6 @@ export class Class {
   }
 
   /**
-   * @deprecated Use Class.fromApiData() or Class.fromDatabaseRow() instead
-   * Legacy constructor for backwards compatibility - will be removed in future version
-   */
-  static legacyConstructor(data, instructorId, day, startTime, length, endTime, instrument, title, size, minimumGrade, maximumGrade) {
-    console.warn('⚠️  Class legacy constructor is deprecated. Use Class.fromApiData() or Class.fromDatabaseRow() instead.');
-    
-    if (typeof data === 'object' && data !== null) {
-      return Class.fromApiData(data);
-    } else {
-      const row = [data, instructorId, day, startTime, length, endTime, instrument, title, size, minimumGrade, maximumGrade];
-      return Class.fromDatabaseRow(row);
-    }
-  }
-
-  /**
    * Gets formatted start time
    * @returns {string} Formatted start time
    */

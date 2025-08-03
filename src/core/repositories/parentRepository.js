@@ -2,9 +2,9 @@
  * Parent Repository - handles parent-specific data operations
  */
 
-import { BaseRepository } from '../base/baseRepository.js';
-import { Parent } from '../../models/parent.js'; // Data layer model
-import { Keys } from '../../values/keys.js';
+import { BaseRepository } from './base/baseRepository.js';
+import { Parent } from '../../shared/models/parent.js'; // Data layer model
+import { Keys } from '../values/keys.js';
 
 export class ParentRepository extends BaseRepository {
   constructor(dbClient) {

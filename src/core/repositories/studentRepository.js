@@ -2,9 +2,9 @@
  * Student Repository - handles student-specific data operations
  */
 
-import { BaseRepository } from '../base/baseRepository.js';
-import { Student } from '../../models/student.js'; // Data layer model
-import { Keys } from '../../values/keys.js';
+import { BaseRepository } from './base/baseRepository.js';
+import { Student } from '../../shared/models/student.js'; // Data layer model
+import { Keys } from '../values/keys.js';
 
 export class StudentRepository extends BaseRepository {
   constructor(dbClient) {

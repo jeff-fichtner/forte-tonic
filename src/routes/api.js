@@ -5,23 +5,22 @@ import { configService } from '../core/services/configurationService.js';
 import { UserTransformService } from '../core/services/userTransformService.js';
 import { currentConfig, isProduction, isStaging } from '../config/environment.js';
 
+// Import application layer controllers
+import { UserController } from '../application/controllers/userController.js';
+import { SystemController } from '../application/controllers/systemController.js';
+import { RegistrationController } from '../application/controllers/registrationController.js';
+import { AttendanceController } from '../application/controllers/attendanceController.js';
+
 const router = express.Router();
 
 // Health check endpoint for monitoring
-router.get('/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    environment: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || '1.0.0',
-    baseUrl: currentConfig.baseUrl,
-    features: {
-      isProduction,
-      isStaging,
-      spreadsheetConfigured: !!currentConfig.spreadsheetId,
-    },
-  });
-});
+router.get('/health', SystemController.getHealth);
+
+// Get current authenticated user
+router.post('/getAuthenticatedUser', UserController.getAuthenticatedUser);
+
+// Test endpoint to verify Google Sheets connectivity
+router.post('/testConnection', SystemController.testConnection);
 
 // Get current authenticated user
 router.post('/getAuthenticatedUser', (req, res) => {
@@ -100,42 +99,19 @@ router.post('/testConnection', async (req, res) => {
 });
 
 // Test endpoint to get data from a specific sheet
-router.post('/testSheetData', async (req, res) => {
-  try {
-    const { sheetName } = req.body;
-    const range = `${sheetName}!A1:Z100`; // Use a more reasonable range
+router.post('/testSheetData', SystemController.testSheetData);
 
-    console.log(`Testing data retrieval from sheet: ${sheetName}, range: ${range}`);
+router.post('/getAdmins', UserController.getAdmins);
 
-    const spreadsheetId = req.dbClient.spreadsheetId;
-    const response = await req.dbClient.sheets.spreadsheets.values.get({
-      spreadsheetId: spreadsheetId,
-      range: range,
-    });
+router.post('/getInstructors', UserController.getInstructors);
 
-    const values = response.data.values || [];
+router.post('/getStudents', UserController.getStudents);
 
-    const result = {
-      success: true,
-      sheetName,
-      range,
-      rowCount: values.length,
-      columnCount: values.length > 0 ? values[0].length : 0,
-      headers: values.length > 0 ? values[0] : [],
-      sampleData: values.slice(0, 5), // First 5 rows
-    };
+router.post('/getClasses', RegistrationController.getClasses);
 
-    console.log('Sheet data test result:', result);
-    res.json(result);
-  } catch (error) {
-    console.error('Sheet data test failed:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      stack: error.stack,
-    });
-  }
-});
+router.post('/getRegistrations', RegistrationController.getRegistrations);
+
+router.post('/getRooms', RegistrationController.getRooms);
 
 router.post('/getAdmins', async (req, res) => {
   try {
@@ -251,231 +227,24 @@ router.post('/getRooms', async (req, res) => {
 /**
  * Create Registration - New Repository Pattern
  */
-router.post('/registrations', async (req, res) => {
-  try {
-    const requestData = req.body;
-
-    // Basic validation
-    if (!requestData.studentId || !requestData.registrationType) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields: studentId, registrationType',
-      });
-    }
-
-    // Validate registration type requirements
-    if (requestData.registrationType === RegistrationType.GROUP && !requestData.classId) {
-      return res.status(400).json({
-        success: false,
-        message: 'classId is required for GROUP registrations',
-      });
-    }
-
-    // Add current user and timestamp
-    requestData.registeredBy = req.currentUser?.email || 'system';
-    requestData.registeredAt = new Date().toISOString();
-    requestData.schoolYear = requestData.schoolYear || '2025-2026';
-    requestData.trimester = requestData.trimester || 'Fall';
-
-    // Create via repository
-    const savedRegistration = await req.registrationRepository.create(requestData);
-
-    // Return enriched response
-    res.json({
-      success: true,
-      message: 'Registration created successfully',
-      data: {
-        id: savedRegistration.id,
-        studentId: savedRegistration.studentId,
-        classId: savedRegistration.classId,
-        instructorId: savedRegistration.instructorId,
-        registrationType: savedRegistration.registrationType,
-        schoolYear: savedRegistration.schoolYear,
-        trimester: savedRegistration.trimester,
-        className: savedRegistration.className,
-        registeredAt: savedRegistration.registeredAt,
-        canMarkAttendance: true,
-      },
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error('Error creating registration:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to create registration',
-      error: error.message,
-    });
-  }
-});
+router.post('/registrations', RegistrationController.createRegistration);
 
 /**
  * Mark Attendance - New Repository Pattern
  */
-router.post('/attendance', async (req, res) => {
-  try {
-    const { registrationId, week, schoolYear, trimester } = req.body;
-
-    // Validation
-    if (!registrationId || !week) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields: registrationId, week',
-      });
-    }
-
-    // Check if attendance already exists
-    const existingAttendance = await req.attendanceRepository.hasAttendance(
-      registrationId,
-      week,
-      schoolYear || '2025-2026',
-      trimester || 'Fall'
-    );
-
-    if (existingAttendance) {
-      return res.status(409).json({
-        success: false,
-        message: 'Attendance already recorded for this registration and week',
-      });
-    }
-
-    // Create attendance record
-    const attendanceData = {
-      registrationId,
-      week: parseInt(week),
-      schoolYear: schoolYear || '2025-2026',
-      trimester: trimester || 'Fall',
-      recordedBy: req.currentUser?.email || 'system',
-      recordedAt: new Date().toISOString(),
-    };
-
-    const savedAttendance = await req.attendanceRepository.create(attendanceData);
-
-    // Return confirmation
-    res.json({
-      success: true,
-      message: 'Attendance recorded successfully',
-      data: {
-        id: savedAttendance.id,
-        registrationId: savedAttendance.registrationId,
-        week: savedAttendance.week,
-        schoolYear: savedAttendance.schoolYear,
-        trimester: savedAttendance.trimester,
-        recordedAt: savedAttendance.recordedAt,
-      },
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error('Error recording attendance:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to record attendance',
-      error: error.message,
-    });
-  }
-});
+router.post('/attendance', AttendanceController.markAttendance);
 
 /**
  * Get Attendance Summary
  */
-router.get('/attendance/summary/:registrationId', async (req, res) => {
-  try {
-    const { registrationId } = req.params;
-    const { schoolYear = '2025-2026', trimester = 'Fall' } = req.query;
+router.get('/attendance/summary/:registrationId', AttendanceController.getAttendanceSummary);
 
-    const summary = await req.attendanceRepository.getAttendanceSummary(
-      registrationId,
-      schoolYear,
-      trimester
-    );
+router.post('/register', RegistrationController.register);
 
-    res.json({
-      success: true,
-      data: summary,
-    });
-  } catch (error) {
-    console.error('Error getting attendance summary:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to get attendance summary',
-      error: error.message,
-    });
-  }
-});
+router.post('/unregister', RegistrationController.unregister);
 
-// ===== EXISTING LEGACY ENDPOINT =====
+router.post('/recordAttendance', AttendanceController.recordAttendance);
 
-router.post('/register', async (req, res) => {
-  try {
-    const data = req.body;
-
-    let matchingClass = null;
-    if (data.registrationType === RegistrationType.GROUP) {
-      matchingClass = await req.programRepository.getClassById(data.classId);
-    }
-
-    const effectiveInstructorId = data.instructorId || matchingClass?.instructorId;
-    if (!effectiveInstructorId) {
-      throw new Error('No instructor specified or found for the registration');
-    }
-
-    const instructor = await req.userRepository.getInstructorById(effectiveInstructorId);
-    const newRegistration = await req.programRepository.register(
-      data,
-      matchingClass,
-      instructor,
-      req.currentUser.email
-    );
-
-    res.json({ newRegistration });
-  } catch (error) {
-    console.error('Error registering:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-router.post('/unregister', async (req, res) => {
-  try {
-    const data = req.body;
-
-    const success = await req.programRepository.unregister(data.id, req.currentUser.email);
-
-    res.json({ success });
-  } catch (error) {
-    console.error('Error unregistering:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-router.post('/recordAttendance', async (req, res) => {
-  try {
-    const data = req.body;
-
-    const attendanceRecord = await req.programRepository.recordAttendance(
-      data.registrationId,
-      req.currentUser.email
-    );
-
-    res.json({ attendanceRecord });
-  } catch (error) {
-    console.error('Error recording attendance:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-router.post('/removeAttendance', async (req, res) => {
-  try {
-    const data = req.body;
-
-    const success = await req.programRepository.removeAttendance(
-      data.registrationId,
-      req.currentUser.email
-    );
-
-    res.json({ success });
-  } catch (error) {
-    console.error('Error removing attendance:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+router.post('/removeAttendance', AttendanceController.removeAttendance);
 
 export default router;

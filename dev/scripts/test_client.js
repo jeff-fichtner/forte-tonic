@@ -1,4 +1,4 @@
-import { GoogleSheetsDbClient } from '../../src/core/clients/googleSheetsDbClient.js';
+import { GoogleSheetsDbClient } from '../../src/infrastructure/database/googleSheetsDbClient.js';
 import { Student } from '../../src/core/models/student.js';
 import { Parent } from '../../src/core/models/parent.js';
 import { Instructor } from '../../src/core/models/instructor.js';

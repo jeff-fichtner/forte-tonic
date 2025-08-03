@@ -90,21 +90,6 @@ export class Parent {
   }
 
   /**
-   * @deprecated Use Parent.fromApiData() or Parent.fromDatabaseRow() instead
-   * Legacy constructor for backwards compatibility - will be removed in future version
-   */
-  static legacyConstructor(data, email, lastName, firstName, phone, address, isEmergencyContact) {
-    console.warn('⚠️  Parent legacy constructor is deprecated. Use Parent.fromApiData() or Parent.fromDatabaseRow() instead.');
-    
-    if (typeof data === 'object' && data !== null) {
-      return Parent.fromApiData(data);
-    } else {
-      const row = [data, email, lastName, firstName, phone, address, isEmergencyContact];
-      return Parent.fromDatabaseRow(row);
-    }
-  }
-
-  /**
    * Gets the parent's full name
    * @returns {string} Full name in "firstName lastName" format
    */

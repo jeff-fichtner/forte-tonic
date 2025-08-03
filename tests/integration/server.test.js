@@ -37,7 +37,7 @@ jest.unstable_mockModule('../../src/core/services/configurationService.js', () =
 }));
 
 // Mock the GoogleSheetsDbClient before importing anything else
-jest.unstable_mockModule('../../src/core/clients/googleSheetsDbClient.js', () => ({
+jest.unstable_mockModule('../../src/infrastructure/database/googleSheetsDbClient.js', () => ({
   GoogleSheetsDbClient: jest.fn().mockImplementation((configService = mockConfigService) => ({
     spreadsheetId: 'test-sheet-id',
     getAllRecords: jest.fn().mockResolvedValue([

@@ -1,4 +1,4 @@
-import { GoogleSheetsDbClient } from '../../clients/googleSheetsDbClient.js';
+import { GoogleSheetsDbClient } from '../../../infrastructure/database/googleSheetsDbClient.js';
 import { Keys } from '../../values/keys.js';
 import { configService } from '../../services/configurationService.js';
 
