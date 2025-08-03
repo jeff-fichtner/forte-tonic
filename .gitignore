@@ -143,4 +143,7 @@ dev/credentials/
 dev/scripts/output/
 dev/scripts/temp/
 
+# Google Apps Script generated config
+gas-src/.clasp.json
+
 *.DS_Store

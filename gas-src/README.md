@@ -8,15 +8,33 @@ This directory contains the complete Google Apps Script (GAS) project for Tonic 
 - Google Apps Script access
 - clasp CLI installed globally: `npm install -g @google/clasp`
 - Authentication: `clasp login` (if not already logged in)
+- Environment variable `GOOGLE_APPS_SCRIPT_ID` set in parent directory's `.env` file
+
+### Setup Environment
+1. Ensure `GOOGLE_APPS_SCRIPT_ID` is set in `../.env`:
+```bash
+GOOGLE_APPS_SCRIPT_ID=your-google-apps-script-project-id
+```
+
+2. Generate `.clasp.json` from environment variables:
+```bash
+npm run setup
+```
 
 ### Deployment
 From this directory (`gas-src/`):
 ```bash
-clasp push
+npm run deploy        # Generate config and deploy
+# OR
+npm run deploy-force  # Force overwrite remote files
 ```
 
 ### Opening the Project
-Visit: https://script.google.com/d/1G3NcAkyD7cjvm1CFXXqZM-lem3cVI8q6_Qd0iwQr2CvDJo_tgsfx_WJU/edit
+```bash
+npm run open          # Opens browser to the GAS project
+```
+
+Manual URL: https://script.google.com/d/{GOOGLE_APPS_SCRIPT_ID}/edit
 
 ## 📁 Project Structure
 

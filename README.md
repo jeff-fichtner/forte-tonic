@@ -54,6 +54,25 @@ This project has been migrated from Google Apps Script to Node.js while preservi
 
 For detailed setup instructions, see [docs/NODE_SETUP.md](docs/NODE_SETUP.md)
 
+## Google Apps Script Migrations
+
+This project includes Google Apps Script migrations for database management:
+
+### Quick Start
+```bash
+cd gas-src
+npm run init    # First time setup and validation
+npm run deploy  # Deploy migrations to Google Apps Script
+```
+
+### Environment Setup
+Add to your `.env` file:
+```bash
+GOOGLE_APPS_SCRIPT_ID=your-google-apps-script-project-id
+```
+
+For detailed instructions, see [gas-src/README.md](gas-src/README.md)
+
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md) - Application architecture and design
