@@ -89,7 +89,7 @@ export class UserController {
         hasEmergencyContact: student.hasEmergencyContact,
         eligibilityStatus: student.eligibilityInfo.eligible ? 'eligible' : 'needs-attention',
         recommendedLessonDuration: student.recommendedLessonDuration,
-        parentEmails: request.includeParentInfo ? await this.#getParentEmails(student.id) : undefined
+        parentEmails: request.includeParentInfo ? await UserController.#getParentEmails(student.id) : undefined
       })));
 
       // For backward compatibility with existing pagination format
@@ -99,7 +99,7 @@ export class UserController {
       legacyResult.domainInsights = {
         totalEligible: result.students.filter(s => s.eligibilityInfo.eligible).length,
         totalWithEmergencyContact: result.students.filter(s => s.hasEmergencyContact).length,
-        averageRecommendedDuration: this.#calculateAverageRecommendedDuration(result.students)
+        averageRecommendedDuration: UserController.#calculateAverageRecommendedDuration(result.students)
       };
 
       res.json(legacyResult);

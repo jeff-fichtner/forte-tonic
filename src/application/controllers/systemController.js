@@ -35,7 +35,6 @@ export class SystemController {
    */
   static async testConnection(req, res) {
     try {
-      debugger; // Debugging breakpoint
       console.log('Testing Google Sheets connection...');
 
       const authConfig = configService.getGoogleSheetsAuth();
@@ -47,8 +46,6 @@ export class SystemController {
       // First, let's test basic authentication
       const auth = req.dbClient.auth;
       console.log('Auth type:', auth.constructor.name);
-
-      debugger; // Another breakpoint before API call
 
       // Try to get spreadsheet metadata (requires less permissions)
       const spreadsheetId = req.dbClient.spreadsheetId;
@@ -89,7 +86,6 @@ export class SystemController {
    */
   static async testSheetData(req, res) {
     try {
-      debugger; // Debugging breakpoint
       const { sheetName = 'Students', range = 'A1:Z100' } = req.body;
 
       console.log(`Testing data retrieval from sheet: ${sheetName}, range: ${sheetName}!${range}`);

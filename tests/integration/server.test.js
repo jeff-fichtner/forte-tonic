@@ -143,12 +143,59 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
   requireOperator: (req, res, next) => next(),
 }));
 
+// Mock the service container
+jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js', () => ({
+  serviceContainer: {
+    initialize: jest.fn().mockResolvedValue(undefined),
+    get: jest.fn().mockImplementation((serviceName) => {
+      const services = {
+        userRepository: mockUserRepository,
+        programRepository: mockProgramRepository,
+        studentApplicationService: {
+          getStudents: jest.fn().mockResolvedValue({
+            students: [
+              {
+                id: '1',
+                firstName: 'John',
+                lastName: 'Doe',
+                grade: '5',
+                ageCategory: 'elementary',
+                hasEmergencyContact: true,
+                eligibilityInfo: { eligible: true },
+                recommendedLessonDuration: 30,
+              },
+              {
+                id: '2',
+                firstName: 'Jane',
+                lastName: 'Smith',
+                grade: '8',
+                ageCategory: 'middle',
+                hasEmergencyContact: false,
+                eligibilityInfo: { eligible: false },
+                recommendedLessonDuration: 45,
+              },
+            ],
+            totalCount: 2,
+            page: 1,
+            pageSize: 10,
+          }),
+        },
+      };
+      return services[serviceName];
+    }),
+  },
+}));
+
 describe('Server Integration Tests', () => {
   let app;
 
   beforeAll(async () => {
     // Import the app after mocks are set up - use app.js to avoid starting server
-    app = (await import('../../src/app.js')).app;
+    const appModule = await import('../../src/app.js');
+    app = appModule.app;
+    
+    // Initialize the app services
+    await appModule.initializeApp();
   });
 
   describe('Static Routes', () => {
