@@ -55,9 +55,6 @@
     "google-sheets",
     "node.js"
   ],
-  "jest": {
-    "projects": ["<rootDir>/config/jest.config.js"]
-  },
   "author": "",
   "license": "MIT"
 }
