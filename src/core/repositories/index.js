@@ -11,7 +11,6 @@ export { StudentRepository } from './studentRepository.js';
 export { AdminRepository } from './adminRepository.js';
 export { InstructorRepository } from './instructorRepository.js';
 export { ParentRepository } from './parentRepository.js';
-export { RegistrationRepository } from './registrationRepository.js';
 export { AttendanceRepository } from './attendanceRepository.js';
 
 // Legacy - for backwards compatibility (to be deprecated)

@@ -57,7 +57,7 @@ export class RegistrationController {
       // Enhance with domain insights
       legacyResult.domainInsights = {
         totalActive: result.registrations.filter(r => r.isActive).length,
-        totalByType: this.#groupByRegistrationType(result.registrations),
+        totalByType: RegistrationController.#groupByRegistrationType(result.registrations),
         totalConflicts: result.registrations.filter(r => r.hasConflicts).length
       };
 

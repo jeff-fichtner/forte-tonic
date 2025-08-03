@@ -423,4 +423,66 @@ export class RegistrationApplicationService {
       approvalRequired: true
     };
   }
+
+  /**
+   * Get registrations with filtering and pagination
+   */
+  async getRegistrations(options = {}) {
+    try {
+      console.log('📋 Getting registrations with options:', options);
+
+      // Get registrations from repository
+      const registrations = await this.registrationRepository.getRegistrations(options);
+
+      // Enrich registrations with student and instructor details
+      const enrichedRegistrations = await Promise.all(
+        registrations.map(async (registration) => {
+          const [student, instructor, groupClass] = await Promise.all([
+            this.userRepository.getStudentById(registration.studentId),
+            this.userRepository.getInstructorById(registration.instructorId),
+            registration.classId ? this.programRepository.getClassById(registration.classId) : null
+          ]);
+
+          return {
+            ...registration,
+            student: student ? {
+              id: student.id,
+              firstName: student.firstName,
+              lastName: student.lastName,
+              email: student.email,
+              grade: student.grade
+            } : null,
+            instructor: instructor ? {
+              id: instructor.id,
+              firstName: instructor.firstName,
+              lastName: instructor.lastName,
+              email: instructor.email
+            } : null,
+            class: groupClass ? {
+              id: groupClass.id,
+              name: groupClass.name,
+              instrument: groupClass.instrument,
+              capacity: groupClass.capacity
+            } : null,
+            // Add business logic flags
+            hasConflicts: false, // TODO: Implement conflict detection
+            isActive: registration.status === 'active'
+          };
+        })
+      );
+
+      console.log(`📊 Found ${enrichedRegistrations.length} registrations`);
+
+      return {
+        registrations: enrichedRegistrations,
+        totalCount: enrichedRegistrations.length,
+        page: options.page || 1,
+        pageSize: options.pageSize || 10
+      };
+
+    } catch (error) {
+      console.error('❌ Error getting registrations:', error);
+      throw error;
+    }
+  }
 }
