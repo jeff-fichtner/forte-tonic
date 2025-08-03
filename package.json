@@ -5,7 +5,8 @@
   "main": "src/server.js",
   "type": "module",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node start.js",
+    "start:direct": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "node tests/scripts/test.js all",
     "test:watch": "node tests/scripts/test.js watch",
