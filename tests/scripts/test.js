@@ -11,12 +11,54 @@ const args = process.argv.slice(2);
 const testType = args[0] || 'all';
 
 const testCommands = {
-  all: ['node', '--experimental-vm-modules', 'node_modules/.bin/jest', '--config', 'config/jest.config.js'],
-  unit: ['node', '--experimental-vm-modules', 'node_modules/.bin/jest', '--config', 'config/jest.config.js', 'tests/unit'],
-  integration: ['node', '--experimental-vm-modules', 'node_modules/.bin/jest', '--config', 'config/jest.config.js', 'tests/integration'],
-  watch: ['node', '--experimental-vm-modules', 'node_modules/.bin/jest', '--config', 'config/jest.config.js', '--watch'],
-  coverage: ['node', '--experimental-vm-modules', 'node_modules/.bin/jest', '--config', 'config/jest.config.js', '--coverage'],
-  debug: ['node', '--inspect-brk', '--experimental-vm-modules', 'node_modules/.bin/jest', '--config', 'config/jest.config.js', '--runInBand']
+  all: [
+    'node',
+    '--experimental-vm-modules',
+    'node_modules/.bin/jest',
+    '--config',
+    'config/jest.config.js',
+  ],
+  unit: [
+    'node',
+    '--experimental-vm-modules',
+    'node_modules/.bin/jest',
+    '--config',
+    'config/jest.config.js',
+    'tests/unit',
+  ],
+  integration: [
+    'node',
+    '--experimental-vm-modules',
+    'node_modules/.bin/jest',
+    '--config',
+    'config/jest.config.js',
+    'tests/integration',
+  ],
+  watch: [
+    'node',
+    '--experimental-vm-modules',
+    'node_modules/.bin/jest',
+    '--config',
+    'config/jest.config.js',
+    '--watch',
+  ],
+  coverage: [
+    'node',
+    '--experimental-vm-modules',
+    'node_modules/.bin/jest',
+    '--config',
+    'config/jest.config.js',
+    '--coverage',
+  ],
+  debug: [
+    'node',
+    '--inspect-brk',
+    '--experimental-vm-modules',
+    'node_modules/.bin/jest',
+    '--config',
+    'config/jest.config.js',
+    '--runInBand',
+  ],
 };
 
 const command = testCommands[testType];
@@ -36,10 +78,10 @@ const child = spawn(command[0], command.slice(1), {
   env: {
     ...process.env,
     NODE_ENV: 'test',
-    PATH: `${path.resolve(__dirname, '..', '..', 'node_modules', '.bin')}:${process.env.PATH}`
-  }
+    PATH: `${path.resolve(__dirname, '..', '..', 'node_modules', '.bin')}:${process.env.PATH}`,
+  },
 });
 
-child.on('exit', (code) => {
+child.on('exit', code => {
   process.exit(code);
 });

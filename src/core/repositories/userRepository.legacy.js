@@ -1,10 +1,10 @@
 /**
  * Legacy UserRepository - DEPRECATED
  * This file is kept for backwards compatibility but should be migrated to use the new repository pattern
- * 
+ *
  * TODO: Migrate usages to:
  * - StudentRepository for student operations
- * - AdminRepository for admin operations  
+ * - AdminRepository for admin operations
  * - InstructorRepository for instructor operations
  * - ParentRepository for parent operations
  * - UnitOfWork for coordinated operations
@@ -20,8 +20,10 @@ export class UserRepository {
   constructor(dbClient) {
     this.dbClient = dbClient;
     this._unitOfWork = new UnitOfWork(dbClient);
-    
-    console.warn('⚠️  UserRepository is deprecated. Consider migrating to specific repositories or UnitOfWork.');
+
+    console.warn(
+      '⚠️  UserRepository is deprecated. Consider migrating to specific repositories or UnitOfWork.'
+    );
   }
 
   /**

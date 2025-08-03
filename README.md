@@ -42,6 +42,14 @@ Designed to automate student registration for after school lessons and programs.
    - Authenticate with Google
    - Use the application as before
 
+## 🔒 Security
+
+**Important:** This repository does NOT contain any real credentials or sensitive data. All sensitive information is loaded from environment variables or gitignored credential files.
+
+- See `docs/ENVIRONMENT_VARIABLES.md` for configuration
+- See `dev/credentials/README.md` for development setup
+- Never commit real API keys, private keys, or production data
+
 ## Migration Notes
 
 This project has been migrated from Google Apps Script to Node.js while preserving all original functionality:
@@ -59,6 +67,7 @@ For detailed setup instructions, see [docs/NODE_SETUP.md](docs/NODE_SETUP.md)
 This project includes Google Apps Script migrations for database management:
 
 ### Quick Start
+
 ```bash
 cd gas-src
 npm run init    # First time setup and validation
@@ -66,7 +75,9 @@ npm run deploy  # Deploy migrations to Google Apps Script
 ```
 
 ### Environment Setup
+
 Add to your `.env` file:
+
 ```bash
 GOOGLE_APPS_SCRIPT_ID=your-google-apps-script-project-id
 ```

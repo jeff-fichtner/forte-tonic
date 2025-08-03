@@ -22,10 +22,7 @@
 
    # Google Service Account credentials
    GOOGLE_SERVICE_ACCOUNT_EMAIL=your-service-account@your-project.iam.gserviceaccount.com
-   GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-
-   # Google Sheets configuration
-   WORKING_SPREADSHEET_ID=your_working_spreadsheet_id_here
+   # See docs/ENVIRONMENT_VARIABLES.md for complete reference and example values
    ```
 
 4. **Run the server:**

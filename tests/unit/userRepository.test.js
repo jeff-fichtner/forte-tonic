@@ -1,9 +1,6 @@
 import { jest } from '@jest/globals';
 import { UserRepository } from '../../src/core/repositories/userRepository.js';
-import { Admin } from '../../src/core/models/admin.js';
-import { Instructor } from '../../src/core/models/instructor.js';
-import { Student } from '../../src/core/models/student.js';
-import { Parent } from '../../src/core/models/parent.js';
+import { Admin, Instructor, Student, Parent } from '../../src/shared/models/index.js';
 
 describe('UserRepository', () => {
   let repository;
@@ -43,7 +40,7 @@ describe('UserRepository', () => {
 
       // Mock getAllRecords to return admin instances
       mockGoogleSheetsDbClient.getAllRecords.mockResolvedValue(
-        mockSheetData.map(row => new Admin(...row))
+        mockSheetData.map(row => Admin.fromDatabaseRow(row))
       );
 
       const result = await repository.getAdmins();
@@ -60,7 +57,15 @@ describe('UserRepository', () => {
           email: 'admin1@test.com',
           lastName: 'Smith',
           firstName: 'John',
-          phone: '555-1234',
+          phoneNumber: '555-1234',
+          role: 'admin',
+          fullName: 'John Smith',
+          displayName: 'John Smith (Admin)',
+          isActive: true,
+          isSuperAdmin: false,
+          permissions: [],
+          lastLoginDate: null,
+          daysSinceLastLogin: null,
         })
       );
     });
@@ -190,8 +195,8 @@ describe('UserRepository', () => {
   describe('getParents', () => {
     test('should return array of parent models', async () => {
       const mockParents = [
-        new Parent('parent-1', 'parent1@test.com', 'Johnson', 'Robert', '555-1111'),
-        new Parent('parent-2', 'parent2@test.com', 'Davis', 'Linda', '555-2222'),
+        Parent.fromDatabaseRow(['parent-1', 'parent1@test.com', 'Johnson', 'Robert', '555-1111']),
+        Parent.fromDatabaseRow(['parent-2', 'parent2@test.com', 'Davis', 'Linda', '555-2222']),
       ];
 
       mockGoogleSheetsDbClient.getAllRecords.mockResolvedValue(mockParents);
@@ -274,7 +279,7 @@ describe('UserRepository', () => {
 
   describe('getAdminByEmail', () => {
     test('should return admin by email when found', async () => {
-      const mockAdmin = new Admin('admin-1', 'admin@test.com', 'Smith', 'John', '555-1234');
+      const mockAdmin = Admin.fromDatabaseRow(['admin-1', 'admin@test.com', 'Smith', 'John', '555-1234']);
 
       mockGoogleSheetsDbClient.getAllRecords.mockResolvedValue([mockAdmin]);
 
@@ -287,7 +292,15 @@ describe('UserRepository', () => {
           email: 'admin@test.com',
           lastName: 'Smith',
           firstName: 'John',
-          phone: '555-1234',
+          phoneNumber: '555-1234',
+          role: 'admin',
+          fullName: 'John Smith',
+          displayName: 'John Smith (Admin)',
+          isActive: true,
+          isSuperAdmin: false,
+          permissions: [],
+          lastLoginDate: null,
+          daysSinceLastLogin: null,
         })
       );
     });

@@ -5,26 +5,35 @@ import { RegistrationType } from '../values/registrationType.js';
 import { CloneUtility } from '../utilities/cloneUtility.js';
 import { GuidUtility } from '../utilities/guidUtility.js';
 import { configService } from '../services/configurationService.js';
+import { getLogger } from '../utilities/logger.js';
 
 /**
- *
+ * Enhanced GoogleSheetsDbClient with caching and performance optimizations
+ * Consolidated from multiple client versions for better maintainability
  */
 export class GoogleSheetsDbClient {
   /**
-   *
+   * Initialize the Google Sheets client with caching capabilities
    */
   constructor(configurationService = configService) {
     this.configService = configurationService;
+    this.logger = getLogger();
+
+    // Performance optimization: Add caching
+    this.cache = new Map();
+    this.cacheTimestamps = new Map();
+    this.CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
 
     // Get authentication configuration from config service
     const authConfig = this.configService.getGoogleSheetsAuth();
     const sheetsConfig = this.configService.getGoogleSheetsConfig();
 
     // Initialize Google API clients with service account only
-    console.log('🔑 Using service account authentication...');
-    console.log('📧 Service Account Email:', authConfig.clientEmail);
-    console.log(
-      '🔐 Private Key Length:',
+    this.logger.log('🔑', 'Using service account authentication...');
+    this.logger.log('📧', 'Service Account Email:', authConfig.clientEmail);
+    this.logger.log(
+      '🔐',
+      'Private Key Length:',
       authConfig.privateKey ? authConfig.privateKey.length : 'NOT SET'
     );
 
@@ -33,9 +42,7 @@ export class GoogleSheetsDbClient {
         client_email: authConfig.clientEmail,
         private_key: authConfig.privateKey,
       },
-      scopes: [
-        'https://www.googleapis.com/auth/spreadsheets',
-      ],
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
 
     this.sheets = google.sheets({ version: 'v4', auth: this.auth });
@@ -44,10 +51,13 @@ export class GoogleSheetsDbClient {
     this.spreadsheetId = sheetsConfig.spreadsheetId;
 
     if (!this.spreadsheetId) {
-      throw new Error('Spreadsheet ID is required. Please set WORKING_SPREADSHEET_ID environment variable.');
+      throw new Error(
+        'Spreadsheet ID is required. Please set WORKING_SPREADSHEET_ID environment variable.'
+      );
     }
 
-    console.log(
+    this.logger.log(
+      '📝',
       'GoogleSheetsDbClient initialized with spreadsheet ID:',
       this.spreadsheetId
     );
@@ -91,43 +101,43 @@ export class GoogleSheetsDbClient {
         sheet: Keys.PARENTS,
         startRow: 2,
         columnMap: {
-          id: 0,            // Id
-          email: 1,         // Email
-          lastName: 2,      // LastName (updated from "Last Name" by Migration001)
-          firstName: 3,     // FirstName (updated from "First Name" by Migration001)
-          phone: 4,         // Phone
-          cellPhone: 5,     // CellPhone
+          id: 0, // Id
+          email: 1, // Email
+          lastName: 2, // LastName (updated from "Last Name" by Migration001)
+          firstName: 3, // FirstName (updated from "First Name" by Migration001)
+          phone: 4, // Phone
+          cellPhone: 5, // CellPhone
         },
       },
       [Keys.STUDENTS]: {
         sheet: Keys.STUDENTS,
         startRow: 2,
         columnMap: {
-          id: 0,              // Id
-          lastName: 1,        // LastName (was Column C, now Column B after StudentId deletion)
-          firstName: 2,       // FirstName (was Column D, now Column C after StudentId deletion)
-          lastNickname: 3,    // LastNickname (was Column E, now Column D after StudentId deletion)
-          firstNickname: 4,   // FirstNickname (was Column F, now Column E after StudentId deletion)
-          grade: 5,           // Grade (was Column G, now Column F after StudentId deletion)
-          parent1Id: 6,       // Parent1Id (was Column H, now Column G after StudentId deletion)
-          parent2Id: 7,       // Parent2Id (was Column I, now Column H after StudentId deletion)
+          id: 0, // Id
+          lastName: 1, // LastName (was Column C, now Column B after StudentId deletion)
+          firstName: 2, // FirstName (was Column D, now Column C after StudentId deletion)
+          lastNickname: 3, // LastNickname (was Column E, now Column D after StudentId deletion)
+          firstNickname: 4, // FirstNickname (was Column F, now Column E after StudentId deletion)
+          grade: 5, // Grade (was Column G, now Column F after StudentId deletion)
+          parent1Id: 6, // Parent1Id (was Column H, now Column G after StudentId deletion)
+          parent2Id: 7, // Parent2Id (was Column I, now Column H after StudentId deletion)
         },
       },
       [Keys.CLASSES]: {
         sheet: Keys.CLASSES,
         startRow: 2,
         columnMap: {
-          id: 0,              // Id
-          instructorId: 1,    // InstructorId
-          day: 2,             // Day
-          startTime: 3,       // StartTime
-          length: 4,          // Length
-          endTime: 5,         // EndTime
-          instrument: 6,      // Instrument
-          title: 7,           // Title
-          size: 8,            // Size
-          minimumGrade: 9,    // MinimumGrade
-          maximumGrade: 10,   // MaximumGrade
+          id: 0, // Id
+          instructorId: 1, // InstructorId
+          day: 2, // Day
+          startTime: 3, // StartTime
+          length: 4, // Length
+          endTime: 5, // EndTime
+          instrument: 6, // Instrument
+          title: 7, // Title
+          size: 8, // Size
+          minimumGrade: 9, // MinimumGrade
+          maximumGrade: 10, // MaximumGrade
         },
       },
       [Keys.ROOMS]: {
@@ -142,16 +152,16 @@ export class GoogleSheetsDbClient {
         sheet: Keys.REGISTRATIONS,
         startRow: 2,
         columnMap: {
-          id: 0,                  // Id
-          studentId: 1,           // StudentId  
-          instructorId: 2,        // InstructorId
-          day: 3,                 // Day
-          startTime: 4,           // StartTime
-          length: 5,              // Length
-          registrationType: 6,    // RegistrationType
-          roomId: 7,              // RoomId
-          schoolYear: 8,          // SchoolYear
-          createdBy: 9,           // CreatedBy
+          id: 0, // Id
+          studentId: 1, // StudentId
+          instructorId: 2, // InstructorId
+          day: 3, // Day
+          startTime: 4, // StartTime
+          length: 5, // Length
+          registrationType: 6, // RegistrationType
+          roomId: 7, // RoomId
+          schoolYear: 8, // SchoolYear
+          createdBy: 9, // CreatedBy
         },
         auditSheet: Keys.REGISTRATIONSAUDIT,
         postProcess: record => {
@@ -217,6 +227,119 @@ export class GoogleSheetsDbClient {
    *
    */
 
+  /**
+   * Get data with caching support for improved performance
+   */
+  async getCachedData(sheetKey, mapFunc = null) {
+    const now = Date.now();
+    const cachedTime = this.cacheTimestamps.get(sheetKey);
+
+    if (cachedTime && now - cachedTime < this.CACHE_TTL) {
+      this.logger.log('📦', `Using cached data for ${sheetKey}`);
+      return this.cache.get(sheetKey);
+    }
+
+    // Cache miss, load fresh data
+    this.logger.log('🔄', `Loading fresh data for ${sheetKey}`);
+    const data = await this.getAllRecords(
+      sheetKey,
+      mapFunc || (row => row)
+    );
+
+    // Cache the results
+    this.cache.set(sheetKey, data);
+    this.cacheTimestamps.set(sheetKey, now);
+
+    return data;
+  }
+
+  /**
+   * Batch load multiple sheets in parallel for better performance
+   */
+  async getAllDataParallel(sheetKeys, mapFunctions = {}) {
+    const startTime = Date.now();
+
+    try {
+      // Load all requested sheets in parallel
+      const promises = sheetKeys.map(async sheetKey => {
+        const mapFunc = mapFunctions[sheetKey] || (row => row);
+        const data = await this.getCachedData(sheetKey, mapFunc);
+        return { sheetKey, data };
+      });
+
+      const results = await Promise.all(promises);
+      const endTime = Date.now();
+
+      this.logger.log(
+        '🚀',
+        `Parallel batch load of ${sheetKeys.length} sheets completed in ${endTime - startTime}ms`
+      );
+
+      // Convert to object format
+      const dataMap = {};
+      results.forEach(({ sheetKey, data }) => {
+        dataMap[sheetKey] = data;
+      });
+
+      return dataMap;
+    } catch (error) {
+      console.error('❌ Batch load failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clear cache manually - useful for testing or forced refresh
+   */
+  clearCache(sheetKey = null) {
+    if (sheetKey) {
+      this.cache.delete(sheetKey);
+      this.cacheTimestamps.delete(sheetKey);
+      this.logger.log('🧹', `Cache cleared for ${sheetKey}`);
+    } else {
+      this.cache.clear();
+      this.cacheTimestamps.clear();
+      this.logger.log('🧹', 'All cache cleared');
+    }
+  }
+
+  /**
+   * Enhanced batch operations for writes with cache invalidation
+   */
+  async batchWrite(operations) {
+    const batchRequest = {
+      spreadsheetId: this.spreadsheetId,
+      resource: {
+        valueInputOption: 'RAW',
+        data: operations.map(op => ({
+          range: op.range,
+          values: op.values,
+        })),
+      },
+    };
+
+    const startTime = Date.now();
+    const response = await this.sheets.spreadsheets.values.batchUpdate(batchRequest);
+    const endTime = Date.now();
+
+    this.logger.log(
+      '📝',
+      `Batch write of ${operations.length} operations completed in ${endTime - startTime}ms`
+    );
+
+    // Invalidate cache for affected sheets
+    operations.forEach(op => {
+      const sheetName = op.range.split('!')[0];
+      // Find the sheet key that matches this sheet name
+      Object.keys(this.workingSheetInfo).forEach(key => {
+        if (this.workingSheetInfo[key].sheet === sheetName) {
+          this.clearCache(key);
+        }
+      });
+    });
+
+    return response;
+  }
 
   /**
    *
@@ -307,7 +430,7 @@ export class GoogleSheetsDbClient {
           this.#convertAuditValuesToObject(auditValues, auditSheet)
         );
       } else {
-        console.log(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
+        this.logger.debug(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
       }
 
       return processedRecord;
@@ -318,7 +441,7 @@ export class GoogleSheetsDbClient {
   }
 
   /**
-   *
+   * Insert data into sheet and invalidate cache
    */
   async insertIntoSheet(sheetKey, data) {
     try {
@@ -341,6 +464,9 @@ export class GoogleSheetsDbClient {
         },
       });
 
+      // Clear cache for this sheet since we modified it
+      this.clearCache(sheetKey);
+
       return response.data;
     } catch (error) {
       console.error(`Error inserting data into sheet ${sheetKey}:`, error);
@@ -349,7 +475,7 @@ export class GoogleSheetsDbClient {
   }
 
   /**
-   *
+   * Update record and invalidate cache
    */
   async updateRecord(sheetKey, record, updatedBy) {
     try {
@@ -363,12 +489,15 @@ export class GoogleSheetsDbClient {
       const rowIndex = allData.findIndex(row => row.id === record.id);
 
       if (rowIndex === -1) {
-        console.log(`Record with ID ${record.id} not found in ${sheetKey}.`);
+        this.logger.debug(`Record with ID ${record.id} not found in ${sheetKey}.`);
         return;
       }
 
       await this.updateInSheet(sheetKey, rowIndex, record);
-      console.log(`Record with ID ${record.id} updated in ${sheetKey}.`);
+      this.logger.debug(`Record with ID ${record.id} updated in ${sheetKey}.`);
+
+      // Clear cache for this sheet since we modified it
+      this.clearCache(sheetKey);
     } catch (error) {
       console.error(`Error updating record in sheet ${sheetKey}:`, error);
       throw error;
@@ -376,7 +505,7 @@ export class GoogleSheetsDbClient {
   }
 
   /**
-   *
+   * Update data in sheet and invalidate cache
    */
   async updateInSheet(sheetKey, rowIndex, data) {
     try {
@@ -399,6 +528,9 @@ export class GoogleSheetsDbClient {
         },
       });
 
+      // Clear cache for this sheet since we modified it
+      this.clearCache(sheetKey);
+
       return response.data;
     } catch (error) {
       console.error(`Error updating data in sheet ${sheetKey}:`, error);
@@ -418,7 +550,7 @@ export class GoogleSheetsDbClient {
       const rowIndex = allData.findIndex(row => row.id === recordId);
 
       if (rowIndex === -1) {
-        console.log(`Record with ID ${recordId} not found in ${sheetKey}.`);
+        this.logger.debug(`Record with ID ${recordId} not found in ${sheetKey}.`);
         return;
       }
 
@@ -432,10 +564,10 @@ export class GoogleSheetsDbClient {
           this.#convertAuditValuesToObject(auditValues, auditSheet)
         );
       } else {
-        console.log(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
+        this.logger.debug(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
       }
 
-      console.log(`Record with ID ${recordId} deleted from ${sheetKey}.`);
+      this.logger.debug(`Record with ID ${recordId} deleted from ${sheetKey}.`);
     } catch (error) {
       console.error(`Error deleting record from sheet ${sheetKey}:`, error);
       throw error;
@@ -496,7 +628,7 @@ export class GoogleSheetsDbClient {
    */
   async archiveSheet(sheetKey) {
     // This would require more complex sheet manipulation - implementing basic version
-    console.log(`Archive functionality for ${sheetKey} needs to be implemented`);
+    this.logger.info(`Archive functionality for ${sheetKey} needs to be implemented`);
     // Implementation would involve creating new sheet, copying data, etc.
   }
 

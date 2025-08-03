@@ -11,7 +11,7 @@ export { Duration, DateTime, DateHelpers };
 export const Sections = {
   ADMIN: 'admin',
   INSTRUCTOR: 'instructor',
-  PARENT: 'parent'
+  PARENT: 'parent',
 };
 
 // Server API function names

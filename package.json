@@ -20,7 +20,13 @@
     "docs": "documentation build src/**/*.js -f html -o docs/generated --config config/documentation.yml",
     "docs:serve": "documentation serve src/**/*.js --watch",
     "format:all": "npm run format && npm run lint:fix",
-    "check:all": "npm run format:check && npm run lint && npm test"
+    "check:all": "npm run format:check && npm run lint && npm test",
+    "build": "npm run check:all",
+    "build:production": "NODE_ENV=production npm run build",
+    "build:staging": "NODE_ENV=staging npm run build",
+    "deploy:check": "npm run build && npm run test",
+    "postinstall": "npm run build",
+    "health": "curl -f http://localhost:${PORT:-3000}/api/health || exit 1"
   },
   "dependencies": {
     "cors": "^2.8.5",

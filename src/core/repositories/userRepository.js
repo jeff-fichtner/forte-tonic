@@ -1,11 +1,7 @@
 import { RepositoryHelper } from './helpers/repositoryHelper.js';
 import { Keys } from '../values/keys.js';
 import { RoleType } from '../values/roleType.js';
-import { Admin } from '../models/admin.js';
-import { Instructor } from '../models/instructor.js';
-import { Student } from '../models/student.js';
-import { Parent } from '../models/parent.js';
-import { Room } from '../models/room.js';
+import { Admin, Instructor, Student, Parent, Room } from '../../shared/models/index.js';
 import { Role } from '../models/role.js';
 
 /**
@@ -26,7 +22,7 @@ export class UserRepository {
     return await RepositoryHelper.getAndSetData(
       () => this.admins,
       async () =>
-        (this.admins = await this.dbClient.getAllRecords(Keys.ADMINS, x => new Admin(...x))),
+        (this.admins = await this.dbClient.getAllRecords(Keys.ADMINS, x => Admin.fromDatabaseRow(x))),
       Keys.ADMINS,
       forceRefresh
     );
@@ -68,7 +64,7 @@ export class UserRepository {
       () => this.instructors,
       async () =>
         (this.instructors = (
-          await this.dbClient.getAllRecords(Keys.INSTRUCTORS, x => new Instructor(...x))
+          await this.dbClient.getAllRecords(Keys.INSTRUCTORS, x => Instructor.fromDatabaseRow(x))
         ).filter(x => !x.isDeactivated)),
       Keys.INSTRUCTORS,
       forceRefresh
@@ -98,7 +94,7 @@ export class UserRepository {
     return await RepositoryHelper.getAndSetData(
       () => this.students,
       async () =>
-        (this.students = await this.dbClient.getAllRecords(Keys.STUDENTS, x => new Student(...x))),
+        (this.students = await this.dbClient.getAllRecords(Keys.STUDENTS, x => Student.fromDatabaseRow(x))),
       Keys.STUDENTS,
       forceRefresh
     );
@@ -119,7 +115,7 @@ export class UserRepository {
     return await RepositoryHelper.getAndSetData(
       () => this.parents,
       async () =>
-        (this.parents = await this.dbClient.getAllRecords(Keys.PARENTS, x => new Parent(...x))),
+        (this.parents = await this.dbClient.getAllRecords(Keys.PARENTS, x => Parent.fromDatabaseRow(x))),
       Keys.PARENTS,
       forceRefresh
     );
@@ -139,7 +135,7 @@ export class UserRepository {
   async getRooms(forceRefresh = false) {
     return await RepositoryHelper.getAndSetData(
       () => this.rooms,
-      async () => (this.rooms = await this.dbClient.getAllRecords(Keys.ROOMS, x => new Room(...x))),
+      async () => (this.rooms = await this.dbClient.getAllRecords(Keys.ROOMS, x => Room.fromDatabaseRow(x))),
       Keys.ROOMS,
       forceRefresh
     );

@@ -1,7 +1,7 @@
 /**
  * Shared Models Index
  * Exports all API transfer models for client-server communication
- * 
+ *
  * Architecture:
  * - Core data models (src/core/models/) - Simple data containers for database operations
  * - API transfer models (src/shared/models/) - Rich models with validation and business logic

@@ -42,12 +42,12 @@ export class ViewModel {
     await this.dbClient.init();
     const [_, admins, instructors, students, registrations, classes, rooms] = await Promise.all([
       DomHelpers.waitForDocumentReadyAsync(),
-      HttpService.fetch(ServerFunctions.getAdmins, x => x.map(y => new Admin(y))),
-      HttpService.fetch(ServerFunctions.getInstructors, x => x.map(y => new Instructor(y))),
+      HttpService.fetch(ServerFunctions.getAdmins, x => x.map(y => Admin.fromApiData(y))),
+      HttpService.fetch(ServerFunctions.getInstructors, x => x.map(y => Instructor.fromApiData(y))),
       this.#getStudents(),
-      HttpService.fetchAllPages(ServerFunctions.getRegistrations, x => new Registration(x)),
-      HttpService.fetch(ServerFunctions.getClasses, x => x.map(y => new Class(y))),
-      HttpService.fetch(ServerFunctions.getRooms, x => x.map(y => new Room(y))),
+      HttpService.fetchAllPages(ServerFunctions.getRegistrations, x => Registration.fromApiData(x)),
+      HttpService.fetch(ServerFunctions.getClasses, x => x.map(y => Class.fromApiData(y))),
+      HttpService.fetch(ServerFunctions.getRooms, x => x.map(y => Room.fromApiData(y))),
     ]);
     M.AutoInit();
     this.currentUser = authenticatedUser;
@@ -99,7 +99,7 @@ export class ViewModel {
         const newRegistration = await HttpService.post(
           ServerFunctions.register,
           data,
-          x => new Registration(x.newRegistration)
+          x => Registration.fromApiData(x.newRegistration)
         );
 
         // handle response
@@ -355,11 +355,16 @@ export class ViewModel {
       ['Name', 'Role', 'Email', 'Phone', 'Contact'],
       // row function with defensive programming
       employee => {
-        const fullName = employee.fullName || `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 'Unknown';
-        const roles = Array.isArray(employee.roles) ? employee.roles.join(', ') : (employee.roles || 'Unknown');
+        const fullName =
+          employee.fullName ||
+          `${employee.firstName || ''} ${employee.lastName || ''}`.trim() ||
+          'Unknown';
+        const roles = Array.isArray(employee.roles)
+          ? employee.roles.join(', ')
+          : employee.roles || 'Unknown';
         const email = employee.email || 'No email';
         const phone = employee.phone || employee.phoneNumber || 'No phone';
-        
+
         return `
                         <td>${fullName}</td>
                         <td>${roles}</td>
@@ -491,13 +496,14 @@ export class ViewModel {
   }
   /**
    * Convert instructor to employee format for directory display
-   * @param {Object} instructor - Instructor object
-   * @returns {Object} Employee object for table display
+   * @param {object} instructor - Instructor object
+   * @returns {object} Employee object for table display
    */
   instructorToEmployee(instructor) {
     return {
       id: instructor.id,
-      fullName: instructor.fullName || `${instructor.firstName || ''} ${instructor.lastName || ''}`.trim(),
+      fullName:
+        instructor.fullName || `${instructor.firstName || ''} ${instructor.lastName || ''}`.trim(),
       email: instructor.email,
       phone: instructor.phone || instructor.phoneNumber,
       roles: instructor.instruments || instructor.specialties || [],
@@ -510,7 +516,7 @@ export class ViewModel {
     // load students from indexeddb
     if (!forceRefresh && (await this.dbClient.hasItems(DataStores.STUDENTS))) {
       console.log('Loading students from IndexedDB...');
-      const items = await this.dbClient.getAll(DataStores.STUDENTS, x => new Student(x));
+      const items = await this.dbClient.getAll(DataStores.STUDENTS, x => Student.fromApiData(x));
       if (!items || items.length === 0) {
         console.warn('No students found in IndexedDB.');
       } else {
@@ -520,7 +526,7 @@ export class ViewModel {
     }
     const students = await HttpService.fetchAllPages(
       ServerFunctions.getStudents,
-      x => new Student(x)
+      x => Student.fromApiData(x)
     );
     console.log(`Fetched ${students.length} students from server.`);
     if (students.length > 0) {

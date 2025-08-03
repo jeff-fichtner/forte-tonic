@@ -1,0 +1,60 @@
+# GitHub Actions workflow for automated testing and code quality
+# Render handles actual deployment via auto-deploy from branches
+
+name: Tonic CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run linting
+      run: npm run lint
+    
+    - name: Run formatting check
+      run: npm run format:check
+    
+    - name: Run tests
+      run: npm test
+    
+    # Note: Build is handled by Render during deployment
+    # This workflow focuses on code quality validation only
+
+  deployment-status:
+    needs: quality-gate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    
+    steps:
+    - name: Deployment notification
+      run: |
+        if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          echo "🚀 Production build & deployment will be triggered automatically by Render"
+          echo "📍 Monitor deployment at: Render Dashboard > tonic-production"
+        elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
+          echo "🧪 Staging build & deployment will be triggered automatically by Render" 
+          echo "📍 Monitor deployment at: Render Dashboard > tonic-staging"
+        fi
+        echo "✅ Code quality checks passed - Render will handle build & deployment"

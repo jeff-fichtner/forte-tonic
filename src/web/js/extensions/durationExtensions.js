@@ -7,7 +7,7 @@ if (typeof window !== 'undefined' && window.Duration) {
     return this.to12Hour();
   };
 
-  // Add method for 24-hour format  
+  // Add method for 24-hour format
   window.Duration.prototype.to24HourFormat = function () {
     return this.to24Hour();
   };

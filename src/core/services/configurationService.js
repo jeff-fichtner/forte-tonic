@@ -141,11 +141,7 @@ export class ConfigurationService {
    * @throws {Error} If required configuration is missing.
    */
   validate() {
-    const requiredConfigs = [
-      'googleServiceAccountEmail',
-      'googlePrivateKey',
-      'spreadsheetId',
-    ];
+    const requiredConfigs = ['googleServiceAccountEmail', 'googlePrivateKey', 'spreadsheetId'];
 
     const missing = requiredConfigs.filter(key => !this._config[key]);
 

@@ -37,30 +37,32 @@ import './viewModel.js';
 async function initializeApplication() {
   try {
     console.log('Initializing Tonic application...');
-    
+
     // Ensure ViewModel is available
     if (typeof ViewModel === 'undefined') {
       throw new Error('ViewModel is not available. Check that all modules loaded correctly.');
     }
-    
+
     // Initialize the main ViewModel
     const viewModel = new ViewModel();
     await viewModel.initializeAsync();
-    
+
     // Store globally for debugging and other scripts
     window.viewModel = viewModel;
-    
+
     console.log('✓ Application initialized successfully');
   } catch (error) {
     console.error('✗ Error initializing application:', error);
-    
+
     // Show user-friendly error messages
     if (error.message.includes('authorize') || error.message.includes('authenticated')) {
       alert('Please authorize the application to access your account.');
     } else {
-      alert(`Failed to initialize the application: ${error.message}\n\nPlease refresh the page and try again.`);
+      alert(
+        `Failed to initialize the application: ${error.message}\n\nPlease refresh the page and try again.`
+      );
     }
-    
+
     throw error;
   }
 }

@@ -1,7 +1,9 @@
 import { google } from 'googleapis';
 import fs from 'fs';
 
-const SPREADSHEET_ID = '17zTUME5PD3FHQmxyUIUn1S_u8QCVeMNf0VRPZXR0FlE';
+// SECURITY: Load spreadsheet ID from environment variables
+// See dev/credentials/temp_credentials.json for development setup (gitignored)
+const SPREADSHEET_ID = process.env.WORKING_SPREADSHEET_ID || 'PLACEHOLDER_SPREADSHEET_ID_LOAD_FROM_ENV';
 
 async function deepAnalyzeSheets() {
   console.log('🔬 Deep Analysis of Tonic Music Program Data...\n');

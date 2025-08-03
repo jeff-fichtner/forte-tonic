@@ -16,22 +16,28 @@ router.get('/', (req, res) => {
 const webPath = path.join(__dirname, '..', 'web');
 
 // Serve JavaScript files with correct MIME type
-router.use('/js', express.static(path.join(webPath, 'js'), {
-  setHeaders: (res, path) => {
-    if (path.endsWith('.js')) {
-      res.set('Content-Type', 'text/javascript');
-    }
-  }
-}));
+router.use(
+  '/js',
+  express.static(path.join(webPath, 'js'), {
+    setHeaders: (res, path) => {
+      if (path.endsWith('.js')) {
+        res.set('Content-Type', 'text/javascript');
+      }
+    },
+  })
+);
 
 // Serve CSS files with correct MIME type
-router.use('/css', express.static(path.join(webPath, 'css'), {
-  setHeaders: (res, path) => {
-    if (path.endsWith('.css')) {
-      res.set('Content-Type', 'text/css');
-    }
-  }
-}));
+router.use(
+  '/css',
+  express.static(path.join(webPath, 'css'), {
+    setHeaders: (res, path) => {
+      if (path.endsWith('.css')) {
+        res.set('Content-Type', 'text/css');
+      }
+    },
+  })
+);
 
 // Serve image files
 router.use('/images', express.static(path.join(webPath, 'images')));

@@ -1,5 +1,5 @@
 /**
- * @fileoverview Tests for GoogleSheetsDbClient using mocks.
+ * @file Tests for GoogleSheetsDbClient using mocks.
  * This test file focuses on testing GoogleSheetsDbClient behavior through mocks
  * without instantiating the actual class to avoid authentication issues.
  */

@@ -11,7 +11,7 @@ export class DurationHelpers {
   static stringToDuration(timeString) {
     return Duration.fromTimeString(timeString);
   }
-  
+
   // Converts total minutes into a native Duration object
   /**
    *
