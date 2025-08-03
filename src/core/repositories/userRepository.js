@@ -1,101 +1,151 @@
-class UserRepository {
+import { RepositoryHelper } from './helpers/repositoryHelper.js';
+import { Keys } from '../values/keys.js';
+import { RoleType } from '../values/roleType.js';
+import { Admin, Instructor, Student, Parent, Room } from '../../shared/models/index.js';
+import { Role } from '../models/role.js';
 
-    constructor(dbClient) {
-        this.dbClient = dbClient;
-    }
+/**
+ *
+ */
+export class UserRepository {
+  /**
+   *
+   */
+  constructor(dbClient) {
+    this.dbClient = dbClient;
+  }
 
-    getAdmins(forceRefresh = false) {
-        return RepositoryHelper.getAndSetData(
-            () => this.admins,
-            () => this.admins =
-                this.dbClient.getAllRecords(
-                    Keys.ADMINS,
-                    x => new Admin(...x)),
-            Keys.ADMINS,
-            forceRefresh);
-    }
+  /**
+   *
+   */
+  async getAdmins(forceRefresh = false) {
+    return await RepositoryHelper.getAndSetData(
+      () => this.admins,
+      async () =>
+        (this.admins = await this.dbClient.getAllRecords(Keys.ADMINS, x => new Admin(...x))),
+      Keys.ADMINS,
+      forceRefresh
+    );
+  }
 
-    getAdminByEmail(email) {
-        return this.getAdmins().find(x => x.email === email);
-    }
-    
-    _getRoles(forceRefresh = false) {
-        return RepositoryHelper.getAndSetData(
-            () => this.roles,
-            () => this.roles =
-                this.dbClient.getAllRecords(
-                    Keys.ROLES,
-                    x => new Role(...x)),
-            Keys.ROLES,
-            forceRefresh);
-    }
+  /**
+   *
+   */
+  async getAdminByEmail(email) {
+    const admins = await this.getAdmins();
+    return admins.find(x => x.email === email);
+  }
 
-    getOperatorByEmail(email) {
-        return this._getRoles().find(x => x.email === email && x.role === RoleType.OPERATOR);
-    }
+  /**
+   *
+   */
+  async _getRoles(forceRefresh = false) {
+    return await RepositoryHelper.getAndSetData(
+      () => this.roles,
+      async () => (this.roles = await this.dbClient.getAllRecords(Keys.ROLES, x => new Role(...x))),
+      Keys.ROLES,
+      forceRefresh
+    );
+  }
 
-    getInstructors(forceRefresh = false) {
-        return RepositoryHelper.getAndSetData(
-            () => this.instructors,
-            () => this.instructors =
-                this.dbClient.getAllRecords(
-                    Keys.INSTRUCTORS,
-                    x => new Instructor(...x))
-                    .filter(x => !x.isDeactivated),
-            Keys.INSTRUCTORS,
-            forceRefresh);
-    }
+  /**
+   *
+   */
+  async getOperatorByEmail(email) {
+    const roles = await this._getRoles();
+    return roles.find(x => x.email === email && x.role === RoleType.OPERATOR);
+  }
 
-    getInstructorById(id) {
-        return this.getInstructors().find(x => x.id === id);
-    }
-    
-    getInstructorByEmail(email) {
-        return this.getInstructors().find(x => x.email === email);
-    }
+  /**
+   *
+   */
+  async getInstructors(forceRefresh = false) {
+    return await RepositoryHelper.getAndSetData(
+      () => this.instructors,
+      async () =>
+        (this.instructors = (
+          await this.dbClient.getAllRecords(Keys.INSTRUCTORS, x => new Instructor(...x))
+        ).filter(x => !x.isDeactivated)),
+      Keys.INSTRUCTORS,
+      forceRefresh
+    );
+  }
 
-    getStudents(forceRefresh = false) {
-        return RepositoryHelper.getAndSetData(
-            () => this.students,
-            () => this.students =
-                this.dbClient.getAllRecords(
-                    Keys.STUDENTS,
-                    x => new Student(...x)),
-            Keys.STUDENTS,
-            forceRefresh);
-    }
+  /**
+   *
+   */
+  async getInstructorById(id) {
+    const instructors = await this.getInstructors();
+    return instructors.find(x => x.id === id);
+  }
 
-    getStudentById(id) {
-        return this.getStudents().find(x => x.id === id);
-    }
+  /**
+   *
+   */
+  async getInstructorByEmail(email) {
+    const instructors = await this.getInstructors();
+    return instructors.find(x => x.email === email);
+  }
 
-    getParents(forceRefresh = false) {
-        return RepositoryHelper.getAndSetData(
-            () => this.parents,
-            () => this.parents =
-                this.dbClient.getAllRecords(
-                    Keys.PARENTS,
-                    x => new Parent(...x)),
-            Keys.PARENTS,
-            forceRefresh);
-    }
+  /**
+   *
+   */
+  async getStudents(forceRefresh = false) {
+    return await RepositoryHelper.getAndSetData(
+      () => this.students,
+      async () =>
+        (this.students = await this.dbClient.getAllRecords(Keys.STUDENTS, x => new Student(...x))),
+      Keys.STUDENTS,
+      forceRefresh
+    );
+  }
 
-    getParentByEmail(email) {
-        return this.getParents().find(x => x.email === email);
-    }
+  /**
+   *
+   */
+  async getStudentById(id) {
+    const students = await this.getStudents();
+    return students.find(x => x.id === id);
+  }
 
-    getRooms(forceRefresh = false) {
-        return RepositoryHelper.getAndSetData(
-            () => this.rooms,
-            () => this.rooms =
-                this.dbClient.getAllRecords(
-                    Keys.ROOMS,
-                    x => new Room(...x)),
-            Keys.ROOMS,
-            forceRefresh);
-    }
+  /**
+   *
+   */
+  async getParents(forceRefresh = false) {
+    return await RepositoryHelper.getAndSetData(
+      () => this.parents,
+      async () =>
+        (this.parents = await this.dbClient.getAllRecords(Keys.PARENTS, x => new Parent(...x))),
+      Keys.PARENTS,
+      forceRefresh
+    );
+  }
 
-    getRoomById(id) {
-        return this.getRooms().find(x => x.id === id);
-    }
+  /**
+   *
+   */
+  async getParentByEmail(email) {
+    const parents = await this.getParents();
+    return parents.find(x => x.email === email);
+  }
+
+  /**
+   *
+   */
+  async getRooms(forceRefresh = false) {
+    return await RepositoryHelper.getAndSetData(
+      () => this.rooms,
+      async () => (this.rooms = await this.dbClient.getAllRecords(Keys.ROOMS, x => new Room(...x))),
+      Keys.ROOMS,
+      forceRefresh
+    );
+  }
+
+  /**
+   *
+   */
+  async getRoomById(id) {
+    const rooms = await this.getRooms();
+    return rooms.find(x => x.id === id);
+  }
 }

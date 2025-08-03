@@ -1,0 +1,13 @@
+// Add a method to format a Duration object to "h:mm a" format
+window.luxon.Duration.prototype.to12HourFormat = function () {
+  const dateTime = DurationHelpers.durationToDateTime(this);
+  return dateTime.toFormat('h:mm a');
+};
+// Add a method to format a Duration object to "HH:mm" format
+window.luxon.Duration.prototype.to24HourFormat = function () {
+  const dateTime = DurationHelpers.durationToDateTime(this);
+  return dateTime.toFormat('HH:mm');
+};
+
+// ES module export for proper module loading
+export {};

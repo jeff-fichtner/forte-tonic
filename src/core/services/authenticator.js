@@ -1,19 +1,33 @@
-class Authenticator {
-    static getSignedInUser() {
-        let authenticatedUserEmail = null;
-
-        try {
-            authenticatedUserEmail = Session.getActiveUser().getEmail();
-            console.log(`authenticatedUserEmail: ${authenticatedUserEmail}`);
-        } catch (error) {
-            console.error('Unable to get authenticated user email:', error);
-            authenticatedUserEmail = null;
-        }
-
-        return authenticatedUserEmail;
+/**
+ *
+ */
+export class Authenticator {
+  /**
+   *
+   */
+  static getSignedInUser(req) {
+    if (!req || !req.user) {
+      return null;
     }
 
-    static isAuthenticated() {
-        return !!getSignedInUser();
+    return req.user.email;
+  }
+
+  /**
+   *
+   */
+  static isAuthenticated(req) {
+    return !!(req && req.isAuthenticated && req.isAuthenticated());
+  }
+
+  /**
+   *
+   */
+  static getAccessToken(req) {
+    if (!req || !req.user) {
+      return null;
     }
+
+    return req.user.accessToken;
+  }
 }

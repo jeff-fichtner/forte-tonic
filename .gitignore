@@ -135,4 +135,12 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+# Generated documentation
+docs/generated/
+
+# Temporary credentials and dev files
+dev/credentials/
+dev/scripts/output/
+dev/scripts/temp/
+
 *.DS_Store

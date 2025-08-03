@@ -1,0 +1,52 @@
+/**
+ *
+ */
+export class Registration {
+  /**
+   *
+   */
+  constructor({
+    id,
+    studentId,
+    instructorId,
+    day,
+    startTime,
+    length,
+    registrationType,
+    roomId,
+    instrument,
+    transportationType,
+    notes,
+    classId,
+    className,
+    expectedStartDate,
+    createdDate,
+    createdBy,
+  }) {
+    this.id = id;
+    this.studentId = studentId;
+    this.instructorId = instructorId;
+    this.day = day;
+    this.startTime = startTime;
+    this.length = length;
+    this.registrationType = registrationType;
+    this.roomId = roomId;
+    this.instrument = instrument;
+    this.transportationType = transportationType;
+    this.notes = notes;
+    this.classId = classId;
+    this.className = className;
+    this.expectedStartDate = expectedStartDate;
+    this.createdDate = createdDate;
+    this.createdBy = createdBy;
+  }
+  /**
+   *
+   */
+  get formattedStartTime() {
+    return this.startTime ? DurationHelpers.stringToDuration(this.startTime).to12HourFormat() : '';
+  }
+}
+
+// For backwards compatibility with existing code
+window.Registration = Registration;

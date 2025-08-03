@@ -1,0 +1,10 @@
+source: "./src/**/*.js"
+destination: "./docs/generated/"
+title: "Tonic Music Program Documentation"
+readme: "./README.md"
+format: "html"
+access: 
+  - "public"
+  - "protected"
+github: true
+watch: false
