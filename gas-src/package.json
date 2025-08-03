@@ -1,0 +1,22 @@
+{
+  "name": "tonic-gas-migrations",
+  "version": "1.0.0",
+  "description": "Google Apps Script migrations for Tonic database",
+  "scripts": {
+    "setup": "node generate-clasp-config.cjs",
+    "init": "./setup.sh",
+    "deploy": "npm run setup && clasp push",
+    "deploy-force": "npm run setup && clasp push --force",
+    "open": "npm run setup && echo 'Opening Google Apps Script project...' && open 'https://script.google.com/d/'$(node -p 'process.env.GOOGLE_APPS_SCRIPT_ID')'/edit'"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ndemoss-mcds/Tonic.git"
+  },
+  "author": "Tonic Development Team",
+  "license": "ISC"
+}

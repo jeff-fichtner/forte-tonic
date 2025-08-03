@@ -1,4 +1,4 @@
-const RoleType = {
-    NONE: "none",
-    OPERATOR: "operator",
+export const RoleType = {
+  NONE: 'none',
+  OPERATOR: 'operator',
 };
