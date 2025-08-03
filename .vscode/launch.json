@@ -1,0 +1,124 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Node.js App",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/server.js",
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "outputCapture": "console",
+            "runtimeArgs": ["--inspect"]
+        },
+        {
+            "name": "Debug Jest Tests",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+            "args": [
+                "--config",
+                "${workspaceFolder}/config/jest.config.js",
+                "--runInBand",
+                "--no-cache"
+            ],
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "env": {
+                "NODE_ENV": "test"
+            },
+            "runtimeArgs": ["--experimental-vm-modules"],
+            "outputCapture": "console",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Debug Single Test File",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/.vscode/build/debug-single-test.js",
+            "args": [
+                "${relativeFile}"
+            ],
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "env": {
+                "NODE_ENV": "test"
+            },
+            "outputCapture": "console",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Debug Unit Tests",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+            "args": [
+                "--config",
+                "${workspaceFolder}/config/jest.config.js",
+                "--runInBand",
+                "--no-cache",
+                "tests/unit"
+            ],
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "env": {
+                "NODE_ENV": "test"
+            },
+            "runtimeArgs": ["--experimental-vm-modules"],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Debug Integration Tests",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+            "args": [
+                "--config",
+                "${workspaceFolder}/config/jest.config.js",
+                "--runInBand",
+                "--no-cache",
+                "tests/integration"
+            ],
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "env": {
+                "NODE_ENV": "test"
+            },
+            "runtimeArgs": ["--experimental-vm-modules"],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Attach to Node.js",
+            "type": "node",
+            "request": "attach",
+            "port": 9229,
+            "skipFiles": [
+                "<node_internals>/**"
+            ]
+        },
+        {
+            "name": "Debug with External Terminal",
+            "type": "node", 
+            "request": "launch",
+            "program": "${workspaceFolder}/src/server.js",
+            "console": "externalTerminal",
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "runtimeArgs": ["--inspect"]
+        }
+    ]
+}
