@@ -24,9 +24,11 @@ const claspConfig = {
   "filePushOrder": [
     "appsscript.json",
     "Code.js",
+    "gas-migrations/Config.js",
     "gas-migrations/Migration001_StructuralImprovements.js",
-    "gas-migrations/Migration002_AddClassNamesToRegistration.js", 
-    "gas-migrations/Migration003_ProcessParents.js",
+    "gas-migrations/archive/Migration002_AddClassNamesToRegistration_ARCHIVED.js", 
+    "gas-migrations/archive/Migration003_ProcessParents_PROCESSED.js",
+    "gas-migrations/dev/Migration_DEV001_RealisticFakeData.js",
     "gas-migrations/TEMPLATE_Migration.js"
   ]
 };

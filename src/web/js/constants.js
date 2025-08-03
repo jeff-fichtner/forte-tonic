@@ -2,9 +2,10 @@
  * Application Constants
  */
 
-// Date/Time utilities from Luxon
-export const DateTime = window.luxon.DateTime;
-export const Duration = window.luxon.Duration;
+// Date/Time utilities - Native JavaScript implementation
+import { Duration, DateTime, DateHelpers } from '/core/helpers/nativeDateTimeHelpers.js';
+
+export { Duration, DateTime, DateHelpers };
 
 // Application sections/roles
 export const Sections = {
@@ -39,8 +40,10 @@ export const RegistrationType = {
 };
 
 // Make constants available globally for backward compatibility
+// Make available globally for backward compatibility
 window.DateTime = DateTime;
 window.Duration = Duration;
+window.DateHelpers = DateHelpers;
 window.Sections = Sections;
 window.ServerFunctions = ServerFunctions;
 window.DataStores = DataStores;

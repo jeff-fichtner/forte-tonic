@@ -9,21 +9,21 @@ export class AdminRegistrationForm {
    *
    */
   constructor(instructors, students, classes, sendDataFunction) {
-    this.registrationTypeSelect = this._buildRegistrationTypeSelect();
+    this.registrationTypeSelect = this.#buildRegistrationTypeSelect();
     this.instructors = instructors;
     const instructorOptions = instructors.map(instructor => ({
       value: instructor.id,
       label: instructor.lastFirst,
     }));
-    this.instructorSelect = this._buildInstructorSelect(instructorOptions);
+    this.instructorSelect = this.#buildInstructorSelect(instructorOptions);
     this.students = students;
-    this._setStudentAutocomplete(students);
+    this.#setStudentAutocomplete(students);
     this.classes = classes;
     const classOptions = classes.map(c => ({
       value: c.id,
       label: c.formattedName,
     }));
-    this.classSelect = this._buildClassSelect(classOptions);
+    this.classSelect = this.#buildClassSelect(classOptions);
     // instrument select
     // start time select
     // day select
@@ -36,7 +36,7 @@ export class AdminRegistrationForm {
         }
         event.preventDefault();
         const selectedDay = event.target.value;
-        this._setInstructorDayStartTimeOptions();
+        this.#setInstructorDayStartTimeOptions();
         const instructorDaySelectedInfoContainer = document.getElementById(
           'instructor-day-selected-info-container'
         );
@@ -69,24 +69,24 @@ export class AdminRegistrationForm {
         return;
       }
       console.log('Lesson length changed to:', event.target.value);
-      this._setInstructorDayStartTimeOptions();
+      this.#setInstructorDayStartTimeOptions();
     });
     // when create is clicked
     document
       .getElementById('create-registration-submit-btn')
       .addEventListener('click', async event => {
         event.preventDefault();
-        if (!this._validateRegistration()) {
+        if (!this.#validateRegistration()) {
           return;
         }
         try {
-          this._setAdminRegistrationLoading(true);
-          const data = this._getCreateRegistrationData();
+          this.#setAdminRegistrationLoading(true);
+          const data = this.#getCreateRegistrationData();
           await sendDataFunction(data);
           // clear group class selection
           this.classSelect.clearSelectedOption();
           // clear students
-          this._setCurrentStudent(null);
+          this.#setCurrentStudent(null);
           // transportation type
           const transportationTypeRadios = document.querySelectorAll(
             'input[name="transportation-type"]'
@@ -97,11 +97,11 @@ export class AdminRegistrationForm {
           }
           // reset instructor
           this.instructorSelect.clearSelectedOption();
-          this._showInstructorInfoContainer(false);
+          this.#showInstructorInfoContainer(false);
           // instrument
-          this._setInstructorInstrumentOptions(null);
+          this.#setInstructorInstrumentOptions(null);
           // day
-          this._setInstructorDayOptions(null);
+          this.#setInstructorDayOptions(null);
           // lesson length
           const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
           // check first
@@ -109,12 +109,12 @@ export class AdminRegistrationForm {
             lessonLengthRadios[0].checked = true;
           }
           // start time
-          this._setInstructorDayStartTimeOptions();
+          this.#setInstructorDayStartTimeOptions();
         } catch (error) {
           console.error('Error creating registration:', error);
           M.toast({ html: 'Error creating registration.' });
         } finally {
-          this._setAdminRegistrationLoading(false);
+          this.#setAdminRegistrationLoading(false);
         }
       });
   }
@@ -122,7 +122,7 @@ export class AdminRegistrationForm {
   /**
    *
    */
-  _setAdminRegistrationLoading(isLoading) {
+  #setAdminRegistrationLoading(isLoading) {
     const adminRegistrationLoadingContainer = document.getElementById(
       'admin-registration-loading-container'
     );
@@ -133,8 +133,8 @@ export class AdminRegistrationForm {
   /**
    *
    */
-  _validateRegistration() {
-    const registrationData = this._getCreateRegistrationData();
+  #validateRegistration() {
+    const registrationData = this.#getCreateRegistrationData();
     const isPrivate = registrationData.registrationType === RegistrationType.PRIVATE;
     const isGroup = registrationData.registrationType === RegistrationType.GROUP;
     const isValid =
@@ -188,7 +188,7 @@ export class AdminRegistrationForm {
   /**
    *
    */
-  _getCreateRegistrationData() {
+  #getCreateRegistrationData() {
     // get student
     const studentId = this.selectedStudent ? this.selectedStudent.id : null;
     const registrationType = this.registrationTypeSelect.getSelectedOption();
@@ -231,9 +231,9 @@ export class AdminRegistrationForm {
   /**
    *
    */
-  _setInstructorInstrumentOptions(instructor) {
+  #setInstructorInstrumentOptions(instructor) {
     if (!instructor) {
-      this._updateSelectOptions('instrument-select', [], 'Select an instrument');
+      this.#updateSelectOptions('instrument-select', [], 'Select an instrument');
       return;
     }
     const instruments = [
@@ -242,7 +242,7 @@ export class AdminRegistrationForm {
       instructor.instrument3,
       instructor.instrument4,
     ].filter(x => x);
-    this._updateSelectOptions(
+    this.#updateSelectOptions(
       'instrument-select',
       instruments.map(instrument => ({
         value: instrument,
@@ -254,10 +254,10 @@ export class AdminRegistrationForm {
   /**
    *
    */
-  _setInstructorDayOptions(instructor) {
+  #setInstructorDayOptions(instructor) {
     try {
       if (!instructor) {
-        this._updateSelectOptions('day-select', [], 'Select a day');
+        this.#updateSelectOptions('day-select', [], 'Select a day');
         return;
       }
       const weekDays = {
@@ -276,7 +276,7 @@ export class AdminRegistrationForm {
           });
         }
       }
-      this._updateSelectOptions('day-select', days, 'Select a day', true);
+      this.#updateSelectOptions('day-select', days, 'Select a day', true);
     } finally {
       const daySelectedInfoContainer = document.getElementById(
         'instructor-day-selected-info-container'
@@ -287,12 +287,12 @@ export class AdminRegistrationForm {
   /**
    *
    */
-  _setInstructorDayStartTimeOptions() {
+  #setInstructorDayStartTimeOptions() {
     const selectedInstructorId = this.instructorSelect.getSelectedOption();
     const selectedDay = document.getElementById('day-select').value;
     const selectedLength = document.querySelector('input[name="lesson-length"]:checked')?.value * 1;
     if (!selectedInstructorId || !selectedDay || !selectedLength) {
-      this._updateSelectOptions('start-time-select', [], 'Select a start time');
+      this.#updateSelectOptions('start-time-select', [], 'Select a start time');
       // reset to first option
       const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
       if (lessonLengthRadios.length > 0) {
@@ -320,7 +320,7 @@ export class AdminRegistrationForm {
     const endTime = endTimes[dayIndex];
     const options = [];
     if (!startTime || !endTime) {
-      this._updateSelectOptions('start-time-select', [], 'Not available');
+      this.#updateSelectOptions('start-time-select', [], 'Not available');
       return;
     }
     const startTimeDuration = DurationHelpers.stringToDuration(startTime);
@@ -336,12 +336,12 @@ export class AdminRegistrationForm {
         label: duration.to12HourFormat(),
       });
     }
-    this._updateSelectOptions('start-time-select', options, 'Select a start time', true);
+    this.#updateSelectOptions('start-time-select', options, 'Select a start time', true);
   }
   /**
    *
    */
-  _setCurrentStudent(student) {
+  #setCurrentStudent(student) {
     const elem = document.getElementById('student-autocomplete-input');
     elem.value = student ? student.fullName : ''; // Set the input value
     this.selectedStudent = student; // Update the selected student
@@ -350,7 +350,7 @@ export class AdminRegistrationForm {
   /**
    *
    */
-  _updateSelectOptions(selectId, options, defaultOptionText, forceRefresh = false) {
+  #updateSelectOptions(selectId, options, defaultOptionText, forceRefresh = false) {
     const select = document.getElementById(selectId);
     if (!select) {
       console.error(`Select element with ID "${selectId}" not found.`);
@@ -387,7 +387,7 @@ export class AdminRegistrationForm {
   /**
    *
    */
-  _setStudentAutocomplete(students) {
+  #setStudentAutocomplete(students) {
     const elem = document.getElementById('student-autocomplete-input');
     if (!students.length) {
       this.studentMap = {};
@@ -416,8 +416,8 @@ export class AdminRegistrationForm {
   /**
    *
    */
-  _buildInstructorSelect(instructorOptions) {
-    this._showInstructorInfoContainer(false);
+  #buildInstructorSelect(instructorOptions) {
+    this.#showInstructorInfoContainer(false);
     return new Select(
       'instructor-select',
       'Select an instructor',
@@ -427,19 +427,19 @@ export class AdminRegistrationForm {
         event.preventDefault();
         const selectedValue = event.target.value;
         const currentInstructor = this.instructors.find(x => x.id === selectedValue);
-        this._setInstructorInstrumentOptions(currentInstructor);
-        this._setInstructorDayOptions(currentInstructor);
-        this._showInstructorDayInfoContainer(false);
-        this._showInstructorInfoContainer(!!selectedValue);
+        this.#setInstructorInstrumentOptions(currentInstructor);
+        this.#setInstructorDayOptions(currentInstructor);
+        this.#showInstructorDayInfoContainer(false);
+        this.#showInstructorInfoContainer(!!selectedValue);
       }
     );
   }
   /**
    *
    */
-  _buildRegistrationTypeSelect() {
-    this._showPrivateRegistrationContainer(false);
-    this._showGroupRegistrationContainer(false);
+  #buildRegistrationTypeSelect() {
+    this.#showPrivateRegistrationContainer(false);
+    this.#showGroupRegistrationContainer(false);
     return new Select(
       'registration-type-select',
       'Select registration type',
@@ -452,15 +452,15 @@ export class AdminRegistrationForm {
         event.preventDefault();
         const selectedValue = event.target.value;
         console.log('Registration type changed to:', selectedValue);
-        this._showPrivateRegistrationContainer(selectedValue === RegistrationType.PRIVATE);
-        this._showGroupRegistrationContainer(selectedValue === RegistrationType.GROUP);
+        this.#showPrivateRegistrationContainer(selectedValue === RegistrationType.PRIVATE);
+        this.#showGroupRegistrationContainer(selectedValue === RegistrationType.GROUP);
       }
     );
   }
   /**
    *
    */
-  _buildClassSelect(classOptions) {
+  #buildClassSelect(classOptions) {
     return new Select(
       'class-select',
       'Select a class',
@@ -476,31 +476,31 @@ export class AdminRegistrationForm {
   /**
    *
    */
-  _showInstructorInfoContainer(shouldShow) {
-    this._showContainer('instructor-selected-info-container', shouldShow);
+  #showInstructorInfoContainer(shouldShow) {
+    this.#showContainer('instructor-selected-info-container', shouldShow);
   }
   /**
    *
    */
-  _showInstructorDayInfoContainer(shouldShow) {
-    this._showContainer('instructor-day-selected-info-container', shouldShow);
+  #showInstructorDayInfoContainer(shouldShow) {
+    this.#showContainer('instructor-day-selected-info-container', shouldShow);
   }
   /**
    *
    */
-  _showPrivateRegistrationContainer(shouldShow) {
-    this._showContainer('private-registration-container', shouldShow);
+  #showPrivateRegistrationContainer(shouldShow) {
+    this.#showContainer('private-registration-container', shouldShow);
   }
   /**
    *
    */
-  _showGroupRegistrationContainer(shouldShow) {
-    this._showContainer('group-registration-container', shouldShow);
+  #showGroupRegistrationContainer(shouldShow) {
+    this.#showContainer('group-registration-container', shouldShow);
   }
   /**
    *
    */
-  _showContainer(containerId, shouldShow) {
+  #showContainer(containerId, shouldShow) {
     const container = document.getElementById(containerId);
     container.hidden = !shouldShow;
   }

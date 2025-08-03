@@ -70,9 +70,9 @@ export class GoogleSheetsDbClient {
         startRow: 2,
         columnMap: {
           id: 0,
-          firstName: 1,
+          email: 1,
           lastName: 2,
-          email: 3,
+          firstName: 3,
           phone: 4,
         },
       },
@@ -81,9 +81,9 @@ export class GoogleSheetsDbClient {
         startRow: 2,
         columnMap: {
           id: 0,
-          firstName: 1,
+          email: 1,
           lastName: 2,
-          email: 3,
+          firstName: 3,
           phone: 4,
         },
       },
@@ -91,42 +91,43 @@ export class GoogleSheetsDbClient {
         sheet: Keys.PARENTS,
         startRow: 2,
         columnMap: {
-          id: 0,
-          firstName: 1,
-          lastName: 2,
-          email: 3,
-          phone: 4,
-          cellPhone: 5,
+          id: 0,            // Id
+          email: 1,         // Email
+          lastName: 2,      // LastName (updated from "Last Name" by Migration001)
+          firstName: 3,     // FirstName (updated from "First Name" by Migration001)
+          phone: 4,         // Phone
+          cellPhone: 5,     // CellPhone
         },
       },
       [Keys.STUDENTS]: {
         sheet: Keys.STUDENTS,
         startRow: 2,
         columnMap: {
-          id: 0,
-          firstName: 1,
-          lastName: 2,
-          firstNickname: 3,
-          lastNickname: 4,
-          grade: 5,
-          parent1Id: 6,
-          parent2Id: 7,
+          id: 0,              // Id
+          lastName: 1,        // LastName (was Column C, now Column B after StudentId deletion)
+          firstName: 2,       // FirstName (was Column D, now Column C after StudentId deletion)
+          lastNickname: 3,    // LastNickname (was Column E, now Column D after StudentId deletion)
+          firstNickname: 4,   // FirstNickname (was Column F, now Column E after StudentId deletion)
+          grade: 5,           // Grade (was Column G, now Column F after StudentId deletion)
+          parent1Id: 6,       // Parent1Id (was Column H, now Column G after StudentId deletion)
+          parent2Id: 7,       // Parent2Id (was Column I, now Column H after StudentId deletion)
         },
       },
       [Keys.CLASSES]: {
         sheet: Keys.CLASSES,
         startRow: 2,
         columnMap: {
-          id: 0,
-          name: 1,
-          instructorId: 2,
-          roomId: 3,
-          dayOfWeek: 4,
-          startTime: 5,
-          endTime: 6,
-          instrument: 7,
-          lengthOption: 8,
-          maxStudents: 9,
+          id: 0,              // Id
+          instructorId: 1,    // InstructorId
+          day: 2,             // Day
+          startTime: 3,       // StartTime
+          length: 4,          // Length
+          endTime: 5,         // EndTime
+          instrument: 6,      // Instrument
+          title: 7,           // Title
+          size: 8,            // Size
+          minimumGrade: 9,    // MinimumGrade
+          maximumGrade: 10,   // MaximumGrade
         },
       },
       [Keys.ROOMS]: {
@@ -141,16 +142,16 @@ export class GoogleSheetsDbClient {
         sheet: Keys.REGISTRATIONS,
         startRow: 2,
         columnMap: {
-          id: 0,
-          studentId: 1,
-          instructorId: 2,
-          classId: 3,
-          registrationType: 4,
-          schoolYear: 5,
-          trimester: 6,
-          registeredBy: 7,
-          registeredAt: 8,
-          className: 9,
+          id: 0,                  // Id
+          studentId: 1,           // StudentId  
+          instructorId: 2,        // InstructorId
+          day: 3,                 // Day
+          startTime: 4,           // StartTime
+          length: 5,              // Length
+          registrationType: 6,    // RegistrationType
+          roomId: 7,              // RoomId
+          schoolYear: 8,          // SchoolYear
+          createdBy: 9,           // CreatedBy
         },
         auditSheet: Keys.REGISTRATIONSAUDIT,
         postProcess: record => {
@@ -261,7 +262,7 @@ export class GoogleSheetsDbClient {
       });
 
       const rows = response.data.values || [];
-      return this._convertRowsToObjects(rows, sheetInfo.columnMap);
+      return this.#convertRowsToObjects(rows, sheetInfo.columnMap);
     } catch (error) {
       console.error(`Error getting data from sheet ${sheetKey}:`, error);
       throw error;
@@ -292,7 +293,7 @@ export class GoogleSheetsDbClient {
       const { auditSheet, postProcess } = this.workingSheetInfo[sheetKey];
 
       const clonedRecord = CloneUtility.clone(record);
-      let processedRecord = this._auditRecord(clonedRecord, createdBy);
+      let processedRecord = this.#auditRecord(clonedRecord, createdBy);
       if (postProcess) {
         processedRecord = postProcess(processedRecord);
       }
@@ -300,10 +301,10 @@ export class GoogleSheetsDbClient {
       await this.insertIntoSheet(sheetKey, processedRecord);
 
       if (auditSheet) {
-        const auditValues = this._convertToAuditValues(Object.values(processedRecord));
+        const auditValues = this.#convertToAuditValues(Object.values(processedRecord));
         await this.insertIntoSheet(
           auditSheet,
-          this._convertAuditValuesToObject(auditValues, auditSheet)
+          this.#convertAuditValuesToObject(auditValues, auditSheet)
         );
       } else {
         console.log(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
@@ -329,7 +330,7 @@ export class GoogleSheetsDbClient {
       const spreadsheetId = this.spreadsheetId;
 
       // Convert object to array based on column map
-      const row = this._convertObjectToRow(data, sheetInfo.columnMap);
+      const row = this.#convertObjectToRow(data, sheetInfo.columnMap);
 
       const response = await this.sheets.spreadsheets.values.append({
         spreadsheetId: spreadsheetId,
@@ -386,7 +387,7 @@ export class GoogleSheetsDbClient {
 
       const spreadsheetId = this.spreadsheetId;
 
-      const row = this._convertObjectToRow(data, sheetInfo.columnMap);
+      const row = this.#convertObjectToRow(data, sheetInfo.columnMap);
       const actualRowIndex = sheetInfo.startRow + rowIndex;
 
       const response = await this.sheets.spreadsheets.values.update({
@@ -425,10 +426,10 @@ export class GoogleSheetsDbClient {
       await this.deleteFromSheet(sheetKey, rowIndex);
 
       if (auditSheet) {
-        const auditValues = this._convertToAuditValues(Object.values(recordData), deletedBy);
+        const auditValues = this.#convertToAuditValues(Object.values(recordData), deletedBy);
         await this.insertIntoSheet(
           auditSheet,
-          this._convertAuditValuesToObject(auditValues, auditSheet)
+          this.#convertAuditValuesToObject(auditValues, auditSheet)
         );
       } else {
         console.log(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
@@ -502,7 +503,7 @@ export class GoogleSheetsDbClient {
   /**
    *
    */
-  _convertRowsToObjects(rows, columnMap) {
+  #convertRowsToObjects(rows, columnMap) {
     return rows.map(row => {
       const obj = {};
       Object.keys(columnMap).forEach(key => {
@@ -516,7 +517,7 @@ export class GoogleSheetsDbClient {
   /**
    *
    */
-  _convertObjectToRow(obj, columnMap) {
+  #convertObjectToRow(obj, columnMap) {
     const maxColumn = Math.max(...Object.values(columnMap));
     const row = new Array(maxColumn + 1).fill('');
 
@@ -531,7 +532,7 @@ export class GoogleSheetsDbClient {
   /**
    *
    */
-  _convertAuditValuesToObject(values, auditSheetKey) {
+  #convertAuditValuesToObject(values, auditSheetKey) {
     const auditSheetInfo = this.workingSheetInfo[auditSheetKey];
     if (!auditSheetInfo) {
       throw new Error(`Audit sheet info not found for key: ${auditSheetKey}`);
@@ -563,7 +564,7 @@ export class GoogleSheetsDbClient {
   /**
    *
    */
-  _auditRecord(record, createdBy) {
+  #auditRecord(record, createdBy) {
     record.createdAt = new Date().toISOString();
     record.createdBy = createdBy;
     return record;
@@ -572,7 +573,7 @@ export class GoogleSheetsDbClient {
   /**
    *
    */
-  _convertToAuditValues(values, deletedBy = null) {
+  #convertToAuditValues(values, deletedBy = null) {
     // copy list
     values = values.slice();
 

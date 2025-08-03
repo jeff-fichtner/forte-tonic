@@ -11,13 +11,13 @@ export class EmailClient {
   constructor(configurationService = configService) {
     this.configService = configurationService;
     this.transporter = null;
-    this._initializeTransporter();
+    this.#initializeTransporter();
   }
 
   /**
    *
    */
-  _initializeTransporter() {
+  #initializeTransporter() {
     try {
       const emailConfig = this.configService.getEmailConfig();
 

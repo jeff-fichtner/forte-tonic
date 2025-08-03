@@ -2,7 +2,7 @@ import { RepositoryHelper } from './helpers/repositoryHelper.js';
 import { Keys } from '../values/keys.js';
 import { Class, Registration } from '../../shared/models/index.js';
 import { AttendanceRecord } from '../models/attendanceRecord.js';
-import { DateHelpers } from '../helpers/dateHelpers.js';
+import { DateHelpers } from '../helpers/nativeDateTimeHelpers.js';
 
 /**
  *
@@ -45,7 +45,7 @@ export class ProgramRepository {
       async () =>
         (this.registrations = await this.dbClient.getAllRecords(Keys.REGISTRATIONS, x => {
           const newRegistration = new Registration(...x);
-          newRegistration.startTime = DateHelpers.parseGoogleSheetsDate(newRegistration.startTime);
+          newRegistration.startTime = DateHelpers.parseTimeString(newRegistration.startTime).to24Hour();
           return newRegistration;
         })),
       Keys.REGISTRATIONS,

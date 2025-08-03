@@ -29,7 +29,6 @@ export class CreateStudentRequest extends BaseRequest {
         super(data);
         
         const {
-            studentId,
             lastName,
             firstName,
             lastNickname,
@@ -45,7 +44,6 @@ export class CreateStudentRequest extends BaseRequest {
             medicalNotes
         } = data || {};
 
-        this.studentId = studentId;
         this.lastName = lastName;
         this.firstName = firstName;
         this.lastNickname = lastNickname;
@@ -104,7 +102,6 @@ export class CreateStudentRequest extends BaseRequest {
 
         return new Student({
             id,
-            studentId: this.studentId,
             lastName: this.lastName,
             firstName: this.firstName,
             lastNickname: this.lastNickname,
@@ -132,7 +129,6 @@ export class UpdateStudentRequest extends BaseRequest {
         this.id = id;
         
         const {
-            studentId,
             lastName,
             firstName,
             lastNickname,
@@ -150,7 +146,6 @@ export class UpdateStudentRequest extends BaseRequest {
         } = data || {};
 
         // Only include provided fields (partial updates)
-        if (studentId !== undefined) this.studentId = studentId;
         if (lastName !== undefined) this.lastName = lastName;
         if (firstName !== undefined) this.firstName = firstName;
         if (lastNickname !== undefined) this.lastNickname = lastNickname;
@@ -188,7 +183,6 @@ export class UpdateStudentRequest extends BaseRequest {
         // Apply partial updates to existing student
         const updates = {};
         
-        if (this.studentId !== undefined) updates.studentId = this.studentId;
         if (this.lastName !== undefined) updates.lastName = this.lastName;
         if (this.firstName !== undefined) updates.firstName = this.firstName;
         if (this.lastNickname !== undefined) updates.lastNickname = this.lastNickname;
@@ -244,7 +238,7 @@ export class StudentSearchRequest extends BaseRequest {
     validate() {
         const errors = [];
         
-        const validSortFields = ['lastName', 'firstName', 'gradeLevel', 'email', 'studentId'];
+        const validSortFields = ['lastName', 'firstName', 'gradeLevel', 'email', 'id'];
         if (!validSortFields.includes(this.sortBy)) {
             errors.push(`Invalid sort field. Must be one of: ${validSortFields.join(', ')}`);
         }

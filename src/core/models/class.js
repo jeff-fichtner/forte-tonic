@@ -1,3 +1,5 @@
+import { DateHelpers } from '../helpers/nativeDateTimeHelpers.js';
+
 /**
  *
  */
@@ -21,9 +23,9 @@ export class Class {
     this.id = id;
     this.instructorId = instructorId;
     this.day = day;
-    this.startTime = DateHelpers.parseGoogleSheetsDate(startTime);
+    this.startTime = DateHelpers.parseTimeString(startTime).to24Hour();
     this.length = length;
-    this.endTime = DateHelpers.parseGoogleSheetsDate(endTime);
+    this.endTime = DateHelpers.parseTimeString(endTime).to24Hour();
     this.instrument = instrument;
     this.title = title;
     this.size = size;

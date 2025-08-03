@@ -6,7 +6,6 @@ export class Student {
   /**
    * Creates a Student data model instance
    * @param {string} id - Unique identifier
-   * @param {string} studentId - Student ID number
    * @param {string} lastName - Last name
    * @param {string} firstName - First name
    * @param {string} lastNickname - Last nickname
@@ -17,7 +16,6 @@ export class Student {
    */
   constructor(
     id,
-    studentId,
     lastName,
     firstName,
     lastNickname,
@@ -27,7 +25,6 @@ export class Student {
     parent2Id
   ) {
     this.id = id;
-    this.studentId = studentId;
     this.lastName = lastName;
     this.firstName = firstName;
     this.lastNickname = lastNickname;

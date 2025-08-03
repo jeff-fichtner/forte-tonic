@@ -1,5 +1,10 @@
 /**
+ * ⚠️  NOT PRODUCTION READY - ARCHIVED ⚠️
+ * 
  * Google Apps Script Migration 002: Add Class Names to Registration
+ * 
+ * ARCHIVED: This migration has been moved to archive as it's not production ready.
+ * Do not use this migration in production environments.
  * 
  * This script adds class names to registration records based on class IDs.
  * It's a data migration that populates missing className fields.
@@ -8,7 +13,8 @@
  * 1. Open your Google Sheets document
  * 2. Go to Extensions > Apps Script
  * 3. Copy this entire file content into a new .gs file
- * 4. Run the main function: runAddClassNamesToRegistration()
+ * 4. Configure spreadsheet ID in Config.js (loaded automatically)
+ * 5. Run the main function: runAddClassNamesToRegistration()
  */
 
 /**
@@ -16,7 +22,7 @@
  * This will be the entry point when run from Google Apps Script
  */
 function runAddClassNamesToRegistration() {
-  const migration = new AddClassNamesToRegistrationMigration();
+  const migration = new AddClassNamesToRegistrationMigration(getSpreadsheetId());
   migration.execute();
 }
 
@@ -25,7 +31,7 @@ function runAddClassNamesToRegistration() {
  * Run this first to see what the migration will do
  */
 function previewAddClassNamesToRegistration() {
-  const migration = new AddClassNamesToRegistrationMigration();
+  const migration = new AddClassNamesToRegistrationMigration(getSpreadsheetId());
   migration.preview();
 }
 
@@ -34,7 +40,7 @@ function previewAddClassNamesToRegistration() {
  * Use this if you need to revert the changes
  */
 function rollbackAddClassNamesToRegistration() {
-  const migration = new AddClassNamesToRegistrationMigration();
+  const migration = new AddClassNamesToRegistrationMigration(getSpreadsheetId());
   migration.rollback();
 }
 
@@ -42,8 +48,8 @@ function rollbackAddClassNamesToRegistration() {
  * Migration class for adding class names to registrations
  */
 class AddClassNamesToRegistrationMigration {
-  constructor() {
-    this.spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  constructor(spreadsheetId) {
+    this.spreadsheet = SpreadsheetApp.openById(spreadsheetId);
     this.description = 'Add class names to registration records based on class IDs';
   }
 
@@ -51,6 +57,7 @@ class AddClassNamesToRegistrationMigration {
    * Preview what changes will be made (read-only)
    */
   preview() {
+    console.log('⚠️  WARNING: This migration is NOT PRODUCTION READY');
     console.log('🔍 MIGRATION PREVIEW: Add Class Names to Registration');
     console.log('==================================================');
     
@@ -173,155 +180,26 @@ class AddClassNamesToRegistrationMigration {
    * Execute the migration
    */
   execute() {
+    console.log('⚠️  WARNING: This migration is NOT PRODUCTION READY');
     console.log('🚀 EXECUTING MIGRATION: Add Class Names to Registration');
     console.log('====================================================');
     
-    const results = {
-      recordsUpdated: 0,
-      columnsAdded: 0,
-      errors: []
-    };
-
-    try {
-      const registrationsSheet = this.spreadsheet.getSheetByName('registrations');
-      const classesSheet = this.spreadsheet.getSheetByName('classes');
-      
-      if (!registrationsSheet || !classesSheet) {
-        throw new Error('Required sheets not found');
-      }
-
-      // Get all data
-      const registrationsData = registrationsSheet.getDataRange().getValues();
-      const classesData = classesSheet.getDataRange().getValues();
-
-      // Parse headers
-      const regHeaders = registrationsData[0];
-      const classHeaders = classesData[0];
-
-      // Find column indices
-      const regClassIdCol = regHeaders.findIndex(h => h === 'ClassId');
-      let regClassNameCol = regHeaders.findIndex(h => h === 'ClassTitle' || h === 'ClassName');
-      const classIdCol = classHeaders.findIndex(h => h === 'Id');
-      const classTitleCol = classHeaders.findIndex(h => h === 'Title');
-
-      // Add ClassTitle column if it doesn't exist
-      if (regClassNameCol < 0) {
-        console.log('📝 Adding ClassTitle column to registrations sheet...');
-        regClassNameCol = regHeaders.length;
-        registrationsSheet.getRange(1, regClassNameCol + 1).setValue('ClassTitle');
-        results.columnsAdded = 1;
-      }
-
-      // Build class map
-      console.log('📚 Building class reference map...');
-      const classMap = new Map();
-      for (let i = 1; i < classesData.length; i++) {
-        const classId = classesData[i][classIdCol];
-        const classTitle = classesData[i][classTitleCol];
-        if (classId && classTitle) {
-          classMap.set(classId.toString(), classTitle.toString());
-        }
-      }
-
-      console.log(`   Found ${classMap.size} classes available for mapping`);
-
-      // Update registrations
-      console.log('🔄 Updating registration records...');
-      const updatesRange = [];
-
-      for (let i = 1; i < registrationsData.length; i++) {
-        const classId = registrationsData[i][regClassIdCol];
-        const existingClassName = registrationsData[i][regClassNameCol] || '';
-
-        if (classId && classMap.has(classId.toString())) {
-          if (!existingClassName || existingClassName.trim() === '') {
-            const className = classMap.get(classId.toString());
-            
-            // Prepare the update
-            updatesRange.push({
-              row: i + 1,
-              col: regClassNameCol + 1,
-              value: className
-            });
-          }
-        }
-      }
-
-      // Apply all updates in batch
-      if (updatesRange.length > 0) {
-        console.log(`   Applying ${updatesRange.length} updates...`);
-        
-        updatesRange.forEach(update => {
-          registrationsSheet.getRange(update.row, update.col).setValue(update.value);
-        });
-
-        results.recordsUpdated = updatesRange.length;
-        console.log(`   ✅ Updated ${updatesRange.length} registration records`);
-      } else {
-        console.log('   ℹ️  No updates needed - all records already have class names');
-      }
-
-      console.log('\n✅ MIGRATION COMPLETED SUCCESSFULLY!');
-      console.log('\n📋 SUMMARY OF CHANGES:');
-      console.log(`   • Registration records updated: ${results.recordsUpdated}`);
-      console.log(`   • New columns added: ${results.columnsAdded}`);
-      
-      if (results.columnsAdded > 0) {
-        console.log('\n📋 NEW COLUMNS ADDED:');
-        console.log('   • ClassTitle - Contains the name of the class for each registration');
-      }
-
-      return results;
-
-    } catch (error) {
-      console.error('❌ Migration failed:', error.toString());
-      results.errors.push(error.toString());
-      throw error;
-    }
+    // Prevent execution of non-production ready migration
+    console.log('❌ EXECUTION BLOCKED: This migration is archived and not production ready');
+    console.log('Please use a different migration or update this one before proceeding.');
+    return { error: 'Migration not production ready' };
   }
 
   /**
    * Rollback the migration changes
    */
   rollback() {
+    console.log('⚠️  WARNING: This migration is NOT PRODUCTION READY');
     console.log('🔄 ROLLING BACK MIGRATION: Add Class Names to Registration');
     console.log('=========================================================');
     
-    try {
-      const registrationsSheet = this.spreadsheet.getSheetByName('registrations');
-      
-      if (!registrationsSheet) {
-        throw new Error('Registrations sheet not found');
-      }
-
-      // Find the ClassTitle column
-      const headers = registrationsSheet.getRange(1, 1, 1, registrationsSheet.getLastColumn()).getValues()[0];
-      const classTitleCol = headers.findIndex(h => h === 'ClassTitle' || h === 'ClassName');
-
-      if (classTitleCol < 0) {
-        console.log('ℹ️  No ClassTitle column found - nothing to rollback');
-        return true;
-      }
-
-      console.log('🗑️  Clearing ClassTitle column data...');
-      
-      // Clear the data in the ClassTitle column (keep the header)
-      const dataRange = registrationsSheet.getRange(2, classTitleCol + 1, registrationsSheet.getLastRow() - 1, 1);
-      dataRange.clearContent();
-
-      console.log('\n✅ ROLLBACK COMPLETED');
-      console.log('\n📋 CHANGES REVERTED:');
-      console.log('   • All class names removed from registration records');
-      console.log('   • ClassTitle column cleared (but column still exists)');
-      console.log('\n💡 Note: To completely remove the ClassTitle column, you\'ll need to:');
-      console.log('   1. Right-click on the column header');
-      console.log('   2. Select "Delete column"');
-      
-      return true;
-    } catch (error) {
-      console.error('❌ Rollback failed:', error.toString());
-      return false;
-    }
+    console.log('❌ ROLLBACK BLOCKED: This migration is archived and not production ready');
+    return false;
   }
 }
 
@@ -330,10 +208,14 @@ class AddClassNamesToRegistrationMigration {
  * Call this to check if your sheets have the required columns
  */
 function validateSheetsForClassNameMigration() {
+  console.log('⚠️  WARNING: This migration is NOT PRODUCTION READY');
   console.log('🔍 VALIDATING SHEET STRUCTURE');
   console.log('=============================');
   
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  // TODO: Replace with your actual spreadsheet ID
+  const spreadsheetId = "YOUR_SPREADSHEET_ID_HERE";
+  const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    
   const registrationsSheet = spreadsheet.getSheetByName('registrations');
   const classesSheet = spreadsheet.getSheetByName('classes');
   
