@@ -8,7 +8,7 @@
 import { infrastructureFactory } from '../factory/infrastructureServiceFactory.js';
 
 // Import repositories
-import { RegistrationRepository } from '../../core/repositories/registrationRepository.js';
+import { RegistrationRepository } from '../../domain/repositories/registrationRepository.js';
 import { UserRepository } from '../../core/repositories/userRepository.js';
 import { ProgramRepository } from '../../core/repositories/programRepository.js';
 import { StudentRepository } from '../../core/repositories/studentRepository.js';
