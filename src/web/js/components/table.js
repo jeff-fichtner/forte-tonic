@@ -1,0 +1,87 @@
+/**
+ *
+ */
+export class Table {
+  /**
+   *
+   */
+  constructor(
+    tableId,
+    headers,
+    rowFunction,
+    initialRows = null,
+    onClickFunction = null,
+    filterFunction = null,
+    onFilterChanges = null
+  ) {
+    this.table = document.getElementById(tableId);
+    const head = document.createElement('thead'); // Create a new table header
+
+    for (const header of headers) {
+      const th = document.createElement('th'); // Create a new header cell
+      th.textContent = header; // Set the header text
+      head.appendChild(th); // Append the header to the header
+    }
+    this.table.appendChild(head); // Append the header to the table
+    this.table.appendChild(document.createElement('tbody')); // Create a table body
+
+    this.filterFunction = filterFunction; // Store the filter function
+    this.rowFunction = rowFunction; // Store the row function
+    if (initialRows) {
+      this.replaceRange(initialRows); // Populate the table with initial rows
+    }
+    this.table.addEventListener('click', event => {
+      console.log(`${event.target.tagName} clicked in table ${tableId}`);
+      if (onClickFunction) onClickFunction(event); // Attach the click event handler
+    });
+    if (onFilterChanges && onFilterChanges.length > 0) {
+      for (const onFilterChange of onFilterChanges) {
+        // when checkboxes in filterId change
+        document.getElementById(onFilterChange.filterId).addEventListener('change', event => {
+          if (event.target.type !== onFilterChange.type) {
+            return;
+          }
+          // re-render registrations
+          this.refresh();
+        });
+      }
+    }
+  }
+  /**
+   *
+   */
+  refresh() {
+    // Re-render the table with the current rows
+    this.replaceRange(this.rows);
+  }
+  // Method to add a row with data
+  /**
+   *
+   */
+  replaceRange(rows) {
+    this.rows = rows;
+    const body = this.table.querySelector('tbody');
+    body.innerHTML = ''; // Clear existing rows
+
+    try {
+      if (!rows || rows.length === 0) {
+        // no rows message
+        return;
+      }
+      for (const row of rows) {
+        if (this.filterFunction && !this.filterFunction(row)) {
+          continue; // Skip rows that do not match the filter
+        }
+
+        const tr = document.createElement('tr'); // Create a new table row
+        tr.innerHTML = this.rowFunction(row); // Get the row HTML using the provided function
+        body.appendChild(tr); // Append the row to the table body
+      }
+    } finally {
+      this.table.hidden = false; // Ensure the table is visible after populating
+    }
+  }
+}
+
+// For backwards compatibility with existing code
+window.Table = Table;

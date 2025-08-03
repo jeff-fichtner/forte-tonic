@@ -1,5 +1,5 @@
-const RegistrationType = {
-    PRIVATE: 'private',
-    GROUP: 'group',
-    // REMOTE: 'remote',
+export const RegistrationType = {
+  PRIVATE: 'private',
+  GROUP: 'group',
+  // REMOTE: 'remote',
 };

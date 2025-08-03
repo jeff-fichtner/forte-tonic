@@ -135,4 +135,29 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+# Generated documentation
+docs/generated/
+
+# Temporary credentials and dev files
+dev/credentials/
+dev/scripts/output/
+dev/scripts/temp/
+
+# Google Apps Script generated config
+gas-src/.clasp.json
+
+# Render build artifacts
+.render-build-*
+render-build.log
+
+# Environment files (keep templates, exclude actual env files)
+.env.local
+.env.production
+.env.staging
+
+# Build output and cache
+dist/
+build/
+.cache/
+
 *.DS_Store
