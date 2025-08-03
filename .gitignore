@@ -146,4 +146,18 @@ dev/scripts/temp/
 # Google Apps Script generated config
 gas-src/.clasp.json
 
+# Render build artifacts
+.render-build-*
+render-build.log
+
+# Environment files (keep templates, exclude actual env files)
+.env.local
+.env.production
+.env.staging
+
+# Build output and cache
+dist/
+build/
+.cache/
+
 *.DS_Store

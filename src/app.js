@@ -7,19 +7,23 @@ import apiRoutes from './routes/api.js';
 import staticRoutes from './routes/static.js';
 import { initializeUserContext, requireAuth, requireOperator } from './middleware/auth.js';
 import { configService } from './core/services/configurationService.js';
+import { createLogger } from './core/utilities/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Initialize logger
+const logger = createLogger(configService);
+
 // Get configuration from config service
 const serverConfig = configService.getServerConfig();
 const PORT = serverConfig.port;
 const BASE_URL = configService.getBaseUrl();
 
-console.log(`Environment: ${serverConfig.nodeEnv}`);
-console.log(`Base URL: ${BASE_URL}`);
+logger.info(`Environment: ${serverConfig.nodeEnv}`);
+logger.info(`Base URL: ${BASE_URL}`);
 
 // Security and CORS middleware
 app.use(
@@ -40,19 +44,15 @@ app.use(
           'https://fonts.googleapis.com',
         ],
         fontSrc: [
-          "'self'", 
-          'https://fonts.gstatic.com', 
+          "'self'",
+          'https://fonts.gstatic.com',
           'https://fonts.googleapis.com',
           'https://cdnjs.cloudflare.com',
           'https://static.juicer.io',
-          'data:'
+          'data:',
         ],
         imgSrc: ["'self'", 'data:', 'https:'],
-        connectSrc: [
-          "'self'",
-          'https://fonts.googleapis.com',
-          'https://fonts.gstatic.com'
-        ],
+        connectSrc: ["'self'", 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
         frameSrc: ["'none'"],
         objectSrc: ["'none'"],
         mediaSrc: ["'self'"],

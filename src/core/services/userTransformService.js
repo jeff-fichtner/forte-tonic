@@ -6,11 +6,11 @@ export class UserTransformService {
   /**
    * Transform core Admin model to API data
    * @param {Admin} admin - Core admin model
-   * @returns {Object} API-compatible admin data
+   * @returns {object} API-compatible admin data
    */
   static transformAdmin(admin) {
     if (!admin) return null;
-    
+
     return {
       id: admin.id,
       email: admin.email,
@@ -27,20 +27,20 @@ export class UserTransformService {
 
   /**
    * Transform core Instructor model to API data
-   * @param {Instructor} instructor - Core instructor model  
-   * @returns {Object} API-compatible instructor data
+   * @param {Instructor} instructor - Core instructor model
+   * @returns {object} API-compatible instructor data
    */
   static transformInstructor(instructor) {
     if (!instructor) return null;
-    
+
     // Manually compute instruments array from individual instrument properties
     const instruments = [
       instructor.instrument1,
-      instructor.instrument2, 
+      instructor.instrument2,
       instructor.instrument3,
-      instructor.instrument4
+      instructor.instrument4,
     ].filter(Boolean); // Remove empty/null values
-    
+
     return {
       id: instructor.id,
       email: instructor.email,
@@ -55,7 +55,7 @@ export class UserTransformService {
       role: 'instructor',
       gradeRange: {
         min: instructor.minimumGrade,
-        max: instructor.maximumGrade
+        max: instructor.maximumGrade,
       },
       availability: this._transformAvailability(instructor),
       // Add any additional computed properties that frontend expects
@@ -65,11 +65,11 @@ export class UserTransformService {
   /**
    * Transform core Student model to API data
    * @param {Student} student - Core student model
-   * @returns {Object} API-compatible student data
+   * @returns {object} API-compatible student data
    */
   static transformStudent(student) {
     if (!student) return null;
-    
+
     return {
       id: student.id,
       lastName: student.lastName,
@@ -80,9 +80,10 @@ export class UserTransformService {
       parent1Id: student.parent1Id,
       parent2Id: student.parent2Id,
       fullName: `${student.firstName} ${student.lastName}`,
-      displayName: student.firstNickname && student.lastNickname 
-        ? `${student.firstNickname} ${student.lastNickname}`
-        : `${student.firstName} ${student.lastName}`,
+      displayName:
+        student.firstNickname && student.lastNickname
+          ? `${student.firstNickname} ${student.lastNickname}`
+          : `${student.firstName} ${student.lastName}`,
       // Add any additional computed properties that frontend expects
     };
   }
@@ -90,11 +91,11 @@ export class UserTransformService {
   /**
    * Transform core Parent model to API data
    * @param {Parent} parent - Core parent model
-   * @returns {Object} API-compatible parent data
+   * @returns {object} API-compatible parent data
    */
   static transformParent(parent) {
     if (!parent) return null;
-    
+
     return {
       id: parent.id,
       email: parent.email,
@@ -112,27 +113,27 @@ export class UserTransformService {
    * Transform instructor availability data
    * @private
    * @param {Instructor} instructor - Core instructor model
-   * @returns {Object} Availability object
+   * @returns {object} Availability object
    */
   static _transformAvailability(instructor) {
     const availability = {};
-    
+
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    
+
     days.forEach(day => {
       const isAvailable = instructor[`isAvailable${day.charAt(0).toUpperCase() + day.slice(1)}`];
       const startTime = instructor[`${day}StartTime`];
       const endTime = instructor[`${day}EndTime`];
       const roomId = instructor[`${day}RoomId`];
-      
+
       availability[day] = {
         isAvailable,
         startTime,
         endTime,
-        roomId
+        roomId,
       };
     });
-    
+
     return availability;
   }
 
@@ -144,12 +145,12 @@ export class UserTransformService {
    */
   static transformArray(items, type) {
     if (!Array.isArray(items)) return [];
-    
+
     const transformMethod = this[`transform${type.charAt(0).toUpperCase() + type.slice(1)}`];
     if (!transformMethod) {
       throw new Error(`Unknown transform type: ${type}`);
     }
-    
+
     return items.map(item => transformMethod.call(this, item)).filter(Boolean);
   }
 }

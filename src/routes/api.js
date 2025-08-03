@@ -3,8 +3,25 @@ import { RegistrationType } from '../core/values/registrationType.js';
 import { _fetchData } from '../utils/helpers.js';
 import { configService } from '../core/services/configurationService.js';
 import { UserTransformService } from '../core/services/userTransformService.js';
+import { currentConfig, isProduction, isStaging } from '../config/environment.js';
 
 const router = express.Router();
+
+// Health check endpoint for monitoring
+router.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || '1.0.0',
+    baseUrl: currentConfig.baseUrl,
+    features: {
+      isProduction,
+      isStaging,
+      spreadsheetConfigured: !!currentConfig.spreadsheetId,
+    },
+  });
+});
 
 // Get current authenticated user
 router.post('/getAuthenticatedUser', (req, res) => {
@@ -207,7 +224,11 @@ router.post('/getRegistrations', async (req, res) => {
 
     console.log(`${filterMessage}: ${filteredRegistrations.length}`);
 
-    const result = _fetchData(() => filteredRegistrations, request.page || 0, request.pageSize || 10);
+    const result = _fetchData(
+      () => filteredRegistrations,
+      request.page || 0,
+      request.pageSize || 10
+    );
     res.json(result);
   } catch (error) {
     console.error('Error getting registrations:', error);
@@ -233,12 +254,12 @@ router.post('/getRooms', async (req, res) => {
 router.post('/registrations', async (req, res) => {
   try {
     const requestData = req.body;
-    
+
     // Basic validation
     if (!requestData.studentId || !requestData.registrationType) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: studentId, registrationType'
+        message: 'Missing required fields: studentId, registrationType',
       });
     }
 
@@ -246,7 +267,7 @@ router.post('/registrations', async (req, res) => {
     if (requestData.registrationType === RegistrationType.GROUP && !requestData.classId) {
       return res.status(400).json({
         success: false,
-        message: 'classId is required for GROUP registrations'
+        message: 'classId is required for GROUP registrations',
       });
     }
 
@@ -258,7 +279,7 @@ router.post('/registrations', async (req, res) => {
 
     // Create via repository
     const savedRegistration = await req.registrationRepository.create(requestData);
-    
+
     // Return enriched response
     res.json({
       success: true,
@@ -273,17 +294,16 @@ router.post('/registrations', async (req, res) => {
         trimester: savedRegistration.trimester,
         className: savedRegistration.className,
         registeredAt: savedRegistration.registeredAt,
-        canMarkAttendance: true
+        canMarkAttendance: true,
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
   } catch (error) {
     console.error('Error creating registration:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to create registration',
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -294,27 +314,27 @@ router.post('/registrations', async (req, res) => {
 router.post('/attendance', async (req, res) => {
   try {
     const { registrationId, week, schoolYear, trimester } = req.body;
-    
+
     // Validation
     if (!registrationId || !week) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: registrationId, week'
+        message: 'Missing required fields: registrationId, week',
       });
     }
 
     // Check if attendance already exists
     const existingAttendance = await req.attendanceRepository.hasAttendance(
-      registrationId, 
-      week, 
-      schoolYear || '2025-2026', 
+      registrationId,
+      week,
+      schoolYear || '2025-2026',
       trimester || 'Fall'
     );
 
     if (existingAttendance) {
       return res.status(409).json({
         success: false,
-        message: 'Attendance already recorded for this registration and week'
+        message: 'Attendance already recorded for this registration and week',
       });
     }
 
@@ -325,11 +345,11 @@ router.post('/attendance', async (req, res) => {
       schoolYear: schoolYear || '2025-2026',
       trimester: trimester || 'Fall',
       recordedBy: req.currentUser?.email || 'system',
-      recordedAt: new Date().toISOString()
+      recordedAt: new Date().toISOString(),
     };
 
     const savedAttendance = await req.attendanceRepository.create(attendanceData);
-    
+
     // Return confirmation
     res.json({
       success: true,
@@ -340,17 +360,16 @@ router.post('/attendance', async (req, res) => {
         week: savedAttendance.week,
         schoolYear: savedAttendance.schoolYear,
         trimester: savedAttendance.trimester,
-        recordedAt: savedAttendance.recordedAt
+        recordedAt: savedAttendance.recordedAt,
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
   } catch (error) {
     console.error('Error recording attendance:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to record attendance',
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -362,24 +381,23 @@ router.get('/attendance/summary/:registrationId', async (req, res) => {
   try {
     const { registrationId } = req.params;
     const { schoolYear = '2025-2026', trimester = 'Fall' } = req.query;
-    
+
     const summary = await req.attendanceRepository.getAttendanceSummary(
-      registrationId, 
-      schoolYear, 
+      registrationId,
+      schoolYear,
       trimester
     );
-    
+
     res.json({
       success: true,
-      data: summary
+      data: summary,
     });
-    
   } catch (error) {
     console.error('Error getting attendance summary:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to get attendance summary',
-      error: error.message
+      error: error.message,
     });
   }
 });

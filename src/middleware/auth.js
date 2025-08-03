@@ -22,7 +22,7 @@ export const initializeUserContext = async (req, res, next) => {
     req.programRepository = programRepository;
     req.registrationRepository = registrationRepository;
     req.attendanceRepository = attendanceRepository;
-    
+
     // TODO: Implement proper authentication when auth system is ready
     // For now, use a test user for development/testing
     const signedInEmail = 'test@example.com';
