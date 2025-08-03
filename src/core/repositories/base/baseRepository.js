@@ -79,5 +79,71 @@ export class BaseRepository {
     }
   }
 
+  /**
+   * Find all records
+   */
+  async findAll(options = {}) {
+    try {
+      console.log(`📋 Finding all ${this.entityName}s`);
+      const cacheKey = `${this.entityName}:all`;
+      
+      // Check cache first
+      if (this.cache.has(cacheKey)) {
+        const cached = this.cache.get(cacheKey);
+        if (Date.now() - cached.timestamp < this.cacheTtl) {
+          console.log(`📦 Returning cached ${this.entityName}s`);
+          return cached.data;
+        }
+      }
+
+      const records = await this.dbClient.getAllRecords(this.entityName, x => {
+        if (this.modelClass && this.modelClass.fromDatabaseRow) {
+          return this.modelClass.fromDatabaseRow(x);
+        }
+        return this.convertToModel(x);
+      });
+
+      // Cache the results
+      this.cache.set(cacheKey, {
+        data: records,
+        timestamp: Date.now()
+      });
+
+      console.log(`✅ Found ${records.length} ${this.entityName}s`);
+      return records;
+    } catch (error) {
+      console.error(`❌ Error finding all ${this.entityName}s:`, error);
+      throw new Error(`Failed to find ${this.entityName}s: ${error.message}`);
+    }
+  }
+
+  /**
+   * Find records by a specific field value
+   */
+  async findBy(field, value) {
+    try {
+      console.log(`🔍 Finding ${this.entityName}s by ${field}: ${value}`);
+      const allRecords = await this.findAll();
+      return allRecords.filter(record => record[field] === value);
+    } catch (error) {
+      console.error(`❌ Error finding ${this.entityName}s by ${field}:`, error);
+      throw new Error(`Failed to find ${this.entityName}s by ${field}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Find a single record by ID
+   */
+  async findById(id) {
+    try {
+      console.log(`🔍 Finding ${this.entityName} by ID: ${id}`);
+      const allRecords = await this.findAll();
+      return allRecords.find(record => record.id === id) || null;
+    } catch (error) {
+      console.error(`❌ Error finding ${this.entityName} by ID:`, error);
+      throw new Error(`Failed to find ${this.entityName} by ID: ${error.message}`);
+    }
+  }
+
   // ... other methods would be here
 }

@@ -8,7 +8,7 @@ import { Keys } from '../values/keys.js';
 
 export class AdminRepository extends BaseRepository {
   constructor(dbClient) {
-    super(dbClient, Keys.ADMINS, Admin);
+    super(Keys.ADMINS, Admin, dbClient);
   }
 
   /**
