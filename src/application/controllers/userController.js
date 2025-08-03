@@ -71,7 +71,7 @@ export class UserController {
         hasEmergencyContact: request.hasEmergencyContact,
         parentId: request.parentId,
         page: request.page || 1,
-        pageSize: request.pageSize || 10,
+        pageSize: request.pageSize || 50,  // Increased from 10 to 50 to match repository default
         sortBy: request.sortBy || 'lastName',
         sortOrder: request.sortOrder || 'asc'
       };
@@ -93,7 +93,7 @@ export class UserController {
       })));
 
       // For backward compatibility with existing pagination format
-      const legacyResult = _fetchData(() => enrichedStudents, request.page || 0, request.pageSize || 10);
+      const legacyResult = _fetchData(() => enrichedStudents, request.page || 0, request.pageSize || 50);
 
       // Enhance with domain insights
       legacyResult.domainInsights = {
