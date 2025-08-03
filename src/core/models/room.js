@@ -1,28 +1,31 @@
-class Room {
+/**
+ *
+ */
+export class Room {
+  /**
+   *
+   */
+  constructor(id, name, altName, includeRoomId) {
+    this.id = id;
+    this.name = name;
+    this.altName = altName;
+    this.includeRoomId = includeRoomId;
+  }
 
-    constructor(
-        id,
-        name,
-        altName,
-        includeRoomId) {
+  /**
+   *
+   */
+  get formattedName() {
+    let formattedName = this.name;
 
-        this.id = id;
-        this.name = name;
-        this.altName = altName;
-        this.includeRoomId = includeRoomId;
+    if (this.altName) {
+      formattedName += ` (${this.altName})`;
     }
 
-    get formattedName() {
-        let formattedName = this.name;
-        
-        if (this.altName) {
-            formattedName += ` (${this.altName})`;
-        }
-
-        if (this.includeRoomId) {
-            formattedName += ` (${this.id})`;
-        }
-
-        return formattedName;
+    if (this.includeRoomId) {
+      formattedName += ` (${this.id})`;
     }
+
+    return formattedName;
+  }
 }

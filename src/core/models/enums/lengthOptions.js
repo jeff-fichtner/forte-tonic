@@ -1,5 +1,5 @@
-const LengthOptions = {
-    THIRTY_MINUTES: 30,
-    FORTY_FIVE_MINUTES: 45,
-    SIXTY_MINUTES: 60
+export const LengthOptions = {
+  THIRTY_MINUTES: 30,
+  FORTY_FIVE_MINUTES: 45,
+  SIXTY_MINUTES: 60,
 };
