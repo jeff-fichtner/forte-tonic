@@ -1,5 +1,6 @@
-import { AuthenticatedUserResponse } from '../core/models/responses/authenticatedUserResponse.js';
-import { configService } from '../core/services/configurationService.js';
+import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
+import { Admin } from '../models/shared/admin.js';
+import { configService } from '../services/configurationService.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
 
 // Initialize repositories and user context for authenticated requests
@@ -23,12 +24,12 @@ export const initializeUserContext = async (req, res, next) => {
     };
 
     // Create a mock admin user
-    const mockAdmin = {
+    const mockAdmin = new Admin({
       id: 'test-admin-id',
       email: signedInEmail,
       firstName: 'Test',
       lastName: 'Admin',
-    };
+    });
 
     const currentUser = new AuthenticatedUserResponse(
       signedInEmail,

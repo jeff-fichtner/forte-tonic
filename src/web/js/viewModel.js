@@ -1,7 +1,7 @@
 import { HttpService } from './data/httpService.js';
 import { ServerFunctions, DataStores, Sections, RegistrationType } from './constants.js';
-import { AuthenticatedUserResponse } from '/shared/models/responses/authenticatedUserResponse.js';
-import { Admin, Instructor, Student, Registration, Class, Room } from '/shared/models/index.js';
+import { AuthenticatedUserResponse } from '/models/shared/responses/authenticatedUserResponse.js';
+import { Admin, Instructor, Student, Registration, Class, Room } from '/models/shared/index.js';
 import { IndexedDbClient } from './data/indexedDbClient.js';
 import { DomHelpers } from './utilities/domHelpers.js';
 import { NavTabs } from './components/navTabs.js';

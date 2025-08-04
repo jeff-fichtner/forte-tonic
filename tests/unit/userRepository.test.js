@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
-import { UserRepository } from '../../src/core/repositories/userRepository.js';
-import { Admin, Instructor, Student, Parent } from '../../src/shared/models/index.js';
+import { UserRepository } from '../../src/repositories/userRepository.js';
+import { Admin, Instructor, Student, Parent } from '../../src/models/shared/index.js';
 
 describe('UserRepository', () => {
   let repository;

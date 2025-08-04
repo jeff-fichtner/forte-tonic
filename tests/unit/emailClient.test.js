@@ -15,7 +15,7 @@ jest.unstable_mockModule('nodemailer', () => ({
 }));
 
 // Import after mocking
-const { EmailClient } = await import('../../src/infrastructure/email/emailClient.js');
+const { EmailClient } = await import('../../src/email/emailClient.js');
 
 // Mock configuration service
 const mockConfigService = {

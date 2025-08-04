@@ -1,4 +1,4 @@
-import { Instruments, LengthOptions } from '../../src/core/models/enums/index.js';
+import { Instruments, LengthOptions } from '../../src/models/shared/index.js';
 
 describe('Enums', () => {
   describe('Instruments', () => {

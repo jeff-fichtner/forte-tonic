@@ -1,15 +1,15 @@
 import express from 'express';
-import { RegistrationType } from '../core/values/registrationType.js';
+import { RegistrationType } from '../utils/values/registrationType.js';
 import { _fetchData } from '../utils/helpers.js';
-import { configService } from '../core/services/configurationService.js';
-import { UserTransformService } from '../core/services/userTransformService.js';
+import { configService } from '../services/configurationService.js';
+import { UserTransformService } from '../services/userTransformService.js';
 import { currentConfig, isProduction, isStaging } from '../config/environment.js';
 
 // Import application layer controllers
-import { UserController } from '../application/controllers/userController.js';
-import { SystemController } from '../application/controllers/systemController.js';
-import { RegistrationController } from '../application/controllers/registrationController.js';
-import { AttendanceController } from '../application/controllers/attendanceController.js';
+import { UserController } from '../controllers/userController.js';
+import { SystemController } from '../controllers/systemController.js';
+import { RegistrationController } from '../controllers/registrationController.js';
+import { AttendanceController } from '../controllers/attendanceController.js';
 
 const router = express.Router();
 
