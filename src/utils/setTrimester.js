@@ -1,6 +1,0 @@
-/**
- *
- */
-function setTrimester() {
-  // archive registrations
-}

@@ -234,6 +234,39 @@ export class Student {
   }
 
   /**
+   * Factory method: Create from database row
+   */
+  static fromDatabaseRow(row) {
+    const [
+      id,
+      lastName,
+      firstName,
+      lastNickname,
+      firstNickname,
+      grade,
+      parent1Id,
+      parent2Id
+    ] = row;
+
+    return new Student({
+      id,
+      lastName,
+      firstName,
+      lastNickname,
+      firstNickname,
+      grade,
+      parent1Id,
+      parent2Id,
+      email: null, // Not stored in basic row structure
+      age: null, // Not stored in basic row structure
+      birthday: null, // Not stored in basic row structure
+      school: null, // Not stored in basic row structure
+      instrument: null, // Not stored in basic row structure
+      isActive: true // Default to active
+    });
+  }
+
+  /**
    * Factory method: Create new student
    */
   static createNew(firstName, lastName, options = {}) {
