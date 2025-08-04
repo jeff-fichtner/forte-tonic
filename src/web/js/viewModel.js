@@ -234,9 +234,20 @@ export class ViewModel {
       ],
       // row
       registration => {
+        // Debug the registration and ID extraction
+        console.log('=== REGISTRATION DEBUG ===');
+        console.log('Registration ID:', registration.id);
+        console.log('Raw instructorId:', registration.instructorId);
+        console.log('Raw studentId:', registration.studentId);
+        
         // Extract primitive values for comparison
         const instructorIdToFind = registration.instructorId?.value || registration.instructorId;
         const studentIdToFind = registration.studentId?.value || registration.studentId;
+        
+        console.log('Extracted instructorIdToFind:', instructorIdToFind, typeof instructorIdToFind);
+        console.log('Extracted studentIdToFind:', studentIdToFind, typeof studentIdToFind);
+        console.log('Available instructor IDs:', this.instructors.map(i => i.id));
+        console.log('Available student IDs (values):', this.students.map(s => s.id?.value || s.id));
         
         // Compare instructor ID (string) with instructor.id (string)
         const instructor = this.instructors.find(x => x.id === instructorIdToFind);
@@ -244,26 +255,30 @@ export class ViewModel {
         // Compare student ID (string) with student.id.value (StudentId object's value)
         const student = this.students.find(x => x.id?.value === studentIdToFind);
         
+        console.log('Found instructor:', instructor ? `${instructor.firstName} ${instructor.lastName}` : 'NOT FOUND');
+        console.log('Found student:', student ? `${student.firstName} ${student.lastName}` : 'NOT FOUND');
+        console.log('=== END DEBUG ===');
+        
         if (!instructor || !student) {
           console.warn(`Instructor or student not found for registration: ${registration.id}`);
           return '';
         }
         return `
                         <td>${registration.day}</td>
-                        <td>${registration.formattedStartTime}</td>
-                        <td>${registration.length} min</td>
+                        <td>${registration.lessonTime?.startTime || 'N/A'}</td>
+                        <td>${registration.lessonTime?.durationMinutes || 'N/A'} min</td>
                         <td>${student.firstName} ${student.lastName}</td>
-                        <td>${student.formattedGrade}</td>
+                        <td>${student.grade || 'N/A'}</td>
                         <td>${instructor.firstName} ${instructor.lastName}</td>
-                        <td>${registration.registrationType === RegistrationType.GROUP ? registration.className : registration.instrument}</td>
+                        <td>${registration.registrationType === RegistrationType.GROUP ? (registration.className || 'N/A') : (registration.instrument || 'N/A')}</td>
                         <td>
                             <a href="#!">
-                                <i class="copy-parent-emails-table-icon gray-text text-darken-4">✉</i>
+                                <i class="material-icons copy-parent-emails-table-icon gray-text text-darken-4">email</i>
                             </a>
                         </td>
                         <td>
                             <a href="#!">
-                                <i class="delete-registration-table-icon red-text text-darken-4">🗑</i>
+                                <i class="material-icons remove-registration-table-icon red-text text-darken-4">delete</i>
                             </a>
                         </td>
                     `;
@@ -342,12 +357,12 @@ export class ViewModel {
         }
         return `
                         <td>${enrollment.day}</td>
-                        <td>${enrollment.formattedStartTime}</td>
-                        <td>${enrollment.length} minutes</td>
-                        <td>${student.fullName}</td>
-                        <td>${student.formattedGrade}</td>
-                        <td>${instructor.fullName}</td>
-                        <td>${enrollment.instrument}</td>
+                        <td>${enrollment.lessonTime?.startTime || 'N/A'}</td>
+                        <td>${enrollment.lessonTime?.durationMinutes || 'N/A'} minutes</td>
+                        <td>${student.firstName} ${student.lastName}</td>
+                        <td>${student.grade || 'N/A'}</td>
+                        <td>${instructor.firstName} ${instructor.lastName}</td>
+                        <td>${enrollment.instrument || 'N/A'}</td>
                     `;
       },
       enrollments

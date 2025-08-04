@@ -78,7 +78,11 @@ export class UserRepository {
    */
   async getInstructorById(id) {
     const instructors = await this.getInstructors();
-    return instructors.find(x => x.id === id);
+    const searchId = (typeof id === 'object' && id.value) ? id.value : id;
+    return instructors.find(x => {
+      const instructorId = (typeof x.id === 'object' && x.id.value) ? x.id.value : x.id;
+      return instructorId === searchId;
+    });
   }
 
   /**
@@ -109,7 +113,11 @@ export class UserRepository {
    */
   async getStudentById(id) {
     const students = await this.getStudents();
-    return students.find(x => x.id === id);
+    const searchId = (typeof id === 'object' && id.value) ? id.value : id;
+    return students.find(x => {
+      const studentId = (typeof x.id === 'object' && x.id.value) ? x.id.value : x.id;
+      return studentId === searchId;
+    });
   }
 
   /**

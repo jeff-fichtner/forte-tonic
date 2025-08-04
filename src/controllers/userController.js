@@ -54,65 +54,14 @@ export class UserController {
   }
 
   /**
-   * Get students with pagination using application service
-   * Now leverages domain-driven design with enriched business data
+   * Get students - simplified to match instructor pattern
    */
   static async getStudents(req, res) {
     try {
-      const request = req.body || {};
-
-      // Use the student application service for business logic
-      const studentApplicationService = serviceContainer.get('studentApplicationService');
-
-      const options = {
-        searchTerm: request.searchTerm,
-        gradeLevel: request.gradeLevel,
-        isActive: request.isActive,
-        hasEmergencyContact: request.hasEmergencyContact,
-        parentId: request.parentId,
-        page: request.page || 1,
-        pageSize: request.pageSize || 50, // Increased from 10 to 50 to match repository default
-        sortBy: request.sortBy || 'lastName',
-        sortOrder: request.sortOrder || 'asc',
-      };
-
-      // Get enriched student data through application service
-      const result = await studentApplicationService.getStudents(options);
-
-      // Transform for UI compatibility with optional parent email enrichment
-      const enrichedStudents = await Promise.all(
-        result.students.map(async student => ({
-          id: student.id,
-          firstName: student.firstNickname || student.firstName,
-          lastName: student.lastNickname || student.lastName,
-          grade: student.grade,
-          ageCategory: student.ageCategory,
-          hasEmergencyContact: student.hasEmergencyContact,
-          eligibilityStatus: student.eligibilityInfo.eligible ? 'eligible' : 'needs-attention',
-          recommendedLessonDuration: student.recommendedLessonDuration,
-          parentEmails: request.includeParentInfo
-            ? await UserController.#getParentEmails(student.id)
-            : undefined,
-        }))
-      );
-
-      // For backward compatibility with existing pagination format
-      const legacyResult = _fetchData(
-        () => enrichedStudents,
-        request.page || 0,
-        request.pageSize || 50
-      );
-
-      // Enhance with domain insights
-      legacyResult.domainInsights = {
-        totalEligible: result.students.filter(s => s.eligibilityInfo.eligible).length,
-        totalWithEmergencyContact: result.students.filter(s => s.hasEmergencyContact).length,
-        averageRecommendedDuration: UserController.#calculateAverageRecommendedDuration(
-          result.students
-        ),
-      };
-
-      res.json(legacyResult);
+      const userRepository = serviceContainer.get('userRepository');
+      const data = await userRepository.getStudents();
+      const transformedData = UserTransformService.transformArray(data, 'student');
+      res.json(transformedData);
     } catch (error) {
       console.error('Error getting students:', error);
       res.status(500).json({ error: error.message });
