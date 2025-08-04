@@ -1,6 +1,6 @@
 /**
  * Google Apps Script Recurring Migration - Set Trimester
- * 
+ *
  * This recurring migration handles transitioning to a new trimester.
  * It archives registrations from the previous trimester.
  */
@@ -48,9 +48,9 @@ class SetTrimesterClass {
   execute() {
     try {
       this.logger.info('Starting trimester transition...');
-      
+
       // archive registrations
-      
+
       this.logger.info('Trimester transition completed successfully');
     } catch (error) {
       this.logger.error('Error during trimester transition:', error);

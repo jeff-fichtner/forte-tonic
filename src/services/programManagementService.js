@@ -1,6 +1,6 @@
 /**
  * Program Management Service - business logic for program operations
- * 
+ *
  * Handles:
  * - Registration business rules and room assignment
  * - Class and schedule management
@@ -42,7 +42,9 @@ export class ProgramManagementService {
       // Private lesson business rules
       weekDayIndex = parseInt(registrationData.day);
       if (isNaN(weekDayIndex) || weekDayIndex < 0 || weekDayIndex >= weekDays.length) {
-        throw new Error(`Invalid day index: ${registrationData.day}. Must be 0-4 for ${weekDays.join(', ')}`);
+        throw new Error(
+          `Invalid day index: ${registrationData.day}. Must be 0-4 for ${weekDays.join(', ')}`
+        );
       }
       weekDay = weekDays[weekDayIndex];
       registrationData.registrationType = RegistrationType.PRIVATE;
@@ -69,7 +71,7 @@ export class ProgramManagementService {
     return {
       ...registrationData,
       weekDayIndex,
-      weekDay
+      weekDay,
     };
   }
 
@@ -111,14 +113,16 @@ export class ProgramManagementService {
     }
 
     // Transportation type validation (if provided)
-    if (registrationData.transportationType && 
-        !['pickup', 'dropoff', 'both', 'none'].includes(registrationData.transportationType)) {
+    if (
+      registrationData.transportationType &&
+      !['pickup', 'dropoff', 'both', 'none'].includes(registrationData.transportationType)
+    ) {
       errors.push('Invalid transportation type');
     }
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -139,7 +143,7 @@ export class ProgramManagementService {
     return {
       canRecord: errors.length === 0,
       errors,
-      existingRecord: existingAttendance?.[0] || null
+      existingRecord: existingAttendance?.[0] || null,
     };
   }
 
@@ -160,7 +164,7 @@ export class ProgramManagementService {
     return {
       canRemove: errors.length === 0,
       errors,
-      recordToRemove: existingAttendance?.[0] || null
+      recordToRemove: existingAttendance?.[0] || null,
     };
   }
 
@@ -188,7 +192,7 @@ export class ProgramManagementService {
       canUnregister: errors.length === 0,
       errors,
       requiresRefund: false, // Business logic for refund determination
-      cancellationFee: 0     // Business logic for cancellation fees
+      cancellationFee: 0, // Business logic for cancellation fees
     };
   }
 
@@ -230,7 +234,7 @@ export class ProgramManagementService {
       canAccept: currentCount < maxCapacity,
       currentCount,
       maxCapacity,
-      availableSpots: maxCapacity - currentCount
+      availableSpots: maxCapacity - currentCount,
     };
   }
 
@@ -240,15 +244,18 @@ export class ProgramManagementService {
   static generateLessonSchedule(registrationData, numberOfLessons = 12) {
     const lessons = [];
     const startDate = new Date(registrationData.expectedStartDate);
-    const dayOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].indexOf(registrationData.day);
+    const dayOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].indexOf(
+      registrationData.day
+    );
 
     if (dayOfWeek === -1) {
       throw new Error(`Invalid day: ${registrationData.day}`);
     }
 
     // Find the first occurrence of the day
-    let currentDate = new Date(startDate);
-    while (currentDate.getDay() !== (dayOfWeek + 1) % 7) { // Adjust for JavaScript's Sunday=0
+    const currentDate = new Date(startDate);
+    while (currentDate.getDay() !== (dayOfWeek + 1) % 7) {
+      // Adjust for JavaScript's Sunday=0
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
@@ -259,7 +266,7 @@ export class ProgramManagementService {
         date: new Date(currentDate),
         startTime: registrationData.startTime,
         length: registrationData.length,
-        expectedEndTime: this.calculateEndTime(registrationData.startTime, registrationData.length)
+        expectedEndTime: this.calculateEndTime(registrationData.startTime, registrationData.length),
       });
 
       // Move to next week

@@ -279,7 +279,13 @@ describe('UserRepository', () => {
 
   describe('getAdminByEmail', () => {
     test('should return admin by email when found', async () => {
-      const mockAdmin = Admin.fromDatabaseRow(['admin-1', 'admin@test.com', 'Smith', 'John', '555-1234']);
+      const mockAdmin = Admin.fromDatabaseRow([
+        'admin-1',
+        'admin@test.com',
+        'Smith',
+        'John',
+        '555-1234',
+      ]);
 
       mockGoogleSheetsDbClient.getAllRecords.mockResolvedValue([mockAdmin]);
 

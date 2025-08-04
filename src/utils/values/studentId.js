@@ -1,6 +1,6 @@
 /**
  * Student ID Value Object
- * 
+ *
  * Immutable value object representing a student identifier
  */
 

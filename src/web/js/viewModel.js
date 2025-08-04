@@ -96,10 +96,8 @@ export class ViewModel {
       this.students,
       this.classes,
       async data => {
-        const newRegistration = await HttpService.post(
-          ServerFunctions.register,
-          data,
-          x => Registration.fromApiData(x.newRegistration)
+        const newRegistration = await HttpService.post(ServerFunctions.register, data, x =>
+          Registration.fromApiData(x.newRegistration)
         );
 
         // handle response
@@ -524,9 +522,8 @@ export class ViewModel {
       }
       return items;
     }
-    const students = await HttpService.fetchAllPages(
-      ServerFunctions.getStudents,
-      x => Student.fromApiData(x)
+    const students = await HttpService.fetchAllPages(ServerFunctions.getStudents, x =>
+      Student.fromApiData(x)
     );
     console.log(`Fetched ${students.length} students from server.`);
     if (students.length > 0) {

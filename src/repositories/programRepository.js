@@ -23,7 +23,9 @@ export class ProgramRepository {
     return await RepositoryHelper.getAndSetData(
       () => this.classes,
       async () =>
-        (this.classes = await this.dbClient.getAllRecords(Keys.CLASSES, x => Class.fromDatabaseRow(x))),
+        (this.classes = await this.dbClient.getAllRecords(Keys.CLASSES, x =>
+          Class.fromDatabaseRow(x)
+        )),
       Keys.CLASSES,
       forceRefresh
     );
@@ -68,13 +70,21 @@ export class ProgramRepository {
   async register(registrationData, groupClass, instructor, createdBy) {
     try {
       // Validate with domain service
-      const validation = ProgramManagementService.validateRegistration(registrationData, groupClass, instructor);
+      const validation = ProgramManagementService.validateRegistration(
+        registrationData,
+        groupClass,
+        instructor
+      );
       if (!validation.isValid) {
         throw new Error(`Registration validation failed: ${validation.errors.join(', ')}`);
       }
 
       // Prepare data using business rules
-      const preparedData = ProgramManagementService.prepareRegistrationData(registrationData, groupClass, instructor);
+      const preparedData = ProgramManagementService.prepareRegistrationData(
+        registrationData,
+        groupClass,
+        instructor
+      );
 
       // Create registration record
       const record = Registration.create(
@@ -92,7 +102,7 @@ export class ProgramRepository {
           notes: preparedData.notes,
           classId: preparedData.classId,
           className: preparedData.className,
-          expectedStartDate: preparedData.expectedStartDate
+          expectedStartDate: preparedData.expectedStartDate,
         }
       );
 
@@ -126,9 +136,12 @@ export class ProgramRepository {
   async unregister(registrationId, deletedBy) {
     try {
       const registration = await this.getRegistrationById(registrationId);
-      
+
       // Validate with domain service
-      const validation = ProgramManagementService.validateUnregistration(registrationId, registration);
+      const validation = ProgramManagementService.validateUnregistration(
+        registrationId,
+        registration
+      );
       if (!validation.canUnregister) {
         throw new Error(`Cannot unregister: ${validation.errors.join(', ')}`);
       }
@@ -137,7 +150,7 @@ export class ProgramRepository {
       return {
         success: true,
         requiresRefund: validation.requiresRefund,
-        cancellationFee: validation.cancellationFee
+        cancellationFee: validation.cancellationFee,
       };
     } catch (error) {
       console.error(`Failed to unregister registration with ID ${registrationId}:`, error);
@@ -150,9 +163,12 @@ export class ProgramRepository {
    */
   async recordAttendance(registrationId, createdBy) {
     const existingAttendance = await this.getAttendanceForRegistrations([registrationId]);
-    
+
     // Validate with domain service
-    const validation = ProgramManagementService.validateAttendanceRecording(registrationId, existingAttendance);
+    const validation = ProgramManagementService.validateAttendanceRecording(
+      registrationId,
+      existingAttendance
+    );
     if (!validation.canRecord) {
       console.warn(`Cannot record attendance: ${validation.errors.join(', ')}`);
       return validation.existingRecord;
@@ -170,9 +186,12 @@ export class ProgramRepository {
    */
   async removeAttendance(registrationId, deletedBy) {
     const existingAttendance = await this.getAttendanceForRegistrations([registrationId]);
-    
+
     // Validate with domain service
-    const validation = ProgramManagementService.validateAttendanceRemoval(registrationId, existingAttendance);
+    const validation = ProgramManagementService.validateAttendanceRemoval(
+      registrationId,
+      existingAttendance
+    );
     if (!validation.canRemove) {
       console.warn(`Cannot remove attendance: ${validation.errors.join(', ')}`);
       return true; // Return true for consistency but log warning

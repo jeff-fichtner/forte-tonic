@@ -1,6 +1,6 @@
 /**
  * Email Value Object
- * 
+ *
  * Immutable value object representing an email address with validation
  */
 
@@ -15,7 +15,7 @@ export class Email {
 
   static isValid(email) {
     if (!email || typeof email !== 'string') return false;
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email.trim());
   }

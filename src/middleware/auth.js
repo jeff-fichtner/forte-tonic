@@ -8,7 +8,7 @@ export const initializeUserContext = async (req, res, next) => {
   try {
     // Service container handles all repository and service instances
     // No need to inject repositories into request anymore
-    
+
     // TODO: Implement proper authentication when auth system is ready
     // For now, use a test user for development/testing
     const signedInEmail = 'test@example.com';

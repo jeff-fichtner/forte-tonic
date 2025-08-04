@@ -1,6 +1,6 @@
 /**
  * Registration Application Service
- * 
+ *
  * Coordinates registration operations between domain services, repositories,
  * and external services. Handles the application workflow for registration
  * processes including validation, conflict checking, and persistence.
@@ -29,7 +29,8 @@ export class RegistrationApplicationService {
       console.log('🎵 Processing new registration');
 
       // Step 1: Validate basic registration data
-      const basicValidation = RegistrationValidationService.validateRegistrationData(registrationData);
+      const basicValidation =
+        RegistrationValidationService.validateRegistrationData(registrationData);
       if (!basicValidation.isValid) {
         throw new Error(`Registration validation failed: ${basicValidation.errors.join(', ')}`);
       }
@@ -38,7 +39,9 @@ export class RegistrationApplicationService {
       const [student, instructor, groupClass] = await Promise.all([
         this.userRepository.getStudentById(registrationData.studentId),
         this.userRepository.getInstructorById(registrationData.instructorId),
-        registrationData.classId ? this.programRepository.getClassById(registrationData.classId) : null
+        registrationData.classId
+          ? this.programRepository.getClassById(registrationData.classId)
+          : null,
       ]);
 
       if (!student) {
@@ -50,15 +53,18 @@ export class RegistrationApplicationService {
       }
 
       // Step 3: Student enrollment eligibility check
-      const eligibility = StudentManagementService.validateEnrollmentEligibility(student, registrationData);
+      const eligibility = StudentManagementService.validateEnrollmentEligibility(
+        student,
+        registrationData
+      );
       if (!eligibility.isEligible) {
         throw new Error(`Student not eligible for enrollment: ${eligibility.errors.join(', ')}`);
       }
 
       // Step 4: Program-specific validation
       const programValidation = ProgramManagementService.validateRegistration(
-        registrationData, 
-        groupClass, 
+        registrationData,
+        groupClass,
         instructor
       );
       if (!programValidation.isValid) {
@@ -73,7 +79,9 @@ export class RegistrationApplicationService {
       );
 
       if (conflictCheck.hasConflicts) {
-        throw new Error(`Registration conflicts detected: ${conflictCheck.conflicts.map(c => c.message).join('; ')}`);
+        throw new Error(
+          `Registration conflicts detected: ${conflictCheck.conflicts.map(c => c.message).join('; ')}`
+        );
       }
 
       // Step 6: Create domain entity
@@ -93,12 +101,14 @@ export class RegistrationApplicationService {
           transportationType: registrationData.transportationType,
           notes: registrationData.notes,
           expectedStartDate: registrationData.expectedStartDate,
-          registeredBy: userId
+          registeredBy: userId,
         }
       );
 
       // Step 7: Persist the registration
-      const persistedRegistration = await this.registrationRepository.create(registrationEntity.toDataObject());
+      const persistedRegistration = await this.registrationRepository.create(
+        registrationEntity.toDataObject()
+      );
 
       // Step 8: Audit logging
       if (this.auditService) {
@@ -114,12 +124,11 @@ export class RegistrationApplicationService {
         success: true,
         registration: persistedRegistration,
         enrollmentInfo: eligibility,
-        lessonSchedule: registrationEntity.generateLessonSchedule()
+        lessonSchedule: registrationEntity.generateLessonSchedule(),
       };
-
     } catch (error) {
       console.error('❌ Registration processing failed:', error);
-      
+
       // Audit failure
       if (this.auditService) {
         await this.auditService.logRegistrationFailed(registrationData, error.message, userId);
@@ -161,7 +170,7 @@ export class RegistrationApplicationService {
       // Get student and instructor for notifications
       const [student, instructor] = await Promise.all([
         this.userRepository.getStudentById(registration.studentId.value),
-        this.userRepository.getInstructorById(registration.instructorId.value)
+        this.userRepository.getInstructorById(registration.instructorId.value),
       ]);
 
       // Audit logging
@@ -178,9 +187,8 @@ export class RegistrationApplicationService {
         success: true,
         cancellationInfo: cancellationCheck,
         refundEligible: cancellationCheck.refundEligible,
-        cancellationFee: cancellationCheck.cancellationFee
+        cancellationFee: cancellationCheck.cancellationFee,
       };
-
     } catch (error) {
       console.error('❌ Registration cancellation failed:', error);
       throw error;
@@ -203,7 +211,7 @@ export class RegistrationApplicationService {
       const [student, instructor, groupClass] = await Promise.all([
         this.userRepository.getStudentById(registration.studentId.value),
         this.userRepository.getInstructorById(registration.instructorId.value),
-        registration.classId ? this.programRepository.getClassById(registration.classId) : null
+        registration.classId ? this.programRepository.getClassById(registration.classId) : null,
       ]);
 
       return {
@@ -216,9 +224,8 @@ export class RegistrationApplicationService {
         canModify: registration.canBeModified(),
         cancellationInfo: registration.canBeCancelled(),
         totalCost: registration.calculateLessonCost(),
-        requiresTransportation: registration.requiresTransportation()
+        requiresTransportation: registration.requiresTransportation(),
       };
-
     } catch (error) {
       console.error('❌ Failed to get registration details:', error);
       throw error;
@@ -231,24 +238,25 @@ export class RegistrationApplicationService {
   async getStudentRegistrations(studentId) {
     try {
       const registrations = await this.registrationRepository.findByStudentId(studentId);
-      
+
       const enrichedRegistrations = await Promise.all(
-        registrations.map(async (regData) => {
+        registrations.map(async regData => {
           const registration = Registration.fromDataObject(regData);
-          const instructor = await this.userRepository.getInstructorById(registration.instructorId.value);
-          
+          const instructor = await this.userRepository.getInstructorById(
+            registration.instructorId.value
+          );
+
           return {
             ...registration.toDataObject(),
             instructor,
             nextLessonDate: registration.getNextLessonDate(),
             canModify: registration.canBeModified(),
-            totalCost: registration.calculateLessonCost()
+            totalCost: registration.calculateLessonCost(),
           };
         })
       );
 
       return enrichedRegistrations;
-
     } catch (error) {
       console.error('❌ Failed to get student registrations:', error);
       throw error;
@@ -270,7 +278,7 @@ export class RegistrationApplicationService {
           this.emailClient.sendEmail({
             to: student.email,
             subject: 'Registration Confirmation - Tonic Music Program',
-            html: this.#generateConfirmationEmail(registration, student, instructor)
+            html: this.#generateConfirmationEmail(registration, student, instructor),
           })
         );
       }
@@ -281,14 +289,13 @@ export class RegistrationApplicationService {
           this.emailClient.sendEmail({
             to: instructor.email,
             subject: 'New Student Registration - Tonic Music Program',
-            html: this.#generateInstructorNotificationEmail(registration, student, instructor)
+            html: this.#generateInstructorNotificationEmail(registration, student, instructor),
           })
         );
       }
 
       await Promise.all(emailPromises);
       console.log('📧 Registration confirmation emails sent');
-
     } catch (error) {
       console.error('❌ Failed to send confirmation emails:', error);
       // Don't throw - email failure shouldn't fail the registration
@@ -310,7 +317,7 @@ export class RegistrationApplicationService {
           this.emailClient.sendEmail({
             to: student.email,
             subject: 'Registration Cancelled - Tonic Music Program',
-            html: this.#generateCancellationEmail(registration, student, reason)
+            html: this.#generateCancellationEmail(registration, student, reason),
           })
         );
       }
@@ -321,14 +328,13 @@ export class RegistrationApplicationService {
           this.emailClient.sendEmail({
             to: instructor.email,
             subject: 'Student Registration Cancelled - Tonic Music Program',
-            html: this.#generateInstructorCancellationEmail(registration, student, reason)
+            html: this.#generateInstructorCancellationEmail(registration, student, reason),
           })
         );
       }
 
       await Promise.all(emailPromises);
       console.log('📧 Cancellation notification emails sent');
-
     } catch (error) {
       console.error('❌ Failed to send cancellation emails:', error);
     }
@@ -420,7 +426,7 @@ export class RegistrationApplicationService {
       success: false,
       status: 'pending_approval',
       message: 'Cancellation requires managerial approval due to timing constraints',
-      approvalRequired: true
+      approvalRequired: true,
     };
   }
 
@@ -436,37 +442,43 @@ export class RegistrationApplicationService {
 
       // Enrich registrations with student and instructor details
       const enrichedRegistrations = await Promise.all(
-        registrations.map(async (registration) => {
+        registrations.map(async registration => {
           const [student, instructor, groupClass] = await Promise.all([
             this.userRepository.getStudentById(registration.studentId),
             this.userRepository.getInstructorById(registration.instructorId),
-            registration.classId ? this.programRepository.getClassById(registration.classId) : null
+            registration.classId ? this.programRepository.getClassById(registration.classId) : null,
           ]);
 
           return {
             ...registration,
-            student: student ? {
-              id: student.id,
-              firstName: student.firstName,
-              lastName: student.lastName,
-              email: student.email,
-              grade: student.grade
-            } : null,
-            instructor: instructor ? {
-              id: instructor.id,
-              firstName: instructor.firstName,
-              lastName: instructor.lastName,
-              email: instructor.email
-            } : null,
-            class: groupClass ? {
-              id: groupClass.id,
-              name: groupClass.name,
-              instrument: groupClass.instrument,
-              capacity: groupClass.capacity
-            } : null,
+            student: student
+              ? {
+                  id: student.id,
+                  firstName: student.firstName,
+                  lastName: student.lastName,
+                  email: student.email,
+                  grade: student.grade,
+                }
+              : null,
+            instructor: instructor
+              ? {
+                  id: instructor.id,
+                  firstName: instructor.firstName,
+                  lastName: instructor.lastName,
+                  email: instructor.email,
+                }
+              : null,
+            class: groupClass
+              ? {
+                  id: groupClass.id,
+                  name: groupClass.name,
+                  instrument: groupClass.instrument,
+                  capacity: groupClass.capacity,
+                }
+              : null,
             // Add business logic flags
             hasConflicts: false, // TODO: Implement conflict detection
-            isActive: registration.status === 'active'
+            isActive: registration.status === 'active',
           };
         })
       );
@@ -477,9 +489,8 @@ export class RegistrationApplicationService {
         registrations: enrichedRegistrations,
         totalCount: enrichedRegistrations.length,
         page: options.page || 1,
-        pageSize: options.pageSize || 10
+        pageSize: options.pageSize || 10,
       };
-
     } catch (error) {
       console.error('❌ Error getting registrations:', error);
       throw error;

@@ -1,7 +1,7 @@
 /**
  * Registration Controller - Application layer API endpoints for program registration management
  * Handles classes, registrations, rooms, and registration lifecycle
- * 
+ *
  * Updated to use Domain-Driven Design architecture with service container
  * and application services for business logic coordination.
  */
@@ -33,7 +33,7 @@ export class RegistrationController {
       const request = req.body || {};
 
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
-      
+
       const options = {
         studentId: request.studentId,
         classId: request.classId,
@@ -43,26 +43,29 @@ export class RegistrationController {
         trimester: request.trimester,
         isActive: request.isActive,
         page: request.page || 1,
-        pageSize: request.pageSize || 50,  // Increased from 10 to 50
+        pageSize: request.pageSize || 50, // Increased from 10 to 50
         sortBy: request.sortBy || 'registeredAt',
-        sortOrder: request.sortOrder || 'desc'
+        sortOrder: request.sortOrder || 'desc',
       };
 
       // Get registrations through application service
       const result = await registrationApplicationService.getRegistrations(options);
 
       // For backward compatibility with existing pagination format
-      const legacyResult = _fetchData(() => result.registrations, request.page || 0, request.pageSize || 50);
+      const legacyResult = _fetchData(
+        () => result.registrations,
+        request.page || 0,
+        request.pageSize || 50
+      );
 
       // Enhance with domain insights
       legacyResult.domainInsights = {
         totalActive: result.registrations.filter(r => r.isActive).length,
         totalByType: RegistrationController.#groupByRegistrationType(result.registrations),
-        totalConflicts: result.registrations.filter(r => r.hasConflicts).length
+        totalConflicts: result.registrations.filter(r => r.hasConflicts).length,
       };
 
       res.json(legacyResult);
-
     } catch (error) {
       console.error('Error getting registrations:', error);
       res.status(500).json({ error: error.message });
@@ -105,11 +108,14 @@ export class RegistrationController {
       const registrationData = {
         ...requestData,
         schoolYear: requestData.schoolYear || '2025-2026',
-        trimester: requestData.trimester || 'Fall'
+        trimester: requestData.trimester || 'Fall',
       };
 
       // Process registration through application service
-      const result = await registrationApplicationService.processRegistration(registrationData, userId);
+      const result = await registrationApplicationService.processRegistration(
+        registrationData,
+        userId
+      );
 
       // Return enriched response
       res.status(201).json({
@@ -127,11 +133,10 @@ export class RegistrationController {
           registeredAt: result.registeredAt,
           canMarkAttendance: result.canMarkAttendance,
           validationResults: result.validationResults,
-          conflictAnalysis: result.conflictAnalysis
+          conflictAnalysis: result.conflictAnalysis,
         },
         timestamp: new Date().toISOString(),
       });
-
     } catch (error) {
       console.error('Error creating registration:', error);
       res.status(400).json({
@@ -153,19 +158,22 @@ export class RegistrationController {
 
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
 
-      const result = await registrationApplicationService.updateRegistration(registrationId, updates, userId);
+      const result = await registrationApplicationService.updateRegistration(
+        registrationId,
+        updates,
+        userId
+      );
 
       res.json({
         success: true,
         message: 'Registration updated successfully',
-        data: result
+        data: result,
       });
-
     } catch (error) {
       console.error('Error updating registration:', error);
       res.status(400).json({
         success: false,
-        error: error.message
+        error: error.message,
       });
     }
   }
@@ -181,19 +189,22 @@ export class RegistrationController {
 
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
 
-      const result = await registrationApplicationService.cancelRegistration(registrationId, reason, userId);
+      const result = await registrationApplicationService.cancelRegistration(
+        registrationId,
+        reason,
+        userId
+      );
 
       res.json({
         success: true,
         message: 'Registration cancelled successfully',
-        data: result
+        data: result,
       });
-
     } catch (error) {
       console.error('Error cancelling registration:', error);
       res.status(400).json({
         success: false,
-        error: error.message
+        error: error.message,
       });
     }
   }
@@ -207,13 +218,13 @@ export class RegistrationController {
 
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
 
-      const validation = await registrationApplicationService.validateRegistration(registrationData);
+      const validation =
+        await registrationApplicationService.validateRegistration(registrationData);
 
       res.json({
         success: true,
-        data: validation
+        data: validation,
       });
-
     } catch (error) {
       console.error('Error validating registration:', error);
       res.status(500).json({ error: error.message });
@@ -233,9 +244,8 @@ export class RegistrationController {
 
       res.json({
         success: true,
-        data: conflicts
+        data: conflicts,
       });
-
     } catch (error) {
       console.error('Error getting registration conflicts:', error);
       res.status(500).json({ error: error.message });
@@ -260,14 +270,16 @@ export class RegistrationController {
         instructorId,
         registrationType,
         schoolYear: '2025-2026',
-        trimester: 'Fall'
+        trimester: 'Fall',
       };
 
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
-      const result = await registrationApplicationService.processRegistration(registrationData, userId);
+      const result = await registrationApplicationService.processRegistration(
+        registrationData,
+        userId
+      );
 
       res.json({ success: true, registration: result });
-
     } catch (error) {
       console.error('Error registering student:', error);
       res.status(500).json({ error: error.message });
@@ -287,10 +299,13 @@ export class RegistrationController {
       }
 
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
-      await registrationApplicationService.cancelRegistration(registrationId, 'Unregistered via legacy endpoint', userId);
+      await registrationApplicationService.cancelRegistration(
+        registrationId,
+        'Unregistered via legacy endpoint',
+        userId
+      );
 
       res.json({ success: true, message: 'Registration removed' });
-
     } catch (error) {
       console.error('Error unregistering student:', error);
       res.status(500).json({ error: error.message });

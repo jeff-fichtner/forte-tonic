@@ -1,14 +1,14 @@
 /**
  * ⚠️  NOT PRODUCTION READY - ARCHIVED ⚠️
- * 
+ *
  * Google Apps Script Migration 002: Add Class Names to Registration
- * 
+ *
  * ARCHIVED: This migration has been moved to archive as it's not production ready.
  * Do not use this migration in production environments.
- * 
+ *
  * This script adds class names to registration records based on class IDs.
  * It's a data migration that populates missing className fields.
- * 
+ *
  * To use:
  * 1. Open your Google Sheets document
  * 2. Go to Extensions > Apps Script
@@ -60,16 +60,16 @@ class AddClassNamesToRegistrationMigration {
     console.log('⚠️  WARNING: This migration is NOT PRODUCTION READY');
     console.log('🔍 MIGRATION PREVIEW: Add Class Names to Registration');
     console.log('==================================================');
-    
+
     try {
       const registrationsSheet = this.spreadsheet.getSheetByName('registrations');
       const classesSheet = this.spreadsheet.getSheetByName('classes');
-      
+
       if (!registrationsSheet) {
         console.log('❌ Error: "registrations" sheet not found');
         return;
       }
-      
+
       if (!classesSheet) {
         console.log('❌ Error: "classes" sheet not found');
         return;
@@ -100,10 +100,16 @@ class AddClassNamesToRegistrationMigration {
       const classTitleCol = classHeaders.findIndex(h => h === 'Title');
 
       console.log(`📍 Column mappings:`);
-      console.log(`   Registration ClassId column: ${regClassIdCol >= 0 ? regClassIdCol + 1 : 'NOT FOUND'}`);
-      console.log(`   Registration ClassName column: ${regClassNameCol >= 0 ? regClassNameCol + 1 : 'NOT FOUND'}`);
+      console.log(
+        `   Registration ClassId column: ${regClassIdCol >= 0 ? regClassIdCol + 1 : 'NOT FOUND'}`
+      );
+      console.log(
+        `   Registration ClassName column: ${regClassNameCol >= 0 ? regClassNameCol + 1 : 'NOT FOUND'}`
+      );
       console.log(`   Classes Id column: ${classIdCol >= 0 ? classIdCol + 1 : 'NOT FOUND'}`);
-      console.log(`   Classes Title column: ${classTitleCol >= 0 ? classTitleCol + 1 : 'NOT FOUND'}`);
+      console.log(
+        `   Classes Title column: ${classTitleCol >= 0 ? classTitleCol + 1 : 'NOT FOUND'}`
+      );
 
       if (regClassIdCol < 0) {
         console.log('❌ Error: Could not find ClassId column in registrations sheet');
@@ -151,8 +157,12 @@ class AddClassNamesToRegistrationMigration {
 
       console.log('\n📊 ANALYSIS RESULTS:');
       console.log(`   📝 Registrations that will be updated: ${registrationsToUpdate}`);
-      console.log(`   ✅ Registrations already have class names: ${registrationsAlreadyHaveClassName}`);
-      console.log(`   ⚠️  Registrations with missing class references: ${registrationsWithMissingClass}`);
+      console.log(
+        `   ✅ Registrations already have class names: ${registrationsAlreadyHaveClassName}`
+      );
+      console.log(
+        `   ⚠️  Registrations with missing class references: ${registrationsWithMissingClass}`
+      );
       console.log(`   📋 Total registrations analyzed: ${registrationsData.length - 1}`);
 
       if (registrationsToUpdate === 0) {
@@ -167,10 +177,11 @@ class AddClassNamesToRegistrationMigration {
 
       if (registrationsWithMissingClass > 0) {
         console.log('\n⚠️  Warning:');
-        console.log(`   • ${registrationsWithMissingClass} registrations reference classes that don't exist`);
+        console.log(
+          `   • ${registrationsWithMissingClass} registrations reference classes that don't exist`
+        );
         console.log('   • These will be skipped during the migration');
       }
-
     } catch (error) {
       console.error('❌ Preview failed:', error.toString());
     }
@@ -183,7 +194,7 @@ class AddClassNamesToRegistrationMigration {
     console.log('⚠️  WARNING: This migration is NOT PRODUCTION READY');
     console.log('🚀 EXECUTING MIGRATION: Add Class Names to Registration');
     console.log('====================================================');
-    
+
     // Prevent execution of non-production ready migration
     console.log('❌ EXECUTION BLOCKED: This migration is archived and not production ready');
     console.log('Please use a different migration or update this one before proceeding.');
@@ -197,7 +208,7 @@ class AddClassNamesToRegistrationMigration {
     console.log('⚠️  WARNING: This migration is NOT PRODUCTION READY');
     console.log('🔄 ROLLING BACK MIGRATION: Add Class Names to Registration');
     console.log('=========================================================');
-    
+
     console.log('❌ ROLLBACK BLOCKED: This migration is archived and not production ready');
     return false;
   }
@@ -211,40 +222,44 @@ function validateSheetsForClassNameMigration() {
   console.log('⚠️  WARNING: This migration is NOT PRODUCTION READY');
   console.log('🔍 VALIDATING SHEET STRUCTURE');
   console.log('=============================');
-  
+
   // TODO: Replace with your actual spreadsheet ID
-  const spreadsheetId = "YOUR_SPREADSHEET_ID_HERE";
+  const spreadsheetId = 'YOUR_SPREADSHEET_ID_HERE';
   const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
-    
+
   const registrationsSheet = spreadsheet.getSheetByName('registrations');
   const classesSheet = spreadsheet.getSheetByName('classes');
-  
+
   let isValid = true;
-  
+
   // Check registrations sheet
   if (!registrationsSheet) {
     console.log('❌ Missing: "registrations" sheet');
     isValid = false;
   } else {
-    const regHeaders = registrationsSheet.getRange(1, 1, 1, registrationsSheet.getLastColumn()).getValues()[0];
+    const regHeaders = registrationsSheet
+      .getRange(1, 1, 1, registrationsSheet.getLastColumn())
+      .getValues()[0];
     console.log('✅ Found "registrations" sheet');
     console.log(`   Headers: ${regHeaders.join(', ')}`);
-    
+
     if (!regHeaders.includes('ClassId')) {
       console.log('⚠️  Warning: No "ClassId" column found in registrations');
       isValid = false;
     }
   }
-  
+
   // Check classes sheet
   if (!classesSheet) {
     console.log('❌ Missing: "classes" sheet');
     isValid = false;
   } else {
-    const classHeaders = classesSheet.getRange(1, 1, 1, classesSheet.getLastColumn()).getValues()[0];
+    const classHeaders = classesSheet
+      .getRange(1, 1, 1, classesSheet.getLastColumn())
+      .getValues()[0];
     console.log('✅ Found "classes" sheet');
     console.log(`   Headers: ${classHeaders.join(', ')}`);
-    
+
     if (!classHeaders.includes('Id')) {
       console.log('⚠️  Warning: No "Id" column found in classes');
       isValid = false;
@@ -254,7 +269,9 @@ function validateSheetsForClassNameMigration() {
       isValid = false;
     }
   }
-  
-  console.log('\n' + (isValid ? '✅ Sheet structure is valid for migration' : '❌ Sheet structure has issues'));
+
+  console.log(
+    '\n' + (isValid ? '✅ Sheet structure is valid for migration' : '❌ Sheet structure has issues')
+  );
   return isValid;
 }

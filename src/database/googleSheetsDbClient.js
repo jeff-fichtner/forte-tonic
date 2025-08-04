@@ -241,10 +241,7 @@ export class GoogleSheetsDbClient {
 
     // Cache miss, load fresh data
     this.logger.log('🔄', `Loading fresh data for ${sheetKey}`);
-    const data = await this.getAllRecords(
-      sheetKey,
-      mapFunc || (row => row)
-    );
+    const data = await this.getAllRecords(sheetKey, mapFunc || (row => row));
 
     // Cache the results
     this.cache.set(sheetKey, data);

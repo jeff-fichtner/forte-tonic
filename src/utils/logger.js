@@ -10,7 +10,7 @@ export const LogLevel = {
   ERROR: 'error',
   WARN: 'warn',
   INFO: 'info',
-  DEBUG: 'debug'
+  DEBUG: 'debug',
 };
 
 /**
@@ -20,7 +20,7 @@ export const NodeEnv = {
   PRODUCTION: 'production',
   STAGING: 'staging',
   DEVELOPMENT: 'development',
-  TEST: 'test'
+  TEST: 'test',
 };
 
 /**
@@ -33,7 +33,7 @@ export class Logger {
       [LogLevel.ERROR]: 0,
       [LogLevel.WARN]: 1,
       [LogLevel.INFO]: 2,
-      [LogLevel.DEBUG]: 3
+      [LogLevel.DEBUG]: 3,
     };
   }
 

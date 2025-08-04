@@ -1,14 +1,14 @@
 /**
  * Tonic Google Apps Script Project
- * 
+ *
  * This project contains Google Apps Script migrations and utilities
  * for managing the Tonic Google Sheets database.
- * 
+ *
  * Main Functions:
  * - Database migrations for structural improvements
  * - Data processing and cleanup utilities
  * - Parent/student relationship management
- * 
+ *
  * Usage:
  * 1. Run preview functions first to see what will change
  * 2. Execute migrations to apply changes
@@ -54,25 +54,25 @@ function getProjectInfo() {
 function checkSpreadsheetHealth() {
   console.log('🔍 SPREADSHEET HEALTH CHECK');
   console.log('===========================');
-  
+
   try {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     console.log(`📊 Spreadsheet: ${spreadsheet.getName()}`);
     console.log(`🔗 URL: ${spreadsheet.getUrl()}`);
-    
+
     const sheets = spreadsheet.getSheets();
     console.log(`\\n📋 Found ${sheets.length} sheets:`);
-    
+
     sheets.forEach((sheet, index) => {
       const rows = sheet.getLastRow();
       const cols = sheet.getLastColumn();
       console.log(`   ${index + 1}. ${sheet.getName()} (${rows} rows × ${cols} columns)`);
     });
-    
+
     // Check for key sheets
     const keySheets = ['students', 'parents', 'instructors', 'registrations', 'classes'];
     console.log('\\n🔑 Key Sheets Status:');
-    
+
     keySheets.forEach(sheetName => {
       const sheet = spreadsheet.getSheetByName(sheetName);
       if (sheet) {
@@ -82,9 +82,8 @@ function checkSpreadsheetHealth() {
         console.log(`   ❌ ${sheetName}: NOT FOUND`);
       }
     });
-    
+
     console.log('\\n✅ Health check completed');
-    
   } catch (error) {
     console.error('❌ Health check failed:', error.toString());
   }
@@ -96,19 +95,18 @@ function checkSpreadsheetHealth() {
 function previewAllMigrations() {
   console.log('🔍 PREVIEW ALL MIGRATIONS');
   console.log('=========================');
-  
+
   try {
     console.log('\\n--- Migration 001: Structural Improvements ---');
     previewStructuralImprovements();
-    
+
     console.log('\\n--- Migration 002: Add Class Names to Registration ---');
     previewAddClassNamesToRegistration();
-    
+
     console.log('\\n--- Migration 003: Process Parents ---');
     previewProcessParents();
-    
+
     console.log('\\n✅ All migration previews completed');
-    
   } catch (error) {
     console.error('❌ Preview all migrations failed:', error.toString());
   }
@@ -138,27 +136,36 @@ function createBackupReminder() {
  */
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
-  
+
   ui.createMenu('Tonic Migrations')
     .addItem('📋 Project Info', 'getProjectInfo')
     .addItem('🔍 Health Check', 'checkSpreadsheetHealth')
     .addSeparator()
-    .addSubMenu(ui.createMenu('Preview Migrations')
-      .addItem('Preview All', 'previewAllMigrations')
-      .addSeparator()
-      .addItem('001: Structural Improvements', 'previewStructuralImprovements')
-      .addItem('002: Add Class Names', 'previewAddClassNamesToRegistration')
-      .addItem('003: Process Parents', 'previewProcessParents'))
+    .addSubMenu(
+      ui
+        .createMenu('Preview Migrations')
+        .addItem('Preview All', 'previewAllMigrations')
+        .addSeparator()
+        .addItem('001: Structural Improvements', 'previewStructuralImprovements')
+        .addItem('002: Add Class Names', 'previewAddClassNamesToRegistration')
+        .addItem('003: Process Parents', 'previewProcessParents')
+    )
     .addSeparator()
-    .addSubMenu(ui.createMenu('Run Migrations')
-      .addItem('⚠️ Backup Reminder', 'createBackupReminder')
-      .addSeparator()
-      .addItem('001: Structural Improvements', 'runStructuralImprovements')
-      .addItem('002: Add Class Names', 'runAddClassNamesToRegistration')
-      .addItem('003: Process Parents', 'runProcessParents'))
-    .addSubMenu(ui.createMenu('Rollback Migrations')
-      .addItem('001: Rollback Structural', 'rollbackStructuralImprovements')
-      .addItem('002: Rollback Class Names', 'rollbackAddClassNamesToRegistration')
-      .addItem('003: Rollback Parents', 'rollbackProcessParents'))
+    .addSubMenu(
+      ui
+        .createMenu('Run Migrations')
+        .addItem('⚠️ Backup Reminder', 'createBackupReminder')
+        .addSeparator()
+        .addItem('001: Structural Improvements', 'runStructuralImprovements')
+        .addItem('002: Add Class Names', 'runAddClassNamesToRegistration')
+        .addItem('003: Process Parents', 'runProcessParents')
+    )
+    .addSubMenu(
+      ui
+        .createMenu('Rollback Migrations')
+        .addItem('001: Rollback Structural', 'rollbackStructuralImprovements')
+        .addItem('002: Rollback Class Names', 'rollbackAddClassNamesToRegistration')
+        .addItem('003: Rollback Parents', 'rollbackProcessParents')
+    )
     .addToUi();
 }

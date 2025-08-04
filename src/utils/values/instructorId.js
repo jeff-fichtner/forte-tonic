@@ -1,6 +1,6 @@
 /**
  * Instructor ID Value Object
- * 
+ *
  * Immutable value object representing an instructor identifier
  */
 

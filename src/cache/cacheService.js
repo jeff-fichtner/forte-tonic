@@ -1,6 +1,6 @@
 /**
  * Cache Service
- * 
+ *
  * In-memory cache implementation for application data caching
  * with TTL support and cache statistics.
  */
@@ -14,7 +14,7 @@ export class CacheService {
       misses: 0,
       sets: 0,
       deletes: 0,
-      evictions: 0
+      evictions: 0,
     };
     this.maxSize = 1000; // Maximum number of cache entries
   }
@@ -40,7 +40,7 @@ export class CacheService {
         value,
         timestamp: Date.now(),
         ttl: ttlMs,
-        hits: 0
+        hits: 0,
       };
 
       this.cache.set(key, entry);
@@ -52,7 +52,7 @@ export class CacheService {
           this.delete(key);
           this.stats.evictions++;
         }, ttlMs);
-        
+
         this.timers.set(key, timer);
       }
 
@@ -69,14 +69,14 @@ export class CacheService {
   get(key) {
     try {
       const entry = this.cache.get(key);
-      
+
       if (!entry) {
         this.stats.misses++;
         return null;
       }
 
       // Check if entry has expired
-      if (entry.ttl && (Date.now() - entry.timestamp) > entry.ttl) {
+      if (entry.ttl && Date.now() - entry.timestamp > entry.ttl) {
         this.delete(key);
         this.stats.misses++;
         this.stats.evictions++;
@@ -101,7 +101,7 @@ export class CacheService {
   delete(key) {
     try {
       const deleted = this.cache.delete(key);
-      
+
       if (this.timers.has(key)) {
         clearTimeout(this.timers.get(key));
         this.timers.delete(key);
@@ -123,11 +123,11 @@ export class CacheService {
    */
   has(key) {
     const entry = this.cache.get(key);
-    
+
     if (!entry) return false;
 
     // Check if expired
-    if (entry.ttl && (Date.now() - entry.timestamp) > entry.ttl) {
+    if (entry.ttl && Date.now() - entry.timestamp > entry.ttl) {
       this.delete(key);
       return false;
     }
@@ -143,19 +143,20 @@ export class CacheService {
     for (const timer of this.timers.values()) {
       clearTimeout(timer);
     }
-    
+
     this.cache.clear();
     this.timers.clear();
-    
+
     // Reset stats except for historical data
-    const totalOperations = this.stats.hits + this.stats.misses + this.stats.sets + this.stats.deletes;
+    const totalOperations =
+      this.stats.hits + this.stats.misses + this.stats.sets + this.stats.deletes;
     this.stats = {
       hits: 0,
       misses: 0,
       sets: 0,
       deletes: 0,
       evictions: this.stats.evictions,
-      totalHistoricalOperations: (this.stats.totalHistoricalOperations || 0) + totalOperations
+      totalHistoricalOperations: (this.stats.totalHistoricalOperations || 0) + totalOperations,
     };
 
     return true;
@@ -166,14 +167,14 @@ export class CacheService {
    */
   getStats() {
     const totalRequests = this.stats.hits + this.stats.misses;
-    const hitRate = totalRequests > 0 ? (this.stats.hits / totalRequests * 100).toFixed(2) : 0;
+    const hitRate = totalRequests > 0 ? ((this.stats.hits / totalRequests) * 100).toFixed(2) : 0;
 
     return {
       ...this.stats,
       size: this.cache.size,
       maxSize: this.maxSize,
       hitRate: `${hitRate}%`,
-      memoryUsage: this.#estimateMemoryUsage()
+      memoryUsage: this.#estimateMemoryUsage(),
     };
   }
 
@@ -189,11 +190,11 @@ export class CacheService {
    */
   entries() {
     const entries = [];
-    
+
     for (const [key, entry] of this.cache.entries()) {
       // Check if expired
-      const isExpired = entry.ttl && (Date.now() - entry.timestamp) > entry.ttl;
-      
+      const isExpired = entry.ttl && Date.now() - entry.timestamp > entry.ttl;
+
       entries.push({
         key,
         value: entry.value,
@@ -201,7 +202,7 @@ export class CacheService {
         ttl: entry.ttl,
         hits: entry.hits,
         isExpired,
-        age: Date.now() - entry.timestamp
+        age: Date.now() - entry.timestamp,
       });
     }
 
@@ -213,7 +214,7 @@ export class CacheService {
    */
   setMaxSize(maxSize) {
     this.maxSize = maxSize;
-    
+
     // Evict entries if current size exceeds new max
     while (this.cache.size > this.maxSize) {
       this.#evictOldestEntry();
@@ -225,9 +226,9 @@ export class CacheService {
    */
   cleanup() {
     let cleaned = 0;
-    
+
     for (const [key, entry] of this.cache.entries()) {
-      if (entry.ttl && (Date.now() - entry.timestamp) > entry.ttl) {
+      if (entry.ttl && Date.now() - entry.timestamp > entry.ttl) {
         this.delete(key);
         cleaned++;
       }
@@ -244,10 +245,10 @@ export class CacheService {
     for (const timer of this.timers.values()) {
       clearTimeout(timer);
     }
-    
+
     this.timers.clear();
     this.cache.clear();
-    
+
     console.log('💾 Cache service shutdown complete');
   }
 
@@ -278,7 +279,7 @@ export class CacheService {
     try {
       // Rough estimation - not perfectly accurate but useful for monitoring
       let totalSize = 0;
-      
+
       for (const [key, entry] of this.cache.entries()) {
         totalSize += JSON.stringify(key).length;
         totalSize += JSON.stringify(entry.value).length;

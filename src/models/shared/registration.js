@@ -1,6 +1,6 @@
 /**
  * Registration Domain Entity - rich domain model with business behavior
- * 
+ *
  * This represents a registration in the domain layer with business logic
  * and validation rules embedded within the entity itself.
  */
@@ -13,7 +13,7 @@ import { LessonTime } from '../../utils/values/lessonTime.js';
 export class Registration {
   constructor(data) {
     this.#validateConstructorData(data);
-    
+
     this.id = data.id;
     this.studentId = new StudentId(data.studentId);
     this.instructorId = new InstructorId(data.instructorId);
@@ -40,9 +40,16 @@ export class Registration {
       throw new Error('Registration data is required');
     }
 
-    const required = ['studentId', 'instructorId', 'registrationType', 'day', 'startTime', 'length'];
+    const required = [
+      'studentId',
+      'instructorId',
+      'registrationType',
+      'day',
+      'startTime',
+      'length',
+    ];
     const missing = required.filter(field => !data[field] && data[field] !== 0);
-    
+
     if (missing.length > 0) {
       throw new Error(`Missing required fields: ${missing.join(', ')}`);
     }
@@ -57,15 +64,21 @@ export class Registration {
    */
   conflictsWith(otherRegistration) {
     // Same student cannot be registered twice for the same class
-    if (this.registrationType === RegistrationType.GROUP && 
-        otherRegistration.registrationType === RegistrationType.GROUP) {
-      return this.studentId.equals(otherRegistration.studentId) && 
-             this.classId === otherRegistration.classId;
+    if (
+      this.registrationType === RegistrationType.GROUP &&
+      otherRegistration.registrationType === RegistrationType.GROUP
+    ) {
+      return (
+        this.studentId.equals(otherRegistration.studentId) &&
+        this.classId === otherRegistration.classId
+      );
     }
 
     // For private lessons, check time conflicts for same instructor
-    if (this.instructorId.equals(otherRegistration.instructorId) && 
-        this.day === otherRegistration.day) {
+    if (
+      this.instructorId.equals(otherRegistration.instructorId) &&
+      this.day === otherRegistration.day
+    ) {
       return this.lessonTime.overlapsWith(otherRegistration.lessonTime);
     }
 
@@ -78,7 +91,7 @@ export class Registration {
   canBeModified() {
     const now = new Date();
     const daysDifference = Math.floor((this.expectedStartDate - now) / (1000 * 60 * 60 * 24));
-    
+
     // Cannot modify if lessons have already started or will start within 24 hours
     return daysDifference > 1;
   }
@@ -93,19 +106,19 @@ export class Registration {
 
     const now = new Date();
     const daysDifference = Math.floor((this.expectedStartDate - now) / (1000 * 60 * 60 * 24));
-    
+
     if (daysDifference < 1) {
-      return { 
-        canCancel: false, 
+      return {
+        canCancel: false,
         reason: 'Cannot cancel within 24 hours of start date',
-        requiresManagerialApproval: true
+        requiresManagerialApproval: true,
       };
     }
 
-    return { 
-      canCancel: true, 
+    return {
+      canCancel: true,
       refundEligible: daysDifference >= 7,
-      cancellationFee: daysDifference >= 7 ? 0 : 25
+      cancellationFee: daysDifference >= 7 ? 0 : 25,
     };
   }
 
@@ -121,8 +134,8 @@ export class Registration {
       throw new Error(`Invalid day: ${this.day}`);
     }
 
-    let nextLesson = new Date(Math.max(today, this.expectedStartDate));
-    
+    const nextLesson = new Date(Math.max(today, this.expectedStartDate));
+
     // Find next occurrence of the lesson day
     while (nextLesson.getDay() !== (dayOfWeek + 1) % 7) {
       nextLesson.setDate(nextLesson.getDate() + 1);
@@ -148,8 +161,9 @@ export class Registration {
    * Business rule: Check if transportation is required
    */
   requiresTransportation() {
-    return this.transportationType && 
-           ['pickup', 'dropoff', 'both'].includes(this.transportationType);
+    return (
+      this.transportationType && ['pickup', 'dropoff', 'both'].includes(this.transportationType)
+    );
   }
 
   /**
@@ -157,7 +171,7 @@ export class Registration {
    */
   generateLessonSchedule(numberOfLessons = 12) {
     const lessons = [];
-    let currentDate = this.getNextLessonDate();
+    const currentDate = this.getNextLessonDate();
 
     for (let i = 0; i < numberOfLessons; i++) {
       lessons.push({
@@ -166,7 +180,7 @@ export class Registration {
         startTime: this.lessonTime.startTime,
         endTime: this.lessonTime.endTime,
         duration: this.lessonTime.durationMinutes,
-        cost: this.calculateLessonCost()
+        cost: this.calculateLessonCost(),
       });
 
       // Move to next week
@@ -187,7 +201,7 @@ export class Registration {
       instructorId: this.instructorId.value,
       registrationType: this.registrationType,
       expectedStartDate: this.expectedStartDate,
-      createdAt: this.registeredAt
+      createdAt: this.registeredAt,
     };
   }
 
@@ -200,7 +214,7 @@ export class Registration {
       registrationId: this.id,
       studentId: this.studentId.value,
       reason,
-      cancelledAt: new Date()
+      cancelledAt: new Date(),
     };
   }
 
@@ -225,7 +239,7 @@ export class Registration {
       expectedStartDate: this.expectedStartDate.toISOString(),
       registeredAt: this.registeredAt.toISOString(),
       registeredBy: this.registeredBy,
-      isActive: this.isActive
+      isActive: this.isActive,
     };
   }
 
@@ -257,7 +271,7 @@ export class Registration {
       registrationType,
       roomId,
       schoolYear,
-      createdBy
+      createdBy,
     ] = row;
 
     return new Registration({
@@ -278,16 +292,24 @@ export class Registration {
       notes: null, // Not stored in basic row structure
       expectedStartDate: new Date(), // Default to now if not provided
       registeredAt: new Date(), // Default to now if not provided
-      isActive: true // Default to active
+      isActive: true, // Default to active
     });
   }
 
   /**
    * Factory method: Create new registration
    */
-  static createNew(studentId, instructorId, registrationType, day, startTime, length, options = {}) {
+  static createNew(
+    studentId,
+    instructorId,
+    registrationType,
+    day,
+    startTime,
+    length,
+    options = {}
+  ) {
     const id = options.id || `${studentId}_${instructorId}_${day}_${startTime}`;
-    
+
     return new Registration({
       id,
       studentId,
@@ -303,7 +325,7 @@ export class Registration {
       transportationType: options.transportationType,
       notes: options.notes,
       expectedStartDate: options.expectedStartDate || new Date(),
-      registeredBy: options.registeredBy || 'system'
+      registeredBy: options.registeredBy || 'system',
     });
   }
 }

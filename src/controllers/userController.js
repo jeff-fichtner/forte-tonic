@@ -1,7 +1,7 @@
 /**
  * User Controller - Application layer API endpoints for user management
  * Handles users, students, instructors, admins, and parents
- * 
+ *
  * Updated to use Domain-Driven Design architecture with service container
  * and application services for business logic coordination.
  */
@@ -60,10 +60,10 @@ export class UserController {
   static async getStudents(req, res) {
     try {
       const request = req.body || {};
-      
+
       // Use the student application service for business logic
       const studentApplicationService = serviceContainer.get('studentApplicationService');
-      
+
       const options = {
         searchTerm: request.searchTerm,
         gradeLevel: request.gradeLevel,
@@ -71,39 +71,48 @@ export class UserController {
         hasEmergencyContact: request.hasEmergencyContact,
         parentId: request.parentId,
         page: request.page || 1,
-        pageSize: request.pageSize || 50,  // Increased from 10 to 50 to match repository default
+        pageSize: request.pageSize || 50, // Increased from 10 to 50 to match repository default
         sortBy: request.sortBy || 'lastName',
-        sortOrder: request.sortOrder || 'asc'
+        sortOrder: request.sortOrder || 'asc',
       };
 
       // Get enriched student data through application service
       const result = await studentApplicationService.getStudents(options);
 
       // Transform for UI compatibility with optional parent email enrichment
-      const enrichedStudents = await Promise.all(result.students.map(async student => ({
-        id: student.id,
-        firstName: student.firstNickname || student.firstName,
-        lastName: student.lastNickname || student.lastName,
-        grade: student.grade,
-        ageCategory: student.ageCategory,
-        hasEmergencyContact: student.hasEmergencyContact,
-        eligibilityStatus: student.eligibilityInfo.eligible ? 'eligible' : 'needs-attention',
-        recommendedLessonDuration: student.recommendedLessonDuration,
-        parentEmails: request.includeParentInfo ? await UserController.#getParentEmails(student.id) : undefined
-      })));
+      const enrichedStudents = await Promise.all(
+        result.students.map(async student => ({
+          id: student.id,
+          firstName: student.firstNickname || student.firstName,
+          lastName: student.lastNickname || student.lastName,
+          grade: student.grade,
+          ageCategory: student.ageCategory,
+          hasEmergencyContact: student.hasEmergencyContact,
+          eligibilityStatus: student.eligibilityInfo.eligible ? 'eligible' : 'needs-attention',
+          recommendedLessonDuration: student.recommendedLessonDuration,
+          parentEmails: request.includeParentInfo
+            ? await UserController.#getParentEmails(student.id)
+            : undefined,
+        }))
+      );
 
       // For backward compatibility with existing pagination format
-      const legacyResult = _fetchData(() => enrichedStudents, request.page || 0, request.pageSize || 50);
+      const legacyResult = _fetchData(
+        () => enrichedStudents,
+        request.page || 0,
+        request.pageSize || 50
+      );
 
       // Enhance with domain insights
       legacyResult.domainInsights = {
         totalEligible: result.students.filter(s => s.eligibilityInfo.eligible).length,
         totalWithEmergencyContact: result.students.filter(s => s.hasEmergencyContact).length,
-        averageRecommendedDuration: UserController.#calculateAverageRecommendedDuration(result.students)
+        averageRecommendedDuration: UserController.#calculateAverageRecommendedDuration(
+          result.students
+        ),
       };
 
       res.json(legacyResult);
-
     } catch (error) {
       console.error('Error getting students:', error);
       res.status(500).json({ error: error.message });
@@ -117,14 +126,13 @@ export class UserController {
     try {
       const { studentId } = req.params;
       const studentApplicationService = serviceContainer.get('studentApplicationService');
-      
+
       const details = await studentApplicationService.getStudentDetails(studentId);
-      
+
       res.json({
         success: true,
-        data: details
+        data: details,
       });
-
     } catch (error) {
       console.error('Error getting student details:', error);
       res.status(500).json({ error: error.message });
@@ -141,20 +149,23 @@ export class UserController {
       const userId = req.currentUser?.email || 'system';
 
       const studentApplicationService = serviceContainer.get('studentApplicationService');
-      
-      const result = await studentApplicationService.updateStudentProfile(studentId, updates, userId);
-      
+
+      const result = await studentApplicationService.updateStudentProfile(
+        studentId,
+        updates,
+        userId
+      );
+
       res.json({
         success: true,
         data: result,
-        message: 'Student profile updated successfully'
+        message: 'Student profile updated successfully',
       });
-
     } catch (error) {
       console.error('Error updating student:', error);
-      res.status(400).json({ 
+      res.status(400).json({
         success: false,
-        error: error.message 
+        error: error.message,
       });
     }
   }
@@ -168,20 +179,19 @@ export class UserController {
       const userId = req.currentUser?.email || 'system';
 
       const studentApplicationService = serviceContainer.get('studentApplicationService');
-      
+
       const result = await studentApplicationService.enrollStudent(studentData, userId);
-      
+
       res.status(201).json({
         success: true,
         data: result,
-        message: 'Student enrolled successfully'
+        message: 'Student enrolled successfully',
       });
-
     } catch (error) {
       console.error('Error enrolling student:', error);
-      res.status(400).json({ 
+      res.status(400).json({
         success: false,
-        error: error.message 
+        error: error.message,
       });
     }
   }
@@ -195,14 +205,16 @@ export class UserController {
       const { programType } = req.body;
 
       const studentApplicationService = serviceContainer.get('studentApplicationService');
-      
-      const eligibility = await studentApplicationService.validateProgramEligibility(studentId, programType);
-      
+
+      const eligibility = await studentApplicationService.validateProgramEligibility(
+        studentId,
+        programType
+      );
+
       res.json({
         success: true,
-        data: eligibility
+        data: eligibility,
       });
-
     } catch (error) {
       console.error('Error validating student eligibility:', error);
       res.status(500).json({ error: error.message });
@@ -217,14 +229,13 @@ export class UserController {
       const { studentId } = req.params;
 
       const studentApplicationService = serviceContainer.get('studentApplicationService');
-      
+
       const report = await studentApplicationService.generateProgressReport(studentId);
-      
+
       res.json({
         success: true,
-        data: report
+        data: report,
       });
-
     } catch (error) {
       console.error('Error generating progress report:', error);
       res.status(500).json({ error: error.message });
@@ -238,7 +249,7 @@ export class UserController {
     try {
       const userRepository = serviceContainer.get('userRepository');
       const student = await userRepository.getStudentById(studentId);
-      
+
       if (!student) return '';
 
       const allParents = await userRepository.getParents();
@@ -257,8 +268,11 @@ export class UserController {
    */
   static #calculateAverageRecommendedDuration(students) {
     if (students.length === 0) return 0;
-    
-    const total = students.reduce((sum, student) => sum + (student.recommendedLessonDuration || 0), 0);
+
+    const total = students.reduce(
+      (sum, student) => sum + (student.recommendedLessonDuration || 0),
+      0
+    );
     return Math.round(total / students.length);
   }
 }

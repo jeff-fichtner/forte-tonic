@@ -76,7 +76,7 @@ export class Admin {
    */
   static fromDatabaseRow(row) {
     const [id, email, lastName, firstName, phone] = row;
-    
+
     return new Admin({
       id,
       email,
@@ -86,7 +86,7 @@ export class Admin {
       permissions: [],
       isActive: true,
       lastLoginDate: null,
-      role: 'admin'
+      role: 'admin',
     });
   }
 

@@ -22,7 +22,9 @@ export class UserRepository {
     return await RepositoryHelper.getAndSetData(
       () => this.admins,
       async () =>
-        (this.admins = await this.dbClient.getAllRecords(Keys.ADMINS, x => Admin.fromDatabaseRow(x))),
+        (this.admins = await this.dbClient.getAllRecords(Keys.ADMINS, x =>
+          Admin.fromDatabaseRow(x)
+        )),
       Keys.ADMINS,
       forceRefresh
     );
@@ -94,7 +96,9 @@ export class UserRepository {
     return await RepositoryHelper.getAndSetData(
       () => this.students,
       async () =>
-        (this.students = await this.dbClient.getAllRecords(Keys.STUDENTS, x => Student.fromDatabaseRow(x))),
+        (this.students = await this.dbClient.getAllRecords(Keys.STUDENTS, x =>
+          Student.fromDatabaseRow(x)
+        )),
       Keys.STUDENTS,
       forceRefresh
     );
@@ -115,7 +119,9 @@ export class UserRepository {
     return await RepositoryHelper.getAndSetData(
       () => this.parents,
       async () =>
-        (this.parents = await this.dbClient.getAllRecords(Keys.PARENTS, x => Parent.fromDatabaseRow(x))),
+        (this.parents = await this.dbClient.getAllRecords(Keys.PARENTS, x =>
+          Parent.fromDatabaseRow(x)
+        )),
       Keys.PARENTS,
       forceRefresh
     );
@@ -135,7 +141,8 @@ export class UserRepository {
   async getRooms(forceRefresh = false) {
     return await RepositoryHelper.getAndSetData(
       () => this.rooms,
-      async () => (this.rooms = await this.dbClient.getAllRecords(Keys.ROOMS, x => Room.fromDatabaseRow(x))),
+      async () =>
+        (this.rooms = await this.dbClient.getAllRecords(Keys.ROOMS, x => Room.fromDatabaseRow(x))),
       Keys.ROOMS,
       forceRefresh
     );

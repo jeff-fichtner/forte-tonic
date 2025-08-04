@@ -43,7 +43,7 @@ export class StudentManagementService {
     // Calculate age if birthdate provided
     if (student.birthDate) {
       const age = this.calculateAge(student.birthDate);
-      
+
       // Minimum age requirement (4 years old)
       if (age < 4) {
         errors.push('Student must be at least 4 years old to enroll');
@@ -71,8 +71,23 @@ export class StudentManagementService {
     const errors = [];
 
     if (student.grade) {
-      const validGrades = ['PK', 'K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
-      
+      const validGrades = [
+        'PK',
+        'K',
+        '1',
+        '2',
+        '3',
+        '4',
+        '5',
+        '6',
+        '7',
+        '8',
+        '9',
+        '10',
+        '11',
+        '12',
+      ];
+
       if (!validGrades.includes(student.grade)) {
         errors.push('Invalid grade level');
       }
@@ -184,8 +199,10 @@ export class StudentManagementService {
    */
   static requiresMedicalClearance(registrationData) {
     const physicalActivities = ['dance', 'movement', 'percussion'];
-    return registrationData.instrument && 
-           physicalActivities.includes(registrationData.instrument.toLowerCase());
+    return (
+      registrationData.instrument &&
+      physicalActivities.includes(registrationData.instrument.toLowerCase())
+    );
   }
 
   /**
@@ -195,8 +212,10 @@ export class StudentManagementService {
    */
   static involvesTransportation(registrationData) {
     // For now, assume no transportation unless specified
-    return registrationData.transportationType === 'bus' || 
-           registrationData.transportationType === 'field_trip';
+    return (
+      registrationData.transportationType === 'bus' ||
+      registrationData.transportationType === 'field_trip'
+    );
   }
 
   /**

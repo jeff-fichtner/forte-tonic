@@ -1,18 +1,18 @@
 /**
  * Google Apps Script Migration DEV001: Realistic Fake Data Generation
- * 
+ *
  * DEVELOPMENT MIGRATION - Use only in development/testing environments!
- * 
- * This script replaces all the letter/number fake data (like "Parent 1", "Teacher 11", 
+ *
+ * This script replaces all the letter/number fake data (like "Parent 1", "Teacher 11",
  * "A4 K4-1") with realistic fake names and ensures all relational IDs are properly updated.
- * 
+ *
  * Features:
  * - Uses realistic fake names (inspired by faker libraries)
  * - Maintains all relational integrity (parent1Id, parent2Id, instructorId, etc.)
  * - Preserves class schedules and room assignments
  * - Creates consistent email addresses based on names
  * - Generates realistic phone numbers
- * 
+ *
  * To use:
  * 1. Open your Google Sheets document (DEVELOPMENT ONLY!)
  * 2. Go to Extensions > Apps Script
@@ -32,7 +32,7 @@ function safeExecuteRealisticFakeDataMigration() {
     console.log('This migration is only safe for development/testing spreadsheets');
     return { error: 'Environment validation failed' };
   }
-  
+
   const migration = new RealisticFakeDataMigration(getSpreadsheetId());
   migration.execute();
 }
@@ -69,8 +69,9 @@ function rollbackRealisticFakeDataMigration() {
 class RealisticFakeDataMigration {
   constructor(spreadsheetId) {
     this.spreadsheet = SpreadsheetApp.openById(spreadsheetId);
-    this.description = 'Replace letter/number fake data with realistic fake names and maintain relational integrity';
-    
+    this.description =
+      'Replace letter/number fake data with realistic fake names and maintain relational integrity';
+
     // Realistic fake names database
     this.fakeNames = {
       instructors: [
@@ -93,7 +94,7 @@ class RealisticFakeDataMigration {
         { firstName: 'Lauren', lastName: 'Jackson', email: 'lauren.jackson@tonic.edu' },
         { firstName: 'Ryan', lastName: 'White', email: 'ryan.white@tonic.edu' },
         { firstName: 'Nicole', lastName: 'Harris', email: 'nicole.harris@tonic.edu' },
-        { firstName: 'Brandon', lastName: 'Clark', email: 'brandon.clark@tonic.edu' }
+        { firstName: 'Brandon', lastName: 'Clark', email: 'brandon.clark@tonic.edu' },
       ],
       parents: [
         { firstName: 'Jennifer', lastName: 'Adams' },
@@ -135,7 +136,7 @@ class RealisticFakeDataMigration {
         { firstName: 'Deborah', lastName: 'Long' },
         { firstName: 'Ronald', lastName: 'Patterson' },
         { firstName: 'Angela', lastName: 'Hughes' },
-        { firstName: 'Larry', lastName: 'Flores' }
+        { firstName: 'Larry', lastName: 'Flores' },
       ],
       students: [
         { firstName: 'Alex', lastName: 'Johnson' },
@@ -177,15 +178,15 @@ class RealisticFakeDataMigration {
         { firstName: 'Luke', lastName: 'Nelson' },
         { firstName: 'Chloe', lastName: 'Carter' },
         { firstName: 'Wyatt', lastName: 'Mitchell' },
-        { firstName: 'Victoria', lastName: 'Perez' }
-      ]
+        { firstName: 'Victoria', lastName: 'Perez' },
+      ],
     };
-    
+
     // Mapping tables to track ID changes
     this.idMappings = {
       instructors: new Map(),
       parents: new Map(),
-      students: new Map()
+      students: new Map(),
     };
   }
 
@@ -196,14 +197,14 @@ class RealisticFakeDataMigration {
     console.log('🔍 MIGRATION PREVIEW: Realistic Fake Data Generation');
     console.log('==================================================');
     console.log('⚠️  DEVELOPMENT MIGRATION - Use only in dev/test environments!');
-    
+
     try {
       const sheets = {
         instructors: this.spreadsheet.getSheetByName('instructors'),
         parents: this.spreadsheet.getSheetByName('parents'),
         students: this.spreadsheet.getSheetByName('students'),
         classes: this.spreadsheet.getSheetByName('classes'),
-        registrations: this.spreadsheet.getSheetByName('registrations')
+        registrations: this.spreadsheet.getSheetByName('registrations'),
       };
 
       let totalChanges = 0;
@@ -215,7 +216,7 @@ class RealisticFakeDataMigration {
         }
 
         console.log(`\\n🔍 Analyzing ${sheetName} sheet...`);
-        
+
         const data = sheet.getDataRange().getValues();
         if (data.length < 2) {
           console.log(`   No data found`);
@@ -230,23 +231,27 @@ class RealisticFakeDataMigration {
         for (let i = 1; i < data.length; i++) {
           const row = data[i];
           const rowText = row.join(' ').toLowerCase();
-          
-          if (rowText.includes('teacher') || 
-              rowText.includes('parent') || 
-              rowText.includes('student') ||
-              /[a-z][0-9]/.test(rowText) ||
-              /@email\\.com/.test(rowText)) {
+
+          if (
+            rowText.includes('teacher') ||
+            rowText.includes('parent') ||
+            rowText.includes('student') ||
+            /[a-z][0-9]/.test(rowText) ||
+            /@email\\.com/.test(rowText)
+          ) {
             fakeDataCount++;
           }
         }
-        
+
         console.log(`   Found ${fakeDataCount} records with fake data patterns`);
         totalChanges += fakeDataCount;
       }
 
       console.log('\\n📊 PREVIEW SUMMARY:');
       console.log(`   📝 Total records to update: ${totalChanges}`);
-      console.log(`   👥 Available realistic instructor names: ${this.fakeNames.instructors.length}`);
+      console.log(
+        `   👥 Available realistic instructor names: ${this.fakeNames.instructors.length}`
+      );
       console.log(`   👨‍👩‍👧‍👦 Available realistic parent names: ${this.fakeNames.parents.length}`);
       console.log(`   👶 Available realistic student names: ${this.fakeNames.students.length}`);
 
@@ -257,7 +262,6 @@ class RealisticFakeDataMigration {
       console.log('   • Update all relational IDs to maintain data integrity');
       console.log('   • Generate realistic email addresses and phone numbers');
       console.log('   • Preserve all scheduling and class information');
-
     } catch (error) {
       console.error('❌ Preview failed:', error.toString());
     }
@@ -270,14 +274,14 @@ class RealisticFakeDataMigration {
     console.log('🚀 EXECUTING MIGRATION: Realistic Fake Data Generation');
     console.log('====================================================');
     console.log('⚠️  DEVELOPMENT MIGRATION - Use only in dev/test environments!');
-    
+
     const results = {
       instructorsUpdated: 0,
       parentsUpdated: 0,
       studentsUpdated: 0,
       classesUpdated: 0,
       registrationsUpdated: 0,
-      errors: []
+      errors: [],
     };
 
     try {
@@ -285,7 +289,7 @@ class RealisticFakeDataMigration {
       console.log('\\n👩‍🏫 PHASE 1: Updating Instructors...');
       results.instructorsUpdated = this.updateInstructors();
 
-      // Phase 2: Update Parents  
+      // Phase 2: Update Parents
       console.log('\\n👨‍👩‍👧‍👦 PHASE 2: Updating Parents...');
       results.parentsUpdated = this.updateParents();
 
@@ -308,12 +312,11 @@ class RealisticFakeDataMigration {
       console.log(`   • Students updated: ${results.studentsUpdated}`);
       console.log(`   • Classes updated: ${results.classesUpdated}`);
       console.log(`   • Registrations updated: ${results.registrationsUpdated}`);
-      
+
       console.log('\\n🎉 Your development data now has realistic names!');
       console.log('All relational IDs have been properly updated to maintain data integrity.');
 
       return results;
-
     } catch (error) {
       console.error('❌ Migration failed:', error.toString());
       results.errors.push(error.toString());
@@ -337,14 +340,17 @@ class RealisticFakeDataMigration {
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       const oldId = row[0]; // Assuming ID is in first column
-      
+
       // Check if this looks like fake data
-      if (typeof oldId === 'string' && (oldId.includes('TEACHER') || oldId.includes('@EMAIL.COM'))) {
+      if (
+        typeof oldId === 'string' &&
+        (oldId.includes('TEACHER') || oldId.includes('@EMAIL.COM'))
+      ) {
         const instructorIndex = (i - 1) % this.fakeNames.instructors.length;
         const instructor = this.fakeNames.instructors[instructorIndex];
-        
+
         const newId = instructor.email;
-        
+
         // Update the row
         row[0] = newId; // ID
         if (headers.includes('Email') || headers.includes('email')) {
@@ -366,7 +372,7 @@ class RealisticFakeDataMigration {
 
         // Map old ID to new ID for relational updates
         this.idMappings.instructors.set(oldId, newId);
-        
+
         updatedCount++;
       }
     }
@@ -396,18 +402,19 @@ class RealisticFakeDataMigration {
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       const oldId = row[0];
-      
+
       // Check if this looks like fake data
-      if (typeof oldId === 'string' && (
-          oldId.toLowerCase().includes('parent') || 
+      if (
+        typeof oldId === 'string' &&
+        (oldId.toLowerCase().includes('parent') ||
           /^[A-Z][0-9]/.test(oldId) ||
-          oldId.includes('@EMAIL.COM'))) {
-        
+          oldId.includes('@EMAIL.COM'))
+      ) {
         const parentIndex = (i - 1) % this.fakeNames.parents.length;
         const parent = this.fakeNames.parents[parentIndex];
-        
+
         const newId = `${parent.firstName.toLowerCase()}.${parent.lastName.toLowerCase()}@parent.com`;
-        
+
         // Update the row
         row[0] = newId; // ID
         if (headers.includes('Email') || headers.includes('email')) {
@@ -429,7 +436,7 @@ class RealisticFakeDataMigration {
 
         // Map old ID to new ID
         this.idMappings.parents.set(oldId, newId);
-        
+
         updatedCount++;
       }
     }
@@ -459,17 +466,17 @@ class RealisticFakeDataMigration {
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       const oldId = row[0];
-      
+
       // Check if this looks like fake data
-      if (typeof oldId === 'string' && (
-          oldId.toLowerCase().includes('student') ||
-          /^[A-Z][0-9]/.test(oldId))) {
-        
+      if (
+        typeof oldId === 'string' &&
+        (oldId.toLowerCase().includes('student') || /^[A-Z][0-9]/.test(oldId))
+      ) {
         const studentIndex = (i - 1) % this.fakeNames.students.length;
         const student = this.fakeNames.students[studentIndex];
-        
+
         const newId = `${student.firstName.toLowerCase()}.${student.lastName.toLowerCase()}.${String(i).padStart(3, '0')}`;
-        
+
         // Update the row
         row[0] = newId; // ID
         if (headers.includes('FirstName') || headers.includes('firstname')) {
@@ -480,7 +487,7 @@ class RealisticFakeDataMigration {
           const lastNameCol = headers.findIndex(h => h.toLowerCase().includes('lastname'));
           if (lastNameCol >= 0) row[lastNameCol] = student.lastName;
         }
-        
+
         // Update parent references if they exist and have been mapped
         ['Parent1Id', 'Parent2Id'].forEach(parentCol => {
           const colIndex = headers.findIndex(h => h === parentCol);
@@ -491,7 +498,7 @@ class RealisticFakeDataMigration {
 
         // Map old ID to new ID
         this.idMappings.students.set(oldId, newId);
-        
+
         updatedCount++;
       }
     }
@@ -524,7 +531,7 @@ class RealisticFakeDataMigration {
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       const oldInstructorId = row[instructorIdCol];
-      
+
       if (oldInstructorId && this.idMappings.instructors.has(oldInstructorId)) {
         row[instructorIdCol] = this.idMappings.instructors.get(oldInstructorId);
         updatedCount++;
@@ -559,19 +566,27 @@ class RealisticFakeDataMigration {
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       let rowUpdated = false;
-      
+
       // Update student reference
-      if (studentIdCol >= 0 && row[studentIdCol] && this.idMappings.students.has(row[studentIdCol])) {
+      if (
+        studentIdCol >= 0 &&
+        row[studentIdCol] &&
+        this.idMappings.students.has(row[studentIdCol])
+      ) {
         row[studentIdCol] = this.idMappings.students.get(row[studentIdCol]);
         rowUpdated = true;
       }
-      
+
       // Update instructor reference
-      if (instructorIdCol >= 0 && row[instructorIdCol] && this.idMappings.instructors.has(row[instructorIdCol])) {
+      if (
+        instructorIdCol >= 0 &&
+        row[instructorIdCol] &&
+        this.idMappings.instructors.has(row[instructorIdCol])
+      ) {
         row[instructorIdCol] = this.idMappings.instructors.get(row[instructorIdCol]);
         rowUpdated = true;
       }
-      
+
       if (rowUpdated) {
         updatedCount++;
       }
@@ -603,13 +618,13 @@ class RealisticFakeDataMigration {
   rollback() {
     console.log('🔄 ROLLING BACK MIGRATION: Realistic Fake Data Generation');
     console.log('========================================================');
-    
+
     console.log('⚠️  Manual rollback required');
     console.log('This migration replaces data extensively. To rollback:');
     console.log('1. Restore from a backup made before running the migration');
     console.log('2. Or re-run your original data generation scripts');
     console.log('3. Consider using the preview function before running migrations');
-    
+
     return false;
   }
 }
@@ -620,31 +635,30 @@ class RealisticFakeDataMigration {
 function validateDevelopmentEnvironment(spreadsheetId) {
   console.log('🔍 VALIDATING DEVELOPMENT ENVIRONMENT');
   console.log('=====================================');
-  
+
   try {
     const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
     const title = spreadsheet.getName().toLowerCase();
-    
+
     if (title.includes('production') || title.includes('prod') || title.includes('live')) {
       console.log('❌ ERROR: This appears to be a production spreadsheet');
       console.log(`   Spreadsheet title: "${spreadsheet.getName()}"`);
       console.log('   This migration should only be used in development/testing environments');
       return false;
     }
-    
+
     if (!title.includes('dev') && !title.includes('test') && !title.includes('demo')) {
       console.log('⚠️  WARNING: Spreadsheet title does not indicate development environment');
       console.log(`   Spreadsheet title: "${spreadsheet.getName()}"`);
       console.log('   Please confirm this is a development/testing environment');
       console.log('   Consider renaming to include "dev", "test", or "demo"');
     }
-    
+
     console.log('✅ Environment validation passed');
     console.log(`   Spreadsheet: "${spreadsheet.getName()}"`);
     console.log(`   ID: ${spreadsheetId}`);
-    
+
     return true;
-    
   } catch (error) {
     console.log('❌ ERROR: Could not access spreadsheet');
     console.log(`   Error: ${error.toString()}`);
@@ -658,12 +672,12 @@ function validateDevelopmentEnvironment(spreadsheetId) {
 function safeExecuteRealisticFakeDataMigration(spreadsheetId) {
   console.log('🛡️  SAFE EXECUTION: Realistic Fake Data Migration');
   console.log('================================================');
-  
+
   if (!validateDevelopmentEnvironment(spreadsheetId)) {
     console.log('❌ EXECUTION BLOCKED: Environment validation failed');
     return;
   }
-  
+
   console.log('✅ Environment validated - proceeding with migration');
   runRealisticFakeDataMigration(spreadsheetId);
 }

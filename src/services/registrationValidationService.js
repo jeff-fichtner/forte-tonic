@@ -88,7 +88,10 @@ export class RegistrationValidationService {
     }
 
     // Start time validation for private lessons
-    if (registrationData.registrationType === RegistrationType.PRIVATE && registrationData.startTime) {
+    if (
+      registrationData.registrationType === RegistrationType.PRIVATE &&
+      registrationData.startTime
+    ) {
       if (!this.isValidStartTime(registrationData.startTime)) {
         errors.push('Invalid start time format');
       }
