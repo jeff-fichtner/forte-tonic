@@ -244,6 +244,45 @@ export class Registration {
   }
 
   /**
+   * Factory method: Create from database row
+   */
+  static fromDatabaseRow(row) {
+    const [
+      id,
+      studentId,
+      instructorId,
+      day,
+      startTime,
+      length,
+      registrationType,
+      roomId,
+      schoolYear,
+      createdBy
+    ] = row;
+
+    return new Registration({
+      id,
+      studentId,
+      instructorId,
+      registrationType,
+      day,
+      startTime,
+      length,
+      roomId,
+      schoolYear,
+      registeredBy: createdBy,
+      instrument: null, // Not stored in basic row structure
+      classId: null, // Not stored in basic row structure
+      className: null, // Not stored in basic row structure
+      transportationType: null, // Not stored in basic row structure
+      notes: null, // Not stored in basic row structure
+      expectedStartDate: new Date(), // Default to now if not provided
+      registeredAt: new Date(), // Default to now if not provided
+      isActive: true // Default to active
+    });
+  }
+
+  /**
    * Factory method: Create new registration
    */
   static createNew(studentId, instructorId, registrationType, day, startTime, length, options = {}) {

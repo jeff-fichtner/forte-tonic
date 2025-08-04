@@ -2,10 +2,10 @@ import { google } from 'googleapis';
 import { ErrorHandling } from '../common/errorHandling.js';
 import { Keys } from '../utils/values/keys.js';
 import { RegistrationType } from '../utils/values/registrationType.js';
-import { CloneUtility } from '../utils/utilities/cloneUtility.js';
-import { GuidUtility } from '../utils/utilities/guidUtility.js';
+import { CloneUtility } from '../utils/cloneUtility.js';
+import { GuidUtility } from '../utils/guidUtility.js';
 import { configService } from '../services/configurationService.js';
-import { getLogger } from '../utils/utilities/logger.js';
+import { getLogger } from '../utils/logger.js';
 
 /**
  * Enhanced GoogleSheetsDbClient with caching and performance optimizations

@@ -3,7 +3,7 @@
  * Manages different settings for staging vs production environments
  */
 
-import { LogLevel, NodeEnv } from '../utils/utilities/logger.js';
+import { LogLevel, NodeEnv } from '../utils/logger.js';
 
 const environment = process.env.NODE_ENV || NodeEnv.DEVELOPMENT;
 
