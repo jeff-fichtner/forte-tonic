@@ -1,6 +1,6 @@
 /**
  * Service Container
- * 
+ *
  * Simplified dependency injection container for MVC architecture
  * Directly manages service instances without complex factory patterns
  */
@@ -26,7 +26,7 @@ export class ServiceContainer {
     this.services = new Map();
     this.singletons = new Map();
     this.initialized = false;
-    
+
     // Initialize infrastructure services directly
     this.dbClient = null;
     this.emailClient = null;
@@ -61,10 +61,10 @@ export class ServiceContainer {
     try {
       // Initialize database client
       this.dbClient = new GoogleSheetsDbClient(configService);
-      
-      // Initialize email client  
+
+      // Initialize email client
       this.emailClient = new EmailClient(configService);
-      
+
       // Initialize cache service
       this.cacheService = new CacheService();
 
@@ -111,10 +111,10 @@ export class ServiceContainer {
 
     // Create service instance
     const service = serviceFactory();
-    
+
     // Store as singleton
     this.singletons.set(serviceName, service);
-    
+
     return service;
   }
 
@@ -123,7 +123,7 @@ export class ServiceContainer {
    */
   register(serviceName, factory, options = {}) {
     this.services.set(serviceName, factory);
-    
+
     if (options.singleton === false) {
       // Remove from singletons if not a singleton
       this.singletons.delete(serviceName);
@@ -149,7 +149,7 @@ export class ServiceContainer {
    */
   createScope(overrides = {}) {
     const scope = new ServiceContainer();
-    
+
     // Copy all service registrations
     for (const [name, factory] of this.services.entries()) {
       scope.register(name, factory);
@@ -171,48 +171,44 @@ export class ServiceContainer {
     const results = {
       timestamp: new Date().toISOString(),
       container: 'healthy',
-      services: {}
+      services: {},
     };
 
     try {
       // Check infrastructure services directly
-      results.services.databaseClient = { 
+      results.services.databaseClient = {
         status: this.dbClient ? 'healthy' : 'unhealthy',
-        type: 'GoogleSheetsDbClient' 
+        type: 'GoogleSheetsDbClient',
       };
-      
-      results.services.emailClient = { 
+
+      results.services.emailClient = {
         status: this.emailClient ? 'healthy' : 'unhealthy',
-        type: 'EmailClient' 
+        type: 'EmailClient',
       };
-      
-      results.services.cacheService = { 
+
+      results.services.cacheService = {
         status: this.cacheService ? 'healthy' : 'unhealthy',
-        type: 'CacheService' 
+        type: 'CacheService',
       };
 
       // Check if critical repositories can be instantiated
-      const criticalServices = [
-        'registrationRepository',
-        'userRepository'
-      ];
+      const criticalServices = ['registrationRepository', 'userRepository'];
 
       for (const serviceName of criticalServices) {
         try {
           const service = this.get(serviceName);
-          results.services[serviceName] = { 
+          results.services[serviceName] = {
             status: 'healthy',
-            type: service.constructor.name 
+            type: service.constructor.name,
           };
         } catch (error) {
-          results.services[serviceName] = { 
+          results.services[serviceName] = {
             status: 'unhealthy',
-            error: error.message 
+            error: error.message,
           };
           results.container = 'degraded';
         }
       }
-
     } catch (error) {
       results.container = 'unhealthy';
       results.error = error.message;
@@ -231,7 +227,7 @@ export class ServiceContainer {
     if (this.emailClient && typeof this.emailClient.shutdown === 'function') {
       await this.emailClient.shutdown();
     }
-    
+
     if (this.cacheService && typeof this.cacheService.shutdown === 'function') {
       await this.cacheService.shutdown();
     }
@@ -281,7 +277,7 @@ export class ServiceContainer {
         registrationRepository: this.get('registrationRepository'),
         userRepository: this.get('userRepository'),
         programRepository: this.get('programRepository'),
-        emailClient: this.emailClient
+        emailClient: this.emailClient,
       });
     });
   }
@@ -291,23 +287,23 @@ export class ServiceContainer {
    */
   getDependencyGraph() {
     const graph = {};
-    
+
     for (const serviceName of this.services.keys()) {
       try {
         const service = this.get(serviceName);
         graph[serviceName] = {
           type: service.constructor.name,
-          initialized: this.singletons.has(serviceName)
+          initialized: this.singletons.has(serviceName),
         };
       } catch (error) {
         graph[serviceName] = {
           type: 'unknown',
           error: error.message,
-          initialized: false
+          initialized: false,
         };
       }
     }
-    
+
     return graph;
   }
 }

@@ -1,6 +1,6 @@
 /**
  * Student Domain Entity - rich domain model with business behavior
- * 
+ *
  * Represents a student in the domain with business rules and validation
  */
 
@@ -11,7 +11,7 @@ import { Age } from '../../utils/values/age.js';
 export class Student {
   constructor(data) {
     this.#validateConstructorData(data);
-    
+
     this.id = new StudentId(data.id || data.studentId);
     this.firstName = data.firstName;
     this.lastName = data.lastName;
@@ -36,7 +36,7 @@ export class Student {
 
     const required = ['firstName', 'lastName'];
     const missing = required.filter(field => !data[field]);
-    
+
     if (missing.length > 0) {
       throw new Error(`Missing required fields: ${missing.join(', ')}`);
     }
@@ -63,12 +63,12 @@ export class Student {
     if (this.age) {
       return this.age.value < 18;
     }
-    
+
     // If no age specified, check grade level
     if (this.grade) {
       return this.grade <= 12; // K-12 grades require permission
     }
-    
+
     return true; // Default to requiring permission if uncertain
   }
 
@@ -87,17 +87,17 @@ export class Student {
       hasName: !!(this.firstName && this.lastName),
       hasEmergencyContact: this.hasEmergencyContact(),
       hasParentIfRequired: this.requiresParentPermission() ? this.hasAssignedParents() : true,
-      isActive: this.isActive
+      isActive: this.isActive,
     };
 
     const isEligible = Object.values(checks).every(check => check === true);
-    
+
     return {
       eligible: isEligible,
       checks,
       missingRequirements: Object.entries(checks)
         .filter(([_, passed]) => !passed)
-        .map(([requirement]) => requirement)
+        .map(([requirement]) => requirement),
     };
   }
 
@@ -144,13 +144,18 @@ export class Student {
    */
   getRecommendedLessonDuration() {
     const ageCategory = this.getAgeCategory();
-    
+
     switch (ageCategory) {
-      case 'early-childhood': return 30;
-      case 'elementary': return 45;
-      case 'teenage': return 60;
-      case 'adult': return 60;
-      default: return 45; // Conservative default
+      case 'early-childhood':
+        return 30;
+      case 'elementary':
+        return 45;
+      case 'teenage':
+        return 60;
+      case 'adult':
+        return 60;
+      default:
+        return 45; // Conservative default
     }
   }
 
@@ -161,7 +166,7 @@ export class Student {
     if (email) {
       this.email = new Email(email);
     }
-    
+
     this.emergencyContactName = emergencyContactName;
     this.emergencyContactPhone = emergencyContactPhone;
     this.updatedAt = new Date();
@@ -192,7 +197,7 @@ export class Student {
       studentId: this.id.value,
       studentName: this.getFullName(),
       ageCategory: this.getAgeCategory(),
-      enrolledAt: new Date()
+      enrolledAt: new Date(),
     };
   }
 
@@ -215,7 +220,7 @@ export class Student {
       medicalNotes: this.medicalNotes,
       isActive: this.isActive,
       createdAt: this.createdAt.toISOString(),
-      updatedAt: this.updatedAt.toISOString()
+      updatedAt: this.updatedAt.toISOString(),
     };
   }
 
@@ -237,16 +242,7 @@ export class Student {
    * Factory method: Create from database row
    */
   static fromDatabaseRow(row) {
-    const [
-      id,
-      lastName,
-      firstName,
-      lastNickname,
-      firstNickname,
-      grade,
-      parent1Id,
-      parent2Id
-    ] = row;
+    const [id, lastName, firstName, lastNickname, firstNickname, grade, parent1Id, parent2Id] = row;
 
     return new Student({
       id,
@@ -262,7 +258,7 @@ export class Student {
       birthday: null, // Not stored in basic row structure
       school: null, // Not stored in basic row structure
       instrument: null, // Not stored in basic row structure
-      isActive: true // Default to active
+      isActive: true, // Default to active
     });
   }
 
@@ -281,7 +277,7 @@ export class Student {
       parent2Id: options.parent2Id,
       emergencyContactName: options.emergencyContactName,
       emergencyContactPhone: options.emergencyContactPhone,
-      medicalNotes: options.medicalNotes
+      medicalNotes: options.medicalNotes,
     });
   }
 }

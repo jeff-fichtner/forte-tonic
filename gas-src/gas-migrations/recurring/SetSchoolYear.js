@@ -1,6 +1,6 @@
 /**
  * Google Apps Script Recurring Migration - Set School Year
- * 
+ *
  * This recurring migration handles transitioning to a new school year.
  * It archives the current spreadsheet and creates new ones for the new year.
  */
@@ -48,10 +48,10 @@ class SetSchoolYearClass {
   execute() {
     try {
       this.logger.info('Starting school year transition...');
-      
+
       // archiveSpreadsheet entirely (update googleSheetsDbClient) and move to archive folder
       // create all new spreadsheet with copies of default sheets
-      
+
       this.logger.info('School year transition completed successfully');
     } catch (error) {
       this.logger.error('Error during school year transition:', error);
@@ -63,7 +63,9 @@ class SetSchoolYearClass {
    * Preview what changes would be made
    */
   preview() {
-    this.logger.info('Preview: Would archive current spreadsheet and create new ones for new school year');
+    this.logger.info(
+      'Preview: Would archive current spreadsheet and create new ones for new school year'
+    );
     // TODO: Implement preview logic
   }
 

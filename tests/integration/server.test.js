@@ -147,7 +147,7 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
 jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js', () => ({
   serviceContainer: {
     initialize: jest.fn().mockResolvedValue(undefined),
-    get: jest.fn().mockImplementation((serviceName) => {
+    get: jest.fn().mockImplementation(serviceName => {
       const services = {
         userRepository: mockUserRepository,
         programRepository: mockProgramRepository,
@@ -193,7 +193,7 @@ describe('Server Integration Tests', () => {
     // Import the app after mocks are set up - use app.js to avoid starting server
     const appModule = await import('../../src/app.js');
     app = appModule.app;
-    
+
     // Initialize the app services
     await appModule.initializeApp();
   });

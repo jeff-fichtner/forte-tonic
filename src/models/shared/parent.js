@@ -16,7 +16,7 @@ export class Parent {
     this.email = email;
     this.lastName = lastName;
     this.firstName = firstName;
-    
+
     // Optional properties with defaults
     this.phone = options.phone || null;
     this.alternatePhone = options.alternatePhone || null;
@@ -33,14 +33,14 @@ export class Parent {
    */
   static fromDatabaseRow(row) {
     const [id, email, lastName, firstName, phone, address, isEmergencyContact] = row;
-    
+
     return new Parent(id, email, lastName, firstName, {
       phone,
       address,
       isEmergencyContact,
       alternatePhone: null,
       relationship: 'parent',
-      isActive: true
+      isActive: true,
     });
   }
 
@@ -69,7 +69,7 @@ export class Parent {
       address,
       isEmergencyContact,
       relationship,
-      isActive
+      isActive,
     });
   }
 
@@ -85,7 +85,7 @@ export class Parent {
     const id = options.id || `parent_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     return new Parent(id, email, lastName, firstName, {
       ...options,
-      isActive: true
+      isActive: true,
     });
   }
 

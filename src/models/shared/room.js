@@ -12,7 +12,7 @@ export class Room {
     // Required fields
     this.id = id;
     this.name = name;
-    
+
     // Optional properties with defaults
     this.altName = options.altName || null;
     this.includeRoomId = options.includeRoomId || false;
@@ -30,7 +30,7 @@ export class Room {
    */
   static fromDatabaseRow(row) {
     const [id, name, altName, includeRoomId] = row;
-    
+
     return new Room(id, name, {
       altName,
       includeRoomId,
@@ -38,7 +38,7 @@ export class Room {
       location: null,
       equipment: [],
       isActive: true,
-      description: null
+      description: null,
     });
   }
 
@@ -67,7 +67,7 @@ export class Room {
       location,
       equipment: Array.isArray(equipment) ? equipment : [],
       isActive,
-      description
+      description,
     });
   }
 
@@ -81,7 +81,7 @@ export class Room {
     const id = options.id || `room_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     return new Room(id, name, {
       ...options,
-      isActive: true
+      isActive: true,
     });
   }
 

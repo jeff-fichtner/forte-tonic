@@ -16,7 +16,10 @@ export class RegistrationConflictService {
     const conflicts = [];
 
     // Check for duplicate registration
-    const duplicateConflict = this.checkDuplicateRegistration(newRegistration, existingRegistrations);
+    const duplicateConflict = this.checkDuplicateRegistration(
+      newRegistration,
+      existingRegistrations
+    );
     if (duplicateConflict) conflicts.push(duplicateConflict);
 
     // Check for schedule conflicts (private lessons only)
@@ -48,15 +51,19 @@ export class RegistrationConflictService {
       if (reg.studentId !== newRegistration.studentId) return false;
 
       if (newRegistration.registrationType === RegistrationType.GROUP) {
-        return reg.classId === newRegistration.classId &&
-               reg.schoolYear === newRegistration.schoolYear &&
-               reg.trimester === newRegistration.trimester;
+        return (
+          reg.classId === newRegistration.classId &&
+          reg.schoolYear === newRegistration.schoolYear &&
+          reg.trimester === newRegistration.trimester
+        );
       } else {
-        return reg.instructorId === newRegistration.instructorId &&
-               reg.day === newRegistration.day &&
-               reg.startTime === newRegistration.startTime &&
-               reg.schoolYear === newRegistration.schoolYear &&
-               reg.trimester === newRegistration.trimester;
+        return (
+          reg.instructorId === newRegistration.instructorId &&
+          reg.day === newRegistration.day &&
+          reg.startTime === newRegistration.startTime &&
+          reg.schoolYear === newRegistration.schoolYear &&
+          reg.trimester === newRegistration.trimester
+        );
       }
     });
 
@@ -81,11 +88,17 @@ export class RegistrationConflictService {
     const conflicts = [];
 
     // Check student schedule conflict
-    const studentConflict = this.checkStudentScheduleConflict(newRegistration, existingRegistrations);
+    const studentConflict = this.checkStudentScheduleConflict(
+      newRegistration,
+      existingRegistrations
+    );
     if (studentConflict) conflicts.push(studentConflict);
 
     // Check instructor schedule conflict
-    const instructorConflict = this.checkInstructorScheduleConflict(newRegistration, existingRegistrations);
+    const instructorConflict = this.checkInstructorScheduleConflict(
+      newRegistration,
+      existingRegistrations
+    );
     if (instructorConflict) conflicts.push(instructorConflict);
 
     return conflicts;
@@ -98,13 +111,19 @@ export class RegistrationConflictService {
    * @returns {object|null} Student conflict or null
    */
   static checkStudentScheduleConflict(newRegistration, existingRegistrations) {
-    const conflict = existingRegistrations.find(reg => 
-      reg.studentId === newRegistration.studentId &&
-      reg.day === newRegistration.day &&
-      this.timesOverlap(reg.startTime, reg.length, newRegistration.startTime, newRegistration.length) &&
-      reg.schoolYear === newRegistration.schoolYear &&
-      reg.trimester === newRegistration.trimester &&
-      reg.isActive !== false
+    const conflict = existingRegistrations.find(
+      reg =>
+        reg.studentId === newRegistration.studentId &&
+        reg.day === newRegistration.day &&
+        this.timesOverlap(
+          reg.startTime,
+          reg.length,
+          newRegistration.startTime,
+          newRegistration.length
+        ) &&
+        reg.schoolYear === newRegistration.schoolYear &&
+        reg.trimester === newRegistration.trimester &&
+        reg.isActive !== false
     );
 
     if (conflict) {
@@ -125,13 +144,19 @@ export class RegistrationConflictService {
    * @returns {object|null} Instructor conflict or null
    */
   static checkInstructorScheduleConflict(newRegistration, existingRegistrations) {
-    const conflict = existingRegistrations.find(reg => 
-      reg.instructorId === newRegistration.instructorId &&
-      reg.day === newRegistration.day &&
-      this.timesOverlap(reg.startTime, reg.length, newRegistration.startTime, newRegistration.length) &&
-      reg.schoolYear === newRegistration.schoolYear &&
-      reg.trimester === newRegistration.trimester &&
-      reg.isActive !== false
+    const conflict = existingRegistrations.find(
+      reg =>
+        reg.instructorId === newRegistration.instructorId &&
+        reg.day === newRegistration.day &&
+        this.timesOverlap(
+          reg.startTime,
+          reg.length,
+          newRegistration.startTime,
+          newRegistration.length
+        ) &&
+        reg.schoolYear === newRegistration.schoolYear &&
+        reg.trimester === newRegistration.trimester &&
+        reg.isActive !== false
     );
 
     if (conflict) {
@@ -152,11 +177,12 @@ export class RegistrationConflictService {
    * @returns {object|null} Capacity conflict or null
    */
   static checkClassCapacity(newRegistration, existingRegistrations) {
-    const classRegistrations = existingRegistrations.filter(reg =>
-      reg.classId === newRegistration.classId &&
-      reg.schoolYear === newRegistration.schoolYear &&
-      reg.trimester === newRegistration.trimester &&
-      reg.isActive !== false
+    const classRegistrations = existingRegistrations.filter(
+      reg =>
+        reg.classId === newRegistration.classId &&
+        reg.schoolYear === newRegistration.schoolYear &&
+        reg.trimester === newRegistration.trimester &&
+        reg.isActive !== false
     );
 
     // TODO: Get actual class capacity from class repository

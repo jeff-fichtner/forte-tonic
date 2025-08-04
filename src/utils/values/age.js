@@ -1,6 +1,6 @@
 /**
  * Age Value Object
- * 
+ *
  * Immutable value object representing a person's age with validation
  */
 

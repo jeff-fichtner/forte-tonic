@@ -26,7 +26,7 @@ export class Class {
     this.endTime = endTime;
     this.instrument = instrument;
     this.title = title;
-    
+
     // Optional properties with defaults
     this.size = options.size || options.capacity || null;
     this.minimumGrade = options.minimumGrade || null;
@@ -42,8 +42,20 @@ export class Class {
    * @returns {Class} Class instance
    */
   static fromDatabaseRow(row) {
-    const [id, instructorId, day, startTime, length, endTime, instrument, title, size, minimumGrade, maximumGrade] = row;
-    
+    const [
+      id,
+      instructorId,
+      day,
+      startTime,
+      length,
+      endTime,
+      instrument,
+      title,
+      size,
+      minimumGrade,
+      maximumGrade,
+    ] = row;
+
     // Process time strings with DateHelpers if available
     const processedStartTime = DateHelpers?.parseTimeString
       ? DateHelpers.parseTimeString(startTime).to24Hour()
@@ -51,15 +63,25 @@ export class Class {
     const processedEndTime = DateHelpers?.parseTimeString
       ? DateHelpers.parseTimeString(endTime).to24Hour()
       : endTime;
-    
-    return new Class(id, instructorId, day, processedStartTime, length, processedEndTime, instrument, title, {
-      size,
-      minimumGrade,
-      maximumGrade,
-      roomId: null,
-      description: null,
-      isActive: true
-    });
+
+    return new Class(
+      id,
+      instructorId,
+      day,
+      processedStartTime,
+      length,
+      processedEndTime,
+      instrument,
+      title,
+      {
+        size,
+        minimumGrade,
+        maximumGrade,
+        roomId: null,
+        description: null,
+        isActive: true,
+      }
+    );
   }
 
   /**
@@ -92,7 +114,7 @@ export class Class {
       maximumGrade,
       roomId,
       description,
-      isActive
+      isActive,
     });
   }
 
@@ -112,7 +134,7 @@ export class Class {
     const id = options.id || `class_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     return new Class(id, instructorId, day, startTime, length, endTime, instrument, title, {
       ...options,
-      isActive: true
+      isActive: true,
     });
   }
 
@@ -128,19 +150,21 @@ export class Class {
       return DateHelpers.parseTimeString(this.startTime).to12Hour();
     }
 
-    // Fallback for environments without DurationHelpers
-    return DateHelpers.convertTimeFormat(this.startTime, '12hour');
+    // Try fallback for environments without DurationHelpers
+    try {
+      return DateHelpers.convertTimeFormat(this.startTime, '12hour');
+    } catch (error) {
+      // Final fallback formatting
+      if (this.startTime instanceof Date) {
+        return this.startTime.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        });
+      }
 
-    // Fallback formatting
-    if (this.startTime instanceof Date) {
-      return this.startTime.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      });
+      return this.startTime.toString();
     }
-
-    return this.startTime.toString();
   }
 
   /**

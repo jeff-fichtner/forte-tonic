@@ -136,23 +136,73 @@ export class Instructor {
    */
   static fromDatabaseRow(row) {
     const [
-      id, email, lastName, firstName, phone, isDeactivated, minimumGrade, maximumGrade,
-      instrument1, instrument2, instrument3, instrument4,
-      isAvailableMonday, mondayStartTime, mondayEndTime, mondayRoomId,
-      isAvailableTuesday, tuesdayStartTime, tuesdayEndTime, tuesdayRoomId,
-      isAvailableWednesday, wednesdayStartTime, wednesdayEndTime, wednesdayRoomId,
-      isAvailableThursday, thursdayStartTime, thursdayEndTime, thursdayRoomId,
-      isAvailableFriday, fridayStartTime, fridayEndTime, fridayRoomId
+      id,
+      email,
+      lastName,
+      firstName,
+      phone,
+      isDeactivated,
+      minimumGrade,
+      maximumGrade,
+      instrument1,
+      instrument2,
+      instrument3,
+      instrument4,
+      isAvailableMonday,
+      mondayStartTime,
+      mondayEndTime,
+      mondayRoomId,
+      isAvailableTuesday,
+      tuesdayStartTime,
+      tuesdayEndTime,
+      tuesdayRoomId,
+      isAvailableWednesday,
+      wednesdayStartTime,
+      wednesdayEndTime,
+      wednesdayRoomId,
+      isAvailableThursday,
+      thursdayStartTime,
+      thursdayEndTime,
+      thursdayRoomId,
+      isAvailableFriday,
+      fridayStartTime,
+      fridayEndTime,
+      fridayRoomId,
     ] = row;
 
     const specialties = [instrument1, instrument2, instrument3, instrument4].filter(Boolean);
 
     const availability = {
-      monday: { isAvailable: isAvailableMonday, startTime: mondayStartTime, endTime: mondayEndTime, roomId: mondayRoomId },
-      tuesday: { isAvailable: isAvailableTuesday, startTime: tuesdayStartTime, endTime: tuesdayEndTime, roomId: tuesdayRoomId },
-      wednesday: { isAvailable: isAvailableWednesday, startTime: wednesdayStartTime, endTime: wednesdayEndTime, roomId: wednesdayRoomId },
-      thursday: { isAvailable: isAvailableThursday, startTime: thursdayStartTime, endTime: thursdayEndTime, roomId: thursdayRoomId },
-      friday: { isAvailable: isAvailableFriday, startTime: fridayStartTime, endTime: fridayEndTime, roomId: fridayRoomId }
+      monday: {
+        isAvailable: isAvailableMonday,
+        startTime: mondayStartTime,
+        endTime: mondayEndTime,
+        roomId: mondayRoomId,
+      },
+      tuesday: {
+        isAvailable: isAvailableTuesday,
+        startTime: tuesdayStartTime,
+        endTime: tuesdayEndTime,
+        roomId: tuesdayRoomId,
+      },
+      wednesday: {
+        isAvailable: isAvailableWednesday,
+        startTime: wednesdayStartTime,
+        endTime: wednesdayEndTime,
+        roomId: wednesdayRoomId,
+      },
+      thursday: {
+        isAvailable: isAvailableThursday,
+        startTime: thursdayStartTime,
+        endTime: thursdayEndTime,
+        roomId: thursdayRoomId,
+      },
+      friday: {
+        isAvailable: isAvailableFriday,
+        startTime: fridayStartTime,
+        endTime: fridayEndTime,
+        roomId: fridayRoomId,
+      },
     };
 
     const gradeRange = { minimum: minimumGrade, maximum: maximumGrade };
@@ -171,7 +221,7 @@ export class Instructor {
       bio: '',
       yearsExperience: 0,
       certifications: [],
-      role: 'instructor'
+      role: 'instructor',
     });
   }
 

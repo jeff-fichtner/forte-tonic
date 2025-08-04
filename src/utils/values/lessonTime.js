@@ -1,6 +1,6 @@
 /**
  * Lesson Time Value Object
- * 
+ *
  * Immutable value object representing lesson timing with business rules
  */
 
@@ -9,7 +9,7 @@ export class LessonTime {
     if (!LessonTime.isValidTime(startTime)) {
       throw new Error(`Invalid start time: ${startTime}. Must be in HH:MM format`);
     }
-    
+
     if (!LessonTime.isValidDuration(durationMinutes)) {
       throw new Error(`Invalid duration: ${durationMinutes}. Must be a positive number`);
     }
@@ -17,13 +17,13 @@ export class LessonTime {
     this.startTime = startTime;
     this.durationMinutes = Number(durationMinutes);
     this.endTime = this.#calculateEndTime(startTime, this.durationMinutes);
-    
+
     Object.freeze(this);
   }
 
   static isValidTime(timeString) {
     if (!timeString || typeof timeString !== 'string') return false;
-    
+
     const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
     return timeRegex.test(timeString);
   }
@@ -36,10 +36,10 @@ export class LessonTime {
   #calculateEndTime(startTime, durationMinutes) {
     const [hours, minutes] = startTime.split(':').map(Number);
     const totalMinutes = hours * 60 + minutes + durationMinutes;
-    
+
     const endHours = Math.floor(totalMinutes / 60) % 24;
     const endMinutes = totalMinutes % 60;
-    
+
     return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
   }
 
@@ -93,7 +93,7 @@ export class LessonTime {
   getDurationString() {
     const hours = Math.floor(this.durationMinutes / 60);
     const minutes = this.durationMinutes % 60;
-    
+
     if (hours === 0) {
       return `${minutes} minutes`;
     } else if (minutes === 0) {
@@ -116,16 +116,18 @@ export class LessonTime {
    */
   getTimeSlotCategory() {
     const hour = parseInt(this.startTime.split(':')[0]);
-    
+
     if (hour < 12) return 'morning';
     if (hour < 17) return 'afternoon';
     return 'evening';
   }
 
   equals(other) {
-    return other instanceof LessonTime && 
-           this.startTime === other.startTime && 
-           this.durationMinutes === other.durationMinutes;
+    return (
+      other instanceof LessonTime &&
+      this.startTime === other.startTime &&
+      this.durationMinutes === other.durationMinutes
+    );
   }
 
   toString() {
@@ -142,7 +144,7 @@ export class LessonTime {
 
     const startMinutes = this.prototype.#timeToMinutes(startTime);
     const endMinutes = this.prototype.#timeToMinutes(endTime);
-    
+
     if (endMinutes <= startMinutes) {
       throw new Error('End time must be after start time');
     }
@@ -159,12 +161,14 @@ export class LessonTime {
       '30min': 30,
       '45min': 45,
       '60min': 60,
-      '90min': 90
+      '90min': 90,
     };
 
     const duration = durations[type];
     if (!duration) {
-      throw new Error(`Unknown lesson type: ${type}. Available: ${Object.keys(durations).join(', ')}`);
+      throw new Error(
+        `Unknown lesson type: ${type}. Available: ${Object.keys(durations).join(', ')}`
+      );
     }
 
     return new LessonTime(startTime, duration);

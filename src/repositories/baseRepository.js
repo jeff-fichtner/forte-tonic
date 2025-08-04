@@ -86,7 +86,7 @@ export class BaseRepository {
     try {
       console.log(`📋 Finding all ${this.entityName}s`);
       const cacheKey = `${this.entityName}:all`;
-      
+
       // Check cache first
       if (this.cache.has(cacheKey)) {
         const cached = this.cache.get(cacheKey);
@@ -106,7 +106,7 @@ export class BaseRepository {
       // Cache the results
       this.cache.set(cacheKey, {
         data: records,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
 
       console.log(`✅ Found ${records.length} ${this.entityName}s`);

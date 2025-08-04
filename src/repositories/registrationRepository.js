@@ -15,59 +15,47 @@ export class RegistrationRepository extends BaseRepository {
    * Create a new registration
    */
   async create(registration) {
-    try {
-      // Prepare data for Google Sheets
-      const registrationData = [
-        registration.id,
-        registration.studentId,
-        registration.instructorId,
-        registration.classId,
-        registration.type,
-        registration.status || 'pending',
-        registration.registrationDate.toISOString(),
-        registration.notes || '',
-        registration.paymentStatus || 'pending',
-        registration.metadata ? JSON.stringify(registration.metadata) : ''
-      ];
+    // Prepare data for Google Sheets
+    const registrationData = [
+      registration.id,
+      registration.studentId,
+      registration.instructorId,
+      registration.classId,
+      registration.type,
+      registration.status || 'pending',
+      registration.registrationDate.toISOString(),
+      registration.notes || '',
+      registration.paymentStatus || 'pending',
+      registration.metadata ? JSON.stringify(registration.metadata) : '',
+    ];
 
-      const result = await this.dbClient.appendRow('registrations', registrationData);
-      
-      return registration;
-    } catch (error) {
-      throw error;
-    }
+    await this.dbClient.appendRow('registrations', registrationData);
+
+    return registration;
   }
 
   /**
    * Find registration by ID
    */
   async findById(registrationId) {
-    try {
-      const data = await this.dbClient.getRows('registrations');
-      const row = data.find(row => row[0] === registrationId);
-      
-      if (!row) {
-        return null;
-      }
+    const data = await this.dbClient.getRows('registrations');
+    const row = data.find(row => row[0] === registrationId);
 
-      return this._mapRowToRegistration(row);
-    } catch (error) {
-      throw error;
+    if (!row) {
+      return null;
     }
+
+    return this._mapRowToRegistration(row);
   }
 
   /**
    * Find registrations by student ID
    */
   async findByStudentId(studentId) {
-    try {
-      const data = await this.dbClient.getRows('registrations');
-      const rows = data.filter(row => row[1] === studentId);
-      
-      return rows.map(row => this._mapRowToRegistration(row));
-    } catch (error) {
-      throw error;
-    }
+    const data = await this.dbClient.getRows('registrations');
+    const rows = data.filter(row => row[1] === studentId);
+
+    return rows.map(row => this._mapRowToRegistration(row));
   }
 
   /**
@@ -84,16 +72,16 @@ export class RegistrationRepository extends BaseRepository {
         startDate,
         endDate,
         sortBy = 'registrationDate',
-        sortOrder = 'desc'
+        sortOrder = 'desc',
       } = options;
 
       // Get all registration data using the standard dbClient pattern
       const allRegistrations = await this.dbClient.getAllRecords(Keys.REGISTRATIONS, x => {
         return Registration.fromDatabaseRow(x);
       });
-      
+
       // Filter registrations based on criteria
-      let filteredRegistrations = allRegistrations.filter(registration => {
+      const filteredRegistrations = allRegistrations.filter(registration => {
         // Apply filters
         if (studentId && registration.studentId !== studentId) return false;
         if (instructorId && registration.instructorId !== instructorId) return false;
@@ -142,17 +130,17 @@ export class RegistrationRepository extends BaseRepository {
     try {
       const data = await this.dbClient.getRows('registrations');
       const rowIndex = data.findIndex(row => row[0] === registrationId);
-      
+
       if (rowIndex === -1) {
         throw new Error(`Registration not found: ${registrationId}`);
       }
 
       // Update status in the row
       data[rowIndex][5] = newStatus;
-      
+
       // Update in Google Sheets (row index + 2 for header and 0-based index)
       await this.dbClient.updateRow('registrations', rowIndex + 2, data[rowIndex]);
-      
+
       return this._mapRowToRegistration(data[rowIndex]);
     } catch (error) {
       throw error;
@@ -166,13 +154,13 @@ export class RegistrationRepository extends BaseRepository {
     try {
       const data = await this.dbClient.getRows('registrations');
       const rowIndex = data.findIndex(row => row[0] === registrationId);
-      
+
       if (rowIndex === -1) {
         throw new Error(`Registration not found: ${registrationId}`);
       }
 
       await this.dbClient.deleteRow('registrations', rowIndex + 2);
-      
+
       return true;
     } catch (error) {
       throw error;
@@ -186,7 +174,7 @@ export class RegistrationRepository extends BaseRepository {
     try {
       const data = await this.dbClient.getRows('registrations');
       const rows = data.filter(row => row[2] === instructorId);
-      
+
       return rows.map(row => this._mapRowToRegistration(row));
     } catch (error) {
       throw error;
@@ -200,7 +188,7 @@ export class RegistrationRepository extends BaseRepository {
     try {
       const data = await this.dbClient.getRows('registrations');
       const rows = data.filter(row => row[3] === classId);
-      
+
       return rows.map(row => this._mapRowToRegistration(row));
     } catch (error) {
       throw error;
@@ -225,7 +213,7 @@ export class RegistrationRepository extends BaseRepository {
       registrationDate: new Date(row[6]),
       notes: row[7] || '',
       paymentStatus: row[8] || 'pending',
-      metadata: row[9] ? JSON.parse(row[9]) : {}
+      metadata: row[9] ? JSON.parse(row[9]) : {},
     };
   }
 }

@@ -1,16 +1,16 @@
 /**
  * Google Apps Script Migration 001: Structural Improvements
- * 
+ *
  * This script should be copied directly into a Google Apps Script project
  * that is bound to your Google Sheets document.
- * 
+ *
  * To use:
  * 1. Open your Google Sheets document
  * 2. Go to Extensions > Apps Script
  * 3. Copy this entire file content into a new .gs file
  * 4. Configure spreadsheet ID in Config.js (loaded automatically)
  * 5. Run the main function: runStructuralImprovements()
- * 
+ *
  * EXECUTION HISTORY:
  * =================
  * 2025-08-02: Executed runStructuralImprovementsDeleteStudentId() - DEV environment
@@ -33,7 +33,7 @@ function runStructuralImprovements() {
  */
 function runStructuralImprovementsDeleteStudentId() {
   const migration = new StructuralImprovementsMigration(getSpreadsheetId(), {
-    deleteStudentIdColumn: true
+    deleteStudentIdColumn: true,
   });
   migration.execute();
 }
@@ -53,7 +53,7 @@ function previewStructuralImprovements() {
  */
 function previewStructuralImprovementsDeleteStudentId() {
   const migration = new StructuralImprovementsMigration(getSpreadsheetId(), {
-    deleteStudentIdColumn: true
+    deleteStudentIdColumn: true,
   });
   migration.preview();
 }
@@ -74,11 +74,11 @@ class StructuralImprovementsMigration {
   constructor(spreadsheetId, options = {}) {
     this.spreadsheet = SpreadsheetApp.openById(spreadsheetId);
     this.description = 'Standardize headers and handle StudentId column';
-    
+
     // Configuration options
     this.options = {
       deleteStudentIdColumn: options.deleteStudentIdColumn || false, // Set to true to delete instead of deprecate
-      ...options
+      ...options,
     };
   }
 
@@ -88,7 +88,7 @@ class StructuralImprovementsMigration {
   preview() {
     console.log('🔍 MIGRATION PREVIEW: Structural Improvements');
     console.log('============================================');
-    
+
     try {
       const issues = [];
       const recommendations = [];
@@ -98,7 +98,7 @@ class StructuralImprovementsMigration {
         students: this.spreadsheet.getSheetByName('students'),
         parents: this.spreadsheet.getSheetByName('parents'),
         instructors: this.spreadsheet.getSheetByName('instructors'),
-        registrations: this.spreadsheet.getSheetByName('registrations')
+        registrations: this.spreadsheet.getSheetByName('registrations'),
       };
 
       for (const [sheetName, sheet] of Object.entries(sheetInfo)) {
@@ -108,13 +108,15 @@ class StructuralImprovementsMigration {
         }
 
         console.log(`🔍 Checking ${sheetName} sheet...`);
-        
+
         const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-        
+
         if (sheetName === 'parents') {
           if (headers.includes('Last Name') || headers.includes('First Name')) {
             issues.push(`${sheetName}: Uses spaced headers ("Last Name", "First Name")`);
-            recommendations.push(`${sheetName}: Will rename to "LastName", "FirstName" for consistency`);
+            recommendations.push(
+              `${sheetName}: Will rename to "LastName", "FirstName" for consistency`
+            );
           }
         }
 
@@ -131,17 +133,16 @@ class StructuralImprovementsMigration {
       }
 
       console.log('\n📊 PREVIEW RESULTS:');
-      
+
       if (issues.length === 0) {
         console.log('✅ No structural issues found - migration not needed!');
       } else {
         console.log(`📋 Found ${issues.length} issues that will be fixed:\n`);
         issues.forEach((issue, i) => console.log(`   ${i + 1}. ${issue}`));
-        
+
         console.log('\n🔧 Migration will apply:\n');
         recommendations.forEach((rec, i) => console.log(`   ${i + 1}. ${rec}`));
       }
-
     } catch (error) {
       console.error('❌ Preview failed:', error.toString());
     }
@@ -153,10 +154,10 @@ class StructuralImprovementsMigration {
   execute() {
     console.log('🚀 EXECUTING MIGRATION: Structural Improvements');
     console.log('==============================================');
-    
+
     const results = {
       headersFixed: 0,
-      errors: []
+      errors: [],
     };
 
     try {
@@ -176,45 +177,81 @@ class StructuralImprovementsMigration {
       const studentsSheet = this.spreadsheet.getSheetByName('students');
       if (studentsSheet) {
         console.log('   Standardizing Students sheet headers...');
-        
+
         if (this.options.deleteStudentIdColumn) {
           // Option 1: Delete StudentId column completely
           console.log('   🗑️ Deleting StudentId column...');
-          
+
           // First, check if StudentId column exists
-          const currentHeaders = studentsSheet.getRange(1, 1, 1, studentsSheet.getLastColumn()).getValues()[0];
+          const currentHeaders = studentsSheet
+            .getRange(1, 1, 1, studentsSheet.getLastColumn())
+            .getValues()[0];
           const studentIdIndex = currentHeaders.indexOf('StudentId');
-          
+
           if (studentIdIndex !== -1) {
             // Delete the StudentId column (index + 1 because Sheets is 1-indexed)
             studentsSheet.deleteColumn(studentIdIndex + 1);
             console.log(`   ✅ Deleted StudentId column (was at position ${studentIdIndex + 1})`);
-            
+
             // Set headers for remaining columns (without StudentId)
             const headers = studentsSheet.getRange(1, 1, 1, 8);
-            headers.setValues([['Id', 'LastName', 'FirstName', 'LastNickname', 'FirstNickname', 'Grade', 'Parent1Id', 'Parent2Id']]);
+            headers.setValues([
+              [
+                'Id',
+                'LastName',
+                'FirstName',
+                'LastNickname',
+                'FirstNickname',
+                'Grade',
+                'Parent1Id',
+                'Parent2Id',
+              ],
+            ]);
           } else {
             console.log('   ℹ️ StudentId column not found, skipping deletion');
             // Set standard headers
             const headers = studentsSheet.getRange(1, 1, 1, 8);
-            headers.setValues([['Id', 'LastName', 'FirstName', 'LastNickname', 'FirstNickname', 'Grade', 'Parent1Id', 'Parent2Id']]);
+            headers.setValues([
+              [
+                'Id',
+                'LastName',
+                'FirstName',
+                'LastNickname',
+                'FirstNickname',
+                'Grade',
+                'Parent1Id',
+                'Parent2Id',
+              ],
+            ]);
           }
         } else {
           // Option 2: Mark StudentId as deprecated (original behavior)
           const headers = studentsSheet.getRange(1, 1, 1, 9);
-          headers.setValues([['Id', 'StudentId_DEPRECATED', 'LastName', 'FirstName', 'LastNickname', 'FirstNickname', 'Grade', 'Parent1Id', 'Parent2Id']]);
+          headers.setValues([
+            [
+              'Id',
+              'StudentId_DEPRECATED',
+              'LastName',
+              'FirstName',
+              'LastNickname',
+              'FirstNickname',
+              'Grade',
+              'Parent1Id',
+              'Parent2Id',
+            ],
+          ]);
         }
-        
+
         results.headersFixed++;
       }
 
       console.log('\n✅ MIGRATION COMPLETED SUCCESSFULLY!');
       console.log('\n📋 SUMMARY OF CHANGES:');
       console.log(`   • Headers fixed: ${results.headersFixed} sheets`);
-      
+
       console.log('\n📋 WHAT WAS CHANGED:');
       console.log('   • Parents sheet: "Last Name" → "LastName", "First Name" → "FirstName"');
-      
+
       if (this.options.deleteStudentIdColumn) {
         console.log('   • Students sheet: Headers standardized, StudentId column DELETED');
         logMigrationResult('Migration001 executed with StudentId deletion - DEV environment');
@@ -224,7 +261,6 @@ class StructuralImprovementsMigration {
       }
 
       return results;
-
     } catch (error) {
       console.error('❌ Migration failed:', error.toString());
       results.errors.push(error.toString());
@@ -238,7 +274,7 @@ class StructuralImprovementsMigration {
   rollback() {
     console.log('🔄 ROLLING BACK MIGRATION: Structural Improvements');
     console.log('================================================');
-    
+
     try {
       // Restore original headers
       console.log('📝 Restoring original headers...');
@@ -251,30 +287,56 @@ class StructuralImprovementsMigration {
         console.log('   ✅ Parents sheet headers restored');
       }
 
-      // Restore Students headers  
+      // Restore Students headers
       const studentsSheet = this.spreadsheet.getSheetByName('students');
       if (studentsSheet) {
         // Check current number of columns to determine if StudentId was deleted
         const currentColumns = studentsSheet.getLastColumn();
-        
+
         if (currentColumns === 8) {
           // StudentId was likely deleted, need to insert it back
           console.log('   🔄 StudentId column appears to have been deleted, inserting it back...');
           studentsSheet.insertColumnAfter(1); // Insert after Id column
           const headers = studentsSheet.getRange(1, 1, 1, 9);
-          headers.setValues([['Id', 'StudentId', 'LastName', 'FirstName', 'LastNickname', 'FirstNickname', 'Grade', 'Parent1Id', 'Parent2Id']]);
+          headers.setValues([
+            [
+              'Id',
+              'StudentId',
+              'LastName',
+              'FirstName',
+              'LastNickname',
+              'FirstNickname',
+              'Grade',
+              'Parent1Id',
+              'Parent2Id',
+            ],
+          ]);
           console.log('   ✅ Students sheet headers restored with StudentId column recreated');
         } else {
           // Normal case - just restore headers
           const headers = studentsSheet.getRange(1, 1, 1, 9);
-          headers.setValues([['Id', 'StudentId', 'LastName', 'FirstName', 'LastNickname', 'FirstNickname', 'Grade', 'Parent1Id', 'Parent2Id']]);
+          headers.setValues([
+            [
+              'Id',
+              'StudentId',
+              'LastName',
+              'FirstName',
+              'LastNickname',
+              'FirstNickname',
+              'Grade',
+              'Parent1Id',
+              'Parent2Id',
+            ],
+          ]);
           console.log('   ✅ Students sheet headers restored');
         }
       }
 
       console.log('\n✅ ROLLBACK COMPLETED');
-      console.log('\n⚠️  Note: If StudentId column was deleted, data may need to be restored from backup');
-      
+      console.log(
+        '\n⚠️  Note: If StudentId column was deleted, data may need to be restored from backup'
+      );
+
       return true;
     } catch (error) {
       console.error('❌ Rollback failed:', error.toString());
@@ -290,9 +352,9 @@ class StructuralImprovementsMigration {
 function logMigrationResult(message) {
   const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
   const fullMessage = `${timestamp}: ${message}`;
-  
+
   console.log(`📝 ${fullMessage}`);
-  
+
   // Optional: Log to a dedicated sheet
   try {
     const logSheet = SpreadsheetApp.openById(getSpreadsheetId()).getSheetByName('Migration Log');
