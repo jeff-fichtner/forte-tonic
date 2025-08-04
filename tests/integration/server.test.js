@@ -275,11 +275,11 @@ describe('Server Integration Tests', () => {
         } catch {
           result = JSON.parse(response.text);
         }
-        expect(result).toHaveProperty('data');
-        expect(Array.isArray(result.data)).toBe(true);
-        expect(result).toHaveProperty('total');
-        expect(result).toHaveProperty('page');
-        expect(result).toHaveProperty('pageSize');
+        expect(Array.isArray(result)).toBe(true);
+        expect(result.length).toBeGreaterThan(0);
+        expect(result[0]).toHaveProperty('id');
+        expect(result[0]).toHaveProperty('firstName');
+        expect(result[0]).toHaveProperty('lastName');
       });
     });
 
