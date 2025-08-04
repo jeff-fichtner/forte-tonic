@@ -57,7 +57,11 @@ export class ViewModel {
     this.registrations = registrations.map(registration => {
       // ensure student is populated
       if (!registration.student) {
-        registration.student = this.students.find(x => x.id === registration.studentId);
+        registration.student = this.students.find(x => x.id?.value === registration.studentId.value);
+      }
+      // ensure instructor is populated
+      if (!registration.instructor) {
+        registration.instructor = this.instructors.find(x => x.id === registration.instructorId.value);
       }
       return registration;
     });
@@ -169,7 +173,7 @@ export class ViewModel {
       parentWeeklyScheduleTables.appendChild(newTable);
       this.#buildWeeklySchedule(
         tableId,
-        this.registrations.filter(x => x.studentId === student.id)
+        this.registrations.filter(x => x.studentId.value === student.id)
       );
     });
     // registration
@@ -177,7 +181,7 @@ export class ViewModel {
     const mappedEmployees = this.adminEmployees().concat(
       this.instructors
         .filter(instructor =>
-          this.registrations.some(registration => registration.instructorId === instructor.id)
+          this.registrations.some(registration => registration.instructorId.value === instructor.id)
         )
         .map(this.instructorToEmployee)
     );
@@ -230,8 +234,16 @@ export class ViewModel {
       ],
       // row
       registration => {
-        const instructor = this.instructors.find(x => x.id === registration.instructorId);
-        const student = this.students.find(x => x.id === registration.studentId);
+        // Extract primitive values for comparison
+        const instructorIdToFind = registration.instructorId?.value || registration.instructorId;
+        const studentIdToFind = registration.studentId?.value || registration.studentId;
+        
+        // Compare instructor ID (string) with instructor.id (string)
+        const instructor = this.instructors.find(x => x.id === instructorIdToFind);
+        
+        // Compare student ID (string) with student.id.value (StudentId object's value)
+        const student = this.students.find(x => x.id?.value === studentIdToFind);
+        
         if (!instructor || !student) {
           console.warn(`Instructor or student not found for registration: ${registration.id}`);
           return '';
@@ -322,8 +334,8 @@ export class ViewModel {
       ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument'],
       // row
       enrollment => {
-        const instructor = this.instructors.find(x => x.id === enrollment.instructorId);
-        const student = this.students.find(x => x.id === enrollment.studentId);
+        const instructor = this.instructors.find(x => x.id === enrollment.instructorId.value);
+        const student = this.students.find(x => x.id?.value === enrollment.studentId.value);
         if (!instructor || !student) {
           console.warn(`Instructor or student not found for enrollment: ${enrollment.id}`);
           return '';

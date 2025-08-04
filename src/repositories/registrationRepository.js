@@ -45,7 +45,7 @@ export class RegistrationRepository extends BaseRepository {
       return null;
     }
 
-    return this._mapRowToRegistration(row);
+    return Registration.fromDatabaseRow(row);
   }
 
   /**
@@ -55,7 +55,7 @@ export class RegistrationRepository extends BaseRepository {
     const data = await this.dbClient.getRows('registrations');
     const rows = data.filter(row => row[1] === studentId);
 
-    return rows.map(row => this._mapRowToRegistration(row));
+    return rows.map(row => Registration.fromDatabaseRow(row));
   }
 
   /**
@@ -141,7 +141,7 @@ export class RegistrationRepository extends BaseRepository {
       // Update in Google Sheets (row index + 2 for header and 0-based index)
       await this.dbClient.updateRow('registrations', rowIndex + 2, data[rowIndex]);
 
-      return this._mapRowToRegistration(data[rowIndex]);
+      return Registration.fromDatabaseRow(data[rowIndex]);
     } catch (error) {
       throw error;
     }
@@ -175,7 +175,7 @@ export class RegistrationRepository extends BaseRepository {
       const data = await this.dbClient.getRows('registrations');
       const rows = data.filter(row => row[2] === instructorId);
 
-      return rows.map(row => this._mapRowToRegistration(row));
+      return rows.map(row => Registration.fromDatabaseRow(row));
     } catch (error) {
       throw error;
     }
@@ -189,31 +189,10 @@ export class RegistrationRepository extends BaseRepository {
       const data = await this.dbClient.getRows('registrations');
       const rows = data.filter(row => row[3] === classId);
 
-      return rows.map(row => this._mapRowToRegistration(row));
+      return rows.map(row => Registration.fromDatabaseRow(row));
     } catch (error) {
       throw error;
     }
   }
 
-  /**
-   * Map Google Sheets row to registration object
-   */
-  _mapRowToRegistration(row) {
-    if (!row || row.length < 7) {
-      throw new Error('Invalid registration row data');
-    }
-
-    return {
-      id: row[0],
-      studentId: row[1],
-      instructorId: row[2],
-      classId: row[3],
-      type: row[4],
-      status: row[5],
-      registrationDate: new Date(row[6]),
-      notes: row[7] || '',
-      paymentStatus: row[8] || 'pending',
-      metadata: row[9] ? JSON.parse(row[9]) : {},
-    };
-  }
 }

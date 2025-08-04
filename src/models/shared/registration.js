@@ -254,7 +254,18 @@ export class Registration {
    * Factory method: Create from API data (frontend compatibility)
    */
   static fromApiData(data) {
-    return new Registration(data);
+    // Transform API data structure to match constructor expectations
+    const transformedData = {
+      ...data,
+      // Extract primitive values from value objects if they exist, otherwise use as-is
+      studentId: data.studentId?.value || data.studentId,
+      instructorId: data.instructorId?.value || data.instructorId,
+      // Extract startTime and length from lessonTime object if present
+      startTime: data.lessonTime?.startTime || data.startTime,
+      length: data.lessonTime?.durationMinutes || data.length,
+    };
+    
+    return new Registration(transformedData);
   }
 
   /**
