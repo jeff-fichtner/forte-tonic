@@ -3,7 +3,7 @@ import { RegistrationType } from '../utils/values/registrationType.js';
 import { _fetchData } from '../utils/helpers.js';
 import { configService } from '../services/configurationService.js';
 import { UserTransformService } from '../services/userTransformService.js';
-import { currentConfig, isProduction, isStaging } from '../config/environment.js';
+import { currentConfig, isProduction, isStaging, version } from '../config/environment.js';
 
 // Import application layer controllers
 import { UserController } from '../controllers/userController.js';
@@ -15,6 +15,11 @@ const router = express.Router();
 
 // Health check endpoint for monitoring
 router.get('/health', SystemController.getHealth);
+
+// Version endpoint for frontend
+router.get('/version', (req, res) => {
+  res.json(version);
+});
 
 // Get current authenticated user
 router.post('/getAuthenticatedUser', UserController.getAuthenticatedUser);

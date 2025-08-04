@@ -23,8 +23,11 @@
     "format:all": "npm run format && npm run lint:fix",
     "check:all": "npm run format:check && npm run lint && npm test",
     "build": "npm run check:all",
-    "build:production": "echo 'Production build - skipping quality checks'",
-    "build:staging": "echo 'Staging build - skipping quality checks'",
+    "build:production": "echo 'Production build - version increment handled by deployment process'",
+    "build:staging": "echo 'Staging build - version increment handled by deployment process'",
+    "version:increment": "npm version patch --no-git-tag-version",
+    "version:increment:minor": "npm version minor --no-git-tag-version",
+    "version:increment:major": "npm version major --no-git-tag-version",
     "deploy:check": "npm run build && npm run test",
     "postinstall": "echo 'Install complete - ready to start'",
     "health": "curl -f http://localhost:${PORT:-3000}/api/health || exit 1"
