@@ -1,52 +1,78 @@
 /**
  * Service Container
  * 
- * Dependency injection container for managing application dependencies
- * and providing a clean way to wire up services across layers.
+ * Simplified dependency injection container for MVC architecture
+ * Directly manages service instances without complex factory patterns
  */
 
-import { infrastructureFactory } from '../factory/infrastructureServiceFactory.js';
+// Direct imports for simplified MVC structure
+import { GoogleSheetsDbClient } from '../../database/googleSheetsDbClient.js';
+import { EmailClient } from '../../email/emailClient.js';
+import { CacheService } from '../../cache/cacheService.js';
+import { configService } from '../../services/configurationService.js';
 
 // Import repositories
-import { RegistrationRepository } from '../../domain/repositories/registrationRepository.js';
-import { UserRepository } from '../../core/repositories/userRepository.js';
-import { ProgramRepository } from '../../core/repositories/programRepository.js';
-import { StudentRepository } from '../../core/repositories/studentRepository.js';
-import { ParentRepository } from '../../core/repositories/parentRepository.js';
+import { RegistrationRepository } from '../../repositories/registrationRepository.js';
+import { UserRepository } from '../../repositories/userRepository.js';
+import { ProgramRepository } from '../../repositories/programRepository.js';
+import { StudentRepository } from '../../repositories/studentRepository.js';
+import { ParentRepository } from '../../repositories/parentRepository.js';
 
-// Import application services
-import { RegistrationApplicationService } from '../../application/services/registrationApplicationService.js';
-import { StudentApplicationService } from '../../application/services/studentApplicationService.js';
+// Import services
+import { RegistrationApplicationService } from '../../services/registrationService.js';
 
 export class ServiceContainer {
   constructor() {
     this.services = new Map();
     this.singletons = new Map();
     this.initialized = false;
+    
+    // Initialize infrastructure services directly
+    this.dbClient = null;
+    this.emailClient = null;
+    this.cacheService = null;
   }
 
   /**
-   * Initialize the service container
+   * Initialize the service container - simplified for MVC
    */
   async initialize() {
     if (this.initialized) return;
 
-    console.log('🏗️  Initializing Service Container');
+    console.log('🏗️  Initializing Service Container (MVC)');
 
-    // Initialize infrastructure factory
-    await infrastructureFactory.initialize();
+    // Initialize infrastructure services directly
+    await this.#initializeInfrastructure();
 
-    // Register infrastructure services
-    this.#registerInfrastructureServices();
-
-    // Register repositories
+    // Register repositories with direct dependencies
     this.#registerRepositories();
 
-    // Register application services
-    this.#registerApplicationServices();
+    // Register services with dependencies
+    this.#registerServices();
 
     this.initialized = true;
     console.log('✅ Service Container initialized');
+  }
+
+  /**
+   * Initialize infrastructure services directly
+   */
+  async #initializeInfrastructure() {
+    try {
+      // Initialize database client
+      this.dbClient = new GoogleSheetsDbClient(configService);
+      
+      // Initialize email client  
+      this.emailClient = new EmailClient(configService);
+      
+      // Initialize cache service
+      this.cacheService = new CacheService();
+
+      console.log('✅ Infrastructure services initialized');
+    } catch (error) {
+      console.error('❌ Failed to initialize infrastructure:', error);
+      throw error;
+    }
   }
 
   /**
@@ -55,6 +81,21 @@ export class ServiceContainer {
   get(serviceName) {
     if (!this.initialized) {
       throw new Error('Service container not initialized. Call initialize() first.');
+    }
+
+    // Direct access to infrastructure services
+    switch (serviceName) {
+      case 'databaseClient':
+        return this.dbClient;
+      case 'emailClient':
+        return this.emailClient;
+      case 'cacheService':
+        return this.cacheService;
+      case 'configurationService':
+        return configService;
+      default:
+        // Fall back to registered services
+        break;
     }
 
     // Return singleton if exists
@@ -124,7 +165,7 @@ export class ServiceContainer {
   }
 
   /**
-   * Health check for all services
+   * Health check for all services - simplified for MVC
    */
   async healthCheck() {
     const results = {
@@ -134,14 +175,24 @@ export class ServiceContainer {
     };
 
     try {
-      // Infrastructure health check
-      const infraHealth = await infrastructureFactory.healthCheck();
-      results.services.infrastructure = infraHealth;
+      // Check infrastructure services directly
+      results.services.databaseClient = { 
+        status: this.dbClient ? 'healthy' : 'unhealthy',
+        type: 'GoogleSheetsDbClient' 
+      };
+      
+      results.services.emailClient = { 
+        status: this.emailClient ? 'healthy' : 'unhealthy',
+        type: 'EmailClient' 
+      };
+      
+      results.services.cacheService = { 
+        status: this.cacheService ? 'healthy' : 'unhealthy',
+        type: 'CacheService' 
+      };
 
-      // Check if critical services can be instantiated
+      // Check if critical repositories can be instantiated
       const criticalServices = [
-        'registrationApplicationService',
-        'studentApplicationService',
         'registrationRepository',
         'userRepository'
       ];
@@ -171,83 +222,66 @@ export class ServiceContainer {
   }
 
   /**
-   * Graceful shutdown
+   * Graceful shutdown - simplified for MVC
    */
   async shutdown() {
     console.log('🛑 Shutting down Service Container');
 
-    // Shutdown infrastructure services
-    await infrastructureFactory.shutdown();
+    // Shutdown infrastructure services directly
+    if (this.emailClient && typeof this.emailClient.shutdown === 'function') {
+      await this.emailClient.shutdown();
+    }
+    
+    if (this.cacheService && typeof this.cacheService.shutdown === 'function') {
+      await this.cacheService.shutdown();
+    }
 
     // Clear all service instances
     this.services.clear();
     this.singletons.clear();
+    this.dbClient = null;
+    this.emailClient = null;
+    this.cacheService = null;
     this.initialized = false;
 
     console.log('✅ Service Container shutdown complete');
   }
 
   /**
-   * Private method: Register infrastructure services
-   */
-  #registerInfrastructureServices() {
-    this.register('databaseClient', () => infrastructureFactory.getDatabaseClient());
-    this.register('emailClient', () => infrastructureFactory.getEmailClient());
-    this.register('cacheService', () => infrastructureFactory.getCacheService());
-    this.register('configurationService', () => infrastructureFactory.getConfigurationService());
-  }
-
-  /**
-   * Private method: Register repositories
+   * Register repositories with direct dependencies - simplified for MVC
    */
   #registerRepositories() {
     this.register('registrationRepository', () => {
-      const dbClient = this.get('databaseClient');
-      return new RegistrationRepository(dbClient);
+      return new RegistrationRepository(this.dbClient);
     });
 
     this.register('userRepository', () => {
-      const dbClient = this.get('databaseClient');
-      return new UserRepository(dbClient);
+      return new UserRepository(this.dbClient);
     });
 
     this.register('programRepository', () => {
-      const dbClient = this.get('databaseClient');
-      return new ProgramRepository(dbClient);
+      return new ProgramRepository(this.dbClient);
     });
 
     this.register('studentRepository', () => {
-      const dbClient = this.get('databaseClient');
-      return new StudentRepository(dbClient);
+      return new StudentRepository(this.dbClient);
     });
 
     this.register('parentRepository', () => {
-      const dbClient = this.get('databaseClient');
-      return new ParentRepository(dbClient);
+      return new ParentRepository(this.dbClient);
     });
   }
 
   /**
-   * Private method: Register application services
+   * Register application services with dependencies - simplified for MVC
    */
-  #registerApplicationServices() {
+  #registerServices() {
     this.register('registrationApplicationService', () => {
       return new RegistrationApplicationService({
         registrationRepository: this.get('registrationRepository'),
         userRepository: this.get('userRepository'),
         programRepository: this.get('programRepository'),
-        emailClient: this.get('emailClient'),
-        auditService: null
-      });
-    });
-
-    this.register('studentApplicationService', () => {
-      return new StudentApplicationService({
-        studentRepository: this.get('studentRepository'),
-        parentRepository: this.get('parentRepository'),
-        registrationRepository: this.get('registrationRepository'),
-        emailClient: this.get('emailClient'),
-        auditService: null
+        emailClient: this.emailClient
       });
     });
   }

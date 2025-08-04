@@ -6,8 +6,8 @@ import { fileURLToPath } from 'url';
 import apiRoutes from './routes/api.js';
 import staticRoutes from './routes/static.js';
 import { initializeUserContext, requireAuth, requireOperator } from './middleware/auth.js';
-import { configService } from './core/services/configurationService.js';
-import { createLogger } from './core/utilities/logger.js';
+import { configService } from './services/configurationService.js';
+import { createLogger } from './utils/utilities/logger.js';
 import { serviceContainer } from './infrastructure/container/serviceContainer.js';
 
 const __filename = fileURLToPath(import.meta.url);

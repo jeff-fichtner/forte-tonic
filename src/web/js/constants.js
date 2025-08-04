@@ -3,7 +3,7 @@
  */
 
 // Date/Time utilities - Native JavaScript implementation
-import { Duration, DateTime, DateHelpers } from '/core/helpers/nativeDateTimeHelpers.js';
+import { Duration, DateTime, DateHelpers } from '../../utils/nativeDateTimeHelpers.js';
 
 export { Duration, DateTime, DateHelpers };
 

@@ -42,4 +42,28 @@ router.use(
 // Serve image files
 router.use('/images', express.static(path.join(webPath, 'images')));
 
+// Serve model files for frontend imports
+router.use(
+  '/models',
+  express.static(path.join(__dirname, '..', 'models'), {
+    setHeaders: (res, path) => {
+      if (path.endsWith('.js')) {
+        res.set('Content-Type', 'text/javascript');
+      }
+    },
+  })
+);
+
+// Serve utility files for frontend imports
+router.use(
+  '/utils',
+  express.static(path.join(__dirname, '..', 'utils'), {
+    setHeaders: (res, path) => {
+      if (path.endsWith('.js')) {
+        res.set('Content-Type', 'text/javascript');
+      }
+    },
+  })
+);
+
 export default router;
