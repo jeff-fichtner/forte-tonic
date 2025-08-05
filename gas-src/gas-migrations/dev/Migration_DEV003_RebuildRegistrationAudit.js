@@ -225,135 +225,100 @@ class RebuildRegistrationAuditMigration {
    * Rebuild audit records from current registrations
    */
   rebuildAuditRecords() {
-    console.log('\n🔨 Rebuilding audit records...');
-    
+    console.log('\n🔨 Rebuilding audit records (flexible columns)...');
     const registrationsSheet = this.spreadsheet.getSheetByName('registrations');
     const auditSheet = this.spreadsheet.getSheetByName('registrations_audit');
-    
-    // Get all registrations data
     const registrationsData = registrationsSheet.getDataRange().getValues();
     const dataRows = registrationsData.slice(1); // Skip headers
-    
-    // Find column indices for registrations
     const regHeaders = this.registrationsHeaders;
-    
-    // Try different variations of ID column name
+    const auditHeaders = this.auditHeaders;
+
+    // Find registration ID column
     let idIndex = regHeaders.indexOf('id');
-    if (idIndex === -1) {
-      idIndex = regHeaders.indexOf('Id');
-    }
-    if (idIndex === -1) {
-      idIndex = regHeaders.indexOf('ID');
-    }
-    if (idIndex === -1) {
-      // Try to find a column that might be an ID (contains 'id' or ends with 'Id')
-      idIndex = regHeaders.findIndex(header => 
-        header.toLowerCase().includes('id') || 
-        header.endsWith('Id') || 
-        header.endsWith('ID')
-      );
-    }
-    
+    if (idIndex === -1) idIndex = regHeaders.indexOf('Id');
+    if (idIndex === -1) idIndex = regHeaders.indexOf('ID');
+    if (idIndex === -1) idIndex = regHeaders.findIndex(header => header.toLowerCase().includes('id') || header.endsWith('Id') || header.endsWith('ID'));
     if (idIndex === -1) {
       console.log('Available columns in registrations table:', regHeaders);
       throw new Error('No ID column found in registrations table. Available columns: ' + regHeaders.join(', '));
     }
-    
     console.log(`Using ID column: "${regHeaders[idIndex]}" at index ${idIndex}`);
-    
-    // Find column indices for audit table
-    const auditHeaders = this.auditHeaders;
-    
-    // Try different variations for audit table columns too
-    let auditIdIndex = auditHeaders.indexOf('id');
-    if (auditIdIndex === -1) {
-      auditIdIndex = auditHeaders.indexOf('Id');
-    }
-    if (auditIdIndex === -1) {
-      auditIdIndex = auditHeaders.indexOf('ID');
-    }
-    
-    let registrationIdIndex = auditHeaders.indexOf('registration_id');
-    if (registrationIdIndex === -1) {
-      registrationIdIndex = auditHeaders.indexOf('RegistrationId');
-    }
-    if (registrationIdIndex === -1) {
-      registrationIdIndex = auditHeaders.indexOf('registrationId');
-    }
-    
-    const actionIndex = auditHeaders.indexOf('action') !== -1 ? auditHeaders.indexOf('action') : auditHeaders.indexOf('Action');
-    const timestampIndex = auditHeaders.indexOf('timestamp') !== -1 ? auditHeaders.indexOf('timestamp') : auditHeaders.indexOf('Timestamp');
-    const userIndex = auditHeaders.indexOf('user') !== -1 ? auditHeaders.indexOf('user') : auditHeaders.indexOf('User');
-    const oldValuesIndex = auditHeaders.indexOf('old_values') !== -1 ? auditHeaders.indexOf('old_values') : auditHeaders.indexOf('OldValues');
-    const newValuesIndex = auditHeaders.indexOf('new_values') !== -1 ? auditHeaders.indexOf('new_values') : auditHeaders.indexOf('NewValues');
-    
-    // Validate audit table structure with flexible column names
-    const columnMappings = {
-      'audit_id': auditIdIndex,
-      'registration_id': registrationIdIndex,
-      'action': actionIndex,
-      'timestamp': timestampIndex,
-      'user': userIndex,
-      'old_values': oldValuesIndex,
-      'new_values': newValuesIndex
-    };
-    
-    const missingColumns = Object.entries(columnMappings)
-      .filter(([name, index]) => index === -1)
-      .map(([name]) => name);
-    
-    if (missingColumns.length > 0) {
-      console.log('Available audit columns:', auditHeaders);
-      throw new Error(`Missing required audit columns: ${missingColumns.join(', ')}. Available columns: ${auditHeaders.join(', ')}`);
-    }
-    
+
     // Prepare audit records
     const auditRecords = [];
     const currentTimestamp = new Date().toISOString();
-    
+
     dataRows.forEach((row, index) => {
       const registrationId = row[idIndex];
-      
       if (!registrationId) {
         console.log(`⚠️  Skipping row ${index + 2}: missing registration ID`);
         return;
       }
-      
       // Create registration object for new_values
       const registrationObject = {};
       regHeaders.forEach((header, i) => {
         registrationObject[header] = row[i];
       });
-      
-      // Create audit record
+
+      // Create audit record for available columns only
       const auditRecord = new Array(auditHeaders.length).fill('');
-      auditRecord[auditIdIndex] = this.generateUUID();
-      auditRecord[registrationIdIndex] = registrationId;
-      auditRecord[actionIndex] = 'INSERT';
-      auditRecord[timestampIndex] = currentTimestamp;
-      auditRecord[userIndex] = 'SYSTEM_REBUILD';
-      auditRecord[oldValuesIndex] = '{}'; // Empty object for INSERT
-      auditRecord[newValuesIndex] = JSON.stringify(registrationObject);
-      
+      auditHeaders.forEach((header, colIdx) => {
+        switch (header) {
+          case 'id':
+          case 'Id':
+          case 'ID':
+            auditRecord[colIdx] = this.generateUUID();
+            break;
+          case 'registration_id':
+          case 'RegistrationId':
+          case 'registrationId':
+            auditRecord[colIdx] = registrationId;
+            break;
+          case 'action':
+          case 'Action':
+            auditRecord[colIdx] = 'INSERT';
+            break;
+          case 'timestamp':
+          case 'Timestamp':
+            auditRecord[colIdx] = currentTimestamp;
+            break;
+          case 'user':
+          case 'User':
+            auditRecord[colIdx] = 'SYSTEM_REBUILD';
+            break;
+          case 'old_values':
+          case 'OldValues':
+            auditRecord[colIdx] = '{}';
+            break;
+          case 'new_values':
+          case 'NewValues':
+            auditRecord[colIdx] = JSON.stringify(registrationObject);
+            break;
+          default:
+            // If the column matches a registration field, copy it
+            const regColIdx = regHeaders.indexOf(header);
+            if (regColIdx !== -1) {
+              auditRecord[colIdx] = row[regColIdx];
+            } else {
+              auditRecord[colIdx] = '';
+            }
+        }
+      });
       auditRecords.push(auditRecord);
     });
-    
+
     // Insert audit records in batches
     if (auditRecords.length > 0) {
       const batchSize = 100;
       let inserted = 0;
-      
       for (let i = 0; i < auditRecords.length; i += batchSize) {
         const batch = auditRecords.slice(i, i + batchSize);
         const startRow = auditSheet.getLastRow() + 1;
-        
         const range = auditSheet.getRange(startRow, 1, batch.length, auditHeaders.length);
         range.setValues(batch);
-        
         inserted += batch.length;
         console.log(`   - Inserted batch: ${inserted}/${auditRecords.length} audit records`);
       }
-      
       this.changes.auditRecordsCreated = inserted;
       console.log(`✅ Created ${inserted} audit records`);
     } else {
