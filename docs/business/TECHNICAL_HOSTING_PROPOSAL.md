@@ -1,6 +1,6 @@
 # Hosting Proposal: Tonic Music Program Registration System
 
-**Prepared for:** Private School Administration  
+**Prepared for:** Marin Country Day School
 **Date:** August 4, 2025  
 **Document Version:** 2.0
 
@@ -11,8 +11,8 @@
 This proposal outlines three hosting options for the Tonic Music Program Registration System. We recommend Google Cloud Platform as the best choice for reliability and integration, with Firebase and Render as cost-effective alternatives.
 
 **Hosting Options:**
-- **Best Choice:** Google Cloud Platform - $50-70/month
-- **Budget Alternative 1:** Firebase - $10-35/month (serverless)
+- **Best Choice:** Google Cloud Platform - $35-50/month
+- **Budget Alternative 1:** Firebase - $15-30/month (serverless)
 - **Budget Alternative 2:** Render.com - $25-75/month (always-on)
 
 ---
@@ -58,16 +58,15 @@ The Tonic application is a simple, efficient system that:
 
 ### Cost Breakdown
 
+**Recommended Plan: Cloud Run + Load Balancer**
+
 | What You Get | Monthly Cost |
 |--------------|--------------|
-| **Always-on hosting** | $30-40 |
-| **Security & SSL certificates** | $10-15 |
-| **Global content delivery** | $5-10 |
-| **Monitoring & support** | $5-10 |
-| **Educational discount (20%)** | -$10-15 |
+| **Cloud Run (512MB, 1 vCPU, min 1 instance)** | $30-40 |
+| **Basic monitoring & logging** | $5-10 |
 | | |
-| **Total Monthly Cost** | **$50-70** |
-| **Annual Cost** | **$600-840** |
+| **Total Monthly Cost** | **$35-50** |
+| **Annual Cost** | **$420-600** |
 
 ### What This Means for Your School
 
@@ -99,15 +98,16 @@ Firebase uses "serverless" technology, which means your application "sleeps" whe
 
 ### Cost Breakdown
 
+**Recommended Plan: Firebase Hosting + Cloud Functions**
+
 | What You Get | Monthly Cost |
 |--------------|--------------|
-| **Serverless hosting** | $10-20 |
-| **Google Sheets integration** | $5-10 |
-| **Security & SSL** | $0-5 |
-| **Global content delivery** | $0-5 |
+| **Firebase Hosting (Spark/Blaze Plan)** | $0-5 |
+| **Cloud Functions (up to 125K invocations)** | $10-20 |
+| **Firestore database (minimal usage)** | $5-10 |
 | | |
-| **Total Monthly Cost** | **$10-35** |
-| **Annual Cost** | **$120-420** |
+| **Total Monthly Cost** | **$15-30** |
+| **Annual Cost** | **$180-360** |
 
 ### Best For Schools That:
 - Want significant cost savings (50-70% less than GCP)
@@ -137,11 +137,17 @@ Render is a straightforward hosting platform that keeps your application running
 
 ### Cost Breakdown
 
+**Recommended Plans:**
+
 | Service Level | Features | Monthly Cost |
 |---------------|----------|--------------|
-| **Starter** | Basic always-on hosting | $25 |
-| **Standard** | Enhanced performance | $50 |
-| **Professional** | Premium features | $75 |
+| **Starter Plan** | 512MB RAM, always-on hosting | $25 |
+| **Standard Plan** | 1GB RAM, enhanced performance | $50 |
+
+**Best Choice for Schools: Starter Plan ($25/month)**
+- Sufficient resources for current needs
+- Always-on reliability
+- Room to grow with usage
 
 ### Best For Schools That:
 - Want simple, always-on hosting
@@ -159,8 +165,8 @@ Render is a straightforward hosting platform that keeps your application running
 | **Response Time** | ⚡ Instant | ⚡ Instant (⏱️ 1-2s wake-up) | ⚡ Instant |
 | **Google Sheets Integration** | ⭐⭐⭐ Optimized | ⭐⭐⭐ Excellent | ⭐⭐ Works |
 | **Google Workspace SSO** | ⭐⭐⭐ Native | ⭐⭐⭐ Native | ⭐ Limited |
-| **Monthly Cost** | $50-70 | $10-35 | $25-75 |
-| **Annual Cost** | $600-840 | $120-420 | $300-900 |
+| **Monthly Cost** | $35-50 | $15-30 | $25-75 |
+| **Annual Cost** | $420-600 | $180-360 | $300-900 |
 | **Setup Complexity** | Medium | Simple | Very Simple |
 | **Future Growth** | ⭐⭐⭐ Excellent | ⭐⭐⭐ Excellent | ⭐⭐ Good |
 
@@ -187,21 +193,10 @@ Render is a straightforward hosting platform that keeps your application running
 - Lower cost than GCP
 - Limited Google integration features
 
-## Implementation Approach
-
-**For Any Choice:**
-1. **Week 1:** Set up hosting account and deploy application
-2. **Week 2:** Configure custom domain and security
-3. **Week 3:** Test with school staff and make adjustments
-4. **Week 4:** Go live with full school community
-
-**Timeline:** 3-4 weeks for any option
-**Technical Support:** Included with all recommended platforms
-
 ## Final Recommendation
 
 **For a private school with budget for quality infrastructure: Google Cloud Platform**
 
-The combination of always-on reliability, optimized Google integration, and educational discounts makes GCP the best long-term investment. The monthly cost of $50-70 provides enterprise-grade hosting that will serve your school well as the music program grows.
+The combination of always-on reliability, optimized Google integration, and professional infrastructure makes GCP the best long-term investment. The monthly cost of $35-50 provides enterprise-grade hosting that will serve your school well as the music program grows.
 
-**Alternative:** If budget is the primary concern, Firebase offers excellent value at $10-35/month with only minor trade-offs in availability.
+**Alternative:** If budget is the primary concern, Firebase offers excellent value at $15-30/month with only minor trade-offs in availability.
