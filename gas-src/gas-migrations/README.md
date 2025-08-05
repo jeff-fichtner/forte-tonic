@@ -11,55 +11,42 @@ The migration system provides:
 - **Comprehensive Verification**: Detailed verification scripts for each migration
 - **Preview Mode**: See what changes will be made before executing
 
-## 🔐 CONFIGURATION UPDATE
+## 🔐 SIMPLE CONFIGURATION
 
-**PROPERTIES SERVICE CONFIGURATION - PERSISTENT ACROSS DEPLOYMENTS**
-
-The migration system now uses Google Apps Script's Properties Service for configuration. This provides:
-- **Persistent Storage**: Settings survive code deployments and updates
-- **Environment Safety**: Automatic detection prevents production accidents
-- **One-Time Setup**: Configure once, works forever
-- **No Hardcoded Values**: Clean, maintainable code
+**JUST SET YOUR SPREADSHEET ID**
 
 ```javascript
-// ✅ Quick setup commands (run once)
-quickSetupDev();     // Sets development environment
-quickSetupProd();    // Sets production environment
+// ✅ Open Config.js and set your spreadsheet ID:
+const SPREADSHEET_ID = "your-spreadsheet-id-here";
 
-// All migrations automatically use Properties Service configuration
+// All migrations automatically use this ID
 runCompositeToUuidMigration(); // Uses getSpreadsheetId()
 runAllTablesToUuidMigration(); // Uses getSpreadsheetId()
-validateConfiguration(); // Test your setup
 ```
 
 ## 🚀 Quick Start
 
-**PROPERTIES SERVICE SETUP - ONE-TIME CONFIGURATION**
+**EDIT ONE LINE, DEPLOY, RUN**
 
 1. **Install clasp CLI**: `npm install -g @google/clasp`
 2. **Authenticate**: `clasp login`
-3. **Deploy**: Run `npm run deploy` from `gas-src/` directory
-4. **Configure Environment**: Run setup command in Google Apps Script
-5. **Verify**: Run `validateConfiguration()` to confirm setup
+3. **Set Spreadsheet ID**: Edit `SPREADSHEET_ID` constant in `Config.js`
+4. **Deploy**: Run `npm run deploy` from `gas-src/` directory
+5. **Run**: Execute functions directly in Google Apps Script editor
 
 ```bash
 # Initial setup
 npm install -g @google/clasp
 clasp login
 
+# Edit Config.js - set SPREADSHEET_ID constant
+
 # Deploy project
 cd gas-src/
 npm run deploy
 
-# In Google Apps Script editor, run ONE of these:
-# quickSetupDev();   // For development environment
-# quickSetupProd();  // For production environment
-
-# Verify configuration
-# validateConfiguration();
+# Run migrations in Google Apps Script editor
 ```
-
-See `PROPERTIES_SERVICE_GUIDE.md` for detailed setup instructions.
 ## Available Migrations
 
 ### Migration 002: Composite to UUID (Registrations)
