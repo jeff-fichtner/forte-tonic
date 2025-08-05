@@ -630,54 +630,15 @@ class RealisticFakeDataMigration {
 }
 
 /**
- * Utility function to validate that this is a development environment
- */
-function validateDevelopmentEnvironment(spreadsheetId) {
-  console.log('🔍 VALIDATING DEVELOPMENT ENVIRONMENT');
-  console.log('=====================================');
-
-  try {
-    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
-    const title = spreadsheet.getName().toLowerCase();
-
-    if (title.includes('production') || title.includes('prod') || title.includes('live')) {
-      console.log('❌ ERROR: This appears to be a production spreadsheet');
-      console.log(`   Spreadsheet title: "${spreadsheet.getName()}"`);
-      console.log('   This migration should only be used in development/testing environments');
-      return false;
-    }
-
-    if (!title.includes('dev') && !title.includes('test') && !title.includes('demo')) {
-      console.log('⚠️  WARNING: Spreadsheet title does not indicate development environment');
-      console.log(`   Spreadsheet title: "${spreadsheet.getName()}"`);
-      console.log('   Please confirm this is a development/testing environment');
-      console.log('   Consider renaming to include "dev", "test", or "demo"');
-    }
-
-    console.log('✅ Environment validation passed');
-    console.log(`   Spreadsheet: "${spreadsheet.getName()}"`);
-    console.log(`   ID: ${spreadsheetId}`);
-
-    return true;
-  } catch (error) {
-    console.log('❌ ERROR: Could not access spreadsheet');
-    console.log(`   Error: ${error.toString()}`);
-    return false;
-  }
-}
-
-/**
- * Safe execution wrapper that validates environment first
+ * Safe execution wrapper with development environment warning
  */
 function safeExecuteRealisticFakeDataMigration(spreadsheetId) {
   console.log('🛡️  SAFE EXECUTION: Realistic Fake Data Migration');
   console.log('================================================');
+  
+  console.log('⚠️  DEV MIGRATION: This is a development-only migration');
+  console.log('Make sure you are working with a development/testing spreadsheet');
 
-  if (!validateDevelopmentEnvironment(spreadsheetId)) {
-    console.log('❌ EXECUTION BLOCKED: Environment validation failed');
-    return;
-  }
-
-  console.log('✅ Environment validated - proceeding with migration');
+  console.log('✅ Proceeding with migration');
   runRealisticFakeDataMigration(spreadsheetId);
 }

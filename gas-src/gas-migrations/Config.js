@@ -95,3 +95,71 @@ function createMigrationBackup(migrationName, sheetNames) {
     };
   }
 }
+
+/**
+ * Simple restore function to restore from backup sheets
+ * @param {string} migrationName - Name of the migration to restore
+ * @returns {Object} Restore result
+ */
+function restoreFromBackup(migrationName) {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(getSpreadsheetId());
+    const allSheets = spreadsheet.getSheets();
+    
+    // Find backup sheets for this migration
+    const backupSheets = allSheets.filter(sheet => 
+      sheet.getName().includes(`BACKUP_${migrationName}_`)
+    );
+    
+    if (backupSheets.length === 0) {
+      return {
+        success: false,
+        error: `No backup sheets found for migration: ${migrationName}`
+      };
+    }
+    
+    console.log(`🔄 Found ${backupSheets.length} backup sheets for ${migrationName}`);
+    
+    // Restore each backup sheet
+    let restoredCount = 0;
+    for (const backupSheet of backupSheets) {
+      const backupName = backupSheet.getName();
+      // Extract original sheet name from backup name
+      // Format: BACKUP_MigrationName_timestamp_OriginalName
+      const parts = backupName.split('_');
+      const originalName = parts.slice(3).join('_'); // Everything after the third underscore
+      
+      if (originalName) {
+        const originalSheet = spreadsheet.getSheetByName(originalName);
+        if (originalSheet) {
+          // Clear original sheet and copy backup data
+          originalSheet.clear();
+          const backupData = backupSheet.getDataRange().getValues();
+          if (backupData.length > 0) {
+            originalSheet.getRange(1, 1, backupData.length, backupData[0].length).setValues(backupData);
+          }
+          console.log(`✅ Restored ${originalName} from backup`);
+          restoredCount++;
+        }
+      }
+    }
+    
+    // Delete backup sheets
+    for (const backupSheet of backupSheets) {
+      spreadsheet.deleteSheet(backupSheet);
+    }
+    
+    console.log(`🎉 Restore completed: ${restoredCount} sheets restored`);
+    return {
+      success: true,
+      restoredSheets: restoredCount
+    };
+    
+  } catch (error) {
+    console.error('❌ Restore failed:', error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}

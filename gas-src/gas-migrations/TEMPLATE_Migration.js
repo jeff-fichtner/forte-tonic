@@ -5,8 +5,8 @@
  * Replace [XXX] with the migration number and [Description] with a meaningful name.
  *
  * To use:
- * 1. Copy this file and rename to Migration[XXX]_[Description].gs
- * 2. Configure spreadsheet ID in Config.js (loaded automatically)
+ * 1. Copy this file and rename to Migration[XXX]_[Description].js
+ * 2. Set your spreadsheet ID in Config.js: const SPREADSHEET_ID = "your-id";
  * 3. Update function names to match your migration
  * 4. Test thoroughly with preview function first
  */
