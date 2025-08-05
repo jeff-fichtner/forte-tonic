@@ -110,6 +110,9 @@ class RebuildRegistrationAuditMigration {
     console.log(`📋 Migration ID: ${this.migrationId}`);
     
     try {
+      // Show table structure information
+      this.showTableStructure();
+      
       this.analyzeCurrentState();
       
       console.log('\n📊 Preview Summary:');
@@ -121,6 +124,43 @@ class RebuildRegistrationAuditMigration {
     } catch (error) {
       console.error('❌ Preview failed:', error.message);
       throw error;
+    }
+  }
+
+  /**
+   * Show the structure of relevant tables for debugging
+   */
+  showTableStructure() {
+    console.log('\n🔍 TABLE STRUCTURE ANALYSIS');
+    console.log('============================');
+    
+    const registrationsSheet = this.spreadsheet.getSheetByName('registrations');
+    const auditSheet = this.spreadsheet.getSheetByName('registrations_audit');
+    
+    if (registrationsSheet) {
+      const regData = registrationsSheet.getDataRange().getValues();
+      const regHeaders = regData[0];
+      console.log(`\n📋 Registrations Table (${regData.length - 1} records):`);
+      console.log(`   Columns: ${regHeaders.join(', ')}`);
+      
+      // Check for ID columns specifically
+      const idColumns = regHeaders.filter(header => 
+        header.toLowerCase().includes('id') || 
+        header.endsWith('Id') || 
+        header.endsWith('ID')
+      );
+      console.log(`   ID columns found: ${idColumns.join(', ')}`);
+    } else {
+      console.log('\n❌ Registrations table not found!');
+    }
+    
+    if (auditSheet) {
+      const auditData = auditSheet.getDataRange().getValues();
+      const auditHeaders = auditData[0];
+      console.log(`\n📜 Registrations Audit Table (${auditData.length - 1} records):`);
+      console.log(`   Columns: ${auditHeaders.join(', ')}`);
+    } else {
+      console.log('\n❌ Registrations audit table not found!');
     }
   }
 
@@ -196,28 +236,75 @@ class RebuildRegistrationAuditMigration {
     
     // Find column indices for registrations
     const regHeaders = this.registrationsHeaders;
-    const idIndex = regHeaders.indexOf('id');
+    
+    // Try different variations of ID column name
+    let idIndex = regHeaders.indexOf('id');
+    if (idIndex === -1) {
+      idIndex = regHeaders.indexOf('Id');
+    }
+    if (idIndex === -1) {
+      idIndex = regHeaders.indexOf('ID');
+    }
+    if (idIndex === -1) {
+      // Try to find a column that might be an ID (contains 'id' or ends with 'Id')
+      idIndex = regHeaders.findIndex(header => 
+        header.toLowerCase().includes('id') || 
+        header.endsWith('Id') || 
+        header.endsWith('ID')
+      );
+    }
     
     if (idIndex === -1) {
-      throw new Error('id column not found in registrations table');
+      console.log('Available columns in registrations table:', regHeaders);
+      throw new Error('No ID column found in registrations table. Available columns: ' + regHeaders.join(', '));
     }
+    
+    console.log(`Using ID column: "${regHeaders[idIndex]}" at index ${idIndex}`);
     
     // Find column indices for audit table
     const auditHeaders = this.auditHeaders;
-    const auditIdIndex = auditHeaders.indexOf('id');
-    const registrationIdIndex = auditHeaders.indexOf('registration_id');
-    const actionIndex = auditHeaders.indexOf('action');
-    const timestampIndex = auditHeaders.indexOf('timestamp');
-    const userIndex = auditHeaders.indexOf('user');
-    const oldValuesIndex = auditHeaders.indexOf('old_values');
-    const newValuesIndex = auditHeaders.indexOf('new_values');
     
-    // Validate audit table structure
-    const requiredColumns = ['id', 'registration_id', 'action', 'timestamp', 'user', 'old_values', 'new_values'];
-    const missingColumns = requiredColumns.filter(col => auditHeaders.indexOf(col) === -1);
+    // Try different variations for audit table columns too
+    let auditIdIndex = auditHeaders.indexOf('id');
+    if (auditIdIndex === -1) {
+      auditIdIndex = auditHeaders.indexOf('Id');
+    }
+    if (auditIdIndex === -1) {
+      auditIdIndex = auditHeaders.indexOf('ID');
+    }
+    
+    let registrationIdIndex = auditHeaders.indexOf('registration_id');
+    if (registrationIdIndex === -1) {
+      registrationIdIndex = auditHeaders.indexOf('RegistrationId');
+    }
+    if (registrationIdIndex === -1) {
+      registrationIdIndex = auditHeaders.indexOf('registrationId');
+    }
+    
+    const actionIndex = auditHeaders.indexOf('action') !== -1 ? auditHeaders.indexOf('action') : auditHeaders.indexOf('Action');
+    const timestampIndex = auditHeaders.indexOf('timestamp') !== -1 ? auditHeaders.indexOf('timestamp') : auditHeaders.indexOf('Timestamp');
+    const userIndex = auditHeaders.indexOf('user') !== -1 ? auditHeaders.indexOf('user') : auditHeaders.indexOf('User');
+    const oldValuesIndex = auditHeaders.indexOf('old_values') !== -1 ? auditHeaders.indexOf('old_values') : auditHeaders.indexOf('OldValues');
+    const newValuesIndex = auditHeaders.indexOf('new_values') !== -1 ? auditHeaders.indexOf('new_values') : auditHeaders.indexOf('NewValues');
+    
+    // Validate audit table structure with flexible column names
+    const columnMappings = {
+      'audit_id': auditIdIndex,
+      'registration_id': registrationIdIndex,
+      'action': actionIndex,
+      'timestamp': timestampIndex,
+      'user': userIndex,
+      'old_values': oldValuesIndex,
+      'new_values': newValuesIndex
+    };
+    
+    const missingColumns = Object.entries(columnMappings)
+      .filter(([name, index]) => index === -1)
+      .map(([name]) => name);
     
     if (missingColumns.length > 0) {
-      throw new Error(`Missing required audit columns: ${missingColumns.join(', ')}`);
+      console.log('Available audit columns:', auditHeaders);
+      throw new Error(`Missing required audit columns: ${missingColumns.join(', ')}. Available columns: ${auditHeaders.join(', ')}`);
     }
     
     // Prepare audit records
