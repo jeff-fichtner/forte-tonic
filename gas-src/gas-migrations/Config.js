@@ -1,20 +1,17 @@
 /**
- * Global Configuration for Gas Migrations
+ * Google Apps Script Configuration Management using Properties Service
  *
  * This file provides configuration management using Google Apps Script's Properties Service
- * for persistent storage, with fallback to hardcoded values for backward compatibility.
+ * for persistent storage of settings that survive deployments and script updates.
  *
  * IMPORTANT: In Google Apps Script, files are loaded in alphabetical order.
  * This file is named "Config.js" to ensure it loads before other migration files.
  *
- * Setup Instructions (Option 1 - Properties Service - RECOMMENDED):
- * 1. Run: setConfig("SPREADSHEET_ID", "your-actual-spreadsheet-id")
- * 2. Run: setConfig("ENVIRONMENT", "development") // or "production"
- * 3. All migration functions will automatically use these persistent settings
- *
- * Setup Instructions (Option 2 - Legacy hardcoded):
- * 1. Replace "YOUR_SPREADSHEET_ID_HERE" below with your actual spreadsheet ID
- * 2. All migration functions will use the hardcoded value
+ * Setup Instructions:
+ * 1. Run: quickSetupDev("your-spreadsheet-id") for development
+ * 2. Run: quickSetupProd("your-spreadsheet-id") for production
+ * 3. Or use: setConfig("SPREADSHEET_ID", "your-id") manually
+ * 4. All migration functions will automatically use these persistent settings
  *
  * Properties Service Benefits:
  * - Settings persist across deployments
@@ -24,14 +21,34 @@
  */
 
 // ========================================
-// CONFIGURATION SYSTEM
+// CONFIGURATION KEYS AND DEFAULTS
 // ========================================
 
 /**
- * Legacy fallback spreadsheet ID (used if Properties Service is not configured)
- * TODO: Replace with your actual spreadsheet ID if not using Properties Service
+ * Configuration keys used throughout the application
  */
-var GLOBAL_SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID_HERE';
+const CONFIG_KEYS = {
+  SPREADSHEET_ID: 'SPREADSHEET_ID',
+  ENVIRONMENT: 'ENVIRONMENT',
+  DEBUG_MODE: 'DEBUG_MODE',
+  BACKUP_RETENTION_DAYS: 'BACKUP_RETENTION_DAYS',
+  NOTIFICATION_EMAIL: 'NOTIFICATION_EMAIL',
+  MIGRATION_LOG_LEVEL: 'MIGRATION_LOG_LEVEL'
+};
+
+/**
+ * Default configuration values
+ */
+const DEFAULT_CONFIG = {
+  [CONFIG_KEYS.ENVIRONMENT]: 'development',
+  [CONFIG_KEYS.DEBUG_MODE]: 'true',
+  [CONFIG_KEYS.BACKUP_RETENTION_DAYS]: '7',
+  [CONFIG_KEYS.MIGRATION_LOG_LEVEL]: 'info'
+};
+
+// ========================================
+// CORE CONFIGURATION FUNCTIONS
+// ========================================
 
 /**
  * Set a configuration value using Properties Service
@@ -49,55 +66,80 @@ function setConfig(key, value) {
 }
 
 /**
- * Get a configuration value from Properties Service with fallback
+ * Get a configuration value from Properties Service with defaults
  * @param {string} key - Configuration key
- * @param {string} fallback - Fallback value if not found
+ * @param {string} defaultValue - Default value if not found
  * @return {string} Configuration value
  */
-function getConfigValue(key, fallback = null) {
+function getConfigValue(key, defaultValue = null) {
   try {
     const value = PropertiesService.getScriptProperties().getProperty(key);
-    return value !== null ? value : fallback;
+    return value !== null ? value : (defaultValue || DEFAULT_CONFIG[key] || null);
   } catch (error) {
-    console.warn(`⚠️  Failed to get config ${key}, using fallback:`, error.message);
-    return fallback;
+    console.error(`❌ Failed to get config ${key}:`, error.message);
+    return defaultValue || DEFAULT_CONFIG[key] || null;
   }
 }
 
 /**
- * Utility function to get the configured spreadsheet ID
- * Uses Properties Service first, falls back to hardcoded value
- * All migrations should use this function to get the spreadsheet ID
+ * Get all configuration values as an object
+ * @return {Object} Configuration object with defaults merged
+ */
+function getConfig() {
+  try {
+    const properties = PropertiesService.getScriptProperties().getProperties();
+    
+    // Merge with defaults for any missing keys
+    const config = { ...DEFAULT_CONFIG };
+    Object.keys(properties).forEach(key => {
+      config[key] = properties[key];
+    });
+    
+    return config;
+  } catch (error) {
+    console.error('❌ Failed to get config:', error.message);
+    return { ...DEFAULT_CONFIG };
+  }
+}
+
+/**
+ * Update multiple configuration values at once
+ * @param {Object} configUpdates - Object with key-value pairs to update
+ */
+function updateConfig(configUpdates) {
+  try {
+    PropertiesService.getScriptProperties().setProperties(configUpdates);
+    console.log(`✅ Config updated:`, Object.keys(configUpdates).join(', '));
+  } catch (error) {
+    console.error('❌ Failed to update config:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Get the configured spreadsheet ID
+ * @return {string} Spreadsheet ID
  */
 function getSpreadsheetId() {
-  // Try Properties Service first
-  let spreadsheetId = getConfigValue('SPREADSHEET_ID');
+  const spreadsheetId = getConfigValue(CONFIG_KEYS.SPREADSHEET_ID);
   
-  // Fall back to hardcoded value
   if (!spreadsheetId) {
-    spreadsheetId = GLOBAL_SPREADSHEET_ID;
-  }
-  
-  // Validate we have a valid ID
-  if (!spreadsheetId || spreadsheetId === 'YOUR_SPREADSHEET_ID_HERE') {
     const errorMsg = `❌ SPREADSHEET ID NOT CONFIGURED
 
-Please choose one of these setup methods:
+Please set your spreadsheet ID using one of these methods:
 
-OPTION 1 (Recommended - Properties Service):
-   setConfig("SPREADSHEET_ID", "your-actual-spreadsheet-id")
+QUICK SETUP:
+   quickSetupDev("your-spreadsheet-id")    // For development
+   quickSetupProd("your-spreadsheet-id")   // For production
 
-OPTION 2 (Legacy - Edit code):
-   Edit Config.js and replace "YOUR_SPREADSHEET_ID_HERE" with your actual spreadsheet ID
+MANUAL SETUP:
+   setConfig("SPREADSHEET_ID", "your-spreadsheet-id")
 
-Properties Service benefits:
-- Settings persist across deployments
-- No code changes needed for different environments
-- More secure and flexible
+SETUP WIZARD:
+   setupWizard()  // Interactive setup guide
 
-Current status:
-- Properties Service SPREADSHEET_ID: ${getConfigValue('SPREADSHEET_ID') || 'NOT SET'}
-- Hardcoded fallback: ${GLOBAL_SPREADSHEET_ID}`;
+The spreadsheet ID can be found in your Google Sheets URL:
+https://docs.google.com/spreadsheets/d/[SPREADSHEET_ID]/edit`;
     
     throw new Error(errorMsg);
   }
@@ -106,8 +148,8 @@ Current status:
 }
 
 /**
- * Utility function to get the configured spreadsheet object
- * Includes error handling and validation
+ * Get the configured spreadsheet object with validation
+ * @return {GoogleAppsScript.Spreadsheet.Spreadsheet} Spreadsheet object
  */
 function getSpreadsheet() {
   try {
@@ -122,8 +164,10 @@ function getSpreadsheet() {
     if (error.message.includes('SPREADSHEET ID NOT CONFIGURED')) {
       throw error; // Re-throw configuration errors
     }
+    
+    const spreadsheetId = getConfigValue(CONFIG_KEYS.SPREADSHEET_ID);
     throw new Error(
-      `❌ CANNOT ACCESS SPREADSHEET\n\nSpreadsheet ID: ${GLOBAL_SPREADSHEET_ID}\nError: ${error.message}\n\nPlease check:\n1. Spreadsheet ID is correct\n2. You have access to the spreadsheet\n3. Spreadsheet still exists`
+      `❌ CANNOT ACCESS SPREADSHEET\n\nSpreadsheet ID: ${spreadsheetId}\nError: ${error.message}\n\nPlease check:\n1. Spreadsheet ID is correct\n2. You have access to the spreadsheet\n3. Spreadsheet still exists`
     );
   }
 }
@@ -138,65 +182,51 @@ function validateConfiguration() {
 
   try {
     const spreadsheetId = getSpreadsheetId();
-    console.log(`✅ Spreadsheet ID configured: ${spreadsheetId}`);
+    console.log(`✅ Configuration loaded`);
+    console.log(`   Spreadsheet ID: ${spreadsheetId.substring(0, 8)}...${spreadsheetId.substring(spreadsheetId.length - 4)}`);
 
     const spreadsheet = getSpreadsheet();
-    const spreadsheetName = spreadsheet.getName();
-    console.log(`✅ Spreadsheet accessible: "${spreadsheetName}"`);
+    console.log(`✅ Spreadsheet access verified`);
+    console.log(`   Spreadsheet name: "${spreadsheet.getName()}"`);
+    console.log(`   Number of sheets: ${spreadsheet.getSheets().length}`);
 
-    // Check for required sheets
-    const requiredSheets = ['students', 'parents', 'instructors', 'registrations'];
-    const availableSheets = spreadsheet.getSheets().map(sheet => sheet.getName());
+    const sheets = spreadsheet.getSheets().map(sheet => sheet.getName());
+    console.log(`   Available sheets: ${sheets.join(', ')}`);
 
-    console.log('\n📋 SHEET VALIDATION:');
-    requiredSheets.forEach(sheetName => {
-      if (availableSheets.includes(sheetName)) {
-        console.log(`✅ Found required sheet: ${sheetName}`);
-      } else {
-        console.log(`⚠️  Missing sheet: ${sheetName}`);
-      }
-    });
+    console.log('\n🎉 CONFIGURATION VALIDATION SUCCESSFUL!');
+    console.log('Your Gas migrations are ready to run.');
 
-    console.log('\n🎉 CONFIGURATION VALIDATION COMPLETE');
-    return {
-      success: true,
-      spreadsheetId: spreadsheetId,
-      spreadsheetName: spreadsheetName,
-      availableSheets: availableSheets,
-    };
+    return true;
   } catch (error) {
-    console.error('❌ CONFIGURATION VALIDATION FAILED:');
-    console.error(error.message);
-    return {
-      success: false,
-      error: error.message,
-    };
+    console.log('\n❌ CONFIGURATION VALIDATION FAILED!');
+    console.log(`Error: ${error.message}`);
+    return false;
   }
 }
 
 // ========================================
-// DEVELOPMENT ENVIRONMENT VALIDATION
+// ENVIRONMENT VALIDATION
 // ========================================
 
 /**
  * Validate that this is a development environment
- * Uses Properties Service configuration with fallback to spreadsheet name checking
+ * Uses Properties Service environment configuration
  */
 function validateDevelopmentEnvironment() {
   try {
-    // Method 1: Check Properties Service environment setting
-    const environment = getConfigValue('ENVIRONMENT');
-    const debugMode = getConfigValue('DEBUG_MODE');
+    // Check Properties Service environment setting
+    const environment = getConfigValue(CONFIG_KEYS.ENVIRONMENT);
+    const debugMode = getConfigValue(CONFIG_KEYS.DEBUG_MODE);
     
     if (environment) {
       const isDev = environment.toLowerCase() === 'development';
       const isDebug = debugMode && debugMode.toLowerCase() === 'true';
       
       if (isDev || isDebug) {
-        console.log(`✅ Development environment validated via Properties Service (ENVIRONMENT=${environment}, DEBUG_MODE=${debugMode})`);
+        console.log(`✅ Development environment validated (ENVIRONMENT=${environment}, DEBUG_MODE=${debugMode})`);
         return true;
       } else if (environment.toLowerCase() === 'production') {
-        console.log('❌ PRODUCTION ENVIRONMENT SET IN PROPERTIES SERVICE');
+        console.log('❌ PRODUCTION ENVIRONMENT SET');
         console.log(`Current settings: ENVIRONMENT=${environment}, DEBUG_MODE=${debugMode}`);
         console.log('Development migrations are blocked in production.');
         console.log('To enable development mode, run: setConfig("ENVIRONMENT", "development")');
@@ -204,8 +234,8 @@ function validateDevelopmentEnvironment() {
       }
     }
     
-    // Method 2: Fallback to spreadsheet name checking (legacy method)
-    console.log('⚠️  No ENVIRONMENT setting found in Properties Service, checking spreadsheet name...');
+    // If no explicit environment is set, check spreadsheet name as fallback
+    console.log('⚠️  No ENVIRONMENT setting found, checking spreadsheet name...');
     const spreadsheet = getSpreadsheet();
     const title = spreadsheet.getName().toLowerCase();
 
@@ -527,9 +557,6 @@ function showConfig() {
         console.log(`   ${key}: ${value}`);
       });
     }
-    
-    console.log('\n📋 Fallback Configuration (hardcoded):');
-    console.log(`   GLOBAL_SPREADSHEET_ID: ${GLOBAL_SPREADSHEET_ID === 'YOUR_SPREADSHEET_ID_HERE' ? 'NOT SET' : GLOBAL_SPREADSHEET_ID.substring(0, 8) + '...'}`);
     
   } catch (error) {
     console.error('❌ Failed to show config:', error.message);
