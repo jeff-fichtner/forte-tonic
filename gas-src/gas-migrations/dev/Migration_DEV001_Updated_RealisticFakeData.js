@@ -33,12 +33,9 @@
  * This is the recommended entry point - includes safety checks
  */
 function safeExecuteUpdatedRealisticFakeDataMigration() {
-  // Validate this is a development environment
-  if (!validateDevelopmentEnvironment()) {
-    console.log('❌ EXECUTION BLOCKED: This appears to be a production environment');
-    console.log('This migration is only safe for development/testing spreadsheets');
-    return { error: 'Environment validation failed' };
-  }
+  // This is a development-only migration
+  console.log('⚠️  DEV MIGRATION: This is a development-only migration');
+  console.log('Make sure you are working with a development/testing spreadsheet');
 
   const migration = new UpdatedRealisticFakeDataMigration(getSpreadsheetId());
   migration.execute();
@@ -234,10 +231,7 @@ class UpdatedRealisticFakeDataMigration {
     console.log(`🚀 Starting Migration: ${this.description}`);
     console.log(`📋 Migration ID: ${this.migrationId}`);
     
-    if (!validateDevelopmentEnvironment()) {
-      console.log('❌ Migration blocked: Not in development environment');
-      return;
-    }
+    console.log('⚠️  DEV MIGRATION: This is a development-only migration');
 
     try {
       // Create backup

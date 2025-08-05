@@ -232,81 +232,105 @@ class CompositeToUuidMigration {
   }
 
   /**
-   * Migrate the registrations_audit table
+   * Migrate the registrations_audit table using rebuild approach for consistency
    */
   migrateRegistrationsAuditTable() {
-    console.log('📜 Migrating registrations_audit table...');
+    console.log('📜 Rebuilding registrations_audit table for consistency...');
     
-    const sheet = this.spreadsheet.getSheetByName('registrations_audit');
-    if (!sheet) {
+    const auditSheet = this.spreadsheet.getSheetByName('registrations_audit');
+    if (!auditSheet) {
       console.log('⚠️  registrations_audit sheet not found, skipping');
       return;
     }
+
+    // Get current audit data for change tracking
+    const auditData = auditSheet.getDataRange().getValues();
+    const auditHeaders = auditData[0];
+    const auditRows = auditData.slice(1);
     
-    const data = sheet.getDataRange().getValues();
-    const headers = data[0];
-    const dataRows = data.slice(1);
-    
-    // Find relevant columns
-    const idColumnIndex = headers.indexOf('Id');
-    const registrationIdColumnIndex = headers.indexOf('RegistrationId');
-    
-    if (idColumnIndex === -1 || registrationIdColumnIndex === -1) {
-      console.log('⚠️  Required columns not found in audit table, skipping');
+    // Clear audit table but keep headers
+    if (auditRows.length > 0) {
+      auditSheet.getRange(2, 1, auditRows.length, auditHeaders.length).clearContent();
+      console.log(`   - Cleared ${auditRows.length} existing audit records`);
+    }
+
+    // Get current registrations data (now with UUIDs)
+    const registrationsSheet = this.spreadsheet.getSheetByName('registrations');
+    const registrationsData = registrationsSheet.getDataRange().getValues();
+    const registrationsHeaders = registrationsData[0];
+    const registrationsRows = registrationsData.slice(1);
+
+    // Find column indices
+    const regIdIndex = registrationsHeaders.indexOf('id');
+    const auditIdIndex = auditHeaders.indexOf('id');
+    const registrationIdIndex = auditHeaders.indexOf('registration_id');
+    const actionIndex = auditHeaders.indexOf('action');
+    const timestampIndex = auditHeaders.indexOf('timestamp');
+    const userIndex = auditHeaders.indexOf('user');
+    const oldValuesIndex = auditHeaders.indexOf('old_values');
+    const newValuesIndex = auditHeaders.indexOf('new_values');
+
+    if (regIdIndex === -1) {
+      console.log('⚠️  id column not found in registrations table, skipping audit rebuild');
       return;
     }
+
+    // Validate audit table structure
+    const requiredColumns = ['id', 'registration_id', 'action', 'timestamp', 'user', 'old_values', 'new_values'];
+    const missingColumns = requiredColumns.filter(col => auditHeaders.indexOf(col) === -1);
     
-    // Process each audit row
-    const updatedRows = [];
-    for (let i = 0; i < dataRows.length; i++) {
-      const row = dataRows[i];
-      if (row.length === 0) continue;
+    if (missingColumns.length > 0) {
+      console.log(`⚠️  Missing audit columns: ${missingColumns.join(', ')}, skipping audit rebuild`);
+      return;
+    }
+
+    // Create new audit records for all current registrations
+    const newAuditRecords = [];
+    const currentTimestamp = new Date().toISOString();
+
+    registrationsRows.forEach((row, index) => {
+      const registrationId = row[regIdIndex];
       
-      const auditId = row[idColumnIndex];
-      const registrationId = row[registrationIdColumnIndex];
-      
-      // Generate new UUID for audit record if needed
-      let newAuditId = auditId;
-      if (!this.isUuid(auditId)) {
-        newAuditId = this.generateUuid();
+      if (!registrationId) {
+        console.log(`⚠️  Skipping registration row ${index + 2}: missing ID`);
+        return;
       }
-      
-      // Find corresponding registration mapping
-      const registrationMapping = this.changes.registrations.find(
-        change => change.originalId === registrationId
-      );
-      
-      const newRegistrationId = registrationMapping ? registrationMapping.newId : registrationId;
-      
-      // Store change for rollback
-      this.changes.registrationsAudit.push({
-        rowIndex: i + 2,
-        originalAuditId: auditId,
-        originalRegistrationId: registrationId,
-        newAuditId: newAuditId,
-        newRegistrationId: newRegistrationId
+
+      // Create registration object for new_values
+      const registrationObject = {};
+      registrationsHeaders.forEach((header, i) => {
+        registrationObject[header] = row[i];
       });
-      
-      // Create updated row
-      const updatedRow = [...row];
-      updatedRow[idColumnIndex] = newAuditId;
-      updatedRow[registrationIdColumnIndex] = newRegistrationId;
-      
-      updatedRows.push(updatedRow);
+
+      // Create audit record
+      const auditRecord = new Array(auditHeaders.length).fill('');
+      auditRecord[auditIdIndex] = this.generateUuid();
+      auditRecord[registrationIdIndex] = registrationId;
+      auditRecord[actionIndex] = 'INSERT';
+      auditRecord[timestampIndex] = currentTimestamp;
+      auditRecord[userIndex] = 'MIGRATION_002_REBUILD';
+      auditRecord[oldValuesIndex] = '{}';
+      auditRecord[newValuesIndex] = JSON.stringify(registrationObject);
+
+      newAuditRecords.push(auditRecord);
+
+      // Track change for rollback
+      this.changes.registrationsAudit.push({
+        rowIndex: newAuditRecords.length + 1,
+        originalAuditId: null, // New record
+        originalRegistrationId: registrationId,
+        newAuditId: auditRecord[auditIdIndex],
+        newRegistrationId: registrationId,
+        action: 'REBUILT'
+      });
+    });
+
+    // Write new audit records
+    if (newAuditRecords.length > 0) {
+      auditSheet.getRange(2, 1, newAuditRecords.length, newAuditRecords[0].length).setValues(newAuditRecords);
     }
-    
-    // Update the sheet with new data
-    if (updatedRows.length > 0) {
-      // Clear existing data (except headers)
-      if (dataRows.length > 0) {
-        sheet.getRange(2, 1, dataRows.length, headers.length).clearContent();
-      }
-      
-      // Write updated data
-      sheet.getRange(2, 1, updatedRows.length, updatedRows[0].length).setValues(updatedRows);
-    }
-    
-    console.log(`✅ Migrated ${updatedRows.length} audit records`);
+
+    console.log(`✅ Rebuilt ${newAuditRecords.length} audit records with consistent UUID references`);
   }
 
   /**
