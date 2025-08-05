@@ -46,7 +46,7 @@
  * Main function to execute the attendance UUID migration
  */
 function runAttendanceToUuidMigration() {
-  const migration = new AttendanceToUuidMigration(getSpreadsheetId());
+  const migration = new AttendanceToUuidMigration();
   migration.execute();
 }
 
@@ -54,7 +54,7 @@ function runAttendanceToUuidMigration() {
  * Preview function to check what changes would be made
  */
 function previewAttendanceToUuidMigration() {
-  const migration = new AttendanceToUuidMigration(getSpreadsheetId());
+  const migration = new AttendanceToUuidMigration();
   migration.preview();
 }
 
@@ -62,7 +62,7 @@ function previewAttendanceToUuidMigration() {
  * Rollback function to restore from backup
  */
 function rollbackAttendanceToUuidMigration() {
-  const migration = new AttendanceToUuidMigration(getSpreadsheetId());
+  const migration = new AttendanceToUuidMigration();
   migration.rollback();
 }
 
@@ -531,12 +531,17 @@ class AttendanceToUuidMigration {
  * Verification class for attendance to UUID migration
  */
 class AttendanceToUuidMigrationVerifier {
-  constructor(spreadsheet) {
-    this.spreadsheet = spreadsheet;
-    this.tables = ['attendance', 'attendance_audit'];
-    this.results = {
-      passed: 0,
-      failed: 0,
+  static options = {
+    spreadsheetId: getSpreadsheetId(),
+    migrationId: 'Migration004_AttendanceToUuid',
+    description: 'Convert attendance tables to UUID primary keys'
+  };
+  constructor() {
+    this.spreadsheet = SpreadsheetApp.openById(AttendanceToUuidMigration.options.spreadsheetId);
+    this.description = AttendanceToUuidMigration.options.description;
+    this.migrationId = AttendanceToUuidMigration.options.migrationId;
+    // ...existing code...
+  }
       warnings: 0,
       tablesChecked: 0,
       totalRecords: 0,

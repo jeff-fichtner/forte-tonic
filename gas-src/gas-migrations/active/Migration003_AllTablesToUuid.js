@@ -39,7 +39,7 @@
  * Main function to execute the all tables to UUID migration
  */
 function runAllTablesToUuidMigration() {
-  const migration = new AllTablesToUuidMigration(getSpreadsheetId());
+  const migration = new AllTablesToUuidMigration();
   migration.execute();
 }
 
@@ -47,7 +47,7 @@ function runAllTablesToUuidMigration() {
  * Preview function to check what changes would be made
  */
 function previewAllTablesToUuidMigration() {
-  const migration = new AllTablesToUuidMigration(getSpreadsheetId());
+  const migration = new AllTablesToUuidMigration();
   migration.preview();
 }
 
@@ -55,7 +55,7 @@ function previewAllTablesToUuidMigration() {
  * Rollback function to restore original IDs
  */
 function rollbackAllTablesToUuidMigration() {
-  const migration = new AllTablesToUuidMigration(getSpreadsheetId());
+  const migration = new AllTablesToUuidMigration();
   migration.rollback();
 }
 
@@ -606,12 +606,17 @@ class AllTablesToUuidMigration {
  * Verification class for all tables UUID migration
  */
 class AllTablesUuidMigrationVerifier {
-  constructor(spreadsheet) {
-    this.spreadsheet = spreadsheet;
-    this.tables = ['admins', 'instructors', 'parents', 'students', 'classes', 'rooms'];
-    this.results = {
-      passed: 0,
-      failed: 0,
+  static options = {
+    spreadsheetId: getSpreadsheetId(),
+    migrationId: 'Migration003_AllTablesToUuid',
+    description: 'Convert all tables to UUID primary keys'
+  };
+  constructor() {
+    this.spreadsheet = SpreadsheetApp.openById(AllTablesToUuidMigration.options.spreadsheetId);
+    this.description = AllTablesToUuidMigration.options.description;
+    this.migrationId = AllTablesToUuidMigration.options.migrationId;
+    // ...existing code...
+  }
       warnings: 0,
       tablesChecked: 0,
       totalRecords: 0,
