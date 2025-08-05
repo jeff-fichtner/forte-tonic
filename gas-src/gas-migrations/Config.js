@@ -42,43 +42,56 @@ function getSpreadsheetId() {
  * Create a backup of specified sheets before migration
  * @param {string} migrationName - Name of the migration
  * @param {Array<string>} sheetNames - Names of sheets to backup
- * @returns {Object} Backup result with metadata
+ * @returns {Object} Backup result with success flag and metadata
  */
 function createMigrationBackup(migrationName, sheetNames) {
-  const spreadsheet = SpreadsheetApp.openById(getSpreadsheetId());
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const backupId = `${migrationName}_${timestamp}`;
-  
-  console.log(`Creating backup: ${backupId}`);
-  
-  const backupMetadata = {
-    migrationName: migrationName,
-    timestamp: new Date().toISOString(),
-    backupId: backupId,
-    sheets: []
-  };
-  
-  // Create backup sheets
-  for (const sheetName of sheetNames) {
-    const sourceSheet = spreadsheet.getSheetByName(sheetName);
-    if (!sourceSheet) {
-      console.warn(`Sheet ${sheetName} not found, skipping backup`);
-      continue;
+  try {
+    const spreadsheet = SpreadsheetApp.openById(getSpreadsheetId());
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupId = `${migrationName}_${timestamp}`;
+    
+    console.log(`Creating backup: ${backupId}`);
+    
+    const backupMetadata = {
+      migrationName: migrationName,
+      timestamp: new Date().toISOString(),
+      backupId: backupId,
+      sheets: []
+    };
+    
+    // Create backup sheets
+    for (const sheetName of sheetNames) {
+      const sourceSheet = spreadsheet.getSheetByName(sheetName);
+      if (!sourceSheet) {
+        console.warn(`Sheet ${sheetName} not found, skipping backup`);
+        continue;
+      }
+      
+      const backupSheetName = `BACKUP_${backupId}_${sheetName}`;
+      const backupSheet = sourceSheet.copyTo(spreadsheet);
+      backupSheet.setName(backupSheetName);
+      backupSheet.hideSheet();
+      
+      backupMetadata.sheets.push({
+        originalName: sheetName,
+        backupName: backupSheetName
+      });
+      
+      console.log(`Backed up ${sheetName} to ${backupSheetName}`);
     }
     
-    const backupSheetName = `BACKUP_${backupId}_${sheetName}`;
-    const backupSheet = sourceSheet.copyTo(spreadsheet);
-    backupSheet.setName(backupSheetName);
-    backupSheet.hideSheet();
+    console.log(`Backup completed: ${backupMetadata.sheets.length} sheets backed up`);
     
-    backupMetadata.sheets.push({
-      originalName: sheetName,
-      backupName: backupSheetName
-    });
+    return {
+      success: true,
+      ...backupMetadata
+    };
     
-    console.log(`Backed up ${sheetName} to ${backupSheetName}`);
+  } catch (error) {
+    console.error('❌ Backup creation failed:', error.message);
+    return {
+      success: false,
+      error: error.message
+    };
   }
-  
-  console.log(`Backup completed: ${backupMetadata.sheets.length} sheets backed up`);
-  return backupMetadata;
 }
