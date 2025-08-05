@@ -11,15 +11,22 @@ The migration system provides:
 - **Comprehensive Verification**: Detailed verification scripts for each migration
 - **Preview Mode**: See what changes will be made before executing
 
-## 🔐 SECURITY UPDATE
+## 🔐 CONFIGURATION UPDATE
 
-**GLOBAL CONFIGURATION - ONE PLACE FOR ALL SPREADSHEET IDS**
+**PROPERTIES SERVICE CONFIGURATION - PERSISTENT ACROSS DEPLOYMENTS**
+
+The migration system now uses Google Apps Script's Properties Service for configuration. This provides:
+- **Persistent Storage**: Settings survive code deployments and updates
+- **Environment Safety**: Automatic detection prevents production accidents
+- **One-Time Setup**: Configure once, works forever
+- **No Hardcoded Values**: Clean, maintainable code
 
 ```javascript
-// ✅ Configure once in Config.js - affects ALL migrations
-var GLOBAL_SPREADSHEET_ID = "YOUR_SPREADSHEET_ID_HERE";
+// ✅ Quick setup commands (run once)
+quickSetupDev();     // Sets development environment
+quickSetupProd();    // Sets production environment
 
-// All migrations automatically use the global configuration
+// All migrations automatically use Properties Service configuration
 runCompositeToUuidMigration(); // Uses getSpreadsheetId()
 runAllTablesToUuidMigration(); // Uses getSpreadsheetId()
 validateConfiguration(); // Test your setup
@@ -27,31 +34,32 @@ validateConfiguration(); // Test your setup
 
 ## 🚀 Quick Start
 
-**DEPLOY WITH CLASP - NO MANUAL COPYING REQUIRED**
+**PROPERTIES SERVICE SETUP - ONE-TIME CONFIGURATION**
 
 1. **Install clasp CLI**: `npm install -g @google/clasp`
 2. **Authenticate**: `clasp login`
-3. **Set Spreadsheet ID**: Configure in parent directory's `.env` file
-4. **Deploy**: Run `npm run deploy` from `gas-src/` directory
-5. **Update**: Use `clasp push` for subsequent changes
-6. **Run**: Execute functions directly in Google Apps Script editor
+3. **Deploy**: Run `npm run deploy` from `gas-src/` directory
+4. **Configure Environment**: Run setup command in Google Apps Script
+5. **Verify**: Run `validateConfiguration()` to confirm setup
 
 ```bash
 # Initial setup
 npm install -g @google/clasp
 clasp login
 
-# In parent directory .env file
-GOOGLE_APPS_SCRIPT_ID="YOUR_SPREADSHEET_ID_HERE"
-
 # Deploy project
 cd gas-src/
 npm run deploy
 
-# Make changes and redeploy
-# Edit files locally, then:
-clasp push
+# In Google Apps Script editor, run ONE of these:
+# quickSetupDev();   // For development environment
+# quickSetupProd();  // For production environment
+
+# Verify configuration
+# validateConfiguration();
 ```
+
+See `PROPERTIES_SERVICE_GUIDE.md` for detailed setup instructions.
 ## Available Migrations
 
 ### Migration 002: Composite to UUID (Registrations)
