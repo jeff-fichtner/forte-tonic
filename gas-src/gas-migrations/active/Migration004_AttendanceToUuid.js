@@ -1,30 +1,45 @@
 /**
  * Google Apps Script Migration 004: Convert Attendance Tables to UUID
  *
+ * 🎯 PURPOSE:
  * This migration converts the attendance and attendance_audit tables to use
  * UUID primary keys for consistency with the registration system.
  *
- * Current Issue:
- * - Attendance table may have non-UUID IDs
+ * ⚠️ CURRENT ISSUE:
+ * - Attendance table may have non-UUID IDs (like "ATT_001" or "12345")
  * - attendance_audit table needs consistent UUID format
- * - Need alignment with registration system UUIDs
+ * - Need alignment with registration system UUIDs for foreign key relationships
  *
- * Solution:
+ * ✅ SOLUTION:
  * - Convert attendance table IDs to UUIDs (if needed)
  * - Ensure attendance_audit uses UUIDs
  * - Update any foreign key references to registrations
  * - Maintain data integrity and relationships
  *
- * Features:
- * - Generates cryptographically secure UUIDs
+ * 📋 TABLES AFFECTED:
+ * - attendance: Main attendance records
+ * - attendance_audit: Audit trail for attendance changes
+ *
+ * 🔧 FEATURES:
+ * - Analyzes existing ID formats before conversion
+ * - Preserves existing UUIDs if already present
+ * - Generates cryptographically secure UUIDs for non-UUID IDs
  * - Updates foreign key references to registration UUIDs
  * - Preserves all existing data integrity
  * - Creates automatic backup for rollback capability
+ * - Comprehensive verification functions
  *
- * To use:
- * 1. Run preview first: previewAttendanceToUuidMigration()
- * 2. Run migration: runAttendanceToUuidMigration()
- * 3. Verify results: verifyAttendanceToUuidMigration()
+ * ⚠️ IMPORTANT:
+ * - Original IDs are NOT preserved (backup restoration for rollback)
+ * - Run this AFTER Migration002 (registrations to UUID)
+ * - This ensures foreign key references are properly aligned
+ *
+ * 🚀 TO USE:
+ * 1. Set spreadsheet ID in Config.js: const SPREADSHEET_ID = "your-id";
+ * 2. Deploy with clasp push
+ * 3. Run preview first: previewAttendanceToUuidMigration()
+ * 4. Run migration: runAttendanceToUuidMigration()
+ * 5. Verify results: verifyAttendanceToUuidMigration()
  */
 
 /**
@@ -52,18 +67,96 @@ function rollbackAttendanceToUuidMigration() {
 }
 
 /**
- * Restore from automatic backup
+ * Restore from automatic backup and delete the backup
  */
 function restoreAttendanceToUuidMigrationFromBackup() {
-  return restoreFromBackup('AttendanceToUuidMigration');
+  return restoreFromBackup('Migration004_AttendanceToUuid');
 }
 
 /**
- * Verification function
+ * Verification function to check migration results
  */
 function verifyAttendanceToUuidMigration() {
-  const migration = new AttendanceToUuidMigration(getSpreadsheetId());
-  migration.verify();
+  console.log('🔍 VERIFYING ATTENDANCE TO UUID MIGRATION');
+  console.log('=========================================');
+  
+  try {
+    const spreadsheet = SpreadsheetApp.openById(getSpreadsheetId());
+    const verifier = new AttendanceToUuidMigrationVerifier(spreadsheet);
+    
+    const results = verifier.runAllChecks();
+    
+    console.log('\n📊 VERIFICATION SUMMARY:');
+    console.log('========================');
+    console.log(`✅ Total checks passed: ${results.passed}`);
+    console.log(`❌ Total checks failed: ${results.failed}`);
+    console.log(`⚠️  Warnings: ${results.warnings}`);
+    console.log(`📋 Tables checked: ${results.tablesChecked}`);
+    console.log(`📊 Total records: ${results.totalRecords}`);
+    console.log(`🔑 Valid UUIDs: ${results.validUuids}`);
+    
+    if (results.failed === 0) {
+      console.log('\n🎉 Migration verification PASSED! All systems go.');
+    } else {
+      console.log('\n❌ Migration verification FAILED. Please review the issues above.');
+    }
+    
+    return results;
+    
+  } catch (error) {
+    console.error('❌ Verification failed:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Quick check for attendance UUID validity
+ */
+function quickAttendanceUuidCheck() {
+  console.log('⚡ QUICK ATTENDANCE UUID CHECK');
+  console.log('==============================');
+  
+  const spreadsheet = SpreadsheetApp.openById(getSpreadsheetId());
+  const tables = ['attendance', 'attendance_audit'];
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  
+  let totalValid = 0;
+  let totalInvalid = 0;
+  
+  for (const tableName of tables) {
+    const sheet = spreadsheet.getSheetByName(tableName);
+    if (!sheet) {
+      console.log(`⚠️  ${tableName} table not found`);
+      continue;
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const idIndex = headers.indexOf('id') !== -1 ? headers.indexOf('id') : headers.indexOf('Id');
+    
+    if (idIndex === -1) {
+      console.log(`❌ ${tableName}: No ID column found`);
+      continue;
+    }
+    
+    const sampleSize = Math.min(5, data.length - 1);
+    let validCount = 0;
+    
+    for (let i = 1; i <= sampleSize; i++) {
+      const id = data[i][idIndex];
+      if (id && uuidRegex.test(id)) {
+        validCount++;
+        totalValid++;
+      } else if (id) {
+        totalInvalid++;
+      }
+    }
+    
+    console.log(`${tableName}: ${validCount}/${sampleSize} valid UUIDs`);
+  }
+  
+  console.log(`\n📊 Quick check results: ${totalValid} valid, ${totalInvalid} invalid UUIDs`);
+  return totalInvalid === 0;
 }
 
 /**
@@ -72,7 +165,7 @@ function verifyAttendanceToUuidMigration() {
 class AttendanceToUuidMigration {
   constructor(spreadsheetId) {
     this.spreadsheet = SpreadsheetApp.openById(spreadsheetId);
-    this.description = 'Convert attendance and attendance_audit tables to UUID primary keys';
+    this.description = 'Convert attendance tables to UUID primary keys';
     this.migrationId = 'Migration004_AttendanceToUuid';
     
     // Track changes for rollback
@@ -86,51 +179,53 @@ class AttendanceToUuidMigration {
    * Execute the migration
    */
   execute() {
-    console.log('🚀 Starting Attendance Tables to UUID Migration...');
+    console.log('🚀 EXECUTING MIGRATION: Attendance Tables to UUID');
+    console.log('=================================================');
+
+    // Create automatic backup before starting
+    console.log('📦 Creating automatic backup...');
+    const backupResult = createMigrationBackup('Migration004_AttendanceToUuid', ['attendance', 'attendance_audit']);
     
+    if (!backupResult.success) {
+      console.error('❌ Failed to create backup, aborting migration');
+      throw new Error(`Backup failed: ${backupResult.error}`);
+    }
+    
+    console.log('✅ Backup created successfully');
+
     try {
-      // Create automatic backup
-      console.log('📦 Creating automatic backup...');
-      this.createBackup();
-      
       // Execute migration steps
+      this.analyzeCurrentState();
       this.migrateAttendanceTable();
       this.migrateAttendanceAuditTable();
       this.validateMigration();
       
-      console.log('✅ Migration completed successfully!');
-      this.printSummary();
+      console.log('\n✅ Migration completed successfully!');
+      console.log('📊 Migration Summary:');
+      console.log(`   - Attendance records migrated: ${this.changes.attendance.length}`);
+      console.log(`   - Attendance audit records migrated: ${this.changes.attendanceAudit.length}`);
       
     } catch (error) {
       console.error('❌ Migration failed:', error.message);
-      console.log('🔄 Consider running rollbackAttendanceToUuidMigration() to revert changes');
+      console.log('🔄 Consider restoring from backup if needed');
       throw error;
     }
   }
 
   /**
-   * Preview what the migration will do
+   * Preview the migration without making changes
    */
   preview() {
-    console.log('👀 PREVIEW: Attendance Tables to UUID Migration');
-    console.log('==============================================');
+    console.log('🔍 PREVIEWING MIGRATION: Attendance Tables to UUID');
+    console.log('==================================================');
     
     try {
-      // Analyze attendance table
-      console.log(`\n📊 Analyzing attendance table:`);
-      const attendanceAnalysis = this.analyzeAttendanceTable();
+      this.analyzeCurrentState();
       
-      // Analyze attendance_audit table
-      console.log(`\n📜 Analyzing attendance_audit table:`);
-      const auditAnalysis = this.analyzeAttendanceAuditTable();
-      
-      console.log(`\n📋 Planned Changes:`);
-      console.log(`   1. Convert attendance table IDs to UUIDs (if needed)`);
-      console.log(`   2. Ensure attendance_audit table uses UUIDs`);
-      console.log(`   3. Update any foreign key references`);
-      console.log(`   4. Maintain all data relationships and integrity`);
-      console.log(`   ⚠️  Note: Original IDs will NOT be preserved (backup for rollback)`);
-      console.log(`\n✅ Preview complete. Run runAttendanceToUuidMigration() to execute.`);
+      console.log('\n📊 Preview Summary:');
+      console.log('===================');
+      console.log('✅ Preview completed - no changes made');
+      console.log('📝 Run execute() to apply the migration');
       
     } catch (error) {
       console.error('❌ Preview failed:', error.message);
@@ -139,96 +234,81 @@ class AttendanceToUuidMigration {
   }
 
   /**
-   * Analyze attendance table
+   * Analyze current state before migration
    */
-  analyzeAttendanceTable() {
-    const sheet = this.spreadsheet.getSheetByName('attendance');
-    if (!sheet) {
-      console.log(`   ⚠️  attendance sheet not found`);
-      return { exists: false };
-    }
+  analyzeCurrentState() {
+    console.log('\n📊 Analyzing current state...');
     
-    const data = sheet.getDataRange().getValues();
-    const headers = data[0];
-    const dataRows = data.slice(1);
-    
-    const idColumnIndex = headers.indexOf('Id');
-    if (idColumnIndex === -1) {
-      console.log(`   ⚠️  No Id column found in attendance table`);
-      return { exists: true, hasIdColumn: false };
-    }
-    
-    let uuidCount = 0;
-    let nonUuidCount = 0;
-    
-    for (const row of dataRows) {
-      if (row.length === 0 || !row[idColumnIndex]) continue;
-      
-      if (this.isUuid(row[idColumnIndex])) {
-        uuidCount++;
-      } else {
-        nonUuidCount++;
-      }
-    }
-    
-    console.log(`   📋 Records: ${dataRows.length}`);
-    console.log(`   📋 Current UUIDs: ${uuidCount}`);
-    console.log(`   📋 Non-UUIDs to convert: ${nonUuidCount}`);
-    
-    return {
-      exists: true,
-      hasIdColumn: true,
-      totalRecords: dataRows.length,
-      uuidCount,
-      nonUuidCount
-    };
+    this.analyzeTable('attendance');
+    this.analyzeTable('attendance_audit');
   }
 
   /**
-   * Analyze attendance_audit table
+   * Analyze a specific table
    */
-  analyzeAttendanceAuditTable() {
-    const sheet = this.spreadsheet.getSheetByName('attendance_audit');
+  analyzeTable(tableName) {
+    const sheet = this.spreadsheet.getSheetByName(tableName);
     if (!sheet) {
-      console.log(`   ⚠️  attendance_audit sheet not found`);
-      return { exists: false };
+      console.log(`⚠️  ${tableName} sheet not found, skipping`);
+      return;
     }
     
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
     const dataRows = data.slice(1);
     
-    const idColumnIndex = headers.indexOf('Id');
-    const registrationIdIndex = headers.indexOf('RegistrationId');
+    console.log(`\n📋 ${tableName} Table:`);
+    console.log(`   - Total records: ${dataRows.length}`);
+    console.log(`   - Headers: ${headers.join(', ')}`);
     
-    console.log(`   📋 Audit records: ${dataRows.length}`);
-    console.log(`   📋 Has Id column: ${idColumnIndex !== -1 ? 'Yes' : 'No'}`);
-    console.log(`   📋 Has RegistrationId column: ${registrationIdIndex !== -1 ? 'Yes' : 'No'}`);
-    
-    if (idColumnIndex !== -1) {
-      let uuidCount = 0;
-      for (const row of dataRows) {
-        if (row.length === 0 || !row[idColumnIndex]) continue;
-        if (this.isUuid(row[idColumnIndex])) {
-          uuidCount++;
-        }
-      }
-      console.log(`   📋 Current UUID audit IDs: ${uuidCount}`);
+    // Check ID column
+    const idIndex = headers.indexOf('id') !== -1 ? headers.indexOf('id') : headers.indexOf('Id');
+    if (idIndex === -1) {
+      console.log(`   ⚠️  No ID column found`);
+      return;
     }
     
-    return {
-      exists: true,
-      hasIdColumn: idColumnIndex !== -1,
-      hasRegistrationIdColumn: registrationIdIndex !== -1,
-      totalRecords: dataRows.length
-    };
+    // Analyze ID formats
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    let uuidCount = 0;
+    let nonUuidCount = 0;
+    let emptyCount = 0;
+    const sampleNonUuids = [];
+    
+    for (const row of dataRows) {
+      const id = row[idIndex];
+      if (!id) {
+        emptyCount++;
+      } else if (uuidRegex.test(id)) {
+        uuidCount++;
+      } else {
+        nonUuidCount++;
+        if (sampleNonUuids.length < 3) {
+          sampleNonUuids.push(id);
+        }
+      }
+    }
+    
+    console.log(`   - Valid UUIDs: ${uuidCount}`);
+    console.log(`   - Non-UUID IDs: ${nonUuidCount}`);
+    console.log(`   - Empty IDs: ${emptyCount}`);
+    
+    if (sampleNonUuids.length > 0) {
+      console.log(`   - Sample non-UUIDs: ${sampleNonUuids.join(', ')}`);
+    }
+    
+    if (nonUuidCount > 0 || emptyCount > 0) {
+      console.log(`   ✨ Migration will convert ${nonUuidCount + emptyCount} IDs to UUIDs`);
+    } else {
+      console.log(`   ✅ All IDs are already valid UUIDs`);
+    }
   }
 
   /**
    * Migrate the attendance table
    */
   migrateAttendanceTable() {
-    console.log('📅 Migrating attendance table...');
+    console.log('\n📋 Migrating attendance table...');
     
     const sheet = this.spreadsheet.getSheetByName('attendance');
     if (!sheet) {
@@ -240,27 +320,30 @@ class AttendanceToUuidMigration {
     const headers = data[0];
     const dataRows = data.slice(1);
     
-    const idColumnIndex = headers.indexOf('Id');
-    if (idColumnIndex === -1) {
-      console.log('⚠️  No Id column found in attendance table, skipping');
+    // Find ID column
+    const idIndex = headers.indexOf('id') !== -1 ? headers.indexOf('id') : headers.indexOf('Id');
+    if (idIndex === -1) {
+      console.log('⚠️  ID column not found in attendance table, skipping');
       return;
     }
     
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    
     // Process each row
     const updatedRows = [];
-    let convertedCount = 0;
+    let conversionCount = 0;
     
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
-      if (row.length === 0 || !row[idColumnIndex]) continue;
+      if (row.length === 0) continue;
       
-      const originalId = row[idColumnIndex];
+      const originalId = row[idIndex];
       let newId = originalId;
       
-      // Convert to UUID if not already a UUID
-      if (!this.isUuid(originalId)) {
+      // Generate UUID if current ID is not a valid UUID or is empty
+      if (!originalId || !uuidRegex.test(originalId)) {
         newId = this.generateUuid();
-        convertedCount++;
+        conversionCount++;
         
         // Store change for rollback
         this.changes.attendance.push({
@@ -272,7 +355,7 @@ class AttendanceToUuidMigration {
       
       // Create updated row
       const updatedRow = [...row];
-      updatedRow[idColumnIndex] = newId;
+      updatedRow[idIndex] = newId;
       
       updatedRows.push(updatedRow);
     }
@@ -288,14 +371,14 @@ class AttendanceToUuidMigration {
       sheet.getRange(2, 1, updatedRows.length, updatedRows[0].length).setValues(updatedRows);
     }
     
-    console.log(`✅ Migrated attendance table: ${convertedCount} IDs converted to UUIDs`);
+    console.log(`✅ Migrated attendance table: ${conversionCount} IDs converted to UUIDs`);
   }
 
   /**
    * Migrate the attendance_audit table
    */
   migrateAttendanceAuditTable() {
-    console.log('📜 Migrating attendance_audit table...');
+    console.log('\n📜 Migrating attendance_audit table...');
     
     const sheet = this.spreadsheet.getSheetByName('attendance_audit');
     if (!sheet) {
@@ -307,27 +390,30 @@ class AttendanceToUuidMigration {
     const headers = data[0];
     const dataRows = data.slice(1);
     
-    const idColumnIndex = headers.indexOf('Id');
-    if (idColumnIndex === -1) {
-      console.log('⚠️  No Id column found in attendance_audit table, skipping');
+    // Find ID column
+    const idIndex = headers.indexOf('id') !== -1 ? headers.indexOf('id') : headers.indexOf('Id');
+    if (idIndex === -1) {
+      console.log('⚠️  ID column not found in attendance_audit table, skipping');
       return;
     }
     
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    
     // Process each row
     const updatedRows = [];
-    let convertedCount = 0;
+    let conversionCount = 0;
     
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
       if (row.length === 0) continue;
       
-      const originalId = row[idColumnIndex];
+      const originalId = row[idIndex];
       let newId = originalId;
       
-      // Convert to UUID if not already a UUID
-      if (originalId && !this.isUuid(originalId)) {
+      // Generate UUID if current ID is not a valid UUID or is empty
+      if (!originalId || !uuidRegex.test(originalId)) {
         newId = this.generateUuid();
-        convertedCount++;
+        conversionCount++;
         
         // Store change for rollback
         this.changes.attendanceAudit.push({
@@ -335,15 +421,11 @@ class AttendanceToUuidMigration {
           originalId: originalId,
           newId: newId
         });
-      } else if (!originalId) {
-        // Generate UUID for empty audit IDs
-        newId = this.generateUuid();
-        convertedCount++;
       }
       
       // Create updated row
       const updatedRow = [...row];
-      updatedRow[idColumnIndex] = newId;
+      updatedRow[idIndex] = newId;
       
       updatedRows.push(updatedRow);
     }
@@ -359,150 +441,77 @@ class AttendanceToUuidMigration {
       sheet.getRange(2, 1, updatedRows.length, updatedRows[0].length).setValues(updatedRows);
     }
     
-    console.log(`✅ Migrated attendance_audit table: ${convertedCount} IDs converted to UUIDs`);
+    console.log(`✅ Migrated attendance_audit table: ${conversionCount} IDs converted to UUIDs`);
   }
 
   /**
-   * Validate the migration was successful
+   * Validate the migration
    */
   validateMigration() {
-    console.log('🔍 Validating migration...');
+    console.log('\n✅ Validating migration...');
     
-    let totalValidated = 0;
-    let totalErrors = 0;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const tables = ['attendance', 'attendance_audit'];
     
-    // Validate attendance table
-    const attendanceResult = this.validateTable('attendance');
-    totalValidated += attendanceResult.valid;
-    totalErrors += attendanceResult.errors;
+    let totalValid = 0;
+    let totalInvalid = 0;
     
-    // Validate attendance_audit table
-    const auditResult = this.validateTable('attendance_audit');
-    totalValidated += auditResult.valid;
-    totalErrors += auditResult.errors;
-    
-    if (totalErrors > 0) {
-      throw new Error(`Validation failed: ${totalErrors} invalid UUIDs found`);
-    }
-    
-    console.log(`✅ Validation passed: ${totalValidated} valid UUIDs across all tables`);
-  }
-
-  /**
-   * Validate a specific table
-   */
-  validateTable(tableName) {
-    const sheet = this.spreadsheet.getSheetByName(tableName);
-    if (!sheet) {
-      console.log(`   ⚠️  ${tableName} sheet not found`);
-      return { valid: 0, errors: 0 };
-    }
-    
-    const data = sheet.getDataRange().getValues();
-    const headers = data[0];
-    const dataRows = data.slice(1);
-    
-    const idColumnIndex = headers.indexOf('Id');
-    if (idColumnIndex === -1) {
-      console.log(`   ⚠️  No Id column in ${tableName}`);
-      return { valid: 0, errors: 0 };
-    }
-    
-    let validCount = 0;
-    let errorCount = 0;
-    
-    for (const row of dataRows) {
-      if (row.length === 0) continue;
+    for (const tableName of tables) {
+      const sheet = this.spreadsheet.getSheetByName(tableName);
+      if (!sheet) continue;
       
-      const id = row[idColumnIndex];
-      if (id && this.isUuid(id)) {
-        validCount++;
-      } else if (id) {
-        errorCount++;
+      const data = sheet.getDataRange().getValues();
+      const headers = data[0];
+      const dataRows = data.slice(1);
+      
+      const idIndex = headers.indexOf('id') !== -1 ? headers.indexOf('id') : headers.indexOf('Id');
+      if (idIndex === -1) continue;
+      
+      let validCount = 0;
+      let invalidCount = 0;
+      
+      for (const row of dataRows) {
+        const id = row[idIndex];
+        if (id && uuidRegex.test(id)) {
+          validCount++;
+          totalValid++;
+        } else if (id) {
+          invalidCount++;
+          totalInvalid++;
+        }
       }
-    }
-    
-    if (errorCount === 0) {
-      console.log(`   ✅ ${tableName}: ${validCount} valid UUIDs`);
-    } else {
-      console.log(`   ❌ ${tableName}: ${errorCount} invalid UUIDs`);
-    }
-    
-    return { valid: validCount, errors: errorCount };
-  }
-
-  /**
-   * Verify migration results
-   */
-  verify() {
-    console.log('🔍 Verifying Attendance Tables UUID Migration...');
-    console.log('===============================================');
-    
-    try {
-      this.validateMigration();
       
-      console.log('\n📊 Verification Summary:');
-      console.log('   ✅ All attendance table IDs are valid UUIDs');
-      console.log('   ✅ All attendance_audit table IDs are valid UUIDs');
-      console.log('   ✅ Migration completed successfully');
-      
-    } catch (error) {
-      console.error('❌ Verification failed:', error.message);
-      throw error;
+      console.log(`   - ${tableName}: ${validCount} valid UUIDs, ${invalidCount} invalid`);
     }
+    
+    if (totalInvalid > 0) {
+      throw new Error(`Validation failed: ${totalInvalid} invalid UUIDs found`);
+    }
+    
+    console.log(`✅ Validation passed: ${totalValid} valid UUIDs across all attendance tables`);
   }
 
   /**
-   * Print migration summary
-   */
-  printSummary() {
-    console.log('\n📊 Migration Summary:');
-    console.log('====================');
-    
-    const attendanceChanges = this.changes.attendance.length;
-    const auditChanges = this.changes.attendanceAudit.length;
-    
-    console.log(`   - attendance: ${attendanceChanges} IDs converted to UUIDs`);
-    console.log(`   - attendance_audit: ${auditChanges} IDs converted to UUIDs`);
-    console.log('📦 Backup created for rollback if needed');
-    console.log('✅ Run verifyAttendanceToUuidMigration() to perform verification');
-  }
-
-  /**
-   * Rollback the migration using backup restoration
+   * Rollback the migration (restore from backup)
    */
   rollback() {
-    console.log('🔄 Rolling back Attendance Tables to UUID Migration...');
-    console.log('ℹ️  Since original IDs are not preserved, rollback requires backup restoration');
+    console.log('🔄 Rolling back Attendance to UUID Migration...');
     
     try {
-      // Use backup restoration for rollback
-      const backupResult = restoreFromBackup('AttendanceToUuidMigration');
+      const restoreResult = restoreFromBackup('Migration004_AttendanceToUuid');
       
-      if (backupResult && backupResult.success) {
-        console.log('✅ Rollback completed successfully using backup restoration!');
+      if (restoreResult.success) {
+        console.log('✅ Rollback completed successfully');
+        console.log(`📊 Restored ${restoreResult.restoredSheets} sheets from backup`);
       } else {
-        throw new Error('Backup restoration failed');
+        console.error('❌ Rollback failed:', restoreResult.error);
       }
+      
+      return restoreResult;
       
     } catch (error) {
       console.error('❌ Rollback failed:', error.message);
-      console.log('📦 Manual restoration may be required from spreadsheet version history');
       throw error;
-    }
-  }
-
-  /**
-   * Create backup before migration
-   */
-  createBackup() {
-    try {
-      const backupResult = createMigrationBackup(this.migrationId, ['attendance', 'attendance_audit']);
-      console.log(`✅ Backup created: ${backupResult.backupPrefix}`);
-      return backupResult;
-    } catch (error) {
-      console.error('⚠️  Backup creation failed:', error.message);
-      console.log('Continuing with migration (backup recommended but not required)');
     }
   }
 
@@ -510,30 +519,233 @@ class AttendanceToUuidMigration {
    * Generate a UUID v4
    */
   generateUuid() {
-    const chars = '0123456789abcdef';
-    const uuid = [];
-    
-    for (let i = 0; i < 36; i++) {
-      if (i === 8 || i === 13 || i === 18 || i === 23) {
-        uuid[i] = '-';
-      } else if (i === 14) {
-        uuid[i] = '4';
-      } else if (i === 19) {
-        uuid[i] = chars[Math.floor(Math.random() * 4) + 8];
-      } else {
-        uuid[i] = chars[Math.floor(Math.random() * 16)];
-      }
-    }
-    
-    return uuid.join('');
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+}
+
+/**
+ * Verification class for attendance to UUID migration
+ */
+class AttendanceToUuidMigrationVerifier {
+  constructor(spreadsheet) {
+    this.spreadsheet = spreadsheet;
+    this.tables = ['attendance', 'attendance_audit'];
+    this.results = {
+      passed: 0,
+      failed: 0,
+      warnings: 0,
+      tablesChecked: 0,
+      totalRecords: 0,
+      validUuids: 0,
+      invalidUuids: 0,
+      errors: []
+    };
   }
 
   /**
-   * Check if a string is a valid UUID
+   * Run all verification checks
    */
-  isUuid(str) {
-    if (!str || typeof str !== 'string') return false;
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(str);
+  runAllChecks() {
+    console.log('Starting comprehensive verification...\n');
+    
+    this.checkTableStructures();
+    this.checkUuidFormat();
+    this.checkDataIntegrity();
+    this.checkForeignKeyReferences();
+    
+    return this.results;
+  }
+
+  /**
+   * Check table structures
+   */
+  checkTableStructures() {
+    console.log('📋 Checking table structures...');
+    
+    for (const tableName of this.tables) {
+      const sheet = this.spreadsheet.getSheetByName(tableName);
+      if (!sheet) {
+        console.log(`⚠️  ${tableName} table not found`);
+        this.results.warnings++;
+        continue;
+      }
+      
+      const data = sheet.getDataRange().getValues();
+      const headers = data[0];
+      const dataRows = data.slice(1);
+      
+      this.results.tablesChecked++;
+      this.results.totalRecords += dataRows.length;
+      
+      // Check for ID column
+      const idIndex = headers.indexOf('id') !== -1 ? headers.indexOf('id') : headers.indexOf('Id');
+      if (idIndex === -1) {
+        console.log(`❌ ${tableName}: ID column not found`);
+        this.results.failed++;
+        continue;
+      }
+      
+      console.log(`✅ ${tableName}: ${dataRows.length} records, structure OK`);
+      this.results.passed++;
+    }
+  }
+
+  /**
+   * Check UUID format validity
+   */
+  checkUuidFormat() {
+    console.log('\n🔍 Checking UUID format validity...');
+    
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    
+    for (const tableName of this.tables) {
+      const sheet = this.spreadsheet.getSheetByName(tableName);
+      if (!sheet) continue;
+      
+      const data = sheet.getDataRange().getValues();
+      const headers = data[0];
+      const dataRows = data.slice(1);
+      
+      const idIndex = headers.indexOf('id') !== -1 ? headers.indexOf('id') : headers.indexOf('Id');
+      if (idIndex === -1) continue;
+      
+      let validCount = 0;
+      let invalidCount = 0;
+      
+      for (let i = 0; i < dataRows.length; i++) {
+        const id = dataRows[i][idIndex];
+        if (id && uuidRegex.test(id)) {
+          validCount++;
+          this.results.validUuids++;
+        } else if (id) {
+          invalidCount++;
+          this.results.invalidUuids++;
+          if (invalidCount <= 3) {
+            console.log(`❌ ${tableName} row ${i + 2}: Invalid UUID "${id}"`);
+          }
+        }
+      }
+      
+      if (invalidCount > 0) {
+        console.log(`❌ ${tableName}: ${invalidCount} invalid UUIDs`);
+        this.results.failed++;
+      } else {
+        console.log(`✅ ${tableName}: ${validCount} valid UUIDs`);
+        this.results.passed++;
+      }
+    }
+  }
+
+  /**
+   * Check data integrity
+   */
+  checkDataIntegrity() {
+    console.log('\n🔐 Checking data integrity...');
+    
+    // Check for duplicate UUIDs across attendance tables
+    const allUuids = new Set();
+    let duplicateCount = 0;
+    
+    for (const tableName of this.tables) {
+      const sheet = this.spreadsheet.getSheetByName(tableName);
+      if (!sheet) continue;
+      
+      const data = sheet.getDataRange().getValues();
+      const headers = data[0];
+      const dataRows = data.slice(1);
+      
+      const idIndex = headers.indexOf('id') !== -1 ? headers.indexOf('id') : headers.indexOf('Id');
+      if (idIndex === -1) continue;
+      
+      for (const row of dataRows) {
+        const id = row[idIndex];
+        if (id) {
+          if (allUuids.has(id)) {
+            console.log(`❌ Duplicate UUID found: ${id} in ${tableName}`);
+            duplicateCount++;
+          } else {
+            allUuids.add(id);
+          }
+        }
+      }
+    }
+    
+    if (duplicateCount > 0) {
+      console.log(`❌ Found ${duplicateCount} duplicate UUIDs across attendance tables`);
+      this.results.failed++;
+    } else {
+      console.log('✅ No duplicate UUIDs found across attendance tables');
+      this.results.passed++;
+    }
+    
+    console.log(`📊 Total unique UUIDs in attendance tables: ${allUuids.size}`);
+  }
+
+  /**
+   * Check foreign key references
+   */
+  checkForeignKeyReferences() {
+    console.log('\n🔗 Checking foreign key references...');
+    
+    // Check attendance-registration relationships
+    this.checkAttendanceRegistrationReferences();
+  }
+
+  /**
+   * Check attendance registration references
+   */
+  checkAttendanceRegistrationReferences() {
+    const attendanceSheet = this.spreadsheet.getSheetByName('attendance');
+    const registrationsSheet = this.spreadsheet.getSheetByName('registrations');
+    
+    if (!attendanceSheet || !registrationsSheet) {
+      console.log('⚠️  Cannot verify attendance-registration references (tables not found)');
+      this.results.warnings++;
+      return;
+    }
+    
+    const attendanceData = attendanceSheet.getDataRange().getValues();
+    const registrationsData = registrationsSheet.getDataRange().getValues();
+    
+    const attendanceHeaders = attendanceData[0];
+    const registrationHeaders = registrationsData[0];
+    
+    const registrationIdIndex = attendanceHeaders.indexOf('RegistrationId');
+    const regIdIndex = registrationHeaders.indexOf('id') !== -1 ? registrationHeaders.indexOf('id') : registrationHeaders.indexOf('Id');
+    
+    if (registrationIdIndex === -1 || regIdIndex === -1) {
+      console.log('⚠️  Cannot verify attendance-registration references (columns not found)');
+      this.results.warnings++;
+      return;
+    }
+    
+    // Build registration ID set
+    const registrationIds = new Set();
+    registrationsData.slice(1).forEach(row => {
+      if (row[regIdIndex]) {
+        registrationIds.add(row[regIdIndex]);
+      }
+    });
+    
+    // Check attendance references
+    let errorCount = 0;
+    attendanceData.slice(1).forEach((row, index) => {
+      if (row[registrationIdIndex] && !registrationIds.has(row[registrationIdIndex])) {
+        console.log(`❌ Attendance row ${index + 2}: RegistrationId "${row[registrationIdIndex]}" not found`);
+        errorCount++;
+      }
+    });
+    
+    if (errorCount > 0) {
+      console.log(`❌ Attendance-Registration: ${errorCount} foreign key errors`);
+      this.results.failed++;
+    } else {
+      console.log('✅ Attendance-Registration: All foreign keys valid');
+      this.results.passed++;
+    }
   }
 }

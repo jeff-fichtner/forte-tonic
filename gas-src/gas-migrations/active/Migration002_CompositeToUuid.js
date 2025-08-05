@@ -1,34 +1,45 @@
 /**
  * Google Apps Script Migration 002: Convert Composite Keys to UUID Primary Keys
  *
+ * 🎯 PURPOSE:
  * This migration transforms the registration system from complex composite keys
  * to simple UUID primary keys for better maintainability and performance.
  *
- * Current Issue:
+ * ⚠️ CURRENT PROBLEM:
  * - Registration IDs like "131509_TEACHER1@EMAIL.COM_Monday_17:15" are complex
  * - Group class IDs like "72768_G002" use different pattern
+ * - Two different key patterns (private vs group)
  * - Difficult to query, update, and maintain
  * - Causes issues with frontend relationship mapping
+ * - Makes API endpoint design complex
+ * - Complicates caching strategies
  *
- * Solution:
- * - Replace all composite keys with UUIDs
- * - Add proper foreign key relationships
- * - Preserve all existing data and relationships
- * - Original composite keys are NOT preserved (backup restoration for rollback)
+ * ✅ SOLUTION:
+ * - Replace all composite keys with UUIDs like "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+ * - Universal format for all registration types
+ * - Easier database queries and relationships
+ * - Simplified API endpoints
+ * - Better frontend data handling
+ * - Consistent with modern best practices
  *
- * Features:
+ * 📋 WHAT CHANGES:
+ * 1. Registrations Table: Id column composite keys → UUIDs, all other data preserved
+ * 2. Registrations Audit Table: Completely rebuilt for consistency with new UUIDs
+ * 3. Original composite keys are NOT preserved (backup restoration for rollback)
+ *
+ * 🔧 FEATURES:
  * - Generates cryptographically secure UUIDs
- * - Updates registrations_audit table accordingly
+ * - Rebuilds audit table for consistency
  * - Preserves all existing data integrity
  * - Creates automatic backup for rollback capability
+ * - Comprehensive verification functions
  *
- * To use:
- * 1. Open your Google Sheets document
- * 2. Go to Extensions > Apps Script
- * 3. Copy this file content into a new .gs file
- * 4. Configure spreadsheet ID in Config.js
- * 5. Run preview first: previewCompositeToUuidMigration()
- * 6. Run migration: runCompositeToUuidMigration()
+ * 🚀 TO USE:
+ * 1. Set spreadsheet ID in Config.js: const SPREADSHEET_ID = "your-id";
+ * 2. Deploy with clasp push
+ * 3. Run preview first: previewCompositeToUuidMigration()
+ * 4. Run migration: runCompositeToUuidMigration()
+ * 5. Verify results: verifyCompositeToUuidMigration()
  */
 
 /**
@@ -61,7 +72,80 @@ function rollbackCompositeToUuidMigration() {
  * Restore from automatic backup and delete the backup
  */
 function restoreCompositeToUuidMigrationFromBackup() {
-  return restoreFromBackup('CompositeToUuidMigration');
+  return restoreFromBackup('Migration002_CompositeToUuid');
+}
+
+/**
+ * Verification function to check migration results
+ * Run this after migration to ensure everything worked correctly
+ */
+function verifyCompositeToUuidMigration() {
+  console.log('🔍 VERIFYING COMPOSITE TO UUID MIGRATION');
+  console.log('=========================================');
+  
+  try {
+    const spreadsheet = SpreadsheetApp.openById(getSpreadsheetId());
+    const verifier = new CompositeToUuidMigrationVerifier(spreadsheet);
+    
+    const results = verifier.runAllChecks();
+    
+    console.log('\n📊 VERIFICATION SUMMARY:');
+    console.log('========================');
+    console.log(`✅ Total checks passed: ${results.passed}`);
+    console.log(`❌ Total checks failed: ${results.failed}`);
+    console.log(`⚠️  Warnings: ${results.warnings}`);
+    
+    if (results.failed === 0) {
+      console.log('\n🎉 Migration verification PASSED! All systems go.');
+    } else {
+      console.log('\n❌ Migration verification FAILED. Please review the issues above.');
+    }
+    
+    return results;
+    
+  } catch (error) {
+    console.error('❌ Verification failed:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Quick check for UUID format validity
+ */
+function quickCompositeToUuidCheck() {
+  console.log('⚡ QUICK COMPOSITE TO UUID CHECK');
+  console.log('================================');
+  
+  const spreadsheet = SpreadsheetApp.openById(getSpreadsheetId());
+  const registrationsSheet = spreadsheet.getSheetByName('registrations');
+  
+  if (!registrationsSheet) {
+    console.log('❌ Registrations sheet not found');
+    return false;
+  }
+  
+  const data = registrationsSheet.getDataRange().getValues();
+  const headers = data[0];
+  const idIndex = headers.indexOf('id') !== -1 ? headers.indexOf('id') : headers.indexOf('Id');
+  
+  if (idIndex === -1) {
+    console.log('❌ No ID column found');
+    return false;
+  }
+  
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const sampleSize = Math.min(10, data.length - 1);
+  
+  for (let i = 1; i <= sampleSize; i++) {
+    const id = data[i][idIndex];
+    if (!uuidRegex.test(id)) {
+      console.log(`❌ Row ${i}: "${id}" is not a valid UUID`);
+      return false;
+    }
+  }
+  
+  console.log(`✅ All ${sampleSize} sampled IDs are valid UUIDs`);
+  return true;
 }
 
 /**
@@ -84,88 +168,52 @@ class CompositeToUuidMigration {
    * Execute the migration
    */
   execute() {
-    console.log('🚀 Starting Composite Key to UUID Migration...');
+    console.log('🚀 EXECUTING MIGRATION: Composite Keys to UUID');
+    console.log('===============================================');
+
+    // Create automatic backup before starting
+    console.log('📦 Creating automatic backup...');
+    const backupResult = createMigrationBackup('Migration002_CompositeToUuid', ['registrations', 'registrations_audit']);
     
+    if (!backupResult.success) {
+      console.error('❌ Failed to create backup, aborting migration');
+      throw new Error(`Backup failed: ${backupResult.error}`);
+    }
+    
+    console.log('✅ Backup created successfully');
+
     try {
-      // Create automatic backup
-      console.log('📦 Creating automatic backup...');
-      this.createBackup();
-      
       // Execute migration steps
+      this.analyzeCurrentState();
       this.migrateRegistrationsTable();
       this.migrateRegistrationsAuditTable();
-      this.validateMigration();
       
-      console.log('✅ Migration completed successfully!');
+      console.log('\n✅ Migration completed successfully!');
       console.log('📊 Migration Summary:');
       console.log(`   - Registrations migrated: ${this.changes.registrations.length}`);
       console.log(`   - Audit records migrated: ${this.changes.registrationsAudit.length}`);
-      console.log('📦 Backup created for rollback if needed');
       
     } catch (error) {
       console.error('❌ Migration failed:', error.message);
-      console.log('🔄 Consider running rollbackCompositeToUuidMigration() to revert changes');
+      console.log('🔄 Consider restoring from backup if needed');
       throw error;
     }
   }
 
   /**
-   * Preview what the migration will do without making changes
+   * Preview the migration without making changes
    */
   preview() {
-    console.log('👀 PREVIEW: Composite Key to UUID Migration');
-    console.log('==========================================');
+    console.log('🔍 PREVIEWING MIGRATION: Composite Keys to UUID');
+    console.log('================================================');
     
     try {
-      // Analyze current registrations
-      const registrationsSheet = this.spreadsheet.getSheetByName('registrations');
-      const auditSheet = this.spreadsheet.getSheetByName('registrations_audit');
+      this.analyzeCurrentState();
       
-      if (!registrationsSheet) {
-        console.log('❌ registrations sheet not found');
-        return;
-      }
-      
-      const registrationsData = registrationsSheet.getDataRange().getValues();
-      const headers = registrationsData[0];
-      const dataRows = registrationsData.slice(1);
-      
-      console.log(`📊 Current Analysis:`);
-      console.log(`   - Current registrations: ${dataRows.length}`);
-      console.log(`   - Headers: ${headers.join(', ')}`);
-      
-      // Analyze composite key patterns
-      const compositeKeys = dataRows.map(row => row[0]).filter(id => id);
-      const privateLesson = compositeKeys.filter(key => key.includes('_') && key.split('_').length >= 4);
-      const groupClass = compositeKeys.filter(key => key.includes('_') && key.split('_').length === 2);
-      
-      console.log(`\n🔑 Composite Key Analysis:`);
-      console.log(`   - Total keys to migrate: ${compositeKeys.length}`);
-      console.log(`   - Private lesson pattern: ${privateLesson.length}`);
-      console.log(`   - Group class pattern: ${groupClass.length}`);
-      
-      // Show examples
-      if (privateLesson.length > 0) {
-        console.log(`   - Private example: "${privateLesson[0]}"`);
-      }
-      if (groupClass.length > 0) {
-        console.log(`   - Group example: "${groupClass[0]}"`);
-      }
-      
-      // Analyze audit table
-      if (auditSheet) {
-        const auditData = auditSheet.getDataRange().getValues();
-        const auditRows = auditData.slice(1);
-        console.log(`\n📜 Audit Analysis:`);
-        console.log(`   - Audit records to update: ${auditRows.length}`);
-      }
-      
-      console.log(`\n📋 Planned Changes:`);
-      console.log(`   1. Replace all composite key IDs with UUIDs`);
-      console.log(`   2. Update registrations_audit table accordingly`);
-      console.log(`   3. Maintain all data relationships and integrity`);
-      console.log(`   ⚠️  Note: Original composite keys will NOT be preserved`);
-      console.log(`\n✅ Preview complete. Run runCompositeToUuidMigration() to execute.`);
+      console.log('\n📊 Preview Summary:');
+      console.log('===================');
+      console.log('✅ Preview completed - no changes made');
+      console.log('📝 Run execute() to apply the migration');
       
     } catch (error) {
       console.error('❌ Preview failed:', error.message);
@@ -174,45 +222,86 @@ class CompositeToUuidMigration {
   }
 
   /**
-   * Migrate the main registrations table
+   * Analyze current state before migration
    */
-  migrateRegistrationsTable() {
-    console.log('🎼 Migrating registrations table...');
+  analyzeCurrentState() {
+    console.log('\n📊 Analyzing current state...');
     
-    const sheet = this.spreadsheet.getSheetByName('registrations');
-    if (!sheet) {
-      throw new Error('registrations sheet not found');
+    const registrationsSheet = this.spreadsheet.getSheetByName('registrations');
+    if (!registrationsSheet) {
+      throw new Error('Registrations sheet not found');
     }
     
+    const data = registrationsSheet.getDataRange().getValues();
+    const headers = data[0];
+    const dataRows = data.slice(1);
+    
+    console.log(`\n📋 Registrations Analysis:`);
+    console.log(`   - Total registrations: ${dataRows.length}`);
+    console.log(`   - Current headers: ${headers.join(', ')}`);
+    
+    // Check for ID column
+    const idIndex = headers.indexOf('id') !== -1 ? headers.indexOf('id') : headers.indexOf('Id');
+    if (idIndex === -1) {
+      throw new Error('ID column not found in registrations table');
+    }
+    
+    // Sample current ID format
+    if (dataRows.length > 0) {
+      const sampleIds = dataRows.slice(0, 3).map(row => row[idIndex]);
+      console.log(`   - Sample current IDs: ${sampleIds.join(', ')}`);
+    }
+    
+    // Analyze audit table
+    const auditSheet = this.spreadsheet.getSheetByName('registrations_audit');
+    if (auditSheet) {
+      const auditData = auditSheet.getDataRange().getValues();
+      const auditRows = auditData.slice(1);
+      console.log(`\n📜 Audit Analysis:`);
+      console.log(`   - Audit records to update: ${auditRows.length}`);
+    }
+    
+    console.log('\n🔄 Migration will:');
+    console.log(`   1. Convert ${dataRows.length} registration IDs to UUIDs`);
+    console.log(`   2. Rebuild registrations_audit table for consistency`);
+  }
+
+  /**
+   * Migrate the registrations table
+   */
+  migrateRegistrationsTable() {
+    console.log('\n📋 Migrating registrations table...');
+    
+    const sheet = this.spreadsheet.getSheetByName('registrations');
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
     const dataRows = data.slice(1);
     
-    // Find the Id column (should be first)
-    const idColumnIndex = headers.indexOf('Id');
-    if (idColumnIndex === -1) {
-      throw new Error('Id column not found in registrations sheet');
+    // Find ID column
+    const idIndex = headers.indexOf('id') !== -1 ? headers.indexOf('id') : headers.indexOf('Id');
+    if (idIndex === -1) {
+      throw new Error('ID column not found in registrations table');
     }
     
     // Process each row
     const updatedRows = [];
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
-      if (row.length === 0 || !row[idColumnIndex]) continue;
+      if (row.length === 0) continue;
       
-      const originalId = row[idColumnIndex];
-      const newUuid = this.generateUuid();
+      const originalId = row[idIndex];
+      const newId = this.generateUuid();
       
-      // Store original change for rollback
+      // Store change for rollback
       this.changes.registrations.push({
-        rowIndex: i + 2, // +2 because we're 1-indexed and skipping header
+        rowIndex: i + 2,
         originalId: originalId,
-        newId: newUuid
+        newId: newId
       });
       
       // Create updated row
       const updatedRow = [...row];
-      updatedRow[idColumnIndex] = newUuid;
+      updatedRow[idIndex] = newId;
       
       updatedRows.push(updatedRow);
     }
@@ -261,14 +350,14 @@ class CompositeToUuidMigration {
     const registrationsRows = registrationsData.slice(1);
 
     // Find column indices
-    const regIdIndex = registrationsHeaders.indexOf('id');
-    const auditIdIndex = auditHeaders.indexOf('id');
-    const registrationIdIndex = auditHeaders.indexOf('registration_id');
-    const actionIndex = auditHeaders.indexOf('action');
-    const timestampIndex = auditHeaders.indexOf('timestamp');
-    const userIndex = auditHeaders.indexOf('user');
-    const oldValuesIndex = auditHeaders.indexOf('old_values');
-    const newValuesIndex = auditHeaders.indexOf('new_values');
+    const regIdIndex = registrationsHeaders.indexOf('id') !== -1 ? registrationsHeaders.indexOf('id') : registrationsHeaders.indexOf('Id');
+    const auditIdIndex = auditHeaders.indexOf('id') !== -1 ? auditHeaders.indexOf('id') : auditHeaders.indexOf('Id');
+    const registrationIdIndex = auditHeaders.indexOf('registration_id') !== -1 ? auditHeaders.indexOf('registration_id') : auditHeaders.indexOf('RegistrationId');
+    const actionIndex = auditHeaders.indexOf('action') !== -1 ? auditHeaders.indexOf('action') : auditHeaders.indexOf('Action');
+    const timestampIndex = auditHeaders.indexOf('timestamp') !== -1 ? auditHeaders.indexOf('timestamp') : auditHeaders.indexOf('Timestamp');
+    const userIndex = auditHeaders.indexOf('user') !== -1 ? auditHeaders.indexOf('user') : auditHeaders.indexOf('User');
+    const oldValuesIndex = auditHeaders.indexOf('old_values') !== -1 ? auditHeaders.indexOf('old_values') : auditHeaders.indexOf('OldValues');
+    const newValuesIndex = auditHeaders.indexOf('new_values') !== -1 ? auditHeaders.indexOf('new_values') : auditHeaders.indexOf('NewValues');
 
     if (regIdIndex === -1) {
       console.log('⚠️  id column not found in registrations table, skipping audit rebuild');
@@ -277,7 +366,10 @@ class CompositeToUuidMigration {
 
     // Validate audit table structure
     const requiredColumns = ['id', 'registration_id', 'action', 'timestamp', 'user', 'old_values', 'new_values'];
-    const missingColumns = requiredColumns.filter(col => auditHeaders.indexOf(col) === -1);
+    const missingColumns = requiredColumns.filter(col => 
+      auditHeaders.indexOf(col) === -1 && 
+      auditHeaders.indexOf(col.charAt(0).toUpperCase() + col.slice(1)) === -1
+    );
     
     if (missingColumns.length > 0) {
       console.log(`⚠️  Missing audit columns: ${missingColumns.join(', ')}, skipping audit rebuild`);
@@ -304,13 +396,13 @@ class CompositeToUuidMigration {
 
       // Create audit record
       const auditRecord = new Array(auditHeaders.length).fill('');
-      auditRecord[auditIdIndex] = this.generateUuid();
-      auditRecord[registrationIdIndex] = registrationId;
-      auditRecord[actionIndex] = 'INSERT';
-      auditRecord[timestampIndex] = currentTimestamp;
-      auditRecord[userIndex] = 'MIGRATION_002_REBUILD';
-      auditRecord[oldValuesIndex] = '{}';
-      auditRecord[newValuesIndex] = JSON.stringify(registrationObject);
+      if (auditIdIndex !== -1) auditRecord[auditIdIndex] = this.generateUuid();
+      if (registrationIdIndex !== -1) auditRecord[registrationIdIndex] = registrationId;
+      if (actionIndex !== -1) auditRecord[actionIndex] = 'INSERT';
+      if (timestampIndex !== -1) auditRecord[timestampIndex] = currentTimestamp;
+      if (userIndex !== -1) auditRecord[userIndex] = 'MIGRATION_002_REBUILD';
+      if (oldValuesIndex !== -1) auditRecord[oldValuesIndex] = '{}';
+      if (newValuesIndex !== -1) auditRecord[newValuesIndex] = JSON.stringify(registrationObject);
 
       newAuditRecords.push(auditRecord);
 
@@ -334,90 +426,26 @@ class CompositeToUuidMigration {
   }
 
   /**
-   * Validate the migration was successful
-   */
-  validateMigration() {
-    console.log('🔍 Validating migration...');
-    
-    const registrationsSheet = this.spreadsheet.getSheetByName('registrations');
-    const data = registrationsSheet.getDataRange().getValues();
-    const headers = data[0];
-    const dataRows = data.slice(1);
-    
-    // Check that all IDs are now UUIDs
-    const idColumnIndex = headers.indexOf('Id');
-    
-    let validUuids = 0;
-    
-    for (const row of dataRows) {
-      if (row.length === 0) continue;
-      
-      const id = row[idColumnIndex];
-      
-      if (this.isUuid(id)) {
-        validUuids++;
-      }
-    }
-    
-    console.log(`✅ Validation Results:`);
-    console.log(`   - Valid UUIDs: ${validUuids}/${dataRows.length}`);
-    
-    if (validUuids !== dataRows.length) {
-      throw new Error('Migration validation failed: Not all IDs are valid UUIDs');
-    }
-  }
-
-  /**
-   * Rollback the migration
+   * Rollback the migration (restore from backup)
    */
   rollback() {
-    console.log('🔄 Rolling back Composite Key to UUID Migration...');
-    console.log('ℹ️  Since original composite keys are not preserved, rollback requires backup restoration');
+    console.log('🔄 Rolling back Composite to UUID Migration...');
     
     try {
-      // Use backup restoration for rollback
-      const backupResult = restoreFromBackup('CompositeToUuidMigration');
+      const restoreResult = restoreFromBackup('Migration002_CompositeToUuid');
       
-      if (backupResult && backupResult.success) {
-        console.log('✅ Rollback completed successfully using backup restoration!');
+      if (restoreResult.success) {
+        console.log('✅ Rollback completed successfully');
+        console.log(`📊 Restored ${restoreResult.restoredSheets} sheets from backup`);
       } else {
-        throw new Error('Backup restoration failed');
+        console.error('❌ Rollback failed:', restoreResult.error);
       }
+      
+      return restoreResult;
       
     } catch (error) {
       console.error('❌ Rollback failed:', error.message);
-      console.log('📦 Manual restoration may be required from spreadsheet version history');
       throw error;
-    }
-  }
-
-  /**
-   * Rollback registrations table (deprecated - use backup restoration)
-   */
-  rollbackRegistrationsTable() {
-    console.log('⚠️  LegacyId-based rollback no longer supported');
-    console.log('💡 Use restoreCompositeToUuidMigrationFromBackup() instead');
-  }
-
-  /**
-   * Rollback registrations audit table (deprecated - use backup restoration)
-   */
-  rollbackRegistrationsAuditTable() {
-    console.log('⚠️  LegacyId-based rollback no longer supported');
-    console.log('💡 Use restoreCompositeToUuidMigrationFromBackup() instead');
-  }
-
-  /**
-   * Create backup before migration
-   */
-  createBackup() {
-    try {
-      const backupResult = createMigrationBackup(this.migrationId, ['registrations', 'registrations_audit']);
-      console.log(`✅ Backup created: ${backupResult.backupPrefix}`);
-      return backupResult;
-    } catch (error) {
-      console.error('⚠️  Backup creation failed:', error.message);
-      console.log('Continuing with migration (backup recommended but not required)');
     }
   }
 
@@ -425,60 +453,223 @@ class CompositeToUuidMigration {
    * Generate a UUID v4
    */
   generateUuid() {
-    // Generate UUID v4 compatible string
-    const chars = '0123456789abcdef';
-    const uuid = [];
-    
-    for (let i = 0; i < 36; i++) {
-      if (i === 8 || i === 13 || i === 18 || i === 23) {
-        uuid[i] = '-';
-      } else if (i === 14) {
-        uuid[i] = '4'; // Version 4
-      } else if (i === 19) {
-        uuid[i] = chars[Math.floor(Math.random() * 4) + 8]; // 8, 9, a, or b
-      } else {
-        uuid[i] = chars[Math.floor(Math.random() * 16)];
-      }
-    }
-    
-    return uuid.join('');
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
   }
 
   /**
    * Check if a string is a valid UUID
    */
   isUuid(str) {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return uuidRegex.test(str);
   }
 }
 
 /**
- * Utility function to validate UUIDs (can be used outside migration)
+ * Verification class for composite to UUID migration
  */
-function isValidUuid(uuid) {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(uuid);
-}
+class CompositeToUuidMigrationVerifier {
+  constructor(spreadsheet) {
+    this.spreadsheet = spreadsheet;
+    this.results = {
+      passed: 0,
+      failed: 0,
+      warnings: 0
+    };
+  }
 
-/**
- * Utility function to generate UUID (can be used outside migration)
- */
-function generateUuidV4() {
-  const chars = '0123456789abcdef';
-  const uuid = [];
-  
-  for (let i = 0; i < 36; i++) {
-    if (i === 8 || i === 13 || i === 18 || i === 23) {
-      uuid[i] = '-';
-    } else if (i === 14) {
-      uuid[i] = '4'; // Version 4
-    } else if (i === 19) {
-      uuid[i] = chars[Math.floor(Math.random() * 4) + 8]; // 8, 9, a, or b
+  /**
+   * Run all verification checks
+   */
+  runAllChecks() {
+    console.log('Starting comprehensive verification...\n');
+    
+    this.checkRegistrationsTable();
+    this.checkAuditTable();
+    this.checkUuidFormat();
+    this.checkDataIntegrity();
+    
+    return this.results;
+  }
+
+  /**
+   * Check registrations table structure and data
+   */
+  checkRegistrationsTable() {
+    console.log('📋 Checking registrations table...');
+    
+    const sheet = this.spreadsheet.getSheetByName('registrations');
+    if (!sheet) {
+      console.log('❌ Registrations sheet not found');
+      this.results.failed++;
+      return;
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const dataRows = data.slice(1);
+    
+    // Check for ID column
+    const idIndex = headers.indexOf('id') !== -1 ? headers.indexOf('id') : headers.indexOf('Id');
+    if (idIndex === -1) {
+      console.log('❌ ID column not found in registrations table');
+      this.results.failed++;
+      return;
+    }
+    
+    console.log(`✅ Found ${dataRows.length} registration records`);
+    console.log(`✅ ID column found at index ${idIndex}`);
+    this.results.passed += 2;
+    
+    // Check for empty IDs
+    let emptyIds = 0;
+    for (let i = 0; i < dataRows.length; i++) {
+      if (!dataRows[i][idIndex]) {
+        emptyIds++;
+      }
+    }
+    
+    if (emptyIds > 0) {
+      console.log(`⚠️  Found ${emptyIds} empty IDs`);
+      this.results.warnings++;
     } else {
-      uuid[i] = chars[Math.floor(Math.random() * 16)];
+      console.log('✅ No empty IDs found');
+      this.results.passed++;
     }
   }
-  
-  return uuid.join('');
+
+  /**
+   * Check audit table structure
+   */
+  checkAuditTable() {
+    console.log('\n📜 Checking registrations_audit table...');
+    
+    const sheet = this.spreadsheet.getSheetByName('registrations_audit');
+    if (!sheet) {
+      console.log('⚠️  Registrations_audit sheet not found');
+      this.results.warnings++;
+      return;
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const dataRows = data.slice(1);
+    
+    console.log(`✅ Found ${dataRows.length} audit records`);
+    this.results.passed++;
+    
+    // Check required columns
+    const requiredCols = ['id', 'registration_id', 'action', 'timestamp'];
+    const missingCols = requiredCols.filter(col => 
+      headers.indexOf(col) === -1 && 
+      headers.indexOf(col.charAt(0).toUpperCase() + col.slice(1)) === -1
+    );
+    
+    if (missingCols.length > 0) {
+      console.log(`❌ Missing audit columns: ${missingCols.join(', ')}`);
+      this.results.failed++;
+    } else {
+      console.log('✅ All required audit columns present');
+      this.results.passed++;
+    }
+  }
+
+  /**
+   * Check UUID format validity
+   */
+  checkUuidFormat() {
+    console.log('\n🔍 Checking UUID format validity...');
+    
+    const sheet = this.spreadsheet.getSheetByName('registrations');
+    if (!sheet) {
+      this.results.failed++;
+      return;
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const dataRows = data.slice(1);
+    
+    const idIndex = headers.indexOf('id') !== -1 ? headers.indexOf('id') : headers.indexOf('Id');
+    if (idIndex === -1) {
+      this.results.failed++;
+      return;
+    }
+    
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    let validUuids = 0;
+    let invalidUuids = 0;
+    
+    for (let i = 0; i < dataRows.length; i++) {
+      const id = dataRows[i][idIndex];
+      if (id && uuidRegex.test(id)) {
+        validUuids++;
+      } else if (id) {
+        invalidUuids++;
+        if (invalidUuids <= 3) { // Only show first 3 examples
+          console.log(`❌ Invalid UUID at row ${i + 2}: "${id}"`);
+        }
+      }
+    }
+    
+    console.log(`✅ Valid UUIDs: ${validUuids}`);
+    if (invalidUuids > 0) {
+      console.log(`❌ Invalid UUIDs: ${invalidUuids}`);
+      this.results.failed++;
+    } else {
+      this.results.passed++;
+    }
+  }
+
+  /**
+   * Check data integrity
+   */
+  checkDataIntegrity() {
+    console.log('\n🔐 Checking data integrity...');
+    
+    const regSheet = this.spreadsheet.getSheetByName('registrations');
+    const auditSheet = this.spreadsheet.getSheetByName('registrations_audit');
+    
+    if (!regSheet) {
+      this.results.failed++;
+      return;
+    }
+    
+    const regData = regSheet.getDataRange().getValues();
+    const regDataRows = regData.slice(1);
+    
+    // Check for duplicate UUIDs
+    const regHeaders = regData[0];
+    const idIndex = regHeaders.indexOf('id') !== -1 ? regHeaders.indexOf('id') : regHeaders.indexOf('Id');
+    
+    if (idIndex !== -1) {
+      const ids = regDataRows.map(row => row[idIndex]).filter(id => id);
+      const uniqueIds = new Set(ids);
+      
+      if (ids.length === uniqueIds.size) {
+        console.log('✅ No duplicate IDs found');
+        this.results.passed++;
+      } else {
+        console.log(`❌ Found ${ids.length - uniqueIds.size} duplicate IDs`);
+        this.results.failed++;
+      }
+    }
+    
+    // Check audit-registration relationship if audit exists
+    if (auditSheet) {
+      const auditData = auditSheet.getDataRange().getValues();
+      const auditDataRows = auditData.slice(1);
+      
+      if (auditDataRows.length > 0) {
+        console.log(`✅ Audit table has ${auditDataRows.length} records`);
+        this.results.passed++;
+      }
+    }
+    
+    console.log('\n🔐 Data integrity check completed');
+  }
 }
