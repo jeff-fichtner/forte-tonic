@@ -1,6 +1,15 @@
-# Gas Migrations
+# Gas Migrations Summary
 
-Google Apps Script migration system for Tonic spreadsheet data management.
+This document provides an overview of all Google Apps Script migrations in this project.
+
+## Migration System Overview
+
+The migration system provides:
+- **Structured Migrations**: Each migration is a complete, self-contained class
+- **Automatic Backups**: All migrations create backups before execution
+- **Rollback Capability**: Full rollback support with original data restoration
+- **Comprehensive Verification**: Detailed verification scripts for each migration
+- **Preview Mode**: See what changes will be made before executing
 
 ## 🔐 SECURITY UPDATE
 
@@ -11,170 +20,292 @@ Google Apps Script migration system for Tonic spreadsheet data management.
 var GLOBAL_SPREADSHEET_ID = "YOUR_SPREADSHEET_ID_HERE";
 
 // All migrations automatically use the global configuration
-runStructuralImprovements(); // Uses getSpreadsheetId()
-runRealisticFakeDataMigration(); // Uses getSpreadsheetId()
+runCompositeToUuidMigration(); // Uses getSpreadsheetId()
+runAllTablesToUuidMigration(); // Uses getSpreadsheetId()
 validateConfiguration(); // Test your setup
 ```
 
 ## 🚀 Quick Start
 
-1. **Get Spreadsheet ID** from your Google Sheets URL
-2. **Open Google Sheets** → **Extensions** → **Apps Script**
-3. **Copy ALL migration files** to your Apps Script project
-4. **Configure ONCE**: Edit `Config.js` and replace `"YOUR_SPREADSHEET_ID_HERE"`
-5. **Validate setup**: Run `validateConfiguration()` function
-6. **Always run preview first**: `preview[MigrationName]()`
-7. **Execute migration**: `run[MigrationName]()`
-8. **Rollback if needed**: `rollback[MigrationName]()`
+**DEPLOY WITH CLASP - NO MANUAL COPYING REQUIRED**
+
+1. **Install clasp CLI**: `npm install -g @google/clasp`
+2. **Authenticate**: `clasp login`
+3. **Set Spreadsheet ID**: Configure in parent directory's `.env` file
+4. **Deploy**: Run `npm run deploy` from `gas-src/` directory
+5. **Update**: Use `clasp push` for subsequent changes
+6. **Run**: Execute functions directly in Google Apps Script editor
+
+```bash
+# Initial setup
+npm install -g @google/clasp
+clasp login
+
+# In parent directory .env file
+GOOGLE_APPS_SCRIPT_ID="YOUR_SPREADSHEET_ID_HERE"
+
+# Deploy project
+cd gas-src/
+npm run deploy
+
+# Make changes and redeploy
+# Edit files locally, then:
+clasp push
+```
+## Available Migrations
+
+### Migration 002: Composite to UUID (Registrations)
+**File**: `active/Migration002_CompositeToUuid.js`  
+**Documentation**: `active/Migration002_CompositeToUuid_README.md`  
+**Verification**: `active/Migration002_CompositeToUuid_Verification.js`
+
+**Purpose**: Convert the registrations table from composite primary keys to UUID primary keys.
+
+**What it does**:
+- Converts complex composite keys like `1234_5678_SPANISH_A_2024_FALL` to simple UUIDs
+- Updates all related audit entries
+- Maintains all foreign key relationships
+- ⚠️ Note: Original composite keys are NOT preserved (backup restoration for rollback)
+
+**Status**: ✅ Ready for execution
+
+### Migration 003: All Tables to UUID
+**File**: `active/Migration003_AllTablesToUuid.js`  
+**Documentation**: `active/Migration003_AllTablesToUuid_README.md`  
+**Verification**: `active/Migration003_AllTablesToUuid_Verification.js`
+
+**Purpose**: Convert all remaining tables to use UUID primary keys for system-wide consistency.
+
+**What it does**:
+- Converts all main tables: admins, instructors, parents, students, classes, rooms
+- Preserves original IDs in `LegacyId` columns
+- Updates all foreign key references automatically
+- Handles dependency order correctly
+
+**Status**: ✅ Ready for execution
+
+### Migration 004: Attendance Tables to UUID
+**File**: `active/Migration004_AttendanceToUuid.js`  
+**Documentation**: `active/Migration004_AttendanceToUuid_README.md`
+
+**Purpose**: Convert attendance and attendance_audit tables to use UUID primary keys.
+
+**What it does**:
+- Converts attendance table IDs to UUIDs (if needed)
+- Ensures attendance_audit table uses UUIDs
+- Updates foreign key references to registrations
+- ⚠️ Note: Original IDs are NOT preserved (backup restoration for rollback)
+
+**Status**: ✅ Ready for execution
+
+## Migration Execution Order
+
+For a complete system upgrade to UUIDs:
+
+1. **Migration 002** - Registrations table (most complex)
+2. **Migration 004** - Attendance tables (dependent on registrations)
+3. **Migration 003** - All other tables (dependency-aware, optional)
+
+## How to Run Migrations
+
+### Step 1: Preview Migration
+```javascript
+// Preview what Migration 002 will do
+previewCompositeToUuidMigration()
+
+// Preview what Migration 004 will do
+previewAttendanceToUuidMigration()
+
+// Preview what Migration 003 will do (optional)
+previewAllTablesToUuidMigration()
+```
+
+### Step 2: Execute Migration
+```javascript
+// Execute Migration 002
+runCompositeToUuidMigration()
+
+// Execute Migration 004
+runAttendanceToUuidMigration()
+
+// Execute Migration 003 (optional)
+runAllTablesToUuidMigration()
+```
+
+### Step 3: Verify Migration
+```javascript
+// Verify Migration 002
+verifyCompositeToUuidMigration()
+
+// Verify Migration 004
+verifyAttendanceToUuidMigration()
+
+// Verify Migration 003 (optional)
+verifyAllTablesUuidMigration()
+```
+
+## Safety Features
+
+### Automatic Backups
+Every migration creates automatic backups before execution:
+- Timestamped backup sheets
+- Complete data preservation
+- Easy restoration if needed
+
+### Rollback Capability
+Each migration supports full rollback:
+```javascript
+// Rollback Migration 002
+rollbackCompositeToUuidMigration()
+
+// Rollback Migration 003
+rollbackAllTablesToUuidMigration()
+```
+
+### Backup Restoration
+If rollback fails, restore from automatic backup:
+```javascript
+// Restore Migration 002 backup
+restoreCompositeToUuidMigrationFromBackup()
+
+// Restore Migration 003 backup
+restoreAllTablesToUuidMigrationFromBackup()
+```
+
+## Before/After State
+
+### Before Migrations
+```
+registrations: StudentId_InstructorId_ClassCode_RoomId_Year_Term
+admins:        email@example.com
+instructors:   instructor.email@example.com
+parents:       parent_email_john_doe
+students:      12345
+classes:       CLASS_ABC_2024
+rooms:         ROOM_101
+```
+
+### After Migrations
+```
+registrations: 550e8400-e29b-41d4-a716-446655440000
+attendance:    550e8407-e29b-41d4-a716-446655440000
+admins:        550e8401-e29b-41d4-a716-446655440000 (Migration 003 only)
+instructors:   550e8402-e29b-41d4-a716-446655440000 (Migration 003 only)
+parents:       550e8403-e29b-41d4-a716-446655440000 (Migration 003 only)
+students:      550e8404-e29b-41d4-a716-446655440000 (Migration 003 only)
+classes:       550e8405-e29b-41d4-a716-446655440000 (Migration 003 only)
+rooms:         550e8406-e29b-41d4-a716-446655440000 (Migration 003 only)
+```
+
+**Note**: Original IDs are NOT preserved in Migrations 002 and 004. Migration 003 preserves original IDs in `LegacyId` columns:
+- `LegacyId` for all tables (Migration 003 only)
+
+## Migration Benefits
+
+### Consistency
+- All tables use the same UUID format
+- Simplified application logic
+- Reduced complexity in relationships
+
+### Performance
+- Better distribution for large datasets
+- Faster lookups and joins
+- Improved scalability
+
+### Maintainability
+- Easier to understand and debug
+- Consistent patterns across entire system
+- Future-proof architecture
+
+## Legacy Migrations
+
+### Migration 001: Structural Improvements ✅
+- **File**: `active/Migration001_StructuralImprovements.js`
+- **Status**: Completed and in production
+- Standardizes headers across all sheets
+- Adds data validation rules
+- Implements formatting improvements
+
+### Archived Migrations
+Located in `archive/` directory:
+- **Migration002**: Add Class Names to Registration (archived)
+- **Migration003**: Process Parents (completed)
+
+### Development Migrations
+Located in `dev/` directory:
+- **DEV001**: Realistic Fake Data Generation (development only)
+- **DEV002**: Fill and Reset Registrations (development only)
 
 ## 📁 Directory Structure
 
 ```
 gas-migrations/
-├── README.md                           # This file
-├── TEMPLATE_Migration.js               # Template for new migrations
-├── Migration001_StructuralImprovements.js  # Production ready
-├── archive/                            # Completed/archived migrations
-│   ├── Migration002_AddClassNamesToRegistration_ARCHIVED.js  # ⚠️ Not production ready
-│   └── Migration003_ProcessParents_PROCESSED.js              # ✅ Processed successfully
-└── dev/                               # Development-only migrations
-    └── Migration_DEV001_RealisticFakeData.js  # Fake data replacement
+├── active/                 # Current active migrations ready for production
+│   ├── Migration001_StructuralImprovements.js
+│   ├── Migration002_CompositeToUuid.js (+ README + Verification)
+│   ├── Migration003_AllTablesToUuid.js (+ README + Verification)
+│   └── Migration004_AttendanceToUuid.js (+ README)
+├── archive/                # Completed or deprecated migrations
+├── dev/                    # Development-only migrations
+├── recurring/              # Recurring maintenance migrations
+├── Config.js              # Global configuration
+├── TEMPLATE_Migration.js  # Template for new migrations
+└── README.md              # This file
 ```
 
-## 🚀 Available Migrations
+## 📦 Automatic Backup System
 
-### Production Migrations
-- **Migration001**: Structural Improvements ✅
-  - Standardizes headers across all sheets
-  - **Two StudentId options**: deprecate or delete completely
-  - Adds data validation rules
-  - Implements formatting improvements
-  
-  **StudentId Column Handling:**
-  - `runStructuralImprovements()` - Marks StudentId as deprecated (safe)
-  - `runStructuralImprovementsDeleteStudentId()` - **DELETES StudentId column entirely** (permanent)
-  - Status: **Ready for production**
+**All migrations include automatic backup functionality:**
 
-### Archived Migrations
-- **Migration002**: Add Class Names to Registration ⚠️
-  - Status: **NOT PRODUCTION READY** - Archived
-  - Location: `archive/Migration002_AddClassNamesToRegistration_ARCHIVED.js`
-  
-- **Migration003**: Process Parents ✅
-  - Status: **PROCESSED** - Completed and archived
-  - Location: `archive/Migration003_ProcessParents_PROCESSED.js`
+### Backup Features
+- **Automatic Creation**: Backups are created before any migration runs
+- **Hidden Storage**: Backup sheets are hidden with timestamped names
+- **Metadata Tracking**: Each backup includes metadata for easy identification
+- **Restore Functions**: Restore data and delete backup automatically
+- **Cleanup Functions**: Remove backup without restoring
+- **List Function**: Show all available backups
 
-### Development Migrations
-- **DEV001**: Realistic Fake Data Generation 🧪
-  - Replaces "Teacher 1", "Parent 1" style fake data with realistic names
-  - Maintains all relational integrity
-  - Status: **Development only** - Never use in production
-  - Location: `dev/Migration_DEV001_RealisticFakeData.js`
+## Troubleshooting
 
-## 📋 How to Run Migrations
+### Common Issues
+1. **Backup Creation Failed**: Check spreadsheet permissions
+2. **UUID Generation Failed**: Verify migration scripts are complete
+3. **Foreign Key Update Failed**: Check relationship definitions
+4. **Verification Failed**: Review detailed error messages
 
-### 1. Setup Your Spreadsheet ID
-In each migration file, replace the placeholder:
-```javascript
-// TODO: Replace with your actual spreadsheet ID
-const spreadsheetId = "YOUR_SPREADSHEET_ID_HERE";
-```
+### Recovery Options
+1. **Rollback**: Use built-in rollback functions
+2. **Backup Restore**: Restore from automatic backups
+3. **Manual Recovery**: Use spreadsheet version history
 
-With your actual ID:
-```javascript
-const spreadsheetId = "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms";
-```
+## Production Deployment
 
-### 2. Run Simple Functions
-```javascript
-// Preview first
-previewStructuralImprovements();
+### Pre-Migration Checklist
+- [ ] Preview all migrations successfully
+- [ ] Backup entire spreadsheet manually
+- [ ] Verify all migration scripts are uploaded
+- [ ] Confirm application is ready for UUIDs
+- [ ] Plan for minimal downtime window
 
-// If preview looks good, execute
-runStructuralImprovements();
+### Migration Day
+1. Execute Migration 002 (registrations)
+2. Verify Migration 002 results
+3. Execute Migration 003 (all other tables)
+4. Verify Migration 003 results
+5. Test application functionality
+6. Monitor for any issues
 
-// If you need to undo changes
-rollbackStructuralImprovements();
-```
+### Post-Migration
+- Remove Legacy columns after verification period
+- Update any hardcoded ID references
+- Update documentation with new UUID format
 
-### 3. Development Environment Validation
-For development migrations, the system validates environment safety:
-```javascript
-// DEV migrations include environment checks
-safeExecuteRealisticFakeDataMigration();
-```
+## Support
 
-## ⚠️ **Important Safety Notes**
+For issues with migrations:
+1. Check the detailed README for each migration
+2. Run verification scripts for diagnostic information
+3. Review console output for specific error messages
+4. Use rollback functions if critical issues occur
 
-- **Always run `preview` first** to see what will change
-- **Make a backup** of your spreadsheet before running (File → Make a copy)
-- **Update spreadsheet ID** in the migration code
-- **Test on a copy** if you're unsure about the changes
-
-## 📋 **What Migration001 Does**
-
-- Standardizes headers ("Last Name" → "LastName")
-- Marks deprecated columns (StudentId → StudentId_DEPRECATED)
-- Adds email validation to parent/instructor columns
-- Adds grade dropdown validation (K, 1-12)
-- Freezes header rows for better navigation
-- Highlights duplicate IDs with red background
-
-## 🛠️ Creating New Migrations
-
-1. Copy `TEMPLATE_Migration.js`
-2. Replace all `[PLACEHOLDER]` values:
-   - `[MIGRATION_NUMBER]` → Migration number (e.g., "004")
-   - `[MIGRATION_NAME]` → Descriptive name
-   - `[MIGRATION_FUNCTION_NAME]` → CamelCase function name
-   - `[MIGRATION_CLASS_NAME]` → Class name
-   - `[MIGRATION_DESCRIPTION]` → What the migration does
-
-3. Update the spreadsheet ID in all functions
-4. Implement the three main methods:
-   - `preview()` - Show what would change (read-only)
-   - `execute()` - Perform the migration
-   - `rollback()` - Undo the changes
-
-5. Test thoroughly in development before production use
-
-## 🔒 Security Features
-
-- **Hardcoded Spreadsheet ID**: Prevents accidental execution on wrong sheets
-- **Environment Validation**: DEV migrations check for production environments
-- **Execution Blocking**: Archived migrations prevent re-execution
-- **Preview Mode**: Always preview before executing
-
-## 📚 Migration Guidelines
-
-### Production Migrations
-- Must have comprehensive preview functionality
-- Must include rollback capability
-- Must handle errors gracefully
-- Must log all changes clearly
-
-### Development Migrations
-- Should include environment validation
-- Should have safety checks
-- Should never run in production
-- Should generate realistic test data
-
-### Archived Migrations
-- **ARCHIVED**: Not production ready, moved to archive
-- **PROCESSED**: Successfully completed, historical record only
-
-## 🚨 Important Notes
-
-1. **Always backup** your spreadsheet before running migrations
-2. **Use preview first** to understand what will change
-3. **Never run development migrations** in production
-4. **Update spreadsheet ID** in migration code before running
-5. **Test rollback functionality** in development
-
-## 📞 Support
-
-If you encounter issues:
-1. Check the migration logs for error details
-2. Use the rollback function if available
-3. Restore from backup if needed
-4. Review the migration preview before re-running
+All migrations are designed to be safe, reversible, and well-documented for production use.

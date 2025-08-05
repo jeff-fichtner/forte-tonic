@@ -2,41 +2,68 @@ import { AuthenticatedUserResponse } from '../models/shared/responses/authentica
 import { Admin } from '../models/shared/admin.js';
 import { configService } from '../services/configurationService.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
+import { currentConfig } from '../config/environment.js';
 
 // Initialize repositories and user context for authenticated requests
 export const initializeUserContext = async (req, res, next) => {
   try {
     // Service container handles all repository and service instances
-    // No need to inject repositories into request anymore
+    const userRepository = serviceContainer.get('userRepository');
+    const programRepository = serviceContainer.get('programRepository');
+    
+    // Attach repositories to request for API endpoints
+    req.userRepository = userRepository;
+    req.programRepository = programRepository;
+    
+    // Get operator email from environment
+    const operatorEmail = currentConfig.operatorEmail;
+    if (!operatorEmail) {
+      console.error('OPERATOR_EMAIL environment variable not set');
+      return res.status(500).json({ error: 'Authentication configuration error' });
+    }
 
-    // TODO: Implement proper authentication when auth system is ready
-    // For now, use a test user for development/testing
-    const signedInEmail = 'test@example.com';
+    // Check if the operator email exists in the roles table
+    const operatorRole = await userRepository.getOperatorByEmail(operatorEmail);
+    if (!operatorRole) {
+      console.error(`Operator email ${operatorEmail} not found in roles table`);
+      return res.status(500).json({ error: 'Operator not found in system' });
+    }
 
-    // Create a mock operator for testing
-    const mockOperator = {
-      isAdmin: () => true,
-      isInstructor: () => false,
-      isParent: () => false,
-      admin: signedInEmail,
-      instructor: null,
-      parent: null,
-    };
+    // Determine user type based on role columns (admin > instructor > parent)
+    let admin = null;
+    let instructor = null;
+    let parent = null;
+    let isOperator = true;
 
-    // Create a mock admin user
-    const mockAdmin = new Admin({
-      id: 'test-admin-id',
-      email: signedInEmail,
-      firstName: 'Test',
-      lastName: 'Admin',
-    });
+    if (operatorRole.admin) {
+      // Check admin table for matching email
+      admin = await userRepository.getAdminByEmail(operatorRole.admin);
+      if (!admin) {
+        console.error(`Admin email ${operatorRole.admin} from role not found in admins table`);
+        return res.status(500).json({ error: 'Admin record not found' });
+      }
+    } else if (operatorRole.instructor) {
+      // Check instructor table for matching email
+      instructor = await userRepository.getInstructorByEmail(operatorRole.instructor);
+      if (!instructor) {
+        console.error(`Instructor email ${operatorRole.instructor} from role not found in instructors table`);
+        return res.status(500).json({ error: 'Instructor record not found' });
+      }
+    } else if (operatorRole.parent) {
+      // Check parent table for matching email
+      parent = await userRepository.getParentByEmail(operatorRole.parent);
+      if (!parent) {
+        console.error(`Parent email ${operatorRole.parent} from role not found in parents table`);
+        return res.status(500).json({ error: 'Parent record not found' });
+      }
+    }
 
     const currentUser = new AuthenticatedUserResponse(
-      signedInEmail,
-      true, // isOperator
-      mockAdmin, // admin
-      null, // instructor
-      null // parent
+      operatorEmail,
+      isOperator,
+      admin,
+      instructor,
+      parent
     );
 
     req.currentUser = currentUser;

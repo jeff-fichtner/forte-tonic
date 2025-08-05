@@ -1,28 +1,23 @@
-import { google } from 'googleapis';
-import fs from 'fs';
-
-// SECURITY: Load spreadsheet ID from environment variables  
-// See dev/credentials/temp_credentials.json for development setup (gitignored)
-const SPREADSHEET_ID = process.env.WORKING_SPREADSHEET_ID || 'PLACEHOLDER_SPREADSHEET_ID_LOAD_FROM_ENV';
+import { GoogleSheetsDbClient } from '../../src/database/googleSheetsDbClient.js';
+import { Student } from '../../src/models/shared/student.js';
+import { Parent } from '../../src/models/shared/parent.js';
+import { Instructor } from '../../src/models/shared/instructor.js';
+import { Registration } from '../../src/models/shared/registration.js';
+import { configService } from '../../src/services/configurationService.js';
+import { createLogger } from '../../src/utils/logger.js';
 
 async function analyzeAndRecommendStructure() {
   console.log('🔍 ANALYZING CURRENT STRUCTURE FOR OPTIMIZATION RECOMMENDATIONS\n');
   
   try {
-    // Load credentials - handle both running from project root and from scripts directory
-    const credentialsPath = fs.existsSync('../credentials/temp_credentials.json') 
-      ? '../credentials/temp_credentials.json' 
-      : 'dev/credentials/temp_credentials.json';
-    const credentials = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+    // Initialize logger first
+    const logger = createLogger(configService);
     
-    // Initialize Google Auth
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
-
-    const sheets = google.sheets({ version: 'v4', auth });
-
+    // Initialize client using the config service
+    const client = new GoogleSheetsDbClient(configService);
+    
+    console.log('✅ Client initialized successfully\n');
+    
     console.log('📊 CURRENT SHEET ANALYSIS:\n');
 
     // Analyze each sheet's structure and data patterns
@@ -31,30 +26,33 @@ async function analyzeAndRecommendStructure() {
 
     for (const sheetName of sheetNames) {
       console.log(`🔍 Analyzing ${sheetName}...`);
-      
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range: `${sheetName}!A1:Z100`,
-      });
 
-      const values = response.data.values || [];
-      if (values.length === 0) continue;
+      try {
+        // Get data using the client's underlying sheets API
+        const response = await client.sheets.spreadsheets.values.get({
+          spreadsheetId: client.spreadsheetId,
+          range: `${sheetName}!A1:Z100`,
+        });
 
-      const headers = values[0];
-      const dataRows = values.slice(1).filter(row => row.length > 0);
+        const values = response.data.values || [];
+        if (values.length === 0) continue;
 
-      sheetAnalysis[sheetName] = {
-        headers,
-        rowCount: dataRows.length,
-        columnCount: headers.length,
-        sampleData: dataRows.slice(0, 3)
-      };
+        const headers = values[0];
+        const dataRows = values.slice(1).filter(row => row.length > 0);
 
-      console.log(`   Headers: [${headers.slice(0, 8).join(', ')}${headers.length > 8 ? '...' : ''}]`);
-      console.log(`   Data rows: ${dataRows.length}`);
-    }
+        sheetAnalysis[sheetName] = {
+          headers,
+          rowCount: dataRows.length,
+          columnCount: headers.length,
+          sampleData: dataRows.slice(0, 3)
+        };
 
-    console.log('\n🚨 STRUCTURAL ISSUES IDENTIFIED:\n');
+        console.log(`   Headers: [${headers.slice(0, 8).join(', ')}${headers.length > 8 ? '...' : ''}]`);
+        console.log(`   Data rows: ${dataRows.length}`);
+      } catch (error) {
+        console.log(`   ❌ Error analyzing ${sheetName}: ${error.message}`);
+      }
+    }    console.log('\n🚨 STRUCTURAL ISSUES IDENTIFIED:\n');
 
     // Issue 1: Column inconsistencies
     console.log('❌ ISSUE 1: Column Header Inconsistencies');

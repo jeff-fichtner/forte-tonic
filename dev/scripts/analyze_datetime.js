@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 
-import { GoogleSheetsDbClient } from '../../src/infrastructure/database/googleSheetsDbClient.js';
-import { DateHelpers } from '../../src/core/helpers/dateHelpers.js';
+import { GoogleSheetsDbClient } from '../../src/database/googleSheetsDbClient.js';
+import { DateHelpers } from '../../src/utils/nativeDateTimeHelpers.js';
+import { configService } from '../../src/services/configurationService.js';
+import { createLogger } from '../../src/utils/logger.js';
 
-const dbClient = new GoogleSheetsDbClient();
+// Initialize logger and client
+const logger = createLogger(configService);
+const dbClient = new GoogleSheetsDbClient(configService);
 
 console.log('📅 ANALYZING DATE/TIME FORMATS IN GOOGLE SHEETS\n');
 

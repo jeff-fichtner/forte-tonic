@@ -48,6 +48,38 @@ function previewStructuralImprovements() {
 }
 
 /**
+ * Rollback function to undo the migration changes
+ * Uses automatic backup if available
+ */
+function rollbackStructuralImprovements() {
+  const migration = new StructuralImprovementsMigration(getSpreadsheetId());
+  migration.rollback();
+}
+
+/**
+ * Restore from automatic backup and delete the backup
+ */
+function restoreStructuralImprovementsFromBackup() {
+  return restoreFromBackup('Migration001_StructuralImprovements');
+}
+
+/**
+ * Delete backup without restoring
+ */
+function deleteStructuralImprovementsBackup() {
+  return deleteBackup('Migration001_StructuralImprovements');
+}
+
+/**
+ * Preview function to check what changes would be made
+ * Run this first to see what the migration will do
+ */
+function previewStructuralImprovements() {
+  const migration = new StructuralImprovementsMigration(getSpreadsheetId());
+  migration.preview();
+}
+
+/**
  * Preview function to check what changes would be made WITH StudentId deletion
  * Run this first to see what the migration will do when deleting StudentId column
  */
@@ -155,9 +187,21 @@ class StructuralImprovementsMigration {
     console.log('🚀 EXECUTING MIGRATION: Structural Improvements');
     console.log('==============================================');
 
+    // Create automatic backup before starting
+    console.log('📦 Creating automatic backup...');
+    const backupResult = createMigrationBackup('Migration001_StructuralImprovements', ['students', 'parents', 'instructors']);
+    
+    if (!backupResult.success) {
+      console.error('❌ Failed to create backup, aborting migration');
+      throw new Error(`Backup failed: ${backupResult.error}`);
+    }
+    
+    console.log('✅ Backup created successfully');
+
     const results = {
       headersFixed: 0,
       errors: [],
+      backupInfo: backupResult
     };
 
     try {
@@ -270,14 +314,34 @@ class StructuralImprovementsMigration {
 
   /**
    * Rollback the migration changes
+   * Uses automatic backup if available, otherwise manual restoration
    */
   rollback() {
     console.log('🔄 ROLLING BACK MIGRATION: Structural Improvements');
     console.log('================================================');
 
     try {
-      // Restore original headers
-      console.log('📝 Restoring original headers...');
+      // First try to restore from automatic backup
+      console.log('🔍 Checking for automatic backup...');
+      const backupInfo = findLatestBackup('Migration001_StructuralImprovements');
+      
+      if (backupInfo) {
+        console.log('✅ Automatic backup found, restoring...');
+        const restoreResult = restoreFromBackup('Migration001_StructuralImprovements');
+        
+        if (restoreResult.success) {
+          console.log('✅ ROLLBACK COMPLETED using automatic backup');
+          console.log(`Restored sheets: ${restoreResult.restoredSheets.join(', ')}`);
+          return { success: true, method: 'automatic_backup', restoredSheets: restoreResult.restoredSheets };
+        } else {
+          console.log('❌ Automatic backup restore failed, falling back to manual restoration');
+        }
+      } else {
+        console.log('ℹ️  No automatic backup found, using manual restoration');
+      }
+
+      // Manual restoration as fallback
+      console.log('📝 Performing manual restoration...');
 
       // Restore Parents headers
       const parentsSheet = this.spreadsheet.getSheetByName('parents');
@@ -332,15 +396,14 @@ class StructuralImprovementsMigration {
         }
       }
 
-      console.log('\n✅ ROLLBACK COMPLETED');
-      console.log(
-        '\n⚠️  Note: If StudentId column was deleted, data may need to be restored from backup'
-      );
+      console.log('\n✅ ROLLBACK COMPLETED using manual restoration');
+      console.log('\n⚠️  Note: Manual restoration may not fully restore deleted data');
+      console.log('    For complete data restoration, use automatic backup before migration');
 
-      return true;
+      return { success: true, method: 'manual_restoration' };
     } catch (error) {
       console.error('❌ Rollback failed:', error.toString());
-      return false;
+      return { success: false, error: error.toString() };
     }
   }
 }

@@ -22,6 +22,7 @@ const config = {
       email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       privateKey: process.env.GOOGLE_PRIVATE_KEY,
     },
+    operatorEmail: process.env.OPERATOR_EMAIL,
     baseUrl: 'http://localhost:3000',
     logLevel: LogLevel.DEBUG,
   },
@@ -35,6 +36,7 @@ const config = {
         'test-service-account@test-project.iam.gserviceaccount.com',
       privateKey: process.env.GOOGLE_PRIVATE_KEY || 'test-private-key',
     },
+    operatorEmail: process.env.OPERATOR_EMAIL || 'your-operator-email@domain.com',
     baseUrl: 'http://localhost:3001',
     logLevel: LogLevel.ERROR, // Minimal logging for tests
   },
@@ -46,6 +48,7 @@ const config = {
       email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       privateKey: process.env.GOOGLE_PRIVATE_KEY,
     },
+    operatorEmail: process.env.OPERATOR_EMAIL,
     baseUrl: process.env.RENDER_EXTERNAL_URL || 'https://tonic-staging.onrender.com',
     logLevel: LogLevel.INFO,
   },
@@ -57,7 +60,8 @@ const config = {
       email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       privateKey: process.env.GOOGLE_PRIVATE_KEY,
     },
-    baseUrl: process.env.RENDER_EXTERNAL_URL || 'https://tonic.yourschool.edu',
+    operatorEmail: process.env.OPERATOR_EMAIL,
+    baseUrl: process.env.RENDER_EXTERNAL_URL || 'https://tonic.onrender.com',
     logLevel: LogLevel.WARN,
   },
 };

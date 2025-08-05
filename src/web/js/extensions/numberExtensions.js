@@ -9,7 +9,6 @@ function formatGrade(grade) {
 // add formatGrade to Number prototype
 Number.prototype.formatGrade = function () {
   const grade = this.valueOf(); // Ensure `this` is converted to a primitive number
-  console.log(`Number extension formatGrade called: ${grade} of type ${typeof grade}`);
   return formatGrade(grade); // Pass the primitive number to formatGrade
 };
 

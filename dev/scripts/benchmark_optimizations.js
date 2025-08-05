@@ -1,25 +1,19 @@
-import { GoogleSheetsDbClient } from '../../src/core/clients/googleSheetsDbClient.js';
+import { GoogleSheetsDbClient } from '../../src/database/googleSheetsDbClient.js';
+import { configService } from '../../src/services/configurationService.js';
+import { createLogger } from '../../src/utils/logger.js';
 
 // SECURITY: This file loads credentials from environment variables or dev/credentials/
 // Never commit real credentials to version control!
 // See dev/credentials/temp_credentials.json for development setup (gitignored)
 
-// Configuration service for testing
-const testConfigService = {
-  getGoogleSheetsAuth: () => ({
-    clientEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || 'test-service-account@your-project.iam.gserviceaccount.com',
-    privateKey: process.env.GOOGLE_PRIVATE_KEY || 'PLACEHOLDER_PRIVATE_KEY_LOAD_FROM_ENV'
-  }),
-  getGoogleSheetsConfig: () => ({
-    spreadsheetId: process.env.WORKING_SPREADSHEET_ID || 'PLACEHOLDER_SPREADSHEET_ID_LOAD_FROM_ENV'
-  })
-};
-
 async function benchmarkOptimizations() {
   console.log('🚀 BENCHMARKING OPTIMIZED CLIENT vs CURRENT CLIENT\n');
   
+  // Initialize logger first
+  const logger = createLogger(configService);
+  
   try {
-    const optimizedClient = new GoogleSheetsDbClient(testConfigService);
+    const optimizedClient = new GoogleSheetsDbClient(configService);
     
     // Test 1: Parallel batch loading
     console.log('📊 Testing parallel batch loading...');
