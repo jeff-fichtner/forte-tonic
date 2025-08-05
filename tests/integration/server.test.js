@@ -90,6 +90,22 @@ const mockUserRepository = {
   getRooms: jest
     .fn()
     .mockResolvedValue([{ id: '1', name: 'Piano Room', location: 'Main Building' }]),
+  getOperatorByEmail: jest.fn().mockResolvedValue({
+    email: process.env.OPERATOR_EMAIL || 'test-operator@example.com',
+    role: 'operator',
+    admin: 'admin@test.com',
+    instructor: null,
+    parent: null,
+  }),
+  getAdminByEmail: jest.fn().mockResolvedValue({
+    id: '1',
+    email: 'admin@test.com',
+    firstName: 'Test',
+    lastName: 'Admin',
+    phone: '555-1234',
+  }),
+  getInstructorByEmail: jest.fn().mockResolvedValue(null),
+  getParentByEmail: jest.fn().mockResolvedValue(null),
 };
 
 const mockProgramRepository = {
@@ -133,10 +149,13 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
     req.userRepository = mockUserRepository;
     req.programRepository = mockProgramRepository;
     req.currentUser = {
-      email: 'test@example.com',
+      email: process.env.OPERATOR_EMAIL || 'test-operator@example.com',
       isOperator: true,
-      admin: { id: 'test-admin-id', email: 'test@example.com' },
+      admin: { id: '1', email: 'admin@test.com', firstName: 'Test', lastName: 'Admin' },
+      instructor: null,
+      parent: null,
     };
+    req.user = req.currentUser; // For compatibility
     next();
   },
   requireAuth: (req, res, next) => next(),
@@ -147,6 +166,7 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
 jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js', () => ({
   serviceContainer: {
     initialize: jest.fn().mockResolvedValue(undefined),
+    getUserRepository: jest.fn().mockReturnValue(mockUserRepository),
     get: jest.fn().mockImplementation(serviceName => {
       const services = {
         userRepository: mockUserRepository,
@@ -266,7 +286,7 @@ describe('Server Integration Tests', () => {
       test('should return list of students', async () => {
         const response = await request(app)
           .post('/api/getStudents')
-          .send([{ page: 0, pageSize: 10 }])
+          .send({ page: 0, pageSize: 10 })
           .expect(200);
 
         let result;
@@ -275,11 +295,17 @@ describe('Server Integration Tests', () => {
         } catch {
           result = JSON.parse(response.text);
         }
-        expect(Array.isArray(result)).toBe(true);
-        expect(result.length).toBeGreaterThan(0);
-        expect(result[0]).toHaveProperty('id');
-        expect(result[0]).toHaveProperty('firstName');
-        expect(result[0]).toHaveProperty('lastName');
+        
+        // Should return pagination object with data array
+        expect(result).toHaveProperty('data');
+        expect(result).toHaveProperty('total');
+        expect(result).toHaveProperty('page');
+        expect(result).toHaveProperty('pageSize');
+        expect(Array.isArray(result.data)).toBe(true);
+        expect(result.data.length).toBeGreaterThan(0);
+        expect(result.data[0]).toHaveProperty('id');
+        expect(result.data[0]).toHaveProperty('firstName');
+        expect(result.data[0]).toHaveProperty('lastName');
       });
     });
 

@@ -1,83 +1,137 @@
 # Google Apps Script Deployment Guide
 
-This guide walks you through setting up and deploying the Tonic database migrations as Google Apps Script functions.
+This guide walks you through setting up and deploying the Tonic database migrations as Google Apps Script functions using clasp CLI.
 
 ## Prerequisites
 
 - Google account with access to Google Sheets and Apps Script
+- Node.js and npm installed
 - The Google Sheets document you want to migrate
 - Administrative access to the spreadsheet
 
 ## Step-by-Step Setup
 
-### 1. Access Google Apps Script
+### 1. Install clasp CLI
 
-1. Open your Google Sheets document
-2. In the menu bar, click **Extensions** > **Apps Script**
-3. This will open the Google Apps Script editor in a new tab
+```bash
+npm install -g @google/clasp
+```
 
-### 2. Set Up the Project
+### 2. Authenticate with Google
 
-1. **Rename the project** (optional but recommended):
-   - Click on "Untitled project" at the top
-   - Rename to something like "Tonic Database Migrations"
+```bash
+clasp login
+```
 
-2. **Delete the default Code.gs file** if you want a clean start:
-   - Right-click on "Code.gs" in the file list
-   - Select "Delete"
+### 3. Set Up Environment Variables
 
-### 3. Add Migration Files
+In the parent directory's `.env` file, add your Google Apps Script project ID:
 
-For each migration file in this folder:
+```bash
+GOOGLE_APPS_SCRIPT_ID=your-google-apps-script-project-id
+```
 
-1. **Create a new script file:**
-   - Click the **+** (plus) button next to "Files"
-   - Select "Script" 
-   - Name it exactly as shown in the migration filename (e.g., "Migration001_StructuralImprovements")
+### 4. Initial Deployment
 
-2. **Copy the migration content:**
-   - Open the `.gs` file from this folder
-   - Select all content (Ctrl+A / Cmd+A)
-   - Copy (Ctrl+C / Cmd+C)
-   - Paste into the new Apps Script file (Ctrl+V / Cmd+V)
+From the `gas-src/` directory:
 
-3. **Save the file:**
-   - Click **Ctrl+S** or **Cmd+S** to save
-   - Or click the disk icon in the toolbar
+```bash
+npm run deploy
+```
 
-### 4. Test the Setup
+This command will:
+- Generate the `.clasp.json` configuration file
+- Deploy all migration files to your Google Apps Script project
 
-1. **Select a migration function:**
-   - In the function dropdown (next to the play button), select a preview function
-   - For example: `previewStructuralImprovements`
+### 5. Subsequent Updates
 
-2. **Run the preview:**
-   - Click the **Play** button (▶️)
-   - You may be prompted to authorize the script
+After making changes to any migration files, deploy updates with:
 
-3. **Check the logs:**
-   - Click **View** > **Logs** to see the output
-   - Or use **Ctrl+Enter** / **Cmd+Enter**
+```bash
+clasp push
+```
 
-### 5. Authorization Setup
+Or use the npm script:
 
-The first time you run a script, Google will ask for permissions:
+```bash
+npm run deploy
+```
 
-1. **Click "Review permissions"**
-2. **Select your Google account**
-3. **Click "Advanced" if you see a warning**
-4. **Click "Go to [Project Name] (unsafe)"**
-5. **Click "Allow"**
+### 6. Open the Project
 
-The script needs these permissions:
-- **View and manage spreadsheets** - To read and modify sheet data
-- **Display and run third-party web content** - For logging and UI features
+To open your Google Apps Script project in the browser:
 
-### 6. Running Migrations
+```bash
+npm run open
+```
 
-#### Safe Migration Process
+### 7. Running Migrations
 
-1. **Always start with preview:**
+Once deployed, you can run migrations directly in the Google Apps Script editor:
+1. **Select a preview function** in the function dropdown
+2. **Run the preview** to see what changes will be made
+3. **Review the logs** to understand the impact
+4. **Run the actual migration** if the preview looks correct
+5. **Verify results** in your spreadsheet
+
+#### Available Migration Functions
+
+Each migration provides three main functions:
+
+- `preview[MigrationName]()` - Shows what will change (safe, read-only)
+- `run[MigrationName]()` - Executes the migration
+- `rollback[MigrationName]()` - Reverts the migration (uses automatic backups)
+
+#### Backup and Restore System
+
+All migrations now include automatic backup functionality:
+
+- **Automatic Backups**: Created before any migration runs
+- **Restore from Backup**: `restore[MigrationName]FromBackup()` - Restores data and deletes backup
+- **Delete Backup**: `delete[MigrationName]Backup()` - Removes backup without restoring
+
+### 8. Best Practices
+
+1. **Always run preview first** to understand what will change
+2. **Backup your spreadsheet** manually before running destructive migrations
+3. **Test in a copy** of your spreadsheet first
+4. **Review logs** after each migration to ensure success
+5. **Use rollback functions** if you need to undo changes
+
+### 9. Troubleshooting
+
+#### Common Issues
+
+**"Spreadsheet ID not configured"**
+- Ensure `GLOBAL_SPREADSHEET_ID` is set in `Config.js`
+- Check that the ID matches your actual spreadsheet ID
+
+**"Permission denied"**
+- Make sure you have edit access to the spreadsheet
+- Re-run the authorization process
+
+**"Function not found"**
+- Ensure all files were deployed with `clasp push`
+- Check that function names match exactly
+
+#### Getting Help
+
+If you encounter issues:
+1. Check the execution logs in Google Apps Script
+2. Verify the spreadsheet ID is correct
+3. Ensure you have the necessary permissions
+4. Try running a preview function first to test connectivity
+
+### 10. Development Workflow
+
+For developers making changes to migrations:
+
+1. **Edit files locally** in the `gas-src/` directory
+2. **Deploy changes** with `clasp push`
+3. **Test in Google Apps Script** editor
+4. **Commit changes** to version control
+
+This workflow ensures consistency between local development and the deployed Google Apps Script project.
    ```javascript
    // Example: Preview what will change
    previewStructuralImprovements();

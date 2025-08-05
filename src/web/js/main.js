@@ -22,7 +22,6 @@ import './components/select.js';
 import './components/table.js';
 import './workflows/adminRegistrationForm.js';
 import './data/apiClient.js';
-import './data/indexedDbClient.js';
 import './utilities/domHelpers.js';
 import './utilities/durationHelpers.js';
 import './utilities/promiseHelpers.js';

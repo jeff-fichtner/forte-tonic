@@ -3,7 +3,7 @@ import { ErrorHandling } from '../common/errorHandling.js';
 import { Keys } from '../utils/values/keys.js';
 import { RegistrationType } from '../utils/values/registrationType.js';
 import { CloneUtility } from '../utils/cloneUtility.js';
-import { GuidUtility } from '../utils/guidUtility.js';
+import { UuidUtility } from '../utils/uuidUtility.js';
 import { configService } from '../services/configurationService.js';
 import { getLogger } from '../utils/logger.js';
 
@@ -706,9 +706,9 @@ export class GoogleSheetsDbClient {
     // copy list
     values = values.slice();
 
-    const guid = GuidUtility.generateGuid();
-    // insert guid at the beginning of the values array
-    values.unshift(guid);
+    const uuid = UuidUtility.generateUuid();
+    // insert uuid at the beginning of the values array
+    values.unshift(uuid);
 
     if (deletedBy) {
       values.push(true);

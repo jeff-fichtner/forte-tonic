@@ -110,8 +110,6 @@ router.post('/getAdmins', UserController.getAdmins);
 
 router.post('/getInstructors', UserController.getInstructors);
 
-router.post('/getStudents', UserController.getStudents);
-
 router.post('/getClasses', RegistrationController.getClasses);
 
 router.post('/getRegistrations', RegistrationController.getRegistrations);
@@ -125,17 +123,6 @@ router.post('/getAdmins', async (req, res) => {
     res.json(transformedData);
   } catch (error) {
     console.error('Error getting admins:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-router.post('/getInstructors', async (req, res) => {
-  try {
-    const data = await req.userRepository.getInstructors();
-    const transformedData = UserTransformService.transformArray(data, 'instructor');
-    res.json(transformedData);
-  } catch (error) {
-    console.error('Error getting instructors:', error);
     res.status(500).json({ error: error.message });
   }
 });

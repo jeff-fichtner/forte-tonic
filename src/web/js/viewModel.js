@@ -2,7 +2,6 @@ import { HttpService } from './data/httpService.js';
 import { ServerFunctions, DataStores, Sections, RegistrationType } from './constants.js';
 import { AuthenticatedUserResponse } from '/models/shared/responses/authenticatedUserResponse.js';
 import { Admin, Instructor, Student, Registration, Class, Room } from '/models/shared/index.js';
-import { IndexedDbClient } from './data/indexedDbClient.js';
 import { DomHelpers } from './utilities/domHelpers.js';
 import { NavTabs } from './components/navTabs.js';
 import { Table } from './components/table.js';
@@ -37,9 +36,33 @@ export class ViewModel {
         return;
       }
     }
-    console.log(`Authenticated user: ${JSON.stringify(authenticatedUser)}`);
-    this.dbClient = new IndexedDbClient('forte', [DataStores.STUDENTS]);
-    await this.dbClient.init();
+  }
+
+  async initializeAsync() {
+    // BYPASS INDEXEDDB: Load fresh data directly
+    console.log('Initializing ViewModel (IndexedDB bypassed)...');
+    
+    const authenticatedUser = await HttpService.fetch(
+      ServerFunctions.getAuthenticatedUser,
+      x => new AuthenticatedUserResponse(x)
+    );
+
+    const validations = [
+      [
+        authenticatedUser,
+        'Failed to get authenticated user. Please check your authentication status.',
+      ],
+    ];
+
+    for (const [value, errorMessage] of validations) {
+      if (!value) {
+        console.error(errorMessage);
+        await DomHelpers.waitForDocumentReadyAsync();
+        await this.#setPageLoading(false, errorMessage);
+        return;
+      }
+    }
+
     const [_, admins, instructors, students, registrations, classes, rooms] = await Promise.all([
       DomHelpers.waitForDocumentReadyAsync(),
       HttpService.fetch(ServerFunctions.getAdmins, x => x.map(y => Admin.fromApiData(y))),
@@ -57,7 +80,16 @@ export class ViewModel {
     this.registrations = registrations.map(registration => {
       // ensure student is populated
       if (!registration.student) {
-        registration.student = this.students.find(x => x.id?.value === registration.studentId.value);
+        registration.student = this.students.find(x => {
+          const studentId = x.id?.value || x.id;
+          const registrationStudentId = registration.studentId?.value || registration.studentId;
+          return studentId === registrationStudentId;
+        });
+        
+        // Debug: Log if student not found
+        if (!registration.student) {
+          console.warn(`Student not found for registration ${registration.id} with studentId ${registration.studentId?.value || registration.studentId}`);
+        }
       }
       // ensure instructor is populated
       if (!registration.instructor) {
@@ -69,22 +101,18 @@ export class ViewModel {
     this.rooms = rooms;
     let defaultSection;
     if (authenticatedUser.shouldShowAsOperator || authenticatedUser.admin) {
-      console.log('Initializing admin content...');
       this.#initAdminContent();
       defaultSection = Sections.ADMIN;
     }
     if (authenticatedUser.shouldShowAsOperator || authenticatedUser.instructor) {
-      console.log('Initializing instructor content...');
       this.#initInstructorContent();
       defaultSection = Sections.INSTRUCTOR;
     }
     if (authenticatedUser.shouldShowAsOperator || authenticatedUser.parent) {
-      console.log('Initializing parent content...');
       this.#initParentContent();
       defaultSection = Sections.PARENT;
     }
     const defaultSectionToUse = !authenticatedUser.shouldShowAsOperator ? defaultSection : null;
-    console.log(`Default section to use: ${defaultSectionToUse}`);
     this.navTabs = new NavTabs(defaultSectionToUse);
     this.#setPageLoading(false);
   }
@@ -94,6 +122,7 @@ export class ViewModel {
   #initAdminContent() {
     // master schedule tab
     this.masterScheduleTable = this.#buildRegistrationTable(this.registrations);
+    this.#populateFilterDropdowns();
     // registration form
     this.adminRegistrationForm = new AdminRegistrationForm(
       this.instructors,
@@ -105,7 +134,6 @@ export class ViewModel {
         );
 
         // handle response
-        console.log('Registration created:', newRegistration);
         M.toast({ html: 'Registration created successfully.' });
         this.registrations.push(newRegistration);
         this.masterScheduleTable.replaceRange(this.registrations);
@@ -162,6 +190,7 @@ export class ViewModel {
     // students with registrations
     const studentsWithRegistrations = this.registrations
       .map(registration => registration.student)
+      .filter(student => student && student.id) // Filter out undefined students and students without IDs
       .filter((student, index, self) => self.findIndex(s => s.id === student.id) === index);
     const parentWeeklyScheduleTables = document.getElementById('parent-weekly-schedule-tables');
 
@@ -216,6 +245,102 @@ export class ViewModel {
     adminRegistrationContainer.hidden = isLoading;
   }
   /**
+   * Populate the filter dropdowns with actual data
+   */
+  #populateFilterDropdowns() {
+    // Populate instructor dropdown
+    const instructorSelect = document.getElementById('master-schedule-instructor-filter-select');
+    if (instructorSelect) {
+      // Clear existing options except the first (placeholder)
+      while (instructorSelect.children.length > 1) {
+        instructorSelect.removeChild(instructorSelect.lastChild);
+      }
+      
+      // Ensure first option is disabled and not selected
+      if (instructorSelect.firstElementChild) {
+        instructorSelect.firstElementChild.disabled = true;
+        instructorSelect.firstElementChild.selected = false;
+      }
+      
+      // Add instructor options
+      this.instructors.forEach(instructor => {
+        const option = document.createElement('option');
+        option.value = instructor.id;
+        option.textContent = `${instructor.firstName} ${instructor.lastName}`;
+        instructorSelect.appendChild(option);
+      });
+    }
+
+    // Populate day dropdown
+    const daySelect = document.getElementById('master-schedule-day-filter-select');
+    if (daySelect) {
+      // Clear existing options except the first (placeholder)
+      while (daySelect.children.length > 1) {
+        daySelect.removeChild(daySelect.lastChild);
+      }
+      
+      // Ensure first option is disabled and not selected
+      if (daySelect.firstElementChild) {
+        daySelect.firstElementChild.disabled = true;
+        daySelect.firstElementChild.selected = false;
+      }
+      
+      // Get unique days from registrations
+      const uniqueDays = [...new Set(this.registrations.map(reg => reg.day))];
+      // Sort days in logical weekday order
+      const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      uniqueDays.sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b)).forEach(day => {
+        const option = document.createElement('option');
+        option.value = day;
+        option.textContent = day;
+        daySelect.appendChild(option);
+      });
+    }
+
+    // Populate grade dropdown
+    const gradeSelect = document.getElementById('master-schedule-grade-filter-select');
+    if (gradeSelect) {
+      // Clear existing options except the first (placeholder)
+      while (gradeSelect.children.length > 1) {
+        gradeSelect.removeChild(gradeSelect.lastChild);
+      }
+      
+      // Ensure first option is disabled and not selected
+      if (gradeSelect.firstElementChild) {
+        gradeSelect.firstElementChild.disabled = true;
+        gradeSelect.firstElementChild.selected = false;
+      }
+      
+      // Get unique grades from students who have registrations
+      const registeredStudentIds = this.registrations.map(reg => 
+        reg.studentId?.value || reg.studentId
+      );
+      const registeredStudents = this.students.filter(student => 
+        registeredStudentIds.includes(student.id?.value || student.id)
+      );
+      const uniqueGrades = [...new Set(registeredStudents.map(student => student.grade))];
+      // Sort grades numerically and filter out null/undefined values
+      uniqueGrades
+        .filter(grade => grade != null && grade !== '')
+        .sort((a, b) => {
+          // Convert to numbers for proper numeric sorting
+          const gradeA = typeof a === 'number' ? a : parseInt(a) || 0;
+          const gradeB = typeof b === 'number' ? b : parseInt(b) || 0;
+          return gradeA - gradeB;
+        })
+        .forEach(grade => {
+          const option = document.createElement('option');
+          option.value = grade.toString();
+          option.textContent = `Grade ${grade}`;
+          gradeSelect.appendChild(option);
+        });
+    }
+
+    // Reinitialize Materialize select elements
+    const selects = document.querySelectorAll('select');
+    M.FormSelect.init(selects);
+  }
+  /**
    *
    */
   #buildRegistrationTable(defaultRegistrations) {
@@ -234,30 +359,13 @@ export class ViewModel {
       ],
       // row
       registration => {
-        // Debug the registration and ID extraction
-        console.log('=== REGISTRATION DEBUG ===');
-        console.log('Registration ID:', registration.id);
-        console.log('Raw instructorId:', registration.instructorId);
-        console.log('Raw studentId:', registration.studentId);
-        
         // Extract primitive values for comparison
         const instructorIdToFind = registration.instructorId?.value || registration.instructorId;
         const studentIdToFind = registration.studentId?.value || registration.studentId;
         
-        console.log('Extracted instructorIdToFind:', instructorIdToFind, typeof instructorIdToFind);
-        console.log('Extracted studentIdToFind:', studentIdToFind, typeof studentIdToFind);
-        console.log('Available instructor IDs:', this.instructors.map(i => i.id));
-        console.log('Available student IDs (values):', this.students.map(s => s.id?.value || s.id));
-        
-        // Compare instructor ID (string) with instructor.id (string)
+        // Find instructor and student
         const instructor = this.instructors.find(x => x.id === instructorIdToFind);
-        
-        // Compare student ID (string) with student.id.value (StudentId object's value)
         const student = this.students.find(x => x.id?.value === studentIdToFind);
-        
-        console.log('Found instructor:', instructor ? `${instructor.firstName} ${instructor.lastName}` : 'NOT FOUND');
-        console.log('Found student:', student ? `${student.firstName} ${student.lastName}` : 'NOT FOUND');
-        console.log('=== END DEBUG ===');
         
         if (!instructor || !student) {
           console.warn(`Instructor or student not found for registration: ${registration.id}`);
@@ -298,7 +406,11 @@ export class ViewModel {
         if (!currentRegistration) return;
         if (isCopy) {
           const parentEmails = currentRegistration.student.parentEmails;
-          await this.#copyToClipboard(parentEmails);
+          if (parentEmails && parentEmails.trim()) {
+            await this.#copyToClipboard(parentEmails);
+          } else {
+            M.toast({ html: 'No parent email available for this student.' });
+          }
           return;
         }
         if (isDelete) {
@@ -308,36 +420,73 @@ export class ViewModel {
       },
       // filter
       registration => {
-        // // get selected checkboxes within days-of-week-filter-container
-        // const daysOfWeekCheckboxes = document.querySelectorAll('#days-of-week-filter-container input[type="checkbox"]');
-        // const selectedDays = Array.from(daysOfWeekCheckboxes)
-        //     .filter(checkbox => checkbox.checked)
-        //     .map(checkbox => checkbox.id);
-        // // get selected checkboxes within grade-filter-container
-        // const gradeCheckboxes = document.querySelectorAll('#grade-filter-container input[type="checkbox"]');
-        // const selectedGrades = Array.from(gradeCheckboxes)
-        //     .filter(checkbox => checkbox.checked)
-        //     .map(checkbox => checkbox.id * 1);
-        // // filter by selected days otherwise all
-        // if (selectedDays.length > 0 && !selectedDays.includes(registration.day)) {
-        //     return false;
-        // }
-        // // filter by selected grades otherwise all
-        // if (selectedGrades.length > 0 && !selectedGrades.includes(registration.student.grade)) {
-        //     return false;
-        // }
+        // Get selected values from multi-select dropdowns
+        const instructorSelect = document.getElementById('master-schedule-instructor-filter-select');
+        const daySelect = document.getElementById('master-schedule-day-filter-select');
+        const gradeSelect = document.getElementById('master-schedule-grade-filter-select');
+        
+        // If any dropdown doesn't exist yet, show all registrations (during initial load)
+        if (!instructorSelect || !daySelect || !gradeSelect) {
+          return true;
+        }
+        
+        const selectedInstructors = Array.from(instructorSelect.selectedOptions)
+          .map(option => option.value)
+          .filter(value => value !== ''); // Exclude empty placeholder values
+        const selectedDays = Array.from(daySelect.selectedOptions)
+          .map(option => option.value)
+          .filter(value => value !== ''); // Exclude empty placeholder values
+        const selectedGrades = Array.from(gradeSelect.selectedOptions)
+          .map(option => option.value)
+          .filter(value => value !== ''); // Exclude empty placeholder values
+        
+        // Extract primitive values for comparison
+        const instructorIdToFind = registration.instructorId?.value || registration.instructorId;
+        const studentIdToFind = registration.studentId?.value || registration.studentId;
+        
+        // Find instructor and student
+        const instructor = this.instructors.find(x => x.id === instructorIdToFind);
+        const student = this.students.find(x => x.id?.value === studentIdToFind);
+        
+        if (!instructor || !student) {
+          return false; // Skip rows where instructor or student not found
+        }
+        
+        // Filter by selected instructors (if any selected, otherwise show all)
+        if (selectedInstructors.length > 0 && !selectedInstructors.includes(instructorIdToFind)) {
+          return false;
+        }
+        
+        // Filter by selected days (if any selected, otherwise show all)
+        if (selectedDays.length > 0 && !selectedDays.includes(registration.day)) {
+          return false;
+        }
+        
+        // Filter by selected grades (if any selected, otherwise show all)
+        if (selectedGrades.length > 0 && !selectedGrades.includes(student.grade?.toString())) {
+          return false;
+        }
+        
         return true;
       },
       [
-        // {
-        //     filterId: 'days-of-week-filter-container',
-        //     type: 'checkbox'
-        // },
-        // {
-        //     filterId: 'grade-filter-container',
-        //     type: 'checkbox'
-        // }
-      ]
+        {
+          filterId: 'master-schedule-instructor-filter-select',
+          type: 'select-multiple'
+        },
+        {
+          filterId: 'master-schedule-day-filter-select',
+          type: 'select-multiple'
+        },
+        {
+          filterId: 'master-schedule-grade-filter-select',
+          type: 'select-multiple'
+        }
+      ],
+      {
+        pagination: true,
+        itemsPerPage: 15
+      }
     );
   }
   /**
@@ -349,10 +498,27 @@ export class ViewModel {
       ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument'],
       // row
       enrollment => {
-        const instructor = this.instructors.find(x => x.id === enrollment.instructorId.value);
-        const student = this.students.find(x => x.id?.value === enrollment.studentId.value);
+        // More flexible instructor matching
+        const instructor = this.instructors.find(x => {
+          const instructorId = x.id?.value || x.id;
+          const enrollmentInstructorId = enrollment.instructorId?.value || enrollment.instructorId;
+          return instructorId === enrollmentInstructorId;
+        });
+        
+        // More flexible student matching  
+        const student = this.students.find(x => {
+          const studentId = x.id?.value || x.id;
+          const enrollmentStudentId = enrollment.studentId?.value || enrollment.studentId;
+          return studentId === enrollmentStudentId;
+        });
+        
         if (!instructor || !student) {
           console.warn(`Instructor or student not found for enrollment: ${enrollment.id}`);
+          console.warn(`Looking for instructorId: ${enrollment.instructorId?.value || enrollment.instructorId}, studentId: ${enrollment.studentId?.value || enrollment.studentId}`);
+          console.warn('Available instructor IDs:', this.instructors.map(i => i.id?.value || i.id).slice(0, 5));
+          console.warn('Available student IDs:', this.students.map(s => s.id?.value || s.id).slice(0, 5));
+          
+          // Return empty string to skip this enrollment rather than crashing
           return '';
         }
         return `
@@ -538,26 +704,16 @@ export class ViewModel {
    *
    */
   async #getStudents(forceRefresh = false) {
-    // load students from indexeddb
-    if (!forceRefresh && (await this.dbClient.hasItems(DataStores.STUDENTS))) {
-      console.log('Loading students from IndexedDB...');
-      const items = await this.dbClient.getAll(DataStores.STUDENTS, x => Student.fromApiData(x));
-      if (!items || items.length === 0) {
-        console.warn('No students found in IndexedDB.');
-      } else {
-        console.log(`Loaded ${items.length} students from IndexedDB.`);
-      }
-      return items;
-    }
+    // BYPASS INDEXEDDB: Always load students fresh from server
+    console.log('Loading students fresh from server (IndexedDB bypassed)...');
+    
     const students = await HttpService.fetchAllPages(ServerFunctions.getStudents, x =>
       Student.fromApiData(x)
     );
     console.log(`Fetched ${students.length} students from server.`);
-    if (students.length > 0) {
-      // save students to indexeddb
-      console.log('Saving students to IndexedDB...');
-      await this.dbClient.insertRange(DataStores.STUDENTS, students);
-    } else {
+    
+    // Note: IndexedDB saving is bypassed to ensure fresh data on every load
+    if (students.length === 0) {
       console.warn('No students found from server.');
     }
     return students;

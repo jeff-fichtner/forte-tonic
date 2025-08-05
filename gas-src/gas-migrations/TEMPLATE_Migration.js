@@ -42,6 +42,22 @@ function rollbackYourMigrationName() {
 }
 
 /**
+ * Restore from automatic backup and delete the backup
+ * TODO: Replace "YourMigrationName" with your actual migration name
+ */
+function restoreYourMigrationNameFromBackup() {
+  return restoreFromBackup('YourMigrationName');
+}
+
+/**
+ * Delete backup without restoring
+ * TODO: Replace "YourMigrationName" with your actual migration name
+ */
+function deleteYourMigrationNameBackup() {
+  return deleteBackup('YourMigrationName');
+}
+
+/**
  * Migration class for Your Migration Description
  * TODO: Replace "YourMigrationNameClass" and description with your actual migration details
  */
@@ -106,12 +122,25 @@ class YourMigrationNameClass {
     console.log(`🚀 EXECUTING MIGRATION: ${this.migrationName}`);
     console.log('='.repeat(45 + this.migrationName.length));
 
+    // Create automatic backup before starting
+    console.log('📦 Creating automatic backup...');
+    const sheetsToBackup = ['sheet1', 'sheet2']; // TODO: Replace with actual sheet names
+    const backupResult = createMigrationBackup('YourMigrationName', sheetsToBackup);
+    
+    if (!backupResult.success) {
+      console.error('❌ Failed to create backup, aborting migration');
+      throw new Error(`Backup failed: ${backupResult.error}`);
+    }
+    
+    console.log('✅ Backup created successfully');
+
     const results = {
       recordsUpdated: 0,
       columnsAdded: 0,
       validationRulesAdded: 0,
       formattingApplied: 0,
       errors: [],
+      backupInfo: backupResult
     };
 
     try {
@@ -169,16 +198,36 @@ class YourMigrationNameClass {
 
   /**
    * Rollback the migration changes
+   * Uses automatic backup if available, otherwise manual restoration
    */
   rollback() {
     console.log(`🔄 ROLLING BACK MIGRATION: ${this.migrationName}`);
     console.log('='.repeat(50 + this.migrationName.length));
 
     try {
-      // REPLACE: Add your rollback logic here
+      // First try to restore from automatic backup
+      console.log('🔍 Checking for automatic backup...');
+      const backupInfo = findLatestBackup('YourMigrationName'); // TODO: Replace with actual migration name
+      
+      if (backupInfo) {
+        console.log('✅ Automatic backup found, restoring...');
+        const restoreResult = restoreFromBackup('YourMigrationName'); // TODO: Replace with actual migration name
+        
+        if (restoreResult.success) {
+          console.log('✅ ROLLBACK COMPLETED using automatic backup');
+          console.log(`Restored sheets: ${restoreResult.restoredSheets.join(', ')}`);
+          return { success: true, method: 'automatic_backup', restoredSheets: restoreResult.restoredSheets };
+        } else {
+          console.log('❌ Automatic backup restore failed, falling back to manual restoration');
+        }
+      } else {
+        console.log('ℹ️  No automatic backup found, using manual restoration');
+      }
 
-      console.log('📝 Reverting changes...');
+      // Manual restoration as fallback
+      console.log('📝 Performing manual restoration...');
 
+      // REPLACE: Add your manual rollback logic here
       // Example rollback operations:
       // - Restore original headers
       // - Remove added columns
@@ -187,19 +236,19 @@ class YourMigrationNameClass {
 
       // REPLACE: Implement specific rollback steps
 
-      console.log('\n✅ ROLLBACK COMPLETED');
+      console.log('\n✅ ROLLBACK COMPLETED using manual restoration');
       console.log('\n📋 CHANGES REVERTED:');
       console.log('   • REPLACE: List what was reverted');
 
       // Note about manual cleanup if needed
-      console.log('\n⚠️  Note: Some changes may require manual cleanup:');
-      console.log('   • REPLACE: List items that need manual attention');
-      console.log('   • REPLACE: Provide cleanup instructions');
+      console.log('\n⚠️  Note: Manual restoration may not fully restore all data');
+      console.log('   • For complete data restoration, use automatic backup before migration');
+      console.log('   • REPLACE: Add specific manual cleanup instructions if needed');
 
-      return true;
+      return { success: true, method: 'manual_restoration' };
     } catch (error) {
       console.error('❌ Rollback failed:', error.toString());
-      return false;
+      return { success: false, error: error.toString() };
     }
   }
 
