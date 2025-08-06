@@ -50,6 +50,7 @@ export class Student {
     this.dateOfBirth = data.dateOfBirth ? new Date(data.dateOfBirth) : null;
     this.parent1Id = data.parent1Id;
     this.parent2Id = data.parent2Id;
+    this.parentEmails = data.parentEmails || ''; // Store enriched parent emails from API
     this.emergencyContactName = data.emergencyContactName;
     this.emergencyContactPhone = data.emergencyContactPhone;
     this.medicalNotes = data.medicalNotes;
@@ -244,6 +245,7 @@ export class Student {
       dateOfBirth: this.dateOfBirth?.toISOString(),
       parent1Id: this.parent1Id,
       parent2Id: this.parent2Id,
+      parentEmails: this.parentEmails, // Include enriched parent emails
       emergencyContactName: this.emergencyContactName,
       emergencyContactPhone: this.emergencyContactPhone,
       medicalNotes: this.medicalNotes,

@@ -558,62 +558,128 @@
 
                         <div id="private-registration-container" hidden>
 
-                            <!-- Instructor -->
-                            <div class="input-field">
-                                <select id="instructor-select">
-                                </select>
-                                <label for="instructor-select">Instructor</label>
+                            <!-- Hybrid Approach: Smart Chips + Interactive Time Slot Grid for Private Lessons -->
+                            
+                            <!-- Smart Filter Chips Section -->
+                            <div class="availability-filters" style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+                                <h6 style="margin: 0 0 15px 0; color: #2b68a4;"><b>Filter Available Options</b></h6>
+                                
+                                <div class="filter-section" style="margin: 15px 0;">
+                                    <label style="display: block; margin-bottom: 8px; font-weight: bold;">Instructors:</label>
+                                    <div class="chip-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                        <div class="chip instructor-chip available active" style="background: #2b68a4; color: white; border: 2px solid #2b68a4; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">
+                                            All Instructors <span style="color: #ccc; font-weight: bold; margin-left: 5px;">(7 slots)</span>
+                                        </div>
+                                        <div class="chip instructor-chip available" style="background: #e8f5e8; border: 2px solid #4caf50; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">
+                                            Jesse Brewster <span style="color: #4caf50; font-weight: bold; margin-left: 5px;">(5 slots)</span>
+                                        </div>
+                                        <div class="chip instructor-chip limited" style="background: #fff3e0; border: 2px solid #ff9800; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">
+                                            Cesar Cancino <span style="color: #ff9800; font-weight: bold; margin-left: 5px;">(2 slots)</span>
+                                        </div>
+                                        <div class="chip instructor-chip unavailable" style="background: #ffebee; border: 2px solid #f44336; padding: 8px 12px; border-radius: 16px; cursor: not-allowed; opacity: 0.6; display: flex; align-items: center;">
+                                            Rob Caniglia <span style="color: #f44336; font-weight: bold; margin-left: 5px;">(0 slots)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="filter-section" style="margin: 15px 0;">
+                                    <label style="display: block; margin-bottom: 8px; font-weight: bold;">Preferred Day:</label>
+                                    <div class="chip-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                        <div class="chip day-chip available active" style="background: #2b68a4; color: white; border: 2px solid #2b68a4; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">All Days</div>
+                                        <div class="chip day-chip available" style="background: #e8f5e8; border: 2px solid #4caf50; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">Monday</div>
+                                        <div class="chip day-chip available" style="background: #e8f5e8; border: 2px solid #4caf50; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">Tuesday</div>
+                                        <div class="chip day-chip limited" style="background: #fff3e0; border: 2px solid #ff9800; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">Wednesday</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="filter-section" style="margin: 15px 0;">
+                                    <label style="display: block; margin-bottom: 8px; font-weight: bold;">Lesson Length:</label>
+                                    <div class="chip-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                        <div class="chip length-chip available active" style="background: #2b68a4; color: white; border: 2px solid #2b68a4; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">All Lengths</div>
+                                        <div class="chip length-chip available" style="background: #e8f5e8; border: 2px solid #4caf50; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">30 min</div>
+                                        <div class="chip length-chip available" style="background: #e8f5e8; border: 2px solid #4caf50; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">45 min</div>
+                                        <div class="chip length-chip unavailable" style="background: #ffebee; border: 2px solid #f44336; padding: 8px 12px; border-radius: 16px; cursor: not-allowed; opacity: 0.6; display: flex; align-items: center;">60 min</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="filter-section" style="margin: 15px 0;">
+                                    <label style="display: block; margin-bottom: 8px; font-weight: bold;">Instrument:</label>
+                                    <div class="chip-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                        <div class="chip instrument-chip available active" style="background: #2b68a4; color: white; border: 2px solid #2b68a4; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">All Instruments</div>
+                                        <div class="chip instrument-chip available" style="background: #e8f5e8; border: 2px solid #4caf50; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">Piano</div>
+                                        <div class="chip instrument-chip available" style="background: #e8f5e8; border: 2px solid #4caf50; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">Guitar</div>
+                                        <div class="chip instrument-chip available" style="background: #e8f5e8; border: 2px solid #4caf50; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">Violin</div>
+                                        <div class="chip instrument-chip limited" style="background: #fff3e0; border: 2px solid #ff9800; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">Drums</div>
+                                    </div>
+                                </div>
                             </div>
-
-                            <div id="instructor-selected-info-container" hidden>
-
-                                <!-- Instrument -->
-                                <div class="input-field" id="instrument-select-options-container">
-                                    <select id="instrument-select">
-                                    </select>
-                                    <label for="instrument-select">Instrument</label>
+                            
+                            <!-- Interactive Time Slot Grid Section -->
+                            <div class="instructor-timeslot-grid" id="admin-instructor-timeslot-grid">
+                                <div class="section-header" style="margin-bottom: 15px;">
+                                    <h6 style="margin: 0; color: #2b68a4;"><b>Available Time Slots</b></h6>
+                                    <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Click on any available slot to select your lesson time</p>
                                 </div>
-
-                                <!-- Day -->
-                                <div class="input-field" id="instructor-day-select-options-container">
-                                    <select id="day-select">
-                                    </select>
-                                    <label for="day-select">Day</label>
-                                </div>
-
-                                <div id="instructor-day-selected-info-container" hidden>
-
-                                    <!-- Length -->
-                                    <div id="lesson-length-container">
-                                        <p>Lesson Length</p>
-                                        <p>
-                                            <label>
-                                                <input name="lesson-length" type="radio" value="30" checked />
-                                                <span>30 Minutes</span>
-                                            </label>
-                                        </p>
-                                        <p>
-                                            <label>
-                                                <input name="lesson-length" type="radio" value="45" />
-                                                <span>45 Minutes</span>
-                                            </label>
-                                        </p>
-                                        <p>
-                                            <label>
-                                                <input name="lesson-length" type="radio" value="60" />
-                                                <span>60 Minutes</span>
-                                            </label>
-                                        </p>
-                                    </div>
-
-                                    <!-- Start Time -->
-                                    <div class="input-field" id="instructor-day-start-time-container">
-                                        <select id="start-time-select">
-                                        </select>
-                                        <label for="start-time-select">Start Time</label>
+                                
+                                <div class="instructor-card" style="border: 2px solid #ddd; margin: 15px 0; padding: 20px; border-radius: 8px; transition: border-color 0.3s;">
+                                    <h6 style="margin: 0 0 15px 0; color: #2b68a4; display: flex; align-items: center;"><b>Jesse Brewster - Piano</b> <span style="margin-left: 10px; font-size: 12px; background: #e8f5e8; color: #4caf50; padding: 4px 8px; border-radius: 12px;">5 available</span></h6>
+                                    <div class="timeslot-grid" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                                        <div class="timeslot available" data-instructor-id="instructor-1" data-day="monday" data-time="14:00" data-length="30" data-instrument="Piano" style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                            <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Monday</div>
+                                            <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">2:00 PM</div>
+                                            <div style="font-size: 12px; color: #666;">30min • Piano</div>
+                                        </div>
+                                        <div class="timeslot available" data-instructor-id="instructor-1" data-day="monday" data-time="14:30" data-length="45" data-instrument="Piano" style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                            <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Monday</div>
+                                            <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">2:30 PM</div>
+                                            <div style="font-size: 12px; color: #666;">45min • Piano</div>
+                                        </div>
+                                        <div class="timeslot unavailable" style="border: 2px solid #f44336; background: #ffebee; padding: 12px 16px; border-radius: 8px; cursor: not-allowed; min-width: 110px; text-align: center; opacity: 0.6;">
+                                            <div style="font-weight: bold; color: #c62828; font-size: 14px;">Monday</div>
+                                            <div style="font-weight: bold; color: #c62828; font-size: 16px;">3:00 PM</div>
+                                            <div style="font-size: 12px; color: #666;">30min • Piano</div>
+                                            <div style="font-size: 10px; color: #f44336; margin-top: 2px;">Booked</div>
+                                        </div>
+                                        <div class="timeslot available" data-instructor-id="instructor-1" data-day="tuesday" data-time="13:15" data-length="45" data-instrument="Piano" style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                            <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Tuesday</div>
+                                            <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">1:15 PM</div>
+                                            <div style="font-size: 12px; color: #666;">45min • Piano</div>
+                                        </div>
+                                        <div class="timeslot available" data-instructor-id="instructor-1" data-day="wednesday" data-time="15:30" data-length="30" data-instrument="Piano" style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                            <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Wednesday</div>
+                                            <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">3:30 PM</div>
+                                            <div style="font-size: 12px; color: #666;">30min • Piano</div>
+                                        </div>
                                     </div>
                                 </div>
-
+                                
+                                <div class="instructor-card" style="border: 2px solid #ddd; margin: 15px 0; padding: 20px; border-radius: 8px; transition: border-color 0.3s;">
+                                    <h6 style="margin: 0 0 15px 0; color: #2b68a4; display: flex; align-items: center;"><b>Cesar Cancino - Guitar</b> <span style="margin-left: 10px; font-size: 12px; background: #fff3e0; color: #ff9800; padding: 4px 8px; border-radius: 12px;">2 available</span></h6>
+                                    <div class="timeslot-grid" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                                        <div class="timeslot available" data-instructor-id="instructor-2" data-day="tuesday" data-time="13:30" data-length="30" style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                            <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Tuesday</div>
+                                            <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">1:30 PM</div>
+                                            <div style="font-size: 12px; color: #666;">30min</div>
+                                        </div>
+                                        <div class="timeslot limited" data-instructor-id="instructor-2" data-day="wednesday" data-time="16:00" data-length="45" style="border: 2px solid #ff9800; background: #fff3e0; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                            <div style="font-weight: bold; color: #ef6c00; font-size: 14px;">Wednesday</div>
+                                            <div style="font-weight: bold; color: #ef6c00; font-size: 16px;">4:00 PM</div>
+                                            <div style="font-size: 12px; color: #666;">45min</div>
+                                            <div style="font-size: 10px; color: #ff9800; margin-top: 2px;">Last slot</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Selected Lesson Display -->
+                            <div id="admin-selected-lesson-display" style="margin-top: 25px; padding: 20px; background: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; display: none;">
+                                <h6 style="margin: 0 0 10px 0; color: #1976d2;"><b>Selected Lesson</b></h6>
+                                <div id="admin-selected-lesson-details" style="font-size: 16px; color: #333;"></div>
+                                <div style="margin-top: 15px;">
+                                    <button class="btn-flat waves-effect" style="color: #666;" onclick="document.getElementById('admin-selected-lesson-display').style.display='none';">
+                                        Clear Selection
+                                    </button>
+                                </div>
                             </div>
 
                         </div>
@@ -665,204 +731,122 @@
             </div>
             <div hidden class="tab-content" id="parent-registration" class="col s12" style="background-color: #fefefe">
                 
-                <!-- Option 1: Interactive Time Slot Grid -->
+                <!-- Hybrid Approach: Smart Chips + Interactive Time Slot Grid -->
                 <div class="card">
                     <div class="card-content">
-                        <span class="card-title" style="color: #2b68a4"><b>Option 1: Interactive Time Slot Grid</b></span>
+                        <span class="card-title" style="color: #2b68a4"><b>Lesson Registration</b></span>
                         
-                        <div class="instructor-timeslot-grid">
-                            <div class="instructor-card" style="border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 4px;">
-                                <h6 style="margin: 0 0 10px 0; color: #2b68a4;"><b>Jesse Brewster - Piano</b></h6>
-                                <div class="timeslot-grid" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                                    <div class="timeslot available" style="border: 2px solid #4caf50; background: #e8f5e8; padding: 8px 12px; border-radius: 4px; cursor: pointer; min-width: 100px; text-align: center;">
-                                        <div style="font-weight: bold; color: #2e7d32;">2:00 PM</div>
-                                        <div style="font-size: 12px; color: #666;">30min</div>
-                                    </div>
-                                    <div class="timeslot available" style="border: 2px solid #4caf50; background: #e8f5e8; padding: 8px 12px; border-radius: 4px; cursor: pointer; min-width: 100px; text-align: center;">
-                                        <div style="font-weight: bold; color: #2e7d32;">2:30 PM</div>
-                                        <div style="font-size: 12px; color: #666;">45min</div>
-                                    </div>
-                                    <div class="timeslot unavailable" style="border: 2px solid #f44336; background: #ffebee; padding: 8px 12px; border-radius: 4px; cursor: not-allowed; min-width: 100px; text-align: center;">
-                                        <div style="font-weight: bold; color: #c62828;">3:00 PM</div>
-                                        <div style="font-size: 12px; color: #666;">30min</div>
-                                        <div style="font-size: 10px; color: #f44336;">Booked</div>
-                                    </div>
-                                </div>
-                            </div>
+                        <!-- Smart Filter Chips Section -->
+                        <div class="availability-filters" style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+                            <h6 style="margin: 0 0 15px 0; color: #2b68a4;"><b>Filter Available Options</b></h6>
                             
-                            <div class="instructor-card" style="border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 4px;">
-                                <h6 style="margin: 0 0 10px 0; color: #2b68a4;"><b>Cesar Cancino - Guitar</b></h6>
-                                <div class="timeslot-grid" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                                    <div class="timeslot available" style="border: 2px solid #4caf50; background: #e8f5e8; padding: 8px 12px; border-radius: 4px; cursor: pointer; min-width: 100px; text-align: center;">
-                                        <div style="font-weight: bold; color: #2e7d32;">1:30 PM</div>
-                                        <div style="font-size: 12px; color: #666;">30min</div>
-                                    </div>
-                                    <div class="timeslot limited" style="border: 2px solid #ff9800; background: #fff3e0; padding: 8px 12px; border-radius: 4px; cursor: pointer; min-width: 100px; text-align: center;">
-                                        <div style="font-weight: bold; color: #ef6c00;">4:00 PM</div>
-                                        <div style="font-size: 12px; color: #666;">45min</div>
-                                        <div style="font-size: 10px; color: #ff9800;">Last slot</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Option 2: Smart Chips with Dynamic Filtering -->
-                <div class="card">
-                    <div class="card-content">
-                        <span class="card-title" style="color: #2b68a4"><b>Option 2: Smart Chips with Dynamic Filtering</b></span>
-                        
-                        <div class="availability-filters">
-                                                            <div class="filter-section" style="margin: 15px 0;">
-                                <label style="display: block; margin-bottom: 8px; font-weight: bold;">Available Instructors:</label>
+                            <div class="filter-section" style="margin: 15px 0;">
+                                <label style="display: block; margin-bottom: 8px; font-weight: bold;">Instructors:</label>
                                 <div class="chip-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                                    <div class="chip instructor-chip available" style="background: #e8f5e8; border: 1px solid #4caf50; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center;">
+                                    <div class="chip instructor-chip available active" style="background: #2b68a4; color: white; border: 2px solid #2b68a4; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">
+                                        All Instructors <span style="color: #ccc; font-weight: bold; margin-left: 5px;">(7 slots)</span>
+                                    </div>
+                                    <div class="chip instructor-chip available" style="background: #e8f5e8; border: 2px solid #4caf50; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">
                                         Jesse Brewster <span style="color: #4caf50; font-weight: bold; margin-left: 5px;">(5 slots)</span>
                                     </div>
-                                    <div class="chip instructor-chip limited" style="background: #fff3e0; border: 1px solid #ff9800; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center;">
+                                    <div class="chip instructor-chip limited" style="background: #fff3e0; border: 2px solid #ff9800; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">
                                         Cesar Cancino <span style="color: #ff9800; font-weight: bold; margin-left: 5px;">(2 slots)</span>
                                     </div>
-                                    <div class="chip instructor-chip unavailable" style="background: #ffebee; border: 1px solid #f44336; padding: 8px 12px; border-radius: 16px; cursor: not-allowed; opacity: 0.6; display: flex; align-items: center;">
+                                    <div class="chip instructor-chip unavailable" style="background: #ffebee; border: 2px solid #f44336; padding: 8px 12px; border-radius: 16px; cursor: not-allowed; opacity: 0.6; display: flex; align-items: center;">
                                         Rob Caniglia <span style="color: #f44336; font-weight: bold; margin-left: 5px;">(0 slots)</span>
                                     </div>
                                 </div>
                             </div>
                             
                             <div class="filter-section" style="margin: 15px 0;">
-                                <label style="display: block; margin-bottom: 8px; font-weight: bold;">Preferred Time:</label>
+                                <label style="display: block; margin-bottom: 8px; font-weight: bold;">Preferred Day:</label>
                                 <div class="chip-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                                    <div class="chip time-chip available" style="background: #e8f5e8; border: 1px solid #4caf50; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center;">2:00 PM</div>
-                                    <div class="chip time-chip available" style="background: #e8f5e8; border: 1px solid #4caf50; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center;">2:30 PM</div>
-                                    <div class="chip time-chip limited" style="background: #fff3e0; border: 1px solid #ff9800; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center;">3:00 PM <span style="color: #ff9800; margin-left: 5px;">(Limited)</span></div>
-                                    <div class="chip time-chip unavailable" style="background: #ffebee; border: 1px solid #f44336; padding: 8px 12px; border-radius: 16px; cursor: not-allowed; opacity: 0.6; display: flex; align-items: center;">4:00 PM</div>
+                                    <div class="chip day-chip available active" style="background: #2b68a4; color: white; border: 2px solid #2b68a4; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">All Days</div>
+                                    <div class="chip day-chip available" style="background: #e8f5e8; border: 2px solid #4caf50; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">Monday</div>
+                                    <div class="chip day-chip available" style="background: #e8f5e8; border: 2px solid #4caf50; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">Tuesday</div>
+                                    <div class="chip day-chip limited" style="background: #fff3e0; border: 2px solid #ff9800; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">Wednesday</div>
                                 </div>
                             </div>
                             
                             <div class="filter-section" style="margin: 15px 0;">
                                 <label style="display: block; margin-bottom: 8px; font-weight: bold;">Lesson Length:</label>
                                 <div class="chip-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                                    <div class="chip length-chip available" style="background: #e8f5e8; border: 1px solid #4caf50; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center;">30 min</div>
-                                    <div class="chip length-chip available" style="background: #e8f5e8; border: 1px solid #4caf50; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center;">45 min</div>
-                                    <div class="chip length-chip unavailable" style="background: #ffebee; border: 1px solid #f44336; padding: 8px 12px; border-radius: 16px; cursor: not-allowed; opacity: 0.6; display: flex; align-items: center;">60 min</div>
+                                    <div class="chip length-chip available active" style="background: #2b68a4; color: white; border: 2px solid #2b68a4; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">All Lengths</div>
+                                    <div class="chip length-chip available" style="background: #e8f5e8; border: 2px solid #4caf50; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">30 min</div>
+                                    <div class="chip length-chip available" style="background: #e8f5e8; border: 2px solid #4caf50; padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s;">45 min</div>
+                                    <div class="chip length-chip unavailable" style="background: #ffebee; border: 2px solid #f44336; padding: 8px 12px; border-radius: 16px; cursor: not-allowed; opacity: 0.6; display: flex; align-items: center;">60 min</div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Option 3: Combined Selection Cards -->
-                <div class="card">
-                    <div class="card-content">
-                        <span class="card-title" style="color: #2b68a4"><b>Option 3: Combined Selection Cards</b></span>
                         
-                        <div class="lesson-options-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
-                            <div class="lesson-option-card available" style="border: 2px solid #4caf50; background: #e8f5e8; padding: 15px; border-radius: 8px; cursor: pointer; transition: transform 0.2s;">
-                                <div class="instructor-info" style="margin-bottom: 10px;">
-                                    <div style="font-weight: bold; font-size: 16px; color: #2e7d32;">Jesse Brewster</div>
-                                    <div style="color: #666; font-size: 14px;">Piano</div>
-                                </div>
-                                <div class="lesson-details" style="margin-bottom: 10px;">
-                                    <div style="font-weight: bold;">Monday 2:00 PM</div>
-                                    <div style="color: #666;">30 minutes</div>
-                                </div>
-                                <div class="availability-indicator" style="color: #4caf50; font-weight: bold; display: flex; align-items: center;">
-                                    <i class="material-icons" style="margin-right: 5px; font-size: 18px;">check_circle</i> Available
-                                </div>
+                        <!-- Interactive Time Slot Grid Section -->
+                        <div class="instructor-timeslot-grid">
+                            <div class="section-header" style="margin-bottom: 15px;">
+                                <h6 style="margin: 0; color: #2b68a4;"><b>Available Time Slots</b></h6>
+                                <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Click on any available slot to select your lesson time</p>
                             </div>
                             
-                            <div class="lesson-option-card limited" style="border: 2px solid #ff9800; background: #fff3e0; padding: 15px; border-radius: 8px; cursor: pointer; transition: transform 0.2s;">
-                                <div class="instructor-info" style="margin-bottom: 10px;">
-                                    <div style="font-weight: bold; font-size: 16px; color: #ef6c00;">Jesse Brewster</div>
-                                    <div style="color: #666; font-size: 14px;">Piano</div>
-                                </div>
-                                <div class="lesson-details" style="margin-bottom: 10px;">
-                                    <div style="font-weight: bold;">Monday 2:30 PM</div>
-                                    <div style="color: #666;">45 minutes</div>
-                                </div>
-                                <div class="availability-indicator" style="color: #ff9800; font-weight: bold; display: flex; align-items: center;">
-                                    <i class="material-icons" style="margin-right: 5px; font-size: 18px;">warning</i> Last slot
-                                </div>
-                            </div>
-                            
-                            <div class="lesson-option-card available" style="border: 2px solid #4caf50; background: #e8f5e8; padding: 15px; border-radius: 8px; cursor: pointer; transition: transform 0.2s;">
-                                <div class="instructor-info" style="margin-bottom: 10px;">
-                                    <div style="font-weight: bold; font-size: 16px; color: #2e7d32;">Cesar Cancino</div>
-                                    <div style="color: #666; font-size: 14px;">Guitar</div>
-                                </div>
-                                <div class="lesson-details" style="margin-bottom: 10px;">
-                                    <div style="font-weight: bold;">Tuesday 1:30 PM</div>
-                                    <div style="color: #666;">30 minutes</div>
-                                </div>
-                                <div class="availability-indicator" style="color: #4caf50; font-weight: bold; display: flex; align-items: center;">
-                                    <i class="material-icons" style="margin-right: 5px; font-size: 18px;">check_circle</i> Available
-                                </div>
-                            </div>
-                            
-                            <div class="lesson-option-card unavailable" style="border: 2px solid #f44336; background: #ffebee; padding: 15px; border-radius: 8px; cursor: not-allowed; opacity: 0.6;">
-                                <div class="instructor-info" style="margin-bottom: 10px;">
-                                    <div style="font-weight: bold; font-size: 16px; color: #c62828;">Rob Caniglia</div>
-                                    <div style="color: #666; font-size: 14px;">Drums</div>
-                                </div>
-                                <div class="lesson-details" style="margin-bottom: 10px;">
-                                    <div style="font-weight: bold;">Wednesday 3:00 PM</div>
-                                    <div style="color: #666;">60 minutes</div>
-                                </div>
-                                <div class="availability-indicator" style="color: #f44336; font-weight: bold; display: flex; align-items: center;">
-                                    <i class="material-icons" style="margin-right: 5px; font-size: 18px;">cancel</i> Unavailable
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Option 4: Progressive Filter with Real-time Updates -->
-                <div class="card">
-                    <div class="card-content">
-                        <span class="card-title" style="color: #2b68a4"><b>Option 4: Progressive Filter with Real-time Updates</b></span>
-                        
-                        <div class="progressive-selection">
-                            <div class="selection-step active" style="border: 2px solid #2b68a4; background: rgba(43, 104, 164, 0.1); padding: 15px; margin: 10px 0; border-radius: 8px;">
-                                <label style="display: block; font-weight: bold; margin-bottom: 10px; color: #2b68a4;">1. Choose Instructor</label>
-                                <select style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                                    <option value="">Select an instructor...</option>
-                                    <option value="1">Jesse Brewster (8 available slots)</option>
-                                    <option value="2">Cesar Cancino (3 available slots)</option>
-                                    <option value="3" disabled>Rob Caniglia (0 available slots)</option>
-                                </select>
-                            </div>
-                            
-                            <div class="selection-step" style="border: 1px solid #ddd; background: #f9f9f9; padding: 15px; margin: 10px 0; border-radius: 8px;">
-                                <label style="display: block; font-weight: bold; margin-bottom: 10px; color: #666;">2. Choose Day</label>
-                                <div class="day-availability" style="display: flex; flex-wrap: wrap; gap: 10px;">
-                                    <div class="day-option available" style="padding: 10px 15px; border: 2px solid #4caf50; background: #e8f5e8; border-radius: 6px; cursor: pointer;">
-                                        Monday <span style="color: #4caf50; font-weight: bold;">(3 slots)</span>
-                                    </div>
-                                    <div class="day-option limited" style="padding: 10px 15px; border: 2px solid #ff9800; background: #fff3e0; border-radius: 6px; cursor: pointer;">
-                                        Tuesday <span style="color: #ff9800; font-weight: bold;">(1 slot)</span>
-                                    </div>
-                                    <div class="day-option unavailable" style="padding: 10px 15px; border: 2px solid #f44336; background: #ffebee; border-radius: 6px; cursor: not-allowed; opacity: 0.6;">
-                                        Wednesday <span style="color: #f44336; font-weight: bold;">(0 slots)</span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="selection-step" style="border: 1px solid #ddd; background: #f9f9f9; padding: 15px; margin: 10px 0; border-radius: 8px;">
-                                <label style="display: block; font-weight: bold; margin-bottom: 10px; color: #666;">3. Choose Time & Length</label>
-                                <div class="time-length-combinations" style="display: flex; flex-wrap: wrap; gap: 10px;">
-                                    <div class="time-slot available" style="padding: 12px 16px; border: 2px solid #4caf50; background: #e8f5e8; border-radius: 6px; cursor: pointer; text-align: center;">
-                                        <div style="font-weight: bold; color: #2e7d32;">2:00 PM</div>
+                            <div class="instructor-card" style="border: 2px solid #ddd; margin: 15px 0; padding: 20px; border-radius: 8px; transition: border-color 0.3s;">
+                                <h6 style="margin: 0 0 15px 0; color: #2b68a4; display: flex; align-items: center;"><b>Jesse Brewster - Piano</b> <span style="margin-left: 10px; font-size: 12px; background: #e8f5e8; color: #4caf50; padding: 4px 8px; border-radius: 12px;">5 available</span></h6>
+                                <div class="timeslot-grid" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                                    <div class="timeslot available" style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                        <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Monday</div>
+                                        <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">2:00 PM</div>
                                         <div style="font-size: 12px; color: #666;">30min</div>
                                     </div>
-                                    <div class="time-slot available" style="padding: 12px 16px; border: 2px solid #4caf50; background: #e8f5e8; border-radius: 6px; cursor: pointer; text-align: center;">
-                                        <div style="font-weight: bold; color: #2e7d32;">2:00 PM</div>
+                                    <div class="timeslot available" style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                        <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Monday</div>
+                                        <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">2:30 PM</div>
                                         <div style="font-size: 12px; color: #666;">45min</div>
                                     </div>
-                                    <div class="time-slot limited" style="padding: 12px 16px; border: 2px solid #ff9800; background: #fff3e0; border-radius: 6px; cursor: pointer; text-align: center;">
-                                        <div style="font-weight: bold; color: #ef6c00;">2:30 PM</div>
+                                    <div class="timeslot unavailable" style="border: 2px solid #f44336; background: #ffebee; padding: 12px 16px; border-radius: 8px; cursor: not-allowed; min-width: 110px; text-align: center; opacity: 0.6;">
+                                        <div style="font-weight: bold; color: #c62828; font-size: 14px;">Monday</div>
+                                        <div style="font-weight: bold; color: #c62828; font-size: 16px;">3:00 PM</div>
+                                        <div style="font-size: 12px; color: #666;">30min</div>
+                                        <div style="font-size: 10px; color: #f44336; margin-top: 2px;">Booked</div>
+                                    </div>
+                                    <div class="timeslot available" style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                        <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Tuesday</div>
+                                        <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">1:15 PM</div>
+                                        <div style="font-size: 12px; color: #666;">45min</div>
+                                    </div>
+                                    <div class="timeslot available" style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                        <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Wednesday</div>
+                                        <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">3:30 PM</div>
                                         <div style="font-size: 12px; color: #666;">30min</div>
                                     </div>
                                 </div>
+                            </div>
+                            
+                            <div class="instructor-card" style="border: 2px solid #ddd; margin: 15px 0; padding: 20px; border-radius: 8px; transition: border-color 0.3s;">
+                                <h6 style="margin: 0 0 15px 0; color: #2b68a4; display: flex; align-items: center;"><b>Cesar Cancino - Guitar</b> <span style="margin-left: 10px; font-size: 12px; background: #fff3e0; color: #ff9800; padding: 4px 8px; border-radius: 12px;">2 available</span></h6>
+                                <div class="timeslot-grid" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                                    <div class="timeslot available" style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                        <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Tuesday</div>
+                                        <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">1:30 PM</div>
+                                        <div style="font-size: 12px; color: #666;">30min</div>
+                                    </div>
+                                    <div class="timeslot limited" style="border: 2px solid #ff9800; background: #fff3e0; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                        <div style="font-weight: bold; color: #ef6c00; font-size: 14px;">Wednesday</div>
+                                        <div style="font-weight: bold; color: #ef6c00; font-size: 16px;">4:00 PM</div>
+                                        <div style="font-size: 12px; color: #666;">45min</div>
+                                        <div style="font-size: 10px; color: #ff9800; margin-top: 2px;">Last slot</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Selected Lesson Display -->
+                        <div id="selected-lesson-display" style="margin-top: 25px; padding: 20px; background: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; display: none;">
+                            <h6 style="margin: 0 0 10px 0; color: #1976d2;"><b>Selected Lesson</b></h6>
+                            <div id="selected-lesson-details" style="font-size: 16px; color: #333;"></div>
+                            <div style="margin-top: 15px;">
+                                <button class="btn waves-effect waves-light" style="background-color: #4caf50; margin-right: 10px;">
+                                    <b>Confirm Registration</b>
+                                </button>
+                                <button class="btn-flat waves-effect" style="color: #666;" onclick="document.getElementById('selected-lesson-display').style.display='none';">
+                                    Clear Selection
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -879,6 +863,71 @@
 
     <!-- Modern ES Module Loading -->
     <script type="module" src="js/main.js"></script>
+
+    <!-- Hybrid Registration Form Functionality -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Time slot selection functionality
+            const timeslots = document.querySelectorAll('.timeslot.available, .timeslot.limited');
+            const selectedDisplay = document.getElementById('selected-lesson-display');
+            const selectedDetails = document.getElementById('selected-lesson-details');
+            
+            timeslots.forEach(slot => {
+                slot.addEventListener('click', function() {
+                    // Remove previous selection
+                    document.querySelectorAll('.timeslot').forEach(s => {
+                        s.style.border = s.classList.contains('available') ? '2px solid #4caf50' : 
+                                        s.classList.contains('limited') ? '2px solid #ff9800' : '2px solid #f44336';
+                    });
+                    
+                    // Highlight selected slot
+                    this.style.border = '3px solid #2196f3';
+                    
+                    // Extract lesson details
+                    const instructor = this.closest('.instructor-card').querySelector('h6 b').textContent;
+                    const day = this.querySelector('div').textContent;
+                    const time = this.querySelector('div:nth-child(2)').textContent;
+                    const length = this.querySelector('div:nth-child(3)').textContent;
+                    
+                    // Display selection
+                    selectedDetails.innerHTML = `
+                        <strong>${instructor}</strong><br>
+                        ${day} at ${time} (${length})
+                    `;
+                    selectedDisplay.style.display = 'block';
+                });
+            });
+            
+            // Filter chip functionality
+            const chips = document.querySelectorAll('.chip:not(.unavailable)');
+            chips.forEach(chip => {
+                chip.addEventListener('click', function() {
+                    // Handle chip selection logic here
+                    const chipType = this.classList.contains('instructor-chip') ? 'instructor' :
+                                   this.classList.contains('day-chip') ? 'day' : 'length';
+                    
+                    // Remove active from siblings
+                    this.parentElement.querySelectorAll('.chip').forEach(c => {
+                        c.classList.remove('active');
+                        if (!c.classList.contains('unavailable')) {
+                            c.style.background = c.classList.contains('available') ? '#e8f5e8' : '#fff3e0';
+                            c.style.color = 'inherit';
+                            c.style.border = c.classList.contains('available') ? '2px solid #4caf50' : '2px solid #ff9800';
+                        }
+                    });
+                    
+                    // Activate this chip
+                    this.classList.add('active');
+                    this.style.background = '#2b68a4';
+                    this.style.color = 'white';
+                    this.style.border = '2px solid #2b68a4';
+                    
+                    // Filter logic would go here
+                    console.log(`Filtering by ${chipType}:`, this.textContent);
+                });
+            });
+        });
+    </script>
 
 </body>
 

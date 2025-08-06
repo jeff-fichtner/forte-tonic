@@ -100,6 +100,7 @@ export class ViewModel {
     });
     this.classes = classes;
     this.rooms = rooms;
+    
     let defaultSection;
     if (authenticatedUser.shouldShowAsOperator || authenticatedUser.admin) {
       this.#initAdminContent();
@@ -438,7 +439,7 @@ export class ViewModel {
       // on click
       async event => {
         const isCopy = event.target.classList.contains('copy-parent-emails-table-icon');
-        const isDelete = event.target.classList.contains('delete-registration-table-icon');
+        const isDelete = event.target.classList.contains('remove-registration-table-icon');
         if (!isCopy && !isDelete) {
           return;
         }
@@ -448,14 +449,12 @@ export class ViewModel {
         const linkElement = event.target.closest('a');
         const registrationId = linkElement?.getAttribute('data-registration-id');
         if (!registrationId) return;
-        
+
         // Find the registration by ID in the original registrations array
         const currentRegistration = this.registrations.find(r => 
           (r.id?.value || r.id) === registrationId
         );
-        if (!currentRegistration) return;
-        
-        if (isCopy) {
+        if (!currentRegistration) return;        if (isCopy) {
           // Get the student ID from the current registration
           const studentIdToFind = currentRegistration.studentId?.value || currentRegistration.studentId;
           
@@ -473,7 +472,8 @@ export class ViewModel {
           return;
         }
         if (isDelete) {
-          await this.#requestDeleteRegistrationAsync(currentRegistration.id);
+          const idToDelete = currentRegistration.id?.value || currentRegistration.id;
+          await this.#requestDeleteRegistrationAsync(idToDelete);
           return;
         }
       },
@@ -694,15 +694,31 @@ export class ViewModel {
     if (!confirm(`Are you sure you want to delete?`)) {
       return;
     }
+    
+    console.log('Delete registration called with ID:', registrationToDeleteId);
+    console.log('ID type:', typeof registrationToDeleteId);
+    
+    if (!registrationToDeleteId) {
+      console.error('No registration ID provided for deletion');
+      M.toast({ html: 'Error: No registration ID provided for deletion.' });
+      return;
+    }
+    
     try {
       this.#setAdminRegistrationLoading(true);
-      const response = await HttpService.post(ServerFunctions.unregister, {
-        id: registrationToDeleteId,
-      });
-      const registrationIndex = this.registrations.findIndex(x => x.id === registrationToDeleteId);
+      const requestPayload = { registrationId: registrationToDeleteId };
+      console.log('Sending delete request with payload:', requestPayload);
+      
+      const response = await HttpService.post(ServerFunctions.unregister, requestPayload);
+      const registrationIndex = this.registrations.findIndex(x => 
+        (x.id?.value || x.id) === registrationToDeleteId
+      );
       M.toast({ html: 'Registration deleted successfully.' });
       this.registrations.splice(registrationIndex, 1);
-      this.masterScheduleTable.replaceRange(this.registrations);
+      
+      // Sort the registrations before updating the table to maintain sort order
+      const sortedRegistrations = this.#sortRegistrations(this.registrations);
+      this.masterScheduleTable.replaceRange(sortedRegistrations);
     } catch (error) {
       console.error('Error deleting registration:', error);
       M.toast({ html: 'Error deleting registration.' });
