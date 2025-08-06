@@ -156,8 +156,8 @@ function quickVerifyAllTablesUuid() {
  * Migration class for converting all tables to UUIDs
  */
 class AllTablesToUuidMigration {
-  constructor(spreadsheetId) {
-    this.spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+  constructor() {
+    this.spreadsheet = SpreadsheetApp.openById(getSpreadsheetId());
     this.description = 'Convert all tables to UUID primary keys';
     this.migrationId = 'Migration003_AllTablesToUuid';
     
@@ -606,17 +606,18 @@ class AllTablesToUuidMigration {
  * Verification class for all tables UUID migration
  */
 class AllTablesUuidMigrationVerifier {
-  static options = {
-    spreadsheetId: getSpreadsheetId(),
-    migrationId: 'Migration003_AllTablesToUuid',
-    description: 'Convert all tables to UUID primary keys'
-  };
   constructor() {
-    this.spreadsheet = SpreadsheetApp.openById(AllTablesToUuidMigration.options.spreadsheetId);
-    this.description = AllTablesToUuidMigration.options.description;
-    this.migrationId = AllTablesToUuidMigration.options.migrationId;
-    // ...existing code...
-  }
+    this.options = {
+      spreadsheetId: getSpreadsheetId(),
+      migrationId: 'Migration003_AllTablesToUuid',
+      description: 'Convert all tables to UUID primary keys'
+    };
+    this.spreadsheet = SpreadsheetApp.openById(this.options.spreadsheetId);
+    this.description = this.options.description;
+    this.migrationId = this.options.migrationId;
+    this.results = {
+      passed: 0,
+      failed: 0,
       warnings: 0,
       tablesChecked: 0,
       totalRecords: 0,
@@ -626,6 +627,7 @@ class AllTablesUuidMigrationVerifier {
       legacyIdsMissing: 0,
       errors: []
     };
+    // ...existing code...
   }
 
   /**

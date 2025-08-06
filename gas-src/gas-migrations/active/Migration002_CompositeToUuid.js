@@ -64,7 +64,7 @@ function previewCompositeToUuidMigration() {
  * Use this if you need to revert the changes
  */
 function rollbackCompositeToUuidMigration() {
-  const migration = new CompositeToUuidMigration(getSpreadsheetId());
+  const migration = new CompositeToUuidMigration();
   migration.rollback();
 }
 
@@ -152,8 +152,8 @@ function quickCompositeToUuidCheck() {
  * Migration class for converting composite keys to UUIDs
  */
 class CompositeToUuidMigration {
-  constructor(spreadsheetId) {
-    this.spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+  constructor() {
+    this.spreadsheet = SpreadsheetApp.openById(getSpreadsheetId());
     this.description = 'Convert composite keys to UUID primary keys in registrations';
     this.migrationId = 'Migration002_CompositeToUuid';
     
@@ -473,18 +473,16 @@ class CompositeToUuidMigration {
  * Verification class for composite to UUID migration
  */
 class CompositeToUuidMigrationVerifier {
-  static options = {
-    spreadsheetId: getSpreadsheetId(),
-    migrationId: 'Migration002_CompositeToUuid',
-    description: 'Convert composite keys to UUIDs'
-  };
   constructor() {
-    this.spreadsheet = SpreadsheetApp.openById(CompositeToUuidMigration.options.spreadsheetId);
-    this.description = CompositeToUuidMigration.options.description;
-    this.migrationId = CompositeToUuidMigration.options.migrationId;
-    // ...existing code...
-  }
+    this.options = {
+      spreadsheetId: getSpreadsheetId(),
+      migrationId: 'Migration002_CompositeToUuid',
+      description: 'Convert composite keys to UUIDs'
     };
+    this.spreadsheet = SpreadsheetApp.openById(this.options.spreadsheetId);
+    this.description = this.options.description;
+    this.migrationId = this.options.migrationId;
+    // ...existing code...
   }
 
   /**

@@ -197,7 +197,7 @@ jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js
             ],
             totalCount: 2,
             page: 1,
-            pageSize: 10,
+            pageSize: 1000,
           }),
         },
       };
@@ -286,7 +286,7 @@ describe('Server Integration Tests', () => {
       test('should return list of students', async () => {
         const response = await request(app)
           .post('/api/getStudents')
-          .send({ page: 0, pageSize: 10 })
+          .send({ page: 0, pageSize: 1000 })
           .expect(200);
 
         let result;

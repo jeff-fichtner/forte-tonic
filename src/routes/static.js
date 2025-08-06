@@ -7,8 +7,24 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
+// Check if we're in development mode
+const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+
+// Development cache headers to prevent caching issues
+const developmentHeaders = isDevelopment ? {
+  'Cache-Control': 'no-cache, no-store, must-revalidate',
+  'Pragma': 'no-cache',
+  'Expires': '0'
+} : {};
+
 // Serve the main HTML file at root
 router.get('/', (req, res) => {
+  if (isDevelopment) {
+    // Set headers to prevent caching in development
+    Object.entries(developmentHeaders).forEach(([key, value]) => {
+      res.set(key, value);
+    });
+  }
   res.sendFile(path.join(__dirname, '..', 'web', 'index.html'));
 });
 
@@ -23,6 +39,12 @@ router.use(
       if (path.endsWith('.js')) {
         res.set('Content-Type', 'text/javascript');
       }
+      // Add development cache headers
+      if (isDevelopment) {
+        Object.entries(developmentHeaders).forEach(([key, value]) => {
+          res.set(key, value);
+        });
+      }
     },
   })
 );
@@ -34,6 +56,12 @@ router.use(
     setHeaders: (res, path) => {
       if (path.endsWith('.css')) {
         res.set('Content-Type', 'text/css');
+      }
+      // Add development cache headers
+      if (isDevelopment) {
+        Object.entries(developmentHeaders).forEach(([key, value]) => {
+          res.set(key, value);
+        });
       }
     },
   })
@@ -50,6 +78,12 @@ router.use(
       if (path.endsWith('.js')) {
         res.set('Content-Type', 'text/javascript');
       }
+      // Add development cache headers
+      if (isDevelopment) {
+        Object.entries(developmentHeaders).forEach(([key, value]) => {
+          res.set(key, value);
+        });
+      }
     },
   })
 );
@@ -61,6 +95,12 @@ router.use(
     setHeaders: (res, path) => {
       if (path.endsWith('.js')) {
         res.set('Content-Type', 'text/javascript');
+      }
+      // Add development cache headers
+      if (isDevelopment) {
+        Object.entries(developmentHeaders).forEach(([key, value]) => {
+          res.set(key, value);
+        });
       }
     },
   })

@@ -159,7 +159,7 @@ router.post('/getStudents', async (req, res) => {
       };
     });
 
-    const result = _fetchData(() => enrichedStudents, request.page || 0, request.pageSize || 10);
+    const result = _fetchData(() => enrichedStudents, request.page || 0, request.pageSize || 1000);
     res.json(result);
   } catch (error) {
     console.error('Error getting students:', error);
@@ -173,33 +173,6 @@ router.post('/getClasses', async (req, res) => {
     res.json(data);
   } catch (error) {
     console.error('Error getting classes:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-router.post('/getRegistrations', async (req, res) => {
-  try {
-    const request = req.body || {}; // Standard Express.js request body
-
-    const allRegistrations = await req.programRepository.getRegistrations();
-
-    let filteredRegistrations = [];
-    let filterMessage = '';
-
-    // For testing, just return all registrations without filtering
-    filterMessage = 'Testing mode: returning all registrations without filtering';
-    filteredRegistrations = allRegistrations;
-
-    console.log(`${filterMessage}: ${filteredRegistrations.length}`);
-
-    const result = _fetchData(
-      () => filteredRegistrations,
-      request.page || 0,
-      request.pageSize || 10
-    );
-    res.json(result);
-  } catch (error) {
-    console.error('Error getting registrations:', error);
     res.status(500).json({ error: error.message });
   }
 });

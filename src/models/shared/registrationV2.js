@@ -1,23 +1,20 @@
 /**
- * Updated Registration Model with UUID Primary Keys
- * =================================================
+ * Registration Model with UUID Primary Keys
+ * =========================================
  * 
- * New schema supporting both UUID primary keys and composite key compatibility
+ * Simplified registration model without audit fields
  */
 
 import { RegistrationId } from '../../utils/values/registrationId.js';
 import { StudentId } from '../../utils/values/studentId.js';
 import { InstructorId } from '../../utils/values/instructorId.js';
 
-export class RegistrationV2 {
+export class Registration {
   constructor(data) {
     this.#validateConstructorData(data);
 
     // UUID primary key (new)
     this.id = new RegistrationId(data.id);
-    
-    // Composite key preservation (for backward compatibility)
-    this.compositeKey = data.compositeKey;
     
     // Core relationship fields
     this.studentId = new StudentId(data.studentId);
@@ -39,15 +36,10 @@ export class RegistrationV2 {
     this.classId = data.classId;
     this.classTitle = data.classTitle;
     
-    // Status and lifecycle
-    this.status = data.status || 'active'; // 'active' | 'paused' | 'completed' | 'cancelled'
+    // Lifecycle fields (simplified - no audit trail)
     this.expectedStartDate = data.expectedStartDate ? new Date(data.expectedStartDate) : null;
-    
-    // Audit fields
     this.createdAt = data.createdAt ? new Date(data.createdAt) : new Date();
     this.createdBy = data.createdBy;
-    this.modifiedAt = data.modifiedAt ? new Date(data.modifiedAt) : new Date();
-    this.modifiedBy = data.modifiedBy;
     this.version = parseInt(data.version) || 1;
   }
 
@@ -72,29 +64,6 @@ export class RegistrationV2 {
     if (data.registrationType === 'group' && !data.classId) {
       throw new Error('Group registrations must have a classId');
     }
-  }
-
-  /**
-   * Get the composite key for backward compatibility
-   */
-  getCompositeKey() {
-    if (this.compositeKey) {
-      return this.compositeKey;
-    }
-    
-    // Generate composite key based on type
-    if (this.registrationType === 'group') {
-      return `${this.studentId.getValue()}_${this.classId}`;
-    } else {
-      return `${this.studentId.getValue()}_${this.instructorId.getValue()}_${this.day}_${this.startTime}`;
-    }
-  }
-
-  /**
-   * Check if registration is active
-   */
-  isActive() {
-    return this.status === 'active';
   }
 
   /**
@@ -134,54 +103,17 @@ export class RegistrationV2 {
   }
 
   /**
-   * Factory method: Create from database row (UUID schema)
+   * Factory method: Create from database row (simplified 16-column schema)
    */
   static fromDatabaseRow(row) {
     const [
-      id, compositeKey, studentId, instructorId, day, startTime, length,
-      registrationType, roomId, instrument, transportationType, notes,
-      classId, classTitle, expectedStartDate, createdAt, createdBy,
-      status, modifiedAt, modifiedBy, version
-    ] = row;
-
-    return new RegistrationV2({
-      id,
-      compositeKey,
-      studentId,
-      instructorId,
-      day,
-      startTime,
-      length,
-      registrationType,
-      roomId,
-      instrument,
-      transportationType,
-      notes,
-      classId,
-      classTitle,
-      expectedStartDate,
-      createdAt,
-      createdBy,
-      status,
-      modifiedAt,
-      modifiedBy,
-      version
-    });
-  }
-
-  /**
-   * Factory method: Create from legacy composite key row
-   */
-  static fromLegacyRow(row) {
-    const [
-      compositeKey, studentId, instructorId, day, startTime, length,
+      id, studentId, instructorId, day, startTime, length,
       registrationType, roomId, instrument, transportationType, notes,
       classId, classTitle, expectedStartDate, createdAt, createdBy
     ] = row;
 
-    return new RegistrationV2({
-      id: null, // Will generate UUID
-      compositeKey,
+    return new Registration({
+      id,
       studentId,
       instructorId,
       day,
@@ -196,21 +128,16 @@ export class RegistrationV2 {
       classTitle,
       expectedStartDate,
       createdAt,
-      createdBy,
-      status: 'active',
-      modifiedAt: new Date().toISOString(),
-      modifiedBy: 'legacy_migration',
-      version: 1
+      createdBy
     });
   }
 
   /**
-   * Convert to database row format (UUID schema)
+   * Convert to database row format (simplified 16-column schema)
    */
   toDatabaseRow() {
     return [
       this.id.getValue(),
-      this.getCompositeKey(),
       this.studentId.getValue(),
       this.instructorId.getValue(),
       this.day,
@@ -225,11 +152,7 @@ export class RegistrationV2 {
       this.classTitle || '',
       this.expectedStartDate ? this.expectedStartDate.toISOString() : '',
       this.createdAt.toISOString(),
-      this.createdBy || '',
-      this.status,
-      this.modifiedAt.toISOString(),
-      this.modifiedBy || '',
-      this.version.toString()
+      this.createdBy || ''
     ];
   }
 
@@ -237,7 +160,7 @@ export class RegistrationV2 {
    * Factory method: Create new registration
    */
   static createNew(studentId, instructorId, options = {}) {
-    return new RegistrationV2({
+    return new Registration({
       studentId,
       instructorId,
       day: options.day,
@@ -251,54 +174,8 @@ export class RegistrationV2 {
       classId: options.classId,
       classTitle: options.classTitle,
       expectedStartDate: options.expectedStartDate,
-      createdBy: options.createdBy,
-      status: 'active'
+      createdBy: options.createdBy
     });
   }
 
-  /**
-   * Update registration with new data
-   */
-  update(changes, modifiedBy) {
-    // Create updated registration
-    const updatedData = {
-      ...this,
-      ...changes,
-      modifiedAt: new Date(),
-      modifiedBy,
-      version: this.version + 1
-    };
-
-    return new RegistrationV2(updatedData);
-  }
-
-  /**
-   * Cancel registration
-   */
-  cancel(cancelledBy, reason = '') {
-    return this.update({
-      status: 'cancelled',
-      notes: this.notes ? `${this.notes}; Cancelled: ${reason}` : `Cancelled: ${reason}`
-    }, cancelledBy);
-  }
-
-  /**
-   * Pause registration
-   */
-  pause(pausedBy, reason = '') {
-    return this.update({
-      status: 'paused',
-      notes: this.notes ? `${this.notes}; Paused: ${reason}` : `Paused: ${reason}`
-    }, pausedBy);
-  }
-
-  /**
-   * Resume registration
-   */
-  resume(resumedBy) {
-    return this.update({
-      status: 'active',
-      notes: this.notes ? `${this.notes}; Resumed` : 'Resumed'
-    }, resumedBy);
-  }
 }

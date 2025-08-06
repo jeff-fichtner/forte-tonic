@@ -221,7 +221,7 @@ export class StudentSearchRequest extends BaseRequest {
       hasEmergencyContact,
       parentId,
       page = 1,
-      pageSize = 50,
+      pageSize = 1000,
       sortBy = 'lastName',
       sortOrder = 'asc',
     } = data || {};
@@ -232,7 +232,7 @@ export class StudentSearchRequest extends BaseRequest {
     this.hasEmergencyContact = hasEmergencyContact;
     this.parentId = parentId;
     this.page = Math.max(1, parseInt(page));
-    this.pageSize = Math.min(100, Math.max(1, parseInt(pageSize)));
+    this.pageSize = Math.min(10000, Math.max(1, parseInt(pageSize)));
     this.sortBy = sortBy;
     this.sortOrder = sortOrder === 'desc' ? 'desc' : 'asc';
   }

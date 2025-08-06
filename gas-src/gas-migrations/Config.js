@@ -99,9 +99,10 @@ function createMigrationBackup(migrationName, sheetNames) {
 /**
  * Simple restore function to restore from backup sheets
  * @param {string} migrationName - Name of the migration to restore
+ * @param {boolean} deleteBackupAfterRestore - Whether to delete backup sheets after restore (default: false)
  * @returns {Object} Restore result
  */
-function restoreFromBackup(migrationName) {
+function restoreFromBackup(migrationName, deleteBackupAfterRestore = false) {
   try {
     const spreadsheet = SpreadsheetApp.openById(getSpreadsheetId());
     const allSheets = spreadsheet.getSheets();
@@ -122,6 +123,7 @@ function restoreFromBackup(migrationName) {
     
     // Restore each backup sheet
     let restoredCount = 0;
+    const restoredSheetNames = [];
     for (const backupSheet of backupSheets) {
       const backupName = backupSheet.getName();
       // Extract original sheet name from backup name
@@ -140,19 +142,27 @@ function restoreFromBackup(migrationName) {
           }
           console.log(`✅ Restored ${originalName} from backup`);
           restoredCount++;
+          restoredSheetNames.push(originalName);
         }
       }
     }
     
-    // Delete backup sheets
-    for (const backupSheet of backupSheets) {
-      spreadsheet.deleteSheet(backupSheet);
+    // Only delete backup sheets if explicitly requested
+    if (deleteBackupAfterRestore) {
+      console.log('🗑️  Deleting backup sheets as requested...');
+      for (const backupSheet of backupSheets) {
+        spreadsheet.deleteSheet(backupSheet);
+      }
+      console.log('✅ Backup sheets deleted');
+    } else {
+      console.log('💾 Backup sheets preserved for safety');
+      console.log('📁 To manually delete backup, call deleteBackup() function');
     }
     
     console.log(`🎉 Restore completed: ${restoredCount} sheets restored`);
     return {
       success: true,
-      restoredSheets: restoredCount
+      restoredSheets: restoredSheetNames
     };
     
   } catch (error) {
@@ -161,5 +171,102 @@ function restoreFromBackup(migrationName) {
       success: false,
       error: error.message
     };
+  }
+}
+
+/**
+ * Delete backup sheets for a specific migration
+ * @param {string} migrationName - Name of the migration to delete backups for
+ * @returns {Object} Delete result
+ */
+function deleteBackup(migrationName) {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(getSpreadsheetId());
+    const allSheets = spreadsheet.getSheets();
+    
+    // Find backup sheets for this migration
+    const backupSheets = allSheets.filter(sheet => 
+      sheet.getName().includes(`BACKUP_${migrationName}_`)
+    );
+    
+    if (backupSheets.length === 0) {
+      return {
+        success: false,
+        error: `No backup sheets found for migration: ${migrationName}`
+      };
+    }
+    
+    console.log(`🗑️  Found ${backupSheets.length} backup sheets for ${migrationName}`);
+    
+    // Delete backup sheets
+    const deletedSheetNames = [];
+    for (const backupSheet of backupSheets) {
+      const backupName = backupSheet.getName();
+      spreadsheet.deleteSheet(backupSheet);
+      deletedSheetNames.push(backupName);
+      console.log(`🗑️  Deleted backup sheet: ${backupName}`);
+    }
+    
+    console.log(`🎉 Backup deletion completed: ${deletedSheetNames.length} sheets deleted`);
+    return {
+      success: true,
+      deletedSheets: deletedSheetNames
+    };
+    
+  } catch (error) {
+    console.error('❌ Backup deletion failed:', error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Find the latest backup for a migration
+ * @param {string} migrationName - Name of the migration
+ * @returns {Object|null} Backup info or null if not found
+ */
+function findLatestBackup(migrationName) {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(getSpreadsheetId());
+    const allSheets = spreadsheet.getSheets();
+    
+    // Find backup sheets for this migration
+    const backupSheets = allSheets.filter(sheet => 
+      sheet.getName().includes(`BACKUP_${migrationName}_`)
+    );
+    
+    if (backupSheets.length === 0) {
+      return null;
+    }
+    
+    // Find the most recent backup (largest timestamp)
+    let latestBackup = null;
+    let latestTimestamp = '';
+    
+    for (const backupSheet of backupSheets) {
+      const backupName = backupSheet.getName();
+      // Extract timestamp from backup name
+      // Format: BACKUP_MigrationName_timestamp_OriginalName
+      const parts = backupName.split('_');
+      if (parts.length >= 3) {
+        const timestamp = parts[2]; // Should be the timestamp
+        if (timestamp > latestTimestamp) {
+          latestTimestamp = timestamp;
+          latestBackup = {
+            migrationName: migrationName,
+            timestamp: timestamp,
+            backupSheets: backupSheets.map(s => s.getName())
+          };
+        }
+      }
+    }
+    
+    return latestBackup;
+    
+  } catch (error) {
+    console.error('❌ Finding latest backup failed:', error.message);
+    return null;
   }
 }

@@ -73,14 +73,28 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Check if we're in development mode
+const isDevelopment = serverConfig.nodeEnv === 'development';
+
+// Development cache headers to prevent caching issues
+const developmentStaticOptions = isDevelopment ? {
+  setHeaders: (res, path) => {
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+  }
+} : {};
+
 // Serve static files
-app.use(express.static(path.join(__dirname, 'web')));
+app.use(express.static(path.join(__dirname, 'web'), developmentStaticOptions));
 
 // Serve shared models for frontend access
-app.use('/shared', express.static(path.join(__dirname, 'shared')));
+app.use('/shared', express.static(path.join(__dirname, 'shared'), developmentStaticOptions));
 
 // Serve core utilities for frontend access
-app.use('/core', express.static(path.join(__dirname, 'core')));
+app.use('/core', express.static(path.join(__dirname, 'core'), developmentStaticOptions));
 
 // Apply authentication middleware to API routes
 app.use('/api', initializeUserContext);

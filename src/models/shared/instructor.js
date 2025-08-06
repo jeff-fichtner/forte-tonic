@@ -2,6 +2,36 @@
  * Instructor API model - for client-server communication
  * Rich model with validation, formatting, and business logic
  */
+
+// Helper function to extract string values from various data types
+function extractStringValue(value) {
+  if (value === null || value === undefined) {
+    return value;
+  }
+  
+  if (typeof value === 'string') {
+    return value;
+  }
+  
+  if (typeof value === 'object') {
+    // If it's an object, it might have an id, value, or _value property
+    if (value.value) return String(value.value);
+    if (value.id) return String(value.id);
+    if (value._value) return String(value._value);
+    if (value.uuid) return String(value.uuid);
+    
+    // If it's an array, take the first element
+    if (Array.isArray(value) && value.length > 0) {
+      return String(value[0]);
+    }
+    
+    console.warn('Unable to extract string from object:', value);
+    return String(value); // This will produce "[object Object]"
+  }
+  
+  return String(value);
+}
+
 export class Instructor {
   /**
    * Creates an Instructor API model instance
@@ -231,7 +261,13 @@ export class Instructor {
    * @returns {Instructor} Instructor instance
    */
   static fromApiData(data) {
-    return new Instructor(data);
+    // Handle ID field that might be an object or other type
+    const processedData = {
+      ...data,
+      id: extractStringValue(data.id)
+    };
+    
+    return new Instructor(processedData);
   }
 
   /**

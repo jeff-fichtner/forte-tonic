@@ -86,7 +86,7 @@ export class SystemController {
    */
   static async testSheetData(req, res) {
     try {
-      const { sheetName = 'Students', range = 'A1:Z100' } = req.body;
+      const { sheetName = 'Students', range = 'A1:Z1000' } = req.body;
 
       console.log(`Testing data retrieval from sheet: ${sheetName}, range: ${sheetName}!${range}`);
 

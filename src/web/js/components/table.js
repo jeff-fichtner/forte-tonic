@@ -17,8 +17,10 @@ export class Table {
   ) {
     this.table = document.getElementById(tableId);
     this.pagination = options.pagination || false;
-    this.itemsPerPage = options.itemsPerPage || 10;
+    this.itemsPerPage = options.itemsPerPage || 1000;
+    this.pageSizeOptions = options.pageSizeOptions || null;
     this.currentPage = 1;
+    this.rowClassFunction = options.rowClassFunction || null; // New parameter for row CSS classes
     
     const head = document.createElement('thead'); // Create a new table header
 
@@ -80,7 +82,45 @@ export class Table {
     
     this.paginationContainer.innerHTML = '';
     
-    if (totalPages <= 1) return;
+    // Create page size selector if options are provided
+    if (this.pageSizeOptions && this.pageSizeOptions.length > 0) {
+      const pageSizeContainer = document.createElement('div');
+      pageSizeContainer.className = 'page-size-selector';
+      pageSizeContainer.style.marginBottom = '15px';
+      
+      const label = document.createElement('span');
+      label.textContent = 'Items per page: ';
+      label.style.marginRight = '10px';
+      
+      const select = document.createElement('select');
+      select.className = 'browser-default';
+      select.style.display = 'inline-block';
+      select.style.width = 'auto';
+      select.style.minWidth = '80px';
+      
+      this.pageSizeOptions.forEach(size => {
+        const option = document.createElement('option');
+        option.value = size;
+        option.textContent = size;
+        option.selected = size === this.itemsPerPage;
+        select.appendChild(option);
+      });
+      
+      select.addEventListener('change', (e) => {
+        this.itemsPerPage = parseInt(e.target.value);
+        this.currentPage = 1; // Reset to first page
+        this.refresh();
+      });
+      
+      pageSizeContainer.appendChild(label);
+      pageSizeContainer.appendChild(select);
+      this.paginationContainer.appendChild(pageSizeContainer);
+    }
+    
+    // Only show page navigation if there are multiple pages
+    if (totalPages <= 1) {
+      return;
+    }
     
     const ul = document.createElement('ul');
     ul.className = 'pagination';
@@ -180,6 +220,15 @@ export class Table {
       for (const row of displayRows) {
         const tr = document.createElement('tr'); // Create a new table row
         tr.innerHTML = this.rowFunction(row); // Get the row HTML using the provided function
+        
+        // Apply custom CSS classes if the rowFunction provides them
+        if (this.rowClassFunction) {
+          const cssClass = this.rowClassFunction(row);
+          if (cssClass) {
+            tr.className = cssClass;
+          }
+        }
+        
         body.appendChild(tr); // Append the row to the table body
       }
     } finally {
