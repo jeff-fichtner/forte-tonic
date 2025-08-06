@@ -8,6 +8,35 @@ import { StudentId } from '../../utils/values/studentId.js';
 import { Email } from '../../utils/values/email.js';
 import { Age } from '../../utils/values/age.js';
 
+// Helper function to extract string values from various data types
+function extractStringValue(value) {
+  if (value === null || value === undefined) {
+    return value;
+  }
+  
+  if (typeof value === 'string') {
+    return value;
+  }
+  
+  if (typeof value === 'object') {
+    // If it's an object, it might have an id, value, or _value property
+    if (value.value) return String(value.value);
+    if (value.id) return String(value.id);
+    if (value._value) return String(value._value);
+    if (value.uuid) return String(value.uuid);
+    
+    // If it's an array, take the first element
+    if (Array.isArray(value) && value.length > 0) {
+      return String(value[0]);
+    }
+    
+    console.warn('Unable to extract string from object:', value);
+    return String(value); // This will produce "[object Object]"
+  }
+  
+  return String(value);
+}
+
 export class Student {
   constructor(data) {
     this.#validateConstructorData(data);
@@ -235,7 +264,14 @@ export class Student {
    * Factory method: Create from API data (frontend compatibility)
    */
   static fromApiData(data) {
-    return new Student(data);
+    // Handle ID fields that might be objects or other types
+    const processedData = {
+      ...data,
+      id: extractStringValue(data.id),
+      studentId: extractStringValue(data.studentId)
+    };
+    
+    return new Student(processedData);
   }
 
   /**

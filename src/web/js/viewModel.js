@@ -6,6 +6,7 @@ import { DomHelpers } from './utilities/domHelpers.js';
 import { NavTabs } from './components/navTabs.js';
 import { Table } from './components/table.js';
 import { AdminRegistrationForm } from './workflows/adminRegistrationForm.js';
+import { formatGrade, formatTime } from './extensions/numberExtensions.js';
 
 /**
  *
@@ -121,7 +122,8 @@ export class ViewModel {
    */
   #initAdminContent() {
     // master schedule tab
-    this.masterScheduleTable = this.#buildRegistrationTable(this.registrations);
+    const sortedRegistrations = this.#sortRegistrations(this.registrations);
+    this.masterScheduleTable = this.#buildRegistrationTable(sortedRegistrations);
     this.#populateFilterDropdowns();
     // registration form
     this.adminRegistrationForm = new AdminRegistrationForm(
@@ -331,7 +333,7 @@ export class ViewModel {
         .forEach(grade => {
           const option = document.createElement('option');
           option.value = grade.toString();
-          option.textContent = `Grade ${grade}`;
+          option.textContent = `Grade ${formatGrade(grade)}`;
           gradeSelect.appendChild(option);
         });
     }
@@ -340,6 +342,47 @@ export class ViewModel {
     const selects = document.querySelectorAll('select');
     M.FormSelect.init(selects);
   }
+
+  /**
+   * Sort registrations by day, then start time, then length, then registration type (private first, then group)
+   */
+  #sortRegistrations(registrations) {
+    const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    
+    return [...registrations].sort((a, b) => {
+      // 1. Sort by day
+      const dayA = dayOrder.indexOf(a.day);
+      const dayB = dayOrder.indexOf(b.day);
+      if (dayA !== dayB) {
+        return dayA - dayB;
+      }
+      
+      // 2. Sort by start time
+      const timeA = a.startTime || '';
+      const timeB = b.startTime || '';
+      if (timeA !== timeB) {
+        return timeA.localeCompare(timeB);
+      }
+      
+      // 3. Sort by length (numeric)
+      const lengthA = parseInt(a.length) || 0;
+      const lengthB = parseInt(b.length) || 0;
+      if (lengthA !== lengthB) {
+        return lengthA - lengthB;
+      }
+      
+      // 4. Sort by registration type (private first, then group)
+      const typeA = a.registrationType || '';
+      const typeB = b.registrationType || '';
+      if (typeA !== typeB) {
+        // 'private' comes before 'group' alphabetically, which is what we want
+        return typeA.localeCompare(typeB);
+      }
+      
+      return 0;
+    });
+  }
+
   /**
    *
    */
@@ -373,19 +416,19 @@ export class ViewModel {
         }
         return `
                         <td>${registration.day}</td>
-                        <td>${registration.lessonTime?.startTime || 'N/A'}</td>
-                        <td>${registration.lessonTime?.durationMinutes || 'N/A'} min</td>
+                        <td>${formatTime(registration.startTime) || 'N/A'}</td>
+                        <td>${registration.length || 'N/A'} min</td>
                         <td>${student.firstName} ${student.lastName}</td>
-                        <td>${student.grade || 'N/A'}</td>
+                        <td>${formatGrade(student.grade) || 'N/A'}</td>
                         <td>${instructor.firstName} ${instructor.lastName}</td>
-                        <td>${registration.registrationType === RegistrationType.GROUP ? (registration.className || 'N/A') : (registration.instrument || 'N/A')}</td>
+                        <td>${registration.registrationType === RegistrationType.GROUP ? (registration.classTitle || 'N/A') : (registration.instrument || 'N/A')}</td>
                         <td>
-                            <a href="#!">
+                            <a href="#!" data-registration-id="${registration.id?.value || registration.id}">
                                 <i class="material-icons copy-parent-emails-table-icon gray-text text-darken-4">email</i>
                             </a>
                         </td>
                         <td>
-                            <a href="#!">
+                            <a href="#!" data-registration-id="${registration.id?.value || registration.id}">
                                 <i class="material-icons remove-registration-table-icon red-text text-darken-4">delete</i>
                             </a>
                         </td>
@@ -400,14 +443,30 @@ export class ViewModel {
           return;
         }
         event.preventDefault();
-        const row = event.target.closest('tr');
-        const registrationIndex = Array.from(row.parentNode.children).indexOf(row);
-        const currentRegistration = this.registrations[registrationIndex];
+        
+        // Get the registration ID from the data attribute
+        const linkElement = event.target.closest('a');
+        const registrationId = linkElement?.getAttribute('data-registration-id');
+        if (!registrationId) return;
+        
+        // Find the registration by ID in the original registrations array
+        const currentRegistration = this.registrations.find(r => 
+          (r.id?.value || r.id) === registrationId
+        );
         if (!currentRegistration) return;
+        
         if (isCopy) {
-          const parentEmails = currentRegistration.student.parentEmails;
-          if (parentEmails && parentEmails.trim()) {
-            await this.#copyToClipboard(parentEmails);
+          // Get the student ID from the current registration
+          const studentIdToFind = currentRegistration.studentId?.value || currentRegistration.studentId;
+          
+          // Find the full student object with parent emails from this.students
+          const fullStudent = this.students.find(x => {
+            const studentId = x.id?.value || x.id;
+            return studentId === studentIdToFind;
+          });
+          
+          if (fullStudent && fullStudent.parentEmails && fullStudent.parentEmails.trim()) {
+            await this.#copyToClipboard(fullStudent.parentEmails);
           } else {
             M.toast({ html: 'No parent email available for this student.' });
           }
@@ -485,7 +544,14 @@ export class ViewModel {
       ],
       {
         pagination: true,
-        itemsPerPage: 15
+        itemsPerPage: 100,
+        pageSizeOptions: [25, 50, 75, 100],
+        rowClassFunction: registration => {
+          // Return CSS class based on registration type
+          return registration.registrationType === RegistrationType.GROUP 
+            ? 'registration-row-group' 
+            : 'registration-row-private';
+        }
       }
     );
   }
@@ -523,15 +589,26 @@ export class ViewModel {
         }
         return `
                         <td>${enrollment.day}</td>
-                        <td>${enrollment.lessonTime?.startTime || 'N/A'}</td>
-                        <td>${enrollment.lessonTime?.durationMinutes || 'N/A'} minutes</td>
+                        <td>${formatTime(enrollment.startTime) || 'N/A'}</td>
+                        <td>${enrollment.length || 'N/A'} min</td>
                         <td>${student.firstName} ${student.lastName}</td>
-                        <td>${student.grade || 'N/A'}</td>
+                        <td>${formatGrade(student.grade) || 'N/A'}</td>
                         <td>${instructor.firstName} ${instructor.lastName}</td>
-                        <td>${enrollment.instrument || 'N/A'}</td>
+                        <td>${enrollment.registrationType === RegistrationType.GROUP ? (enrollment.classTitle || enrollment.className || 'N/A') : (enrollment.instrument || 'N/A')}</td>
                     `;
       },
-      enrollments
+      enrollments,
+      null, // onClickFunction
+      null, // filterFunction
+      null, // onFilterChanges
+      {
+        rowClassFunction: enrollment => {
+          // Return CSS class based on enrollment registration type
+          return enrollment.registrationType === RegistrationType.GROUP 
+            ? 'registration-row-group' 
+            : 'registration-row-private';
+        }
+      }
     );
   }
   /**

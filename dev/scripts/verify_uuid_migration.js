@@ -8,8 +8,8 @@
  */
 
 import { GoogleSheetsDbClient } from '../../src/database/googleSheetsDbClient.js';
-import { RegistrationV2 } from '../../src/models/shared/registrationV2.js';
-import { RegistrationRepositoryV2 } from '../../src/repositories/registrationRepositoryV2.js';
+import { Registration } from '../../src/models/shared/registration.js';
+import { RegistrationRepository } from '../../src/repositories/registrationRepository.js';
 import { configService } from '../../src/services/configurationService.js';
 import { createLogger } from '../../src/utils/logger.js';
 
@@ -21,7 +21,7 @@ async function verifyUuidMigration() {
     // Initialize components
     const logger = createLogger(configService);
     const client = new GoogleSheetsDbClient(configService);
-    const repository = new RegistrationRepositoryV2(client);
+    const repository = new RegistrationRepository(client);
     
     console.log('✅ Components initialized successfully\n');
 
@@ -39,7 +39,7 @@ async function verifyUuidMigration() {
     console.log(`📋 Schema: ${newHeaders.join(', ')}\n`);
 
     // Verify required UUID fields are present
-    const requiredFields = ['Id', 'CompositeKey', 'Status', 'ModifiedAt', 'ModifiedBy', 'Version'];
+    const requiredFields = ['Id', 'StudentId', 'InstructorId', 'CreatedAt', 'CreatedBy'];
     const missingFields = requiredFields.filter(field => !newHeaders.includes(field));
     
     if (missingFields.length === 0) {

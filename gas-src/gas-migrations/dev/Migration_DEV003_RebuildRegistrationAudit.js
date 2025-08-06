@@ -42,7 +42,7 @@
  * Main function to execute the registration audit rebuild
  */
 function runRebuildRegistrationAudit() {
-  const migration = new RebuildRegistrationAuditMigration(getSpreadsheetId());
+  const migration = new RebuildRegistrationAuditMigration();
   migration.execute();
 }
 
@@ -51,7 +51,7 @@ function runRebuildRegistrationAudit() {
  * Run this first to see what the migration will do
  */
 function previewRebuildRegistrationAudit() {
-  const migration = new RebuildRegistrationAuditMigration(getSpreadsheetId());
+  const migration = new RebuildRegistrationAuditMigration();
   migration.preview();
 }
 
@@ -59,11 +59,11 @@ function previewRebuildRegistrationAudit() {
  * Development Migration Class: Rebuild Registration Audit Table
  */
 class RebuildRegistrationAuditMigration {
-  constructor(spreadsheetId) {
-    this.spreadsheetId = spreadsheetId;
+  constructor() {
+    this.spreadsheetId = getSpreadsheetId();
     this.description = 'Rebuild registrations_audit table from current registrations';
     this.migrationId = 'Migration_DEV003_RebuildRegistrationAudit';
-    this.spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    this.spreadsheet = SpreadsheetApp.openById(this.spreadsheetId);
     this.changes = {
       auditRecordsRemoved: 0,
       auditRecordsCreated: 0,
@@ -375,6 +375,6 @@ class RebuildRegistrationAuditMigration {
  * Rollback function for this migration
  */
 function rollbackRebuildRegistrationAudit() {
-  const migration = new RebuildRegistrationAuditMigration(getSpreadsheetId());
+  const migration = new RebuildRegistrationAuditMigration();
   return migration.rollback();
 }

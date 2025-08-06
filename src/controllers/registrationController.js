@@ -43,7 +43,7 @@ export class RegistrationController {
         trimester: request.trimester,
         isActive: request.isActive,
         page: request.page || 1,
-        pageSize: request.pageSize || 50, // Increased from 10 to 50
+        pageSize: request.pageSize || 1000, // Increased to 1000
         sortBy: request.sortBy || 'registeredAt',
         sortOrder: request.sortOrder || 'desc',
       };
@@ -55,7 +55,7 @@ export class RegistrationController {
       const legacyResult = _fetchData(
         () => result.registrations,
         request.page || 0,
-        request.pageSize || 50
+        request.pageSize || 1000
       );
 
       // Enhance with domain insights

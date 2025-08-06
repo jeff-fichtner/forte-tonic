@@ -5,7 +5,11 @@
  * Handles UUID-based registration identifiers with validation
  */
 
-import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
+import { UuidUtility } from '../uuidUtility.js';
+
+// Create compatible functions for the uuid package API
+const uuidv4 = () => UuidUtility.generateUuid();
+const uuidValidate = (uuid) => UuidUtility.isValidUuid(uuid);
 
 export class RegistrationId {
   constructor(value) {

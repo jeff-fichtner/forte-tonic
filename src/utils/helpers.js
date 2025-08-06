@@ -17,7 +17,7 @@ export const _respond = response => {
   return response;
 };
 
-export const paginate = (data, page = 0, pageSize = 10) => {
+export const paginate = (data, page = 0, pageSize = 1000) => {
   const startIndex = page * pageSize;
   const endIndex = startIndex + pageSize;
   const paginatedData = data.slice(startIndex, endIndex);

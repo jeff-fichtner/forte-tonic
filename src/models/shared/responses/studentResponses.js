@@ -30,7 +30,7 @@ export class ApiResponse {
  * Student list response
  */
 export class StudentListResponse extends ApiResponse {
-  constructor(students, totalCount, page = 1, pageSize = 50) {
+  constructor(students, totalCount, page = 1, pageSize = 1000) {
     const studentData = students.map(student =>
       student instanceof Student ? student.toJSON() : student
     );

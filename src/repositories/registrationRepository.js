@@ -1,198 +1,274 @@
-import { BaseRepository } from './baseRepository.js';
-import { Keys } from '../utils/values/keys.js';
-import { Registration } from '../models/shared/registration.js';
-
 /**
- * Repository for registration data operations
+ * Registration Repository 
+ * =======================
+ * 
+ * Repository for simplified registration model with UUID primary keys
  */
+
+import { BaseRepository } from './baseRepository.js';
+import { Registration } from '../models/shared/registration.js';
+import { RegistrationId } from '../utils/values/registrationId.js';
+
 export class RegistrationRepository extends BaseRepository {
   constructor(dbClient) {
-    super();
-    this.dbClient = dbClient;
+    super('registrations', Registration, dbClient);
+  }
+
+  /**
+   * Get registration by UUID (new format)
+   */
+  async getById(id) {
+    try {
+      const registrationId = typeof id === 'string' ? new RegistrationId(id) : id;
+      
+      // Check cache first
+      const cacheKey = `registrations:${registrationId.getValue()}`;
+      if (this.cache.has(cacheKey)) {
+        const cached = this.cache.get(cacheKey);
+        if (Date.now() - cached.timestamp < this.cacheTtl) {
+          return cached.data;
+        }
+      }
+
+      // Use cached database client method instead of direct API call
+      const allRegistrations = await this.dbClient.getCachedData('registrations', row => 
+        Registration.fromDatabaseRow ? Registration.fromDatabaseRow(row) : new Registration(row)
+      );
+
+      // Find registration by UUID
+      const registration = allRegistrations.find(reg => reg.id.getValue() === registrationId.getValue());
+      
+      if (registration) {
+        // Cache the individual result
+        this.cache.set(cacheKey, {
+          data: registration,
+          timestamp: Date.now()
+        });
+      }
+      
+      return registration || null;
+    } catch (error) {
+      console.error('Error getting registration by ID:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all registrations for a student
+   */
+  async getByStudentId(studentId) {
+    try {
+      // Use cached database client method instead of direct API call
+      const allRegistrations = await this.dbClient.getCachedData('registrations', row => 
+        Registration.fromDatabaseRow ? Registration.fromDatabaseRow(row) : new Registration(row)
+      );
+
+      // Filter registrations by student ID
+      return allRegistrations.filter(reg => reg.studentId && reg.studentId.getValue() === studentId);
+    } catch (error) {
+      console.error('Error getting registrations by student ID:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all registrations for an instructor
+   */
+  async getByInstructorId(instructorId) {
+    try {
+      // Use cached database client method instead of direct API call
+      const allRegistrations = await this.dbClient.getCachedData('registrations', row => 
+        Registration.fromDatabaseRow ? Registration.fromDatabaseRow(row) : new Registration(row)
+      );
+
+      // Filter registrations by instructor ID
+      return allRegistrations.filter(reg => reg.instructorId && reg.instructorId.getValue() === instructorId);
+    } catch (error) {
+      console.error('Error getting registrations by instructor ID:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all active registrations
+   * Note: Since status field was removed, all registrations are considered active
+   */
+  async getActiveRegistrations() {
+    try {
+      // Use cached database client method instead of direct API call
+      const allRegistrations = await this.dbClient.getCachedData('registrations', row => 
+        Registration.fromDatabaseRow ? Registration.fromDatabaseRow(row) : new Registration(row)
+      );
+
+      // Since status field was removed, all registrations are considered active
+      return allRegistrations;
+    } catch (error) {
+      console.error('Error getting active registrations:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all registrations (alias for getActiveRegistrations for service compatibility)
+   */
+  async findAll() {
+    return this.getActiveRegistrations();
+  }
+
+  /**
+   * Alias for getById for service compatibility
+   */
+  async findById(id) {
+    return this.getById(id);
+  }
+
+  /**
+   * Alias for getByStudentId for service compatibility
+   */
+  async findByStudentId(studentId) {
+    return this.getByStudentId(studentId);
+  }
+
+  /**
+   * Get registrations (alias for getActiveRegistrations for service compatibility)
+   */
+  async getRegistrations() {
+    return this.getActiveRegistrations();
   }
 
   /**
    * Create a new registration
    */
-  async create(registration) {
-    // Prepare data for Google Sheets
-    const registrationData = [
-      registration.id,
-      registration.studentId,
-      registration.instructorId,
-      registration.classId,
-      registration.type,
-      registration.status || 'pending',
-      registration.registrationDate.toISOString(),
-      registration.notes || '',
-      registration.paymentStatus || 'pending',
-      registration.metadata ? JSON.stringify(registration.metadata) : '',
-    ];
-
-    await this.dbClient.appendRow('registrations', registrationData);
-
-    return registration;
-  }
-
-  /**
-   * Find registration by ID
-   */
-  async findById(registrationId) {
-    const data = await this.dbClient.getRows('registrations');
-    const row = data.find(row => row[0] === registrationId);
-
-    if (!row) {
-      return null;
-    }
-
-    return Registration.fromDatabaseRow(row);
-  }
-
-  /**
-   * Find registrations by student ID
-   */
-  async findByStudentId(studentId) {
-    const data = await this.dbClient.getRows('registrations');
-    const rows = data.filter(row => row[1] === studentId);
-
-    return rows.map(row => Registration.fromDatabaseRow(row));
-  }
-
-  /**
-   * Get registrations with filtering, sorting, and pagination
-   */
-  async getRegistrations(options = {}) {
+  async create(registrationData) {
     try {
-      const {
-        studentId,
-        instructorId,
-        classId,
-        status,
-        registrationType,
-        startDate,
-        endDate,
-        sortBy = 'registrationDate',
-        sortOrder = 'desc',
-      } = options;
+      // Generate UUID if not provided
+      const registrationId = registrationData.id || this.generateUUID();
+      
+      // Create Registration instance
+      const registration = new Registration(
+        registrationId,
+        registrationData.studentId,
+        registrationData.instructorId,
+        registrationData.day,
+        registrationData.startTime,
+        registrationData.length,
+        registrationData.registrationType,
+        registrationData.roomId,
+        registrationData.instrument,
+        registrationData.transportationType,
+        registrationData.notes,
+        registrationData.classId,
+        registrationData.classTitle,
+        registrationData.expectedStartDate,
+        registrationData.createdAt || new Date().toISOString(),
+        registrationData.createdBy || 'SYSTEM'
+      );
 
-      // Get all registration data using the standard dbClient pattern
-      const allRegistrations = await this.dbClient.getAllRecords(Keys.REGISTRATIONS, x => {
-        return Registration.fromDatabaseRow(x);
-      });
+      // Convert to database row format (16 columns)
+      const row = registration.toDatabaseRow();
 
-      // Filter registrations based on criteria
-      const filteredRegistrations = allRegistrations.filter(registration => {
-        // Apply filters
-        if (studentId && registration.studentId !== studentId) return false;
-        if (instructorId && registration.instructorId !== instructorId) return false;
-        if (classId && registration.classId !== classId) return false;
-        if (status && registration.status !== status) return false;
-        if (registrationType && registration.type !== registrationType) return false;
-
-        // Date range filtering
-        if (startDate || endDate) {
-          const registrationDate = new Date(registration.registrationDate);
-          if (startDate && registrationDate < new Date(startDate)) return false;
-          if (endDate && registrationDate > new Date(endDate)) return false;
-        }
-
-        return true;
-      });
-
-      // Sort registrations
-      filteredRegistrations.sort((a, b) => {
-        let aValue = a[sortBy];
-        let bValue = b[sortBy];
-
-        // Handle date sorting
-        if (sortBy === 'registrationDate') {
-          aValue = new Date(aValue);
-          bValue = new Date(bValue);
-        }
-
-        if (sortOrder === 'asc') {
-          return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-        } else {
-          return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      // Append to spreadsheet
+      await this.dbClient.sheets.spreadsheets.values.append({
+        spreadsheetId: this.dbClient.spreadsheetId,
+        range: 'registrations!A:P',
+        valueInputOption: 'RAW',
+        resource: {
+          values: [row]
         }
       });
 
-      return filteredRegistrations;
+      // Cache the new registration
+      this.cache.set(registrationId, registration);
+
+      return registration;
     } catch (error) {
+      console.error('Error creating registration:', error);
       throw error;
     }
   }
 
   /**
-   * Update registration status
+   * Delete a registration by ID
    */
-  async updateStatus(registrationId, newStatus) {
+  async delete(id, userId = 'SYSTEM') {
     try {
-      const data = await this.dbClient.getRows('registrations');
-      const rowIndex = data.findIndex(row => row[0] === registrationId);
+      const registrationId = typeof id === 'string' ? new RegistrationId(id) : id;
+      
+      // First verify the registration exists using cached data
+      const registration = await this.getById(registrationId);
+      if (!registration) {
+        throw new Error(`Registration with ID ${registrationId.getValue()} not found`);
+      }
+      
+      // For deletion, we need to get fresh data to find the exact row position
+      // This is unavoidable since we need row numbers for deletion
+      const response = await this.dbClient.sheets.spreadsheets.values.get({
+        spreadsheetId: this.dbClient.spreadsheetId,
+        range: 'registrations!A:Z'
+      });
 
+      const values = response.data.values || [];
+      const rows = values.slice(1);
+
+      // Find row index where first column (Id) matches UUID
+      const rowIndex = rows.findIndex(row => row[0] === registrationId.getValue());
+      
       if (rowIndex === -1) {
-        throw new Error(`Registration not found: ${registrationId}`);
+        throw new Error(`Registration with ID ${registrationId.getValue()} not found`);
       }
 
-      // Update status in the row
-      data[rowIndex][5] = newStatus;
+      // Delete the row (note: +2 because findIndex is 0-based, and we need to account for header row)
+      const actualRowNumber = rowIndex + 2;
+      
+      await this.dbClient.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: this.dbClient.spreadsheetId,
+        resource: {
+          requests: [{
+            deleteDimension: {
+              range: {
+                sheetId: 0, // Assuming registrations is the first sheet
+                dimension: 'ROWS',
+                startIndex: actualRowNumber - 1, // 0-based for API
+                endIndex: actualRowNumber
+              }
+            }
+          }]
+        }
+      });
 
-      // Update in Google Sheets (row index + 2 for header and 0-based index)
-      await this.dbClient.updateRow('registrations', rowIndex + 2, data[rowIndex]);
-
-      return Registration.fromDatabaseRow(data[rowIndex]);
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  /**
-   * Delete registration
-   */
-  async delete(registrationId) {
-    try {
-      const data = await this.dbClient.getRows('registrations');
-      const rowIndex = data.findIndex(row => row[0] === registrationId);
-
-      if (rowIndex === -1) {
-        throw new Error(`Registration not found: ${registrationId}`);
-      }
-
-      await this.dbClient.deleteRow('registrations', rowIndex + 2);
+      // Remove from cache
+      // Clear cache after mutation
+      this.clearCache();
+      this.dbClient.cache.delete('registrations'); // Also clear the database client cache
 
       return true;
     } catch (error) {
+      console.error('Error deleting registration:', error);
       throw error;
     }
   }
 
   /**
-   * Find registrations by instructor ID
+   * Generate a UUID v4 string
    */
-  async findByInstructorId(instructorId) {
-    try {
-      const data = await this.dbClient.getRows('registrations');
-      const rows = data.filter(row => row[2] === instructorId);
-
-      return rows.map(row => Registration.fromDatabaseRow(row));
-    } catch (error) {
-      throw error;
+  generateUUID() {
+    // Try using crypto.randomUUID() if available
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
     }
+    
+    // Fallback to Math.random() based UUID generation
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
   }
 
   /**
-   * Find registrations by class ID
+   * Clear cache
    */
-  async findByClassId(classId) {
-    try {
-      const data = await this.dbClient.getRows('registrations');
-      const rows = data.filter(row => row[3] === classId);
-
-      return rows.map(row => Registration.fromDatabaseRow(row));
-    } catch (error) {
-      throw error;
-    }
+  clearCache() {
+    this.cache.clear();
   }
-
 }

@@ -478,7 +478,7 @@ export class RegistrationApplicationService {
               : null,
             // Add business logic flags
             hasConflicts: false, // TODO: Implement conflict detection
-            isActive: registration.status === 'active',
+            isActive: true, // Simplified - no status field
           };
         })
       );
@@ -489,7 +489,7 @@ export class RegistrationApplicationService {
         registrations: enrichedRegistrations,
         totalCount: enrichedRegistrations.length,
         page: options.page || 1,
-        pageSize: options.pageSize || 10,
+        pageSize: options.pageSize || 1000,
       };
     } catch (error) {
       console.error('❌ Error getting registrations:', error);

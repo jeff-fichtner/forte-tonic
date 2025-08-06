@@ -70,7 +70,7 @@ export class StudentRepository extends BaseRepository {
       hasEmergencyContact,
       parentId,
       page = 1,
-      pageSize = 50,
+      pageSize = 1000,
       sortBy = 'lastName',
       sortOrder = 'asc',
     } = options;
