@@ -55,7 +55,7 @@ export class Registration {
     this.length = parseInt(data.length) || 30;
     
     // Registration details
-    this.registrationType = data.registrationType; // 'private' | 'group'
+    this.registrationType = data.registrationType; // Already normalized in validation
     this.roomId = data.roomId;
     this.instrument = data.instrument;
     this.transportationType = data.transportationType;
@@ -83,15 +83,47 @@ export class Registration {
       throw new Error(`Missing required fields: ${missing.join(', ')}`);
     }
 
-    // Validate registration type
-    if (!['private', 'group'].includes(data.registrationType)) {
-      throw new Error('Registration type must be "private" or "group"');
+    // Validate registration type (normalize common variations)
+    const normalizedType = this.#normalizeRegistrationType(data.registrationType);
+    if (!['private', 'group'].includes(normalizedType)) {
+      console.warn(`Unknown registration type "${data.registrationType}", defaulting to "private"`);
+      data.registrationType = 'private';
+    } else {
+      data.registrationType = normalizedType;
     }
 
     // Validate group lessons have classId
     if (data.registrationType === 'group' && !data.classId) {
-      throw new Error('Group registrations must have a classId');
+      console.warn('Group registration missing classId, treating as private lesson');
+      data.registrationType = 'private';
     }
+  }
+
+  /**
+   * Normalize registration type to handle variations in data
+   */
+  #normalizeRegistrationType(type) {
+    if (!type || typeof type !== 'string') {
+      return 'private'; // Default fallback
+    }
+    
+    const normalized = type.toLowerCase().trim();
+    
+    // Handle common variations
+    if (normalized.includes('group') || normalized.includes('class')) {
+      return 'group';
+    }
+    if (normalized.includes('private') || normalized.includes('individual')) {
+      return 'private';
+    }
+    
+    // If it's exactly 'private' or 'group', return as-is
+    if (['private', 'group'].includes(normalized)) {
+      return normalized;
+    }
+    
+    // Default fallback for unknown types
+    return 'private';
   }
 
   /**

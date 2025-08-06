@@ -96,12 +96,34 @@ export class RegistrationRepository extends BaseRepository {
   async getActiveRegistrations() {
     try {
       // Use cached database client method instead of direct API call
-      const allRegistrations = await this.dbClient.getCachedData('registrations', row => 
-        Registration.fromDatabaseRow ? Registration.fromDatabaseRow(row) : new Registration(row)
-      );
+      const allRegistrations = await this.dbClient.getCachedData('registrations', row => {
+        // Skip header rows and invalid data
+        if (!row || !row[0] || 
+            row[0] === 'Id' || row[0] === 'id' || 
+            row[0].toLowerCase().includes('uuid') ||
+            row[0].toLowerCase().includes('registration')) {
+          return null; // Skip this row
+        }
+        
+        try {
+          return Registration.fromDatabaseRow ? Registration.fromDatabaseRow(row) : new Registration(row);
+        } catch (error) {
+          console.warn(`Skipping invalid registration row:`, row[0], error.message);
+          return null; // Skip invalid rows
+        }
+      });
+
+      // Handle case where allRegistrations is undefined/null
+      if (!allRegistrations) {
+        console.warn('No registrations data returned from database client');
+        return [];
+      }
+
+      // Filter out null entries from skipped rows
+      const validRegistrations = allRegistrations.filter(reg => reg !== null);
 
       // Since status field was removed, all registrations are considered active
-      return allRegistrations;
+      return validRegistrations;
     } catch (error) {
       console.error('Error getting active registrations:', error);
       throw error;
@@ -208,13 +230,13 @@ export class RegistrationRepository extends BaseRepository {
       });
 
       const values = response.data.values || [];
-      const rows = values.slice(1);
+      const rows = values.slice(1); // Skip header row
 
       // Find row index where first column (Id) matches UUID
       const rowIndex = rows.findIndex(row => row[0] === registrationId.getValue());
       
       if (rowIndex === -1) {
-        throw new Error(`Registration with ID ${registrationId.getValue()} not found`);
+        throw new Error(`Registration with ID ${registrationId.getValue()} not found in sheet`);
       }
 
       // Delete the row (note: +2 because findIndex is 0-based, and we need to account for header row)
@@ -226,7 +248,7 @@ export class RegistrationRepository extends BaseRepository {
           requests: [{
             deleteDimension: {
               range: {
-                sheetId: 0, // Assuming registrations is the first sheet
+                sheetId: 1484108306, // Correct sheetId for registrations sheet
                 dimension: 'ROWS',
                 startIndex: actualRowNumber - 1, // 0-based for API
                 endIndex: actualRowNumber
@@ -236,10 +258,9 @@ export class RegistrationRepository extends BaseRepository {
         }
       });
 
-      // Remove from cache
       // Clear cache after mutation
       this.clearCache();
-      this.dbClient.cache.delete('registrations'); // Also clear the database client cache
+      this.dbClient.clearCache('registrations'); // Also clear the database client cache (both cache and timestamps)
 
       return true;
     } catch (error) {

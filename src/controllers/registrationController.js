@@ -291,10 +291,23 @@ export class RegistrationController {
    */
   static async unregister(req, res) {
     try {
-      const { registrationId } = req.body;
+      console.log('Unregister endpoint called with body:', req.body);
+      
+      // Handle HttpService payload format: [{ data: { registrationId } }]
+      let registrationId;
+      if (Array.isArray(req.body) && req.body[0]?.data?.registrationId) {
+        registrationId = req.body[0].data.registrationId;
+      } else {
+        registrationId = req.body.registrationId;
+      }
+      
       const userId = req.currentUser?.email || 'system';
 
+      console.log('Extracted registrationId:', registrationId);
+      console.log('registrationId type:', typeof registrationId);
+
       if (!registrationId) {
+        console.error('Missing registrationId in request body');
         return res.status(400).json({ error: 'Missing registrationId' });
       }
 
