@@ -116,17 +116,6 @@ router.post('/getRegistrations', RegistrationController.getRegistrations);
 
 router.post('/getRooms', RegistrationController.getRooms);
 
-router.post('/getAdmins', async (req, res) => {
-  try {
-    const data = await req.userRepository.getAdmins();
-    const transformedData = UserTransformService.transformArray(data, 'admin');
-    res.json(transformedData);
-  } catch (error) {
-    console.error('Error getting admins:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 router.post('/getStudents', async (req, res) => {
   try {
     const request = req.body || {}; // Standard Express.js request body

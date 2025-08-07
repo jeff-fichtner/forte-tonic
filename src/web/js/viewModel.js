@@ -6,6 +6,7 @@ import { DomHelpers } from './utilities/domHelpers.js';
 import { NavTabs } from './components/navTabs.js';
 import { Table } from './components/table.js';
 import { AdminRegistrationForm } from './workflows/adminRegistrationForm.js';
+import { ParentRegistrationForm } from './workflows/parentRegistrationForm.js';
 import { formatGrade, formatTime } from './extensions/numberExtensions.js';
 
 /**
@@ -147,7 +148,9 @@ export class ViewModel {
     const mappedEmployees = this.adminEmployees().concat(
       this.instructors.map(this.instructorToEmployee)
     );
-    this.employeeDirectoryTable = this.#buildDirectory('employee-directory-table', mappedEmployees);
+    // Sort employees to ensure admins appear at the top
+    const sortedEmployees = this.#sortEmployeesForDirectory(mappedEmployees);
+    this.employeeDirectoryTable = this.#buildDirectory('employee-directory-table', sortedEmployees);
   }
   /**
    *
@@ -179,10 +182,12 @@ export class ViewModel {
     const mappedEmployees = this.adminEmployees().concat(
       this.instructors.map(this.instructorToEmployee)
     );
+    // Sort employees to ensure admins appear at the top
+    const sortedEmployees = this.#sortEmployeesForDirectory(mappedEmployees);
     // this may be set in admin section if user is operator
     this.employeeDirectoryTable ??= this.#buildDirectory(
       'employee-directory-table',
-      mappedEmployees
+      sortedEmployees
     );
   }
   /**
@@ -190,34 +195,106 @@ export class ViewModel {
    */
   #initParentContent() {
     // weekly schedule
-    // students with registrations
-    const studentsWithRegistrations = this.registrations
+    // Get the current parent's ID
+    const currentParentId = this.currentUser.parent?.id;
+    
+    if (!currentParentId) {
+      console.warn('No parent ID found for current user');
+      return;
+    }
+
+    // Filter registrations to only show those where the student is the parent's child
+    const parentChildRegistrations = this.registrations.filter(registration => {
+      const student = registration.student;
+      if (!student) return false;
+      
+      // Check if the current parent is either parent1 or parent2 of the student
+      return student.parent1Id === currentParentId || student.parent2Id === currentParentId;
+    });
+
+    // Get unique students with registrations (their own children only)
+    const studentsWithRegistrations = parentChildRegistrations
       .map(registration => registration.student)
       .filter(student => student && student.id) // Filter out undefined students and students without IDs
       .filter((student, index, self) => self.findIndex(s => s.id === student.id) === index);
+    
     const parentWeeklyScheduleTables = document.getElementById('parent-weekly-schedule-tables');
 
-    // TODO future will allow redraw
+    // Clear existing content
+    parentWeeklyScheduleTables.innerHTML = '';
+
+    // Show 'no matching registrations' message if no children have registrations
+    if (studentsWithRegistrations.length === 0) {
+      const noRegistrationsMessage = document.createElement('div');
+      noRegistrationsMessage.className = 'card-panel orange lighten-4';
+      noRegistrationsMessage.style.cssText = 'text-align: center; padding: 30px; margin: 20px 0;';
+      noRegistrationsMessage.innerHTML = `
+        <h5 style="color: #e65100; margin-bottom: 10px;">No Matching Registrations</h5>
+        <p style="color: #bf360c; font-size: 16px; margin: 0;">
+          Your children currently have no active lesson registrations.
+        </p>
+      `;
+      parentWeeklyScheduleTables.appendChild(noRegistrationsMessage);
+      return;
+    }
+
+    // Create a separate table for each child
     studentsWithRegistrations.forEach(student => {
-      const tableId = `instructor-weekly-schedule-table-${student.id}`;
+      // Create a container for each child's schedule
+      const studentContainer = document.createElement('div');
+      studentContainer.className = 'student-schedule-container';
+      studentContainer.style.cssText = 'margin-bottom: 30px;';
+      
+      // Add student name header
+      const studentHeader = document.createElement('h5');
+      studentHeader.style.cssText = 'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px;';
+      studentHeader.textContent = `${student.firstName} ${student.lastName}'s Schedule`;
+      studentContainer.appendChild(studentHeader);
+      
+      // Create table for this student
+      const tableId = `parent-weekly-schedule-table-${student.id}`;
       const newTable = document.createElement('table');
       newTable.id = tableId;
-      parentWeeklyScheduleTables.appendChild(newTable);
+      studentContainer.appendChild(newTable);
+      
+      parentWeeklyScheduleTables.appendChild(studentContainer);
+      
       this.#buildWeeklySchedule(
         tableId,
-        this.registrations.filter(x => x.studentId.value === student.id)
+        parentChildRegistrations.filter(x => x.studentId.value === student.id)
       );
     });
+    
     // registration
-    // directory
+    // Initialize parent registration form with hybrid interface
+    this.parentRegistrationForm = new ParentRegistrationForm(
+      this.instructors,
+      this.students,
+      this.classes,
+      async data => {
+        const newRegistration = await HttpService.post(ServerFunctions.register, data, x =>
+          Registration.fromApiData(x.newRegistration)
+        );
+
+        // handle response
+        M.toast({ html: 'Registration created successfully.' });
+        this.registrations.push(newRegistration);
+        // Refresh parent schedule after registration
+        this.#initParentContent();
+      }
+    );
+    
+    // directory - only show instructors who teach the parent's children
     const mappedEmployees = this.adminEmployees().concat(
       this.instructors
         .filter(instructor =>
-          this.registrations.some(registration => registration.instructorId.value === instructor.id)
+          parentChildRegistrations.some(registration => registration.instructorId.value === instructor.id)
         )
         .map(this.instructorToEmployee)
     );
-    this.parentDirectoryTable = this.#buildDirectory('parent-directory-table', mappedEmployees);
+    // Sort employees to ensure admins appear at the top
+    const sortedEmployees = this.#sortEmployeesForDirectory(mappedEmployees);
+    this.parentDirectoryTable = this.#buildDirectory('parent-directory-table', sortedEmployees);
   }
   /**
    *
@@ -639,14 +716,66 @@ export class ViewModel {
                         <td>${email}</td>
                         <td>${phone}</td>
                         <td>
-                            <a href="#!">
+                            <a href="#!" data-employee-email="${email}">
                                 <i class="copy-parent-emails-table-icon material-icons gray-text text-darken-4">email</i>
                             </a>
                         </td>
                     `;
       },
-      employees || []
+      employees || [],
+      // onClick handler for copying email to clipboard
+      async event => {
+        const isCopy = event.target.classList.contains('copy-parent-emails-table-icon');
+        if (!isCopy) {
+          return;
+        }
+        event.preventDefault();
+        
+        // Get the email from the data attribute
+        const linkElement = event.target.closest('a');
+        const email = linkElement?.getAttribute('data-employee-email');
+        
+        if (email && email !== 'No email') {
+          await this.#copyToClipboard(email);
+        } else {
+          M.toast({ html: 'No email available for this contact.' });
+        }
+      }
     );
+  }
+  /**
+   * Sort employees for directory display, prioritizing admin roles at the top
+   * @param {Array} employees - Array of employee objects
+   * @returns {Array} Sorted employee array with admins first
+   */
+  #sortEmployeesForDirectory(employees) {
+    return employees.sort((a, b) => {
+      // Define admin role priorities (lower number = higher priority)
+      const getAdminPriority = (employee) => {
+        if (!employee.roles || !Array.isArray(employee.roles)) return 999;
+        
+        for (const role of employee.roles) {
+          const roleStr = role.toLowerCase();
+          if (roleStr.includes('forte director')) return 1;
+          if (roleStr.includes('forte associate manager')) return 2;
+          if (roleStr.includes('admin')) return 3;
+        }
+        return 999; // Not an admin role
+      };
+      
+      const priorityA = getAdminPriority(a);
+      const priorityB = getAdminPriority(b);
+      
+      // If both are admins or both are non-admins, sort alphabetically by name
+      if (priorityA === priorityB) {
+        const nameA = a.fullName || '';
+        const nameB = b.fullName || '';
+        return nameA.localeCompare(nameB);
+      }
+      
+      // Otherwise, sort by admin priority (lower number first)
+      return priorityA - priorityB;
+    });
   }
   // TODO duplicated (will be consolidated elsewhere)
   /**
