@@ -133,7 +133,7 @@ function quickVerifyInstructorPhones() {
     return;
   }
   
-  const phoneRegex = /^\d{10}$/;
+  const phoneRegex = /^[0-9X]{10}$/i;
   const sampleSize = Math.min(5, data.length - 1);
   let validCount = 0;
   
@@ -337,16 +337,24 @@ class UnformatInstructorPhonesMigration {
   analyzePhoneFormat(phone) {
     const phoneStr = phone.toString();
     
-    if (/^\d{10}$/.test(phoneStr)) {
+    if (/^[0-9X]{10}$/i.test(phoneStr)) {
       return 'XXXXXXXXXX (already unformatted)';
     } else if (/^\d{3}-\d{3}-\d{4}$/.test(phoneStr)) {
-      return 'XXX-XXX-XXXX (formatted with dashes)';
+      return 'XXX-XXX-XXXX (formatted digits with dashes)';
+    } else if (/^[X]{3}-[X]{3}-[X]{4}$/i.test(phoneStr)) {
+      return 'XXX-XXX-XXXX (formatted placeholders with dashes)';
     } else if (/^\(\d{3}\)\s?\d{3}-\d{4}$/.test(phoneStr)) {
-      return '(XXX) XXX-XXXX (formatted with parens)';
+      return '(XXX) XXX-XXXX (formatted digits with parens)';
+    } else if (/^\([X]{3}\)\s?[X]{3}-[X]{4}$/i.test(phoneStr)) {
+      return '(XXX) XXX-XXXX (formatted placeholders with parens)';
     } else if (/^\d{3}\.\d{3}\.\d{4}$/.test(phoneStr)) {
-      return 'XXX.XXX.XXXX (formatted with dots)';
+      return 'XXX.XXX.XXXX (formatted digits with dots)';
+    } else if (/^[X]{3}\.[X]{3}\.[X]{4}$/i.test(phoneStr)) {
+      return 'XXX.XXX.XXXX (formatted placeholders with dots)';
     } else if (/^\d{3}\s\d{3}\s\d{4}$/.test(phoneStr)) {
-      return 'XXX XXX XXXX (formatted with spaces)';
+      return 'XXX XXX XXXX (formatted digits with spaces)';
+    } else if (/^[X]{3}\s[X]{3}\s[X]{4}$/i.test(phoneStr)) {
+      return 'XXX XXX XXXX (formatted placeholders with spaces)';
     } else {
       return `Other: "${phoneStr}"`;
     }
@@ -452,29 +460,32 @@ class UnformatInstructorPhonesMigration {
   }
 
   /**
-   * Unformat a phone number by removing all non-digit characters
+   * Unformat a phone number by removing formatting characters (dashes, spaces, parentheses, etc.)
+   * but preserving actual digit characters and placeholder characters like 'X'
    * @param {string} phone - Original phone number
-   * @returns {string} Unformatted phone number (digits only)
+   * @returns {string} Unformatted phone number (digits and X characters only)
    */
   unformatPhoneNumber(phone) {
     if (!phone) return '';
     
-    // Remove all non-digit characters
-    const digitsOnly = phone.toString().replace(/\D/g, '');
+    // Remove formatting characters but keep digits and X characters
+    // This removes: ( ) - . _ spaces and other special characters
+    // But preserves: 0-9 digits and X characters (which represent placeholder digits)
+    const unformatted = phone.toString().replace(/[^0-9X]/gi, '');
     
-    return digitsOnly;
+    return unformatted;
   }
 
   /**
-   * Validate that unformatted phone is 10 digits
+   * Validate that unformatted phone is 10 characters (digits or X placeholders)
    * @param {string} phone - Unformatted phone number
-   * @returns {boolean} True if valid 10-digit phone
+   * @returns {boolean} True if valid 10-character phone (digits and/or X characters)
    */
   isValidUnformattedPhone(phone) {
     if (!phone) return false;
     
-    // Should be exactly 10 digits for US phone numbers
-    return /^\d{10}$/.test(phone);
+    // Should be exactly 10 characters: digits (0-9) or X placeholders
+    return /^[0-9X]{10}$/i.test(phone);
   }
 
   /**
@@ -641,7 +652,7 @@ class UnformatInstructorPhonesMigrationVerifier {
       return;
     }
 
-    const phoneRegex = /^\d{10}$/;
+    const phoneRegex = /^[0-9X]{10}$/i;
     const validPhones = dataRows.filter(row => {
       const phone = row[phoneIndex];
       if (!phone || phone.toString().trim() === '') return true; // Empty phones are OK
@@ -652,7 +663,7 @@ class UnformatInstructorPhonesMigrationVerifier {
     results.tenDigitPhones = validPhones;
 
     if (validPhones === dataRows.length) {
-      console.log(`✅ All ${dataRows.length} phones are valid 10-digit format`);
+      console.log(`✅ All ${dataRows.length} phones are valid 10-character format (digits or X)`);
       results.passed++;
     } else {
       console.log(`❌ ${dataRows.length - validPhones} phones are not 10-digit format`);
@@ -761,7 +772,8 @@ function testPhoneUnformattingLogic(migration) {
     { input: '123.456.7890', expected: '1234567890', description: 'Dot format' },
     { input: '123 456 7890', expected: '1234567890', description: 'Space format' },
     { input: '1234567890', expected: '1234567890', description: 'Already unformatted' },
-    { input: 'XXX-XXX-XXXX', expected: '', description: 'Fake number with X' },
+    { input: 'XXX-XXX-XXXX', expected: 'XXXXXXXXXX', description: 'Placeholder number with X characters' },
+    { input: 'xxx-xxx-xxxx', expected: 'XXXXXXXXXX', description: 'Lowercase placeholder number' },
     { input: '', expected: '', description: 'Empty string' },
     { input: null, expected: '', description: 'Null value' }
   ];
@@ -1047,7 +1059,7 @@ function quickPhoneFormattingHealthCheck() {
     const unformattedPhones = dataRows.filter(row => {
       const phone = row[phoneIndex];
       if (!phone) return true; // Empty phones are OK
-      return /^\d{10}$/.test(phone.toString()); // 10 digits only
+      return /^[0-9X]{10}$/i.test(phone.toString()); // 10 characters: digits or X
     }).length;
     
     const formattedPhones = dataRows.filter(row => {
