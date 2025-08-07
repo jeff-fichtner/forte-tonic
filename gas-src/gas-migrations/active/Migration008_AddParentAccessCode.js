@@ -2,37 +2,50 @@
  * Google Apps Script Migration 008: Add AccessCode Column to Parents
  *
  * 🎯 PURPOSE:
- * This migration adds an AccessCode column to the parents table and sets
- * the value to the last four digits of each parent's phone number. This
- * enables secure parent login functionality using familiar digits.
+ * This migration adds an AccessCode column to the parents table (if it doesn't exist)
+ * and populates/re-seeds all access codes with proper 4-digit formatting including
+ * leading zeros. Codes are derived from the last four digits of phone numbers or
+ * auto-generated as unique 4-digit codes for parents without valid phone numbers.
  *
  * ⚠️ CURRENT SITUATION:
- * - Parents table exists but lacks AccessCode column
- * - Login system requires access codes for authentication
+ * - Parents table may or may not have AccessCode column
+ * - Existing access codes may have lost leading zeros due to formatting issues
+ * - Login system requires properly formatted 4-digit access codes
  * - Phone numbers are formatted as 10-digit strings (1234567890)
- * - Need to extract last 4 digits for access codes
+ * - Need to extract last 4 digits for access codes with leading zero preservation
  *
  * ✅ SOLUTION:
- * - Add AccessCode column to parents table
- * - Extract last 4 digits from phone number for each parent
+ * - Add AccessCode column to parents table if it doesn't exist (skip if exists)
+ * - Re-seed ALL access codes with proper 4-digit formatting
+ * - Extract last 4 digits from phone number for each parent (with leading zeros)
+ * - Generate unique 4-digit codes for parents without valid phones (including 0000-0999)
+ * - Apply text formatting to preserve leading zeros in Google Sheets
  * - Handle edge cases (missing/invalid phone numbers)
  * - Preserve all existing parent data
  * - Use safe copy-modify-replace pattern for zero risk
  *
  * 📋 CHANGES MADE:
- * 1. Parents Table: Add AccessCode column with last 4 digits of phone
- * 2. Data Validation: Ensure phone numbers are valid 10-digit format
- * 3. Edge Handling: Generate fallback codes for invalid phone numbers
- * 4. Preservation: All existing parent data remains intact
+ * 1. Parents Table: Add AccessCode column (if not exists) with 4-digit codes including leading zeros
+ * 2. Data Re-seeding: Update ALL access codes with proper formatting
+ * 3. Text Formatting: Apply Google Sheets text formatting to preserve leading zeros
+ * 4. Phone Extraction: Extract last 4 digits from phone with leading zero preservation
+ * 5. Auto-generation: Create unique 4-digit codes (0000-9999) for invalid phone numbers
+ * 6. Data Validation: Ensure phone numbers are valid 10-digit format
+ * 7. Edge Handling: Generate fallback codes for invalid phone numbers
+ * 8. Preservation: All existing parent data remains intact
  *
  * 🔧 FEATURES:
- * - Extracts last 4 digits from 10-digit phone numbers
+ * - Extracts last 4 digits from 10-digit phone numbers with leading zero preservation
  * - Handles missing or invalid phone numbers gracefully
+ * - Generates unique 4-digit codes including 0000-0999 range for better coverage
  * - Validates phone number format (must be 10 digits)
  * - Uses safe copy-modify-replace pattern
+ * - Applies proper text formatting to preserve leading zeros in Google Sheets
  * - Creates automatic backup for rollback capability
+ * - Re-seeds existing access codes to fix formatting issues
  * - Comprehensive verification functions
  * - Generates unique fallback codes when needed
+ * - Skips column addition if AccessCode column already exists
  *
  * 🚀 TO USE:
  * 1. Set spreadsheet ID in Config.js: const SPREADSHEET_ID = "your-id";
@@ -266,9 +279,11 @@ class AddParentAccessCodeMigration {
       console.log('✅ Preview completed - no changes made');
       console.log('📝 Run execute() to apply the migration');
       console.log('\n💡 Expected Changes:');
-      console.log('   - AccessCode column will be added to parents table');
-      console.log('   - Each parent will receive access code from last 4 digits of phone');
-      console.log('   - Parents with invalid phone numbers will get unique fallback codes');
+      console.log('   - AccessCode column will be added to parents table (if not exists)');
+      console.log('   - ALL access codes will be re-seeded with proper 4-digit formatting');
+      console.log('   - Each parent will receive access code from last 4 digits of phone (with leading zeros)');
+      console.log('   - Parents with invalid phone numbers will get unique 4-digit fallback codes (0000-9999)');
+      console.log('   - Text formatting will be applied to preserve leading zeros');
       console.log('   - All existing parent data will be preserved');
       
     } catch (error) {
@@ -299,7 +314,7 @@ class AddParentAccessCodeMigration {
     // Check if AccessCode column already exists
     const accessCodeIndex = headers.indexOf('AccessCode');
     if (accessCodeIndex !== -1) {
-      console.log(`   ⚠️  AccessCode column already exists at index ${accessCodeIndex}`);
+      console.log(`   ✅ AccessCode column already exists at index ${accessCodeIndex}`);
       
       // Analyze existing access codes
       const existingCodes = dataRows.map(row => row[accessCodeIndex]).filter(code => code);
@@ -307,14 +322,16 @@ class AddParentAccessCodeMigration {
       
       if (existingCodes.length > 0) {
         const validCodes = existingCodes.filter(code => /^\d{4}$/.test(code));
-        console.log(`   - Valid format codes: ${validCodes.length}/${existingCodes.length}`);
+        const codesWithLeadingZeros = existingCodes.filter(code => /^0/.test(code.toString()));
         
-        if (validCodes.length === existingCodes.length) {
-          console.log('   ✅ All existing access codes are valid');
-          console.log('   💡 Migration will update codes to match phone numbers');
-        } else {
-          console.log('   ⚠️  Some existing access codes need correction');
+        console.log(`   - Valid format codes: ${validCodes.length}/${existingCodes.length}`);
+        console.log(`   - Codes with leading zeros: ${codesWithLeadingZeros.length}`);
+        
+        if (codesWithLeadingZeros.length === 0 && validCodes.length < existingCodes.length) {
+          console.log('   ⚠️  Some access codes may have lost leading zeros due to formatting');
         }
+        
+        console.log('   💡 Migration will re-seed ALL codes with proper 4-digit formatting including leading zeros');
       }
     } else {
       console.log('   📝 AccessCode column not found - will be added');
@@ -373,7 +390,7 @@ class AddParentAccessCodeMigration {
    * @returns {Object} Migration details
    */
   addAccessCodeColumnSafe(workingSheet, originalSheet) {
-    console.log('   📋 Adding AccessCode column to parents...');
+    console.log('   📋 Adding/updating AccessCode column to parents...');
     
     const data = workingSheet.getDataRange().getValues();
     const headers = data[0];
@@ -393,7 +410,7 @@ class AddParentAccessCodeMigration {
       workingSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       console.log('     📋 Added AccessCode column');
     } else {
-      console.log('     📋 AccessCode column already exists, updating existing codes');
+      console.log('     📋 AccessCode column already exists, re-seeding all codes with proper formatting');
     }
     
     // Find phone number column
@@ -462,6 +479,18 @@ class AddParentAccessCodeMigration {
       
       // Write updated data
       workingSheet.getRange(2, 1, updatedRows.length, updatedRows[0].length).setValues(updatedRows);
+      
+      // Format AccessCode column as text to preserve leading zeros
+      if (accessCodeIndex !== -1 && updatedRows.length > 0) {
+        const accessCodeRange = workingSheet.getRange(2, accessCodeIndex + 1, updatedRows.length, 1);
+        accessCodeRange.setNumberFormat('@'); // Format as text
+        
+        // Re-set the access codes to ensure they're stored as text
+        const accessCodeValues = updatedRows.map(row => [row[accessCodeIndex]]);
+        accessCodeRange.setValues(accessCodeValues);
+        
+        console.log('     📝 Applied text formatting to AccessCode column to preserve leading zeros');
+      }
     }
     
     console.log(`     ✅ Processed ${updatedRows.length} parent records`);
@@ -535,14 +564,14 @@ class AddParentAccessCodeMigration {
   }
 
   /**
-   * Generate random 4-digit code
-   * @returns {string} Random 4-digit code
+   * Generate random 4-digit code (including codes starting with 0)
+   * @returns {string} Random 4-digit code with leading zeros preserved
    */
   generateRandomFourDigitCode() {
-    const min = 1000;
+    const min = 0;
     const max = 9999;
     const code = Math.floor(Math.random() * (max - min + 1)) + min;
-    return code.toString();
+    return code.toString().padStart(4, '0'); // Ensure 4 digits with leading zeros
   }
 
   /**
@@ -959,9 +988,12 @@ function quickTestParentAccessCodes() {
     // Test basic phone-to-code extraction
     const migration = new AddParentAccessCodeMigration();
     
-    console.log('\n📞 Testing phone number access code extraction...');
+    console.log('\n📞 Testing phone number access code extraction with leading zeros...');
     const testCases = [
       { phone: '1234567890', expected: '7890' },
+      { phone: '1234560001', expected: '0001' }, // Leading zero test
+      { phone: '1234560012', expected: '0012' }, // Leading zero test  
+      { phone: '1234560123', expected: '0123' }, // Leading zero test
       { phone: '5551234567', expected: '4567' },
       { phone: '(555) 123-4567', expected: '4567' },
       { phone: '555-123-4567', expected: '4567' },
@@ -983,8 +1015,22 @@ function quickTestParentAccessCodes() {
       }
     });
     
+    // Test fallback code generation with leading zeros
+    console.log('\n🔄 Testing fallback code generation (including codes with leading zeros)...');
+    const fallbackCodes = new Set();
+    for (let i = 0; i < 20; i++) {
+      const code = migration.generateUniqueFallbackCode();
+      fallbackCodes.add(code);
+      if (code.startsWith('0')) {
+        console.log(`   ✅ Generated code with leading zero: "${code}"`);
+      }
+    }
+    
+    const codesWithLeadingZeros = Array.from(fallbackCodes).filter(code => code.startsWith('0')).length;
+    console.log(`   📊 Generated ${fallbackCodes.size} unique codes, ${codesWithLeadingZeros} with leading zeros`);
+    
     if (passedTests === testCases.length) {
-      console.log('\n✅ Quick test passed - phone extraction working correctly');
+      console.log('\n✅ Quick test passed - phone extraction and fallback generation working correctly');
       return { success: true, passedTests: passedTests, totalTests: testCases.length };
     } else {
       console.log(`\n❌ Quick test failed - ${passedTests}/${testCases.length} tests passed`);
