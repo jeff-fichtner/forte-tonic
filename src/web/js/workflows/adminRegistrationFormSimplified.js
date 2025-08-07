@@ -126,14 +126,6 @@ export class AdminRegistrationForm {
         const selectedValue = event.target.value;
         const currentInstructor = this.instructors.find(x => x.id === selectedValue);
         console.log('Instructor selected:', currentInstructor);
-        
-        // Show lesson details when instructor is selected
-        this.#showLessonDetailsContainer(!!selectedValue);
-        
-        // Initialize lesson detail selectors
-        if (selectedValue) {
-          this.#initializeLessonDetailsSelectors();
-        }
       }
     );
   }
@@ -180,77 +172,6 @@ export class AdminRegistrationForm {
   }
 
   /**
-   * Show/hide lesson details container
-   */
-  #showLessonDetailsContainer(shouldShow) {
-    this.#showContainer('lesson-details-container', shouldShow);
-  }
-
-  /**
-   * Initialize lesson details selectors
-   */
-  #initializeLessonDetailsSelectors() {
-    // Initialize day selector
-    this.daySelect = new Select(
-      'day-select',
-      'Choose day',
-      'No days available',
-      [
-        { value: '0', label: 'Monday' },
-        { value: '1', label: 'Tuesday' },
-        { value: '2', label: 'Wednesday' },
-        { value: '3', label: 'Thursday' },
-        { value: '4', label: 'Friday' }
-      ],
-      event => {
-        console.log('Day selected:', event.target.value);
-      }
-    );
-
-    // Initialize length selector
-    this.lengthSelect = new Select(
-      'length-select',
-      'Choose length',
-      'No lengths available',
-      [
-        { value: '30', label: '30 minutes' },
-        { value: '45', label: '45 minutes' },
-        { value: '60', label: '60 minutes' }
-      ],
-      event => {
-        console.log('Length selected:', event.target.value);
-      }
-    );
-
-    // Initialize instrument selector
-    this.instrumentSelect = new Select(
-      'instrument-select',
-      'Choose instrument',
-      'No instruments available',
-      [
-        { value: 'Piano', label: 'Piano' },
-        { value: 'Guitar', label: 'Guitar' },
-        { value: 'Violin', label: 'Violin' },
-        { value: 'Voice', label: 'Voice' },
-        { value: 'Drums', label: 'Drums' },
-        { value: 'Bass', label: 'Bass' },
-        { value: 'Other', label: 'Other' }
-      ],
-      event => {
-        console.log('Instrument selected:', event.target.value);
-      }
-    );
-
-    // Initialize Materialize time picker
-    const timePicker = document.getElementById('start-time-input');
-    if (timePicker) {
-      // Set default time
-      timePicker.value = '15:00';
-      M.updateTextFields();
-    }
-  }
-
-  /**
    * Attach event listener to submit button
    */
   #attachSubmitButtonListener() {
@@ -293,11 +214,7 @@ export class AdminRegistrationForm {
       registrationData.studentId &&
       registrationData.registrationType &&
       ((isGroup && registrationData.classId) ||
-        (isPrivate && registrationData.instructorId && 
-         registrationData.day !== undefined && 
-         registrationData.startTime && 
-         registrationData.length && 
-         registrationData.instrument));
+        (isPrivate && registrationData.instructorId));
     
     if (!isValid) {
       const errors = [];
@@ -310,22 +227,8 @@ export class AdminRegistrationForm {
       if (isGroup && !registrationData.classId) {
         errors.push('Class');
       }
-      if (isPrivate) {
-        if (!registrationData.instructorId) {
-          errors.push('Instructor');
-        }
-        if (registrationData.day === undefined || registrationData.day === null || registrationData.day === '') {
-          errors.push('Day');
-        }
-        if (!registrationData.startTime) {
-          errors.push('Start Time');
-        }
-        if (!registrationData.length) {
-          errors.push('Length');
-        }
-        if (!registrationData.instrument) {
-          errors.push('Instrument');
-        }
+      if (isPrivate && !registrationData.instructorId) {
+        errors.push('Instructor');
       }
       M.toast({ html: `Please fill out the following fields:<br>${errors.join('<br>')}` });
     }
@@ -353,21 +256,16 @@ export class AdminRegistrationForm {
       // get transportation type response
       const transportationType = document.querySelector('input[name="transportation-type"]:checked');
       
-      // Get lesson details from selectors
-      const day = this.daySelect ? this.daySelect.getSelectedOption() : '0';
-      const startTime = document.getElementById('start-time-input')?.value || '15:00';
-      const length = this.lengthSelect ? this.lengthSelect.getSelectedOption() : '30';
-      const instrument = this.instrumentSelect ? this.instrumentSelect.getSelectedOption() : 'Piano';
-      
       return {
         studentId: studentId,
         registrationType: registrationType,
         transportationType: transportationType ? transportationType.value : null,
         instructorId: this.instructorSelect.getSelectedOption(),
-        day: parseInt(day),
-        startTime: startTime,
-        length: parseInt(length),
-        instrument: instrument,
+        // Admin can create without specific time constraints
+        day: 0, // Default to Monday
+        startTime: '15:00', // Default time
+        length: 30, // Default length
+        instrument: 'Piano', // Default instrument
       };
     }
     
@@ -402,27 +300,6 @@ export class AdminRegistrationForm {
     
     // Clear instructor selection
     this.instructorSelect.clearSelectedOption();
-    
-    // Clear lesson details
-    if (this.daySelect) {
-      this.daySelect.clearSelectedOption();
-    }
-    if (this.lengthSelect) {
-      this.lengthSelect.clearSelectedOption();
-    }
-    if (this.instrumentSelect) {
-      this.instrumentSelect.clearSelectedOption();
-    }
-    
-    // Clear time input
-    const timeInput = document.getElementById('start-time-input');
-    if (timeInput) {
-      timeInput.value = '';
-      M.updateTextFields();
-    }
-    
-    // Hide lesson details container
-    this.#showLessonDetailsContainer(false);
     
     // Clear students
     this.#setCurrentStudent(null);

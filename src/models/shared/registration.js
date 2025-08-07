@@ -233,6 +233,45 @@ export class Registration {
   }
 
   /**
+   * Convert Registration entity to plain data object for persistence
+   */
+  toDataObject() {
+    // Helper function to safely extract values from value objects or plain values
+    const extractValue = (valueOrObject) => {
+      if (!valueOrObject) return null;
+      if (typeof valueOrObject === 'string' || typeof valueOrObject === 'number') {
+        return valueOrObject;
+      }
+      if (valueOrObject.getValue && typeof valueOrObject.getValue === 'function') {
+        return valueOrObject.getValue();
+      }
+      if (valueOrObject.value !== undefined) {
+        return valueOrObject.value;
+      }
+      return String(valueOrObject);
+    };
+
+    return {
+      id: extractValue(this.id),
+      studentId: extractValue(this.studentId),
+      instructorId: extractValue(this.instructorId),
+      day: this.day,
+      startTime: this.startTime,
+      length: this.length,
+      registrationType: this.registrationType,
+      roomId: this.roomId,
+      instrument: this.instrument,
+      transportationType: this.transportationType,
+      notes: this.notes,
+      classId: this.classId,
+      classTitle: this.classTitle,
+      expectedStartDate: this.expectedStartDate,
+      createdAt: this.createdAt,
+      createdBy: this.createdBy
+    };
+  }
+
+  /**
    * Factory method: Create new registration
    */
   static createNew(studentId, instructorId, options = {}) {

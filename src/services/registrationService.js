@@ -28,14 +28,44 @@ export class RegistrationApplicationService {
     try {
       console.log('🎵 Processing new registration');
 
-      // Step 1: Validate basic registration data
+      // Step 1: Handle group registration data population
+      if (registrationData.registrationType === 'group' && registrationData.classId) {
+        // For group registrations, populate missing fields from class data
+        const groupClass = await this.programRepository.getClassById(registrationData.classId);
+        if (!groupClass) {
+          throw new Error(`Class not found: ${registrationData.classId}`);
+        }
+
+        // Populate instructor and class-specific data for group registrations
+        registrationData.instructorId = groupClass.instructorId;
+        registrationData.day = groupClass.day;
+        registrationData.startTime = groupClass.startTime;
+        registrationData.length = groupClass.length;
+        registrationData.instrument = groupClass.instrument;
+        registrationData.className = groupClass.title;
+
+        // Set default transportation for group registrations if not specified
+        if (!registrationData.transportationType) {
+          registrationData.transportationType = 'pickup'; // Default for group classes
+        }
+
+        console.log('🎓 Group registration data populated from class:', {
+          classId: registrationData.classId,
+          instructorId: registrationData.instructorId,
+          day: registrationData.day,
+          startTime: registrationData.startTime,
+          instrument: registrationData.instrument
+        });
+      }
+
+      // Step 2: Validate basic registration data (now with populated fields)
       const basicValidation =
         RegistrationValidationService.validateRegistrationData(registrationData);
       if (!basicValidation.isValid) {
         throw new Error(`Registration validation failed: ${basicValidation.errors.join(', ')}`);
       }
 
-      // Step 2: Get related entities
+      // Step 3: Get related entities
       const [student, instructor, groupClass] = await Promise.all([
         this.userRepository.getStudentById(registrationData.studentId),
         this.userRepository.getInstructorById(registrationData.instructorId),
@@ -52,7 +82,30 @@ export class RegistrationApplicationService {
         throw new Error(`Instructor not found: ${registrationData.instructorId}`);
       }
 
-      // Step 3: Student enrollment eligibility check
+      // Step 3.5: For group registrations, populate room assignment from instructor's schedule
+      if (registrationData.registrationType === 'group' && registrationData.classId) {
+        const dayName = registrationData.day.toLowerCase();
+        const roomIdKey = `${dayName}RoomId`;
+        
+        // Get room ID from instructor's availability for the specific day
+        if (instructor.availability && instructor.availability[dayName] && instructor.availability[dayName].roomId) {
+          registrationData.roomId = instructor.availability[dayName].roomId;
+        } else if (instructor[roomIdKey]) {
+          // Fallback: try direct property access on instructor object
+          registrationData.roomId = instructor[roomIdKey];
+        } else {
+          console.warn(`No room assignment found for instructor ${instructor.id} on ${dayName}`);
+          registrationData.roomId = 'ROOM-001'; // Default fallback
+        }
+
+        console.log('🏫 Room assignment for group registration:', {
+          day: dayName,
+          instructorId: instructor.id,
+          roomId: registrationData.roomId
+        });
+      }
+
+      // Step 4: Student enrollment eligibility check
       const eligibility = StudentManagementService.validateEnrollmentEligibility(
         student,
         registrationData
@@ -61,7 +114,7 @@ export class RegistrationApplicationService {
         throw new Error(`Student not eligible for enrollment: ${eligibility.errors.join(', ')}`);
       }
 
-      // Step 4: Program-specific validation
+      // Step 5: Program-specific validation
       const programValidation = ProgramManagementService.validateRegistration(
         registrationData,
         groupClass,
@@ -71,7 +124,7 @@ export class RegistrationApplicationService {
         throw new Error(`Program validation failed: ${programValidation.errors.join(', ')}`);
       }
 
-      // Step 5: Check for conflicts with existing registrations
+      // Step 6: Check for conflicts with existing registrations
       const existingRegistrations = await this.registrationRepository.findAll();
       const conflictCheck = await RegistrationConflictService.checkConflicts(
         registrationData,
@@ -84,16 +137,17 @@ export class RegistrationApplicationService {
         );
       }
 
-      // Step 6: Create domain entity
+      // Step 7: Create domain entity
+      console.log('📝 Registration data before creating entity:', registrationData);
       const registrationEntity = Registration.createNew(
         registrationData.studentId,
         registrationData.instructorId,
-        registrationData.registrationType,
-        registrationData.day,
-        registrationData.startTime,
-        registrationData.length,
         {
           id: RegistrationConflictService.generateRegistrationId(registrationData),
+          registrationType: registrationData.registrationType,
+          day: registrationData.day,
+          startTime: registrationData.startTime,
+          length: registrationData.length,
           instrument: registrationData.instrument,
           roomId: registrationData.roomId,
           classId: registrationData.classId,
@@ -105,26 +159,46 @@ export class RegistrationApplicationService {
         }
       );
 
-      // Step 7: Persist the registration
+      // Step 8: Persist the registration
       const persistedRegistration = await this.registrationRepository.create(
         registrationEntity.toDataObject()
       );
 
-      // Step 8: Audit logging
+      // Step 9: Audit logging
       if (this.auditService) {
         await this.auditService.logRegistrationCreated(persistedRegistration, userId);
       }
 
-      // Step 9: Send confirmation emails
+      // Step 10: Send confirmation emails
       await this.#sendRegistrationConfirmation(registrationEntity, student, instructor);
 
       console.log('✅ Registration processed successfully:', persistedRegistration.id);
+
+      // Generate lesson schedule with complete registration data
+      let lessonSchedule = null;
+      try {
+        // Ensure we have the required fields for lesson schedule generation
+        const scheduleData = {
+          ...persistedRegistration,
+          expectedStartDate: persistedRegistration.expectedStartDate || new Date(),
+          day: persistedRegistration.day,
+          startTime: persistedRegistration.startTime,
+          length: persistedRegistration.length
+        };
+
+        if (scheduleData.day && scheduleData.startTime && scheduleData.length) {
+          lessonSchedule = ProgramManagementService.generateLessonSchedule(scheduleData);
+        }
+      } catch (scheduleError) {
+        console.warn('⚠️ Could not generate lesson schedule:', scheduleError.message);
+        lessonSchedule = [];
+      }
 
       return {
         success: true,
         registration: persistedRegistration,
         enrollmentInfo: eligibility,
-        lessonSchedule: registrationEntity.generateLessonSchedule(),
+        lessonSchedule: lessonSchedule,
       };
     } catch (error) {
       console.error('❌ Registration processing failed:', error);
@@ -210,7 +284,7 @@ export class RegistrationApplicationService {
         student,
         instructor,
         groupClass,
-        lessonSchedule: registration.generateLessonSchedule(),
+        lessonSchedule: ProgramManagementService.generateLessonSchedule(registration.toDataObject()),
         nextLessonDate: registration.getNextLessonDate(),
         canModify: registration.canBeModified(),
         cancellationInfo: registration.canBeCancelled(),
