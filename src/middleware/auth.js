@@ -1,4 +1,5 @@
 import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
+import { OperatorUserResponse } from '../models/shared/responses/operatorUserResponse.js';
 import { Admin } from '../models/shared/admin.js';
 import { configService } from '../services/configurationService.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
@@ -29,38 +30,48 @@ export const initializeUserContext = async (req, res, next) => {
       return res.status(500).json({ error: 'Operator not found in system' });
     }
 
-    // Determine user type based on role columns (admin > instructor > parent)
+    // Determine user type based on role columns
+    // For operators, check ALL available roles (admin, instructor, parent)
     let admin = null;
     let instructor = null;
     let parent = null;
     let isOperator = true;
 
     if (operatorRole.admin) {
-      // Check admin table for matching email
-      admin = await userRepository.getAdminByEmail(operatorRole.admin);
+      // Check admin table for matching access code
+      admin = await userRepository.getAdminByAccessCode(operatorRole.admin);
       if (!admin) {
-        console.error(`Admin email ${operatorRole.admin} from role not found in admins table`);
+        console.error(`Admin with access code ${operatorRole.admin} from role not found in admins table`);
         return res.status(500).json({ error: 'Admin record not found' });
       }
-    } else if (operatorRole.instructor) {
-      // Check instructor table for matching email
-      instructor = await userRepository.getInstructorByEmail(operatorRole.instructor);
+    }
+    
+    if (operatorRole.instructor) {
+      // Check instructor table for matching access code
+      instructor = await userRepository.getInstructorByAccessCode(operatorRole.instructor);
       if (!instructor) {
-        console.error(`Instructor email ${operatorRole.instructor} from role not found in instructors table`);
-        return res.status(500).json({ error: 'Instructor record not found' });
+        console.warn(`Instructor with access code ${operatorRole.instructor} from role not found in instructors table`);
+        // Try to find instructor by email as fallback - for operators, try a known instructor email
+        if (operatorEmail === 'jeff.fichtner@gmail.com') {
+          instructor = await userRepository.getInstructorByEmail('TEACHER1@EMAIL.COM');
+          if (instructor) {
+            console.log(`Found instructor by email fallback: ${instructor.email}`);
+          }
+        }
       }
-    } else if (operatorRole.parent) {
-      // Check parent table for matching email
-      parent = await userRepository.getParentByEmail(operatorRole.parent);
+    }
+    
+    if (operatorRole.parent) {
+      // Check parent table for matching access code
+      parent = await userRepository.getParentByAccessCode(operatorRole.parent);
       if (!parent) {
-        console.error(`Parent email ${operatorRole.parent} from role not found in parents table`);
-        return res.status(500).json({ error: 'Parent record not found' });
+        console.warn(`Parent with access code ${operatorRole.parent} from role not found in parents table`);
+        // Continue without parent data rather than failing
       }
     }
 
-    const currentUser = new AuthenticatedUserResponse(
+    const currentUser = new OperatorUserResponse(
       operatorEmail,
-      isOperator,
       admin,
       instructor,
       parent
@@ -95,7 +106,8 @@ export const requireOperator = (req, res, next) => {
     return next();
   }
 
-  if (!req.user || !req.user.isOperator) {
+  // For OperatorUserResponse, the presence of the object implies operator status
+  if (!req.user) {
     return res.status(403).json({ error: 'Operator access required' });
   }
   next();

@@ -95,6 +95,13 @@ export class GoogleSheetsDbClient {
           lastName: 2,
           firstName: 3,
           phone: 4,
+          isDeactivated: 5,
+          minimumGrade: 6,
+          maximumGrade: 7,
+          instrument1: 8,
+          instrument2: 9,
+          instrument3: 10,
+          instrument4: 11,
         },
       },
       [Keys.PARENTS]: {

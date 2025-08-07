@@ -39,6 +39,16 @@ export class UserRepository {
   }
 
   /**
+   * Get admin by access code
+   * @param {string} accessCode - The access code to search for
+   * @returns {Promise<Admin|undefined>} Admin with matching access code
+   */
+  async getAdminByAccessCode(accessCode) {
+    const admins = await this.getAdmins();
+    return admins.find(x => x.accessCode === accessCode);
+  }
+
+  /**
    *
    */
   async #getRoles(forceRefresh = false) {
@@ -94,6 +104,16 @@ export class UserRepository {
   }
 
   /**
+   * Get instructor by access code
+   * @param {string} accessCode - The access code to search for
+   * @returns {Promise<Instructor|undefined>} Instructor with matching access code
+   */
+  async getInstructorByAccessCode(accessCode) {
+    const instructors = await this.getInstructors();
+    return instructors.find(x => x.accessCode === accessCode);
+  }
+
+  /**
    *
    */
   async getStudents(forceRefresh = false) {
@@ -144,6 +164,16 @@ export class UserRepository {
   }
 
   /**
+   * Get parent by access code
+   * @param {string} accessCode - The access code to search for
+   * @returns {Promise<Parent|undefined>} Parent with matching access code
+   */
+  async getParentByAccessCode(accessCode) {
+    const parents = await this.getParents();
+    return parents.find(x => x.accessCode === accessCode);
+  }
+
+  /**
    *
    */
   async getRooms(forceRefresh = false) {
@@ -162,5 +192,33 @@ export class UserRepository {
   async getRoomById(id) {
     const rooms = await this.getRooms();
     return rooms.find(x => x.id === id);
+  }
+
+  /**
+   * Get any user (admin, instructor, or parent) by access code
+   * @param {string} accessCode - The access code to search for
+   * @returns {Promise<{user: Admin|Instructor|Parent, userType: string}|null>} User object with type, or null if not found
+   */
+  async getUserByAccessCode(accessCode) {
+    // Try to find admin first
+    const admin = await this.getAdminByAccessCode(accessCode);
+    if (admin) {
+      return { user: admin, userType: 'admin' };
+    }
+
+    // Try to find instructor
+    const instructor = await this.getInstructorByAccessCode(accessCode);
+    if (instructor) {
+      return { user: instructor, userType: 'instructor' };
+    }
+
+    // Try to find parent
+    const parent = await this.getParentByAccessCode(accessCode);
+    if (parent) {
+      return { user: parent, userType: 'parent' };
+    }
+
+    // Not found in any user type
+    return null;
   }
 }

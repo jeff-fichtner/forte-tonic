@@ -6,12 +6,21 @@ export class NavTabs {
    *
    */
   constructor(defaultSection) {
+    console.log('🚀 NavTabs constructor called with defaultSection:', defaultSection);
+    
     const tabsContainer = document.querySelector('.tabs');
     const tabs = document.querySelectorAll('.tabs .tab');
     const tabLinks = document.querySelectorAll('.tabs .tab a');
     const tabContents = document.querySelectorAll('.tab-content');
     const links = document.querySelectorAll('.section-link');
-    if (!tabsContainer || tabs.length === 0) return;
+    
+    console.log(`Found ${tabs.length} tabs, ${links.length} section links`);
+    console.log('Navigation links visible:', links.length > 0 ? !links[0].closest('#nav-mobile').hidden : 'No links found');
+    
+    if (!tabsContainer || tabs.length === 0) {
+      console.warn('No tabs container or tabs found - NavTabs not initialized');
+      return;
+    }
     tabsContainer.addEventListener('click', event => {
       event.preventDefault();
       // return if not a tab link
@@ -25,7 +34,13 @@ export class NavTabs {
       });
       // Toggle all tab contents
       tabContents.forEach(content => {
+        const wasHidden = content.hidden;
         content.hidden = content.id !== targetContent.id;
+        if (wasHidden && !content.hidden) {
+          console.log(`📋 Showing tab content: ${content.id}`);
+        } else if (!wasHidden && content.hidden) {
+          console.log(`📋 Hiding tab content: ${content.id}`);
+        }
       });
     });
     if (links.length === 0) {
@@ -38,20 +53,42 @@ export class NavTabs {
         const dataSection = link.getAttribute('data-section');
         
         // Console log the nav link click
-        console.log(`Nav link clicked: ${dataSection}`);
+        console.log(`🖱️ Nav link clicked: ${dataSection}`);
+        
+        // Check if operator has access to this section
+        if (!this.#checkOperatorAccess(dataSection)) {
+          console.log(`🚫 Access denied for section: ${dataSection}`);
+          
+          // Hide all content and show login state
+          this.#hideContentShowLogin(dataSection);
+          return;
+        }
+        
+        console.log(`✅ Access granted for section: ${dataSection}`);
+        
+        // Show the main content when access is granted
+        this.#showContent();
+        
+        // Show/hide tabs based on selected section
+        this.#showTabsForSection(dataSection);
+        
+        // Auto-click the first tab within this section to show content
+        this.#activateFirstTabInSection(dataSection);
         
         // Keep the active state toggle functionality
         links.forEach(l =>
           l.classList.toggle('active', l.getAttribute('data-section') === dataSection)
         );
         
-        // Show toast message with the selected section
-        const sectionName = dataSection.charAt(0).toUpperCase() + dataSection.slice(1);
-        M.toast({ 
-          html: `${sectionName} section selected`, 
-          classes: 'blue darken-1', 
-          displayLength: 2000 
-        });
+        // Debug: Log table visibility after permission granted
+        setTimeout(() => {
+          const table = document.getElementById('master-schedule-table');
+          if (table) {
+            console.log(`Master schedule table hidden status: ${table.hidden}`);
+          } else {
+            console.log('Master schedule table not found');
+          }
+        }, 100);
       });
     });
     // Initialize first nav link as active for visual consistency
@@ -59,6 +96,157 @@ export class NavTabs {
       const firstLink = links[0];
       firstLink.classList.add('active');
     }
+  }
+
+  /**
+   * Check if the current operator has access to the requested section
+   * @param {string} section - The section to check ('admin', 'instructor', 'parent')
+   * @returns {boolean} True if operator has access to this section
+   */
+  #checkOperatorAccess(section) {
+    // Get the operator user from global session
+    const operatorUser = window.UserSession?.getOperatorUser();
+    
+    if (!operatorUser) {
+      console.log('No operator user found in session');
+      return false;
+    }
+
+    // Check if operator has the required user type
+    switch (section) {
+      case 'admin':
+        return operatorUser.isAdmin && operatorUser.isAdmin();
+      case 'instructor':
+        return operatorUser.isInstructor && operatorUser.isInstructor();
+      case 'parent':
+        return operatorUser.isParent && operatorUser.isParent();
+      default:
+        console.warn(`Unknown section: ${section}`);
+        return false;
+    }
+  }
+
+  /**
+   * Show/hide tabs based on the selected section
+   * @param {string} section - The section that was selected ('admin', 'instructor', 'parent')
+   */
+  #showTabsForSection(section) {
+    console.log(`🔄 #showTabsForSection called with section: ${section}`);
+    
+    // Hide all tabs first
+    const allTabs = document.querySelectorAll('.tabs .tab');
+    console.log(`Found ${allTabs.length} total tabs to hide`);
+    allTabs.forEach(tab => {
+      tab.hidden = true;
+    });
+    
+    // Show only tabs for the selected section
+    const sectionTabs = document.querySelectorAll(`.tabs .tab.${section}-tab`);
+    console.log(`Found ${sectionTabs.length} tabs with class '${section}-tab'`);
+    sectionTabs.forEach(tab => {
+      tab.hidden = false;
+      console.log(`Showing tab:`, tab);
+    });
+    
+    console.log(`✅ Showing ${sectionTabs.length} tabs for ${section} section`);
+    
+    // Reinitialize Materialize tabs to update the indicator
+    const tabsElement = document.querySelector('.tabs');
+    if (tabsElement && window.M && window.M.Tabs) {
+      console.log('🔄 Reinitializing Materialize tabs');
+      window.M.Tabs.init(tabsElement);
+    } else {
+      console.warn('❌ Could not reinitialize Materialize tabs');
+    }
+  }
+
+  /**
+   * Activate the first tab within a section when access is granted
+   * @param {string} section - The section that was accessed
+   */
+  #activateFirstTabInSection(section) {
+    // Define mapping of sections to their first tab
+    const sectionFirstTabs = {
+      'admin': '#admin-master-schedule',
+      'instructor': '#instructor-weekly-schedule', 
+      'parent': '#parent-weekly-schedule'
+    };
+    
+    const firstTabHref = sectionFirstTabs[section];
+    if (firstTabHref) {
+      const firstTabLink = document.querySelector(`a[href="${firstTabHref}"]`);
+      if (firstTabLink) {
+        console.log(`🎯 Auto-clicking first tab in ${section} section: ${firstTabHref}`);
+        
+        // Check if the tab link is visible
+        const tabParent = firstTabLink.closest('.tab');
+        if (tabParent) {
+          console.log(`Tab parent hidden status: ${tabParent.hidden}`);
+        }
+        
+        firstTabLink.click();
+        
+        // Debug: Check table visibility after tab click
+        setTimeout(() => {
+          const table = document.getElementById('master-schedule-table');
+          const tabContent = document.getElementById('admin-master-schedule');
+          
+          if (table) {
+            console.log(`📊 After tab click - Master schedule table hidden: ${table.hidden}`);
+          }
+          if (tabContent) {
+            console.log(`📋 After tab click - Admin master schedule content hidden: ${tabContent.hidden}`);
+          }
+        }, 50);
+      } else {
+        console.warn(`First tab link not found for section ${section}: ${firstTabHref}`);
+      }
+    }
+  }
+
+  /**
+   * Show the main content when access is granted
+   */
+  #showContent() {
+    // Show all main content
+    const pageContent = document.getElementById('page-content');
+    const pageLoading = document.getElementById('page-loading-container');
+    const pageError = document.getElementById('page-error-content');
+    
+    if (pageContent) pageContent.hidden = false;
+    if (pageLoading) pageLoading.hidden = true; // Hide loading
+    if (pageError) pageError.hidden = true; // Hide errors
+    
+    console.log('Main content shown');
+  }
+
+  /**
+   * Hide all content and show login state when access is denied
+   * @param {string} section - The section that was denied access
+   */
+  #hideContentShowLogin(section) {
+    // Hide all main content
+    const pageContent = document.getElementById('page-content');
+    const pageLoading = document.getElementById('page-loading-container');
+    const pageError = document.getElementById('page-error-content');
+    
+    if (pageContent) pageContent.hidden = true;
+    if (pageLoading) pageLoading.hidden = true;
+    if (pageError) pageError.hidden = true;
+
+    // Show a message that login is required
+    const sectionName = section.charAt(0).toUpperCase() + section.slice(1);
+    M.toast({ 
+      html: `Please log in to access ${sectionName} section`, 
+      classes: 'orange darken-2', 
+      displayLength: 4000 
+    });
+
+    // Remove active state from all nav links
+    const links = document.querySelectorAll('.section-link');
+    links.forEach(link => link.classList.remove('active'));
+
+    console.log(`Content hidden due to unauthorized access to ${section} section`);
   }
 }
 

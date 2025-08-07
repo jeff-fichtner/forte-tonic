@@ -125,3 +125,8 @@ export class OperatorUserResponse {
     return new OperatorUserResponse('', null, null, null);
   }
 }
+
+// Make OperatorUserResponse available globally for backward compatibility
+if (typeof window !== 'undefined') {
+  window.OperatorUserResponse = OperatorUserResponse;
+}

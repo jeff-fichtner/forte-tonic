@@ -96,10 +96,34 @@ app.use('/shared', express.static(path.join(__dirname, 'shared'), developmentSta
 // Serve core utilities for frontend access
 app.use('/core', express.static(path.join(__dirname, 'core'), developmentStaticOptions));
 
-// Apply authentication middleware to API routes
-app.use('/api', initializeUserContext);
-app.use('/api', requireAuth);
-app.use('/api', requireOperator);
+// Apply authentication middleware to API routes (with exceptions)
+app.use('/api', (req, res, next) => {
+  // Skip all authentication for specific endpoints
+  const publicEndpoints = [
+    '/api/authenticateByAccessCode',
+    '/api/health',
+    '/api/version'
+  ];
+  
+  if (publicEndpoints.includes(req.path)) {
+    // For public endpoints, just attach repositories without authentication
+    const userRepository = serviceContainer.get('userRepository');
+    const programRepository = serviceContainer.get('programRepository');
+    
+    req.userRepository = userRepository;
+    req.programRepository = programRepository;
+    return next();
+  }
+  
+  // For protected endpoints (like getOperatorUser), apply full auth chain
+  initializeUserContext(req, res, (err) => {
+    if (err) return next(err);
+    requireAuth(req, res, (err) => {
+      if (err) return next(err);
+      requireOperator(req, res, next);
+    });
+  });
+});
 
 // Route handlers
 app.use('/', staticRoutes);

@@ -180,3 +180,8 @@ export class AuthenticatedUserResponse {
     };
   }
 }
+
+// Make AuthenticatedUserResponse available globally for backward compatibility
+if (typeof window !== 'undefined') {
+  window.AuthenticatedUserResponse = AuthenticatedUserResponse;
+}

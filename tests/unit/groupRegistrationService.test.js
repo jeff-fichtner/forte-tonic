@@ -114,7 +114,7 @@ describe('Group Registration Service', () => {
           startTime: '10:00',
           length: 60,
           instrument: 'Piano',
-          className: 'Beginning Piano',
+          classTitle: 'Beginning Piano',
           transportationType: 'pickup', // Should set default
           roomId: 'ROOM-001', // Should populate from instructor's availability
           registrationType: 'group',
@@ -237,7 +237,7 @@ describe('Group Registration Service', () => {
         studentId: 'STU-003',
         registrationType: 'group',
         classId: 'CLASS-001',
-        transportationType: 'dropoff', // Already specified
+        transportationType: 'both', // Already specified - should not be overridden
       };
 
       mockProgramRepository.getClassById.mockResolvedValue(classData);
@@ -257,7 +257,7 @@ describe('Group Registration Service', () => {
       // Assert
       expect(mockRegistrationRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          transportationType: 'late bus', // Should preserve existing value
+          transportationType: 'both', // Should preserve existing value
         })
       );
     });

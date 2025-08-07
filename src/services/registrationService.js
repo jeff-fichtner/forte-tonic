@@ -42,7 +42,7 @@ export class RegistrationApplicationService {
         registrationData.startTime = groupClass.startTime;
         registrationData.length = groupClass.length;
         registrationData.instrument = groupClass.instrument;
-        registrationData.className = groupClass.title;
+        registrationData.classTitle = groupClass.title;
 
         // Set default transportation for group registrations if not specified
         if (!registrationData.transportationType) {
@@ -151,7 +151,7 @@ export class RegistrationApplicationService {
           instrument: registrationData.instrument,
           roomId: registrationData.roomId,
           classId: registrationData.classId,
-          className: registrationData.className,
+          classTitle: registrationData.classTitle,
           transportationType: registrationData.transportationType,
           notes: registrationData.notes,
           expectedStartDate: registrationData.expectedStartDate,

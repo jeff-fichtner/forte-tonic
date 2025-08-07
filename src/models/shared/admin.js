@@ -11,6 +11,7 @@ export class Admin {
    * @param {string} data.lastName - Last name
    * @param {string} data.firstName - First name
    * @param {string} [data.phoneNumber] - Phone number
+   * @param {string} [data.accessCode] - Access code for authentication
    * @param {Array<string>} [data.permissions] - Permissions array
    * @param {boolean} [data.isActive=true] - Active status
    * @param {Date|string} [data.lastLoginDate] - Last login date
@@ -28,6 +29,7 @@ export class Admin {
       lastName,
       firstName,
       phoneNumber,
+      accessCode,
       permissions = [],
       isActive = true,
       lastLoginDate,
@@ -42,6 +44,7 @@ export class Admin {
 
     // Optional fields
     this.phoneNumber = phoneNumber;
+    this.accessCode = accessCode;
     this.permissions = Array.isArray(permissions) ? permissions : [];
     this.isActive = isActive;
     this.lastLoginDate = lastLoginDate
@@ -75,7 +78,7 @@ export class Admin {
    * @returns {Admin} Admin instance
    */
   static fromDatabaseRow(row) {
-    const [id, email, lastName, firstName, phone] = row;
+    const [id, email, lastName, firstName, phone, accessCode] = row;
 
     return new Admin({
       id,
@@ -83,6 +86,7 @@ export class Admin {
       lastName,
       firstName,
       phoneNumber: phone,
+      accessCode,
       permissions: [],
       isActive: true,
       lastLoginDate: null,
@@ -110,6 +114,7 @@ export class Admin {
       lastName: this.lastName,
       firstName: this.firstName,
       phone: this.phoneNumber, // Note: mapping from 'phoneNumber' to 'phone'
+      accessCode: this.accessCode,
     };
   }
 

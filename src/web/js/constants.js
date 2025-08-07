@@ -17,7 +17,7 @@ export const Sections = {
 // Server API function names
 export const ServerFunctions = {
   getOperatorUser: 'getOperatorUser',
-  getAuthenticatedUser: 'getAuthenticatedUser',
+  getOperatorUser: 'getOperatorUser',
   getAdmins: 'getAdmins',
   getInstructors: 'getInstructors',
   getStudents: 'getStudents',
@@ -26,7 +26,7 @@ export const ServerFunctions = {
   getRooms: 'getRooms',
   register: 'register',
   unregister: 'unregister',
-  login: 'login',
+  authenticateByAccessCode: 'authenticateByAccessCode',
 };
 
 // IndexedDB data stores
