@@ -194,10 +194,33 @@ class AttendanceToUuidMigration {
     console.log('✅ Backup created successfully');
 
     try {
-      // Execute migration steps
+      // Analyze current state first
       this.analyzeCurrentState();
-      this.migrateAttendanceTable();
-      this.migrateAttendanceAuditTable();
+      
+      // Define sheet modifications using safe copy-modify-replace pattern
+      const sheetModifications = [
+        {
+          sheetName: 'attendance',
+          modifyFunction: (workingSheet, originalSheet) => {
+            return this.migrateAttendanceTableSafe(workingSheet, originalSheet);
+          }
+        },
+        {
+          sheetName: 'attendance_audit',
+          modifyFunction: (workingSheet, originalSheet) => {
+            return this.migrateAttendanceAuditTableSafe(workingSheet, originalSheet);
+          }
+        }
+      ];
+
+      // Execute all modifications using batch safe pattern
+      console.log('\n🔄 Applying safe sheet modifications...');
+      const modificationResults = batchSafeSheetModification(sheetModifications);
+      
+      if (!modificationResults.success) {
+        throw new Error(`Sheet modifications failed: ${modificationResults.failedSheets.join(', ')}`);
+      }
+      
       this.validateMigration();
       
       console.log('\n✅ Migration completed successfully!');
@@ -302,6 +325,158 @@ class AttendanceToUuidMigration {
     } else {
       console.log(`   ✅ All IDs are already valid UUIDs`);
     }
+  }
+
+  /**
+   * Safely migrate attendance table using copy-modify-replace pattern
+   * @param {Sheet} workingSheet - Working copy of the attendance sheet
+   * @param {Sheet} originalSheet - Original attendance sheet (for reference)
+   * @returns {Object} Migration details
+   */
+  migrateAttendanceTableSafe(workingSheet, originalSheet) {
+    console.log('   📋 Migrating attendance table...');
+    
+    const data = workingSheet.getDataRange().getValues();
+    const headers = data[0];
+    const dataRows = data.slice(1);
+    
+    // Find ID column
+    const idIndex = headers.indexOf('id') !== -1 ? headers.indexOf('id') : headers.indexOf('Id');
+    if (idIndex === -1) {
+      console.log('     ⚠️  ID column not found in attendance table, skipping');
+      return { recordsProcessed: 0, modificationType: 'skipped_no_id' };
+    }
+    
+    // Initialize changes tracking for attendance
+    if (!this.changes.attendance) {
+      this.changes.attendance = [];
+    }
+    
+    // Process each row
+    const updatedRows = [];
+    let convertedCount = 0;
+    
+    for (let i = 0; i < dataRows.length; i++) {
+      const row = dataRows[i];
+      if (row.length === 0) continue;
+      
+      const originalId = row[idIndex];
+      let newId = originalId;
+      
+      // Check if ID needs conversion (not already a UUID)
+      if (!this.isValidUuid(originalId)) {
+        newId = this.generateUuid();
+        convertedCount++;
+        
+        // Store change for rollback
+        this.changes.attendance.push({
+          rowIndex: i + 2,
+          originalId: originalId,
+          newId: newId
+        });
+      }
+      
+      // Create updated row
+      const updatedRow = [...row];
+      updatedRow[idIndex] = newId;
+      
+      updatedRows.push(updatedRow);
+    }
+    
+    // Update the working sheet with new data
+    if (updatedRows.length > 0) {
+      // Clear existing data (except headers)
+      if (dataRows.length > 0) {
+        workingSheet.getRange(2, 1, dataRows.length, headers.length).clearContent();
+      }
+      
+      // Write updated data
+      workingSheet.getRange(2, 1, updatedRows.length, updatedRows[0].length).setValues(updatedRows);
+    }
+    
+    console.log(`     ✅ Migrated ${updatedRows.length} attendance records (${convertedCount} converted to UUID)`);
+    
+    return {
+      recordsProcessed: updatedRows.length,
+      convertedToUuid: convertedCount,
+      modificationType: 'attendance_uuid_conversion'
+    };
+  }
+
+  /**
+   * Safely migrate attendance_audit table using copy-modify-replace pattern
+   * @param {Sheet} workingSheet - Working copy of the attendance_audit sheet
+   * @param {Sheet} originalSheet - Original attendance_audit sheet (for reference)
+   * @returns {Object} Migration details
+   */
+  migrateAttendanceAuditTableSafe(workingSheet, originalSheet) {
+    console.log('   📜 Migrating attendance_audit table...');
+    
+    const data = workingSheet.getDataRange().getValues();
+    const headers = data[0];
+    const dataRows = data.slice(1);
+    
+    // Find ID column
+    const idIndex = headers.indexOf('id') !== -1 ? headers.indexOf('id') : headers.indexOf('Id');
+    if (idIndex === -1) {
+      console.log('     ⚠️  ID column not found in attendance_audit table, skipping');
+      return { recordsProcessed: 0, modificationType: 'skipped_no_id' };
+    }
+    
+    // Initialize changes tracking for attendance_audit
+    if (!this.changes.attendanceAudit) {
+      this.changes.attendanceAudit = [];
+    }
+    
+    // Process each row
+    const updatedRows = [];
+    let convertedCount = 0;
+    
+    for (let i = 0; i < dataRows.length; i++) {
+      const row = dataRows[i];
+      if (row.length === 0) continue;
+      
+      const originalId = row[idIndex];
+      let newId = originalId;
+      
+      // Check if ID needs conversion (not already a UUID)
+      if (!this.isValidUuid(originalId)) {
+        newId = this.generateUuid();
+        convertedCount++;
+        
+        // Store change for rollback
+        this.changes.attendanceAudit.push({
+          rowIndex: i + 2,
+          originalId: originalId,
+          newId: newId
+        });
+      }
+      
+      // Create updated row
+      const updatedRow = [...row];
+      updatedRow[idIndex] = newId;
+      
+      updatedRows.push(updatedRow);
+    }
+    
+    // Update the working sheet with new data
+    if (updatedRows.length > 0) {
+      // Clear existing data (except headers)
+      if (dataRows.length > 0) {
+        workingSheet.getRange(2, 1, dataRows.length, headers.length).clearContent();
+      }
+      
+      // Write updated data
+      workingSheet.getRange(2, 1, updatedRows.length, updatedRows[0].length).setValues(updatedRows);
+    }
+    
+    console.log(`     ✅ Migrated ${updatedRows.length} attendance audit records (${convertedCount} converted to UUID)`);
+    
+    return {
+      recordsProcessed: updatedRows.length,
+      convertedToUuid: convertedCount,
+      modificationType: 'attendance_audit_uuid_conversion'
+    };
   }
 
   /**

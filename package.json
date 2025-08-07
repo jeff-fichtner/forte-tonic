@@ -30,7 +30,11 @@
     "version:increment:major": "npm version major --no-git-tag-version",
     "deploy:check": "npm run build && npm run test",
     "postinstall": "echo 'Install complete - ready to start'",
-    "health": "curl -f http://localhost:${PORT:-3000}/api/health || exit 1"
+    "health": "curl -f http://localhost:${PORT:-3000}/api/health || exit 1",
+    "dev:analyze-ai": "node dev/scripts/generate_ai_comparable_analysis.js",
+    "dev:analyze-structure": "node dev/scripts/analyze_structure.js",
+    "dev:analyze-sheets": "node dev/scripts/analyze_sheets.js",
+    "dev:deep-analyze": "node dev/scripts/deep_analyze.js",
   },
   "dependencies": {
     "cors": "^2.8.5",

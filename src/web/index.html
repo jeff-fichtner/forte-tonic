@@ -236,6 +236,88 @@
             margin: auto;
             z-index: 1;
         }
+
+        /* Login Button Styling */
+        .nav-wrapper .btn.modal-trigger {
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-wrapper .btn.modal-trigger:hover {
+            background-color: rgba(255,255,255,0.2) !important;
+            border-color: rgba(255,255,255,0.5) !important;
+        }
+
+        .nav-wrapper .btn.modal-trigger i.material-icons {
+            margin-right: 4px;
+            vertical-align: middle;
+        }
+
+        /* Login Modal Styling */
+        #login-modal {
+            max-width: 400px;
+        }
+
+        #login-modal .modal-content h4 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #modal-access-code {
+            font-size: 1.1rem !important;
+        }
+
+        #modal-access-code:focus {
+            border-bottom: 1px solid #2b68a4 !important;
+            box-shadow: 0 1px 0 0 #2b68a4 !important;
+        }
+
+        /* Mobile responsiveness for login button */
+        @media (max-width: 992px) {
+            #login-button-container[data-nav-visible="true"] {
+                right: 200px !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            #login-button-container {
+                position: static !important;
+                transform: none !important;
+                display: inline-block !important;
+                margin-left: 20px !important;
+                vertical-align: middle !important;
+            }
+            
+            .nav-wrapper ul.right {
+                margin-right: 10px !important;
+            }
+        }
+
+        @media (max-width: 600px) {
+            #login-button-container {
+                margin-left: 10px !important;
+            }
+            
+            .nav-wrapper .btn.modal-trigger {
+                padding: 0 12px !important;
+                font-size: 0.9rem !important;
+            }
+        }
+
+        /* Dynamic positioning based on nav visibility */
+        #login-button-container[data-nav-visible="true"] {
+            right: 280px !important;
+        }
+
+        /* White background for content below navbar */
+        .container {
+            background-color: white;
+            min-height: calc(100vh - 200px);
+            border-radius: 0;
+        }
     </style>
 
     <title>Parents &amp; Families - Marin Country Day School</title>
@@ -319,7 +401,16 @@
                 style="display: inline-block; margin-left: 60px; vertical-align: middle; color: #fefefe; font-size: 1.5rem;">
                 <b>Forte</b>
             </h1>
-            <ul hidden id="nav-mobile" class="right">
+            
+            <!-- Login Button - floats to the right -->
+            <div id="login-button-container" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%);">
+                <a class="btn waves-effect waves-light modal-trigger" href="#login-modal" 
+                   style="background-color: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); margin: 0; height: 36px; line-height: 36px; display: flex; align-items: center;">
+                    <i class="material-icons left" style="font-size: 18px; margin-right: 6px; vertical-align: middle;">vpn_key</i>Login
+                </a>
+            </div>
+            
+            <ul hidden id="nav-mobile" class="right" style="margin-right: 20px;">
                 <li><a class="section-link" data-section="admin">Admin</a></li>
                 <li><a class="section-link" data-section="instructor">Instructors</a></li>
                 <li><a class="section-link" data-section="parent">Families</a></li>
@@ -670,6 +761,34 @@
                 </table>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <h4 style="color: #2b68a4; margin-bottom: 20px;">
+                <i class="material-icons" style="vertical-align: middle;">vpn_key</i>
+                Access Code Required
+            </h4>
+            <p style="color: #666; margin-bottom: 30px;">
+                Please enter the last 4 digits of the mobile phone number you registered with Veracross.
+            </p>
+            
+            <div class="input-field">
+                <i class="material-icons prefix">lock</i>
+                <input id="modal-access-code" type="text" class="validate" maxlength="6" pattern="[0-9]{4,6}"
+                       style="font-family: 'Courier New', monospace; letter-spacing: 2px; text-align: left;">
+                <label for="modal-access-code">Access Code</label>
+                <span class="helper-text" data-error="Please enter" data-success="Valid format"></span>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <a href="#!" class="modal-close waves-effect waves-light btn-flat" style="color: #666; margin-right: 10px;">Cancel</a>
+            <a href="#!" id="login-submit-btn" class="waves-effect waves-light btn" 
+               style="background-color: #2b68a4;">
+                <i class="material-icons left">login</i>Login
+            </a>
         </div>
     </div>
 

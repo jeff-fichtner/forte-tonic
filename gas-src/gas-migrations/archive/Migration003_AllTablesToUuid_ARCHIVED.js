@@ -1,5 +1,9 @@
 /**
  * Google Apps Script Migration 003: Convert All Tables to UUID Primary Keys
+ * 
+ * ❌ STATUS: ARCHIVED - Migration marked as archived
+ * 📅 Archived Date: August 6, 2025  
+ * 🎯 REASON: Migration archived as per project requirements
  *
  * 🎯 PURPOSE:
  * This migration converts all remaining tables to use UUID primary keys
@@ -190,9 +194,26 @@ class AllTablesToUuidMigration {
     console.log('✅ Backup created successfully');
 
     try {
-      // Execute migration steps
+      // Analyze current state first
       this.analyzeCurrentState();
-      this.executeTableMigrations();
+      
+      // Define sheet modifications using safe copy-modify-replace pattern
+      const sheetModifications = this.migrationOrder.map(tableName => ({
+        sheetName: tableName,
+        modifyFunction: (workingSheet, originalSheet) => {
+          return this.migrateTableSafe(tableName, workingSheet, originalSheet);
+        }
+      }));
+
+      // Execute all table migrations using batch safe pattern
+      console.log('\n🔄 Applying safe sheet modifications...');
+      const modificationResults = batchSafeSheetModification(sheetModifications);
+      
+      if (!modificationResults.success) {
+        throw new Error(`Sheet modifications failed: ${modificationResults.failedSheets.join(', ')}`);
+      }
+      
+      // Update foreign keys after all tables are migrated
       this.updateForeignKeys();
       this.validateMigration();
       
@@ -269,44 +290,43 @@ class AllTablesToUuidMigration {
   /**
    * Execute migrations for all tables in dependency order
    */
-  executeTableMigrations() {
-    console.log('\n🔄 Executing table migrations...');
-    
-    for (const tableName of this.migrationOrder) {
-      this.migrateTable(tableName);
-    }
-  }
-
   /**
-   * Migrate a specific table
+   * Safely migrate a specific table using copy-modify-replace pattern
+   * @param {string} tableName - Name of the table to migrate
+   * @param {Sheet} workingSheet - Working copy of the sheet
+   * @param {Sheet} originalSheet - Original sheet (for reference)
+   * @returns {Object} Migration details
    */
-  migrateTable(tableName) {
-    console.log(`\n📋 Migrating ${tableName} table...`);
+  migrateTableSafe(tableName, workingSheet, originalSheet) {
+    console.log(`   📋 Migrating ${tableName} table...`);
     
-    const sheet = this.spreadsheet.getSheetByName(tableName);
-    if (!sheet) {
-      console.log(`⚠️  ${tableName} sheet not found, skipping`);
-      return;
-    }
-    
-    const data = sheet.getDataRange().getValues();
+    const data = workingSheet.getDataRange().getValues();
     const headers = data[0];
     const dataRows = data.slice(1);
     
     // Find ID column
     const idIndex = headers.indexOf('id') !== -1 ? headers.indexOf('id') : headers.indexOf('Id');
     if (idIndex === -1) {
-      console.log(`⚠️  ID column not found in ${tableName}, skipping`);
-      return;
+      console.log(`     ⚠️  ID column not found in ${tableName}, skipping`);
+      return { recordsProcessed: 0, modificationType: 'skipped_no_id' };
     }
     
     // Check if LegacyId column exists, if not add it
     let legacyIdIndex = headers.indexOf('LegacyId');
+    let headersModified = false;
+    
     if (legacyIdIndex === -1) {
       headers.push('LegacyId');
       legacyIdIndex = headers.length - 1;
-      // Update headers in sheet
-      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      headersModified = true;
+      // Update headers in working sheet
+      workingSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      console.log(`     📋 Added LegacyId column to ${tableName}`);
+    }
+    
+    // Initialize changes tracking for this table if not exists
+    if (!this.changes[tableName]) {
+      this.changes[tableName] = [];
     }
     
     // Process each row
@@ -338,18 +358,25 @@ class AllTablesToUuidMigration {
       updatedRows.push(updatedRow);
     }
     
-    // Update the sheet with new data
+    // Update the working sheet with new data
     if (updatedRows.length > 0) {
       // Clear existing data (except headers)
       if (dataRows.length > 0) {
-        sheet.getRange(2, 1, dataRows.length, Math.max(headers.length, updatedRows[0].length)).clearContent();
+        workingSheet.getRange(2, 1, dataRows.length, headers.length).clearContent();
       }
       
       // Write updated data
-      sheet.getRange(2, 1, updatedRows.length, updatedRows[0].length).setValues(updatedRows);
+      workingSheet.getRange(2, 1, updatedRows.length, updatedRows[0].length).setValues(updatedRows);
     }
     
-    console.log(`✅ Migrated ${updatedRows.length} ${tableName} records`);
+    console.log(`     ✅ Migrated ${updatedRows.length} records in ${tableName}`);
+    
+    return {
+      recordsProcessed: updatedRows.length,
+      modificationType: 'id_to_uuid_conversion',
+      headersModified: headersModified,
+      legacyColumnAdded: legacyIdIndex === headers.length - 1
+    };
   }
 
   /**

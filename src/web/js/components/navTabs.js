@@ -36,37 +36,28 @@ export class NavTabs {
       link.addEventListener('click', event => {
         event.preventDefault();
         const dataSection = link.getAttribute('data-section');
-        const tabSectionClass = `${dataSection}-tab`;
-        tabs.forEach(section => {
-          section.style.display = section.classList.contains(tabSectionClass)
-            ? 'inline-block'
-            : 'none';
-        });
-        const showingTabs = document.getElementsByClassName(tabSectionClass);
-        if (showingTabs.length === 0) {
-          console.warn(`No tabs found for section: ${sectionId}`);
-          return;
-        }
-        // reinitialize tabs for the newly displayed section
-        M.Tabs.init(tabsContainer);
+        
+        // Console log the nav link click
+        console.log(`Nav link clicked: ${dataSection}`);
+        
+        // Keep the active state toggle functionality
         links.forEach(l =>
           l.classList.toggle('active', l.getAttribute('data-section') === dataSection)
         );
-        // initialize first tab within the section
-        const firstTabLink = showingTabs[0]?.querySelector('a');
-        if (firstTabLink) {
-          firstTabLink.click();
-        }
+        
+        // Show toast message with the selected section
+        const sectionName = dataSection.charAt(0).toUpperCase() + dataSection.slice(1);
+        M.toast({ 
+          html: `${sectionName} section selected`, 
+          classes: 'blue darken-1', 
+          displayLength: 2000 
+        });
       });
     });
-    // find matching item
-    const defaultLink = Array.from(links).find(
-      link => !defaultSection || link.getAttribute('data-section') === defaultSection
-    );
-    if (defaultLink) {
-      defaultLink.click();
-    } else {
-      console.warn(`No link found for default section: ${defaultSection}`);
+    // Initialize first nav link as active for visual consistency
+    if (links.length > 0) {
+      const firstLink = links[0];
+      firstLink.classList.add('active');
     }
   }
 }

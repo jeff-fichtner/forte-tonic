@@ -7,6 +7,7 @@
 import './constants.js';
 import './data/httpService.js';
 import '/models/shared/responses/authenticatedUserResponse.js';
+import '/models/shared/responses/operatorUserResponse.js';
 import '/models/shared/admin.js';
 import '/models/shared/class.js';
 import '/models/shared/instructor.js';
@@ -26,10 +27,68 @@ import './data/apiClient.js';
 import './utilities/domHelpers.js';
 import './utilities/durationHelpers.js';
 import './utilities/promiseHelpers.js';
+import './utilities/phoneHelpers.js';
 import './extensions/durationExtensions.js';
 import './extensions/numberExtensions.js';
 import './extensions/stringExtensions.js';
 import './viewModel.js';
+
+/**
+ * Temporary function to bypass initialization and show just navbar with login button
+ */
+function temporaryBypassInit() {
+  console.log('🚧 TEMPORARY BYPASS: Skipping full initialization');
+  
+  // Hide loading screen
+  const loadingContainer = document.getElementById('page-loading-container');
+  if (loadingContainer) {
+    loadingContainer.style.display = 'none';
+    loadingContainer.hidden = true;
+  }
+  
+  // Hide main content (tabs, etc.)
+  const pageContent = document.getElementById('page-content');
+  if (pageContent) {
+    pageContent.hidden = true;
+  }
+  
+  // Hide error content
+  const pageErrorContent = document.getElementById('page-error-content');
+  if (pageErrorContent) {
+    pageErrorContent.hidden = true;
+  }
+  
+  // Nav links are always visible now
+  
+  // Ensure login button container is positioned properly (nav is always visible)
+  const loginButtonContainer = document.getElementById('login-button-container');
+  if (loginButtonContainer) {
+    loginButtonContainer.setAttribute('data-nav-visible', 'true');
+  }
+  
+  console.log('🚧 Showing minimal UI: Forte title + Nav links + Login button');
+}
+
+/**
+ * User session storage for current user data
+ */
+const UserSession = {
+  operatorUser: null,
+  
+  saveOperatorUser(user) {
+    this.operatorUser = user;
+    console.log('Operator user saved to user session');
+  },
+  
+  getOperatorUser() {
+    return this.operatorUser;
+  },
+  
+  clearOperatorUser() {
+    this.operatorUser = null;
+    console.log('Operator user cleared from user session');
+  }
+};
 
 /**
  * Initialize the application
@@ -38,20 +97,66 @@ async function initializeApplication() {
   try {
     console.log('Initializing Tonic application...');
 
-    // Initialize version display first (for staging environments)
-    await initializeVersionDisplay();
+    // Get operator user when page first loads
+    const operatorUser = await HttpService.fetch(
+      ServerFunctions.getOperatorUser,
+      x => OperatorUserResponse.fromApiData(x)
+    );
+    
+    console.log('Operator user loaded:', operatorUser);
+    
+    // Save user in user session
+    UserSession.saveOperatorUser(operatorUser);
 
-    // Ensure ViewModel is available
-    if (typeof ViewModel === 'undefined') {
-      throw new Error('ViewModel is not available. Check that all modules loaded correctly.');
+    // Show nav links only if operator user returned successfully
+    const nav = document.getElementById('nav-mobile');
+    if (nav && operatorUser) {
+      nav.hidden = false;
+      console.log('Nav links shown - operator user authenticated');
+      
+      // Auto-click on the first present role (admin -> instructor -> parent)
+      let roleToClick = null;
+      if (operatorUser.isAdmin && operatorUser.isAdmin()) {
+        roleToClick = 'admin';
+      } else if (operatorUser.isInstructor && operatorUser.isInstructor()) {
+        roleToClick = 'instructor';
+      } else if (operatorUser.isParent && operatorUser.isParent()) {
+        roleToClick = 'parent';
+      }
+      
+      if (roleToClick) {
+        // Wait a brief moment for DOM to be ready, then click the nav link
+        setTimeout(() => {
+          const navLink = document.querySelector(`a[data-section="${roleToClick}"]`);
+          if (navLink) {
+            console.log(`Auto-clicking ${roleToClick} nav link for operator user`);
+            navLink.click();
+          }
+        }, 100);
+      } else {
+        // If no specific role matches, click the first nav link
+        setTimeout(() => {
+          const firstNavLink = document.querySelector('.section-link');
+          if (firstNavLink) {
+            console.log('No specific role found - auto-clicking first nav link');
+            firstNavLink.click();
+          }
+        }, 100);
+      }
+    } else {
+      console.log('Nav links hidden - no operator user');
     }
 
     // Initialize the main ViewModel
     const viewModel = new ViewModel();
-    await viewModel.initializeAsync();
+
+    // Temporarily bypass loading and show just navbar with login button
+    temporaryBypassInit();
 
     // Store globally for debugging and other scripts
     window.viewModel = viewModel;
+    window.operatorUser = operatorUser;
+    window.UserSession = UserSession;
 
     console.log('✓ Application initialized successfully');
   } catch (error) {
