@@ -6,12 +6,28 @@ This document provides an overview of all Google Apps Script migrations in this 
 
 The migration system provides:
 - **Structured Migrations**: Each migration is a complete, self-contained class
+- **Safe Copy-Modify-Replace Pattern**: All migrations use atomic operations that create working copies, apply changes, then safely replace originals
 - **Automatic Backups**: All migrations create backups before execution
 - **Rollback Capability**: Full rollback support with original data restoration
 - **Comprehensive Verification**: Detailed verification scripts for each migration
 - **Preview Mode**: See what changes will be made before executing
+- **Integrated Test Suites**: Each migration file includes comprehensive tests
+- **Single File Architecture**: Everything for each migration lives in one file
 
-## 🔐 SIMPLE CONFIGURATION
+## �️ NEW SAFETY FEATURES
+
+**COPY-MODIFY-REPLACE PATTERN**
+
+All migrations now use a safe pattern that:
+- ✅ **Creates working copies** of sheets before making changes
+- ✅ **Applies modifications to copies**, leaving originals untouched
+- ✅ **Atomically replaces** originals only after all changes succeed
+- ✅ **Provides instant rollback** with automatic cleanup
+- ✅ **Eliminates data corruption risk** through atomic operations
+
+See [COPY_MODIFY_REPLACE_PATTERN.md](./COPY_MODIFY_REPLACE_PATTERN.md) for detailed documentation.
+
+## �🔐 SIMPLE CONFIGURATION
 
 **JUST SET YOUR SPREADSHEET ID**
 
@@ -47,87 +63,205 @@ npm run deploy
 
 # Run migrations in Google Apps Script editor
 ```
-## Available Migrations
 
-### Migration 002: Composite to UUID (Registrations)
-**File**: `active/Migration002_CompositeToUuid.js`  
-**Documentation**: `active/Migration002_CompositeToUuid_README.md`  
-**Verification**: `active/Migration002_CompositeToUuid_Verification.js`
+## 📋 Available Migrations
 
-**Purpose**: Convert the registrations table from composite primary keys to UUID primary keys.
+### Migration 002: Convert Composite Keys to UUID Primary Keys
+- **Purpose**: Transform registration system from complex composite keys to simple UUID primary keys
+- **Status**: ✅ PROCESSED (August 6, 2025) - Successfully completed
+- **Files**: `archive/Migration002_CompositeToUuid_PROCESSED.js`
+- **Result**: Converted composite keys to UUIDs for better maintainability and performance
 
-**What it does**:
-- Converts complex composite keys like `1234_5678_SPANISH_A_2024_FALL` to simple UUIDs
-- Updates all related audit entries
-- Maintains all foreign key relationships
-- ⚠️ Note: Original composite keys are NOT preserved (backup restoration for rollback)
+### Migration 003: Convert All Tables to UUID Primary Keys  
+- **Purpose**: Convert all remaining tables to use UUID primary keys for system consistency
+- **Status**: ❌ ARCHIVED (August 6, 2025) - Migration archived as per project requirements
+- **Files**: `archive/Migration003_AllTablesToUuid_ARCHIVED.js`
+- **Note**: Migration marked as archived
 
-**Status**: ✅ Ready for execution
+### Migration 004: Attendance UUID Migration
+- **Purpose**: Convert attendance table IDs to UUID format
+- **Status**: ✅ Active and production-ready
+- **Files**: `Migration004_AttendanceToUuid.js`
+- **Safety**: Full copy-modify-replace pattern with automatic backups
 
-### Migration 003: All Tables to UUID
-**File**: `active/Migration003_AllTablesToUuid.js`  
-**Documentation**: `active/Migration003_AllTablesToUuid_README.md`  
-**Verification**: `active/Migration003_AllTablesToUuid_Verification.js`
+### Migration 005: Add Instructor AccessCode
+- **Purpose**: Add AccessCode column to instructors table for secure login
+- **Status**: ✅ Active and production-ready
+- **Files**: `Migration005_AddInstructorAccessCode.js` (single file with migration, tests, and production functions)
+- **Features**: Unique 6-digit codes, comprehensive testing, production deployment utilities
+- **Safety**: Unique code generation with comprehensive verification and rollback support
 
-**Purpose**: Convert all remaining tables to use UUID primary keys for system-wide consistency.
+### Migration 006: Add Admin AccessCode
+- **Purpose**: Add AccessCode column to admins table for secure admin authentication
+- **Status**: ✅ Active and production-ready
+- **Files**: `Migration006_AddAdminAccessCode.js` (single file with migration, tests, and production functions)
+- **Features**: 6-digit unique codes, export utilities, pre-flight checks, production confirmations
+- **Safety**: Full verification and rollback support with production safety features
 
-**What it does**:
-- Converts all main tables: admins, instructors, parents, students, classes, rooms
-- Preserves original IDs in `LegacyId` columns
-- Updates all foreign key references automatically
-- Handles dependency order correctly
-
-**Status**: ✅ Ready for execution
-
-### Migration 004: Attendance Tables to UUID
-**File**: `active/Migration004_AttendanceToUuid.js`  
-**Documentation**: `active/Migration004_AttendanceToUuid_README.md`
-
-**Purpose**: Convert attendance and attendance_audit tables to use UUID primary keys.
-
-**What it does**:
-- Converts attendance table IDs to UUIDs (if needed)
-- Ensures attendance_audit table uses UUIDs
-- Updates foreign key references to registrations
-- ⚠️ Note: Original IDs are NOT preserved (backup restoration for rollback)
-
-**Status**: ✅ Ready for execution
+### Migration 008: Add Parent AccessCode (Phone-Based)
+- **Purpose**: Add AccessCode column to parents table using last 4 digits of phone number
+- **Status**: ✅ Active and production-ready
+- **Files**: `Migration008_AddParentAccessCode.js` (single file with migration, tests, and production functions)
+- **Features**: Phone-based authentication, fallback codes, production deployment utilities
+- **Safety**: Phone validation with fallback codes for invalid phones, full verification system
 
 ## Migration Execution Order
 
-For a complete system upgrade to UUIDs:
+**Currently Active Migrations:**
 
-1. **Migration 002** - Registrations table (most complex)
-2. **Migration 004** - Attendance tables (dependent on registrations)
-3. **Migration 003** - All other tables (dependency-aware, optional)
+**For attendance table UUID conversion**:
+- **Migration 004** - Attendance table UUID migration (independent, can run anytime)
+
+**For instructor login functionality**:
+- **Migration 005** - Add instructor access codes (independent, can run anytime)
+
+**For admin login functionality**:
+- **Migration 006** - Add admin access codes (independent, can run anytime)
+
+**For parent login functionality**:
+- **Migration 008** - Add parent access codes using phone numbers (independent, can run anytime)
+
+**Completed/Archived Migrations:**
+- **Migration 002** - ✅ PROCESSED: Composite to UUID conversion completed
+- **Migration 003** - ❌ ARCHIVED: All tables to UUID migration archived
 
 ## How to Run Migrations
 
 ### Step 1: Preview Migration
 ```javascript
-// Preview what Migration 002 will do
-previewCompositeToUuidMigration()
-
-// Preview what Migration 004 will do
+// Preview what Migration 004 will do (attendance UUID)
 previewAttendanceToUuidMigration()
 
-// Preview what Migration 003 will do (optional)
-previewAllTablesToUuidMigration()
+// Preview what Migration 005 will do (instructor access codes)
+previewAddInstructorAccessCodeMigration()
+
+// Preview what Migration 006 will do (admin access codes)
+previewAddAdminAccessCodeMigration()
+
+// Preview what Migration 008 will do (parent access codes)
+previewAddParentAccessCodeMigration()
 ```
 
 ### Step 2: Execute Migration
 ```javascript
-// Execute Migration 002
-runCompositeToUuidMigration()
-
-// Execute Migration 004
+// Execute Migration 004 (attendance UUID)
 runAttendanceToUuidMigration()
 
-// Execute Migration 003 (optional)
-runAllTablesToUuidMigration()
+// Run Migration 005 (instructor access codes)
+runAddInstructorAccessCodeMigration()
+
+// Run Migration 006 (admin access codes)
+runAddAdminAccessCodeMigration()
+
+// Run Migration 008 (parent access codes)
+runAddParentAccessCodeMigration()
+```
+
+### For Access Code Migrations:
+```javascript
+// Run Migration 005 (instructor access codes)
+runAddInstructorAccessCodeMigration()
+
+// Run Migration 006 (admin access codes)
+runAddAdminAccessCodeMigration()
+
+// Run Migration 008 (parent access codes)
+runAddParentAccessCodeMigration()
+```
+
+### For UUID Migrations:
+```javascript
+// Execute Migration 004 (attendance to UUID)
+runAttendanceToUuidMigration()
 ```
 
 ### Step 3: Verify Migration
+
+### For Access Code Migrations:
+```javascript
+// Verify Migration 005 (instructor access codes)
+verifyAddInstructorAccessCodeMigration()
+
+// Verify Migration 006 (admin access codes)
+verifyAddAdminAccessCodeMigration()
+
+// Verify Migration 008 (parent access codes)
+verifyAddParentAccessCodeMigration()
+```
+
+### For UUID Migrations:
+```javascript
+// Verify Migration 004 (attendance UUID)
+verifyAttendanceToUuidMigration()
+```
+
+### Step 4: Production Deployment (Access Code Migrations)
+
+For production environments, use the special production functions that include safety confirmations:
+
+```javascript
+// Production deployment for instructor access codes
+runAddInstructorAccessCodeProductionMigration()
+
+// Production deployment for admin access codes  
+runProductionAdminAccessCodeMigration()
+
+// Production deployment for parent access codes
+runProductionParentAccessCodeMigration()
+```
+
+**Production Features:**
+- ✅ **User Confirmations**: Multiple confirmation dialogs before execution
+- ✅ **Pre-flight Checks**: Validates data integrity before migration
+- ✅ **Enhanced Backups**: Production-specific backup naming
+- ✅ **Export Utilities**: Built-in access code export functions
+- ✅ **Health Checks**: Post-migration verification and monitoring
+- ✅ **Next Steps Guidance**: Clear instructions for post-migration actions
+
+### Step 5: Access Code Export and Distribution
+
+After successful migration, export access codes for distribution:
+
+```javascript
+// Export instructor access codes
+exportInstructorAccessCodes()
+
+// Export admin access codes
+exportAdminAccessCodes()
+
+// Export parent access codes
+exportParentAccessCodes()
+```
+
+### Step 6: Test Migrations (Optional)
+
+Each migration includes integrated test suites for comprehensive validation:
+
+```javascript
+// Test Migration 005 (instructor access codes)
+runAllInstructorAccessCodeTests()          // Full test suite
+testAddInstructorAccessCodeMigration()     // Basic functionality tests
+quickVerifyInstructorAccessCodes()         // Quick validation
+
+// Test Migration 006 (admin access codes)
+runAdminAccessCodeMigrationTests()         // Full test suite
+quickTestAdminAccessCodes()                // Quick smoke test
+testAdminMigrationWithSampleData()         // Sample data test
+
+// Test Migration 008 (parent access codes)
+runParentAccessCodeMigrationTests()        // Full test suite
+quickTestParentAccessCodes()               // Quick smoke test
+testParentMigrationWithSampleData()        // Sample data test
+```
+
+**Test Features:**
+- ✅ **Self-Contained**: All tests live within migration files
+- ✅ **Comprehensive Coverage**: Environment setup, data preservation, rollback testing
+- ✅ **Sample Data Creation**: Automated test data generation
+- ✅ **Performance Testing**: Large dataset validation
+- ✅ **Error Handling**: Edge case and failure scenario testing
+
+### For UUID Migrations:
 ```javascript
 // Verify Migration 002
 verifyCompositeToUuidMigration()
@@ -137,6 +271,21 @@ verifyAttendanceToUuidMigration()
 
 // Verify Migration 003 (optional)
 verifyAllTablesUuidMigration()
+
+// Verify Migration 005
+verifyAddInstructorAccessCodeMigration()
+
+// Quick check for Migration 005
+quickVerifyInstructorAccessCodes()
+```
+
+### Step 4: Post-Migration Actions (Migration 005)
+```javascript
+// Export instructor access codes for distribution
+exportInstructorAccessCodes()
+
+// Run production health check
+quickProductionHealthCheck()
 ```
 
 ## Safety Features
@@ -148,51 +297,62 @@ Every migration creates automatic backups before execution:
 - Easy restoration if needed
 
 ### Rollback Capability
-Each migration supports full rollback:
+Each active migration supports full rollback:
 ```javascript
-// Rollback Migration 002
-rollbackCompositeToUuidMigration()
+// Rollback Migration 004 (attendance UUID)
+rollbackAttendanceToUuidMigration()
 
-// Rollback Migration 003
-rollbackAllTablesToUuidMigration()
+// Rollback Migration 005 (instructor access codes)
+rollbackAddInstructorAccessCodeMigration()
+
+// Rollback Migration 006 (admin access codes)  
+rollbackAddAdminAccessCodeMigration()
+
+// Rollback Migration 008 (parent access codes)
+rollbackAddParentAccessCodeMigration()
 ```
+
+**Note**: Processed/Archived migrations (002, 003) are no longer active and cannot be rolled back through normal means.
 
 ### Backup Restoration
 If rollback fails, restore from automatic backup:
 ```javascript
-// Restore Migration 002 backup
-restoreCompositeToUuidMigrationFromBackup()
+// Restore Migration 004 backup
+restoreAttendanceToUuidMigrationFromBackup()
 
-// Restore Migration 003 backup
-restoreAllTablesToUuidMigrationFromBackup()
+// Restore Migration 005 backup
+restoreAddInstructorAccessCodeMigrationFromBackup()
+
+// Restore Migration 006 backup
+restoreAddAdminAccessCodeMigrationFromBackup()
+
+// Restore Migration 008 backup
+restoreAddParentAccessCodeMigrationFromBackup()
 ```
 
 ## Before/After State
 
-### Before Migrations
+### Current System State
 ```
-registrations: StudentId_InstructorId_ClassCode_RoomId_Year_Term
-admins:        email@example.com
-instructors:   instructor.email@example.com
-parents:       parent_email_john_doe
+registrations: UUID format (Migration 002 PROCESSED)
+attendance:    [Original format] → will become UUID (Migration 004)
+admins:        email@example.com + AccessCode (Migration 006)
+instructors:   instructor.email@example.com + AccessCode (Migration 005)
+parents:       parent_email_john_doe + AccessCode (Migration 008)
 students:      12345
 classes:       CLASS_ABC_2024
 rooms:         ROOM_101
 ```
 
-### After Migrations
+### After Active Migrations Complete
 ```
-registrations: 550e8400-e29b-41d4-a716-446655440000
-attendance:    550e8407-e29b-41d4-a716-446655440000
-admins:        550e8401-e29b-41d4-a716-446655440000 (Migration 003 only)
-instructors:   550e8402-e29b-41d4-a716-446655440000 (Migration 003 only)
-parents:       550e8403-e29b-41d4-a716-446655440000 (Migration 003 only)
-students:      550e8404-e29b-41d4-a716-446655440000 (Migration 003 only)
-classes:       550e8405-e29b-41d4-a716-446655440000 (Migration 003 only)
-rooms:         550e8406-e29b-41d4-a716-446655440000 (Migration 003 only)
+attendance:    550e8407-e29b-41d4-a716-446655440000 (Migration 004)
+admins:        email@example.com + 6-digit AccessCode (Migration 006)
+instructors:   instructor.email@example.com + 6-digit AccessCode (Migration 005)
+parents:       parent_email_john_doe + 4-digit AccessCode from phone (Migration 008)
 ```
 
-**Note**: Original IDs are NOT preserved in Migrations 002 and 004. Migration 003 preserves original IDs in `LegacyId` columns:
+**Note**: Migration 002 (registrations) was successfully PROCESSED. Migration 003 (all tables to UUID) was ARCHIVED.
 - `LegacyId` for all tables (Migration 003 only)
 
 ## Migration Benefits
@@ -304,3 +464,45 @@ For issues with migrations:
 4. Use rollback functions if critical issues occur
 
 All migrations are designed to be safe, reversible, and well-documented for production use.
+
+## 📱 Phone-Based Access Code System
+
+### Migration 008: Parent Access Codes
+
+**Parent authentication uses familiar phone number-based access codes:**
+
+**How it works:**
+- Extracts last 4 digits from parent phone numbers (e.g., `1234567890` → `7890`)
+- Handles multiple phone formats: `(555) 123-4567`, `555-123-4567`, `555.123.4567`
+- Generates unique fallback codes for invalid/missing phone numbers
+- Provides comprehensive verification to track phone-based vs fallback codes
+
+**Phone Number Processing:**
+```javascript
+// Phone formats supported:
+'1234567890'        → '7890'  // Standard 10-digit
+'(555) 123-4567'    → '4567'  // Formatted with parentheses
+'555-123-4567'      → '4567'  // Formatted with dashes
+'+1-555-123-4567'   → '4567'  // International format
+
+// Invalid phones get unique fallback codes:
+'123'       → '0123'  // Padded short numbers
+'invalid'   → '8472'  // Randomly generated unique code
+''          → '9234'  // Empty strings get unique codes
+```
+
+**Deployment Process:**
+1. Set spreadsheet ID in `Config.js`
+2. Deploy with `clasp push`
+3. Run `previewAddParentAccessCodeMigration()` to preview changes
+4. Run `runAddParentAccessCodeMigration()` to execute
+5. Run `verifyAddParentAccessCodeMigration()` to check results
+6. Use `exportParentAccessCodes()` to distribute codes to parents
+
+**Testing:**
+- Comprehensive test suite: `test_parent_access_code_migration.js`
+- Quick test: `quickTestParentAccessCodes()`
+- Sample data test: `testParentMigrationWithSampleData()`
+- Rollback test: `testParentAccessCodeRollback()`
+
+The phone-based system provides familiar authentication for parents while maintaining security through proper fallback handling.

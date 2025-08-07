@@ -116,7 +116,7 @@ class YourMigrationNameClass {
   }
 
   /**
-   * Execute the migration
+   * Execute the migration using safe copy-modify-replace pattern
    */
   execute() {
     console.log(`🚀 EXECUTING MIGRATION: ${this.migrationName}`);
@@ -144,37 +144,32 @@ class YourMigrationNameClass {
     };
 
     try {
-      // REPLACE: Add your migration logic here
+      // REPLACE: Define sheet modifications using safe pattern
+      const sheetModifications = [
+        {
+          sheetName: 'sheet1', // TODO: Replace with actual sheet name
+          modifyFunction: (workingSheet, originalSheet) => {
+            // TODO: Replace with your actual modification logic
+            return this.modifySheet1(workingSheet, originalSheet, results);
+          }
+        },
+        {
+          sheetName: 'sheet2', // TODO: Replace with actual sheet name  
+          modifyFunction: (workingSheet, originalSheet) => {
+            // TODO: Replace with your actual modification logic
+            return this.modifySheet2(workingSheet, originalSheet, results);
+          }
+        }
+        // TODO: Add more sheet modifications as needed
+      ];
 
-      // Phase 1: Validation and Setup
-      console.log('📝 PHASE 1: Validation and Setup...');
-
-      // Check prerequisites
-      // Example:
-      // const sheet = this.spreadsheet.getSheetByName('your-sheet');
-      // if (!sheet) {
-      //   throw new Error('Required sheet not found');
-      // }
-
-      // Phase 2: Data Changes
-      console.log('\n🔄 PHASE 2: Applying Data Changes...');
-
-      // REPLACE: Add your data modification logic
-      // Examples:
-      // - Update cell values
-      // - Add new columns
-      // - Modify headers
-      // - Transform data formats
-
-      // Phase 3: Validation and Formatting
-      console.log('\n⚡ PHASE 3: Validation and Formatting...');
-
-      // REPLACE: Add validation rules and formatting
-      // Examples:
-      // - Add data validation
-      // - Apply conditional formatting
-      // - Freeze rows/columns
-      // - Set cell formats
+      // Execute all modifications using batch safe pattern
+      console.log('\n🔄 Applying safe sheet modifications...');
+      const modificationResults = batchSafeSheetModification(sheetModifications);
+      
+      if (!modificationResults.success) {
+        throw new Error(`Sheet modifications failed: ${modificationResults.failedSheets.join(', ')}`);
+      }
 
       console.log('\n✅ MIGRATION COMPLETED SUCCESSFULLY!');
       console.log('\n📋 SUMMARY OF CHANGES:');
@@ -261,6 +256,66 @@ class YourMigrationNameClass {
    * - applyBatchUpdates(updates)
    * - logProgress(message)
    */
+
+  /**
+   * TODO: Replace with your actual sheet1 modification logic
+   * This method will be called with a working copy of sheet1
+   * 
+   * @param {Sheet} workingSheet - The working copy of the sheet to modify
+   * @param {Sheet} originalSheet - Reference to the original sheet (for data comparison)
+   * @param {Object} results - Results object to update with changes made
+   * @returns {Object} Modification details
+   */
+  modifySheet1(workingSheet, originalSheet, results) {
+    console.log('   🔧 Modifying sheet1...');
+    
+    // TODO: Replace with your actual modification logic
+    // Examples:
+    // - Update specific cells: workingSheet.getRange('A1').setValue('New Value');
+    // - Add new columns: workingSheet.insertColumnAfter(2);
+    // - Modify headers: workingSheet.getRange(1, 1, 1, 3).setValues([['New', 'Headers', 'Here']]);
+    // - Transform data formats
+    // - Apply data validation
+    
+    // Example modification (remove this in actual implementation):
+    const data = workingSheet.getDataRange().getValues();
+    console.log(`     📊 Processing ${data.length - 1} rows of data`);
+    
+    // Update results with what was actually changed
+    results.recordsUpdated += data.length - 1; // Example
+    
+    return {
+      rowsProcessed: data.length - 1,
+      modificationType: 'example_modification'
+    };
+  }
+
+  /**
+   * TODO: Replace with your actual sheet2 modification logic
+   * This method will be called with a working copy of sheet2
+   * 
+   * @param {Sheet} workingSheet - The working copy of the sheet to modify
+   * @param {Sheet} originalSheet - Reference to the original sheet (for data comparison)
+   * @param {Object} results - Results object to update with changes made
+   * @returns {Object} Modification details
+   */
+  modifySheet2(workingSheet, originalSheet, results) {
+    console.log('   🔧 Modifying sheet2...');
+    
+    // TODO: Replace with your actual modification logic
+    
+    // Example modification (remove this in actual implementation):
+    const headers = workingSheet.getRange(1, 1, 1, workingSheet.getLastColumn()).getValues()[0];
+    console.log(`     📋 Processing headers: ${headers.join(', ')}`);
+    
+    // Update results with what was actually changed
+    results.columnsAdded += 1; // Example
+    
+    return {
+      headersProcessed: headers.length,
+      modificationType: 'example_modification'
+    };
+  }
 
   /**
    * Helper method to get sheet data safely

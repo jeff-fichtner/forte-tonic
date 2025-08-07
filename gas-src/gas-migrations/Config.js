@@ -270,3 +270,157 @@ function findLatestBackup(migrationName) {
     return null;
   }
 }
+
+/**
+ * Safe sheet modification utility that implements copy-modify-replace pattern
+ * This creates a copy of the sheet, applies changes to the copy, then replaces the original
+ * 
+ * @param {string} sheetName - Name of the sheet to modify
+ * @param {Function} modifyFunction - Function that takes a sheet and applies modifications
+ * @param {Object} options - Optional configuration
+ * @param {boolean} options.preserveFormatting - Whether to preserve formatting (default: true)
+ * @param {boolean} options.preserveHiddenStatus - Whether to preserve hidden status (default: true)
+ * @returns {Object} Result object with success flag and details
+ */
+function safeSheetModification(sheetName, modifyFunction, options = {}) {
+  const {
+    preserveFormatting = true,
+    preserveHiddenStatus = true
+  } = options;
+  
+  try {
+    const spreadsheet = SpreadsheetApp.openById(getSpreadsheetId());
+    const originalSheet = spreadsheet.getSheetByName(sheetName);
+    
+    if (!originalSheet) {
+      throw new Error(`Sheet "${sheetName}" not found`);
+    }
+    
+    console.log(`🔄 Starting safe modification of sheet: ${sheetName}`);
+    
+    // Step 1: Create a working copy of the sheet
+    const timestamp = new Date().getTime();
+    const workingCopyName = `TEMP_WORKING_${sheetName}_${timestamp}`;
+    const workingCopy = originalSheet.copyTo(spreadsheet);
+    workingCopy.setName(workingCopyName);
+    
+    console.log(`   📋 Created working copy: ${workingCopyName}`);
+    
+    // Step 2: Apply modifications to the working copy
+    console.log(`   🔧 Applying modifications to working copy...`);
+    const modificationResult = modifyFunction(workingCopy, originalSheet);
+    
+    // Step 3: Prepare for sheet replacement
+    const originalSheetIndex = originalSheet.getIndex();
+    const isOriginalHidden = originalSheet.isSheetHidden();
+    
+    // Step 4: Rename original sheet to backup name
+    const backupName = `TEMP_ORIGINAL_${sheetName}_${timestamp}`;
+    originalSheet.setName(backupName);
+    console.log(`   📦 Renamed original sheet to: ${backupName}`);
+    
+    // Step 5: Rename working copy to take over as the main sheet
+    workingCopy.setName(sheetName);
+    
+    // Step 6: Preserve sheet position and visibility
+    if (preserveHiddenStatus && isOriginalHidden) {
+      workingCopy.hideSheet();
+    }
+    
+    // Move the new sheet to the original position
+    spreadsheet.moveActiveSheet(originalSheetIndex);
+    
+    console.log(`   ✅ New sheet now active as: ${sheetName}`);
+    
+    // Step 7: Delete the original sheet
+    spreadsheet.deleteSheet(spreadsheet.getSheetByName(backupName));
+    console.log(`   🗑️  Deleted original sheet: ${backupName}`);
+    
+    console.log(`✅ Safe sheet modification completed for: ${sheetName}`);
+    
+    return {
+      success: true,
+      sheetName: sheetName,
+      modificationResult: modificationResult,
+      workingCopyUsed: workingCopyName
+    };
+    
+  } catch (error) {
+    console.error(`❌ Safe sheet modification failed for ${sheetName}:`, error.message);
+    
+    // Cleanup: Try to remove any temporary sheets that might have been created
+    try {
+      const spreadsheet = SpreadsheetApp.openById(getSpreadsheetId());
+      const allSheets = spreadsheet.getSheets();
+      const tempSheets = allSheets.filter(sheet => 
+        sheet.getName().includes('TEMP_WORKING_') || 
+        sheet.getName().includes('TEMP_ORIGINAL_')
+      );
+      
+      for (const tempSheet of tempSheets) {
+        if (tempSheet.getName().includes(sheetName)) {
+          console.log(`   🧹 Cleaning up temporary sheet: ${tempSheet.getName()}`);
+          spreadsheet.deleteSheet(tempSheet);
+        }
+      }
+    } catch (cleanupError) {
+      console.error('   ⚠️  Cleanup failed:', cleanupError.message);
+    }
+    
+    return {
+      success: false,
+      error: error.message,
+      sheetName: sheetName
+    };
+  }
+}
+
+/**
+ * Batch safe sheet modification for multiple sheets
+ * Applies the copy-modify-replace pattern to multiple sheets
+ * 
+ * @param {Array<Object>} sheetModifications - Array of modification objects
+ * @param {string} sheetModifications[].sheetName - Name of sheet to modify
+ * @param {Function} sheetModifications[].modifyFunction - Modification function for this sheet
+ * @param {Object} sheetModifications[].options - Options for this sheet (optional)
+ * @returns {Object} Result object with success details for all sheets
+ */
+function batchSafeSheetModification(sheetModifications) {
+  console.log(`🚀 Starting batch safe sheet modification for ${sheetModifications.length} sheets`);
+  
+  const results = {
+    success: true,
+    totalSheets: sheetModifications.length,
+    successfulSheets: [],
+    failedSheets: [],
+    details: []
+  };
+  
+  for (const modification of sheetModifications) {
+    const { sheetName, modifyFunction, options = {} } = modification;
+    
+    console.log(`\n📋 Processing sheet: ${sheetName}`);
+    
+    const result = safeSheetModification(sheetName, modifyFunction, options);
+    results.details.push(result);
+    
+    if (result.success) {
+      results.successfulSheets.push(sheetName);
+      console.log(`   ✅ Successfully modified: ${sheetName}`);
+    } else {
+      results.failedSheets.push(sheetName);
+      results.success = false;
+      console.error(`   ❌ Failed to modify: ${sheetName} - ${result.error}`);
+    }
+  }
+  
+  console.log(`\n📊 Batch modification summary:`);
+  console.log(`   ✅ Successful: ${results.successfulSheets.length}/${results.totalSheets}`);
+  console.log(`   ❌ Failed: ${results.failedSheets.length}/${results.totalSheets}`);
+  
+  if (results.failedSheets.length > 0) {
+    console.log(`   Failed sheets: ${results.failedSheets.join(', ')}`);
+  }
+  
+  return results;
+}

@@ -13,6 +13,9 @@ import { formatGrade, formatTime } from './extensions/numberExtensions.js';
  *
  */
 export class ViewModel {
+  // Private fields
+  #accessCodeCache = null;
+
   /**
    *
    */
@@ -118,6 +121,12 @@ export class ViewModel {
     const defaultSectionToUse = !authenticatedUser.shouldShowAsOperator ? defaultSection : null;
     this.navTabs = new NavTabs(defaultSectionToUse);
     this.#setPageLoading(false);
+    
+    // Initialize login modal
+    this.#initLoginModal();
+    
+    // Check for stored access code and update login button
+    this.#updateLoginButtonState();
   }
   /**
    *
@@ -304,11 +313,19 @@ export class ViewModel {
     const pageContent = document.getElementById('page-content');
     const pageErrorContent = document.getElementById('page-error-content');
     const pageErrorContentMessage = document.getElementById('page-error-content-message');
-    const nav = document.getElementById('nav-mobile');
+    const loginButtonContainer = document.getElementById('login-button-container');
+    
     loadingContainer.style.display = isLoading ? 'flex' : 'none';
     loadingContainer.hidden = !isLoading;
     pageContent.hidden = isLoading || errorMessage;
-    nav.hidden = !this.currentUser.shouldShowAsOperator || isLoading || errorMessage;
+    
+    // Nav links are always visible now - no conditional hiding
+    
+    // Update login button positioning (simplified since nav is always visible)
+    if (loginButtonContainer) {
+      loginButtonContainer.setAttribute('data-nav-visible', 'true');
+    }
+    
     pageErrorContent.hidden = !errorMessage && !isLoading;
     pageErrorContentMessage.textContent = errorMessage;
   }
@@ -708,7 +725,8 @@ export class ViewModel {
           ? employee.roles.join(', ')
           : employee.roles || 'Unknown';
         const email = employee.email || 'No email';
-        const phone = employee.phone || employee.phoneNumber || 'No phone';
+        const rawPhone = employee.phone || employee.phoneNumber || '';
+        const phone = rawPhone ? formatPhone(rawPhone) : 'No phone';
 
         return `
                         <td>${fullName}</td>
@@ -939,6 +957,250 @@ export class ViewModel {
       console.warn('No students found from server.');
     }
     return students;
+  }
+
+  /**
+   * Initialize the login modal functionality
+   */
+  #initLoginModal() {
+    // Initialize MaterializeCSS modal
+    const modalElement = document.getElementById('login-modal');
+    if (!modalElement) {
+      console.warn('Login modal not found');
+      return;
+    }
+
+    // Initialize modal
+    this.loginModal = M.Modal.init(modalElement, {
+      dismissible: true,
+      opacity: 0.5,
+      inDuration: 300,
+      outDuration: 200
+    });
+
+    // Get modal elements
+    const accessCodeInput = document.getElementById('modal-access-code');
+    const loginButton = document.getElementById('login-submit-btn');
+
+    if (!accessCodeInput || !loginButton) {
+      console.warn('Login modal elements not found');
+      return;
+    }
+
+    // Only allow numeric input
+    accessCodeInput.addEventListener('input', (e) => {
+      // Remove any non-numeric characters
+      const numericValue = e.target.value.replace(/[^0-9]/g, '');
+      e.target.value = numericValue;
+      
+      // Update MaterializeCSS validation classes
+      if (numericValue.length >= 4 && numericValue.length <= 6) {
+        e.target.classList.add('valid');
+        e.target.classList.remove('invalid');
+      } else {
+        e.target.classList.add('invalid');
+        e.target.classList.remove('valid');
+      }
+    });
+
+    // Handle enter key press in input
+    accessCodeInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.#handleLogin();
+      }
+    });
+
+    // Handle login button click
+    loginButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.#handleLogin();
+    });
+
+    // Clear input when modal opens
+    modalElement.addEventListener('modal-open', () => {
+      accessCodeInput.value = '';
+      accessCodeInput.classList.remove('valid', 'invalid');
+      accessCodeInput.focus();
+    });
+
+    console.log('Login modal initialized successfully');
+  }
+
+  /**
+   * Update login button state based on stored access code
+   */
+  #updateLoginButtonState() {
+    const loginButton = document.querySelector('a[href="#login-modal"]');
+    if (!loginButton) {
+      console.warn('Login button not found');
+      return;
+    }
+
+    // Check if there's a stored access code
+    const storedCode = this.#getStoredAccessCode();
+    
+    if (storedCode) {
+      // Change button text to "Change User" if access code exists
+      const buttonTextNode = loginButton.childNodes[loginButton.childNodes.length - 1];
+      if (buttonTextNode && buttonTextNode.nodeType === Node.TEXT_NODE) {
+        buttonTextNode.textContent = 'Change User';
+      }
+      console.log('Login button updated to "Change User" - stored access code found');
+    } else {
+      // Ensure button text is "Login" if no stored code
+      const buttonTextNode = loginButton.childNodes[loginButton.childNodes.length - 1];
+      if (buttonTextNode && buttonTextNode.nodeType === Node.TEXT_NODE) {
+        buttonTextNode.textContent = 'Login';
+      }
+      console.log('Login button set to "Login" - no stored access code');
+    }
+  }
+
+  /**
+   * Handle login form submission
+   */
+  async #handleLogin() {
+    const accessCodeInput = document.getElementById('modal-access-code');
+    const accessCode = accessCodeInput.value.trim();
+
+    // Validate access code
+    if (accessCode.length < 4 || accessCode.length > 6) {
+      M.toast({ 
+        html: 'Access code must be 4-6 digits', 
+        classes: 'red darken-1',
+        displayLength: 3000 
+      });
+      accessCodeInput.focus();
+      return;
+    }
+
+    console.log('Login attempt with access code:', accessCode);
+
+    try {
+      // Send access code to backend
+      const response = await HttpService.post(ServerFunctions.login, { accessCode });
+      
+      // Check if login was successful based on backend response
+      const loginSuccess = response?.success === true;
+      
+      if (loginSuccess) {
+        // Save the access code securely in the browser
+        // Return the code in the response and store it securely
+        const returnedCode = response?.accessCode || accessCode; // Use returned code from server or fallback to submitted code
+        this.#saveAccessCodeSecurely(returnedCode);
+        
+        // Handle successful login
+        this.loginModal.close();
+        accessCodeInput.value = ''; // Clear the input
+        
+        // Update login button state to show "Change User"
+        this.#updateLoginButtonState();
+        
+        M.toast({ html: 'Login successful!', classes: 'green darken-1', displayLength: 3000 });
+        console.log('Login successful, access code saved securely');
+        // TODO: Handle authentication state, redirect, or refresh as needed
+      } else {
+        const errorMessage = response?.error || 'Invalid access code';
+        M.toast({ html: errorMessage, classes: 'red darken-1', displayLength: 3000 });
+        accessCodeInput.focus();
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      M.toast({ html: 'Login failed. Please try again.', classes: 'red darken-1', displayLength: 4000 });
+      accessCodeInput.focus();
+    }
+  }
+
+  /**
+   * Save access code securely in the browser
+   * @param {string} accessCode - The access code to save
+   */
+  #saveAccessCodeSecurely(accessCode) {
+    try {
+      // Use sessionStorage for secure, session-based storage
+      // Data persists only for the browser session and is cleared when tab is closed
+      const secureData = {
+        accessCode: accessCode,
+        timestamp: Date.now(),
+        sessionId: this.#generateSessionId()
+      };
+      
+      // Store encrypted/encoded data
+      const encodedData = btoa(JSON.stringify(secureData)); // Base64 encode for basic obfuscation
+      sessionStorage.setItem('forte_auth_session', encodedData);
+      
+      console.log('Access code saved securely in session storage');
+    } catch (error) {
+      console.error('Failed to save access code securely:', error);
+      // Fallback to memory storage if sessionStorage fails
+      this.#accessCodeCache = {
+        accessCode: accessCode,
+        timestamp: Date.now()
+      };
+    }
+  }
+
+  /**
+   * Generate a unique session ID
+   * @returns {string} A unique session identifier
+   */
+  #generateSessionId() {
+    return 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  }
+
+  /**
+   * Retrieve the securely stored access code
+   * @returns {string|null} The stored access code or null if not found/expired
+   */
+  #getStoredAccessCode() {
+    try {
+      const encodedData = sessionStorage.getItem('forte_auth_session');
+      if (!encodedData) {
+        return this.#accessCodeCache?.accessCode || null;
+      }
+      
+      const secureData = JSON.parse(atob(encodedData));
+      
+      // Check if session is still valid (optional: add expiration logic)
+      const sessionAge = Date.now() - secureData.timestamp;
+      const maxSessionAge = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+      
+      if (sessionAge > maxSessionAge) {
+        this.#clearStoredAccessCode();
+        return null;
+      }
+      
+      return secureData.accessCode;
+    } catch (error) {
+      console.error('Failed to retrieve stored access code:', error);
+      return this.#accessCodeCache?.accessCode || null;
+    }
+  }
+
+  /**
+   * Clear the stored access code (for logout)
+   */
+  #clearStoredAccessCode() {
+    try {
+      sessionStorage.removeItem('forte_auth_session');
+      this.#accessCodeCache = null;
+      
+      // Update login button state back to "Login"
+      this.#updateLoginButtonState();
+      
+      console.log('Stored access code cleared');
+    } catch (error) {
+      console.error('Failed to clear stored access code:', error);
+    }
+  }
+
+  /**
+   * Public method to clear stored access code (for logout functionality)
+   */
+  clearUserSession() {
+    this.#clearStoredAccessCode();
+    M.toast({ html: 'User session cleared', classes: 'blue darken-1', displayLength: 2000 });
   }
 }
 
