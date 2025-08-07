@@ -34,7 +34,7 @@
     "dev:analyze-ai": "node dev/scripts/generate_ai_comparable_analysis.js",
     "dev:analyze-structure": "node dev/scripts/analyze_structure.js",
     "dev:analyze-sheets": "node dev/scripts/analyze_sheets.js",
-    "dev:deep-analyze": "node dev/scripts/deep_analyze.js",
+    "dev:deep-analyze": "node dev/scripts/deep_analyze.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
