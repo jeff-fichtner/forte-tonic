@@ -9,16 +9,18 @@
 import { UserTransformService } from '../services/userTransformService.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
 import { _fetchData } from '../utils/helpers.js';
+import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
+import { OperatorUserResponse } from '../models/shared/responses/operatorUserResponse.js';
 
 export class UserController {
   /**
-   * Get current authenticated user
+   * Get current operator user
    */
-  static async getAuthenticatedUser(req, res) {
+  static async getOperatorUser(req, res) {
     try {
       res.json(req.currentUser);
     } catch (error) {
-      console.error('Error getting authenticated user:', error);
+      console.error('Error getting operator user:', error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -44,12 +46,16 @@ export class UserController {
   static async getInstructors(req, res) {
     try {
       const userRepository = serviceContainer.get('userRepository');
-      const data = await userRepository.getInstructors();
-      const transformedData = UserTransformService.transformArray(data, 'instructor');
-      res.json(transformedData);
+      
+      // Force refresh to get latest data from spreadsheet
+      const data = await userRepository.getInstructors(true);
+      
+      // The data is already transformed by Instructor.fromDatabaseRow
+      // No need to transform again with UserTransformService
+      res.json(data);
     } catch (error) {
-      console.error('Error getting instructors:', error);
-      res.status(500).json({ error: error.message });
+      console.error('Error in getInstructors:', error);
+      res.status(500).json({ error: 'Failed to retrieve instructors' });
     }
   }
 
@@ -58,10 +64,27 @@ export class UserController {
    */
   static async getStudents(req, res) {
     try {
+      const request = req.body[0] || {};
+      
       const userRepository = serviceContainer.get('userRepository');
       const data = await userRepository.getStudents();
       const transformedData = UserTransformService.transformArray(data, 'student');
-      res.json(transformedData);
+      
+      // Apply pagination directly for compatibility with frontend expectations
+      const page = request.page || 0;
+      const pageSize = request.pageSize || 1000;
+      const startIndex = page * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedData = transformedData.slice(startIndex, endIndex);
+
+      const result = {
+        data: paginatedData,
+        total: transformedData.length,
+        page,
+        pageSize,
+      };
+      
+      res.json(result);
     } catch (error) {
       console.error('Error getting students:', error);
       res.status(500).json({ error: error.message });
@@ -223,5 +246,165 @@ export class UserController {
       0
     );
     return Math.round(total / students.length);
+  }
+
+  /**
+   * Authenticate user by access code
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   */
+  static async authenticateByAccessCode(req, res) {
+    try {
+      const { accessCode } = req.body;
+
+      if (!accessCode) {
+        return res.status(400).json({ 
+          error: 'Access code is required',
+          success: false 
+        });
+      }
+
+      const userRepository = serviceContainer.get('userRepository');
+      
+      let admin = null;
+      let instructor = null;
+      let parent = null;
+
+      // First check 6-digit codes against admins and instructors
+      if (accessCode.length === 6) {
+        // Check admin first
+        admin = await userRepository.getAdminByAccessCode(accessCode);
+        
+        // If not found in admin, check instructor
+        if (!admin) {
+          instructor = await userRepository.getInstructorByAccessCode(accessCode);
+        }
+      }
+      
+      // Then check 4-digit codes against parents
+      if (accessCode.length === 4 && !admin && !instructor) {
+        parent = await userRepository.getParentByAccessCode(accessCode);
+      }
+
+      // If no match found, return null
+      if (!admin && !instructor && !parent) {
+        return res.json(null);
+      }
+
+      // Create AuthenticatedUserResponse with the matched user
+      const authenticatedUser = new AuthenticatedUserResponse(
+        admin?.email || instructor?.email || parent?.email,
+        false, // isOperator is false for access code login
+        admin,
+        instructor,
+        parent
+      );
+
+      res.json(authenticatedUser);
+    } catch (error) {
+      console.error('Error authenticating by access code:', error);
+      res.json(null);
+    }
+  }
+
+  /**
+   * Get admin by access code
+   */
+  static async getAdminByAccessCode(req, res) {
+    try {
+      const { accessCode } = req.body;
+      
+      if (!accessCode) {
+        return res.status(400).json({ error: 'Access code is required' });
+      }
+
+      const userRepository = serviceContainer.get('userRepository');
+      const admin = await userRepository.getAdminByAccessCode(accessCode);
+      
+      if (!admin) {
+        return res.status(404).json({ error: 'Admin not found with provided access code' });
+      }
+
+      const transformedData = UserTransformService.transform(admin, 'admin');
+      res.json(transformedData);
+    } catch (error) {
+      console.error('Error getting admin by access code:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Get instructor by access code
+   */
+  static async getInstructorByAccessCode(req, res) {
+    try {
+      const { accessCode } = req.body;
+      
+      // DEBUG: Add logging and optional breakpoint
+      console.log('🔍 DEBUG: getInstructorByAccessCode called with:', { accessCode });
+      
+      // BREAKPOINT: Uncomment the next line to add a breakpoint here
+      // debugger;
+      
+      if (!accessCode) {
+        console.log('❌ DEBUG: Access code missing in request');
+        return res.status(400).json({ error: 'Access code is required' });
+      }
+
+      const userRepository = serviceContainer.get('userRepository');
+      console.log('🔍 DEBUG: Retrieved userRepository from service container');
+      
+      // BREAKPOINT: Uncomment to debug repository call
+      // debugger;
+      
+      const instructor = await userRepository.getInstructorByAccessCode(accessCode);
+      
+      console.log('🔍 DEBUG: Repository returned:', instructor ? 
+        `${instructor.firstName} ${instructor.lastName} (${instructor.email})` : 
+        'null'
+      );
+      
+      if (!instructor) {
+        console.log('❌ DEBUG: Instructor not found, returning 404');
+        return res.status(404).json({ error: 'Instructor not found with provided access code' });
+      }
+
+      // BREAKPOINT: Uncomment to debug transformation
+      // debugger;
+      
+      const transformedData = UserTransformService.transform(instructor, 'instructor');
+      console.log('🔍 DEBUG: Transformed data keys:', Object.keys(transformedData));
+      
+      res.json(transformedData);
+    } catch (error) {
+      console.error('❌ ERROR in getInstructorByAccessCode:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Get parent by access code
+   */
+  static async getParentByAccessCode(req, res) {
+    try {
+      const { accessCode } = req.body;
+      
+      if (!accessCode) {
+        return res.status(400).json({ error: 'Access code is required' });
+      }
+
+      const userRepository = serviceContainer.get('userRepository');
+      const parent = await userRepository.getParentByAccessCode(accessCode);
+      
+      if (!parent) {
+        return res.status(404).json({ error: 'Parent not found with provided access code' });
+      }
+
+      const transformedData = UserTransformService.transform(parent, 'parent');
+      res.json(transformedData);
+    } catch (error) {
+      console.error('Error getting parent by access code:', error);
+      res.status(500).json({ error: error.message });
+    }
   }
 }

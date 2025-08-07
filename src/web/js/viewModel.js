@@ -1,5 +1,6 @@
 import { HttpService } from './data/httpService.js';
 import { ServerFunctions, DataStores, Sections, RegistrationType } from './constants.js';
+import { OperatorUserResponse } from '/models/shared/responses/operatorUserResponse.js';
 import { AuthenticatedUserResponse } from '/models/shared/responses/authenticatedUserResponse.js';
 import { Admin, Instructor, Student, Registration, Class, Room } from '/models/shared/index.js';
 import { DomHelpers } from './utilities/domHelpers.js';
@@ -16,56 +17,86 @@ export class ViewModel {
   // Private fields
   #accessCodeCache = null;
 
-  /**
-   *
-   */
   async initializeAsync() {
-    const authenticatedUser = await HttpService.fetch(
-      ServerFunctions.getAuthenticatedUser,
-      x => new AuthenticatedUserResponse(x)
+    // Get operator user when page first loads
+    const operatorUser = await HttpService.fetch(
+      ServerFunctions.getOperatorUser,
+      x => OperatorUserResponse.fromApiData(x)
     );
 
-    const validations = [
-      [
-        authenticatedUser,
-        'No authenticated user received.',
-        `Must authorize use of email address.`,
-      ],
-    ];
-    for (const [condition, errorMessage, alertMessage] of validations) {
-      if (!condition) {
-        console.error(errorMessage);
-        alert(alertMessage);
-        await DomHelpers.waitForDocumentReadyAsync();
-        await this.#setPageLoading(false, errorMessage);
-        return;
+    console.log('Operator user loaded:', operatorUser);
+
+    // Save user in user session
+    window.UserSession.saveOperatorUser(operatorUser);
+
+    // Show nav links only if operator user returned successfully
+    const nav = document.getElementById('nav-mobile');
+    if (nav && (operatorUser || window.location.hostname === 'localhost')) {
+      nav.hidden = false;
+      console.log('✅ Nav links shown - operator user authenticated or localhost debug mode');
+      console.log('Operator user:', operatorUser);
+      
+      // Temporary debug alert
+      if (!operatorUser && window.location.hostname === 'localhost') {
+        nav.style.border = '2px solid red'; // Visual indicator
+        console.log('🔧 DEBUG: Navigation forced visible for localhost testing');
       }
+
+      // If operator has seeded users (admin/instructor/parent), load the default user (admin first)
+      if (operatorUser && (operatorUser.admin || operatorUser.instructor || operatorUser.parent)) {
+        console.log('Operator user has seeded users - loading user data');
+        
+        // Determine default role to click (admin -> instructor -> parent)
+        let roleToClick = null;
+        if (operatorUser.admin) {
+          roleToClick = 'admin';
+        } else if (operatorUser.instructor) {
+          roleToClick = 'instructor';
+        } else if (operatorUser.parent) {
+          roleToClick = 'parent';
+        }
+
+        // Load user data with the operator user
+        await this.loadUserData(operatorUser, roleToClick);
+      } else if (!operatorUser && window.location.hostname === 'localhost') {
+        // Debug mode for localhost - create a mock operator user for testing
+        console.log('🔧 Debug mode: Creating mock operator user for localhost testing');
+        const mockOperatorUser = {
+          email: 'debug@localhost',
+          admin: { id: 'debug-admin', email: 'debug@localhost', isAdmin: () => true },
+          instructor: { id: 'debug-instructor', email: 'debug@localhost', isInstructor: () => true },
+          parent: { id: 'debug-parent', email: 'debug@localhost', isParent: () => true },
+          isOperator: () => true,
+          isAdmin: () => true,
+          isInstructor: () => true,
+          isParent: () => true
+        };
+        
+        window.UserSession.saveOperatorUser(mockOperatorUser);
+        await this.loadUserData(mockOperatorUser, 'admin');
+      } else {
+        console.log('Operator user has no seeded users - page will do nothing');
+        this.#setPageLoading(false);
+      }
+    } else {
+      console.log('Nav links hidden - no operator user');
+      this.#setPageLoading(false);
     }
+
+    // Initialize login modal regardless
+    this.#initLoginModal();
+
+    // Check for stored access code and update login button
+    this.#updateLoginButtonState();
   }
 
-  async initializeAsync() {
-    // BYPASS INDEXEDDB: Load fresh data directly
-    console.log('Initializing ViewModel (IndexedDB bypassed)...');
-    
-    const authenticatedUser = await HttpService.fetch(
-      ServerFunctions.getAuthenticatedUser,
-      x => new AuthenticatedUserResponse(x)
-    );
+  async loadUserData(user, roleToClick = null) {
+    console.log('Loading user data for user:', user);
 
-    const validations = [
-      [
-        authenticatedUser,
-        'Failed to get authenticated user. Please check your authentication status.',
-      ],
-    ];
-
-    for (const [value, errorMessage] of validations) {
-      if (!value) {
-        console.error(errorMessage);
-        await DomHelpers.waitForDocumentReadyAsync();
-        await this.#setPageLoading(false, errorMessage);
-        return;
-      }
+    // Only proceed if we have a valid user with backing data
+    if (!user || (!user.admin && !user.instructor && !user.parent)) {
+      console.log('No valid user with backing data - skipping data load');
+      return;
     }
 
     const [_, admins, instructors, students, registrations, classes, rooms] = await Promise.all([
@@ -77,8 +108,9 @@ export class ViewModel {
       HttpService.fetch(ServerFunctions.getClasses, x => x.map(y => Class.fromApiData(y))),
       HttpService.fetch(ServerFunctions.getRooms, x => x.map(y => Room.fromApiData(y))),
     ]);
+
     M.AutoInit();
-    this.currentUser = authenticatedUser;
+
     this.admins = admins;
     this.instructors = instructors;
     this.students = students;
@@ -90,7 +122,7 @@ export class ViewModel {
           const registrationStudentId = registration.studentId?.value || registration.studentId;
           return studentId === registrationStudentId;
         });
-        
+
         // Debug: Log if student not found
         if (!registration.student) {
           console.warn(`Student not found for registration ${registration.id} with studentId ${registration.studentId?.value || registration.studentId}`);
@@ -104,37 +136,55 @@ export class ViewModel {
     });
     this.classes = classes;
     this.rooms = rooms;
-    
+
+    // Store current user for access throughout the application
+    this.currentUser = user;
+
     let defaultSection;
-    if (authenticatedUser.shouldShowAsOperator || authenticatedUser.admin) {
+    if (user.admin) {
       this.#initAdminContent();
-      defaultSection = Sections.ADMIN;
+      defaultSection = Sections.ADMIN_MASTER_SCHEDULE;
     }
-    if (authenticatedUser.shouldShowAsOperator || authenticatedUser.instructor) {
+    if (user.instructor) {
       this.#initInstructorContent();
-      defaultSection = Sections.INSTRUCTOR;
+      defaultSection = Sections.INSTRUCTOR_WEEKLY_SCHEDULE;
     }
-    if (authenticatedUser.shouldShowAsOperator || authenticatedUser.parent) {
+    if (user.parent) {
       this.#initParentContent();
-      defaultSection = Sections.PARENT;
+      defaultSection = Sections.PARENT_WEEKLY_SCHEDULE;
     }
-    const defaultSectionToUse = !authenticatedUser.shouldShowAsOperator ? defaultSection : null;
+    
+    // For operator users, show all sections available; for authenticated users, use default section
+    const isOperatorUser = user instanceof OperatorUserResponse || (user.isOperator && user.isOperator());
+    const defaultSectionToUse = isOperatorUser ? null : defaultSection;
     this.navTabs = new NavTabs(defaultSectionToUse);
     this.#setPageLoading(false);
-    
-    // Initialize login modal
-    this.#initLoginModal();
-    
-    // Check for stored access code and update login button
-    this.#updateLoginButtonState();
+
+    // Auto-click the specified role tab if provided
+    if (roleToClick) {
+      const navLink = document.querySelector(`a[data-section="${roleToClick}"]`);
+      if (navLink) {
+        console.log(`🎯 Auto-clicking ${roleToClick} nav link for user`);
+        // Add a small delay to ensure everything is ready
+        setTimeout(() => {
+          console.log(`🖱️ Actually clicking ${roleToClick} nav link now`);
+          navLink.click();
+        }, 100);
+      } else {
+        console.warn(`❌ Nav link not found for section: ${roleToClick}`);
+      }
+    }
   }
   /**
    *
    */
   #initAdminContent() {
+    console.log('Initializing admin content...');
     // master schedule tab
     const sortedRegistrations = this.#sortRegistrations(this.registrations);
+    console.log(`Building master schedule table with ${sortedRegistrations.length} registrations`);
     this.masterScheduleTable = this.#buildRegistrationTable(sortedRegistrations);
+    console.log('Master schedule table built successfully');
     this.#populateFilterDropdowns();
     // registration form
     this.adminRegistrationForm = new AdminRegistrationForm(
@@ -155,7 +205,7 @@ export class ViewModel {
     // weekly schedule
     // directory
     const mappedEmployees = this.adminEmployees().concat(
-      this.instructors.map(this.instructorToEmployee)
+      this.instructors.map(instructor => this.instructorToEmployee(instructor))
     );
     // Sort employees to ensure admins appear at the top
     const sortedEmployees = this.#sortEmployeesForDirectory(mappedEmployees);
@@ -165,31 +215,120 @@ export class ViewModel {
    *
    */
   #initInstructorContent() {
+    // Get the current instructor's ID
+    const currentInstructorId = this.currentUser.instructor?.id;
+
+    if (!currentInstructorId) {
+      console.warn('No instructor ID found for current user');
+      return;
+    }
+
+    // Filter registrations to only show those for the current instructor
+    const instructorRegistrations = this.registrations.filter(registration => {
+      const registrationInstructorId = registration.instructorId?.value || registration.instructorId;
+      return registrationInstructorId === currentInstructorId;
+    });
+
+    console.log(`Instructor ${currentInstructorId} has ${instructorRegistrations.length} registrations out of ${this.registrations.length} total`);
+
     // weekly schedule
-    // unique days registrations
-    const daysWithRegistrations = this.registrations
+    // unique days with registrations for this instructor, sorted by day of week
+    const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const daysWithRegistrations = instructorRegistrations
       .map(registration => registration.day)
-      .filter((day, index, self) => self.indexOf(day) === index);
+      .filter((day, index, self) => self.indexOf(day) === index)
+      .sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
 
     const instructorWeeklyScheduleTables = document.getElementById(
       'instructor-weekly-schedule-tables'
     );
 
+    // Clear existing content
+    instructorWeeklyScheduleTables.innerHTML = '';
+
+    // Show 'no matching registrations' message if instructor has no registrations
+    if (instructorRegistrations.length === 0) {
+      const noRegistrationsMessage = document.createElement('div');
+      noRegistrationsMessage.className = 'card-panel orange lighten-4';
+      noRegistrationsMessage.style.cssText = 'text-align: center; padding: 30px; margin: 20px 0;';
+      noRegistrationsMessage.innerHTML = `
+        <h5 style="color: #e65100; margin-bottom: 10px;">No Scheduled Lessons</h5>
+        <p style="color: #bf360c; font-size: 16px; margin: 0;">
+          You currently have no scheduled lessons.
+        </p>
+      `;
+      instructorWeeklyScheduleTables.appendChild(noRegistrationsMessage);
+      return;
+    }
+
     // TODO future will allow redraw
-    daysWithRegistrations.forEach(day => {
+    daysWithRegistrations.forEach((day, index) => {
+      // Create a container for each day's table with padding
+      const dayContainer = document.createElement('div');
+      dayContainer.style.cssText = 'margin-bottom: 30px;'; // Add padding between tables
+      
+      // Add a day header for better organization
+      const dayHeader = document.createElement('h5');
+      dayHeader.textContent = day;
+      dayHeader.style.cssText = 'color: #2b68a4; margin-bottom: 15px; margin-top: 20px; font-weight: bold;';
+      dayContainer.appendChild(dayHeader);
+      
       const tableId = `instructor-weekly-schedule-table-${day}`;
       const newTable = document.createElement('table');
       newTable.id = tableId;
-      instructorWeeklyScheduleTables.appendChild(newTable);
-      this.#buildWeeklySchedule(
-        tableId,
-        this.registrations.filter(x => x.day === day)
-      );
+      dayContainer.appendChild(newTable);
+      
+      instructorWeeklyScheduleTables.appendChild(dayContainer);
+      
+      // Sort registrations for this day by start time, length, instrument, and grade
+      const dayRegistrations = instructorRegistrations
+        .filter(x => x.day === day)
+        .sort((a, b) => {
+          // First, sort by start time
+          const timeA = a.startTime || '';
+          const timeB = b.startTime || '';
+          if (timeA !== timeB) {
+            return timeA.localeCompare(timeB);
+          }
+          
+          // Then sort by length (duration)
+          const lengthA = a.length || a.duration || 0;
+          const lengthB = b.length || b.duration || 0;
+          if (lengthA !== lengthB) {
+            return lengthA - lengthB;
+          }
+          
+          // Then sort by instrument/class
+          const instrumentA = a.instrument || a.class?.name || '';
+          const instrumentB = b.instrument || b.class?.name || '';
+          if (instrumentA !== instrumentB) {
+            return instrumentA.localeCompare(instrumentB);
+          }
+          
+          // Finally sort by grade
+          const gradeA = a.student?.grade || a.grade || '';
+          const gradeB = b.student?.grade || b.grade || '';
+          return gradeA.localeCompare(gradeB);
+        });
+      
+      this.#buildWeeklySchedule(tableId, dayRegistrations);
     });
     // attendance
     // directory
+    // For instructors, show admins and only the current instructor (unless they're also an admin)
+    const isOperatorUser = this.currentUser instanceof OperatorUserResponse || (this.currentUser.isOperator && this.currentUser.isOperator());
+    
+    let instructorsToShow;
+    if (isOperatorUser) {
+      // Operator users can see all instructors
+      instructorsToShow = this.instructors;
+    } else {
+      // Regular instructors only see themselves
+      instructorsToShow = this.instructors.filter(instructor => instructor.id === currentInstructorId);
+    }
+    
     const mappedEmployees = this.adminEmployees().concat(
-      this.instructors.map(this.instructorToEmployee)
+      instructorsToShow.map(instructor => this.instructorToEmployee(instructor))
     );
     // Sort employees to ensure admins appear at the top
     const sortedEmployees = this.#sortEmployeesForDirectory(mappedEmployees);
@@ -206,7 +345,7 @@ export class ViewModel {
     // weekly schedule
     // Get the current parent's ID
     const currentParentId = this.currentUser.parent?.id;
-    
+
     if (!currentParentId) {
       console.warn('No parent ID found for current user');
       return;
@@ -216,7 +355,7 @@ export class ViewModel {
     const parentChildRegistrations = this.registrations.filter(registration => {
       const student = registration.student;
       if (!student) return false;
-      
+
       // Check if the current parent is either parent1 or parent2 of the student
       return student.parent1Id === currentParentId || student.parent2Id === currentParentId;
     });
@@ -226,7 +365,7 @@ export class ViewModel {
       .map(registration => registration.student)
       .filter(student => student && student.id) // Filter out undefined students and students without IDs
       .filter((student, index, self) => self.findIndex(s => s.id === student.id) === index);
-    
+
     const parentWeeklyScheduleTables = document.getElementById('parent-weekly-schedule-tables');
 
     // Clear existing content
@@ -253,27 +392,27 @@ export class ViewModel {
       const studentContainer = document.createElement('div');
       studentContainer.className = 'student-schedule-container';
       studentContainer.style.cssText = 'margin-bottom: 30px;';
-      
+
       // Add student name header
       const studentHeader = document.createElement('h5');
       studentHeader.style.cssText = 'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px;';
       studentHeader.textContent = `${student.firstName} ${student.lastName}'s Schedule`;
       studentContainer.appendChild(studentHeader);
-      
+
       // Create table for this student
       const tableId = `parent-weekly-schedule-table-${student.id}`;
       const newTable = document.createElement('table');
       newTable.id = tableId;
       studentContainer.appendChild(newTable);
-      
+
       parentWeeklyScheduleTables.appendChild(studentContainer);
-      
+
       this.#buildWeeklySchedule(
         tableId,
         parentChildRegistrations.filter(x => x.studentId.value === student.id)
       );
     });
-    
+
     // registration
     // Initialize parent registration form with hybrid interface
     this.parentRegistrationForm = new ParentRegistrationForm(
@@ -292,14 +431,14 @@ export class ViewModel {
         this.#initParentContent();
       }
     );
-    
+
     // directory - only show instructors who teach the parent's children
     const mappedEmployees = this.adminEmployees().concat(
       this.instructors
         .filter(instructor =>
           parentChildRegistrations.some(registration => registration.instructorId.value === instructor.id)
         )
-        .map(this.instructorToEmployee)
+        .map(instructor => this.instructorToEmployee(instructor))
     );
     // Sort employees to ensure admins appear at the top
     const sortedEmployees = this.#sortEmployeesForDirectory(mappedEmployees);
@@ -314,18 +453,18 @@ export class ViewModel {
     const pageErrorContent = document.getElementById('page-error-content');
     const pageErrorContentMessage = document.getElementById('page-error-content-message');
     const loginButtonContainer = document.getElementById('login-button-container');
-    
+
     loadingContainer.style.display = isLoading ? 'flex' : 'none';
     loadingContainer.hidden = !isLoading;
     pageContent.hidden = isLoading || errorMessage;
-    
+
     // Nav links are always visible now - no conditional hiding
-    
+
     // Update login button positioning (simplified since nav is always visible)
     if (loginButtonContainer) {
       loginButtonContainer.setAttribute('data-nav-visible', 'true');
     }
-    
+
     pageErrorContent.hidden = !errorMessage && !isLoading;
     pageErrorContentMessage.textContent = errorMessage;
   }
@@ -352,13 +491,13 @@ export class ViewModel {
       while (instructorSelect.children.length > 1) {
         instructorSelect.removeChild(instructorSelect.lastChild);
       }
-      
+
       // Ensure first option is disabled and not selected
       if (instructorSelect.firstElementChild) {
         instructorSelect.firstElementChild.disabled = true;
         instructorSelect.firstElementChild.selected = false;
       }
-      
+
       // Add instructor options
       this.instructors.forEach(instructor => {
         const option = document.createElement('option');
@@ -375,13 +514,13 @@ export class ViewModel {
       while (daySelect.children.length > 1) {
         daySelect.removeChild(daySelect.lastChild);
       }
-      
+
       // Ensure first option is disabled and not selected
       if (daySelect.firstElementChild) {
         daySelect.firstElementChild.disabled = true;
         daySelect.firstElementChild.selected = false;
       }
-      
+
       // Get unique days from registrations
       const uniqueDays = [...new Set(this.registrations.map(reg => reg.day))];
       // Sort days in logical weekday order
@@ -401,18 +540,18 @@ export class ViewModel {
       while (gradeSelect.children.length > 1) {
         gradeSelect.removeChild(gradeSelect.lastChild);
       }
-      
+
       // Ensure first option is disabled and not selected
       if (gradeSelect.firstElementChild) {
         gradeSelect.firstElementChild.disabled = true;
         gradeSelect.firstElementChild.selected = false;
       }
-      
+
       // Get unique grades from students who have registrations
-      const registeredStudentIds = this.registrations.map(reg => 
+      const registeredStudentIds = this.registrations.map(reg =>
         reg.studentId?.value || reg.studentId
       );
-      const registeredStudents = this.students.filter(student => 
+      const registeredStudents = this.students.filter(student =>
         registeredStudentIds.includes(student.id?.value || student.id)
       );
       const uniqueGrades = [...new Set(registeredStudents.map(student => student.grade))];
@@ -443,7 +582,7 @@ export class ViewModel {
    */
   #sortRegistrations(registrations) {
     const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    
+
     return [...registrations].sort((a, b) => {
       // 1. Sort by day
       const dayA = dayOrder.indexOf(a.day);
@@ -451,21 +590,21 @@ export class ViewModel {
       if (dayA !== dayB) {
         return dayA - dayB;
       }
-      
+
       // 2. Sort by start time
       const timeA = a.startTime || '';
       const timeB = b.startTime || '';
       if (timeA !== timeB) {
         return timeA.localeCompare(timeB);
       }
-      
+
       // 3. Sort by length (numeric)
       const lengthA = parseInt(a.length) || 0;
       const lengthB = parseInt(b.length) || 0;
       if (lengthA !== lengthB) {
         return lengthA - lengthB;
       }
-      
+
       // 4. Sort by registration type (private first, then group)
       const typeA = a.registrationType || '';
       const typeB = b.registrationType || '';
@@ -473,7 +612,7 @@ export class ViewModel {
         // 'private' comes before 'group' alphabetically, which is what we want
         return typeA.localeCompare(typeB);
       }
-      
+
       return 0;
     });
   }
@@ -500,11 +639,11 @@ export class ViewModel {
         // Extract primitive values for comparison
         const instructorIdToFind = registration.instructorId?.value || registration.instructorId;
         const studentIdToFind = registration.studentId?.value || registration.studentId;
-        
+
         // Find instructor and student
         const instructor = this.instructors.find(x => x.id === instructorIdToFind);
         const student = this.students.find(x => x.id?.value === studentIdToFind);
-        
+
         if (!instructor || !student) {
           console.warn(`Instructor or student not found for registration: ${registration.id}`);
           return '';
@@ -538,26 +677,26 @@ export class ViewModel {
           return;
         }
         event.preventDefault();
-        
+
         // Get the registration ID from the data attribute
         const linkElement = event.target.closest('a');
         const registrationId = linkElement?.getAttribute('data-registration-id');
         if (!registrationId) return;
 
         // Find the registration by ID in the original registrations array
-        const currentRegistration = this.registrations.find(r => 
+        const currentRegistration = this.registrations.find(r =>
           (r.id?.value || r.id) === registrationId
         );
-        if (!currentRegistration) return;        if (isCopy) {
+        if (!currentRegistration) return; if (isCopy) {
           // Get the student ID from the current registration
           const studentIdToFind = currentRegistration.studentId?.value || currentRegistration.studentId;
-          
+
           // Find the full student object with parent emails from this.students
           const fullStudent = this.students.find(x => {
             const studentId = x.id?.value || x.id;
             return studentId === studentIdToFind;
           });
-          
+
           if (fullStudent && fullStudent.parentEmails && fullStudent.parentEmails.trim()) {
             await this.#copyToClipboard(fullStudent.parentEmails);
           } else {
@@ -577,12 +716,12 @@ export class ViewModel {
         const instructorSelect = document.getElementById('master-schedule-instructor-filter-select');
         const daySelect = document.getElementById('master-schedule-day-filter-select');
         const gradeSelect = document.getElementById('master-schedule-grade-filter-select');
-        
+
         // If any dropdown doesn't exist yet, show all registrations (during initial load)
         if (!instructorSelect || !daySelect || !gradeSelect) {
           return true;
         }
-        
+
         const selectedInstructors = Array.from(instructorSelect.selectedOptions)
           .map(option => option.value)
           .filter(value => value !== ''); // Exclude empty placeholder values
@@ -592,34 +731,34 @@ export class ViewModel {
         const selectedGrades = Array.from(gradeSelect.selectedOptions)
           .map(option => option.value)
           .filter(value => value !== ''); // Exclude empty placeholder values
-        
+
         // Extract primitive values for comparison
         const instructorIdToFind = registration.instructorId?.value || registration.instructorId;
         const studentIdToFind = registration.studentId?.value || registration.studentId;
-        
+
         // Find instructor and student
         const instructor = this.instructors.find(x => x.id === instructorIdToFind);
         const student = this.students.find(x => x.id?.value === studentIdToFind);
-        
+
         if (!instructor || !student) {
           return false; // Skip rows where instructor or student not found
         }
-        
+
         // Filter by selected instructors (if any selected, otherwise show all)
         if (selectedInstructors.length > 0 && !selectedInstructors.includes(instructorIdToFind)) {
           return false;
         }
-        
+
         // Filter by selected days (if any selected, otherwise show all)
         if (selectedDays.length > 0 && !selectedDays.includes(registration.day)) {
           return false;
         }
-        
+
         // Filter by selected grades (if any selected, otherwise show all)
         if (selectedGrades.length > 0 && !selectedGrades.includes(student.grade?.toString())) {
           return false;
         }
-        
+
         return true;
       },
       [
@@ -642,8 +781,8 @@ export class ViewModel {
         pageSizeOptions: [25, 50, 75, 100],
         rowClassFunction: registration => {
           // Return CSS class based on registration type
-          return registration.registrationType === RegistrationType.GROUP 
-            ? 'registration-row-group' 
+          return registration.registrationType === RegistrationType.GROUP
+            ? 'registration-row-group'
             : 'registration-row-private';
         }
       }
@@ -664,20 +803,20 @@ export class ViewModel {
           const enrollmentInstructorId = enrollment.instructorId?.value || enrollment.instructorId;
           return instructorId === enrollmentInstructorId;
         });
-        
+
         // More flexible student matching  
         const student = this.students.find(x => {
           const studentId = x.id?.value || x.id;
           const enrollmentStudentId = enrollment.studentId?.value || enrollment.studentId;
           return studentId === enrollmentStudentId;
         });
-        
+
         if (!instructor || !student) {
           console.warn(`Instructor or student not found for enrollment: ${enrollment.id}`);
           console.warn(`Looking for instructorId: ${enrollment.instructorId?.value || enrollment.instructorId}, studentId: ${enrollment.studentId?.value || enrollment.studentId}`);
           console.warn('Available instructor IDs:', this.instructors.map(i => i.id?.value || i.id).slice(0, 5));
           console.warn('Available student IDs:', this.students.map(s => s.id?.value || s.id).slice(0, 5));
-          
+
           // Return empty string to skip this enrollment rather than crashing
           return '';
         }
@@ -698,8 +837,8 @@ export class ViewModel {
       {
         rowClassFunction: enrollment => {
           // Return CSS class based on enrollment registration type
-          return enrollment.registrationType === RegistrationType.GROUP 
-            ? 'registration-row-group' 
+          return enrollment.registrationType === RegistrationType.GROUP
+            ? 'registration-row-group'
             : 'registration-row-private';
         }
       }
@@ -726,7 +865,7 @@ export class ViewModel {
           : employee.roles || 'Unknown';
         const email = employee.email || 'No email';
         const rawPhone = employee.phone || employee.phoneNumber || '';
-        const phone = rawPhone ? formatPhone(rawPhone) : 'No phone';
+        const phone = rawPhone ? formatPhone(rawPhone) : '';
 
         return `
                         <td>${fullName}</td>
@@ -748,11 +887,11 @@ export class ViewModel {
           return;
         }
         event.preventDefault();
-        
+
         // Get the email from the data attribute
         const linkElement = event.target.closest('a');
         const email = linkElement?.getAttribute('data-employee-email');
-        
+
         if (email && email !== 'No email') {
           await this.#copyToClipboard(email);
         } else {
@@ -771,7 +910,7 @@ export class ViewModel {
       // Define admin role priorities (lower number = higher priority)
       const getAdminPriority = (employee) => {
         if (!employee.roles || !Array.isArray(employee.roles)) return 999;
-        
+
         for (const role of employee.roles) {
           const roleStr = role.toLowerCase();
           if (roleStr.includes('forte director')) return 1;
@@ -780,19 +919,36 @@ export class ViewModel {
         }
         return 999; // Not an admin role
       };
-      
+
       const priorityA = getAdminPriority(a);
       const priorityB = getAdminPriority(b);
-      
-      // If both are admins or both are non-admins, sort alphabetically by name
-      if (priorityA === priorityB) {
-        const nameA = a.fullName || '';
-        const nameB = b.fullName || '';
-        return nameA.localeCompare(nameB);
+
+      // Check if they are instructors (admin priority = 999 means not an admin)
+      const aIsInstructor = priorityA === 999;
+      const bIsInstructor = priorityB === 999;
+
+      // Both are instructors - sort by last name, then first name
+      if (aIsInstructor && bIsInstructor) {
+        const lastNameComparison = (a.lastName || '').localeCompare(b.lastName || '');
+        if (lastNameComparison !== 0) return lastNameComparison;
+        return (a.firstName || '').localeCompare(b.firstName || '');
       }
-      
-      // Otherwise, sort by admin priority (lower number first)
-      return priorityA - priorityB;
+
+      // Neither are instructors (both are admins) - use existing priority system
+      if (!aIsInstructor && !bIsInstructor) {
+        // If both are admins or both are non-admins, sort alphabetically by name
+        if (priorityA === priorityB) {
+          const nameA = a.fullName || '';
+          const nameB = b.fullName || '';
+          return nameA.localeCompare(nameB);
+        }
+
+        // Otherwise, sort by admin priority (lower number first)
+        return priorityA - priorityB;
+      }
+
+      // Mixed types: admins come before instructors
+      return aIsInstructor ? 1 : -1;
     });
   }
   // TODO duplicated (will be consolidated elsewhere)
@@ -841,28 +997,28 @@ export class ViewModel {
     if (!confirm(`Are you sure you want to delete?`)) {
       return;
     }
-    
+
     console.log('Delete registration called with ID:', registrationToDeleteId);
     console.log('ID type:', typeof registrationToDeleteId);
-    
+
     if (!registrationToDeleteId) {
       console.error('No registration ID provided for deletion');
       M.toast({ html: 'Error: No registration ID provided for deletion.' });
       return;
     }
-    
+
     try {
       this.#setAdminRegistrationLoading(true);
       const requestPayload = { registrationId: registrationToDeleteId };
       console.log('Sending delete request with payload:', requestPayload);
-      
+
       const response = await HttpService.post(ServerFunctions.unregister, requestPayload);
-      const registrationIndex = this.registrations.findIndex(x => 
+      const registrationIndex = this.registrations.findIndex(x =>
         (x.id?.value || x.id) === registrationToDeleteId
       );
       M.toast({ html: 'Registration deleted successfully.' });
       this.registrations.splice(registrationIndex, 1);
-      
+
       // Sort the registrations before updating the table to maintain sort order
       const sortedRegistrations = this.#sortRegistrations(this.registrations);
       this.masterScheduleTable.replaceRange(sortedRegistrations);
@@ -931,13 +1087,20 @@ export class ViewModel {
    * @returns {object} Employee object for table display
    */
   instructorToEmployee(instructor) {
+    // Get instruments from either specialties or instruments field
+    const instruments = instructor.specialties || instructor.instruments || [];
+    const instrumentsText = instruments.length > 0 ? instruments.join(', ') : 'Instructor';
+    
     return {
       id: instructor.id,
       fullName:
         instructor.fullName || `${instructor.firstName || ''} ${instructor.lastName || ''}`.trim(),
       email: instructor.email,
       phone: instructor.phone || instructor.phoneNumber,
-      roles: instructor.instruments || instructor.specialties || [],
+      role: instrumentsText, // Keep for comparison in sorting
+      roles: instrumentsText, // This is what the directory table displays
+      lastName: instructor.lastName || '', // Add lastName for sorting
+      firstName: instructor.firstName || '', // Add firstName for sorting
     };
   }
   /**
@@ -946,12 +1109,12 @@ export class ViewModel {
   async #getStudents(forceRefresh = false) {
     // BYPASS INDEXEDDB: Always load students fresh from server
     console.log('Loading students fresh from server (IndexedDB bypassed)...');
-    
+
     const students = await HttpService.fetchAllPages(ServerFunctions.getStudents, x =>
       Student.fromApiData(x)
     );
     console.log(`Fetched ${students.length} students from server.`);
-    
+
     // Note: IndexedDB saving is bypassed to ensure fresh data on every load
     if (students.length === 0) {
       console.warn('No students found from server.');
@@ -992,7 +1155,7 @@ export class ViewModel {
       // Remove any non-numeric characters
       const numericValue = e.target.value.replace(/[^0-9]/g, '');
       e.target.value = numericValue;
-      
+
       // Update MaterializeCSS validation classes
       if (numericValue.length >= 4 && numericValue.length <= 6) {
         e.target.classList.add('valid');
@@ -1005,7 +1168,10 @@ export class ViewModel {
 
     // Handle enter key press in input
     accessCodeInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter'
+        // and modal is open
+        && this.loginModal.isOpen
+      ) {
         e.preventDefault();
         this.#handleLogin();
       }
@@ -1039,7 +1205,7 @@ export class ViewModel {
 
     // Check if there's a stored access code
     const storedCode = this.#getStoredAccessCode();
-    
+
     if (storedCode) {
       // Change button text to "Change User" if access code exists
       const buttonTextNode = loginButton.childNodes[loginButton.childNodes.length - 1];
@@ -1066,10 +1232,10 @@ export class ViewModel {
 
     // Validate access code
     if (accessCode.length < 4 || accessCode.length > 6) {
-      M.toast({ 
-        html: 'Access code must be 4-6 digits', 
+      M.toast({
+        html: 'Access code must be 4-6 digits',
         classes: 'red darken-1',
-        displayLength: 3000 
+        displayLength: 3000
       });
       accessCodeInput.focus();
       return;
@@ -1079,30 +1245,40 @@ export class ViewModel {
 
     try {
       // Send access code to backend
-      const response = await HttpService.post(ServerFunctions.login, { accessCode });
-      
-      // Check if login was successful based on backend response
-      const loginSuccess = response?.success === true;
-      
+      const authenticatedUser = await HttpService.post(ServerFunctions.authenticateByAccessCode, { accessCode });
+
+      // Check if authentication was successful (non-null response)
+      const loginSuccess = authenticatedUser !== null;
+
       if (loginSuccess) {
         // Save the access code securely in the browser
-        // Return the code in the response and store it securely
-        const returnedCode = response?.accessCode || accessCode; // Use returned code from server or fallback to submitted code
-        this.#saveAccessCodeSecurely(returnedCode);
-        
+        this.#saveAccessCodeSecurely(accessCode);
+
         // Handle successful login
         this.loginModal.close();
         accessCodeInput.value = ''; // Clear the input
-        
+
         // Update login button state to show "Change User"
         this.#updateLoginButtonState();
-        
-        M.toast({ html: 'Login successful!', classes: 'green darken-1', displayLength: 3000 });
+
         console.log('Login successful, access code saved securely');
-        // TODO: Handle authentication state, redirect, or refresh as needed
+
+        // Load user data with the authenticated user
+        console.log('Loading user data for authenticated user:', authenticatedUser);
+        
+        // Determine default role to click (admin -> instructor -> parent)
+        let roleToClick = null;
+        if (authenticatedUser.admin) {
+          roleToClick = 'admin';
+        } else if (authenticatedUser.instructor) {
+          roleToClick = 'instructor';
+        } else if (authenticatedUser.parent) {
+          roleToClick = 'parent';
+        }
+
+        await this.loadUserData(authenticatedUser, roleToClick);
       } else {
-        const errorMessage = response?.error || 'Invalid access code';
-        M.toast({ html: errorMessage, classes: 'red darken-1', displayLength: 3000 });
+        M.toast({ html: 'Invalid access code', classes: 'red darken-1', displayLength: 3000 });
         accessCodeInput.focus();
       }
     } catch (error) {
@@ -1125,11 +1301,11 @@ export class ViewModel {
         timestamp: Date.now(),
         sessionId: this.#generateSessionId()
       };
-      
+
       // Store encrypted/encoded data
       const encodedData = btoa(JSON.stringify(secureData)); // Base64 encode for basic obfuscation
       sessionStorage.setItem('forte_auth_session', encodedData);
-      
+
       console.log('Access code saved securely in session storage');
     } catch (error) {
       console.error('Failed to save access code securely:', error);
@@ -1159,18 +1335,18 @@ export class ViewModel {
       if (!encodedData) {
         return this.#accessCodeCache?.accessCode || null;
       }
-      
+
       const secureData = JSON.parse(atob(encodedData));
-      
+
       // Check if session is still valid (optional: add expiration logic)
       const sessionAge = Date.now() - secureData.timestamp;
       const maxSessionAge = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
-      
+
       if (sessionAge > maxSessionAge) {
         this.#clearStoredAccessCode();
         return null;
       }
-      
+
       return secureData.accessCode;
     } catch (error) {
       console.error('Failed to retrieve stored access code:', error);
@@ -1185,10 +1361,10 @@ export class ViewModel {
     try {
       sessionStorage.removeItem('forte_auth_session');
       this.#accessCodeCache = null;
-      
+
       // Update login button state back to "Login"
       this.#updateLoginButtonState();
-      
+
       console.log('Stored access code cleared');
     } catch (error) {
       console.error('Failed to clear stored access code:', error);

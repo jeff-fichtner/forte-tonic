@@ -41,6 +41,7 @@ export class Instructor {
    * @param {string} data.lastName - Last name
    * @param {string} data.firstName - First name
    * @param {string} [data.phoneNumber] - Phone number
+   * @param {string} [data.accessCode] - Access code for authentication
    * @param {Array<string>} [data.specialties] - Teaching specialties/instruments
    * @param {boolean} [data.isActive=true] - Active status
    * @param {Date|string} [data.hireDate] - Hire date
@@ -63,6 +64,7 @@ export class Instructor {
       lastName,
       firstName,
       phoneNumber,
+      accessCode,
       specialties = [],
       isActive = true,
       hireDate,
@@ -82,6 +84,7 @@ export class Instructor {
 
     // Optional fields
     this.phoneNumber = phoneNumber;
+    this.accessCode = accessCode;
     this.specialties = Array.isArray(specialties) ? specialties : [];
     this.isActive = isActive;
     this.hireDate = hireDate ? (hireDate instanceof Date ? hireDate : new Date(hireDate)) : null;
@@ -171,13 +174,13 @@ export class Instructor {
       lastName,
       firstName,
       phone,
-      isDeactivated,
-      minimumGrade,
-      maximumGrade,
-      instrument1,
-      instrument2,
-      instrument3,
-      instrument4,
+      isDeactivated,     // Position 5 - removed accessCode
+      minimumGrade,      // Position 6
+      maximumGrade,      // Position 7
+      instrument1,       // Position 8
+      instrument2,       // Position 9
+      instrument3,       // Position 10
+      instrument4,       // Position 11
       isAvailableMonday,
       mondayStartTime,
       mondayEndTime,
@@ -281,6 +284,7 @@ export class Instructor {
       lastName: this.lastName,
       firstName: this.firstName,
       phone: this.phoneNumber,
+      accessCode: this.accessCode,
       isDeactivated: !this.isActive, // Note: inverted logic
       minimumGrade: this.gradeRange?.minimum,
       maximumGrade: this.gradeRange?.maximum,

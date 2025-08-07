@@ -9,7 +9,8 @@
  * - Data consistency
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+// Import Jest testing utilities instead of Vitest
+import { jest } from '@jest/globals';
 import { RegistrationRepository } from '../../../src/repositories/registrationRepository.js';
 import { RegistrationId } from '../../../src/utils/values/registrationId.js';
 import { Registration } from '../../../src/models/shared/registration.js';
@@ -24,9 +25,9 @@ describe('RegistrationRepository - Delete Functionality', () => {
     mockSheets = {
       spreadsheets: {
         values: {
-          get: vi.fn()
+          get: jest.fn()
         },
-        batchUpdate: vi.fn()
+        batchUpdate: jest.fn()
       }
     };
 
@@ -34,16 +35,20 @@ describe('RegistrationRepository - Delete Functionality', () => {
     mockDbClient = {
       spreadsheetId: 'test-spreadsheet-id',
       sheets: mockSheets,
-      cache: new Map(),
-      getCachedData: vi.fn()
+      cache: {
+        delete: jest.fn()
+      },
+      getCachedData: jest.fn(),
+      clearCache: jest.fn()
     };
 
     repository = new RegistrationRepository(mockDbClient);
-    repository.clearCache = vi.fn();
+    repository.clearCache = jest.fn();
+    repository.cache = new Map(); // Add cache to repository for testing
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe('delete method', () => {
@@ -58,9 +63,9 @@ describe('RegistrationRepository - Delete Functionality', () => {
       registrationType: 'private'
     };
 
-    it('should successfully delete a registration from Google Sheets', async () => {
+    test('should successfully delete a registration from Google Sheets', async () => {
       // Mock getById to return a registration
-      repository.getById = vi.fn().mockResolvedValue(mockRegistration);
+      repository.getById = jest.fn().mockResolvedValue(mockRegistration);
 
       // Mock Google Sheets response with test data
       const mockSheetData = {
@@ -99,7 +104,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
           requests: [{
             deleteDimension: {
               range: {
-                sheetId: 0,
+                sheetId: 1484108306, // Correct sheetId for registrations sheet
                 dimension: 'ROWS',
                 startIndex: 1, // Row 2 in spreadsheet (0-based: header=0, first data row=1)
                 endIndex: 2
@@ -111,11 +116,11 @@ describe('RegistrationRepository - Delete Functionality', () => {
 
       // Verify cache clearing
       expect(repository.clearCache).toHaveBeenCalled();
-      expect(mockDbClient.cache.delete).toHaveBeenCalledWith('registrations');
+      expect(mockDbClient.clearCache).toHaveBeenCalledWith('registrations');
     });
 
-    it('should handle string ID parameter', async () => {
-      repository.getById = vi.fn().mockResolvedValue(mockRegistration);
+    test('should handle string ID parameter', async () => {
+      repository.getById = jest.fn().mockResolvedValue(mockRegistration);
       mockSheets.spreadsheets.values.get.mockResolvedValue({
         data: { values: [['Id'], [testRegistrationId]] }
       });
@@ -126,9 +131,9 @@ describe('RegistrationRepository - Delete Functionality', () => {
       expect(repository.getById).toHaveBeenCalledWith(expect.any(RegistrationId));
     });
 
-    it('should handle RegistrationId object parameter', async () => {
+    test('should handle RegistrationId object parameter', async () => {
       const registrationIdObj = new RegistrationId(testRegistrationId);
-      repository.getById = vi.fn().mockResolvedValue(mockRegistration);
+      repository.getById = jest.fn().mockResolvedValue(mockRegistration);
       mockSheets.spreadsheets.values.get.mockResolvedValue({
         data: { values: [['Id'], [testRegistrationId]] }
       });
@@ -139,8 +144,8 @@ describe('RegistrationRepository - Delete Functionality', () => {
       expect(repository.getById).toHaveBeenCalledWith(registrationIdObj);
     });
 
-    it('should throw error if registration does not exist', async () => {
-      repository.getById = vi.fn().mockResolvedValue(null);
+    test('should throw error if registration does not exist', async () => {
+      repository.getById = jest.fn().mockResolvedValue(null);
 
       await expect(repository.delete(testRegistrationId))
         .rejects.toThrow(`Registration with ID ${testRegistrationId} not found`);
@@ -149,8 +154,8 @@ describe('RegistrationRepository - Delete Functionality', () => {
       expect(mockSheets.spreadsheets.batchUpdate).not.toHaveBeenCalled();
     });
 
-    it('should throw error if registration not found in sheet data', async () => {
-      repository.getById = vi.fn().mockResolvedValue(mockRegistration);
+    test('should throw error if registration not found in sheet data', async () => {
+      repository.getById = jest.fn().mockResolvedValue(mockRegistration);
       mockSheets.spreadsheets.values.get.mockResolvedValue({
         data: {
           values: [
@@ -166,8 +171,8 @@ describe('RegistrationRepository - Delete Functionality', () => {
       expect(mockSheets.spreadsheets.batchUpdate).not.toHaveBeenCalled();
     });
 
-    it('should handle empty sheet data', async () => {
-      repository.getById = vi.fn().mockResolvedValue(mockRegistration);
+    test('should handle empty sheet data', async () => {
+      repository.getById = jest.fn().mockResolvedValue(mockRegistration);
       mockSheets.spreadsheets.values.get.mockResolvedValue({
         data: { values: [] }
       });
@@ -176,8 +181,8 @@ describe('RegistrationRepository - Delete Functionality', () => {
         .rejects.toThrow(`Registration with ID ${testRegistrationId} not found`);
     });
 
-    it('should handle Google Sheets API errors gracefully', async () => {
-      repository.getById = vi.fn().mockResolvedValue(mockRegistration);
+    test('should handle Google Sheets API errors gracefully', async () => {
+      repository.getById = jest.fn().mockResolvedValue(mockRegistration);
       mockSheets.spreadsheets.values.get.mockRejectedValue(new Error('API Error'));
 
       await expect(repository.delete(testRegistrationId))
@@ -186,8 +191,8 @@ describe('RegistrationRepository - Delete Functionality', () => {
       expect(mockSheets.spreadsheets.batchUpdate).not.toHaveBeenCalled();
     });
 
-    it('should handle batchUpdate errors gracefully', async () => {
-      repository.getById = vi.fn().mockResolvedValue(mockRegistration);
+    test('should handle batchUpdate errors gracefully', async () => {
+      repository.getById = jest.fn().mockResolvedValue(mockRegistration);
       mockSheets.spreadsheets.values.get.mockResolvedValue({
         data: { values: [['Id'], [testRegistrationId]] }
       });
@@ -197,8 +202,8 @@ describe('RegistrationRepository - Delete Functionality', () => {
         .rejects.toThrow('Delete failed');
     });
 
-    it('should clear both repository and database client caches', async () => {
-      repository.getById = vi.fn().mockResolvedValue(mockRegistration);
+    test('should clear both repository and database client caches', async () => {
+      repository.getById = jest.fn().mockResolvedValue(mockRegistration);
       mockSheets.spreadsheets.values.get.mockResolvedValue({
         data: { values: [['Id'], [testRegistrationId]] }
       });
@@ -207,16 +212,16 @@ describe('RegistrationRepository - Delete Functionality', () => {
       await repository.delete(testRegistrationId);
 
       expect(repository.clearCache).toHaveBeenCalled();
-      expect(mockDbClient.cache.delete).toHaveBeenCalledWith('registrations');
+      expect(mockDbClient.clearCache).toHaveBeenCalledWith('registrations');
     });
   });
 
   describe('delete integration with service layer', () => {
-    it('should properly integrate with registration service cancellation', async () => {
-      const testId = 'integration-test-id';
+    test('should properly integrate with registration service cancellation', async () => {
+      const testId = 'da8ca6c8-7626-40c3-9173-319f15effaea'; // Valid UUID
       
       // Mock a realistic scenario
-      repository.getById = vi.fn().mockResolvedValue({
+      repository.getById = jest.fn().mockResolvedValue({
         id: new RegistrationId(testId),
         studentId: 'student-123',
         instructorId: 'instructor-456'
@@ -246,7 +251,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
           requests: [{
             deleteDimension: {
               range: {
-                sheetId: 0,
+                sheetId: 1484108306, // Correct sheetId for registrations sheet
                 dimension: 'ROWS',
                 startIndex: 2, // 0-based: header=0, first row=1, target row=2
                 endIndex: 3

@@ -75,14 +75,14 @@ describe('Phone Number Formatting Utilities', () => {
       ];
 
       employees.forEach(employee => {
-        const formattedPhone = employee.phone ? formatPhone(employee.phone) : 'No phone';
+        const formattedPhone = employee.phone ? formatPhone(employee.phone) : '';
         if (employee.phone) {
           // Should be properly formatted if valid
           if (isValidUnformattedPhone(employee.phone)) {
             expect(formattedPhone).toMatch(/^\(\d{3}\) \d{3}-\d{4}$/);
           }
         } else {
-          expect(formattedPhone).toBe('No phone');
+          expect(formattedPhone).toBe('');
         }
       });
     });

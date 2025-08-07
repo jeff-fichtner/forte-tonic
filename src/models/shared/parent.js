@@ -19,6 +19,7 @@ export class Parent {
 
     // Optional properties with defaults
     this.phone = options.phone || null;
+    this.accessCode = options.accessCode || null;
     this.alternatePhone = options.alternatePhone || null;
     this.address = options.address || null;
     this.isEmergencyContact = options.isEmergencyContact || false;
@@ -32,10 +33,11 @@ export class Parent {
    * @returns {Parent} Parent instance
    */
   static fromDatabaseRow(row) {
-    const [id, email, lastName, firstName, phone, address, isEmergencyContact] = row;
+    const [id, email, lastName, firstName, phone, accessCode, address, isEmergencyContact] = row;
 
     return new Parent(id, email, lastName, firstName, {
       phone,
+      accessCode,
       address,
       isEmergencyContact,
       alternatePhone: null,

@@ -93,10 +93,20 @@ const mockUserRepository = {
   getOperatorByEmail: jest.fn().mockResolvedValue({
     email: process.env.OPERATOR_EMAIL || 'test-operator@example.com',
     role: 'operator',
-    admin: 'admin@test.com',
+    admin: '123456', // Access code instead of email
     instructor: null,
     parent: null,
   }),
+  getAdminByAccessCode: jest.fn().mockResolvedValue({
+    id: '1',
+    email: 'admin@test.com',
+    firstName: 'Test',
+    lastName: 'Admin',
+    phone: '555-1234',
+    accessCode: '123456',
+  }),
+  getInstructorByAccessCode: jest.fn().mockResolvedValue(null),
+  getParentByAccessCode: jest.fn().mockResolvedValue(null),
   getAdminByEmail: jest.fn().mockResolvedValue({
     id: '1',
     email: 'admin@test.com',
@@ -150,10 +160,23 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
     req.programRepository = mockProgramRepository;
     req.currentUser = {
       email: process.env.OPERATOR_EMAIL || 'test-operator@example.com',
-      isOperator: true,
       admin: { id: '1', email: 'admin@test.com', firstName: 'Test', lastName: 'Admin' },
       instructor: null,
       parent: null,
+      roles: [],
+      primaryRole: 'admin',
+      displayName: 'Test Admin',
+      toJSON: function() {
+        return {
+          email: this.email,
+          admin: this.admin,
+          instructor: this.instructor,
+          parent: this.parent,
+          roles: this.roles,
+          primaryRole: this.primaryRole,
+          displayName: this.displayName
+        };
+      }
     };
     req.user = req.currentUser; // For compatibility
     next();
@@ -234,9 +257,9 @@ describe('Server Integration Tests', () => {
   });
 
   describe('API Routes', () => {
-    describe('POST /api/getAuthenticatedUser', () => {
+    describe('POST /api/getOperatorUser', () => {
       test('should return current user', async () => {
-        const response = await request(app).post('/api/getAuthenticatedUser').expect(200);
+        const response = await request(app).post('/api/getOperatorUser').expect(200);
 
         // Handle double-stringified JSON from server
         let user;
@@ -246,7 +269,8 @@ describe('Server Integration Tests', () => {
           user = JSON.parse(response.text);
         }
         expect(user).toHaveProperty('email');
-        expect(user).toHaveProperty('isOperator');
+        expect(user).toHaveProperty('primaryRole');
+        expect(user).toHaveProperty('displayName');
       });
     });
 
@@ -286,7 +310,6 @@ describe('Server Integration Tests', () => {
       test('should return list of students', async () => {
         const response = await request(app)
           .post('/api/getStudents')
-          .send({ page: 0, pageSize: 1000 })
           .expect(200);
 
         let result;
@@ -296,16 +319,12 @@ describe('Server Integration Tests', () => {
           result = JSON.parse(response.text);
         }
         
-        // Should return pagination object with data array
-        expect(result).toHaveProperty('data');
-        expect(result).toHaveProperty('total');
-        expect(result).toHaveProperty('page');
-        expect(result).toHaveProperty('pageSize');
-        expect(Array.isArray(result.data)).toBe(true);
-        expect(result.data.length).toBeGreaterThan(0);
-        expect(result.data[0]).toHaveProperty('id');
-        expect(result.data[0]).toHaveProperty('firstName');
-        expect(result.data[0]).toHaveProperty('lastName');
+        // Should return direct array like other user endpoints
+        expect(Array.isArray(result)).toBe(true);
+        expect(result.length).toBeGreaterThan(0);
+        expect(result[0]).toHaveProperty('id');
+        expect(result[0]).toHaveProperty('firstName');
+        expect(result[0]).toHaveProperty('lastName');
       });
     });
 
@@ -373,6 +392,62 @@ describe('Server Integration Tests', () => {
         }
         expect(result).toHaveProperty('success', true);
         expect(result).toHaveProperty('sheetName', 'Students');
+      });
+    });
+
+    describe('POST /api/authenticateByAccessCode', () => {
+      test('should return authenticated user for valid access code', async () => {
+        // Mock the repository method to return an admin for this test
+        mockUserRepository.getAdminByAccessCode.mockResolvedValueOnce({
+          id: '1',
+          email: 'admin@test.com',
+          firstName: 'Test',
+          lastName: 'Admin',
+          phone: '555-1234',
+          accessCode: '123456',
+          toJSON: function() {
+            return {
+              id: this.id,
+              email: this.email,
+              firstName: this.firstName,
+              lastName: this.lastName,
+              phone: this.phone,
+              accessCode: this.accessCode
+            };
+          }
+        });
+
+        const response = await request(app)
+          .post('/api/authenticateByAccessCode')
+          .send({ accessCode: '123456' })
+          .expect(200);
+
+        let user;
+        try {
+          user = JSON.parse(JSON.parse(response.text));
+        } catch {
+          user = JSON.parse(response.text);
+        }
+        
+        expect(user).toHaveProperty('email', 'admin@test.com');
+        expect(user).toHaveProperty('admin');
+        expect(user.admin).toHaveProperty('firstName', 'Test');
+        expect(user).toHaveProperty('instructor', null);
+        expect(user).toHaveProperty('parent', null);
+      });
+
+      test('should return null for invalid access code', async () => {
+        // Mock all repository methods to return null/undefined
+        mockUserRepository.getAdminByAccessCode.mockResolvedValueOnce(null);
+        mockUserRepository.getInstructorByAccessCode.mockResolvedValueOnce(null);
+        mockUserRepository.getParentByAccessCode.mockResolvedValueOnce(null);
+
+        const response = await request(app)
+          .post('/api/authenticateByAccessCode')
+          .send({ accessCode: '999999' })
+          .expect(200);
+
+        expect(response.text).toBe('null');
       });
     });
   });

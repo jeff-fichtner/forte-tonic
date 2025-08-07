@@ -2,6 +2,7 @@
 export { Admin } from './admin.js';
 export { AttendanceRecord } from './attendanceRecord.js';
 export { AuthenticatedUserResponse } from './authenticatedUserResponse.js';
+export { OperatorUserResponse } from './responses/operatorUserResponse.js';
 export { Class } from './class.js';
 export { Instructor } from './instructor.js';
 export { Parent } from './parent.js';
