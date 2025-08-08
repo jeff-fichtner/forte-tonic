@@ -379,8 +379,7 @@ export class ViewModel {
         const response = await HttpService.post(ServerFunctions.register, data);
         const newRegistration = Registration.fromApiData(response.data);
 
-        // handle response
-        M.toast({ html: 'Registration created successfully.' });
+        // handle response - toast is handled by the form component
         this.registrations.push(newRegistration);
         this.masterScheduleTable.replaceRange(this.registrations);
       }
@@ -732,8 +731,7 @@ export class ViewModel {
         const response = await HttpService.post(ServerFunctions.register, data);
         const newRegistration = Registration.fromApiData(response.data);
 
-        // handle response
-        M.toast({ html: 'Registration created successfully.' });
+        // handle response - toast is handled by the form component
         this.registrations.push(newRegistration);
         // Refresh parent schedule after registration
         this.#initParentContent();
