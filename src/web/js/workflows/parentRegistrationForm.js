@@ -1555,17 +1555,23 @@ export class ParentRegistrationForm {
     console.log(`📊 Class ${selectedClass.title || selectedClass.instrument} - Current: ${currentRegistrations.length}, Capacity: ${selectedClass.capacity || selectedClass.size || selectedClass.maxStudents || 'Unknown'}`);
 
     // Get class capacity (check multiple possible property names)
-    const classCapacity = selectedClass.capacity || selectedClass.size || selectedClass.maxStudents || 12; // Default to 12
+    const classCapacity = selectedClass.size;
+    const hasACapacityDefined = classCapacity !== null && classCapacity !== undefined;
 
-    if (currentRegistrations.length >= classCapacity) {
+    if (!hasACapacityDefined) {
+      // No capacity defined, assume unlimited
+      console.warn('No capacity defined for class:', selectedClass);
+    }
+
+    if (hasACapacityDefined && currentRegistrations.length >= classCapacity) {
       // Class is full
       this.#showRegistrationError('This class is full. Please reach out to an administrator.');
       if (registerButton) {
         registerButton.disabled = true;
         registerButton.style.opacity = '0.6';
       }
-    } else {
-      // Class has space
+    } else if (!hasACapacityDefined || classCapacity > 0) {
+      // Class has space (or assume unlimited capacity)
       if (registerButton) {
         registerButton.disabled = false;
         registerButton.style.opacity = '1';
