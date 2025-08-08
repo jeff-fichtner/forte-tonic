@@ -102,7 +102,7 @@ export class UserController {
       const userRepository = serviceContainer.get('userRepository');
 
       // Force refresh to get latest data from spreadsheet
-      const data = await userRepository.getInstructors(true);
+      const data = await userRepository.getInstructors();
 
       // The data is already transformed by Instructor.fromDatabaseRow
       // No need to transform again with UserTransformService
