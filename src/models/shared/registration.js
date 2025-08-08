@@ -166,29 +166,52 @@ export class Registration {
    * Create Registration from database row data
    */
   static fromDatabaseRow(row) {
-    // Map array indices to field names based on registration schema
-    // Order: Id, StudentId, InstructorId, Day, StartTime, Length, RegistrationType, 
-    //        RoomId, Instrument, TransportationType, Notes, ClassId, ClassTitle, 
-    //        ExpectedStartDate, CreatedAt, CreatedBy
+    // Skip empty rows or header rows
+    if (!row || !row[0] || !Array.isArray(row) || row.length === 0) {
+      return null;
+    }
     
-    return new Registration({
-      id: row[0] ? String(row[0]) : row[0],  // Id (UUID) - ensure string
-      studentId: row[1] ? String(row[1]) : row[1],     // StudentId - ensure string
-      instructorId: row[2] ? String(row[2]) : row[2],  // InstructorId - ensure string
-      day: row[3],                     // Day
-      startTime: row[4],               // StartTime
-      length: row[5],                  // Length
-      registrationType: row[6],        // RegistrationType
-      roomId: row[7],                  // RoomId
-      instrument: row[8],              // Instrument
-      transportationType: row[9],      // TransportationType
-      notes: row[10],                  // Notes
-      classId: row[11],                // ClassId
-      classTitle: row[12],             // ClassTitle
-      expectedStartDate: row[13],      // ExpectedStartDate
-      createdAt: row[14],              // CreatedAt
-      createdBy: row[15]               // CreatedBy
-    });
+    // Skip header rows (check if first column is "Id", "ID", or other header-like values)
+    const firstCell = String(row[0]).trim().toLowerCase();
+    if (firstCell === 'id' || firstCell === 'registrationid' || firstCell === 'registration_id') {
+      return null;
+    }
+    
+    // Skip rows where the ID doesn't look like a UUID (basic check)
+    const idValue = String(row[0]).trim();
+    if (idValue.length < 10 || idValue === 'Id' || !idValue.includes('-')) {
+      console.warn(`Skipping registration row with invalid ID: "${idValue}"`);
+      return null;
+    }
+
+    try {
+      // Map array indices to field names based on registration schema
+      // Order: Id, StudentId, InstructorId, Day, StartTime, Length, RegistrationType, 
+      //        RoomId, Instrument, TransportationType, Notes, ClassId, ClassTitle, 
+      //        ExpectedStartDate, CreatedAt, CreatedBy
+      
+      return new Registration({
+        id: row[0] ? String(row[0]) : row[0],  // Id (UUID) - ensure string
+        studentId: row[1] ? String(row[1]) : row[1],     // StudentId - ensure string
+        instructorId: row[2] ? String(row[2]) : row[2],  // InstructorId - ensure string
+        day: row[3],                     // Day
+        startTime: row[4],               // StartTime
+        length: row[5],                  // Length
+        registrationType: row[6],        // RegistrationType
+        roomId: row[7],                  // RoomId
+        instrument: row[8],              // Instrument
+        transportationType: row[9],      // TransportationType
+        notes: row[10],                  // Notes
+        classId: row[11],                // ClassId
+        classTitle: row[12],             // ClassTitle
+        expectedStartDate: row[13],      // ExpectedStartDate
+        createdAt: row[14],              // CreatedAt
+        createdBy: row[15]               // CreatedBy
+      });
+    } catch (error) {
+      console.warn(`Failed to create Registration from row [${row.join(', ')}]:`, error.message);
+      return null;
+    }
   }
 
   /**
@@ -214,8 +237,8 @@ export class Registration {
   toDatabaseRow() {
     return [
       this.id.getValue(),
-      this.studentId.getValue(),
-      this.instructorId.getValue(),
+      this.studentId.value,
+      this.instructorId.value,
       this.day,
       this.startTime,
       this.length.toString(),

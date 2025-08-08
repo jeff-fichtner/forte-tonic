@@ -122,8 +122,8 @@
             font-family: 'Courier New', monospace;
             font-weight: bold;
             z-index: 1000;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            border: 1px solid rgba(255,255,255,0.3);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             backdrop-filter: blur(5px);
             cursor: pointer;
             transition: all 0.3s ease;
@@ -154,11 +154,11 @@
                 padding: 6px 8px;
                 font-size: 10px;
             }
-            
+
             #version-display .version-number {
                 font-size: 11px;
             }
-            
+
             #version-display .version-details {
                 font-size: 8px;
             }
@@ -246,8 +246,8 @@
         }
 
         .nav-wrapper .btn.modal-trigger:hover {
-            background-color: rgba(255,255,255,0.2) !important;
-            border-color: rgba(255,255,255,0.5) !important;
+            background-color: rgba(255, 255, 255, 0.2) !important;
+            border-color: rgba(255, 255, 255, 0.5) !important;
         }
 
         .nav-wrapper .btn.modal-trigger i.material-icons {
@@ -277,15 +277,15 @@
 
         /* Mobile responsiveness for login button */
         @media (max-width: 992px) {
-            .nav-wrapper > div:last-child {
+            .nav-wrapper>div:last-child {
                 flex-direction: column;
                 align-items: flex-end;
             }
-            
+
             #login-button-container {
                 margin-right: 10px;
             }
-            
+
             #nav-mobile {
                 margin-top: 5px !important;
                 margin-bottom: 5px !important;
@@ -293,15 +293,16 @@
         }
 
         @media (max-width: 768px) {
-            .nav-wrapper > div:last-child {
+            .nav-wrapper>div:last-child {
                 position: static !important;
                 width: 100%;
                 display: flex;
                 justify-content: center;
                 margin-top: 10px;
             }
-            
-            #login-button-container, #nav-mobile {
+
+            #login-button-container,
+            #nav-mobile {
                 margin: 0 5px !important;
             }
         }
@@ -321,7 +322,7 @@
         }
     </style>
 
-    <title>Parents &amp; Families - Marin Country Day School</title>
+    <title>Forte - Marin Country Day School</title>
 
 
     <link rel="icon"
@@ -402,18 +403,20 @@
                 style="display: inline-block; margin-left: 60px; vertical-align: middle; color: #fefefe; font-size: 1.5rem;">
                 <b>Forte</b>
             </h1>
-            
+
             <div style="position: absolute; right: 20px; top: 0; height: 100%; display: flex; align-items: center;">
                 <!-- Login Button - initially hidden -->
                 <div id="login-button-container" hidden>
-                    <a class="btn waves-effect waves-light modal-trigger" href="#login-modal" 
-                    style="background-color: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); margin: 0; height: 36px; line-height: 36px; display: flex; align-items: center;">
-                        <i class="material-icons left" style="font-size: 18px; margin-right: 6px; vertical-align: middle;">vpn_key</i>Login
+                    <a class="btn waves-effect waves-light modal-trigger" href="#login-modal"
+                        style="background-color: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); margin: 0; height: 36px; line-height: 36px; display: flex; align-items: center;">
+                        <i class="material-icons left"
+                            style="font-size: 18px; margin-right: 6px; vertical-align: middle;">vpn_key</i>Login
                     </a>
                 </div>
-                
+
                 <!-- Navigation Links - initially hidden -->
-                <ul id="nav-mobile" class="right" style="margin: 0 0 0 15px; height: 100%; display: none; align-items: center;">
+                <ul id="nav-mobile" class="right"
+                    style="margin: 0 0 0 15px; height: 100%; display: none; align-items: center;">
                     <li><a class="section-link" data-section="admin">Admin</a></li>
                     <li><a class="section-link" data-section="instructor">Instructors</a></li>
                     <li><a class="section-link" data-section="parent">Families</a></li>
@@ -527,9 +530,6 @@
                             <div class="input-field col s4">
                                 <select multiple id="master-schedule-instructor-filter-select">
                                     <option value="" disabled> Choose instructor filter</option>
-                                    <option value="1">Jesse Brewster</option>
-                                    <option value="2">Cesar Cancino</option>
-                                    <option value="3">Rob Caniglia</option>
                                 </select>
                                 <label>Instructors</label>
                             </div>
@@ -537,9 +537,6 @@
                             <div class="input-field col s4">
                                 <select multiple id="master-schedule-day-filter-select">
                                     <option value="" disabled> Choose weekday filter</option>
-                                    <option value="1">Monday</option>
-                                    <option value="2">Tuesday</option>
-                                    <option value="3">Wednesday</option>
                                 </select>
                                 <label>Weekday</label>
                             </div>
@@ -547,9 +544,6 @@
                             <div class="input-field col s4">
                                 <select multiple id="master-schedule-grade-filter-select">
                                     <option value="" disabled> Choose grade level filter</option>
-                                    <option value="1">Kindergarten</option>
-                                    <option value="2">1st</option>
-                                    <option value="3">2nd</option>
                                 </select>
                                 <label>Grade Level</label>
                             </div>
@@ -662,13 +656,6 @@
 
                             <div id="instructor-selected-info-container" hidden>
 
-                                <!-- Instrument -->
-                                <div class="input-field" id="instrument-select-options-container">
-                                    <select id="instrument-select">
-                                    </select>
-                                    <label for="instrument-select">Instrument</label>
-                                </div>
-
                                 <!-- Day -->
                                 <div class="input-field" id="instructor-day-select-options-container">
                                     <select id="day-select">
@@ -677,6 +664,13 @@
                                 </div>
 
                                 <div id="instructor-day-selected-info-container" hidden>
+
+                                    <!-- Start Time -->
+                                    <div class="input-field" id="instructor-day-start-time-container">
+                                        <select id="start-time-select">
+                                        </select>
+                                        <label for="start-time-select">Start Time</label>
+                                    </div>
 
                                     <!-- Length -->
                                     <div id="lesson-length-container">
@@ -701,12 +695,13 @@
                                         </p>
                                     </div>
 
-                                    <!-- Start Time -->
-                                    <div class="input-field" id="instructor-day-start-time-container">
-                                        <select id="start-time-select">
+                                    <!-- Instrument -->
+                                    <div class="input-field" id="instrument-select-options-container">
+                                        <select id="instrument-select">
                                         </select>
-                                        <label for="start-time-select">Start Time</label>
+                                        <label for="instrument-select">Instrument</label>
                                     </div>
+
                                 </div>
 
                             </div>
@@ -759,9 +754,138 @@
                 </div>
             </div>
             <div hidden class="tab-content" id="parent-registration" class="col s12" style="background-color: #fefefe">
-                Parent Registration Form</div>
+
+                <!-- Hybrid Approach: Smart Chips + Interactive Time Slot Grid for Private Lessons -->
+
+                <!-- Smart Filter Chips Section -->
+                <div class="availability-filters"
+                    style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+                    <h6 style="margin: 0 0 15px 0; color: #2b68a4;"><b>Filter Available Options</b></h6>
+
+                    <div class="filter-section" style="margin: 15px 0;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: bold;">Instructors:</label>
+                        <div class="chip-container" id="instructor-chips-container"
+                            style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            <!-- Instructor chips will be populated programmatically -->
+                        </div>
+                    </div>
+
+                    <div class="filter-section" style="margin: 15px 0;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: bold;">Preferred Day:</label>
+                        <div class="chip-container" id="day-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            <!-- Day chips will be populated programmatically -->
+                        </div>
+                    </div>
+
+                    <div class="filter-section" style="margin: 15px 0;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: bold;">Lesson Length:</label>
+                        <div class="chip-container" id="length-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            <!-- Length chips will be populated programmatically -->
+                        </div>
+                    </div>
+
+                    <div class="filter-section" style="margin: 15px 0;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: bold;">Instrument:</label>
+                        <div class="chip-container" id="instrument-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            <!-- Instrument chips will be populated programmatically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive Time Slot Grid Section -->
+                <div class="instructor-timeslot-grid" id="admin-instructor-timeslot-grid">
+                    <div class="section-header" style="margin-bottom: 15px;">
+                        <h6 style="margin: 0; color: #2b68a4;"><b>Available Time Slots</b></h6>
+                        <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Click on any available slot to
+                            select your lesson time</p>
+                    </div>
+
+                    <div class="instructor-card"
+                        style="border: 2px solid #ddd; margin: 15px 0; padding: 20px; border-radius: 8px; transition: border-color 0.3s;">
+                        <h6 style="margin: 0 0 15px 0; color: #2b68a4; display: flex; align-items: center;"><b>Jesse
+                                Brewster - Piano</b> <span
+                                style="margin-left: 10px; font-size: 12px; background: #e8f5e8; color: #4caf50; padding: 4px 8px; border-radius: 12px;">5
+                                available</span></h6>
+                        <div class="timeslot-grid" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                            <div class="timeslot available" data-instructor-id="instructor-1" data-day="monday"
+                                data-time="14:00" data-length="30" data-instrument="Piano"
+                                style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Monday</div>
+                                <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">2:00 PM</div>
+                                <div style="font-size: 12px; color: #666;">30min • Piano</div>
+                            </div>
+                            <div class="timeslot available" data-instructor-id="instructor-1" data-day="monday"
+                                data-time="14:30" data-length="45" data-instrument="Piano"
+                                style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Monday</div>
+                                <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">2:30 PM</div>
+                                <div style="font-size: 12px; color: #666;">45min • Piano</div>
+                            </div>
+                            <div class="timeslot unavailable"
+                                style="border: 2px solid #f44336; background: #ffebee; padding: 12px 16px; border-radius: 8px; cursor: not-allowed; min-width: 110px; text-align: center; opacity: 0.6;">
+                                <div style="font-weight: bold; color: #c62828; font-size: 14px;">Monday</div>
+                                <div style="font-weight: bold; color: #c62828; font-size: 16px;">3:00 PM</div>
+                                <div style="font-size: 12px; color: #666;">30min • Piano</div>
+                                <div style="font-size: 10px; color: #f44336; margin-top: 2px;">Booked</div>
+                            </div>
+                            <div class="timeslot available" data-instructor-id="instructor-1" data-day="tuesday"
+                                data-time="13:15" data-length="45" data-instrument="Piano"
+                                style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Tuesday</div>
+                                <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">1:15 PM</div>
+                                <div style="font-size: 12px; color: #666;">45min • Piano</div>
+                            </div>
+                            <div class="timeslot available" data-instructor-id="instructor-1" data-day="wednesday"
+                                data-time="15:30" data-length="30" data-instrument="Piano"
+                                style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Wednesday</div>
+                                <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">3:30 PM</div>
+                                <div style="font-size: 12px; color: #666;">30min • Piano</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="instructor-card"
+                        style="border: 2px solid #ddd; margin: 15px 0; padding: 20px; border-radius: 8px; transition: border-color 0.3s;">
+                        <h6 style="margin: 0 0 15px 0; color: #2b68a4; display: flex; align-items: center;"><b>Cesar
+                                Cancino - Guitar</b> <span
+                                style="margin-left: 10px; font-size: 12px; background: #fff3e0; color: #ff9800; padding: 4px 8px; border-radius: 12px;">2
+                                available</span></h6>
+                        <div class="timeslot-grid" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                            <div class="timeslot available" data-instructor-id="instructor-2" data-day="tuesday"
+                                data-time="13:30" data-length="30"
+                                style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Tuesday</div>
+                                <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">1:30 PM</div>
+                                <div style="font-size: 12px; color: #666;">30min</div>
+                            </div>
+                            <div class="timeslot limited" data-instructor-id="instructor-2" data-day="wednesday"
+                                data-time="16:00" data-length="45"
+                                style="border: 2px solid #ff9800; background: #fff3e0; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                <div style="font-weight: bold; color: #ef6c00; font-size: 14px;">Wednesday</div>
+                                <div style="font-weight: bold; color: #ef6c00; font-size: 16px;">4:00 PM</div>
+                                <div style="font-size: 12px; color: #666;">45min</div>
+                                <div style="font-size: 10px; color: #ff9800; margin-top: 2px;">Last slot</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Selected Lesson Display -->
+                <div id="admin-selected-lesson-display"
+                    style="margin-top: 25px; padding: 20px; background: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; display: none;">
+                    <h6 style="margin: 0 0 10px 0; color: #1976d2;"><b>Selected Lesson</b></h6>
+                    <div id="admin-selected-lesson-details" style="font-size: 16px; color: #333;"></div>
+                    <div style="margin-top: 15px;">
+                        <button class="btn-flat waves-effect" style="color: #666;"
+                            onclick="document.getElementById('admin-selected-lesson-display').style.display='none';">
+                            Clear Selection
+                        </button>
+                    </div>
+                </div>
+            </div>
             <div hidden class="tab-content" id="parent-contact-us" class="col s12" style="background-color: #fefefe">
-                <table hidden id="parent-directory-table">
+                <table id="parent-directory-table">
                 </table>
             </div>
 
@@ -778,19 +902,19 @@
             <p style="color: #666; margin-bottom: 30px;">
                 Please enter the last 4 digits of the mobile phone number you registered with Veracross.
             </p>
-            
+
             <div class="input-field">
                 <i class="material-icons prefix">lock</i>
                 <input id="modal-access-code" type="text" class="validate" maxlength="6" pattern="[0-9]{4,6}"
-                       style="font-family: 'Courier New', monospace; letter-spacing: 2px; text-align: left;">
+                    style="font-family: 'Courier New', monospace; letter-spacing: 2px; text-align: left;">
                 <label for="modal-access-code">Access Code</label>
                 <span class="helper-text" data-error="Please enter" data-success="Valid format"></span>
             </div>
         </div>
         <div class="modal-footer">
-            <a href="#!" class="modal-close waves-effect waves-light btn-flat" style="color: #666; margin-right: 10px;">Cancel</a>
-            <a href="#!" id="login-submit-btn" class="waves-effect waves-light btn" 
-               style="background-color: #2b68a4;">
+            <a href="#!" class="modal-close waves-effect waves-light btn-flat"
+                style="color: #666; margin-right: 10px;">Cancel</a>
+            <a href="#!" id="login-submit-btn" class="waves-effect waves-light btn" style="background-color: #2b68a4;">
                 <i class="material-icons left">login</i>Login
             </a>
         </div>

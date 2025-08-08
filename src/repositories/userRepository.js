@@ -119,10 +119,38 @@ export class UserRepository {
   async getStudents(forceRefresh = false) {
     return await RepositoryHelper.getAndSetData(
       () => this.students,
-      async () =>
-        (this.students = await this.dbClient.getAllRecords(Keys.STUDENTS, x =>
+      async () => {
+        // First, get the basic student data
+        const students = await this.dbClient.getAllRecords(Keys.STUDENTS, x =>
           Student.fromDatabaseRow(x)
-        )),
+        );
+        
+        // Then, enrich with parent emails
+        const parents = await this.getParents();
+        
+        return (this.students = students.map(student => {
+          // Find parent emails for this student
+          const parent1 = parents.find(p => p.id === student.parent1Id);
+          const parent2 = parents.find(p => p.id === student.parent2Id);
+          
+          const parentEmails = [parent1?.email, parent2?.email]
+            .filter(Boolean)
+            .join(', ');
+          
+          // Create a new student with parent emails populated
+          const enrichedStudent = new Student({
+            ...student.toDataObject(),
+            parentEmails
+          });
+          
+          // Debug log for first few students to verify parent emails are populated
+          if (students.indexOf(student) < 3) {
+            console.log(`Student ${student.firstName} ${student.lastName}: parentEmails = "${parentEmails}"`);
+          }
+          
+          return enrichedStudent;
+        }));
+      },
       Keys.STUDENTS,
       forceRefresh
     );

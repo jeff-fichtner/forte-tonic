@@ -45,7 +45,7 @@ export class AdminRegistrationForm {
     this.classSelect = this.#buildClassSelect(
       this.classes.map(cls => ({
         value: cls.id,
-        label: cls.name || cls.type,
+        label: cls.formattedName || cls.title || cls.instrument || `Class ${cls.id}`,
       }))
     );
     
@@ -133,6 +133,8 @@ export class AdminRegistrationForm {
         // Initialize lesson detail selectors
         if (selectedValue) {
           this.#initializeLessonDetailsSelectors();
+          // Update instrument options based on selected instructor
+          this.#updateInstrumentOptions(currentInstructor);
         }
       }
     );
@@ -183,7 +185,7 @@ export class AdminRegistrationForm {
    * Show/hide lesson details container
    */
   #showLessonDetailsContainer(shouldShow) {
-    this.#showContainer('lesson-details-container', shouldShow);
+    this.#showContainer('instructor-selected-info-container', shouldShow);
   }
 
   /**
@@ -204,23 +206,12 @@ export class AdminRegistrationForm {
       ],
       event => {
         console.log('Day selected:', event.target.value);
+        // Show the lesson length and start time container when day is selected
+        this.#showContainer('instructor-day-selected-info-container', !!event.target.value);
       }
     );
 
-    // Initialize length selector
-    this.lengthSelect = new Select(
-      'length-select',
-      'Choose length',
-      'No lengths available',
-      [
-        { value: '30', label: '30 minutes' },
-        { value: '45', label: '45 minutes' },
-        { value: '60', label: '60 minutes' }
-      ],
-      event => {
-        console.log('Length selected:', event.target.value);
-      }
-    );
+    // Note: Length is handled by radio buttons in the HTML, not a select dropdown
 
     // Initialize instrument selector
     this.instrumentSelect = new Select(
@@ -241,13 +232,78 @@ export class AdminRegistrationForm {
       }
     );
 
-    // Initialize Materialize time picker
-    const timePicker = document.getElementById('start-time-input');
-    if (timePicker) {
-      // Set default time
-      timePicker.value = '15:00';
-      M.updateTextFields();
+    // Initialize start time selector
+    this.startTimeSelect = new Select(
+      'start-time-select',
+      'Choose start time',
+      'No times available',
+      this.#generateTimeOptions(),
+      event => {
+        console.log('Start time selected:', event.target.value);
+      }
+    );
+  }
+
+  /**
+   * Generate time options for start time select
+   */
+  #generateTimeOptions() {
+    const times = [];
+    for (let hour = 14; hour <= 18; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        const displayTime = this.#formatDisplayTime(timeString);
+        times.push({ value: timeString, label: displayTime });
+      }
     }
+    return times;
+  }
+
+  /**
+   * Format time for display (convert 24h to 12h format)
+   */
+  #formatDisplayTime(time24) {
+    const [hours, minutes] = time24.split(':');
+    const hour12 = parseInt(hours) % 12 || 12;
+    const ampm = parseInt(hours) >= 12 ? 'PM' : 'AM';
+    return `${hour12}:${minutes} ${ampm}`;
+  }
+
+  /**
+   * Update instrument options based on selected instructor
+   */
+  #updateInstrumentOptions(instructor) {
+    if (!this.instrumentSelect || !instructor) {
+      return;
+    }
+
+    // Get instructor's instruments from specialties field
+    const instructorInstruments = instructor.specialties || [];
+    
+    // Create instrument options based on instructor's specialties
+    let instrumentOptions = [];
+    if (instructorInstruments.length > 0) {
+      instrumentOptions = instructorInstruments.map(instrument => ({
+        value: instrument,
+        label: instrument
+      }));
+    } else {
+      // Fallback to default instruments if instructor has no specialties
+      instrumentOptions = [
+        { value: 'Piano', label: 'Piano' },
+        { value: 'Guitar', label: 'Guitar' },
+        { value: 'Violin', label: 'Violin' },
+        { value: 'Voice', label: 'Voice' },
+        { value: 'Drums', label: 'Drums' },
+        { value: 'Bass', label: 'Bass' },
+        { value: 'Other', label: 'Other' }
+      ];
+    }
+
+    // Update the instrument select with new options
+    this.instrumentSelect.populateOptions(instrumentOptions, true);
+    
+    console.log('Updated instrument options for instructor:', instructor.firstName, instructor.lastName, 'with instruments:', instructorInstruments);
   }
 
   /**
@@ -336,8 +392,10 @@ export class AdminRegistrationForm {
    * Get registration data for submission
    */
   #getCreateRegistrationData() {
-    // get student
-    const studentId = this.selectedStudent ? this.selectedStudent.id : null;
+    // get student - extract the actual ID value if it's an object
+    const studentId = this.selectedStudent ? 
+      (typeof this.selectedStudent.id === 'object' ? this.selectedStudent.id.value : this.selectedStudent.id) : 
+      null;
     const registrationType = this.registrationTypeSelect.getSelectedOption();
     
     if (registrationType === RegistrationType.GROUP) {
@@ -354,17 +412,21 @@ export class AdminRegistrationForm {
       const transportationType = document.querySelector('input[name="transportation-type"]:checked');
       
       // Get lesson details from selectors
-      const day = this.daySelect ? this.daySelect.getSelectedOption() : '0';
-      const startTime = document.getElementById('start-time-input')?.value || '15:00';
-      const length = this.lengthSelect ? this.lengthSelect.getSelectedOption() : '30';
+      const dayValue = this.daySelect ? this.daySelect.getSelectedOption() : '0';
+      const startTime = this.startTimeSelect ? this.startTimeSelect.getSelectedOption() : '15:00';
+      const length = document.querySelector('input[name="lesson-length"]:checked')?.value || '30';
       const instrument = this.instrumentSelect ? this.instrumentSelect.getSelectedOption() : 'Piano';
+      
+      // Convert numeric day to day name
+      const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+      const dayName = dayNames[parseInt(dayValue)] || 'Monday';
       
       return {
         studentId: studentId,
         registrationType: registrationType,
         transportationType: transportationType ? transportationType.value : null,
         instructorId: this.instructorSelect.getSelectedOption(),
-        day: parseInt(day),
+        day: dayName,
         startTime: startTime,
         length: parseInt(length),
         instrument: instrument,
@@ -407,22 +469,23 @@ export class AdminRegistrationForm {
     if (this.daySelect) {
       this.daySelect.clearSelectedOption();
     }
-    if (this.lengthSelect) {
-      this.lengthSelect.clearSelectedOption();
+    // Reset lesson length radio buttons to default (30 minutes)
+    const lengthRadios = document.querySelectorAll('input[name="lesson-length"]');
+    if (lengthRadios.length > 0) {
+      lengthRadios[0].checked = true; // Default to 30 minutes
     }
     if (this.instrumentSelect) {
       this.instrumentSelect.clearSelectedOption();
     }
-    
-    // Clear time input
-    const timeInput = document.getElementById('start-time-input');
-    if (timeInput) {
-      timeInput.value = '';
-      M.updateTextFields();
+    if (this.startTimeSelect) {
+      this.startTimeSelect.clearSelectedOption();
     }
     
     // Hide lesson details container
     this.#showLessonDetailsContainer(false);
+    
+    // Hide day-selected container
+    this.#showContainer('instructor-day-selected-info-container', false);
     
     // Clear students
     this.#setCurrentStudent(null);

@@ -54,6 +54,11 @@ export class NavTabs {
         }
       });
 
+      // Force layout refresh when switching tabs to fix scroll/rendering issues
+      setTimeout(() => {
+        this.#forceTabContentRefresh(targetContent);
+      }, 10);
+
     });
     if (links.length === 0) {
       console.warn(`No links found.`);
@@ -78,6 +83,9 @@ export class NavTabs {
         // Auto-click the first tab within this section to show content
         this.#activateFirstTabInSection(dataSection);
         
+        // Force layout reflow and scroll reset to fix rendering issues
+        this.#forceLayoutRefresh(dataSection);
+        
         // Keep the active state toggle functionality
         links.forEach(l =>
           l.classList.toggle('active', l.getAttribute('data-section') === dataSection)
@@ -89,6 +97,139 @@ export class NavTabs {
       const firstLink = links[0];
       firstLink.classList.add('active');
     }
+  }
+
+  /**
+   * Force layout refresh and scroll reset to fix rendering issues when switching sections
+   * @param {string} section - The section that was just activated
+   */
+  #forceLayoutRefresh(section) {
+    console.log(`🔄 Forcing layout refresh for section: ${section}`);
+    
+    // Reset scroll position to top
+    window.scrollTo(0, 0);
+    
+    // Force immediate layout reflow by reading layout properties
+    const pageContent = document.getElementById('page-content');
+    if (pageContent) {
+      // Trigger reflow by reading offsetHeight (forces browser to recalculate layout)
+      pageContent.offsetHeight;
+      
+      // Also force reflow on the main container
+      const container = document.querySelector('.container');
+      if (container) {
+        container.offsetHeight;
+      }
+    }
+    
+    // Force reflow specifically on the active tab content
+    setTimeout(() => {
+      const sectionFirstTabs = {
+        'admin': '#admin-master-schedule',
+        'instructor': '#instructor-weekly-schedule', 
+        'parent': '#parent-weekly-schedule'
+      };
+      
+      const firstTabHref = sectionFirstTabs[section];
+      if (firstTabHref) {
+        const activeTabContent = document.querySelector(firstTabHref);
+        if (activeTabContent && !activeTabContent.hidden) {
+          // Force reflow on the tab content
+          activeTabContent.offsetHeight;
+          
+          // Find any tables in the content and force reflow on them too
+          const tables = activeTabContent.querySelectorAll('table');
+          tables.forEach(table => {
+            if (!table.hidden) {
+              table.offsetHeight;
+              
+              // If this is a MaterializeCSS table, reinitialize it
+              if (window.M && window.M.updateTextFields) {
+                window.M.updateTextFields();
+              }
+            }
+          });
+          
+          console.log(`✅ Layout refresh completed for ${section} section`);
+        }
+      }
+    }, 10); // Small delay to ensure DOM updates are complete
+    
+    // Additional scroll reset after a longer delay to ensure all content is rendered
+    setTimeout(() => {
+      window.scrollTo(0, 0);
+      
+      // Also try scrolling the main container and document body to fix any scroll lock issues
+      const container = document.querySelector('.container');
+      if (container) {
+        container.scrollTop = 0;
+      }
+      
+      // Reset body scroll as well
+      document.body.scrollTop = 0;
+      document.documentElement.scrollTop = 0;
+      
+      // Fix any potential CSS overflow issues that can cause scroll lock
+      const pageContent = document.getElementById('page-content');
+      if (pageContent) {
+        // Temporarily reset overflow to ensure scrollability
+        const originalOverflow = pageContent.style.overflow;
+        pageContent.style.overflow = 'visible';
+        
+        // Then restore it after a brief moment
+        setTimeout(() => {
+          pageContent.style.overflow = originalOverflow;
+        }, 50);
+      }
+      
+      console.log(`📜 Final scroll reset completed for ${section} section`);
+    }, 100);
+  }
+
+  /**
+   * Force refresh of specific tab content to fix rendering issues
+   * @param {Element} tabContent - The tab content element that was just shown
+   */
+  #forceTabContentRefresh(tabContent) {
+    if (!tabContent || tabContent.hidden) return;
+    
+    console.log(`🔄 Forcing refresh for tab content: ${tabContent.id}`);
+    
+    // Reset scroll to top when switching tabs
+    window.scrollTo(0, 0);
+    
+    // Force reflow on the tab content
+    tabContent.offsetHeight;
+    
+    // Find any tables and force reflow on them
+    const tables = tabContent.querySelectorAll('table');
+    tables.forEach(table => {
+      if (!table.hidden) {
+        table.offsetHeight;
+        
+        // For tables with complex content, also check their parent containers
+        const tableContainer = table.closest('.card, .card-content, .row, .col');
+        if (tableContainer) {
+          tableContainer.offsetHeight;
+        }
+      }
+    });
+    
+    // Reinitialize any MaterializeCSS components in the newly shown content
+    if (window.M) {
+      // Update form elements
+      if (window.M.updateTextFields) {
+        window.M.updateTextFields();
+      }
+      
+      // Reinitialize any dropdowns, modals, etc. in this tab
+      const selects = tabContent.querySelectorAll('select');
+      if (selects.length > 0) {
+        window.M.FormSelect.init(selects);
+      }
+    }
+    
+    console.log(`✅ Tab content refresh completed for: ${tabContent.id}`);
   }
 
   /**

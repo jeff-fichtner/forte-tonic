@@ -10,11 +10,8 @@ This document summarizes the comprehensive architectural transformation implemen
 
 **Implementation**:
 - `RegistrationValidationService` - Validates registration requirements and constraints
-- `RegistrationConflictService` - Detects and analyzes schedule conflicts  
-- `StudentManagementService` - Handles student-specific business rules
-- `ProgramManagementService` - Manages program eligibility and capacity
-
-**Location**: `src/domain/services/`
+- `RegistrationConflictService` - Handles registration conflicts and validation
+- `ProgramManagementService` - Manages program eligibility and capacity**Location**: `src/domain/services/`
 **Benefits**: Business logic is centralized, testable, and reusable across application services
 
 ### Task 7: Business Rule Extraction ✅ (2/7)
@@ -32,7 +29,7 @@ This document summarizes the comprehensive architectural transformation implemen
 
 **Domain Entities**:
 - `Registration` - Core business entity with conflict detection and cancellation logic
-- `Student` - Rich student model with eligibility and age category methods
+- `Student` - Rich student model with age category methods
 
 **Value Objects**:
 - `RegistrationType` - Type-safe registration categorization

@@ -224,31 +224,6 @@ export class UserController {
   }
 
   /**
-   * Validate student eligibility for a specific program
-   */
-  static async validateStudentEligibility(req, res) {
-    try {
-      const { studentId } = req.params;
-      const { programType } = req.body;
-
-      const studentApplicationService = serviceContainer.get('studentApplicationService');
-
-      const eligibility = await studentApplicationService.validateProgramEligibility(
-        studentId,
-        programType
-      );
-
-      res.json({
-        success: true,
-        data: eligibility,
-      });
-    } catch (error) {
-      console.error('Error validating student eligibility:', error);
-      res.status(500).json({ error: error.message });
-    }
-  }
-
-  /**
    * Generate student progress report
    */
   static async getStudentProgressReport(req, res) {

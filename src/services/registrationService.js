@@ -8,7 +8,6 @@
 
 import { RegistrationValidationService } from '../services/registrationValidationService.js';
 import { RegistrationConflictService } from '../services/registrationConflictService.js';
-import { StudentManagementService } from '../services/studentManagementService.js';
 import { ProgramManagementService } from '../services/programManagementService.js';
 import { Registration } from '../models/shared/registration.js';
 
@@ -105,16 +104,7 @@ export class RegistrationApplicationService {
         });
       }
 
-      // Step 4: Student enrollment eligibility check
-      const eligibility = StudentManagementService.validateEnrollmentEligibility(
-        student,
-        registrationData
-      );
-      if (!eligibility.isEligible) {
-        throw new Error(`Student not eligible for enrollment: ${eligibility.errors.join(', ')}`);
-      }
-
-      // Step 5: Program-specific validation
+      // Step 4: Program-specific validation
       const programValidation = ProgramManagementService.validateRegistration(
         registrationData,
         groupClass,
@@ -124,7 +114,7 @@ export class RegistrationApplicationService {
         throw new Error(`Program validation failed: ${programValidation.errors.join(', ')}`);
       }
 
-      // Step 6: Check for conflicts with existing registrations
+      // Step 5: Check for conflicts with existing registrations
       const existingRegistrations = await this.registrationRepository.findAll();
       const conflictCheck = await RegistrationConflictService.checkConflicts(
         registrationData,
@@ -137,7 +127,7 @@ export class RegistrationApplicationService {
         );
       }
 
-      // Step 7: Create domain entity
+      // Step 6: Create domain entity
       console.log('📝 Registration data before creating entity:', registrationData);
       const registrationEntity = Registration.createNew(
         registrationData.studentId,
@@ -159,17 +149,17 @@ export class RegistrationApplicationService {
         }
       );
 
-      // Step 8: Persist the registration
+      // Step 7: Persist the registration
       const persistedRegistration = await this.registrationRepository.create(
         registrationEntity.toDataObject()
       );
 
-      // Step 9: Audit logging
+      // Step 8: Audit logging
       if (this.auditService) {
         await this.auditService.logRegistrationCreated(persistedRegistration, userId);
       }
 
-      // Step 10: Send confirmation emails
+      // Step 9: Send confirmation emails
       await this.#sendRegistrationConfirmation(registrationEntity, student, instructor);
 
       console.log('✅ Registration processed successfully:', persistedRegistration.id);
@@ -197,7 +187,6 @@ export class RegistrationApplicationService {
       return {
         success: true,
         registration: persistedRegistration,
-        enrollmentInfo: eligibility,
         lessonSchedule: lessonSchedule,
       };
     } catch (error) {

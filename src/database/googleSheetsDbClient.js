@@ -364,7 +364,7 @@ export class GoogleSheetsDbClient {
       });
 
       const rows = response.data.values || [];
-      return rows.map(row => mapFunc(row));
+      return rows.map(row => mapFunc(row)).filter(item => item !== null && item !== undefined);
     } catch (error) {
       console.error(`Error getting data from sheet ${sheetKey}:`, error);
       throw error;
