@@ -755,6 +755,34 @@
             </div>
             <div hidden class="tab-content" id="parent-registration" class="col s12" style="background-color: #fefefe">
 
+                <!-- Student Selection (conditionally shown) -->
+                <div id="parent-student-selection-section" class="student-selection-section" style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px; display: none;">
+                    <h6 style="margin: 0 0 15px 0; color: #2b68a4;"><b>Select Student</b></h6>
+                    <div class="input-field">
+                        <select id="parent-student-select">
+                            <option value="">Select Student</option>
+                            <!-- Students will be populated programmatically -->
+                        </select>
+                        <label for="parent-student-select">Student</label>
+                    </div>
+                </div>
+
+                <!-- Registration Type Selection -->
+                <div class="registration-type-section" style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+                    <h6 style="margin: 0 0 15px 0; color: #2b68a4;"><b>Registration Type</b></h6>
+                    <div class="input-field">
+                        <select id="parent-registration-type-select">
+                            <option value="">Select Registration Type</option>
+                            <option value="private">Private Lessons</option>
+                            <option value="public">Group Classes</option>
+                        </select>
+                        <label for="parent-registration-type-select">Registration Type</label>
+                    </div>
+                </div>
+
+                <!-- Private Registration Container (hidden by default) -->
+                <div id="parent-private-registration-container" style="display: none;">
+
                 <!-- Hybrid Approach: Smart Chips + Interactive Time Slot Grid for Private Lessons -->
 
                 <!-- Smart Filter Chips Section -->
@@ -871,18 +899,50 @@
                     </div>
                 </div>
 
-                <!-- Selected Lesson Display -->
+                <!-- Selected Lesson Display - Fixed to bottom -->
                 <div id="admin-selected-lesson-display"
-                    style="margin-top: 25px; padding: 20px; background: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; display: none;">
-                    <h6 style="margin: 0 0 10px 0; color: #1976d2;"><b>Selected Lesson</b></h6>
-                    <div id="admin-selected-lesson-details" style="font-size: 16px; color: #333;"></div>
-                    <div style="margin-top: 15px;">
-                        <button class="btn-flat waves-effect" style="color: #666;"
-                            onclick="document.getElementById('admin-selected-lesson-display').style.display='none';">
-                            Clear Selection
-                        </button>
+                    style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; padding: 20px; background: #e3f2fd; border-top: 3px solid #2196f3; box-shadow: 0 -4px 12px rgba(0,0,0,0.15); display: none; pointer-events: none;">
+                    <div style="max-width: 1200px; margin: 0 auto; pointer-events: auto;">
+                        <h6 style="margin: 0 0 10px 0; color: #1976d2;"><b>Selected Lesson</b></h6>
+                        <div id="admin-selected-lesson-details" style="font-size: 16px; color: #333; margin-bottom: 15px;"></div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button id="parent-confirm-registration-btn" class="btn waves-effect waves-light" 
+                                    style="background-color: #2b68a4;">
+                                <i class="material-icons left">check</i>Create Registration
+                            </button>
+                            <button id="parent-clear-selection-btn" class="btn-flat waves-effect" style="color: #666;">
+                                Clear Selection
+                            </button>
+                        </div>
                     </div>
                 </div>
+
+                </div> <!-- End of parent-private-registration-container -->
+
+                <!-- Group Registration Container (hidden by default) -->
+                <div id="parent-group-registration-container" style="display: none;">
+                    <div class="group-registration-section" style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+                        <h6 style="margin: 0 0 15px 0; color: #2b68a4;"><b>Select Group Class</b></h6>
+                        
+                        <div class="input-field">
+                            <select id="parent-class-select">
+                                <!-- Classes will be populated programmatically -->
+                            </select>
+                            <label for="parent-class-select">Available Classes</label>
+                        </div>
+
+                        <!-- Create Button -->
+                        <div class="center-align" style="margin-top: 20px;">
+                            <button class="btn waves-effect waves-light" type="button" 
+                                    id="parent-create-group-registration-btn"
+                                    style="background-color: #2b68a4;">
+                                <i class="material-icons left">group_add</i>
+                                <b>Register for Class</b>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
             </div>
             <div hidden class="tab-content" id="parent-contact-us" class="col s12" style="background-color: #fefefe">
                 <table id="parent-directory-table">

@@ -341,6 +341,11 @@ export class ViewModel {
         console.warn(`❌ Nav link not found for section: ${roleToClick}`);
       }
     }
+    
+    // Reset UI state after data load to prevent scroll lock issues
+    setTimeout(() => {
+      this.#resetUIState();
+    }, 300); // Allow time for content to render and nav click to complete
   }
   /**
    *
@@ -532,6 +537,11 @@ export class ViewModel {
   #initParentContent() {
     console.log('🔧 Initializing parent content...');
     console.log('🔍 Current user structure:', this.currentUser);
+    
+    // Clear parent registration form selection when content is refreshed
+    if (this.parentRegistrationForm) {
+      this.parentRegistrationForm.clearSelection();
+    }
     
     // weekly schedule
     // Get the current parent's ID
@@ -727,7 +737,8 @@ export class ViewModel {
         this.registrations.push(newRegistration);
         // Refresh parent schedule after registration
         this.#initParentContent();
-      }
+      },
+      studentsWithRegistrations // Pass parent's children
     );
 
     // directory - only show instructors who teach the parent's children
@@ -1710,6 +1721,11 @@ export class ViewModel {
         // Handle successful login
         this.loginModal.close();
         accessCodeInput.value = ''; // Clear the input
+        
+        // Reset UI state after modal close to prevent scroll lock
+        setTimeout(() => {
+          this.#resetUIState();
+        }, 200); // Small delay to let modal close animation complete
 
       },
       () => {
@@ -1826,6 +1842,81 @@ export class ViewModel {
     this.adminContentInitialized = false;
     this.instructorContentInitialized = false;
     this.parentContentInitialized = false;
+    
+    // Clear parent registration form selection when user changes
+    if (this.parentRegistrationForm) {
+      this.parentRegistrationForm.clearSelection();
+    }
+    
+    // Comprehensive UI cleanup to prevent scroll lock issues
+    this.#resetUIState();
+  }
+
+  /**
+   * Reset UI state to prevent scroll lock and other issues during user changes
+   */
+  #resetUIState() {
+    try {
+      // Ensure login modal is properly closed
+      if (this.loginModal && this.loginModal.isOpen) {
+        this.loginModal.close();
+      }
+      
+      // Reset scroll position
+      window.scrollTo(0, 0);
+      document.body.scrollTop = 0;
+      document.documentElement.scrollTop = 0;
+      
+      // Reset container scroll
+      const container = document.querySelector('.container');
+      if (container) {
+        container.scrollTop = 0;
+      }
+      
+      // Reset page content scroll
+      const pageContent = document.getElementById('page-content');
+      if (pageContent) {
+        pageContent.scrollTop = 0;
+        
+        // Ensure overflow is not locked
+        pageContent.style.overflow = '';
+        pageContent.style.overflowY = '';
+        pageContent.style.height = '';
+        pageContent.style.position = '';
+      }
+      
+      // Reset body styles that might cause scroll lock
+      document.body.style.overflow = '';
+      document.body.style.overflowY = '';
+      document.body.style.height = '';
+      document.body.style.position = '';
+      
+      // Reset html styles
+      document.documentElement.style.overflow = '';
+      document.documentElement.style.overflowY = '';
+      document.documentElement.style.height = '';
+      
+      // Hide any fixed elements that might interfere
+      const fixedElements = document.querySelectorAll('[style*="position: fixed"]');
+      fixedElements.forEach(element => {
+        if (element.id === 'admin-selected-lesson-display') {
+          element.style.display = 'none';
+        }
+      });
+      
+      // Remove any modal overlay classes that might be stuck
+      document.body.classList.remove('modal-open');
+      document.documentElement.classList.remove('modal-open');
+      
+      // Remove any potential overlay elements
+      const overlays = document.querySelectorAll('.modal-overlay');
+      overlays.forEach(overlay => overlay.remove());
+      
+      console.log('✅ UI state reset completed');
+      
+    } catch (error) {
+      console.error('❌ Error resetting UI state:', error);
+    }
   }
 
   /**
