@@ -110,28 +110,6 @@ export class Student {
   }
 
   /**
-   * Business rule: Check enrollment eligibility
-   */
-  isEligibleForEnrollment() {
-    const checks = {
-      hasName: !!(this.firstName && this.lastName),
-      hasEmergencyContact: this.hasEmergencyContact(),
-      hasParentIfRequired: this.requiresParentPermission() ? this.hasAssignedParents() : true,
-      isActive: this.isActive,
-    };
-
-    const isEligible = Object.values(checks).every(check => check === true);
-
-    return {
-      eligible: isEligible,
-      checks,
-      missingRequirements: Object.entries(checks)
-        .filter(([_, passed]) => !passed)
-        .map(([requirement]) => requirement),
-    };
-  }
-
-  /**
    * Business rule: Get age category for program placement
    */
   getAgeCategory() {

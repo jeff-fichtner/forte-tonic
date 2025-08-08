@@ -204,7 +204,6 @@ jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js
                 grade: '5',
                 ageCategory: 'elementary',
                 hasEmergencyContact: true,
-                eligibilityInfo: { eligible: true },
                 recommendedLessonDuration: 30,
               },
               {
@@ -214,7 +213,6 @@ jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js
                 grade: '8',
                 ageCategory: 'middle',
                 hasEmergencyContact: false,
-                eligibilityInfo: { eligible: false },
                 recommendedLessonDuration: 45,
               },
             ],

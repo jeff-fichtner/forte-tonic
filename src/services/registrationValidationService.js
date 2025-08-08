@@ -59,7 +59,7 @@ export class RegistrationValidationService {
     if (!registrationData.instrument) {
       errors.push('Instrument is required for private lessons');
     }
-    if (!registrationData.day) {
+    if (registrationData.day === undefined || registrationData.day === null) {
       errors.push('Day is required for private lessons');
     }
     if (!registrationData.startTime) {

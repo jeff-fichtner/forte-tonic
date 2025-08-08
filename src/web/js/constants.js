@@ -24,7 +24,7 @@ export const ServerFunctions = {
   getClasses: 'getClasses',
   getRegistrations: 'getRegistrations',
   getRooms: 'getRooms',
-  register: 'register',
+  register: 'registrations',
   unregister: 'unregister',
   authenticateByAccessCode: 'authenticateByAccessCode',
 };

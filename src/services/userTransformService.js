@@ -79,6 +79,7 @@ export class UserTransformService {
       grade: student.grade,
       parent1Id: student.parent1Id,
       parent2Id: student.parent2Id,
+      parentEmails: student.parentEmails, // Include parent emails for contact functionality
       fullName: `${student.firstName} ${student.lastName}`,
       displayName:
         student.firstNickname && student.lastNickname

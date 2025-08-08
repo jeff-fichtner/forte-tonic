@@ -10,12 +10,9 @@
 export function formatPhone(phoneNumber) {
   if (!phoneNumber) return '';
 
-  // Remove all non-digit characters
-  const cleaned = phoneNumber.replace(/\D/g, '');
-
   // Format as (XXX) XXX-XXXX for 10-digit numbers
-  if (cleaned.length === 10) {
-    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+  if (phoneNumber.length === 10) {
+    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6)}`;
   }
 
   // Return original if not standard 10-digit format

@@ -166,25 +166,25 @@ export class RegistrationRepository extends BaseRepository {
       // Generate UUID if not provided
       const registrationId = registrationData.id || this.generateUUID();
       
-      // Create Registration instance
-      const registration = new Registration(
-        registrationId,
-        registrationData.studentId,
-        registrationData.instructorId,
-        registrationData.day,
-        registrationData.startTime,
-        registrationData.length,
-        registrationData.registrationType,
-        registrationData.roomId,
-        registrationData.instrument,
-        registrationData.transportationType,
-        registrationData.notes,
-        registrationData.classId,
-        registrationData.classTitle,
-        registrationData.expectedStartDate,
-        registrationData.createdAt || new Date().toISOString(),
-        registrationData.createdBy || 'SYSTEM'
-      );
+      // Create Registration instance with a data object
+      const registration = new Registration({
+        id: registrationId,
+        studentId: registrationData.studentId,
+        instructorId: registrationData.instructorId,
+        day: registrationData.day,
+        startTime: registrationData.startTime,
+        length: registrationData.length,
+        registrationType: registrationData.registrationType,
+        roomId: registrationData.roomId,
+        instrument: registrationData.instrument,
+        transportationType: registrationData.transportationType,
+        notes: registrationData.notes,
+        classId: registrationData.classId,
+        classTitle: registrationData.classTitle,
+        expectedStartDate: registrationData.expectedStartDate,
+        createdAt: registrationData.createdAt || new Date().toISOString(),
+        createdBy: registrationData.createdBy || 'SYSTEM'
+      });
 
       // Convert to database row format (16 columns)
       const row = registration.toDatabaseRow();

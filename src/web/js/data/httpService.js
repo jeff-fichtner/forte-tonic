@@ -153,7 +153,10 @@ export class HttpService {
    *
    */
   static post(serverFunctionName, data, mapper = null, context = null, ...args) {
-    const payload = [{ data }, ...args];
+    // For new API endpoints (like registrations), send data directly
+    // For legacy endpoints, wrap in the old format
+    const isNewEndpoint = ['registrations'].includes(serverFunctionName);
+    const payload = isNewEndpoint ? data : [{ data }, ...args];
     return this.#callServerFunction(serverFunctionName, payload, mapper, context);
   }
 

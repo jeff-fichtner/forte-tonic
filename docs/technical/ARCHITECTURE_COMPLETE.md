@@ -64,11 +64,8 @@ Successfully implemented a comprehensive Domain-Driven Design (DDD) architecture
 
 ### **1. Domain Services (Task 6)**
 - ✅ **RegistrationValidationService** - Centralized validation logic
-- ✅ **RegistrationConflictService** - Schedule conflict detection  
-- ✅ **StudentManagementService** - Student-specific business rules
-- ✅ **ProgramManagementService** - Program eligibility management
-
-### **2. Business Rule Extraction (Task 7)**
+- ✅ **RegistrationConflictService** - Conflict detection and scheduling
+- ✅ **ProgramManagementService** - Program capacity management### **2. Business Rule Extraction (Task 7)**
 - ✅ Moved business logic from repositories to domain services
 - ✅ Repositories now focus purely on data access
 - ✅ Clean separation of concerns achieved
@@ -76,7 +73,7 @@ Successfully implemented a comprehensive Domain-Driven Design (DDD) architecture
 ### **3. Domain Entities & Value Objects (Task 8)**
 - ✅ **Rich Entities**: Registration, Student with embedded business methods
 - ✅ **Value Objects**: Type-safe IDs, Email validation, Time management
-- ✅ **Business Behavior**: Conflict detection, eligibility checks, age categorization
+- ✅ **Business Behavior**: Conflict detection, age categorization
 
 ### **4. Application Services (Task 9)**
 - ✅ **Workflow Coordination**: Registration processing, student enrollment

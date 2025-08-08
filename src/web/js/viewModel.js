@@ -8,6 +8,7 @@ import { NavTabs } from './components/navTabs.js';
 import { Table } from './components/table.js';
 import { AdminRegistrationForm } from './workflows/adminRegistrationForm.js';
 import { ParentRegistrationForm } from './workflows/parentRegistrationForm.js';
+import { formatPhone } from './utilities/phoneHelpers.js';
 import { formatGrade, formatTime } from './extensions/numberExtensions.js';
 
 /**
@@ -15,6 +16,13 @@ import { formatGrade, formatTime } from './extensions/numberExtensions.js';
  */
 export class ViewModel {
   // Private fields
+
+  constructor() {
+    // Initialize content initialization flags
+    this.adminContentInitialized = false;
+    this.instructorContentInitialized = false;
+    this.parentContentInitialized = false;
+  }
 
   async initializeAsync() {
 
@@ -157,16 +165,23 @@ export class ViewModel {
     this.currentUser = user;
 
     let defaultSection;
-    if (user.admin) {
+    if (user.admin && !this.adminContentInitialized) {
+      console.log('🔧 Initializing admin content...');
       this.#initAdminContent();
+      this.adminContentInitialized = true;
       defaultSection = Sections.ADMIN;
     }
-    if (user.instructor) {
+    if (user.instructor && !this.instructorContentInitialized) {
+      console.log('🔧 Initializing instructor content...');
       this.#initInstructorContent();
+      this.instructorContentInitialized = true;
       defaultSection = Sections.INSTRUCTOR;
     }
-    if (user.parent) {
+    if (user.parent && !this.parentContentInitialized) {
+      console.log('🔧 Initializing parent content...');
+      console.log('  - Parent user:', user.parent);
       this.#initParentContent();
+      this.parentContentInitialized = true;
       defaultSection = Sections.PARENT;
     }
 
@@ -209,15 +224,15 @@ export class ViewModel {
     this.masterScheduleTable = this.#buildRegistrationTable(sortedRegistrations);
     console.log('Master schedule table built successfully');
     this.#populateFilterDropdowns();
+
     // registration form
     this.adminRegistrationForm = new AdminRegistrationForm(
       this.instructors,
       this.students,
       this.classes,
       async data => {
-        const newRegistration = await HttpService.post(ServerFunctions.register, data, x =>
-          Registration.fromApiData(x.newRegistration)
-        );
+        const response = await HttpService.post(ServerFunctions.register, data);
+        const newRegistration = Registration.fromApiData(response.data);
 
         // handle response
         M.toast({ html: 'Registration created successfully.' });
@@ -281,7 +296,6 @@ export class ViewModel {
         </p>
       `;
       instructorWeeklyScheduleTables.appendChild(noRegistrationsMessage);
-      return;
     }
 
     // TODO future will allow redraw
@@ -336,22 +350,9 @@ export class ViewModel {
 
       this.#buildWeeklySchedule(tableId, dayRegistrations);
     });
-    // attendance
-    // directory
-    // For instructors, show admins and only the current instructor (unless they're also an admin)
-    const isOperatorUser = this.currentUser instanceof OperatorUserResponse || (this.currentUser.isOperator && this.currentUser.isOperator());
-
-    let instructorsToShow;
-    if (isOperatorUser) {
-      // Operator users can see all instructors
-      instructorsToShow = this.instructors;
-    } else {
-      // Regular instructors only see themselves
-      instructorsToShow = this.instructors.filter(instructor => instructor.id === currentInstructorId);
-    }
-
+    
     const mappedEmployees = this.adminEmployees().concat(
-      instructorsToShow.map(instructor => this.instructorToEmployee(instructor))
+      this.instructors.map(instructor => this.instructorToEmployee(instructor))
     );
     // Sort employees to ensure admins appear at the top
     const sortedEmployees = this.#sortEmployeesForDirectory(mappedEmployees);
@@ -365,6 +366,7 @@ export class ViewModel {
    *
    */
   #initParentContent() {
+    console.log('🔧 Initializing parent content...');
     // weekly schedule
     // Get the current parent's ID
     const currentParentId = this.currentUser.parent?.id;
@@ -375,13 +377,29 @@ export class ViewModel {
     }
 
     // Filter registrations to only show those where the student is the parent's child
+    console.log('🔍 Debug parent filtering:');
+    console.log('  - currentParentId:', currentParentId);
+    console.log('  - Total registrations:', this.registrations.length);
+    
     const parentChildRegistrations = this.registrations.filter(registration => {
       const student = registration.student;
-      if (!student) return false;
+      if (!student) {
+        console.log('  - Registration missing student:', registration.id);
+        return false;
+      }
+
+      console.log('  - Checking student:', student.firstName, student.lastName);
+      console.log('    - student.parent1Id:', student.parent1Id);
+      console.log('    - student.parent2Id:', student.parent2Id);
+      console.log('    - currentParentId:', currentParentId);
 
       // Check if the current parent is either parent1 or parent2 of the student
-      return student.parent1Id === currentParentId || student.parent2Id === currentParentId;
+      const isMatch = student.parent1Id === currentParentId || student.parent2Id === currentParentId;
+      console.log('    - Match result:', isMatch);
+      return isMatch;
     });
+
+    console.log('🔍 Filtered registrations count:', parentChildRegistrations.length);
 
     // Get unique students with registrations (their own children only)
     const studentsWithRegistrations = parentChildRegistrations
@@ -406,35 +424,35 @@ export class ViewModel {
         </p>
       `;
       parentWeeklyScheduleTables.appendChild(noRegistrationsMessage);
-      return;
+    } else {
+
+      // Create a separate table for each child
+      studentsWithRegistrations.forEach(student => {
+        // Create a container for each child's schedule
+        const studentContainer = document.createElement('div');
+        studentContainer.className = 'student-schedule-container';
+        studentContainer.style.cssText = 'margin-bottom: 30px;';
+
+        // Add student name header
+        const studentHeader = document.createElement('h5');
+        studentHeader.style.cssText = 'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px;';
+        studentHeader.textContent = `${student.firstName} ${student.lastName}'s Schedule`;
+        studentContainer.appendChild(studentHeader);
+
+        // Create table for this student
+        const tableId = `parent-weekly-schedule-table-${student.id}`;
+        const newTable = document.createElement('table');
+        newTable.id = tableId;
+        studentContainer.appendChild(newTable);
+
+        parentWeeklyScheduleTables.appendChild(studentContainer);
+
+        this.#buildWeeklySchedule(
+          tableId,
+          parentChildRegistrations.filter(x => x.studentId.value === student.id)
+        );
+      });
     }
-
-    // Create a separate table for each child
-    studentsWithRegistrations.forEach(student => {
-      // Create a container for each child's schedule
-      const studentContainer = document.createElement('div');
-      studentContainer.className = 'student-schedule-container';
-      studentContainer.style.cssText = 'margin-bottom: 30px;';
-
-      // Add student name header
-      const studentHeader = document.createElement('h5');
-      studentHeader.style.cssText = 'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px;';
-      studentHeader.textContent = `${student.firstName} ${student.lastName}'s Schedule`;
-      studentContainer.appendChild(studentHeader);
-
-      // Create table for this student
-      const tableId = `parent-weekly-schedule-table-${student.id}`;
-      const newTable = document.createElement('table');
-      newTable.id = tableId;
-      studentContainer.appendChild(newTable);
-
-      parentWeeklyScheduleTables.appendChild(studentContainer);
-
-      this.#buildWeeklySchedule(
-        tableId,
-        parentChildRegistrations.filter(x => x.studentId.value === student.id)
-      );
-    });
 
     // registration
     // Initialize parent registration form with hybrid interface
@@ -443,9 +461,8 @@ export class ViewModel {
       this.students,
       this.classes,
       async data => {
-        const newRegistration = await HttpService.post(ServerFunctions.register, data, x =>
-          Registration.fromApiData(x.newRegistration)
-        );
+        const response = await HttpService.post(ServerFunctions.register, data);
+        const newRegistration = Registration.fromApiData(response.data);
 
         // handle response
         M.toast({ html: 'Registration created successfully.' });
@@ -598,6 +615,105 @@ export class ViewModel {
   }
 
   /**
+   * Create an instructor chip element
+   * @param {string} name - The instructor name to display
+   * @param {string|null} instructorId - The instructor ID (null for "All Instructors")
+   * @param {number} slotCount - Number of available slots
+   * @param {string} availability - 'available', 'limited', or 'unavailable'
+   * @param {boolean} isActive - Whether this chip should be active by default
+   * @returns {HTMLElement} The chip element
+   */
+  #createInstructorChip(name, instructorId, slotCount, availability, isActive) {
+    const chip = document.createElement('div');
+    chip.className = `chip instructor-chip ${availability}${isActive ? ' active' : ''}`;
+    chip.dataset.instructorId = instructorId || 'all';
+
+    // Set styles based on availability and active state
+    let styles = 'padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s; border: 2px solid;';
+
+    if (isActive) {
+      styles += ' background: #2b68a4; color: white; border-color: #2b68a4;';
+    } else {
+      switch (availability) {
+        case 'available':
+          styles += ' background: #e8f5e8; border-color: #4caf50; color: #2e7d32;';
+          break;
+        case 'limited':
+          styles += ' background: #fff3e0; border-color: #ff9800; color: #ef6c00;';
+          break;
+        case 'unavailable':
+          styles += ' background: #ffebee; border-color: #f44336; color: #c62828; cursor: not-allowed; opacity: 0.6;';
+          break;
+      }
+    }
+
+    chip.style.cssText = styles;
+
+    // Create slot count span with appropriate color
+    let slotColor = '#ccc';
+    if (!isActive) {
+      switch (availability) {
+        case 'available':
+          slotColor = '#4caf50';
+          break;
+        case 'limited':
+          slotColor = '#ff9800';
+          break;
+        case 'unavailable':
+          slotColor = '#f44336';
+          break;
+      }
+    }
+
+    const slotText = instructorId ? ` (${slotCount} slots)` : ` (${slotCount} slots)`;
+    chip.innerHTML = `${name} <span style="color: ${slotColor}; font-weight: bold; margin-left: 5px;">${slotText}</span>`;
+
+    // Add click handler for chip selection (except for unavailable chips)
+    if (availability !== 'unavailable') {
+      chip.addEventListener('click', () => {
+        this.#handleInstructorChipClick(chip, instructorId);
+      });
+    }
+
+    return chip;
+  }
+
+  /**
+   * Handle instructor chip click events
+   * @param {HTMLElement} clickedChip - The chip that was clicked
+   * @param {string|null} instructorId - The instructor ID (null for "All Instructors")
+   */
+  #handleInstructorChipClick(clickedChip, instructorId) {
+    // Remove active class from all instructor chips
+    const allChips = document.querySelectorAll('.instructor-chip');
+    allChips.forEach(chip => {
+      chip.classList.remove('active');
+      // Reset background color based on availability
+      if (chip.classList.contains('available')) {
+        chip.style.background = '#e8f5e8';
+        chip.style.borderColor = '#4caf50';
+        chip.style.color = '#2e7d32';
+      } else if (chip.classList.contains('limited')) {
+        chip.style.background = '#fff3e0';
+        chip.style.borderColor = '#ff9800';
+        chip.style.color = '#ef6c00';
+      }
+    });
+
+    // Add active class to clicked chip
+    clickedChip.classList.add('active');
+    clickedChip.style.background = '#2b68a4';
+    clickedChip.style.borderColor = '#2b68a4';
+    clickedChip.style.color = 'white';
+
+    // Filter time slots based on selected instructor
+    console.log(`Instructor filter selected: ${instructorId || 'all'}`);
+
+    // TODO: Implement time slot filtering logic here
+    // This would update the time slot grid to show only slots for the selected instructor
+  }
+
+  /**
    * Sort registrations by day, then start time, then length, then registration type (private first, then group)
    */
   #sortRegistrations(registrations) {
@@ -662,10 +778,16 @@ export class ViewModel {
 
         // Find instructor and student
         const instructor = this.instructors.find(x => x.id === instructorIdToFind);
-        const student = this.students.find(x => x.id?.value === studentIdToFind);
+        const student = this.students.find(x => {
+          const studentId = x.id?.value || x.id;
+          return studentId === studentIdToFind;
+        });
 
         if (!instructor || !student) {
           console.warn(`Instructor or student not found for registration: ${registration.id}`);
+          console.warn(`Looking for instructorId: ${instructorIdToFind}, studentId: ${studentIdToFind}`);
+          console.warn('Available instructor IDs:', this.instructors.map(i => i.id).slice(0, 5));
+          console.warn('Available student IDs:', this.students.map(s => s.id?.value || s.id).slice(0, 5));
           return '';
         }
         return `
@@ -884,14 +1006,12 @@ export class ViewModel {
           ? employee.roles.join(', ')
           : employee.roles || 'Unknown';
         const email = employee.email || 'No email';
-        const rawPhone = employee.phone || employee.phoneNumber || '';
-        const phone = rawPhone ? formatPhone(rawPhone) : '';
-
+        
         return `
                         <td>${fullName}</td>
                         <td>${roles}</td>
                         <td>${email}</td>
-                        <td>${phone}</td>
+                        <td>${employee.phone}</td>
                         <td>
                             <a href="#!" data-employee-email="${email}">
                                 <i class="copy-parent-emails-table-icon material-icons gray-text text-darken-4">email</i>
@@ -1110,15 +1230,19 @@ export class ViewModel {
     // Get instruments from either specialties or instruments field
     const instruments = instructor.specialties || instructor.instruments || [];
     const instrumentsText = instruments.length > 0 ? instruments.join(', ') : 'Instructor';
+    
+    // Format phone number using the formatPhone function
+    const rawPhone = instructor.phone || instructor.phoneNumber || '';
+    const formattedPhone = rawPhone ? formatPhone(rawPhone) : '';
 
     return {
       id: instructor.id,
       fullName:
         instructor.fullName || `${instructor.firstName || ''} ${instructor.lastName || ''}`.trim(),
       email: instructor.email,
-      phone: instructor.phone || instructor.phoneNumber,
+      phone: formattedPhone,
       role: instrumentsText, // Keep for comparison in sorting
-      roles: instrumentsText, // This is what the directory table displays
+      roles: [instrumentsText], // This is what the directory table displays - make it an array for sorting compatibility
       lastName: instructor.lastName || '', // Add lastName for sorting
       firstName: instructor.firstName || '', // Add firstName for sorting
     };
@@ -1359,8 +1483,18 @@ export class ViewModel {
    */
   clearUserSession() {
     window.AccessCodeManager.clearStoredAccessCode();
+    this.#resetInitializationFlags();
     this.#updateLoginButtonState();
     M.toast({ html: 'User session cleared', classes: 'blue darken-1', displayLength: 2000 });
+  }
+
+  /**
+   * Reset all initialization flags (useful for testing or when switching users)
+   */
+  #resetInitializationFlags() {
+    this.adminContentInitialized = false;
+    this.instructorContentInitialized = false;
+    this.parentContentInitialized = false;
   }
 
   /**
