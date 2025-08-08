@@ -1,40 +1,34 @@
-import { GoogleSheetsDbClient } from '../../src/infrastructure/database/googleSheetsDbClient.js';
-import { Student } from '../../src/core/models/student.js';
-import { Parent } from '../../src/core/models/parent.js';
-import { Instructor } from '../../src/core/models/instructor.js';
-import { Registration } from '../../src/core/models/registration.js';
+import { GoogleSheetsDbClient } from '../../src/database/googleSheetsDbClient.js';
+import { Student } from '../../src/models/shared/student.js';
+import { Parent } from '../../src/models/shared/parent.js';
+import { Instructor } from '../../src/models/shared/instructor.js';
+import { Registration } from '../../src/models/shared/registration.js';
+import { configService } from '../../src/services/configurationService.js';
+import { createLogger } from '../../src/utils/logger.js';
 
 // SECURITY: This file loads credentials from environment variables or dev/credentials/
 // Never commit real credentials to version control!
 // See dev/credentials/temp_credentials.json for development setup (gitignored)
 
-// Create a configuration service for testing
-const testConfigService = {
-  getGoogleSheetsAuth: () => ({
-    clientEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || 'test-service-account@your-project.iam.gserviceaccount.com',
-    privateKey: process.env.GOOGLE_PRIVATE_KEY || 'PLACEHOLDER_PRIVATE_KEY_LOAD_FROM_ENV'
-  }),
-  getGoogleSheetsConfig: () => ({
-    spreadsheetId: process.env.WORKING_SPREADSHEET_ID || 'PLACEHOLDER_SPREADSHEET_ID_LOAD_FROM_ENV'
-  })
-};
-
 async function testCurrentClient() {
   console.log('🧪 Testing Current GoogleSheetsDbClient Implementation...\n');
   
   try {
-    // Initialize your existing client
-    const client = new GoogleSheetsDbClient(testConfigService);
+    // Initialize logger first
+    const logger = createLogger(configService);
+    
+    // Initialize your existing client using the config service
+    const client = new GoogleSheetsDbClient(configService);
     
     console.log('✅ Client initialized successfully\n');
     
     // Test performance of key operations
     console.log('📊 PERFORMANCE TESTING:\n');
     
-    // Test 1: Get all students (using correct lowercase key and mapping function)
+    // Test 1: Get all students (using correct factory method)
     console.log('🎓 Testing getAllRecords for students...');
     const startStudents = Date.now();
-    const students = await client.getAllRecords('students', x => new Student(...x));
+    const students = await client.getAllRecords('students', x => Student.fromDatabaseRow(x));
     const endStudents = Date.now();
     console.log(`   ✅ Retrieved ${students.length} students in ${endStudents - startStudents}ms`);
     
@@ -45,7 +39,7 @@ async function testCurrentClient() {
     // Test 2: Get all parents
     console.log('\n👨‍👩‍👧‍👦 Testing getAllRecords for parents...');
     const startParents = Date.now();
-    const parents = await client.getAllRecords('parents', x => new Parent(...x));
+    const parents = await client.getAllRecords('parents', x => Parent.fromDatabaseRow(x));
     const endParents = Date.now();
     console.log(`   ✅ Retrieved ${parents.length} parents in ${endParents - startParents}ms`);
     
@@ -56,7 +50,7 @@ async function testCurrentClient() {
     // Test 3: Get all instructors
     console.log('\n👨‍🏫 Testing getAllRecords for instructors...');
     const startInstructors = Date.now();
-    const instructors = await client.getAllRecords('instructors', x => new Instructor(...x));
+    const instructors = await client.getAllRecords('instructors', x => Instructor.fromDatabaseRow(x));
     const endInstructors = Date.now();
     console.log(`   ✅ Retrieved ${instructors.length} instructors in ${endInstructors - startInstructors}ms`);
     
@@ -67,7 +61,7 @@ async function testCurrentClient() {
     // Test 4: Get registrations
     console.log('\n📝 Testing getAllRecords for registrations...');
     const startRegs = Date.now();
-    const registrations = await client.getAllRecords('registrations', x => new Registration(...x));
+    const registrations = await client.getAllRecords('registrations', x => Registration.fromDatabaseRow(x));
     const endRegs = Date.now();
     console.log(`   ✅ Retrieved ${registrations.length} registrations in ${endRegs - startRegs}ms`);
     

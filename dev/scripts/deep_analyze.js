@@ -1,28 +1,23 @@
-import { google } from 'googleapis';
-import fs from 'fs';
-
-// SECURITY: Load spreadsheet ID from environment variables
-// See dev/credentials/temp_credentials.json for development setup (gitignored)
-const SPREADSHEET_ID = process.env.WORKING_SPREADSHEET_ID || 'PLACEHOLDER_SPREADSHEET_ID_LOAD_FROM_ENV';
+import { GoogleSheetsDbClient } from '../../src/database/googleSheetsDbClient.js';
+import { Student } from '../../src/models/shared/student.js';
+import { Parent } from '../../src/models/shared/parent.js';
+import { Instructor } from '../../src/models/shared/instructor.js';
+import { Registration } from '../../src/models/shared/registration.js';
+import { configService } from '../../src/services/configurationService.js';
+import { createLogger } from '../../src/utils/logger.js';
 
 async function deepAnalyzeSheets() {
   console.log('🔬 Deep Analysis of Tonic Music Program Data...\n');
   
   try {
-    // Load credentials - handle both running from project root and from scripts directory
-    const credentialsPath = fs.existsSync('../credentials/temp_credentials.json') 
-      ? '../credentials/temp_credentials.json' 
-      : 'dev/credentials/temp_credentials.json';
-    const credentials = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+    // Initialize logger first
+    const logger = createLogger(configService);
     
-    // Initialize Google Auth
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
-
-    const sheets = google.sheets({ version: 'v4', auth });
-
+    // Initialize client using the config service
+    const client = new GoogleSheetsDbClient(configService);
+    
+    console.log('✅ Client initialized successfully\n');
+    
     console.log('📊 CURRENT DATA STRUCTURE ANALYSIS\n');
 
     // Analyze key relationships and data patterns
@@ -34,8 +29,8 @@ async function deepAnalyzeSheets() {
     for (const sheetName of sheetNames) {
       console.log(`📥 Loading ${sheetName} data...`);
       try {
-        const response = await sheets.spreadsheets.values.get({
-          spreadsheetId: SPREADSHEET_ID,
+        const response = await client.sheets.spreadsheets.values.get({
+          spreadsheetId: client.spreadsheetId,
           range: `${sheetName}!A1:Z1000`,
         });
 

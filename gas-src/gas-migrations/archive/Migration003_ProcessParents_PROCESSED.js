@@ -1,14 +1,14 @@
 /**
  * ✅ PROCESSED - ARCHIVED ✅
- * 
+ *
  * Google Apps Script Migration 003: Process Parents
- * 
+ *
  * ARCHIVED: This migration has been processed and moved to archive.
  * This migration is complete and should not be run again.
- * 
+ *
  * This script extracts parent information from student records and creates
  * separate parent records, then links them back to students.
- * 
+ *
  * To use:
  * 1. Open your Google Sheets document
  * 2. Go to Extensions > Apps Script
@@ -55,7 +55,8 @@ function rollbackProcessParents() {
 class ProcessParentsMigration {
   constructor(spreadsheetId) {
     this.spreadsheet = SpreadsheetApp.openById(spreadsheetId);
-    this.description = 'Extract parent information from student records and create separate parent records';
+    this.description =
+      'Extract parent information from student records and create separate parent records';
   }
 
   /**

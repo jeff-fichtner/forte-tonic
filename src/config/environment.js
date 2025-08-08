@@ -3,7 +3,14 @@
  * Manages different settings for staging vs production environments
  */
 
-import { LogLevel, NodeEnv } from '../core/utilities/logger.js';
+import { LogLevel, NodeEnv } from '../utils/logger.js';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const packageJsonPath = join(__dirname, '../../package.json');
+const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
 
 const environment = process.env.NODE_ENV || NodeEnv.DEVELOPMENT;
 
@@ -15,6 +22,7 @@ const config = {
       email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       privateKey: process.env.GOOGLE_PRIVATE_KEY,
     },
+    operatorEmail: process.env.OPERATOR_EMAIL,
     baseUrl: 'http://localhost:3000',
     logLevel: LogLevel.DEBUG,
   },
@@ -28,6 +36,7 @@ const config = {
         'test-service-account@test-project.iam.gserviceaccount.com',
       privateKey: process.env.GOOGLE_PRIVATE_KEY || 'test-private-key',
     },
+    operatorEmail: process.env.OPERATOR_EMAIL || 'your-operator-email@domain.com',
     baseUrl: 'http://localhost:3001',
     logLevel: LogLevel.ERROR, // Minimal logging for tests
   },
@@ -39,6 +48,7 @@ const config = {
       email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       privateKey: process.env.GOOGLE_PRIVATE_KEY,
     },
+    operatorEmail: process.env.OPERATOR_EMAIL,
     baseUrl: process.env.RENDER_EXTERNAL_URL || 'https://tonic-staging.onrender.com',
     logLevel: LogLevel.INFO,
   },
@@ -50,7 +60,8 @@ const config = {
       email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       privateKey: process.env.GOOGLE_PRIVATE_KEY,
     },
-    baseUrl: process.env.RENDER_EXTERNAL_URL || 'https://tonic.yourschool.edu',
+    operatorEmail: process.env.OPERATOR_EMAIL,
+    baseUrl: process.env.RENDER_EXTERNAL_URL || 'https://tonic.onrender.com',
     logLevel: LogLevel.WARN,
   },
 };
@@ -88,9 +99,57 @@ export const features = {
 
 export const currentFeatures = features[environment];
 
+// Version information
+export const version = {
+  number: getVersionNumber(),
+  buildDate: getBuildDate(),
+  gitCommit: process.env.RENDER_GIT_COMMIT || getLocalGitCommit(),
+  environment,
+  isStaging: environment === NodeEnv.STAGING,
+  displayVersion: environment !== NodeEnv.PRODUCTION // Show in all environments except production
+};
+
+/**
+ * Get version number - only use package.json version on build server
+ */
+function getVersionNumber() {
+  // On Render build server, use package.json version
+  if (process.env.RENDER || process.env.CI) {
+    return packageJson.version;
+  }
+  
+  // For local development, use a static dev version
+  return '0.0.0-dev';
+}
+
+/**
+ * Get build date - only use current date on build server
+ */
+function getBuildDate() {
+  // On Render build server, use current timestamp
+  if (process.env.RENDER || process.env.CI) {
+    return new Date().toISOString();
+  }
+  
+  // For local development, use a static date
+  return '2025-01-01T00:00:00.000Z';
+}
+
+/**
+ * Get local git commit hash for development
+ */
+function getLocalGitCommit() {
+  // For local development, just return a static identifier
+  // The actual git commit will be available on the build server via RENDER_GIT_COMMIT
+  return 'local-dev';
+}
+
 // Only log environment info when not in test mode
 if (environment !== 'test') {
   console.log(`🌍 Environment: ${environment}`);
   console.log(`🔗 Base URL: ${currentConfig.baseUrl}`);
   console.log(`📊 Log Level: ${currentConfig.logLevel}`);
+  if (version.displayVersion) {
+    console.log(`🏷️  Version: ${version.number} (${version.gitCommit?.substring(0, 7)})`);
+  }
 }

@@ -1,74 +1,31 @@
-import { AuthenticatedUserResponse } from '../core/models/responses/authenticatedUserResponse.js';
-import { configService } from '../core/services/configurationService.js';
+import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
+import { OperatorUserResponse } from '../models/shared/responses/operatorUserResponse.js';
+import { Admin } from '../models/shared/admin.js';
+import { configService } from '../services/configurationService.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
+import { currentConfig } from '../config/environment.js';
 
-// Initialize repositories and user context for authenticated requests
-export const initializeUserContext = async (req, res, next) => {
+// Initialize repositories for all requests - NO AUTHENTICATION
+export const initializeRepositories = async (req, res, next) => {
   try {
     // Service container handles all repository and service instances
-    // No need to inject repositories into request anymore
+    const userRepository = serviceContainer.get('userRepository');
+    const programRepository = serviceContainer.get('programRepository');
     
-    // TODO: Implement proper authentication when auth system is ready
-    // For now, use a test user for development/testing
-    const signedInEmail = 'test@example.com';
-
-    // Create a mock operator for testing
-    const mockOperator = {
-      isAdmin: () => true,
-      isInstructor: () => false,
-      isParent: () => false,
-      admin: signedInEmail,
-      instructor: null,
-      parent: null,
-    };
-
-    // Create a mock admin user
-    const mockAdmin = {
-      id: 'test-admin-id',
-      email: signedInEmail,
-      firstName: 'Test',
-      lastName: 'Admin',
-    };
-
-    const currentUser = new AuthenticatedUserResponse(
-      signedInEmail,
-      true, // isOperator
-      mockAdmin, // admin
-      null, // instructor
-      null // parent
-    );
-
-    req.currentUser = currentUser;
-    req.user = currentUser; // For requireAuth middleware compatibility
+    // Attach repositories to request for API endpoints
+    req.userRepository = userRepository;
+    req.programRepository = programRepository;
+    
+    // Always set user to null - user objects are created only in specific controllers
+    req.currentUser = null;
+    req.user = null;
+    
   } catch (error) {
-    console.error('Error initializing user context:', error);
-    return res.status(500).json({ error: 'Failed to initialize user context' });
-  }
-  next();
-};
-
-// Authentication middleware
-export const requireAuth = (req, res, next) => {
-  // Skip authentication in test environment
-  if (configService.isTest()) {
-    return next();
-  }
-
-  if (!req.user) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
-  next();
-};
-
-// Authorization middleware for operator-level access
-export const requireOperator = (req, res, next) => {
-  // Skip authorization in test environment
-  if (configService.isTest()) {
-    return next();
-  }
-
-  if (!req.user || !req.user.isOperator) {
-    return res.status(403).json({ error: 'Operator access required' });
+    console.error('Error initializing repositories:', error);
+    req.userRepository = null;
+    req.programRepository = null;
+    req.currentUser = null;
+    req.user = null;
   }
   next();
 };

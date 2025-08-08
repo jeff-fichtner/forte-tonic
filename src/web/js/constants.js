@@ -3,7 +3,7 @@
  */
 
 // Date/Time utilities - Native JavaScript implementation
-import { Duration, DateTime, DateHelpers } from '/core/helpers/nativeDateTimeHelpers.js';
+import { Duration, DateTime, DateHelpers } from '../../utils/nativeDateTimeHelpers.js';
 
 export { Duration, DateTime, DateHelpers };
 
@@ -16,15 +16,17 @@ export const Sections = {
 
 // Server API function names
 export const ServerFunctions = {
-  getAuthenticatedUser: 'getAuthenticatedUser',
+  getOperatorUser: 'getOperatorUser',
+  getOperatorUser: 'getOperatorUser',
   getAdmins: 'getAdmins',
   getInstructors: 'getInstructors',
   getStudents: 'getStudents',
   getClasses: 'getClasses',
   getRegistrations: 'getRegistrations',
   getRooms: 'getRooms',
-  register: 'register',
+  register: 'registrations',
   unregister: 'unregister',
+  authenticateByAccessCode: 'authenticateByAccessCode',
 };
 
 // IndexedDB data stores

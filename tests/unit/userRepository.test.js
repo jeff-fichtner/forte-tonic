@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
-import { UserRepository } from '../../src/core/repositories/userRepository.js';
-import { Admin, Instructor, Student, Parent } from '../../src/shared/models/index.js';
+import { UserRepository } from '../../src/repositories/userRepository.js';
+import { Admin, Instructor, Student, Parent } from '../../src/models/shared/index.js';
 
 describe('UserRepository', () => {
   let repository;
@@ -279,7 +279,13 @@ describe('UserRepository', () => {
 
   describe('getAdminByEmail', () => {
     test('should return admin by email when found', async () => {
-      const mockAdmin = Admin.fromDatabaseRow(['admin-1', 'admin@test.com', 'Smith', 'John', '555-1234']);
+      const mockAdmin = Admin.fromDatabaseRow([
+        'admin-1',
+        'admin@test.com',
+        'Smith',
+        'John',
+        '555-1234',
+      ]);
 
       mockGoogleSheetsDbClient.getAllRecords.mockResolvedValue([mockAdmin]);
 
