@@ -5,9 +5,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import apiRoutes from './routes/api.js';
 import staticRoutes from './routes/static.js';
-import { initializeUserContext, requireAuth, requireOperator } from './middleware/auth.js';
-import { configService } from './core/services/configurationService.js';
-import { createLogger } from './core/utilities/logger.js';
+import { initializeRepositories } from './middleware/auth.js';
+import { configService } from './services/configurationService.js';
+import { createLogger } from './utils/logger.js';
 import { serviceContainer } from './infrastructure/container/serviceContainer.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -73,19 +73,32 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Check if we're in development mode
+const isDevelopment = serverConfig.nodeEnv === 'development';
+
+// Development cache headers to prevent caching issues
+const developmentStaticOptions = isDevelopment ? {
+  setHeaders: (res, path) => {
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+  }
+} : {};
+
 // Serve static files
-app.use(express.static(path.join(__dirname, 'web')));
+app.use(express.static(path.join(__dirname, 'web'), developmentStaticOptions));
 
 // Serve shared models for frontend access
-app.use('/shared', express.static(path.join(__dirname, 'shared')));
+app.use('/shared', express.static(path.join(__dirname, 'shared'), developmentStaticOptions));
 
 // Serve core utilities for frontend access
-app.use('/core', express.static(path.join(__dirname, 'core')));
+app.use('/core', express.static(path.join(__dirname, 'core'), developmentStaticOptions));
 
-// Apply authentication middleware to API routes
-app.use('/api', initializeUserContext);
-app.use('/api', requireAuth);
-app.use('/api', requireOperator);
+// Apply authentication middleware to API routes (with exceptions)
+// Apply repository initialization to all API routes (no authentication)
+app.use('/api', initializeRepositories);
 
 // Route handlers
 app.use('/', staticRoutes);

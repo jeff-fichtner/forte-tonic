@@ -5,36 +5,43 @@ This directory contains the complete Google Apps Script (GAS) project for Tonic 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Google Apps Script access
+- Node.js and npm installed
 - clasp CLI installed globally: `npm install -g @google/clasp`
 - Authentication: `clasp login` (if not already logged in)
 - Environment variable `GOOGLE_APPS_SCRIPT_ID` set in parent directory's `.env` file
 
-### Setup Environment
-1. Ensure `GOOGLE_APPS_SCRIPT_ID` is set in `../.env`:
+### Initial Setup
+1. Install clasp CLI globally:
+```bash
+npm install -g @google/clasp
+```
+
+2. Authenticate with Google:
+```bash
+clasp login
+```
+
+3. Set environment variable in `../.env`:
 ```bash
 GOOGLE_APPS_SCRIPT_ID=your-google-apps-script-project-id
 ```
 
-2. Generate `.clasp.json` from environment variables:
+4. Deploy the project:
 ```bash
-npm run setup
+npm run deploy        # Initial deployment and subsequent updates
 ```
 
-### Deployment
-From this directory (`gas-src/`):
-```bash
-npm run deploy        # Generate config and deploy
-# OR
-npm run deploy-force  # Force overwrite remote files
-```
+### Development Workflow
+1. **Make changes** to migration files locally
+2. **Deploy updates** with `clasp push` or `npm run deploy`
+3. **Test migrations** in the Google Apps Script editor
+4. **Run functions** directly in the GAS environment
 
-### Opening the Project
-```bash
-npm run open          # Opens browser to the GAS project
-```
-
-Manual URL: https://script.google.com/d/{GOOGLE_APPS_SCRIPT_ID}/edit
+### Running Migrations
+Once deployed, all migrations are available in the Google Apps Script editor:
+- Use `npm run open` to open the project in your browser
+- Select and run migration functions directly in the GAS editor
+- All functions include automatic backup/restore capabilities
 
 ## 📁 Project Structure
 
@@ -64,33 +71,38 @@ In the Google Apps Script editor, you can run these functions directly:
 
 #### Information & Health
 - `getProjectInfo()` - Lists all available functions
-- `checkSpreadsheetHealth()` - Validates current spreadsheet structure
-- `previewAllMigrations()` - Preview all migrations at once
+- `validateConfiguration()` - Validates spreadsheet setup
+- `listAllBackups()` - Shows all available backups
 
 #### Migration Previews (ALWAYS RUN FIRST)
 - `previewStructuralImprovements()`
-- `previewAddClassNamesToRegistration()`
-- `previewProcessParents()`
+- `previewFillAndResetRegistrationsMigration()`
 
-#### Migration Execution
+#### Migration Execution (Creates Automatic Backups)
 - `runStructuralImprovements()`
-- `runAddClassNamesToRegistration()`
-- `runProcessParents()`
+- `runFillAndResetRegistrationsMigration({createAudit: true})`
+- `runFillAndResetRegistrationsMigration({reset: true, wipeAudit: true})`
 
-#### Migration Rollbacks
+#### Migration Rollbacks (Uses Automatic Backups)
 - `rollbackStructuralImprovements()`
-- `rollbackAddClassNamesToRegistration()`
-- `rollbackProcessParents()`
+- `rollbackFillAndResetRegistrationsMigration()`
 
-#### Utilities
-- `createBackupReminder()` - Safety reminder to backup data
+#### Backup Management
+- `restoreStructuralImprovementsFromBackup()` - Restore and delete backup
+- `deleteStructuralImprovementsBackup()` - Delete backup without restoring
+- `restoreFillAndResetRegistrationsFromBackup()`
+- `deleteFillAndResetRegistrationsBackup()`
+
+#### Development Utilities
+- `validateDevelopmentEnvironment()` - Check if safe for dev migrations
 
 ## ⚠️ Safety Guidelines
 
 1. **Always Preview First**: Run preview functions before executing migrations
-2. **Create Backups**: Use File > Make a copy in Google Sheets before migrations
-3. **Test on Copy**: Run migrations on a copy first to verify behavior
-4. **Check Health**: Use `checkSpreadsheetHealth()` to validate structure
+2. **Automatic Backups**: All migrations create backups automatically
+3. **Use clasp for Deployment**: `npm run deploy` or `clasp push`
+4. **Test on Copy**: Run migrations on a copy first to verify behavior
+5. **Check Configuration**: Use `validateConfiguration()` to verify setup
 
 ## 🔄 Development Workflow
 

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Phone Format Test</title>
+</head>
+<body>
+    <h1>Phone Formatting Test</h1>
+    <div id="test-results"></div>
+    
+    <script type="module">
+        // Test the phone formatting
+        import { ViewModel } from './js/viewModel.js';
+        
+        // Test phone numbers
+        const testPhones = [
+            '4159455121',
+            '(415) 945-5121',
+            '415-945-5121',
+            '415.945.5121',
+            '415 945 5121',
+            ''
+        ];
+        
+        const resultsDiv = document.getElementById('test-results');
+        
+        // Test the ViewModel's phone formatting capabilities
+        testPhones.forEach(phone => {
+            const testEmployee = {
+                fullName: 'Test Person',
+                roles: ['Test Role'],
+                email: 'test@test.com',
+                phone: phone
+            };
+            
+            // This would test the formatting in the directory building
+            const result = `Phone: "${phone}" => Result would be formatted in directory`;
+            const p = document.createElement('p');
+            p.textContent = result;
+            resultsDiv.appendChild(p);
+        });
+        
+        console.log('Phone formatting test completed');
+    </script>
+</body>
+</html>

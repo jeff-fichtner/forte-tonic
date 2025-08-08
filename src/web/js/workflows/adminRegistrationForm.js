@@ -1,391 +1,60 @@
+/**
+ * Admin Registration Form - Simplified progressive filters without restrictions
+ * This class handles a simplified registration workflow for admins with minimal validation
+ */
+
+import { RegistrationType } from '../../../utils/values/registrationType.js';
 import { Select } from '../components/select.js';
-import { Duration } from '../constants.js';
 
 /**
- *
+ * Admin Registration Form with simplified progressive filters
  */
 export class AdminRegistrationForm {
   /**
-   *
+   * Constructor
    */
   constructor(instructors, students, classes, sendDataFunction) {
-    this.registrationTypeSelect = this.#buildRegistrationTypeSelect();
     this.instructors = instructors;
-    const instructorOptions = instructors.map(instructor => ({
-      value: instructor.id,
-      label: instructor.lastFirst,
-    }));
-    this.instructorSelect = this.#buildInstructorSelect(instructorOptions);
     this.students = students;
-    this.#setStudentAutocomplete(students);
     this.classes = classes;
-    const classOptions = classes.map(c => ({
-      value: c.id,
-      label: c.formattedName,
-    }));
-    this.classSelect = this.#buildClassSelect(classOptions);
-    // instrument select
-    // start time select
-    // day select
-    // when day changes
-    document
-      .getElementById('instructor-day-select-options-container')
-      .addEventListener('change', event => {
-        if (event.target.id !== 'day-select') {
-          return;
-        }
-        event.preventDefault();
-        const selectedDay = event.target.value;
-        this.#setInstructorDayStartTimeOptions();
-        const instructorDaySelectedInfoContainer = document.getElementById(
-          'instructor-day-selected-info-container'
-        );
-        instructorDaySelectedInfoContainer.hidden = !selectedDay;
-      });
-    // when instrument changes
-    document
-      .getElementById('instrument-select-options-container')
-      .addEventListener('change', event => {
-        if (event.target.id !== 'instrument-select') {
-          return;
-        }
-        event.preventDefault();
-        const selectedValue = event.target.value;
-        console.log('Instrument changed to:', selectedValue);
-      });
-    // when start time changes
-    document
-      .getElementById('instructor-day-start-time-container')
-      .addEventListener('change', event => {
-        if (event.target.id !== 'start-time-select') {
-          return;
-        }
-        const selectedValue = event.target.value;
-        console.log('Start time changed to:', selectedValue);
-      });
-    // when lesson length changes
-    document.getElementById('lesson-length-container').addEventListener('change', event => {
-      if (event.target.type !== 'radio') {
-        return;
-      }
-      console.log('Lesson length changed to:', event.target.value);
-      this.#setInstructorDayStartTimeOptions();
-    });
-    // when create is clicked
-    document
-      .getElementById('create-registration-submit-btn')
-      .addEventListener('click', async event => {
-        event.preventDefault();
-        if (!this.#validateRegistration()) {
-          return;
-        }
-        try {
-          this.#setAdminRegistrationLoading(true);
-          const data = this.#getCreateRegistrationData();
-          await sendDataFunction(data);
-          // clear group class selection
-          this.classSelect.clearSelectedOption();
-          // clear students
-          this.#setCurrentStudent(null);
-          // transportation type
-          const transportationTypeRadios = document.querySelectorAll(
-            'input[name="transportation-type"]'
-          );
-          // check first
-          if (transportationTypeRadios.length > 0) {
-            transportationTypeRadios[0].checked = true;
-          }
-          // reset instructor
-          this.instructorSelect.clearSelectedOption();
-          this.#showInstructorInfoContainer(false);
-          // instrument
-          this.#setInstructorInstrumentOptions(null);
-          // day
-          this.#setInstructorDayOptions(null);
-          // lesson length
-          const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
-          // check first
-          if (lessonLengthRadios.length > 0) {
-            lessonLengthRadios[0].checked = true;
-          }
-          // start time
-          this.#setInstructorDayStartTimeOptions();
-        } catch (error) {
-          console.error('Error creating registration:', error);
-          M.toast({ html: 'Error creating registration.' });
-        } finally {
-          this.#setAdminRegistrationLoading(false);
-        }
-      });
+    this.sendDataFunction = sendDataFunction;
+    
+    // Initialize form elements
+    this.#initializeFormElements();
   }
-  // TODO duplicated
+
   /**
-   *
+   * Initialize form elements with progressive dropdowns
    */
-  #setAdminRegistrationLoading(isLoading) {
-    const adminRegistrationLoadingContainer = document.getElementById(
-      'admin-registration-loading-container'
+  #initializeFormElements() {
+    // Initialize students autocomplete
+    this.#setStudentAutocomplete(this.students);
+    
+    // Initialize registration type selector
+    this.registrationTypeSelect = this.#buildRegistrationTypeSelect();
+    
+    // Initialize instructor selector  
+    this.instructorSelect = this.#buildInstructorSelect(
+      this.instructors.map(instructor => ({
+        value: instructor.id,
+        label: `${instructor.firstName} ${instructor.lastName}`,
+      }))
     );
-    const adminRegistrationContainer = document.getElementById('admin-registration-container');
-    adminRegistrationLoadingContainer.hidden = !isLoading;
-    adminRegistrationContainer.hidden = isLoading;
-  }
-  /**
-   *
-   */
-  #validateRegistration() {
-    const registrationData = this.#getCreateRegistrationData();
-    const isPrivate = registrationData.registrationType === RegistrationType.PRIVATE;
-    const isGroup = registrationData.registrationType === RegistrationType.GROUP;
-    const isValid =
-      registrationData.studentId &&
-      registrationData.registrationType &&
-      ((isGroup && registrationData.classId) ||
-        (isPrivate &&
-          registrationData.transportationType &&
-          registrationData.instructorId &&
-          registrationData.instrument &&
-          registrationData.day &&
-          registrationData.startTime &&
-          registrationData.length));
-    // TODO additional validation for start time/length is valid (with api call/response)
-    if (!isValid) {
-      const errors = [];
-      if (!registrationData.studentId) {
-        errors.push('Student');
-      }
-      if (!registrationData.registrationType) {
-        errors.push('Registration Type');
-      }
-      if (isGroup) {
-        if (!registrationData.classId) {
-          errors.push('Class');
-        }
-      } else if (isPrivate) {
-        if (!registrationData.transportationType) {
-          errors.push('Transportation Type');
-        }
-        if (!registrationData.instructorId) {
-          errors.push('Instructor');
-        }
-        if (!registrationData.instrument) {
-          errors.push('Instrument');
-        }
-        if (!registrationData.day) {
-          errors.push('Day');
-        }
-        if (!registrationData.startTime) {
-          errors.push('Start Time');
-        }
-        if (!registrationData.length) {
-          errors.push('Lesson Length');
-        }
-      }
-      M.toast({ html: `Please fill out the following fields:<br>${errors.join('<br>')}` });
-    }
-    return isValid;
-  }
-  /**
-   *
-   */
-  #getCreateRegistrationData() {
-    // get student
-    const studentId = this.selectedStudent ? this.selectedStudent.id : null;
-    const registrationType = this.registrationTypeSelect.getSelectedOption();
-    if (registrationType === RegistrationType.GROUP) {
-      return {
-        studentId: studentId,
-        registrationType: RegistrationType.GROUP,
-        classId: this.classSelect.getSelectedOption(),
-      };
-    }
-    // get selected length
-    const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
-    const checkedRadio = Array.from(lessonLengthRadios).find(radio => radio.checked);
-    // get selected instructor
-    const instructorId = this.instructorSelect.getSelectedOption();
-    // get selected instrument
-    const instrumentSelect = document.getElementById('instrument-select');
-    // get selected day
-    const daySelect = document.getElementById('day-select');
-    // get selected start time
-    const startTimeSelect = document.getElementById('start-time-select');
-    const startTimeDuration = startTimeSelect.value
-      ? DurationHelpers.minutesToDuration(startTimeSelect.value)
-      : null;
-    const formattedStartTime = startTimeDuration ? startTimeDuration.to24HourFormat() : '';
-    // get transportation type response
-    const transportationType = document.querySelector('input[name="transportation-type"]:checked');
-    // add to object
-    return {
-      studentId: studentId,
-      registrationType: registrationType,
-      transportationType: transportationType ? transportationType.value : null,
-      instructorId: this.instructorSelect.getSelectedOption(),
-      instrument: instrumentSelect.value,
-      day: daySelect.value,
-      startTime: formattedStartTime,
-      length: checkedRadio ? checkedRadio.value : null,
-    };
-  }
-  /**
-   *
-   */
-  #setInstructorInstrumentOptions(instructor) {
-    if (!instructor) {
-      this.#updateSelectOptions('instrument-select', [], 'Select an instrument');
-      return;
-    }
-    const instruments = [
-      instructor.instrument1,
-      instructor.instrument2,
-      instructor.instrument3,
-      instructor.instrument4,
-    ].filter(x => x);
-    this.#updateSelectOptions(
-      'instrument-select',
-      instruments.map(instrument => ({
-        value: instrument,
-        label: instrument,
-      })),
-      'Select an instrument'
+    
+    // Initialize class selector
+    this.classSelect = this.#buildClassSelect(
+      this.classes.map(cls => ({
+        value: cls.id,
+        label: cls.formattedName || cls.title || cls.instrument || `Class ${cls.id}`,
+      }))
     );
+    
+    // Handle submit button
+    this.#attachSubmitButtonListener();
   }
+
   /**
-   *
-   */
-  #setInstructorDayOptions(instructor) {
-    try {
-      if (!instructor) {
-        this.#updateSelectOptions('day-select', [], 'Select a day');
-        return;
-      }
-      const weekDays = {
-        0: { label: 'Monday', startTime: instructor.mondayStartTime },
-        1: { label: 'Tuesday', startTime: instructor.tuesdayStartTime },
-        2: { label: 'Wednesday', startTime: instructor.wednesdayStartTime },
-        3: { label: 'Thursday', startTime: instructor.thursdayStartTime },
-        4: { label: 'Friday', startTime: instructor.fridayStartTime },
-      };
-      const days = [];
-      for (const [index, day] of Object.entries(weekDays)) {
-        if (day.startTime) {
-          days.push({
-            value: index,
-            label: day.label,
-          });
-        }
-      }
-      this.#updateSelectOptions('day-select', days, 'Select a day', true);
-    } finally {
-      const daySelectedInfoContainer = document.getElementById(
-        'instructor-day-selected-info-container'
-      );
-      daySelectedInfoContainer.hidden = true;
-    }
-  }
-  /**
-   *
-   */
-  #setInstructorDayStartTimeOptions() {
-    const selectedInstructorId = this.instructorSelect.getSelectedOption();
-    const selectedDay = document.getElementById('day-select').value;
-    const selectedLength = document.querySelector('input[name="lesson-length"]:checked')?.value * 1;
-    if (!selectedInstructorId || !selectedDay || !selectedLength) {
-      this.#updateSelectOptions('start-time-select', [], 'Select a start time');
-      // reset to first option
-      const lessonLengthRadios = document.querySelectorAll('input[name="lesson-length"]');
-      if (lessonLengthRadios.length > 0) {
-        lessonLengthRadios[0].checked = true;
-      }
-      return;
-    }
-    const instructor = this.instructors.find(x => x.id === selectedInstructorId);
-    const startTimes = [
-      instructor.mondayStartTime,
-      instructor.tuesdayStartTime,
-      instructor.wednesdayStartTime,
-      instructor.thursdayStartTime,
-      instructor.fridayStartTime,
-    ];
-    const endTimes = [
-      instructor.mondayEndTime,
-      instructor.tuesdayEndTime,
-      instructor.wednesdayEndTime,
-      instructor.thursdayEndTime,
-      instructor.fridayEndTime,
-    ];
-    const dayIndex = selectedDay * 1; // Convert string to number
-    const startTime = startTimes[dayIndex];
-    const endTime = endTimes[dayIndex];
-    const options = [];
-    if (!startTime || !endTime) {
-      this.#updateSelectOptions('start-time-select', [], 'Not available');
-      return;
-    }
-    const startTimeDuration = DurationHelpers.stringToDuration(startTime);
-    const endTimeDuration = DurationHelpers.stringToDuration(endTime);
-    for (
-      let i = startTimeDuration.hours * 60 + startTimeDuration.minutes;
-      i <= endTimeDuration.hours * 60 + endTimeDuration.minutes - selectedLength;
-      i += 15
-    ) {
-      const duration = DurationHelpers.minutesToDuration(i);
-      options.push({
-        value: i,
-        label: duration.to12HourFormat(),
-      });
-    }
-    this.#updateSelectOptions('start-time-select', options, 'Select a start time', true);
-  }
-  /**
-   *
-   */
-  #setCurrentStudent(student) {
-    const elem = document.getElementById('student-autocomplete-input');
-    elem.value = student ? student.fullName : ''; // Set the input value
-    this.selectedStudent = student; // Update the selected student
-  }
-  // TODO duplicated
-  /**
-   *
-   */
-  #updateSelectOptions(selectId, options, defaultOptionText, forceRefresh = false) {
-    const select = document.getElementById(selectId);
-    if (!select) {
-      console.error(`Select element with ID "${selectId}" not found.`);
-      return;
-    }
-    // get current selected option
-    const currentSelectedValue = select.value;
-    // Clear existing options
-    select.innerHTML = '';
-    // Create a default option
-    const defaultOption = document.createElement('option');
-    defaultOption.value = '';
-    defaultOption.textContent = defaultOptionText;
-    select.appendChild(defaultOption);
-    // Populate new options
-    options.forEach(option => {
-      const opt = document.createElement('option');
-      opt.value = option.value;
-      opt.textContent = option.label;
-      if (!forceRefresh && currentSelectedValue && option.value == currentSelectedValue) {
-        opt.selected = true;
-      }
-      select.appendChild(opt);
-    });
-    M.FormSelect.init(select, {
-      classes: selectId,
-      dropdownOptions: {
-        alignment: 'left',
-        coverTrigger: false,
-        constrainWidth: false,
-      },
-    });
-  }
-  /**
-   *
+   * Set up student autocomplete
    */
   #setStudentAutocomplete(students) {
     const elem = document.getElementById('student-autocomplete-input');
@@ -395,14 +64,19 @@ export class AdminRegistrationForm {
       M.Autocomplete.init(elem, { data: {} });
       return;
     }
+    
     const data = students.reduce((acc, student) => {
-      acc[student.fullName] = null;
+      const fullName = student.getFullName ? student.getFullName() : `${student.firstName || ''} ${student.lastName || ''}`.trim();
+      acc[fullName] = null;
       return acc;
     }, {});
+    
     this.studentMap = students.reduce((acc, student) => {
-      acc[student.fullName] = student.id;
+      const fullName = student.getFullName ? student.getFullName() : `${student.firstName || ''} ${student.lastName || ''}`.trim();
+      acc[fullName] = student.id;
       return acc;
     }, {});
+    
     const options = {
       data: data,
       limit: 20,
@@ -413,29 +87,9 @@ export class AdminRegistrationForm {
     };
     M.Autocomplete.init(elem, options);
   }
+
   /**
-   *
-   */
-  #buildInstructorSelect(instructorOptions) {
-    this.#showInstructorInfoContainer(false);
-    return new Select(
-      'instructor-select',
-      'Select an instructor',
-      'No instructors available',
-      instructorOptions,
-      event => {
-        event.preventDefault();
-        const selectedValue = event.target.value;
-        const currentInstructor = this.instructors.find(x => x.id === selectedValue);
-        this.#setInstructorInstrumentOptions(currentInstructor);
-        this.#setInstructorDayOptions(currentInstructor);
-        this.#showInstructorDayInfoContainer(false);
-        this.#showInstructorInfoContainer(!!selectedValue);
-      }
-    );
-  }
-  /**
-   *
+   * Build registration type selector
    */
   #buildRegistrationTypeSelect() {
     this.#showPrivateRegistrationContainer(false);
@@ -457,8 +111,37 @@ export class AdminRegistrationForm {
       }
     );
   }
+
   /**
-   *
+   * Build instructor selector
+   */
+  #buildInstructorSelect(instructorOptions) {
+    return new Select(
+      'instructor-select',
+      'Select an instructor',
+      'No instructors available',
+      instructorOptions,
+      event => {
+        event.preventDefault();
+        const selectedValue = event.target.value;
+        const currentInstructor = this.instructors.find(x => x.id === selectedValue);
+        console.log('Instructor selected:', currentInstructor);
+        
+        // Show lesson details when instructor is selected
+        this.#showLessonDetailsContainer(!!selectedValue);
+        
+        // Initialize lesson detail selectors
+        if (selectedValue) {
+          this.#initializeLessonDetailsSelectors();
+          // Update instrument options based on selected instructor
+          this.#updateInstrumentOptions(currentInstructor);
+        }
+      }
+    );
+  }
+
+  /**
+   * Build class selector
    */
   #buildClassSelect(classOptions) {
     return new Select(
@@ -473,38 +156,365 @@ export class AdminRegistrationForm {
       }
     );
   }
+
   /**
-   *
-   */
-  #showInstructorInfoContainer(shouldShow) {
-    this.#showContainer('instructor-selected-info-container', shouldShow);
-  }
-  /**
-   *
-   */
-  #showInstructorDayInfoContainer(shouldShow) {
-    this.#showContainer('instructor-day-selected-info-container', shouldShow);
-  }
-  /**
-   *
+   * Show/hide private registration container
    */
   #showPrivateRegistrationContainer(shouldShow) {
     this.#showContainer('private-registration-container', shouldShow);
   }
+
   /**
-   *
+   * Show/hide group registration container
    */
   #showGroupRegistrationContainer(shouldShow) {
     this.#showContainer('group-registration-container', shouldShow);
   }
+
   /**
-   *
+   * Show/hide container helper
    */
   #showContainer(containerId, shouldShow) {
     const container = document.getElementById(containerId);
-    container.hidden = !shouldShow;
+    if (container) {
+      container.hidden = !shouldShow;
+    }
+  }
+
+  /**
+   * Show/hide lesson details container
+   */
+  #showLessonDetailsContainer(shouldShow) {
+    this.#showContainer('instructor-selected-info-container', shouldShow);
+  }
+
+  /**
+   * Initialize lesson details selectors
+   */
+  #initializeLessonDetailsSelectors() {
+    // Initialize day selector
+    this.daySelect = new Select(
+      'day-select',
+      'Choose day',
+      'No days available',
+      [
+        { value: '0', label: 'Monday' },
+        { value: '1', label: 'Tuesday' },
+        { value: '2', label: 'Wednesday' },
+        { value: '3', label: 'Thursday' },
+        { value: '4', label: 'Friday' }
+      ],
+      event => {
+        console.log('Day selected:', event.target.value);
+        // Show the lesson length and start time container when day is selected
+        this.#showContainer('instructor-day-selected-info-container', !!event.target.value);
+      }
+    );
+
+    // Note: Length is handled by radio buttons in the HTML, not a select dropdown
+
+    // Initialize instrument selector
+    this.instrumentSelect = new Select(
+      'instrument-select',
+      'Choose instrument',
+      'No instruments available',
+      [
+        { value: 'Piano', label: 'Piano' },
+        { value: 'Guitar', label: 'Guitar' },
+        { value: 'Violin', label: 'Violin' },
+        { value: 'Voice', label: 'Voice' },
+        { value: 'Drums', label: 'Drums' },
+        { value: 'Bass', label: 'Bass' },
+        { value: 'Other', label: 'Other' }
+      ],
+      event => {
+        console.log('Instrument selected:', event.target.value);
+      }
+    );
+
+    // Initialize start time selector
+    this.startTimeSelect = new Select(
+      'start-time-select',
+      'Choose start time',
+      'No times available',
+      this.#generateTimeOptions(),
+      event => {
+        console.log('Start time selected:', event.target.value);
+      }
+    );
+  }
+
+  /**
+   * Generate time options for start time select
+   */
+  #generateTimeOptions() {
+    const times = [];
+    for (let hour = 14; hour <= 18; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        const displayTime = this.#formatDisplayTime(timeString);
+        times.push({ value: timeString, label: displayTime });
+      }
+    }
+    return times;
+  }
+
+  /**
+   * Format time for display (convert 24h to 12h format)
+   */
+  #formatDisplayTime(time24) {
+    const [hours, minutes] = time24.split(':');
+    const hour12 = parseInt(hours) % 12 || 12;
+    const ampm = parseInt(hours) >= 12 ? 'PM' : 'AM';
+    return `${hour12}:${minutes} ${ampm}`;
+  }
+
+  /**
+   * Update instrument options based on selected instructor
+   */
+  #updateInstrumentOptions(instructor) {
+    if (!this.instrumentSelect || !instructor) {
+      return;
+    }
+
+    // Get instructor's instruments from specialties field
+    const instructorInstruments = instructor.specialties || [];
+    
+    // Create instrument options based on instructor's specialties
+    let instrumentOptions = [];
+    if (instructorInstruments.length > 0) {
+      instrumentOptions = instructorInstruments.map(instrument => ({
+        value: instrument,
+        label: instrument
+      }));
+    } else {
+      // Fallback to default instruments if instructor has no specialties
+      instrumentOptions = [
+        { value: 'Piano', label: 'Piano' },
+        { value: 'Guitar', label: 'Guitar' },
+        { value: 'Violin', label: 'Violin' },
+        { value: 'Voice', label: 'Voice' },
+        { value: 'Drums', label: 'Drums' },
+        { value: 'Bass', label: 'Bass' },
+        { value: 'Other', label: 'Other' }
+      ];
+    }
+
+    // Update the instrument select with new options
+    this.instrumentSelect.populateOptions(instrumentOptions, true);
+    
+    console.log('Updated instrument options for instructor:', instructor.firstName, instructor.lastName, 'with instruments:', instructorInstruments);
+  }
+
+  /**
+   * Attach event listener to submit button
+   */
+  #attachSubmitButtonListener() {
+    const submitButton = document.getElementById('create-registration-submit-btn');
+    if (submitButton) {
+      submitButton.addEventListener('click', async (event) => {
+        event.preventDefault();
+        
+        if (!this.#validateRegistration()) {
+          return;
+        }
+        
+        try {
+          this.#setAdminRegistrationLoading(true);
+          const registrationData = this.#getCreateRegistrationData();
+          await this.sendDataFunction(registrationData);
+          this.#clearForm();
+          M.toast({ html: 'Registration created successfully!' });
+        } catch (error) {
+          console.error('Error creating registration:', error);
+          M.toast({ html: `Error creating registration: ${error.message}` });
+        } finally {
+          this.#setAdminRegistrationLoading(false);
+        }
+      });
+    } else {
+      console.warn('Submit button not found');
+    }
+  }
+
+  /**
+   * Simple validation without restrictions
+   */
+  #validateRegistration() {
+    const registrationData = this.#getCreateRegistrationData();
+    const isPrivate = registrationData.registrationType === RegistrationType.PRIVATE;
+    const isGroup = registrationData.registrationType === RegistrationType.GROUP;
+    
+    const isValid =
+      registrationData.studentId &&
+      registrationData.registrationType &&
+      ((isGroup && registrationData.classId) ||
+        (isPrivate && registrationData.instructorId && 
+         registrationData.day !== undefined && 
+         registrationData.startTime && 
+         registrationData.length && 
+         registrationData.instrument));
+    
+    if (!isValid) {
+      const errors = [];
+      if (!registrationData.studentId) {
+        errors.push('Student');
+      }
+      if (!registrationData.registrationType) {
+        errors.push('Registration Type');
+      }
+      if (isGroup && !registrationData.classId) {
+        errors.push('Class');
+      }
+      if (isPrivate) {
+        if (!registrationData.instructorId) {
+          errors.push('Instructor');
+        }
+        if (registrationData.day === undefined || registrationData.day === null || registrationData.day === '') {
+          errors.push('Day');
+        }
+        if (!registrationData.startTime) {
+          errors.push('Start Time');
+        }
+        if (!registrationData.length) {
+          errors.push('Length');
+        }
+        if (!registrationData.instrument) {
+          errors.push('Instrument');
+        }
+      }
+      M.toast({ html: `Please fill out the following fields:<br>${errors.join('<br>')}` });
+    }
+    return isValid;
+  }
+
+  /**
+   * Get registration data for submission
+   */
+  #getCreateRegistrationData() {
+    // get student - extract the actual ID value if it's an object
+    const studentId = this.selectedStudent ? 
+      (typeof this.selectedStudent.id === 'object' ? this.selectedStudent.id.value : this.selectedStudent.id) : 
+      null;
+    const registrationType = this.registrationTypeSelect.getSelectedOption();
+    
+    if (registrationType === RegistrationType.GROUP) {
+      const selectedClassId = this.classSelect.getSelectedOption();
+      const selectedClass = this.classes.find(c => c.id === selectedClassId);
+      
+      if (!selectedClass) {
+        throw new Error('Please select a valid class');
+      }
+      
+      return {
+        studentId: studentId,
+        registrationType: RegistrationType.GROUP,
+        classId: selectedClassId,
+        instructorId: selectedClass.instructorId,
+        day: selectedClass.day,
+        startTime: selectedClass.startTime,
+        length: selectedClass.length,
+        instrument: selectedClass.instrument,
+      };
+    }
+    
+    // For private lessons, basic data only
+    if (registrationType === RegistrationType.PRIVATE) {
+      // get transportation type response
+      const transportationType = document.querySelector('input[name="transportation-type"]:checked');
+      
+      // Get lesson details from selectors
+      const dayValue = this.daySelect ? this.daySelect.getSelectedOption() : '0';
+      const startTime = this.startTimeSelect ? this.startTimeSelect.getSelectedOption() : '15:00';
+      const length = document.querySelector('input[name="lesson-length"]:checked')?.value || '30';
+      const instrument = this.instrumentSelect ? this.instrumentSelect.getSelectedOption() : 'Piano';
+      
+      // Convert numeric day to day name
+      const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+      const dayName = dayNames[parseInt(dayValue)] || 'Monday';
+      
+      return {
+        studentId: studentId,
+        registrationType: registrationType,
+        transportationType: transportationType ? transportationType.value : null,
+        instructorId: this.instructorSelect.getSelectedOption(),
+        day: dayName,
+        startTime: startTime,
+        length: parseInt(length),
+        instrument: instrument,
+      };
+    }
+    
+    return {
+      studentId: studentId,
+      registrationType: registrationType,
+    };
+  }
+
+  /**
+   * Set loading state
+   */
+  #setAdminRegistrationLoading(isLoading) {
+    const submitButton = document.getElementById('create-registration-submit-btn');
+    if (submitButton) {
+      if (isLoading) {
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<b>Creating...</b>';
+      } else {
+        submitButton.disabled = false;
+        submitButton.innerHTML = '<b>Create</b>';
+      }
+    }
+  }
+
+  /**
+   * Clear the form after successful submission
+   */
+  #clearForm() {
+    // Clear group class selection
+    this.classSelect.clearSelectedOption();
+    
+    // Clear instructor selection
+    this.instructorSelect.clearSelectedOption();
+    
+    // Clear lesson details
+    if (this.daySelect) {
+      this.daySelect.clearSelectedOption();
+    }
+    // Reset lesson length radio buttons to default (30 minutes)
+    const lengthRadios = document.querySelectorAll('input[name="lesson-length"]');
+    if (lengthRadios.length > 0) {
+      lengthRadios[0].checked = true; // Default to 30 minutes
+    }
+    if (this.instrumentSelect) {
+      this.instrumentSelect.clearSelectedOption();
+    }
+    if (this.startTimeSelect) {
+      this.startTimeSelect.clearSelectedOption();
+    }
+    
+    // Hide lesson details container
+    this.#showLessonDetailsContainer(false);
+    
+    // Hide day-selected container
+    this.#showContainer('instructor-day-selected-info-container', false);
+    
+    // Clear students
+    this.#setCurrentStudent(null);
+    
+    // Clear transportation type
+    const transportationTypeRadios = document.querySelectorAll('input[name="transportation-type"]');
+    if (transportationTypeRadios.length > 0) {
+      transportationTypeRadios[0].checked = true;
+    }
+  }
+
+  /**
+   * Set current student
+   */
+  #setCurrentStudent(student) {
+    const elem = document.getElementById('student-autocomplete-input');
+    elem.value = student ? student.fullName : ''; // Set the input value
+    this.selectedStudent = student; // Update the selected student
   }
 }
-
-// For backwards compatibility with existing code
-window.AdminRegistrationForm = AdminRegistrationForm;

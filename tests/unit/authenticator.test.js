@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { Authenticator } from '../../src/core/services/authenticator.js';
+import { Authenticator } from '../../src/services/authenticator.js';
 
 describe('Authenticator', () => {
   describe('getSignedInUser', () => {

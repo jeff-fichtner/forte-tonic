@@ -44718,3 +44718,12 @@ noscript {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Registration row styling */
+.registration-row-group {
+  background-color: #f0f8f0 !important; /* Super light green */
+}
+
+.registration-row-private {
+  background-color: #fffef0 !important; /* Super light yellow */
+}

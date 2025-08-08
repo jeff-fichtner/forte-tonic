@@ -13,6 +13,12 @@ export class Select {
     onChangeFunction = null
   ) {
     this.select = document.getElementById(selectId); // Get the select element by ID
+    
+    if (!this.select) {
+      console.error(`Select element with ID '${selectId}' not found in DOM`);
+      throw new Error(`Select element with ID '${selectId}' not found`);
+    }
+    
     this.onChangeFunction = onChangeFunction ?? (event => {}); // Store the change event handler
     this.defaultOptionsText = defaultOptionsText || 'Select an option'; // Default text for the select options
     this.noOptionsText = noOptionsText || 'No options available'; // Default text when no options are available
@@ -50,6 +56,11 @@ export class Select {
    *
    */
   populateOptions(newOptions, forceRefresh = false) {
+    if (!this.select) {
+      console.error('Cannot populate options: select element is null');
+      return;
+    }
+    
     console.log(`Populating options for select: ${this.select.id}`, JSON.stringify(newOptions));
     this.options = newOptions; // Update the options
     const optionTextToUse = this.options.length > 0 ? this.defaultOptionsText : this.noOptionsText;

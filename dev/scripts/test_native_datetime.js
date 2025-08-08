@@ -8,7 +8,7 @@
  * before fully migrating from Luxon.
  */
 
-import { Duration, DateTime, DateHelpers } from '../../src/core/helpers/nativeDateTimeHelpers.js';
+import { Duration, DateTime, DateHelpers } from '../../src/utils/nativeDateTimeHelpers.js';
 
 console.log('🧪 TESTING NATIVE DATETIME SOLUTION');
 console.log('===================================\n');

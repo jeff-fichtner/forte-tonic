@@ -1,5 +1,5 @@
 import { app, PORT, initializeApp } from './app.js';
-import { configService } from './core/services/configurationService.js';
+import { configService } from './services/configurationService.js';
 import { currentConfig, isProduction, isStaging } from './config/environment.js';
 
 // Initialize the application and start the server
