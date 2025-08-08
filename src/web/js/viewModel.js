@@ -350,7 +350,7 @@ export class ViewModel {
 
       this.#buildWeeklySchedule(tableId, dayRegistrations);
     });
-    
+
     const mappedEmployees = this.adminEmployees().concat(
       this.instructors.map(instructor => this.instructorToEmployee(instructor))
     );
@@ -367,19 +367,39 @@ export class ViewModel {
    */
   #initParentContent() {
     console.log('🔧 Initializing parent content...');
+    console.log('🔍 Current user structure:', this.currentUser);
+    
     // weekly schedule
     // Get the current parent's ID
     const currentParentId = this.currentUser.parent?.id;
 
     if (!currentParentId) {
       console.warn('No parent ID found for current user');
+      console.log('Available parent data:', this.currentUser.parent);
       return;
     }
 
-    // Filter registrations to only show those where the student is the parent's child
     console.log('🔍 Debug parent filtering:');
     console.log('  - currentParentId:', currentParentId);
+    console.log('  - currentParentId type:', typeof currentParentId);
     console.log('  - Total registrations:', this.registrations.length);
+    
+    // Log the first few registrations and their student data
+    this.registrations.slice(0, 3).forEach((registration, index) => {
+      console.log(`  - Registration ${index + 1}:`, {
+        id: registration.id,
+        studentId: registration.studentId,
+        hasStudent: !!registration.student,
+        studentData: registration.student ? {
+          id: registration.student.id,
+          name: `${registration.student.firstName} ${registration.student.lastName}`,
+          parent1Id: registration.student.parent1Id,
+          parent2Id: registration.student.parent2Id,
+          parent1IdType: typeof registration.student.parent1Id,
+          parent2IdType: typeof registration.student.parent2Id
+        } : 'No student attached'
+      });
+    });
     
     const parentChildRegistrations = this.registrations.filter(registration => {
       const student = registration.student;
@@ -388,15 +408,21 @@ export class ViewModel {
         return false;
       }
 
-      console.log('  - Checking student:', student.firstName, student.lastName);
-      console.log('    - student.parent1Id:', student.parent1Id);
-      console.log('    - student.parent2Id:', student.parent2Id);
-      console.log('    - currentParentId:', currentParentId);
+      console.log(`  - Checking student: ${student.firstName} ${student.lastName}`);
+      console.log(`    - student.parent1Id: "${student.parent1Id}" (${typeof student.parent1Id})`);
+      console.log(`    - student.parent2Id: "${student.parent2Id}" (${typeof student.parent2Id})`);
+      console.log(`    - currentParentId: "${currentParentId}" (${typeof currentParentId})`);
 
       // Check if the current parent is either parent1 or parent2 of the student
       const isMatch = student.parent1Id === currentParentId || student.parent2Id === currentParentId;
       console.log('    - Match result:', isMatch);
-      return isMatch;
+      
+      // Also try string comparison in case of type mismatches
+      const stringMatch = String(student.parent1Id) === String(currentParentId) || 
+                         String(student.parent2Id) === String(currentParentId);
+      console.log('    - String match result:', stringMatch);
+      
+      return isMatch || stringMatch;
     });
 
     console.log('🔍 Filtered registrations count:', parentChildRegistrations.length);

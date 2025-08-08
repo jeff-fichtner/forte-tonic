@@ -199,6 +199,10 @@ export class RegistrationRepository extends BaseRepository {
         }
       });
 
+      // Clear cache after mutation to ensure data consistency
+      this.clearCache();
+      this.dbClient.clearCache('registrations');
+
       // Cache the new registration
       this.cache.set(registrationId, registration);
 

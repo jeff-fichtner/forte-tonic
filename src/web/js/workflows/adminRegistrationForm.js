@@ -399,10 +399,22 @@ export class AdminRegistrationForm {
     const registrationType = this.registrationTypeSelect.getSelectedOption();
     
     if (registrationType === RegistrationType.GROUP) {
+      const selectedClassId = this.classSelect.getSelectedOption();
+      const selectedClass = this.classes.find(c => c.id === selectedClassId);
+      
+      if (!selectedClass) {
+        throw new Error('Please select a valid class');
+      }
+      
       return {
         studentId: studentId,
         registrationType: RegistrationType.GROUP,
-        classId: this.classSelect.getSelectedOption(),
+        classId: selectedClassId,
+        instructorId: selectedClass.instructorId,
+        day: selectedClass.day,
+        startTime: selectedClass.startTime,
+        length: selectedClass.length,
+        instrument: selectedClass.instrument,
       };
     }
     

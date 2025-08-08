@@ -106,7 +106,12 @@ export class ProgramRepository {
         }
       );
 
-      return await this.dbClient.appendRecord(Keys.REGISTRATIONS, record, createdBy);
+      const result = await this.dbClient.appendRecord(Keys.REGISTRATIONS, record, createdBy);
+      
+      // Clear cache after mutation
+      this.cache.clear(); // Clear all caches since we modified registrations
+      
+      return result;
     } catch (error) {
       console.error('Failed to register:', error);
       throw error;
@@ -147,6 +152,10 @@ export class ProgramRepository {
       }
 
       await this.dbClient.deleteRecord(Keys.REGISTRATIONS, registrationId, deletedBy);
+      
+      // Clear cache after mutation
+      this.cache.clear(); // Clear all caches since we deleted a registration
+      
       return {
         success: true,
         requiresRefund: validation.requiresRefund,
@@ -174,11 +183,16 @@ export class ProgramRepository {
       return validation.existingRecord;
     }
 
-    return await this.dbClient.appendRecord(
+    const result = await this.dbClient.appendRecord(
       Keys.ATTENDANCE,
       new AttendanceRecord(registrationId),
       createdBy
     );
+    
+    // Clear cache after mutation
+    this.cache.clear(); // Clear all caches since we recorded attendance
+    
+    return result;
   }
 
   /**
@@ -198,6 +212,10 @@ export class ProgramRepository {
     }
 
     await this.dbClient.deleteRecord(Keys.ATTENDANCE, registrationId, deletedBy);
+    
+    // Clear cache after mutation
+    this.cache.clear(); // Clear all caches since we removed attendance
+    
     return true;
   }
 }

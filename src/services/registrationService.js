@@ -16,7 +16,6 @@ export class RegistrationApplicationService {
     this.registrationRepository = dependencies.registrationRepository;
     this.userRepository = dependencies.userRepository;
     this.programRepository = dependencies.programRepository;
-    this.emailClient = dependencies.emailClient;
     this.auditService = dependencies.auditService;
   }
 
@@ -159,9 +158,6 @@ export class RegistrationApplicationService {
         await this.auditService.logRegistrationCreated(persistedRegistration, userId);
       }
 
-      // Step 9: Send confirmation emails
-      await this.#sendRegistrationConfirmation(registrationEntity, student, instructor);
-
       console.log('✅ Registration processed successfully:', persistedRegistration.id);
 
       // Generate lesson schedule with complete registration data
@@ -223,7 +219,7 @@ export class RegistrationApplicationService {
       // Perform cancellation
       await this.registrationRepository.delete(registrationId, userId);
 
-      // Get student and instructor for notifications
+      // Get student and instructor for audit logging
       const [student, instructor] = await Promise.all([
         this.userRepository.getStudentById(registration.studentId.value),
         this.userRepository.getInstructorById(registration.instructorId.value),
@@ -233,9 +229,6 @@ export class RegistrationApplicationService {
       if (this.auditService) {
         await this.auditService.logRegistrationCancelled(registration, reason, userId);
       }
-
-      // Send cancellation notifications
-      await this.#sendCancellationNotification(registration, student, instructor, reason);
 
       console.log('✅ Registration cancelled successfully');
 
@@ -315,159 +308,6 @@ export class RegistrationApplicationService {
       console.error('❌ Failed to get student registrations:', error);
       throw error;
     }
-  }
-
-  /**
-   * Private method: Send registration confirmation emails
-   */
-  async #sendRegistrationConfirmation(registration, student, instructor) {
-    try {
-      if (!this.emailClient) return;
-
-      const emailPromises = [];
-
-      // Email to student/parent
-      if (student.email) {
-        emailPromises.push(
-          this.emailClient.sendEmail({
-            to: student.email,
-            subject: 'Registration Confirmation - Tonic Music Program',
-            html: this.#generateConfirmationEmail(registration, student, instructor),
-          })
-        );
-      }
-
-      // Email to instructor
-      if (instructor.email) {
-        emailPromises.push(
-          this.emailClient.sendEmail({
-            to: instructor.email,
-            subject: 'New Student Registration - Tonic Music Program',
-            html: this.#generateInstructorNotificationEmail(registration, student, instructor),
-          })
-        );
-      }
-
-      await Promise.all(emailPromises);
-      console.log('📧 Registration confirmation emails sent');
-    } catch (error) {
-      console.error('❌ Failed to send confirmation emails:', error);
-      // Don't throw - email failure shouldn't fail the registration
-    }
-  }
-
-  /**
-   * Private method: Send cancellation notification
-   */
-  async #sendCancellationNotification(registration, student, instructor, reason) {
-    try {
-      if (!this.emailClient) return;
-
-      const emailPromises = [];
-
-      // Email to student/parent
-      if (student.email) {
-        emailPromises.push(
-          this.emailClient.sendEmail({
-            to: student.email,
-            subject: 'Registration Cancelled - Tonic Music Program',
-            html: this.#generateCancellationEmail(registration, student, reason),
-          })
-        );
-      }
-
-      // Email to instructor
-      if (instructor.email) {
-        emailPromises.push(
-          this.emailClient.sendEmail({
-            to: instructor.email,
-            subject: 'Student Registration Cancelled - Tonic Music Program',
-            html: this.#generateInstructorCancellationEmail(registration, student, reason),
-          })
-        );
-      }
-
-      await Promise.all(emailPromises);
-      console.log('📧 Cancellation notification emails sent');
-    } catch (error) {
-      console.error('❌ Failed to send cancellation emails:', error);
-    }
-  }
-
-  /**
-   * Private method: Generate confirmation email HTML
-   */
-  #generateConfirmationEmail(registration, student, instructor) {
-    return `
-      <h2>Registration Confirmation</h2>
-      <p>Dear ${student.firstName},</p>
-      <p>Your registration has been confirmed for:</p>
-      <ul>
-        <li><strong>Instructor:</strong> ${instructor.firstName} ${instructor.lastName}</li>
-        <li><strong>Day:</strong> ${registration.day}</li>
-        <li><strong>Time:</strong> ${registration.lessonTime.toString()}</li>
-        <li><strong>Instrument:</strong> ${registration.instrument}</li>
-        <li><strong>Start Date:</strong> ${registration.expectedStartDate.toDateString()}</li>
-      </ul>
-      <p>We look forward to seeing you at your first lesson!</p>
-      <p>Best regards,<br>Tonic Music Program</p>
-    `;
-  }
-
-  /**
-   * Private method: Generate instructor notification email
-   */
-  #generateInstructorNotificationEmail(registration, student, instructor) {
-    return `
-      <h2>New Student Registration</h2>
-      <p>Dear ${instructor.firstName},</p>
-      <p>You have a new student registration:</p>
-      <ul>
-        <li><strong>Student:</strong> ${student.firstName} ${student.lastName}</li>
-        <li><strong>Day:</strong> ${registration.day}</li>
-        <li><strong>Time:</strong> ${registration.lessonTime.toString()}</li>
-        <li><strong>Instrument:</strong> ${registration.instrument}</li>
-        <li><strong>Start Date:</strong> ${registration.expectedStartDate.toDateString()}</li>
-      </ul>
-      <p>Please prepare for the first lesson accordingly.</p>
-      <p>Best regards,<br>Tonic Music Program</p>
-    `;
-  }
-
-  /**
-   * Private method: Generate cancellation email HTML
-   */
-  #generateCancellationEmail(registration, student, reason) {
-    return `
-      <h2>Registration Cancelled</h2>
-      <p>Dear ${student.firstName},</p>
-      <p>Your registration has been cancelled:</p>
-      <ul>
-        <li><strong>Day:</strong> ${registration.day}</li>
-        <li><strong>Time:</strong> ${registration.lessonTime.toString()}</li>
-        <li><strong>Reason:</strong> ${reason}</li>
-      </ul>
-      <p>If you have any questions, please contact us.</p>
-      <p>Best regards,<br>Tonic Music Program</p>
-    `;
-  }
-
-  /**
-   * Private method: Generate instructor cancellation email
-   */
-  #generateInstructorCancellationEmail(registration, student, reason) {
-    return `
-      <h2>Student Registration Cancelled</h2>
-      <p>A student registration has been cancelled:</p>
-      <ul>
-        <li><strong>Student:</strong> ${student.firstName} ${student.lastName}</li>
-        <li><strong>Day:</strong> ${registration.day}</li>
-        <li><strong>Time:</strong> ${registration.lessonTime.toString()}</li>
-        <li><strong>Reason:</strong> ${reason}</li>
-      </ul>
-      <p>Please update your schedule accordingly.</p>
-      <p>Best regards,<br>Tonic Music Program</p>
-    `;
   }
 
   /**
