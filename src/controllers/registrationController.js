@@ -118,20 +118,30 @@ export class RegistrationController {
         userId
       );
 
-      // Return enriched response
+      // Return enriched response with complete registration data
       res.status(201).json({
         success: true,
         message: 'Registration created successfully',
         data: {
-          id: result.id,
-          studentId: result.studentId,
-          classId: result.classId,
-          instructorId: result.instructorId,
-          registrationType: result.registrationType,
-          schoolYear: result.schoolYear,
-          trimester: result.trimester,
-          className: result.className,
-          registeredAt: result.registeredAt,
+          id: result.registration.id,
+          studentId: result.registration.studentId,
+          instructorId: result.registration.instructorId,
+          day: result.registration.day,
+          startTime: result.registration.startTime,
+          length: result.registration.length,
+          registrationType: result.registration.registrationType,
+          instrument: result.registration.instrument,
+          classId: result.registration.classId,
+          className: result.registration.className,
+          roomId: result.registration.roomId,
+          transportationType: result.registration.transportationType,
+          notes: result.registration.notes,
+          schoolYear: result.registration.schoolYear,
+          trimester: result.registration.trimester,
+          expectedStartDate: result.registration.expectedStartDate,
+          registeredAt: result.registration.registeredAt,
+          registeredBy: result.registration.registeredBy,
+          // Include any additional computed fields
           canMarkAttendance: result.canMarkAttendance,
           validationResults: result.validationResults,
           conflictAnalysis: result.conflictAnalysis,

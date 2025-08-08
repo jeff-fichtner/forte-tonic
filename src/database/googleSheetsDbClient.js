@@ -620,6 +620,9 @@ export class GoogleSheetsDbClient {
         },
       });
 
+      // Clear cache for this sheet since we modified it
+      this.clearCache(sheetKey);
+
       return response.data;
     } catch (error) {
       console.error(`Error deleting row from sheet ${sheetKey}:`, error);
