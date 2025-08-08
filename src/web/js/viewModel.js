@@ -475,7 +475,7 @@ export class ViewModel {
 
         this.#buildWeeklySchedule(
           tableId,
-          parentChildRegistrations.filter(x => x.studentId.value === student.id)
+          parentChildRegistrations.filter(x => x.studentId.value === student.id.value)
         );
       });
     }
