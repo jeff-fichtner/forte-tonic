@@ -123,6 +123,9 @@ export class ViewModel {
     // Show content area
     document.getElementById('page-content').hidden = false;
 
+    console.log('📊 Starting data loading process...');
+    const loadingStartTime = performance.now();
+
     const [_, admins, instructors, students, registrations, classes, rooms] = await Promise.all([
       DomHelpers.waitForDocumentReadyAsync(),
       HttpService.fetch(ServerFunctions.getAdmins, x => x.map(y => Admin.fromApiData(y))),
@@ -133,12 +136,60 @@ export class ViewModel {
       HttpService.fetch(ServerFunctions.getRooms, x => x.map(y => Room.fromApiData(y))),
     ]);
 
+    const loadingEndTime = performance.now();
+    console.log(`📊 Data loading completed in ${(loadingEndTime - loadingStartTime).toFixed(2)}ms`);
+    
+    // Log data counts
+    console.log('📊 Data summary:');
+    console.log(`  - Admins: ${admins.length}`);
+    console.log(`  - Instructors: ${instructors.length}`);
+    console.log(`  - Students: ${students.length}`);
+    console.log(`  - Registrations: ${registrations.length}`);
+    console.log(`  - Classes: ${classes.length}`);
+    console.log(`  - Rooms: ${rooms.length}`);
+
+    // Log instructor details
+    console.log('👩‍🏫 Instructor IDs and details:');
+    instructors.forEach((instructor, index) => {
+      const id = instructor.id?.value || instructor.id;
+      console.log(`  ${index + 1}. ID: "${id}" (${typeof id}) - ${instructor.firstName} ${instructor.lastName} (${instructor.email})`);
+    });
+
+    // Log student details (first 10 for brevity)
+    console.log(`👩‍🎓 Student IDs and details (showing first 10 of ${students.length}):`);
+    students.slice(0, 10).forEach((student, index) => {
+      const id = student.id?.value || student.id;
+      console.log(`  ${index + 1}. ID: "${id}" (${typeof id}) - ${student.firstName} ${student.lastName}`);
+    });
+
     M.AutoInit();
 
     this.admins = admins;
     this.instructors = instructors;
     this.students = students;
-    this.registrations = registrations.map(registration => {
+    
+    console.log('🔗 Starting registration matching process...');
+    const matchingStartTime = performance.now();
+    
+    // Track matching statistics
+    let studentsMatched = 0;
+    let studentsNotMatched = 0;
+    let instructorsMatched = 0;
+    let instructorsNotMatched = 0;
+    const unmatchedStudentIds = [];
+    const unmatchedInstructorIds = [];
+    
+    this.registrations = registrations.map((registration, index) => {
+      if (index < 5) {
+        console.log(`🔍 Processing registration ${index + 1}/${registrations.length}:`, {
+          id: registration.id?.value || registration.id,
+          studentId: registration.studentId?.value || registration.studentId,
+          instructorId: registration.instructorId?.value || registration.instructorId,
+          day: registration.day,
+          startTime: registration.startTime
+        });
+      }
+      
       // ensure student is populated
       if (!registration.student) {
         registration.student = this.students.find(x => {
@@ -147,17 +198,106 @@ export class ViewModel {
           return studentId === registrationStudentId;
         });
 
-        // Debug: Log if student not found
+        // Log detailed matching info for students
         if (!registration.student) {
-          console.warn(`Student not found for registration ${registration.id} with studentId ${registration.studentId?.value || registration.studentId}`);
+          studentsNotMatched++;
+          const regStudentId = registration.studentId?.value || registration.studentId;
+          unmatchedStudentIds.push(regStudentId);
+          
+          if (index < 5) {
+            console.warn(`❌ Student not found for registration ${registration.id} with studentId "${regStudentId}" (${typeof regStudentId})`);
+            console.warn(`   Available student IDs:`, students.map(s => `"${s.id?.value || s.id}" (${typeof (s.id?.value || s.id)})`).slice(0, 5));
+          }
+        } else {
+          studentsMatched++;
+          if (index < 5) {
+            console.log(`✅ Student matched: ${registration.student.firstName} ${registration.student.lastName}`);
+          }
         }
       }
+      
       // ensure instructor is populated
       if (!registration.instructor) {
-        registration.instructor = this.instructors.find(x => x.id === registration.instructorId.value);
+        registration.instructor = this.instructors.find(x => {
+          const instructorId = x.id?.value || x.id;
+          const registrationInstructorId = registration.instructorId?.value || registration.instructorId;
+          return instructorId === registrationInstructorId;
+        });
+        
+        // Log detailed matching info for instructors
+        if (!registration.instructor) {
+          instructorsNotMatched++;
+          const regInstructorId = registration.instructorId?.value || registration.instructorId;
+          unmatchedInstructorIds.push(regInstructorId);
+          
+          if (index < 5) {
+            console.warn(`❌ Instructor not found for registration ${registration.id} with instructorId "${regInstructorId}" (${typeof regInstructorId})`);
+            console.warn(`   Available instructor IDs:`, instructors.map(i => `"${i.id?.value || i.id}" (${typeof (i.id?.value || i.id)})`));
+          }
+        } else {
+          instructorsMatched++;
+          if (index < 5) {
+            console.log(`✅ Instructor matched: ${registration.instructor.firstName} ${registration.instructor.lastName}`);
+          }
+        }
       }
       return registration;
     });
+    
+    const matchingEndTime = performance.now();
+    console.log(`🔗 Registration matching completed in ${(matchingEndTime - matchingStartTime).toFixed(2)}ms`);
+    
+    // Log matching statistics
+    console.log('📈 Matching statistics:');
+    console.log(`  Students: ${studentsMatched} matched, ${studentsNotMatched} not matched`);
+    console.log(`  Instructors: ${instructorsMatched} matched, ${instructorsNotMatched} not matched`);
+    
+    if (unmatchedStudentIds.length > 0) {
+      console.log(`⚠️ Unmatched student IDs (first 10):`, unmatchedStudentIds.slice(0, 10));
+    }
+    
+    if (unmatchedInstructorIds.length > 0) {
+      console.log(`⚠️ Unmatched instructor IDs (first 10):`, unmatchedInstructorIds.slice(0, 10));
+    }
+    
+    // Log registration counts per student
+    const studentRegistrationCounts = {};
+    this.registrations.forEach(reg => {
+      if (reg.student) {
+        const studentId = reg.student.id?.value || reg.student.id;
+        studentRegistrationCounts[studentId] = (studentRegistrationCounts[studentId] || 0) + 1;
+      }
+    });
+    
+    console.log('📊 Registration counts per student (top 10):');
+    const sortedStudentCounts = Object.entries(studentRegistrationCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 10);
+    
+    sortedStudentCounts.forEach(([studentId, count]) => {
+      const student = this.students.find(s => (s.id?.value || s.id) === studentId);
+      const studentName = student ? `${student.firstName} ${student.lastName}` : 'Unknown';
+      console.log(`  ${studentName}: ${count} registrations`);
+    });
+    
+    // Log registration counts per instructor
+    const instructorRegistrationCounts = {};
+    this.registrations.forEach(reg => {
+      if (reg.instructor) {
+        const instructorId = reg.instructor.id?.value || reg.instructor.id;
+        instructorRegistrationCounts[instructorId] = (instructorRegistrationCounts[instructorId] || 0) + 1;
+      }
+    });
+    
+    console.log('📊 Registration counts per instructor:');
+    Object.entries(instructorRegistrationCounts)
+      .sort(([,a], [,b]) => b - a)
+      .forEach(([instructorId, count]) => {
+        const instructor = this.instructors.find(i => (i.id?.value || i.id) === instructorId);
+        const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : 'Unknown';
+        console.log(`  ${instructorName}: ${count} registrations`);
+      });
+    
     this.classes = classes;
     this.rooms = rooms;
 
@@ -253,21 +393,45 @@ export class ViewModel {
    *
    */
   #initInstructorContent() {
+    console.log('👩‍🏫 Initializing instructor content...');
+    
     // Get the current instructor's ID
     const currentInstructorId = this.currentUser.instructor?.id;
 
     if (!currentInstructorId) {
-      console.warn('No instructor ID found for current user');
+      console.warn('❌ No instructor ID found for current user');
+      console.warn('Current user structure:', this.currentUser);
       return;
     }
 
+    console.log(`🔍 Current instructor ID: "${currentInstructorId}" (${typeof currentInstructorId})`);
+
     // Filter registrations to only show those for the current instructor
+    console.log('🔍 Filtering registrations for instructor...');
+    const filteringStartTime = performance.now();
+    
     const instructorRegistrations = this.registrations.filter(registration => {
       const registrationInstructorId = registration.instructorId?.value || registration.instructorId;
-      return registrationInstructorId === currentInstructorId;
+      const isMatch = registrationInstructorId === currentInstructorId;
+      
+      return isMatch;
     });
+    
+    const filteringEndTime = performance.now();
+    console.log(`🔍 Instructor filtering completed in ${(filteringEndTime - filteringStartTime).toFixed(2)}ms`);
 
-    console.log(`Instructor ${currentInstructorId} has ${instructorRegistrations.length} registrations out of ${this.registrations.length} total`);
+    console.log(`📊 Instructor ${currentInstructorId} has ${instructorRegistrations.length} registrations out of ${this.registrations.length} total`);
+    
+    // Log some sample instructor registrations
+    if (instructorRegistrations.length > 0) {
+      console.log('📝 Sample instructor registrations:');
+      instructorRegistrations.slice(0, 5).forEach((registration, index) => {
+        console.log(`  ${index + 1}. ${registration.student?.firstName || 'Unknown'} ${registration.student?.lastName || 'Student'} - ${registration.day} ${registration.startTime} (${registration.instrument || registration.classTitle || 'Unknown'})`);
+      });
+      if (instructorRegistrations.length > 5) {
+        console.log(`  ... and ${instructorRegistrations.length - 5} more registrations`);
+      }
+    }
 
     // weekly schedule
     // unique days with registrations for this instructor, sorted by day of week
@@ -385,8 +549,9 @@ export class ViewModel {
     console.log('  - Total registrations:', this.registrations.length);
     
     // Log the first few registrations and their student data
-    this.registrations.slice(0, 3).forEach((registration, index) => {
-      console.log(`  - Registration ${index + 1}:`, {
+    console.log('📋 Sample registrations and student data:');
+    this.registrations.slice(0, 5).forEach((registration, index) => {
+      console.log(`  Registration ${index + 1}/${this.registrations.length}:`, {
         id: registration.id,
         studentId: registration.studentId,
         hasStudent: !!registration.student,
@@ -401,31 +566,76 @@ export class ViewModel {
       });
     });
     
+    // Track parent matching statistics
+    let parentMatchingStartTime = performance.now();
+    let exactMatches = 0;
+    let stringMatches = 0;
+    let noMatches = 0;
+    let missingStudents = 0;
+    
     const parentChildRegistrations = this.registrations.filter(registration => {
       const student = registration.student;
       if (!student) {
-        console.log('  - Registration missing student:', registration.id);
+        missingStudents++;
+        console.log('  ❌ Registration missing student:', registration.id);
         return false;
       }
 
-      console.log(`  - Checking student: ${student.firstName} ${student.lastName}`);
-      console.log(`    - student.parent1Id: "${student.parent1Id}" (${typeof student.parent1Id})`);
-      console.log(`    - student.parent2Id: "${student.parent2Id}" (${typeof student.parent2Id})`);
-      console.log(`    - currentParentId: "${currentParentId}" (${typeof currentParentId})`);
+      if (noMatches + exactMatches + stringMatches < 10) { // Log first 10 for brevity
+        console.log(`  🔍 Checking student: ${student.firstName} ${student.lastName}`);
+        console.log(`    - student.parent1Id: "${student.parent1Id}" (${typeof student.parent1Id})`);
+        console.log(`    - student.parent2Id: "${student.parent2Id}" (${typeof student.parent2Id})`);
+        console.log(`    - currentParentId: "${currentParentId}" (${typeof currentParentId})`);
+      }
 
       // Check if the current parent is either parent1 or parent2 of the student
-      const isMatch = student.parent1Id === currentParentId || student.parent2Id === currentParentId;
-      console.log('    - Match result:', isMatch);
+      const exactMatch = student.parent1Id === currentParentId || student.parent2Id === currentParentId;
       
       // Also try string comparison in case of type mismatches
-      const stringMatch = String(student.parent1Id) === String(currentParentId) || 
-                         String(student.parent2Id) === String(currentParentId);
-      console.log('    - String match result:', stringMatch);
+      const stringMatch = !exactMatch && (
+        String(student.parent1Id) === String(currentParentId) || 
+        String(student.parent2Id) === String(currentParentId)
+      );
       
-      return isMatch || stringMatch;
+      const isMatch = exactMatch || stringMatch;
+      
+      if (noMatches + exactMatches + stringMatches < 10) { // Log first 10 for brevity
+        console.log(`    - Exact match result: ${exactMatch}`);
+        console.log(`    - String match result: ${stringMatch}`);
+        console.log(`    - Final match: ${isMatch}`);
+      }
+      
+      if (exactMatch) {
+        exactMatches++;
+      } else if (stringMatch) {
+        stringMatches++;
+      } else {
+        noMatches++;
+      }
+      
+      return isMatch;
     });
 
-    console.log('🔍 Filtered registrations count:', parentChildRegistrations.length);
+    let parentMatchingEndTime = performance.now();
+    
+    console.log(`🔍 Parent filtering completed in ${(parentMatchingEndTime - parentMatchingStartTime).toFixed(2)}ms`);
+    console.log('📊 Parent matching statistics:');
+    console.log(`  - Exact matches: ${exactMatches}`);
+    console.log(`  - String matches: ${stringMatches}`);
+    console.log(`  - No matches: ${noMatches}`);
+    console.log(`  - Missing students: ${missingStudents}`);
+    console.log(`  - Total parent-child registrations found: ${parentChildRegistrations.length}`);
+
+    // Log details about the matched registrations
+    if (parentChildRegistrations.length > 0) {
+      console.log('📝 Parent-child registrations details:');
+      parentChildRegistrations.slice(0, 5).forEach((registration, index) => {
+        console.log(`  ${index + 1}. ${registration.student.firstName} ${registration.student.lastName} - ${registration.day} ${registration.startTime} (${registration.instrument || registration.classTitle})`);
+      });
+      if (parentChildRegistrations.length > 5) {
+        console.log(`  ... and ${parentChildRegistrations.length - 5} more registrations`);
+      }
+    }
 
     // Get unique students with registrations (their own children only)
     const studentsWithRegistrations = parentChildRegistrations
@@ -473,9 +683,30 @@ export class ViewModel {
 
         parentWeeklyScheduleTables.appendChild(studentContainer);
 
+        // Filter registrations for this student and sort by day, then start time
+        console.log(`📅 Processing schedule for ${student.firstName} ${student.lastName}:`);
+        const studentRegistrations = parentChildRegistrations.filter(x => x.studentId.value === student.id.value);
+        console.log(`  - Found ${studentRegistrations.length} registrations for this student`);
+        
+        if (studentRegistrations.length > 0) {
+          console.log('  - Sample registrations before sorting:');
+          studentRegistrations.slice(0, 3).forEach((reg, index) => {
+            console.log(`    ${index + 1}. ${reg.day} ${reg.startTime} - ${reg.instrument || reg.classTitle}`);
+          });
+        }
+        
+        const sortedStudentRegistrations = this.#sortRegistrations(studentRegistrations);
+        
+        if (sortedStudentRegistrations.length > 0) {
+          console.log('  - Sample registrations after sorting:');
+          sortedStudentRegistrations.slice(0, 3).forEach((reg, index) => {
+            console.log(`    ${index + 1}. ${reg.day} ${reg.startTime} - ${reg.instrument || reg.classTitle}`);
+          });
+        }
+
         this.#buildWeeklySchedule(
           tableId,
-          parentChildRegistrations.filter(x => x.studentId.value === student.id.value)
+          sortedStudentRegistrations
         );
       });
     }
@@ -960,6 +1191,11 @@ export class ViewModel {
    *
    */
   #buildWeeklySchedule(tableId, enrollments) {
+    console.log(`🏗️ Building weekly schedule table "${tableId}" with ${enrollments.length} enrollments`);
+    
+    let matchingSuccesses = 0;
+    let matchingFailures = 0;
+    
     return new Table(
       tableId,
       ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument'],
@@ -980,14 +1216,28 @@ export class ViewModel {
         });
 
         if (!instructor || !student) {
-          console.warn(`Instructor or student not found for enrollment: ${enrollment.id}`);
-          console.warn(`Looking for instructorId: ${enrollment.instructorId?.value || enrollment.instructorId}, studentId: ${enrollment.studentId?.value || enrollment.studentId}`);
-          console.warn('Available instructor IDs:', this.instructors.map(i => i.id?.value || i.id).slice(0, 5));
-          console.warn('Available student IDs:', this.students.map(s => s.id?.value || s.id).slice(0, 5));
+          matchingFailures++;
+          const enrollmentId = enrollment.id?.value || enrollment.id;
+          const enrollmentInstructorId = enrollment.instructorId?.value || enrollment.instructorId;
+          const enrollmentStudentId = enrollment.studentId?.value || enrollment.studentId;
+          
+          console.warn(`❌ Instructor or student not found for enrollment: ${enrollmentId}`);
+          console.warn(`   Looking for instructorId: "${enrollmentInstructorId}" (${typeof enrollmentInstructorId}), studentId: "${enrollmentStudentId}" (${typeof enrollmentStudentId})`);
+          
+          if (!instructor) {
+            console.warn(`   ❌ Instructor not found. Available instructor IDs:`, this.instructors.map(i => `"${i.id?.value || i.id}" (${typeof (i.id?.value || i.id)})`).slice(0, 10));
+          }
+          
+          if (!student) {
+            console.warn(`   ❌ Student not found. Available student IDs:`, this.students.map(s => `"${s.id?.value || s.id}" (${typeof (s.id?.value || s.id)})`).slice(0, 10));
+          }
 
           // Return empty string to skip this enrollment rather than crashing
           return '';
+        } else {
+          matchingSuccesses++;
         }
+        
         return `
                         <td>${enrollment.day}</td>
                         <td>${formatTime(enrollment.startTime) || 'N/A'}</td>
@@ -1011,6 +1261,8 @@ export class ViewModel {
         }
       }
     );
+    
+    console.log(`✅ Weekly schedule table "${tableId}" built: ${matchingSuccesses} successful matches, ${matchingFailures} failures`);
   }
   /**
    * Build directory table for employees (admins + instructors)
@@ -1278,16 +1530,55 @@ export class ViewModel {
    */
   async #getStudents(forceRefresh = false) {
     // BYPASS INDEXEDDB: Always load students fresh from server
-    console.log('Loading students fresh from server (IndexedDB bypassed)...');
+    console.log('👩‍🎓 Loading students fresh from server (IndexedDB bypassed)...');
+    const studentsStartTime = performance.now();
 
     const students = await HttpService.fetchAllPages(ServerFunctions.getStudents, x =>
       Student.fromApiData(x)
     );
-    console.log(`Fetched ${students.length} students from server.`);
+    
+    const studentsEndTime = performance.now();
+    console.log(`👩‍🎓 Fetched ${students.length} students from server in ${(studentsEndTime - studentsStartTime).toFixed(2)}ms`);
+
+    // Log sample student data structure
+    if (students.length > 0) {
+      console.log('👩‍🎓 Sample student data structure:');
+      const sampleStudent = students[0];
+      console.log('  Sample student:', {
+        id: sampleStudent.id,
+        idType: typeof sampleStudent.id,
+        name: `${sampleStudent.firstName} ${sampleStudent.lastName}`,
+        grade: sampleStudent.grade,
+        parent1Id: sampleStudent.parent1Id,
+        parent1IdType: typeof sampleStudent.parent1Id,
+        parent2Id: sampleStudent.parent2Id,
+        parent2IdType: typeof sampleStudent.parent2Id,
+        parentEmails: sampleStudent.parentEmails
+      });
+      
+      // Log ID distribution analysis
+      const idTypes = {};
+      const parent1IdTypes = {};
+      const parent2IdTypes = {};
+      
+      students.forEach(student => {
+        const idType = typeof (student.id?.value || student.id);
+        const parent1IdType = typeof student.parent1Id;
+        const parent2IdType = typeof student.parent2Id;
+        
+        idTypes[idType] = (idTypes[idType] || 0) + 1;
+        parent1IdTypes[parent1IdType] = (parent1IdTypes[parent1IdType] || 0) + 1;
+        parent2IdTypes[parent2IdType] = (parent2IdTypes[parent2IdType] || 0) + 1;
+      });
+      
+      console.log('👩‍🎓 Student ID type distribution:', idTypes);
+      console.log('👩‍🎓 Parent1 ID type distribution:', parent1IdTypes);
+      console.log('👩‍🎓 Parent2 ID type distribution:', parent2IdTypes);
+    }
 
     // Note: IndexedDB saving is bypassed to ensure fresh data on every load
     if (students.length === 0) {
-      console.warn('No students found from server.');
+      console.warn('⚠️ No students found from server.');
     }
     return students;
   }
