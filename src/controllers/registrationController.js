@@ -12,7 +12,7 @@ import { _fetchData } from '../utils/helpers.js';
 
 export class RegistrationController {
   /**
-   * Get all classes
+   * Get all classes/programs
    */
   static async getClasses(req, res) {
     try {
@@ -26,11 +26,12 @@ export class RegistrationController {
   }
 
   /**
-   * Get all registrations with pagination using application service
+   * Get registrations with filtering and pagination
    */
   static async getRegistrations(req, res) {
     try {
-      const request = req.body || {};
+      // Use the normalized request data from middleware
+      const request = req.requestData || {};
 
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
 
