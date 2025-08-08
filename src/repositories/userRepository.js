@@ -77,7 +77,7 @@ export class UserRepository {
       async () =>
         (this.instructors = (
           await this.dbClient.getAllRecords(Keys.INSTRUCTORS, x => Instructor.fromDatabaseRow(x))
-        ).filter(x => !x.isDeactivated)),
+        ).filter(x => x.isActive)),
       Keys.INSTRUCTORS,
       forceRefresh
     );
