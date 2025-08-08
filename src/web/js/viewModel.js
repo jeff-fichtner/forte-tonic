@@ -15,7 +15,6 @@ import { formatGrade, formatTime } from './extensions/numberExtensions.js';
  */
 export class ViewModel {
   // Private fields
-  #accessCodeCache = null;
 
   async initializeAsync() {
 
@@ -30,12 +29,8 @@ export class ViewModel {
     // Save user in user session
     window.UserSession.saveOperatorUser(operatorUser);
 
-    // After operator request is done, stop loading and show login button
-    this.#setPageLoading(false);
-    this.#showLoginButton();
-
     // Show nav links only if operator user returned successfully
-    const nav = document.getElementById('nav-mobile');
+    // const nav = document.getElementById('nav-mobile');
 
     // TEMPORARILY COMMENTED OUT - Always keep nav section links hidden
     /*
@@ -93,13 +88,19 @@ export class ViewModel {
 
     // Check for stored access code and update login button
     this.#updateLoginButtonState();
+    this.#showLoginButton();
 
-    const storedCode = this.#getStoredAccessCode();
+    const storedCode = window.AccessCodeManager.getStoredAccessCode();
     if (storedCode) {
+      await this.#attemptLoginWithCode(storedCode);
       return;
     }
+
     // open modal
     this.loginModal.open();
+
+    this.#setPageLoading(false);
+
   }
 
   async loadUserData(user, roleToClick = null) {
@@ -158,21 +159,15 @@ export class ViewModel {
     let defaultSection;
     if (user.admin) {
       this.#initAdminContent();
-      defaultSection = Sections.ADMIN_MASTER_SCHEDULE;
-
-      // If the user is an admin, show admin tabs and select first one
-      setTimeout(() => {
-        console.log('Admin user authenticated - showing admin tabs');
-        this.#showAdminTabsAndSelectFirst();
-      }, 100);
+      defaultSection = Sections.ADMIN;
     }
     if (user.instructor) {
       this.#initInstructorContent();
-      defaultSection = Sections.INSTRUCTOR_WEEKLY_SCHEDULE;
+      defaultSection = Sections.INSTRUCTOR;
     }
     if (user.parent) {
       this.#initParentContent();
-      defaultSection = Sections.PARENT_WEEKLY_SCHEDULE;
+      defaultSection = Sections.PARENT;
     }
 
     // For operator users, show all sections available; for authenticated users, use default section
@@ -182,19 +177,15 @@ export class ViewModel {
     this.#setPageLoading(false);
 
     // Auto-click the specified role tab if provided
-    // if (roleToClick) {
-    //   const navLink = document.querySelector(`a[data-section="${roleToClick}"]`);
-    //   if (navLink) {
-    //     console.log(`🎯 Auto-clicking ${roleToClick} nav link for user`);
-    //     // Add a small delay to ensure everything is ready
-    //     setTimeout(() => {
-    //       console.log(`🖱️ Actually clicking ${roleToClick} nav link now`);
-    //       navLink.click();
-    //     }, 100);
-    //   } else {
-    //     console.warn(`❌ Nav link not found for section: ${roleToClick}`);
-    //   }
-    // }
+    if (roleToClick) {
+      const navLink = document.querySelector(`a[data-section="${roleToClick}"]`);
+      if (navLink) {
+        console.log(`🎯 Auto-clicking ${roleToClick} nav link for user`);
+        navLink.click();
+      } else {
+        console.warn(`❌ Nav link not found for section: ${roleToClick}`);
+      }
+    }
   }
   /**
    *
@@ -484,22 +475,19 @@ export class ViewModel {
     const pageContent = document.getElementById('page-content');
     const pageErrorContent = document.getElementById('page-error-content');
     const pageErrorContentMessage = document.getElementById('page-error-content-message');
-    const loginButtonContainer = document.getElementById('login-button-container');
 
     loadingContainer.style.display = isLoading ? 'flex' : 'none';
     loadingContainer.hidden = !isLoading;
 
-    // Only show page content if not loading, no error, and we have a current user
-    const hasAuthenticatedUser = this.currentUser && (this.currentUser.admin || this.currentUser.instructor || this.currentUser.parent);
-    pageContent.hidden = isLoading || errorMessage || !hasAuthenticatedUser;
-
-    // We no longer need to update login button positioning as it's handled by the flex layout
+    // Only show page content if not loading, no error
+    pageContent.hidden = isLoading || errorMessage;
 
     pageErrorContent.hidden = !errorMessage && !isLoading;
     if (pageErrorContentMessage) {
       pageErrorContentMessage.textContent = errorMessage;
     }
   }
+
   // TODO duplicated (will be consolidated elsewhere)
   /**
    *
@@ -1236,7 +1224,7 @@ export class ViewModel {
     }
 
     // Check if there's a stored access code or if we have an operator user
-    const storedCode = this.#getStoredAccessCode();
+    const storedCode = window.AccessCodeManager.getStoredAccessCode();
     const operatorUser = window.UserSession?.getOperatorUser();
 
     if (storedCode || operatorUser && (operatorUser.admin || operatorUser.instructor || operatorUser.parent)) {
@@ -1274,9 +1262,27 @@ export class ViewModel {
       return;
     }
 
+    await this.#attemptLoginWithCode(
+      accessCode,
+      () => {
+        // Handle successful login
+        this.loginModal.close();
+        accessCodeInput.value = ''; // Clear the input
+
+      },
+      () => {
+        accessCodeInput.focus();
+      }
+    );
+  }
+
+  async #attemptLoginWithCode(accessCode, onSuccessfulLogin = null, onFailedLogin = null) {
+
     console.log('Login attempt with access code:', accessCode);
 
     try {
+      this.#setPageLoading(true);
+
       // Send access code to backend
       const authenticatedUser = await HttpService.post(ServerFunctions.authenticateByAccessCode, { accessCode });
 
@@ -1285,16 +1291,14 @@ export class ViewModel {
 
       if (loginSuccess) {
         // Save the access code securely in the browser
-        this.#saveAccessCodeSecurely(accessCode);
-
-        // Handle successful login
-        this.loginModal.close();
-        accessCodeInput.value = ''; // Clear the input
+        window.AccessCodeManager.saveAccessCodeSecurely(accessCode);
 
         // Update login button state to show "Change User"
         this.#updateLoginButtonState();
 
         console.log('Login successful, access code saved securely');
+
+        onSuccessfulLogin?.();
 
         // Load user data with the authenticated user
         console.log('Loading user data for authenticated user:', authenticatedUser);
@@ -1316,12 +1320,14 @@ export class ViewModel {
         await this.loadUserData(authenticatedUser, roleToClick);
       } else {
         M.toast({ html: 'Invalid access code', classes: 'red darken-1', displayLength: 3000 });
-        accessCodeInput.focus();
+        onFailedLogin?.();
       }
     } catch (error) {
       console.error('Login error:', error);
       M.toast({ html: 'Login failed. Please try again.', classes: 'red darken-1', displayLength: 4000 });
-      accessCodeInput.focus();
+      onFailedLogin?.();
+    } finally {
+      this.#setPageLoading(false);
     }
   }
 
@@ -1329,90 +1335,31 @@ export class ViewModel {
    * Save access code securely in the browser
    * @param {string} accessCode - The access code to save
    */
-  #saveAccessCodeSecurely(accessCode) {
-    try {
-      // Use sessionStorage for secure, session-based storage
-      // Data persists only for the browser session and is cleared when tab is closed
-      const secureData = {
-        accessCode: accessCode,
-        timestamp: Date.now(),
-        sessionId: this.#generateSessionId()
-      };
-
-      // Store encrypted/encoded data
-      const encodedData = btoa(JSON.stringify(secureData)); // Base64 encode for basic obfuscation
-      sessionStorage.setItem('forte_auth_session', encodedData);
-
-      console.log('Access code saved securely in session storage');
-    } catch (error) {
-      console.error('Failed to save access code securely:', error);
-      // Fallback to memory storage if sessionStorage fails
-      this.#accessCodeCache = {
-        accessCode: accessCode,
-        timestamp: Date.now()
-      };
-    }
-  }
+  // Method moved to AccessCodeManager
 
   /**
    * Generate a unique session ID
    * @returns {string} A unique session identifier
    */
-  #generateSessionId() {
-    return 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-  }
+  // Method moved to AccessCodeManager
 
   /**
    * Retrieve the securely stored access code
    * @returns {string|null} The stored access code or null if not found/expired
    */
-  #getStoredAccessCode() {
-    try {
-      const encodedData = sessionStorage.getItem('forte_auth_session');
-      if (!encodedData) {
-        return this.#accessCodeCache?.accessCode || null;
-      }
-
-      const secureData = JSON.parse(atob(encodedData));
-
-      // Check if session is still valid (optional: add expiration logic)
-      const sessionAge = Date.now() - secureData.timestamp;
-      const maxSessionAge = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
-
-      if (sessionAge > maxSessionAge) {
-        this.#clearStoredAccessCode();
-        return null;
-      }
-
-      return secureData.accessCode;
-    } catch (error) {
-      console.error('Failed to retrieve stored access code:', error);
-      return this.#accessCodeCache?.accessCode || null;
-    }
-  }
+  // Method moved to AccessCodeManager
 
   /**
    * Clear the stored access code (for logout)
    */
-  #clearStoredAccessCode() {
-    try {
-      sessionStorage.removeItem('forte_auth_session');
-      this.#accessCodeCache = null;
-
-      // Update login button state back to "Login"
-      this.#updateLoginButtonState();
-
-      console.log('Stored access code cleared');
-    } catch (error) {
-      console.error('Failed to clear stored access code:', error);
-    }
-  }
+  // Method moved to AccessCodeManager
 
   /**
    * Public method to clear stored access code (for logout functionality)
    */
   clearUserSession() {
-    this.#clearStoredAccessCode();
+    window.AccessCodeManager.clearStoredAccessCode();
+    this.#updateLoginButtonState();
     M.toast({ html: 'User session cleared', classes: 'blue darken-1', displayLength: 2000 });
   }
 

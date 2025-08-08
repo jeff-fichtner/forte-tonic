@@ -34,6 +34,95 @@ import './extensions/stringExtensions.js';
 import './viewModel.js';
 
 /**
+ * Access code manager for secure storage and retrieval of access codes
+ */
+const AccessCodeManager = {
+  // Private cache for memory fallback
+  _accessCodeCache: null,
+
+  /**
+   * Save access code securely in the browser
+   * @param {string} accessCode - The access code to save
+   */
+  saveAccessCodeSecurely(accessCode) {
+    try {
+      // Use sessionStorage for secure, session-based storage
+      // Data persists only for the browser session and is cleared when tab is closed
+      const secureData = {
+        accessCode: accessCode,
+        timestamp: Date.now(),
+        sessionId: this.generateSessionId()
+      };
+
+      // Store encrypted/encoded data
+      const encodedData = btoa(JSON.stringify(secureData)); // Base64 encode for basic obfuscation
+      sessionStorage.setItem('forte_auth_session', encodedData);
+
+      console.log('Access code saved securely in session storage');
+    } catch (error) {
+      console.error('Failed to save access code securely:', error);
+      // Fallback to memory storage if sessionStorage fails
+      this._accessCodeCache = {
+        accessCode: accessCode,
+        timestamp: Date.now()
+      };
+    }
+  },
+
+  /**
+   * Generate a unique session ID
+   * @returns {string} A unique session identifier
+   */
+  generateSessionId() {
+    return 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  },
+
+  /**
+   * Retrieve the securely stored access code
+   * @returns {string|null} The stored access code or null if not found/expired
+   */
+  getStoredAccessCode() {
+    try {
+      const encodedData = sessionStorage.getItem('forte_auth_session');
+      if (!encodedData) {
+        return this._accessCodeCache?.accessCode || null;
+      }
+
+      const secureData = JSON.parse(atob(encodedData));
+
+      // Check if session is still valid (optional: add expiration logic)
+      const sessionAge = Date.now() - secureData.timestamp;
+      const maxSessionAge = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+
+      if (sessionAge > maxSessionAge) {
+        this.clearStoredAccessCode();
+        return null;
+      }
+
+      return secureData.accessCode;
+    } catch (error) {
+      console.error('Failed to retrieve stored access code:', error);
+      return this._accessCodeCache?.accessCode || null;
+    }
+  },
+
+  /**
+   * Clear the stored access code (for logout)
+   */
+  clearStoredAccessCode() {
+    try {
+      sessionStorage.removeItem('forte_auth_session');
+      this._accessCodeCache = null;
+      console.log('Stored access code cleared');
+      return true;
+    } catch (error) {
+      console.error('Failed to clear stored access code:', error);
+      return false;
+    }
+  }
+};
+
+/**
  * User session storage for current user data
  */
 const UserSession = {
@@ -61,47 +150,13 @@ async function initializeApplication() {
   try {
     console.log('Initializing Tonic application...');
 
-    // TEMPORARILY FORCE NAV SECTION LINKS TO BE HIDDEN
-    const navLinks = document.getElementById('nav-mobile');
-    if (navLinks) {
-      navLinks.hidden = true;
-      console.log('🚫 NAV SECTION LINKS TEMPORARILY HIDDEN PER REQUEST');
-    }
-
-    // Debug UI visibility state on start
-    console.log('Initial UI visibility state:');
-    const loginButton = document.getElementById('login-button-container');
-    const tabs = document.querySelectorAll('.tabs .tab');
-    const pageContent = document.getElementById('page-content');
-    const loadingContainer = document.getElementById('page-loading-container');
-    
-    console.log(`- Login Button Hidden: ${loginButton?.hidden || 'not found'}`);
-    console.log(`- Nav Links Hidden: ${navLinks?.hidden || 'not found'}`);
-    console.log(`- All Tabs Hidden: ${Array.from(tabs).every(tab => tab.hidden)}`);
-    console.log(`- Page Content Hidden: ${pageContent?.hidden || 'not found'}`);
-    console.log(`- Loading Container Visible: ${!loadingContainer?.hidden || 'not found'}`);
-
-    // Make UserSession available globally before ViewModel initialization
+    // Make UserSession and AccessCodeManager available globally before ViewModel initialization
     window.UserSession = UserSession;
+    window.AccessCodeManager = AccessCodeManager;
 
     // Initialize the main ViewModel
     const viewModel = new ViewModel();
     await viewModel.initializeAsync();
-
-    // FORCE NAV SECTION LINKS TO STAY HIDDEN AFTER INITIALIZATION
-    const navLinksElement = document.getElementById('nav-mobile');
-    if (navLinksElement) {
-      navLinksElement.hidden = true;
-      console.log('🚫 NAV SECTION LINKS FORCED HIDDEN AFTER INITIALIZATION');
-    }
-
-    // Debug UI visibility state after initialization
-    console.log('UI visibility state after initialization:');
-    console.log(`- Login Button Hidden: ${loginButton?.hidden || 'not found'}`);
-    console.log(`- Nav Links Hidden: ${navLinks?.hidden || 'not found'}`);
-    console.log(`- All Tabs Hidden: ${Array.from(tabs).every(tab => tab.hidden)}`);
-    console.log(`- Page Content Hidden: ${pageContent?.hidden || 'not found'}`);
-    console.log(`- Loading Container Visible: ${!loadingContainer?.hidden || 'not found'}`);
 
     // Store globally for debugging and other scripts
     window.viewModel = viewModel;
@@ -186,22 +241,6 @@ async function main() {
   try {
     await initializeApplication();
     
-    // Add mutation observer to ensure nav links stay hidden
-    const navLinks = document.getElementById('nav-mobile');
-    if (navLinks) {
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          if (mutation.attributeName === 'hidden' && !navLinks.hidden) {
-            console.log('🚫 Detected attempt to show nav links - forcing hidden');
-            navLinks.hidden = true;
-          }
-        });
-      });
-      
-      observer.observe(navLinks, { attributes: true });
-      console.log('🔒 Added observer to ensure nav links stay hidden');
-    }
-    
     // Version display is optional and not critical
     try {
       await initializeVersionDisplay();
@@ -213,9 +252,4 @@ async function main() {
   }
 }
 
-// Start the application when the DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', main);
-} else {
-  main();
-}
+main();
