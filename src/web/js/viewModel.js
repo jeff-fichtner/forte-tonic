@@ -1450,6 +1450,19 @@ export class ViewModel {
 
         onSuccessfulLogin?.();
 
+        // Clear cached data and reset initialization flags for new user
+        console.log('Clearing cached data and resetting initialization flags for new user');
+        this.#resetInitializationFlags();
+        
+        // Clear cached data properties
+        this.admins = null;
+        this.instructors = null;
+        this.students = null;
+        this.registrations = null;
+        this.classes = null;
+        this.rooms = null;
+        this.currentUser = null;
+
         // Load user data with the authenticated user
         console.log('Loading user data for authenticated user:', authenticatedUser);
 

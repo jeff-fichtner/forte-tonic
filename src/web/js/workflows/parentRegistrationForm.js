@@ -259,18 +259,31 @@ export class ParentRegistrationForm {
     // Get unique instruments from selected instructor(s)
     const instrumentsSet = new Set();
     instructorsToConsider.forEach(instructor => {
-      // Check multiple possible fields for instruments
-      const instruments = instructor.specialties || instructor.instruments || instructor.primaryInstrument 
-        ? [instructor.primaryInstrument] : [];
-      
-      if (Array.isArray(instruments)) {
-        instruments.forEach(instrument => {
+      // Check instructor specialties (array of instruments)
+      if (instructor.specialties && Array.isArray(instructor.specialties)) {
+        instructor.specialties.forEach(instrument => {
           if (instrument && instrument.trim()) {
             instrumentsSet.add(instrument.trim());
           }
         });
-      } else if (typeof instruments === 'string' && instruments.trim()) {
-        instrumentsSet.add(instruments.trim());
+      }
+      
+      // Also check for primary instrument field (fallback)
+      if (instructor.primaryInstrument && instructor.primaryInstrument.trim()) {
+        instrumentsSet.add(instructor.primaryInstrument.trim());
+      }
+      
+      // Check for instruments field (another possible field name)
+      if (instructor.instruments) {
+        if (Array.isArray(instructor.instruments)) {
+          instructor.instruments.forEach(instrument => {
+            if (instrument && instrument.trim()) {
+              instrumentsSet.add(instrument.trim());
+            }
+          });
+        } else if (typeof instructor.instruments === 'string' && instructor.instruments.trim()) {
+          instrumentsSet.add(instructor.instruments.trim());
+        }
       }
     });
 
@@ -337,37 +350,40 @@ export class ParentRegistrationForm {
    * Generate length chips based on available lesson lengths from selected instructors
    */
   #generateLengthChips() {
-    const lengthChipsContainer = document.getElementById('length-chips-container');
-    if (!lengthChipsContainer) return;
+    // Find the length container specifically in parent registration
+    const parentContainer = document.getElementById('parent-registration');
+    if (!parentContainer) return;
+    
+    const lengthContainer = parentContainer.querySelector('#length-chips-container');
+    if (!lengthContainer) {
+      console.warn('Parent length chip container not found');
+      return;
+    }
 
-    // Clear existing chips
-    lengthChipsContainer.innerHTML = '';
+    // Clear existing length chips
+    const existingLengthChips = lengthContainer.querySelectorAll('.length-chip');
+    existingLengthChips.forEach(chip => chip.remove());
 
     // Get available lesson lengths based on current instructor selection
     const availableLengths = this.#calculateLengthAvailability();
+    
+    // Calculate total slots across all lengths
+    const totalSlots = Object.values(availableLengths).reduce((sum, count) => sum + count, 0);
+
+    // Create "All Lengths" chip
+    const allChip = this.#createFilterChip('length', 'all', `All Lengths (${totalSlots} slots)`, true);
+    lengthContainer.appendChild(allChip);
 
     // Standard lesson lengths in minutes
     const standardLengths = [30, 45, 60];
 
+    // Create individual length chips
     standardLengths.forEach(length => {
-      const isAvailable = availableLengths[length] > 0;
-      const availabilityCount = availableLengths[length] || 0;
-
-      const chip = document.createElement('div');
-      chip.className = `chip ${isAvailable ? '' : 'disabled'}`;
-      chip.innerHTML = `
-        ${length} min
-        ${isAvailable ? `<small class="availability-count">(${availabilityCount} slots)</small>` : '<small class="unavailable-text">(unavailable)</small>'}
-      `;
-      
-      if (isAvailable) {
-        chip.addEventListener('click', () => {
-          chip.classList.toggle('selected');
-          this.#generateInstructorTimeSlots();
-        });
-      }
-
-      lengthChipsContainer.appendChild(chip);
+      const slots = availableLengths[length] || 0;
+      const chipText = `${length} min (${slots} slots)`;
+      const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
+      const chip = this.#createFilterChip('length', length.toString(), chipText, false, availability);
+      lengthContainer.appendChild(chip);
     });
   }
 
