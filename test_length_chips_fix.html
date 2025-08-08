@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Length Chips Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .chip { 
+            display: inline-block; 
+            padding: 8px 12px; 
+            margin: 5px; 
+            border: 2px solid; 
+            border-radius: 16px; 
+            cursor: pointer; 
+        }
+        .chip.available { background: #e8f5e8; border-color: #4caf50; }
+        .chip.limited { background: #fff3e0; border-color: #ff9800; }
+        .chip.unavailable { background: #ffebee; border-color: #f44336; opacity: 0.6; cursor: not-allowed; }
+        .chip.selected { background: #2b68a4; color: white; border-color: #2b68a4; }
+        .debug { background: #f5f5f5; padding: 10px; margin: 10px 0; border-left: 4px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>Length Chips Debug Test</h1>
+    
+    <div class="debug">
+        <h3>Key Fix Applied:</h3>
+        <p><strong>Problem:</strong> <code>#calculateLengthAvailability()</code> was looking for <code>chip.dataset.instructorId</code> but chips are created with <code>chip.dataset.value</code></p>
+        <p><strong>Fix:</strong> Changed <code>const instructorId = chip.dataset.instructorId;</code> to <code>const instructorId = chip.dataset.value;</code></p>
+        <p><strong>Additional:</strong> Added check to skip "All Instructors" chip (<code>if (instructorId !== 'all')</code>)</p>
+    </div>
+
+    <div class="debug">
+        <h3>Expected Behavior:</h3>
+        <ul>
+            <li>When "All Instructors" is selected → Length chips show totals across all instructors</li>
+            <li>When specific instructor is selected → Length chips show totals for that instructor only</li>
+            <li>Chips should show actual slot counts, not always 0</li>
+            <li>Chips with 0 slots should be disabled (unavailable)</li>
+            <li>Chips with 1-3 slots should be limited (orange)</li>
+            <li>Chips with 4+ slots should be available (green)</li>
+        </ul>
+    </div>
+
+    <div class="debug">
+        <h3>Data Flow:</h3>
+        <ol>
+            <li><code>#generateLengthChips()</code> calls <code>#calculateLengthAvailability()</code></li>
+            <li><code>#calculateLengthAvailability()</code> finds selected instructor chips</li>
+            <li>For each selected instructor, calls <code>#addInstructorLengthAvailability()</code></li>
+            <li><code>#addInstructorLengthAvailability()</code> counts actual available time slots</li>
+            <li>Chips are created with appropriate availability styling</li>
+        </ol>
+    </div>
+
+    <div class="debug">
+        <h3>Debugging in Browser:</h3>
+        <p>Open the browser console and navigate to the parent registration page to see debug output:</p>
+        <code>
+            🔍 Calculating length availability...<br>
+            Selected instructor chips: [number]<br>
+            Adding availability for instructor: [name]<br>
+            Final availability: {30: [count], 45: [count], 60: [count]}
+        </code>
+    </div>
+
+    <h3>Mock Length Chips (for visual reference):</h3>
+    <div>
+        <div class="chip selected">All Lengths (15 slots)</div>
+        <div class="chip available">30 min (8 slots)</div>
+        <div class="chip limited">45 min (3 slots)</div>
+        <div class="chip available">60 min (4 slots)</div>
+    </div>
+
+    <script>
+        console.log('✅ Length chip fix applied!');
+        console.log('📋 Key change: chip.dataset.instructorId → chip.dataset.value');
+        console.log('🎯 Test the parent registration form to verify chips show correct slot counts');
+    </script>
+</body>
+</html>
