@@ -717,6 +717,7 @@ export class ViewModel {
       this.instructors,
       this.students,
       this.classes,
+      this.registrations, // Pass existing registrations for availability calculation
       async data => {
         const response = await HttpService.post(ServerFunctions.register, data);
         const newRegistration = Registration.fromApiData(response.data);
