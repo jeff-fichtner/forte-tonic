@@ -735,7 +735,7 @@ export class ViewModel {
         .filter(instructor =>
           parentChildRegistrations.some(registration => registration.instructorId.value === instructor.id)
         )
-        .map(instructor => this.instructorToEmployee(instructor))
+        .map(instructor => this.instructorToEmployee(instructor, true))
     );
     // Sort employees to ensure admins appear at the top
     const sortedEmployees = this.#sortEmployeesForDirectory(mappedEmployees);
@@ -1504,14 +1504,14 @@ export class ViewModel {
    * @param {object} instructor - Instructor object
    * @returns {object} Employee object for table display
    */
-  instructorToEmployee(instructor) {
+  instructorToEmployee(instructor, obscurePhone = false) {
     // Get instruments from either specialties or instruments field
     const instruments = instructor.specialties || instructor.instruments || [];
     const instrumentsText = instruments.length > 0 ? instruments.join(', ') : 'Instructor';
     
     // Format phone number using the formatPhone function
     const rawPhone = instructor.phone || instructor.phoneNumber || '';
-    const formattedPhone = rawPhone ? formatPhone(rawPhone) : '';
+    const formattedPhone = rawPhone || !obscurePhone ? formatPhone(rawPhone) : '';
 
     return {
       id: instructor.id,
