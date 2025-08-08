@@ -16,19 +16,21 @@ export class Table {
     options = {}
   ) {
     this.table = document.getElementById(tableId);
+    this.table.innerHTML = ''; // Clear existing content
     this.pagination = options.pagination || false;
     this.itemsPerPage = options.itemsPerPage || 1000;
     this.pageSizeOptions = options.pageSizeOptions || null;
     this.currentPage = 1;
     this.rowClassFunction = options.rowClassFunction || null; // New parameter for row CSS classes
-    
-    const head = document.createElement('thead'); // Create a new table header
+
+    const head = document.createElement('thead'); // Create a new table header if not found
 
     for (const header of headers) {
       const th = document.createElement('th'); // Create a new header cell
       th.textContent = header; // Set the header text
       head.appendChild(th); // Append the header to the header
     }
+
     this.table.appendChild(head); // Append the header to the table
     this.table.appendChild(document.createElement('tbody')); // Create a table body
 
