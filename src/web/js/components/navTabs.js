@@ -22,10 +22,10 @@ export class NavTabs {
       return;
     }
     tabsContainer.addEventListener('click', event => {
-      event.preventDefault();
       // return if not a tab link
       const tabLink = event.target.closest('.tab a');
       if (!tabLink) return;
+      event.preventDefault();
       
       // Get the tab href and target content
       const targetTab = tabLink.getAttribute('href');
@@ -43,7 +43,7 @@ export class NavTabs {
         t.classList.toggle('active', t.getAttribute('href') === tabLink.getAttribute('href'));
       });
       
-      // Hide all tab contents
+      // Toggle all tab contents
       tabContents.forEach(content => {
         const wasHidden = content.hidden;
         content.hidden = content.id !== targetContent.id;
@@ -53,15 +53,7 @@ export class NavTabs {
           console.log(`📋 Hiding tab content: ${content.id}`);
         }
       });
-      
-      // Ensure the table in the target content is visible if it exists
-      if (targetTab === '#admin-master-schedule') {
-        const masterTable = document.getElementById('master-schedule-table');
-        if (masterTable) {
-          masterTable.hidden = false;
-          console.log('Ensuring master schedule table is visible');
-        }
-      }
+
     });
     if (links.length === 0) {
       console.warn(`No links found.`);
@@ -74,15 +66,6 @@ export class NavTabs {
         
         // Console log the nav link click
         console.log(`🖱️ Nav link clicked: ${dataSection}`);
-        
-        // Check if operator has access to this section
-        if (!this.#checkOperatorAccess(dataSection)) {
-          console.log(`🚫 Access denied for section: ${dataSection}`);
-          
-          // Hide all content and show login state
-          this.#hideContentShowLogin(dataSection);
-          return;
-        }
         
         console.log(`✅ Access granted for section: ${dataSection}`);
         
@@ -99,16 +82,6 @@ export class NavTabs {
         links.forEach(l =>
           l.classList.toggle('active', l.getAttribute('data-section') === dataSection)
         );
-        
-        // Debug: Log table visibility after permission granted
-        setTimeout(() => {
-          const table = document.getElementById('master-schedule-table');
-          if (table) {
-            console.log(`Master schedule table hidden status: ${table.hidden}`);
-          } else {
-            console.log('Master schedule table not found');
-          }
-        }, 100);
       });
     });
     // Initialize first nav link as active for visual consistency
@@ -163,14 +136,14 @@ export class NavTabs {
     const allTabs = document.querySelectorAll('.tabs .tab');
     console.log(`Found ${allTabs.length} total tabs to hide`);
     allTabs.forEach(tab => {
-      tab.hidden = true;
+      tab.style.display = 'none';
     });
     
     // Show only tabs for the selected section
     const sectionTabs = document.querySelectorAll(`.tabs .tab.${section}-tab`);
     console.log(`Found ${sectionTabs.length} tabs with class '${section}-tab'`);
     sectionTabs.forEach(tab => {
-      tab.hidden = false;
+      tab.style.display = '';
       console.log(`Showing tab:`, tab);
     });
     
