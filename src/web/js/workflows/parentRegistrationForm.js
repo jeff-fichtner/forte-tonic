@@ -1163,12 +1163,120 @@ export class ParentRegistrationForm {
       classSelect.appendChild(option);
     });
 
+    // Add event listener for class selection
+    classSelect.addEventListener('change', (event) => {
+      this.#handleClassSelection(event.target.value);
+    });
+
     // Initialize Materialize select
     if (typeof M !== 'undefined') {
       M.FormSelect.init(classSelect);
     }
 
     console.log(`🎯 Populated parent classes dropdown with ${this.classes.length} classes`);
+  }
+
+  /**
+   * Handle class selection and check capacity
+   */
+  #handleClassSelection(classId) {
+    const registerButton = document.getElementById('parent-create-group-registration-btn');
+    const errorContainer = this.#getOrCreateErrorContainer();
+    
+    // Clear previous error state
+    this.#clearRegistrationError();
+    
+    if (!classId) {
+      // No class selected, disable button
+      if (registerButton) {
+        registerButton.disabled = true;
+        registerButton.style.opacity = '0.6';
+      }
+      return;
+    }
+
+    // Find the selected class
+    const selectedClass = this.classes.find(cls => cls.id === classId);
+    if (!selectedClass) {
+      console.warn('Selected class not found:', classId);
+      return;
+    }
+
+    console.log('🔍 Checking capacity for class:', selectedClass);
+
+    // Count current registrations for this class
+    const currentRegistrations = this.registrations.filter(reg => {
+      const regClassId = reg.classId?.value || reg.classId;
+      return regClassId === classId;
+    });
+
+    console.log(`📊 Class ${selectedClass.title || selectedClass.instrument} - Current: ${currentRegistrations.length}, Capacity: ${selectedClass.capacity || selectedClass.size || selectedClass.maxStudents || 'Unknown'}`);
+
+    // Get class capacity (check multiple possible property names)
+    const classCapacity = selectedClass.capacity || selectedClass.size || selectedClass.maxStudents || 12; // Default to 12
+
+    if (currentRegistrations.length >= classCapacity) {
+      // Class is full
+      this.#showRegistrationError('This class is full. Please reach out to an administrator.');
+      if (registerButton) {
+        registerButton.disabled = true;
+        registerButton.style.opacity = '0.6';
+      }
+    } else {
+      // Class has space
+      if (registerButton) {
+        registerButton.disabled = false;
+        registerButton.style.opacity = '1';
+      }
+      
+      const availableSpots = classCapacity - currentRegistrations.length;
+      console.log(`✅ Class has ${availableSpots} available spots`);
+    }
+  }
+
+  /**
+   * Get or create error container for registration messages
+   */
+  #getOrCreateErrorContainer() {
+    let errorContainer = document.getElementById('parent-class-error-message');
+    
+    if (!errorContainer) {
+      // Create error container
+      errorContainer = document.createElement('div');
+      errorContainer.id = 'parent-class-error-message';
+      errorContainer.style.cssText = 'margin-top: 10px; padding: 10px; background: #ffebee; border: 1px solid #f44336; border-radius: 4px; color: #d32f2f; font-size: 14px; display: none;';
+      
+      // Insert after the class select
+      const classSelect = document.getElementById('parent-class-select');
+      const inputField = classSelect?.closest('.input-field');
+      if (inputField) {
+        inputField.parentNode.insertBefore(errorContainer, inputField.nextSibling);
+      }
+    }
+    
+    return errorContainer;
+  }
+
+  /**
+   * Show registration error message
+   */
+  #showRegistrationError(message) {
+    const errorContainer = this.#getOrCreateErrorContainer();
+    if (errorContainer) {
+      errorContainer.textContent = message;
+      errorContainer.style.display = 'block';
+    }
+  }
+
+  /**
+   * Clear registration error message
+   */
+  #clearRegistrationError() {
+    const errorContainer = document.getElementById('parent-class-error-message');
+    if (errorContainer) {
+      errorContainer.style.display = 'none';
+      errorContainer.textContent = '';
+    }
   }
 
   /**

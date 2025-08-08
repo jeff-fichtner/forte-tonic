@@ -77,7 +77,7 @@ export class Registration {
     }
 
     const required = ['studentId', 'instructorId', 'day', 'startTime', 'registrationType'];
-    const missing = required.filter(field => !data[field]);
+    const missing = required.filter(field => data[field] === undefined || data[field] === null);
 
     if (missing.length > 0) {
       throw new Error(`Missing required fields: ${missing.join(', ')}`);
