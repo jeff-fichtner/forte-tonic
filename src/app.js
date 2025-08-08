@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import apiRoutes from './routes/api.js';
 import staticRoutes from './routes/static.js';
-import { initializeUserContext, requireAuth, requireOperator } from './middleware/auth.js';
+import { initializeRepositories } from './middleware/auth.js';
 import { configService } from './services/configurationService.js';
 import { createLogger } from './utils/logger.js';
 import { serviceContainer } from './infrastructure/container/serviceContainer.js';
@@ -97,33 +97,8 @@ app.use('/shared', express.static(path.join(__dirname, 'shared'), developmentSta
 app.use('/core', express.static(path.join(__dirname, 'core'), developmentStaticOptions));
 
 // Apply authentication middleware to API routes (with exceptions)
-app.use('/api', (req, res, next) => {
-  // Skip all authentication for specific endpoints
-  const publicEndpoints = [
-    '/api/authenticateByAccessCode',
-    '/api/health',
-    '/api/version'
-  ];
-  
-  if (publicEndpoints.includes(req.path)) {
-    // For public endpoints, just attach repositories without authentication
-    const userRepository = serviceContainer.get('userRepository');
-    const programRepository = serviceContainer.get('programRepository');
-    
-    req.userRepository = userRepository;
-    req.programRepository = programRepository;
-    return next();
-  }
-  
-  // For protected endpoints (like getOperatorUser), apply full auth chain
-  initializeUserContext(req, res, (err) => {
-    if (err) return next(err);
-    requireAuth(req, res, (err) => {
-      if (err) return next(err);
-      requireOperator(req, res, next);
-    });
-  });
-});
+// Apply repository initialization to all API routes (no authentication)
+app.use('/api', initializeRepositories);
 
 // Route handlers
 app.use('/', staticRoutes);
