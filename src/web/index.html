@@ -277,39 +277,40 @@
 
         /* Mobile responsiveness for login button */
         @media (max-width: 992px) {
-            #login-button-container[data-nav-visible="true"] {
-                right: 200px !important;
+            .nav-wrapper > div:last-child {
+                flex-direction: column;
+                align-items: flex-end;
+            }
+            
+            #login-button-container {
+                margin-right: 10px;
+            }
+            
+            #nav-mobile {
+                margin-top: 5px !important;
+                margin-bottom: 5px !important;
             }
         }
 
         @media (max-width: 768px) {
-            #login-button-container {
+            .nav-wrapper > div:last-child {
                 position: static !important;
-                transform: none !important;
-                display: inline-block !important;
-                margin-left: 20px !important;
-                vertical-align: middle !important;
+                width: 100%;
+                display: flex;
+                justify-content: center;
+                margin-top: 10px;
             }
             
-            .nav-wrapper ul.right {
-                margin-right: 10px !important;
+            #login-button-container, #nav-mobile {
+                margin: 0 5px !important;
             }
         }
 
         @media (max-width: 600px) {
-            #login-button-container {
-                margin-left: 10px !important;
-            }
-            
             .nav-wrapper .btn.modal-trigger {
                 padding: 0 12px !important;
                 font-size: 0.9rem !important;
             }
-        }
-
-        /* Dynamic positioning based on nav visibility */
-        #login-button-container[data-nav-visible="true"] {
-            right: 280px !important;
         }
 
         /* White background for content below navbar */
@@ -396,25 +397,28 @@
 
     <!-- Navbar -->
     <nav>
-        <div class="nav-wrapper" style="background-color: #3a7953;">
+        <div class="nav-wrapper" style="background-color: #3a7953; position: relative;">
             <h1
                 style="display: inline-block; margin-left: 60px; vertical-align: middle; color: #fefefe; font-size: 1.5rem;">
                 <b>Forte</b>
             </h1>
             
-            <!-- Login Button - floats to the right -->
-            <div id="login-button-container" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%);">
-                <a class="btn waves-effect waves-light modal-trigger" href="#login-modal" 
-                   style="background-color: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); margin: 0; height: 36px; line-height: 36px; display: flex; align-items: center;">
-                    <i class="material-icons left" style="font-size: 18px; margin-right: 6px; vertical-align: middle;">vpn_key</i>Login
-                </a>
+            <div style="position: absolute; right: 20px; top: 0; height: 100%; display: flex; align-items: center;">
+                <!-- Login Button - initially hidden -->
+                <div id="login-button-container" hidden>
+                    <a class="btn waves-effect waves-light modal-trigger" href="#login-modal" 
+                    style="background-color: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); margin: 0; height: 36px; line-height: 36px; display: flex; align-items: center;">
+                        <i class="material-icons left" style="font-size: 18px; margin-right: 6px; vertical-align: middle;">vpn_key</i>Login
+                    </a>
+                </div>
+                
+                <!-- Navigation Links - initially hidden -->
+                <ul hidden id="nav-mobile" class="right" style="margin: 0 0 0 15px; height: 100%; display: flex; align-items: center;">
+                    <li><a class="section-link" data-section="admin">Admin</a></li>
+                    <li><a class="section-link" data-section="instructor">Instructors</a></li>
+                    <li><a class="section-link" data-section="parent">Families</a></li>
+                </ul>
             </div>
-            
-            <ul hidden id="nav-mobile" class="right" style="margin-right: 20px;">
-                <li><a class="section-link" data-section="admin">Admin</a></li>
-                <li><a class="section-link" data-section="instructor">Instructors</a></li>
-                <li><a class="section-link" data-section="parent">Families</a></li>
-            </ul>
         </div>
     </nav>
 
@@ -486,7 +490,7 @@
         </div>
 
         <div hidden id="page-content" style="padding-bottom: 40px;">
-            <ul class="tabs">
+            <ul hidden class="tabs">
 
                 <li hidden class="tab col s3 admin-tab"><a href="#admin-master-schedule"
                         style="color: #2b68a4"><b>Master

@@ -26,13 +26,24 @@ export class NavTabs {
       // return if not a tab link
       const tabLink = event.target.closest('.tab a');
       if (!tabLink) return;
+      
+      // Get the tab href and target content
       const targetTab = tabLink.getAttribute('href');
       const targetContent = document.querySelector(targetTab);
+      
+      console.log(`Tab clicked with href: ${targetTab}`);
+      
+      if (!targetContent) {
+        console.warn(`No content found for tab: ${targetTab}`);
+        return;
+      }
+      
       // Remove active class from all tabs and add it to the clicked tab
       tabLinks.forEach(t => {
         t.classList.toggle('active', t.getAttribute('href') === tabLink.getAttribute('href'));
       });
-      // Toggle all tab contents
+      
+      // Hide all tab contents
       tabContents.forEach(content => {
         const wasHidden = content.hidden;
         content.hidden = content.id !== targetContent.id;
@@ -42,6 +53,15 @@ export class NavTabs {
           console.log(`📋 Hiding tab content: ${content.id}`);
         }
       });
+      
+      // Ensure the table in the target content is visible if it exists
+      if (targetTab === '#admin-master-schedule') {
+        const masterTable = document.getElementById('master-schedule-table');
+        if (masterTable) {
+          masterTable.hidden = false;
+          console.log('Ensuring master schedule table is visible');
+        }
+      }
     });
     if (links.length === 0) {
       console.warn(`No links found.`);
@@ -133,6 +153,12 @@ export class NavTabs {
   #showTabsForSection(section) {
     console.log(`🔄 #showTabsForSection called with section: ${section}`);
     
+    // First show the tabs container
+    const tabsContainer = document.querySelector('.tabs');
+    if (tabsContainer) {
+      tabsContainer.hidden = false;
+    }
+    
     // Hide all tabs first
     const allTabs = document.querySelectorAll('.tabs .tab');
     console.log(`Found ${allTabs.length} total tabs to hide`);
@@ -151,10 +177,9 @@ export class NavTabs {
     console.log(`✅ Showing ${sectionTabs.length} tabs for ${section} section`);
     
     // Reinitialize Materialize tabs to update the indicator
-    const tabsElement = document.querySelector('.tabs');
-    if (tabsElement && window.M && window.M.Tabs) {
+    if (tabsContainer && window.M && window.M.Tabs) {
       console.log('🔄 Reinitializing Materialize tabs');
-      window.M.Tabs.init(tabsElement);
+      window.M.Tabs.init(tabsContainer);
     } else {
       console.warn('❌ Could not reinitialize Materialize tabs');
     }
@@ -182,8 +207,35 @@ export class NavTabs {
         const tabParent = firstTabLink.closest('.tab');
         if (tabParent) {
           console.log(`Tab parent hidden status: ${tabParent.hidden}`);
+          
+          // Make sure the tab is visible
+          if (tabParent.hidden) {
+            tabParent.hidden = false;
+            console.log(`Made tab parent visible for first click`);
+          }
         }
         
+        // Hide all tab contents first
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabContents.forEach(content => {
+          content.hidden = true;
+        });
+        
+        // Show the target tab content
+        const targetContent = document.querySelector(firstTabHref);
+        if (targetContent) {
+          targetContent.hidden = false;
+          console.log(`📋 Showing tab content: ${targetContent.id}`);
+        }
+        
+        // Add active class to the clicked tab link
+        const allTabLinks = document.querySelectorAll('.tabs .tab a');
+        allTabLinks.forEach(link => {
+          link.classList.remove('active');
+        });
+        firstTabLink.classList.add('active');
+        
+        // Simulate the click for Materialize's indicator
         firstTabLink.click();
         
         // Debug: Check table visibility after tab click
@@ -193,6 +245,11 @@ export class NavTabs {
           
           if (table) {
             console.log(`📊 After tab click - Master schedule table hidden: ${table.hidden}`);
+            // Make sure the table is visible if we're in admin section
+            if (section === 'admin' && table.hidden) {
+              table.hidden = false;
+              console.log('📊 Forcing master schedule table to be visible');
+            }
           }
           if (tabContent) {
             console.log(`📋 After tab click - Admin master schedule content hidden: ${tabContent.hidden}`);

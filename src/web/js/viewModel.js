@@ -18,6 +18,7 @@ export class ViewModel {
   #accessCodeCache = null;
 
   async initializeAsync() {
+
     // Get operator user when page first loads
     const operatorUser = await HttpService.fetch(
       ServerFunctions.getOperatorUser,
@@ -29,8 +30,15 @@ export class ViewModel {
     // Save user in user session
     window.UserSession.saveOperatorUser(operatorUser);
 
+    // After operator request is done, stop loading and show login button
+    this.#setPageLoading(false);
+    this.#showLoginButton();
+
     // Show nav links only if operator user returned successfully
     const nav = document.getElementById('nav-mobile');
+
+    // TEMPORARILY COMMENTED OUT - Always keep nav section links hidden
+    /*
     if (nav && (operatorUser || window.location.hostname === 'localhost')) {
       nav.hidden = false;
       console.log('✅ Nav links shown - operator user authenticated or localhost debug mode');
@@ -41,53 +49,57 @@ export class ViewModel {
         nav.style.border = '2px solid red'; // Visual indicator
         console.log('🔧 DEBUG: Navigation forced visible for localhost testing');
       }
-
-      // If operator has seeded users (admin/instructor/parent), load the default user (admin first)
-      if (operatorUser && (operatorUser.admin || operatorUser.instructor || operatorUser.parent)) {
-        console.log('Operator user has seeded users - loading user data');
-        
-        // Determine default role to click (admin -> instructor -> parent)
-        let roleToClick = null;
-        if (operatorUser.admin) {
-          roleToClick = 'admin';
-        } else if (operatorUser.instructor) {
-          roleToClick = 'instructor';
-        } else if (operatorUser.parent) {
-          roleToClick = 'parent';
-        }
-
-        // Load user data with the operator user
-        await this.loadUserData(operatorUser, roleToClick);
-      } else if (!operatorUser && window.location.hostname === 'localhost') {
-        // Debug mode for localhost - create a mock operator user for testing
-        console.log('🔧 Debug mode: Creating mock operator user for localhost testing');
-        const mockOperatorUser = {
-          email: 'debug@localhost',
-          admin: { id: 'debug-admin', email: 'debug@localhost', isAdmin: () => true },
-          instructor: { id: 'debug-instructor', email: 'debug@localhost', isInstructor: () => true },
-          parent: { id: 'debug-parent', email: 'debug@localhost', isParent: () => true },
-          isOperator: () => true,
-          isAdmin: () => true,
-          isInstructor: () => true,
-          isParent: () => true
-        };
-        
-        window.UserSession.saveOperatorUser(mockOperatorUser);
-        await this.loadUserData(mockOperatorUser, 'admin');
-      } else {
-        console.log('Operator user has no seeded users - page will do nothing');
-        this.#setPageLoading(false);
-      }
-    } else {
-      console.log('Nav links hidden - no operator user');
-      this.#setPageLoading(false);
     }
+    */
+
+    // If operator has seeded users (admin/instructor/parent), load the default user (admin first)
+    // if (operatorUser && (operatorUser.admin || operatorUser.instructor || operatorUser.parent)) {
+    //   console.log('Operator user has seeded users - loading user data');
+
+    //   // Determine default role to click (admin -> instructor -> parent)
+    //   let roleToClick = null;
+    //   if (operatorUser.admin) {
+    //     roleToClick = 'admin';
+    //   } else if (operatorUser.instructor) {
+    //     roleToClick = 'instructor';
+    //   } else if (operatorUser.parent) {
+    //     roleToClick = 'parent';
+    //   }
+
+    //   // Load user data with the operator user
+    //   await this.loadUserData(operatorUser, roleToClick);
+    // } else if (!operatorUser && window.location.hostname === 'localhost') {
+    //   // Debug mode for localhost - create a mock operator user for testing
+    //   console.log('🔧 Debug mode: Creating mock operator user for localhost testing');
+    //   const mockOperatorUser = {
+    //     email: 'debug@localhost',
+    //     admin: { id: 'debug-admin', email: 'debug@localhost', isAdmin: () => true },
+    //     instructor: { id: 'debug-instructor', email: 'debug@localhost', isInstructor: () => true },
+    //     parent: { id: 'debug-parent', email: 'debug@localhost', isParent: () => true },
+    //     isOperator: () => true,
+    //     isAdmin: () => true,
+    //     isInstructor: () => true,
+    //     isParent: () => true
+    //   };
+
+    //   window.UserSession.saveOperatorUser(mockOperatorUser);
+    //   await this.loadUserData(mockOperatorUser, 'admin');
+    // } else {
+    //   console.log('Operator user has no seeded users - page will do nothing');
+    // }
 
     // Initialize login modal regardless
     this.#initLoginModal();
 
     // Check for stored access code and update login button
     this.#updateLoginButtonState();
+
+    const storedCode = this.#getStoredAccessCode();
+    if (storedCode) {
+      return;
+    }
+    // open modal
+    this.loginModal.open();
   }
 
   async loadUserData(user, roleToClick = null) {
@@ -98,6 +110,9 @@ export class ViewModel {
       console.log('No valid user with backing data - skipping data load');
       return;
     }
+
+    // Show content area
+    document.getElementById('page-content').hidden = false;
 
     const [_, admins, instructors, students, registrations, classes, rooms] = await Promise.all([
       DomHelpers.waitForDocumentReadyAsync(),
@@ -144,6 +159,12 @@ export class ViewModel {
     if (user.admin) {
       this.#initAdminContent();
       defaultSection = Sections.ADMIN_MASTER_SCHEDULE;
+
+      // If the user is an admin, show admin tabs and select first one
+      setTimeout(() => {
+        console.log('Admin user authenticated - showing admin tabs');
+        this.#showAdminTabsAndSelectFirst();
+      }, 100);
     }
     if (user.instructor) {
       this.#initInstructorContent();
@@ -153,7 +174,7 @@ export class ViewModel {
       this.#initParentContent();
       defaultSection = Sections.PARENT_WEEKLY_SCHEDULE;
     }
-    
+
     // For operator users, show all sections available; for authenticated users, use default section
     const isOperatorUser = user instanceof OperatorUserResponse || (user.isOperator && user.isOperator());
     const defaultSectionToUse = isOperatorUser ? null : defaultSection;
@@ -161,25 +182,36 @@ export class ViewModel {
     this.#setPageLoading(false);
 
     // Auto-click the specified role tab if provided
-    if (roleToClick) {
-      const navLink = document.querySelector(`a[data-section="${roleToClick}"]`);
-      if (navLink) {
-        console.log(`🎯 Auto-clicking ${roleToClick} nav link for user`);
-        // Add a small delay to ensure everything is ready
-        setTimeout(() => {
-          console.log(`🖱️ Actually clicking ${roleToClick} nav link now`);
-          navLink.click();
-        }, 100);
-      } else {
-        console.warn(`❌ Nav link not found for section: ${roleToClick}`);
-      }
-    }
+    // if (roleToClick) {
+    //   const navLink = document.querySelector(`a[data-section="${roleToClick}"]`);
+    //   if (navLink) {
+    //     console.log(`🎯 Auto-clicking ${roleToClick} nav link for user`);
+    //     // Add a small delay to ensure everything is ready
+    //     setTimeout(() => {
+    //       console.log(`🖱️ Actually clicking ${roleToClick} nav link now`);
+    //       navLink.click();
+    //     }, 100);
+    //   } else {
+    //     console.warn(`❌ Nav link not found for section: ${roleToClick}`);
+    //   }
+    // }
   }
   /**
    *
    */
   #initAdminContent() {
     console.log('Initializing admin content...');
+
+    // Show admin tabs
+    const adminTabs = document.querySelectorAll('.tabs .tab.admin-tab');
+    console.log(`Found ${adminTabs.length} admin tabs to show`);
+
+    // First make sure the tabs container is visible
+    const tabsContainer = document.querySelector('.tabs');
+    if (tabsContainer) {
+      tabsContainer.hidden = false;
+    }
+
     // master schedule tab
     const sortedRegistrations = this.#sortRegistrations(this.registrations);
     console.log(`Building master schedule table with ${sortedRegistrations.length} registrations`);
@@ -266,20 +298,20 @@ export class ViewModel {
       // Create a container for each day's table with padding
       const dayContainer = document.createElement('div');
       dayContainer.style.cssText = 'margin-bottom: 30px;'; // Add padding between tables
-      
+
       // Add a day header for better organization
       const dayHeader = document.createElement('h5');
       dayHeader.textContent = day;
       dayHeader.style.cssText = 'color: #2b68a4; margin-bottom: 15px; margin-top: 20px; font-weight: bold;';
       dayContainer.appendChild(dayHeader);
-      
+
       const tableId = `instructor-weekly-schedule-table-${day}`;
       const newTable = document.createElement('table');
       newTable.id = tableId;
       dayContainer.appendChild(newTable);
-      
+
       instructorWeeklyScheduleTables.appendChild(dayContainer);
-      
+
       // Sort registrations for this day by start time, length, instrument, and grade
       const dayRegistrations = instructorRegistrations
         .filter(x => x.day === day)
@@ -290,34 +322,34 @@ export class ViewModel {
           if (timeA !== timeB) {
             return timeA.localeCompare(timeB);
           }
-          
+
           // Then sort by length (duration)
           const lengthA = a.length || a.duration || 0;
           const lengthB = b.length || b.duration || 0;
           if (lengthA !== lengthB) {
             return lengthA - lengthB;
           }
-          
+
           // Then sort by instrument/class
           const instrumentA = a.instrument || a.class?.name || '';
           const instrumentB = b.instrument || b.class?.name || '';
           if (instrumentA !== instrumentB) {
             return instrumentA.localeCompare(instrumentB);
           }
-          
+
           // Finally sort by grade
           const gradeA = a.student?.grade || a.grade || '';
           const gradeB = b.student?.grade || b.grade || '';
           return gradeA.localeCompare(gradeB);
         });
-      
+
       this.#buildWeeklySchedule(tableId, dayRegistrations);
     });
     // attendance
     // directory
     // For instructors, show admins and only the current instructor (unless they're also an admin)
     const isOperatorUser = this.currentUser instanceof OperatorUserResponse || (this.currentUser.isOperator && this.currentUser.isOperator());
-    
+
     let instructorsToShow;
     if (isOperatorUser) {
       // Operator users can see all instructors
@@ -326,7 +358,7 @@ export class ViewModel {
       // Regular instructors only see themselves
       instructorsToShow = this.instructors.filter(instructor => instructor.id === currentInstructorId);
     }
-    
+
     const mappedEmployees = this.adminEmployees().concat(
       instructorsToShow.map(instructor => this.instructorToEmployee(instructor))
     );
@@ -456,17 +488,17 @@ export class ViewModel {
 
     loadingContainer.style.display = isLoading ? 'flex' : 'none';
     loadingContainer.hidden = !isLoading;
-    pageContent.hidden = isLoading || errorMessage;
 
-    // Nav links are always visible now - no conditional hiding
+    // Only show page content if not loading, no error, and we have a current user
+    const hasAuthenticatedUser = this.currentUser && (this.currentUser.admin || this.currentUser.instructor || this.currentUser.parent);
+    pageContent.hidden = isLoading || errorMessage || !hasAuthenticatedUser;
 
-    // Update login button positioning (simplified since nav is always visible)
-    if (loginButtonContainer) {
-      loginButtonContainer.setAttribute('data-nav-visible', 'true');
-    }
+    // We no longer need to update login button positioning as it's handled by the flex layout
 
     pageErrorContent.hidden = !errorMessage && !isLoading;
-    pageErrorContentMessage.textContent = errorMessage;
+    if (pageErrorContentMessage) {
+      pageErrorContentMessage.textContent = errorMessage;
+    }
   }
   // TODO duplicated (will be consolidated elsewhere)
   /**
@@ -1090,7 +1122,7 @@ export class ViewModel {
     // Get instruments from either specialties or instruments field
     const instruments = instructor.specialties || instructor.instruments || [];
     const instrumentsText = instruments.length > 0 ? instruments.join(', ') : 'Instructor';
-    
+
     return {
       id: instructor.id,
       fullName:
@@ -1203,23 +1235,24 @@ export class ViewModel {
       return;
     }
 
-    // Check if there's a stored access code
+    // Check if there's a stored access code or if we have an operator user
     const storedCode = this.#getStoredAccessCode();
+    const operatorUser = window.UserSession?.getOperatorUser();
 
-    if (storedCode) {
-      // Change button text to "Change User" if access code exists
+    if (storedCode || operatorUser && (operatorUser.admin || operatorUser.instructor || operatorUser.parent)) {
+      // Change button text to "Change User" if access code exists or operator is available
       const buttonTextNode = loginButton.childNodes[loginButton.childNodes.length - 1];
       if (buttonTextNode && buttonTextNode.nodeType === Node.TEXT_NODE) {
         buttonTextNode.textContent = 'Change User';
       }
-      console.log('Login button updated to "Change User" - stored access code found');
+      console.log('Login button updated to "Change User" - stored access code or operator user found');
     } else {
-      // Ensure button text is "Login" if no stored code
+      // Ensure button text is "Login" if no stored code and no operator
       const buttonTextNode = loginButton.childNodes[loginButton.childNodes.length - 1];
       if (buttonTextNode && buttonTextNode.nodeType === Node.TEXT_NODE) {
         buttonTextNode.textContent = 'Login';
       }
-      console.log('Login button set to "Login" - no stored access code');
+      console.log('Login button set to "Login" - no stored access code or operator user');
     }
   }
 
@@ -1265,17 +1298,21 @@ export class ViewModel {
 
         // Load user data with the authenticated user
         console.log('Loading user data for authenticated user:', authenticatedUser);
-        
+
         // Determine default role to click (admin -> instructor -> parent)
         let roleToClick = null;
         if (authenticatedUser.admin) {
           roleToClick = 'admin';
+
+          // For admin users, we'll explicitly show admin tabs and click the first one
+          console.log('Authenticated user is an admin - will show admin tabs');
         } else if (authenticatedUser.instructor) {
           roleToClick = 'instructor';
         } else if (authenticatedUser.parent) {
           roleToClick = 'parent';
         }
 
+        // Load user data and navigate to the appropriate section
         await this.loadUserData(authenticatedUser, roleToClick);
       } else {
         M.toast({ html: 'Invalid access code', classes: 'red darken-1', displayLength: 3000 });
@@ -1377,6 +1414,92 @@ export class ViewModel {
   clearUserSession() {
     this.#clearStoredAccessCode();
     M.toast({ html: 'User session cleared', classes: 'blue darken-1', displayLength: 2000 });
+  }
+
+  /**
+   * Show the login button after operator request completes
+   */
+  #showLoginButton() {
+    console.log('🔍 Showing login button');
+
+    try {
+      const loginButtonContainer = document.getElementById('login-button-container');
+      if (loginButtonContainer) {
+        loginButtonContainer.hidden = false;
+        console.log('✅ Login button shown successfully');
+      } else {
+        console.log('⚠️ Login button container element not found');
+      }
+    } catch (error) {
+      console.error('❌ Error showing login button:', error);
+    }
+  }
+
+  /**
+   * Show admin tabs and click the first one
+   */
+  #showAdminTabsAndSelectFirst() {
+    console.log('🔍 Showing admin tabs and selecting the first one');
+
+    try {
+      // Show tabs container first
+      const tabsContainer = document.querySelector('.tabs');
+      if (tabsContainer) {
+        tabsContainer.hidden = false;
+        console.log('✅ Tabs container shown');
+      }
+
+      // Show all admin tabs
+      const adminTabs = document.querySelectorAll('.tabs .tab.admin-tab');
+      console.log(`Found ${adminTabs.length} admin tabs to show`);
+
+      if (adminTabs.length > 0) {
+        adminTabs.forEach(tab => {
+          tab.hidden = false;
+          console.log(`Showing admin tab:`, tab);
+        });
+
+        // Get the first admin tab and click it
+        const firstAdminTab = adminTabs[0];
+        const firstAdminTabLink = firstAdminTab.querySelector('a');
+
+        if (firstAdminTabLink) {
+          console.log(`Clicking first admin tab: ${firstAdminTabLink.getAttribute('href')}`);
+
+          // Hide all tab content first
+          const allTabContent = document.querySelectorAll('.tab-content');
+          allTabContent.forEach(content => {
+            content.hidden = true;
+          });
+
+          // Show the target tab content
+          const targetContent = document.querySelector(firstAdminTabLink.getAttribute('href'));
+          if (targetContent) {
+            targetContent.hidden = false;
+            console.log(`Showing tab content: ${targetContent.id}`);
+          }
+
+          // Add active class to the first tab
+          const allTabLinks = document.querySelectorAll('.tabs .tab a');
+          allTabLinks.forEach(link => {
+            link.classList.remove('active');
+          });
+          firstAdminTabLink.classList.add('active');
+
+          // Ensure master schedule table is visible if it exists
+          const masterScheduleTable = document.getElementById('master-schedule-table');
+          if (masterScheduleTable) {
+            masterScheduleTable.hidden = false;
+          }
+        }
+
+        console.log('✅ Admin tabs shown and first tab selected');
+      } else {
+        console.warn('❌ No admin tabs found');
+      }
+    } catch (error) {
+      console.error('Error showing admin tabs:', error);
+    }
   }
 }
 
