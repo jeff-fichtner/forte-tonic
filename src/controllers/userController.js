@@ -11,6 +11,7 @@ import { serviceContainer } from '../infrastructure/container/serviceContainer.j
 import { _fetchData } from '../utils/helpers.js';
 import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
 import { OperatorUserResponse } from '../models/shared/responses/operatorUserResponse.js';
+import { currentConfig } from '../config/environment.js';
 
 export class UserController {
   /**
@@ -18,10 +19,60 @@ export class UserController {
    */
   static async getOperatorUser(req, res) {
     try {
-      res.json(req.currentUser);
+      // Get operator email from environment
+      const operatorEmail = currentConfig.operatorEmail;
+      if (!operatorEmail) {
+        console.log('No OPERATOR_EMAIL set - returning null');
+        return res.json(null);
+      }
+
+      const userRepository = req.userRepository || serviceContainer.get('userRepository');
+      
+      // Check if the operator email exists in the roles table
+      const operatorRole = await userRepository.getOperatorByEmail(operatorEmail);
+      if (!operatorRole) {
+        console.log(`Operator email ${operatorEmail} not found in roles table - returning null`);
+        return res.json(null);
+      }
+
+      // Get user data based on roles
+      let admin = null;
+      let instructor = null;
+      let parent = null;
+
+      if (operatorRole.admin) {
+        admin = await userRepository.getAdminByAccessCode(operatorRole.admin);
+        if (!admin) {
+          console.warn(`Admin with access code ${operatorRole.admin} not found`);
+        }
+      }
+      
+      if (operatorRole.instructor) {
+        instructor = await userRepository.getInstructorByAccessCode(operatorRole.instructor);
+        if (!instructor) {
+          console.warn(`Instructor with access code ${operatorRole.instructor} not found`);
+        }
+      }
+      
+      if (operatorRole.parent) {
+        parent = await userRepository.getParentByAccessCode(operatorRole.parent);
+        if (!parent) {
+          console.warn(`Parent with access code ${operatorRole.parent} not found`);
+        }
+      }
+
+      const operatorUser = new OperatorUserResponse(
+        operatorEmail,
+        admin,
+        instructor,
+        parent
+      );
+
+      res.json(operatorUser);
     } catch (error) {
       console.error('Error getting operator user:', error);
-      res.status(500).json({ error: error.message });
+      // Return null instead of error to allow app to continue
+      res.json(null);
     }
   }
 
