@@ -19,6 +19,9 @@ export class UserController {
    */
   static async getOperatorUser(req, res) {
     try {
+      console.log('Temporarily bypassing operator user retrieval');
+      return res.json(null);
+
       // Get operator email from environment
       const operatorEmail = currentConfig.operatorEmail;
       if (!operatorEmail) {
@@ -27,7 +30,7 @@ export class UserController {
       }
 
       const userRepository = req.userRepository || serviceContainer.get('userRepository');
-      
+
       // Check if the operator email exists in the roles table
       const operatorRole = await userRepository.getOperatorByEmail(operatorEmail);
       if (!operatorRole) {
@@ -46,14 +49,14 @@ export class UserController {
           console.warn(`Admin with access code ${operatorRole.admin} not found`);
         }
       }
-      
+
       if (operatorRole.instructor) {
         instructor = await userRepository.getInstructorByAccessCode(operatorRole.instructor);
         if (!instructor) {
           console.warn(`Instructor with access code ${operatorRole.instructor} not found`);
         }
       }
-      
+
       if (operatorRole.parent) {
         parent = await userRepository.getParentByAccessCode(operatorRole.parent);
         if (!parent) {
@@ -97,10 +100,10 @@ export class UserController {
   static async getInstructors(req, res) {
     try {
       const userRepository = serviceContainer.get('userRepository');
-      
+
       // Force refresh to get latest data from spreadsheet
       const data = await userRepository.getInstructors(true);
-      
+
       // The data is already transformed by Instructor.fromDatabaseRow
       // No need to transform again with UserTransformService
       res.json(data);
@@ -115,12 +118,13 @@ export class UserController {
    */
   static async getStudents(req, res) {
     try {
-      const request = req.body[0] || {};
-      
+      // Use the normalized request data from middleware
+      const request = req.requestData || {};
+
       const userRepository = serviceContainer.get('userRepository');
       const data = await userRepository.getStudents();
       const transformedData = UserTransformService.transformArray(data, 'student');
-      
+
       // Apply pagination directly for compatibility with frontend expectations
       const page = request.page || 0;
       const pageSize = request.pageSize || 1000;
@@ -134,7 +138,7 @@ export class UserController {
         page,
         pageSize,
       };
-      
+
       res.json(result);
     } catch (error) {
       console.error('Error getting students:', error);
@@ -309,14 +313,14 @@ export class UserController {
       const { accessCode } = req.body;
 
       if (!accessCode) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: 'Access code is required',
-          success: false 
+          success: false
         });
       }
 
       const userRepository = serviceContainer.get('userRepository');
-      
+
       let admin = null;
       let instructor = null;
       let parent = null;
@@ -325,13 +329,15 @@ export class UserController {
       if (accessCode.length === 6) {
         // Check admin first
         admin = await userRepository.getAdminByAccessCode(accessCode);
-        
+
         // If not found in admin, check instructor
         if (!admin) {
           instructor = await userRepository.getInstructorByAccessCode(accessCode);
         }
       }
-      
+
+      const allInstructors = await userRepository.getInstructors();
+
       // Then check 4-digit codes against parents
       if (accessCode.length === 4 && !admin && !instructor) {
         parent = await userRepository.getParentByAccessCode(accessCode);
@@ -364,14 +370,14 @@ export class UserController {
   static async getAdminByAccessCode(req, res) {
     try {
       const { accessCode } = req.body;
-      
+
       if (!accessCode) {
         return res.status(400).json({ error: 'Access code is required' });
       }
 
       const userRepository = serviceContainer.get('userRepository');
       const admin = await userRepository.getAdminByAccessCode(accessCode);
-      
+
       if (!admin) {
         return res.status(404).json({ error: 'Admin not found with provided access code' });
       }
@@ -390,13 +396,13 @@ export class UserController {
   static async getInstructorByAccessCode(req, res) {
     try {
       const { accessCode } = req.body;
-      
+
       // DEBUG: Add logging and optional breakpoint
       console.log('🔍 DEBUG: getInstructorByAccessCode called with:', { accessCode });
-      
+
       // BREAKPOINT: Uncomment the next line to add a breakpoint here
       // debugger;
-      
+
       if (!accessCode) {
         console.log('❌ DEBUG: Access code missing in request');
         return res.status(400).json({ error: 'Access code is required' });
@@ -404,17 +410,17 @@ export class UserController {
 
       const userRepository = serviceContainer.get('userRepository');
       console.log('🔍 DEBUG: Retrieved userRepository from service container');
-      
+
       // BREAKPOINT: Uncomment to debug repository call
       // debugger;
-      
+
       const instructor = await userRepository.getInstructorByAccessCode(accessCode);
-      
-      console.log('🔍 DEBUG: Repository returned:', instructor ? 
-        `${instructor.firstName} ${instructor.lastName} (${instructor.email})` : 
+
+      console.log('🔍 DEBUG: Repository returned:', instructor ?
+        `${instructor.firstName} ${instructor.lastName} (${instructor.email})` :
         'null'
       );
-      
+
       if (!instructor) {
         console.log('❌ DEBUG: Instructor not found, returning 404');
         return res.status(404).json({ error: 'Instructor not found with provided access code' });
@@ -422,10 +428,10 @@ export class UserController {
 
       // BREAKPOINT: Uncomment to debug transformation
       // debugger;
-      
+
       const transformedData = UserTransformService.transform(instructor, 'instructor');
       console.log('🔍 DEBUG: Transformed data keys:', Object.keys(transformedData));
-      
+
       res.json(transformedData);
     } catch (error) {
       console.error('❌ ERROR in getInstructorByAccessCode:', error);
@@ -439,14 +445,14 @@ export class UserController {
   static async getParentByAccessCode(req, res) {
     try {
       const { accessCode } = req.body;
-      
+
       if (!accessCode) {
         return res.status(400).json({ error: 'Access code is required' });
       }
 
       const userRepository = serviceContainer.get('userRepository');
       const parent = await userRepository.getParentByAccessCode(accessCode);
-      
+
       if (!parent) {
         return res.status(404).json({ error: 'Parent not found with provided access code' });
       }

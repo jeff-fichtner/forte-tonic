@@ -5,7 +5,7 @@
             "name": "Debug Node.js App",
             "type": "node",
             "request": "launch",
-            "program": "${workspaceFolder}/src/server.js",
+            "program": "${workspaceFolder}/start.js",
             "env": {
                 "NODE_ENV": "development"
             },
@@ -14,7 +14,11 @@
                 "<node_internals>/**"
             ],
             "outputCapture": "console",
-            "runtimeArgs": ["--inspect"]
+            "runtimeArgs": [
+                "--inspect",
+                "--no-warnings",
+                "--experimental-specifier-resolution=node"
+            ]
         },
         {
             "name": "Debug Jest Tests",
