@@ -336,8 +336,6 @@ export class UserController {
         }
       }
 
-      const allInstructors = await userRepository.getInstructors();
-
       // Then check 4-digit codes against parents
       if (accessCode.length === 4 && !admin && !instructor) {
         parent = await userRepository.getParentByAccessCode(accessCode);
@@ -397,41 +395,18 @@ export class UserController {
     try {
       const { accessCode } = req.body;
 
-      // DEBUG: Add logging and optional breakpoint
-      console.log('🔍 DEBUG: getInstructorByAccessCode called with:', { accessCode });
-
-      // BREAKPOINT: Uncomment the next line to add a breakpoint here
-      // debugger;
-
       if (!accessCode) {
-        console.log('❌ DEBUG: Access code missing in request');
         return res.status(400).json({ error: 'Access code is required' });
       }
 
       const userRepository = serviceContainer.get('userRepository');
-      console.log('🔍 DEBUG: Retrieved userRepository from service container');
-
-      // BREAKPOINT: Uncomment to debug repository call
-      // debugger;
-
       const instructor = await userRepository.getInstructorByAccessCode(accessCode);
 
-      console.log('🔍 DEBUG: Repository returned:', instructor ?
-        `${instructor.firstName} ${instructor.lastName} (${instructor.email})` :
-        'null'
-      );
-
       if (!instructor) {
-        console.log('❌ DEBUG: Instructor not found, returning 404');
         return res.status(404).json({ error: 'Instructor not found with provided access code' });
       }
 
-      // BREAKPOINT: Uncomment to debug transformation
-      // debugger;
-
       const transformedData = UserTransformService.transform(instructor, 'instructor');
-      console.log('🔍 DEBUG: Transformed data keys:', Object.keys(transformedData));
-
       res.json(transformedData);
     } catch (error) {
       console.error('❌ ERROR in getInstructorByAccessCode:', error);

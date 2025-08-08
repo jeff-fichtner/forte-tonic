@@ -110,16 +110,6 @@ export class UserRepository {
    */
   async getInstructorByAccessCode(accessCode) {
     const instructors = await this.getInstructors();
-    console.log('🔍 DEBUG: Looking for accessCode:', accessCode);
-    console.log('🔍 DEBUG: First instructor data:', instructors[0] ? {
-      id: instructors[0].id,
-      firstName: instructors[0].firstName,
-      lastName: instructors[0].lastName,
-      email: instructors[0].email,
-      accessCode: instructors[0].accessCode,
-      allKeys: Object.keys(instructors[0])
-    } : 'No instructors found');
-    debugger
     return instructors.find(x => x.accessCode === accessCode);
   }
 

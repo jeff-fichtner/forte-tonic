@@ -357,10 +357,10 @@ export class GoogleSheetsDbClient {
 
       const spreadsheetId = this.spreadsheetId;
 
-      // Use a more reasonable range - Z column should be sufficient
+      // Use a more reasonable range - expand to column AZ to capture access codes
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: spreadsheetId,
-        range: `${sheetInfo.sheet}!A${sheetInfo.startRow}:Z1000`,
+        range: `${sheetInfo.sheet}!A${sheetInfo.startRow}:AZ1000`,
       });
 
       const rows = response.data.values || [];

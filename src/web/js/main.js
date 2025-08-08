@@ -61,12 +61,47 @@ async function initializeApplication() {
   try {
     console.log('Initializing Tonic application...');
 
+    // TEMPORARILY FORCE NAV SECTION LINKS TO BE HIDDEN
+    const navLinks = document.getElementById('nav-mobile');
+    if (navLinks) {
+      navLinks.hidden = true;
+      console.log('🚫 NAV SECTION LINKS TEMPORARILY HIDDEN PER REQUEST');
+    }
+
+    // Debug UI visibility state on start
+    console.log('Initial UI visibility state:');
+    const loginButton = document.getElementById('login-button-container');
+    const tabs = document.querySelectorAll('.tabs .tab');
+    const pageContent = document.getElementById('page-content');
+    const loadingContainer = document.getElementById('page-loading-container');
+    
+    console.log(`- Login Button Hidden: ${loginButton?.hidden || 'not found'}`);
+    console.log(`- Nav Links Hidden: ${navLinks?.hidden || 'not found'}`);
+    console.log(`- All Tabs Hidden: ${Array.from(tabs).every(tab => tab.hidden)}`);
+    console.log(`- Page Content Hidden: ${pageContent?.hidden || 'not found'}`);
+    console.log(`- Loading Container Visible: ${!loadingContainer?.hidden || 'not found'}`);
+
     // Make UserSession available globally before ViewModel initialization
     window.UserSession = UserSession;
 
     // Initialize the main ViewModel
     const viewModel = new ViewModel();
     await viewModel.initializeAsync();
+
+    // FORCE NAV SECTION LINKS TO STAY HIDDEN AFTER INITIALIZATION
+    const navLinksElement = document.getElementById('nav-mobile');
+    if (navLinksElement) {
+      navLinksElement.hidden = true;
+      console.log('🚫 NAV SECTION LINKS FORCED HIDDEN AFTER INITIALIZATION');
+    }
+
+    // Debug UI visibility state after initialization
+    console.log('UI visibility state after initialization:');
+    console.log(`- Login Button Hidden: ${loginButton?.hidden || 'not found'}`);
+    console.log(`- Nav Links Hidden: ${navLinks?.hidden || 'not found'}`);
+    console.log(`- All Tabs Hidden: ${Array.from(tabs).every(tab => tab.hidden)}`);
+    console.log(`- Page Content Hidden: ${pageContent?.hidden || 'not found'}`);
+    console.log(`- Loading Container Visible: ${!loadingContainer?.hidden || 'not found'}`);
 
     // Store globally for debugging and other scripts
     window.viewModel = viewModel;
@@ -150,6 +185,29 @@ Git Commit: ${versionInfo.gitCommit}
 async function main() {
   try {
     await initializeApplication();
+    
+    // Add mutation observer to ensure nav links stay hidden
+    const navLinks = document.getElementById('nav-mobile');
+    if (navLinks) {
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.attributeName === 'hidden' && !navLinks.hidden) {
+            console.log('🚫 Detected attempt to show nav links - forcing hidden');
+            navLinks.hidden = true;
+          }
+        });
+      });
+      
+      observer.observe(navLinks, { attributes: true });
+      console.log('🔒 Added observer to ensure nav links stay hidden');
+    }
+    
+    // Version display is optional and not critical
+    try {
+      await initializeVersionDisplay();
+    } catch (error) {
+      console.warn('Version display initialization failed:', error);
+    }
   } catch (error) {
     console.error('Fatal error starting application:', error);
   }

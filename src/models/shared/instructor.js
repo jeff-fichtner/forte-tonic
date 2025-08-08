@@ -174,7 +174,7 @@ export class Instructor {
       lastName,
       firstName,
       phone,
-      isDeactivated,     // Position 5 - removed accessCode
+      isDeactivated,     // Position 5
       minimumGrade,      // Position 6
       maximumGrade,      // Position 7
       instrument1,       // Position 8
@@ -201,6 +201,7 @@ export class Instructor {
       fridayStartTime,
       fridayEndTime,
       fridayRoomId,
+      accessCode,        // Position 32 - access code for authentication
     ] = row;
 
     const specialties = [instrument1, instrument2, instrument3, instrument4].filter(Boolean);
@@ -246,6 +247,7 @@ export class Instructor {
       lastName,
       firstName,
       phoneNumber: phone,
+      accessCode,        // Add access code back
       specialties,
       isActive: !isDeactivated,
       availability,
