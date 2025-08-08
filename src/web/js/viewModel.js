@@ -1511,7 +1511,7 @@ export class ViewModel {
     
     // Format phone number using the formatPhone function
     const rawPhone = instructor.phone || instructor.phoneNumber || '';
-    const formattedPhone = rawPhone || !obscurePhone ? formatPhone(rawPhone) : '';
+    const formattedPhone = (rawPhone && !obscurePhone) ? formatPhone(rawPhone) : '';
 
     return {
       id: instructor.id,
