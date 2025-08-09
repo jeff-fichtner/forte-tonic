@@ -176,10 +176,9 @@ export class ParentRegistrationForm {
           const theoreticalSlots = Math.floor(totalDuration / 30);
           
           // Count existing registrations for this instructor on this day
-          const dayName = day.charAt(0).toUpperCase() + day.slice(1); // "monday" -> "Monday"
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
-            return regInstructorId === instructor.id && reg.day === dayName;
+            return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
           });
           
           console.log(`    ⏰ ${startTime}-${endTime} (${totalDuration}min) = ${theoreticalSlots} theoretical slots`);
@@ -259,10 +258,9 @@ export class ParentRegistrationForm {
         
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
           // Count existing registrations for this instructor on this day
-          const dayName = day.charAt(0).toUpperCase() + day.slice(1); // "monday" -> "Monday"
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
-            return regInstructorId === instructor.id && reg.day === dayName;
+            return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
           });
           
           // If length is specified, count slots for that specific length
@@ -415,10 +413,9 @@ export class ParentRegistrationForm {
         
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
           // Count existing registrations for this instructor on this day
-          const dayName = day.charAt(0).toUpperCase() + day.slice(1); // "monday" -> "Monday"
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
-            return regInstructorId === instructor.id && reg.day === dayName;
+            return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
           });
           
           // Calculate actual available slots considering overlaps
@@ -495,10 +492,9 @@ export class ParentRegistrationForm {
         const endMinutes = this.#parseTime(endTime);
         
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
-          const dayName = day.charAt(0).toUpperCase() + day.slice(1); // "monday" -> "Monday"
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
-            return regInstructorId === instructor.id && reg.day === dayName;
+            return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
           });
           
           // If length is specified, count slots for that specific length
@@ -658,11 +654,9 @@ export class ParentRegistrationForm {
         const endMinutes = this.#parseTime(endTime);
         
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
-          // Convert day name to proper case for comparison with registration data
-          const dayName = day.charAt(0).toUpperCase() + day.slice(1); // "monday" -> "Monday"
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
-            return regInstructorId === instructor.id && reg.day === dayName;
+            return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
           });
           
           // Count slots for each lesson length
@@ -741,11 +735,9 @@ export class ParentRegistrationForm {
         const endMinutes = this.#parseTime(endTime);
         
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
-          // Convert day name to proper case for comparison with registration data
-          const dayName = day.charAt(0).toUpperCase() + day.slice(1); // "monday" -> "Monday"
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
-            return regInstructorId === instructor.id && reg.day === dayName;
+            return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
           });
           
           if (selectedLength && selectedLength !== 'all') {
@@ -963,10 +955,9 @@ export class ParentRegistrationForm {
             const theoreticalSlots = Math.floor(totalDuration / 30);
             
             // Count existing registrations for this instructor on this day
-            const dayName = day.charAt(0).toUpperCase() + day.slice(1); // "monday" -> "Monday"
             const existingRegistrations = this.registrations.filter(reg => {
               const regInstructorId = reg.instructorId?.value || reg.instructorId;
-              return regInstructorId === instructor.id && reg.day === dayName;
+              return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
             });
             
             const availableSlots = Math.max(0, theoreticalSlots - existingRegistrations.length);
@@ -2814,25 +2805,6 @@ export class ParentRegistrationForm {
       selectedDisplay.style.display = 'none';
       selectedDisplay.style.pointerEvents = 'none'; // Ensure it doesn't interfere when hidden
     }
-    
-    // Reset all timeslot selections
-    parentContainer.querySelectorAll('.timeslot').forEach(slot => {
-      slot.classList.remove('selected');
-      // Reset to original styling based on availability
-      if (slot.classList.contains('available')) {
-        slot.style.border = '2px solid #4caf50';
-        slot.style.background = '#e8f5e8';
-      } else if (slot.classList.contains('limited')) {
-        slot.style.border = '2px solid #ff9800';
-        slot.style.background = '#fff3e0';
-      } else {
-        slot.style.border = '2px solid #f44336';
-        slot.style.background = '#ffebee';
-      }
-    });
-    
-    // Regenerate time slots with fresh data
-    this.#generateTimeSlots();
   }
 
   /**
