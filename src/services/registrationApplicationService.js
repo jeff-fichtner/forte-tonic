@@ -6,9 +6,9 @@
  * processes including validation, conflict checking, and persistence.
  */
 
-import { RegistrationValidationService } from '../services/registrationValidationService.js';
-import { RegistrationConflictService } from '../services/registrationConflictService.js';
-import { ProgramManagementService } from '../services/programManagementService.js';
+import { RegistrationValidationService } from './registrationValidationService.js';
+import { RegistrationConflictService } from './registrationConflictService.js';
+import { ProgramManagementService } from './programManagementService.js';
 import { Registration } from '../models/shared/registration.js';
 
 export class RegistrationApplicationService {
@@ -115,6 +115,20 @@ export class RegistrationApplicationService {
 
       // Step 5: Check for conflicts with existing registrations
       const existingRegistrations = await this.registrationRepository.findAll();
+      
+      // Check for duplicate group registrations (student can only be enrolled in a class once)
+      if (registrationData.registrationType === 'group' && registrationData.classId) {
+        const existingGroupRegistration = existingRegistrations.find(reg => 
+          reg.studentId === registrationData.studentId && 
+          reg.classId === registrationData.classId &&
+          reg.registrationType === 'group'
+        );
+        
+        if (existingGroupRegistration) {
+          throw new Error(`Student is already enrolled in this class. Students can only be enrolled in a class once.`);
+        }
+      }
+      
       const conflictCheck = await RegistrationConflictService.checkConflicts(
         registrationData,
         existingRegistrations
