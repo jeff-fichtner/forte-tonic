@@ -766,7 +766,8 @@ export class ViewModel {
     // Only show page content if not loading, no error
     pageContent.hidden = isLoading || errorMessage;
 
-    pageErrorContent.hidden = !errorMessage && !isLoading;
+    // Only show error content when there's actually an error message
+    pageErrorContent.hidden = !errorMessage;
     if (pageErrorContentMessage) {
       pageErrorContentMessage.textContent = errorMessage;
     }
