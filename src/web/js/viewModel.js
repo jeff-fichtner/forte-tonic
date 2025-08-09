@@ -1402,7 +1402,7 @@ export class ViewModel {
       return aIsInstructor ? 1 : -1;
     });
   }
-  // TODO: This method has been partially migrated to DomHelpers.clearMaterializeSelect()
+  // TODO: This method has been partially migrated to DomHelpers.resetMaterializeSelect()
   // Consider consolidating all select operations to use the shared utilities
   /**
    *
