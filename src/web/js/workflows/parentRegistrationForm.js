@@ -176,10 +176,10 @@ export class ParentRegistrationForm {
           const theoreticalSlots = Math.floor(totalDuration / 30);
           
           // Count existing registrations for this instructor on this day
-          const dayIndex = dayMap[day];
+          const dayName = day.charAt(0).toUpperCase() + day.slice(1); // "monday" -> "Monday"
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
-            return regInstructorId === instructor.id && reg.day === dayIndex;
+            return regInstructorId === instructor.id && reg.day === dayName;
           });
           
           console.log(`    ⏰ ${startTime}-${endTime} (${totalDuration}min) = ${theoreticalSlots} theoretical slots`);
@@ -259,10 +259,10 @@ export class ParentRegistrationForm {
         
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
           // Count existing registrations for this instructor on this day
-          const dayIndex = dayMap[day];
+          const dayName = day.charAt(0).toUpperCase() + day.slice(1); // "monday" -> "Monday"
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
-            return regInstructorId === instructor.id && reg.day === dayIndex;
+            return regInstructorId === instructor.id && reg.day === dayName;
           });
           
           // If length is specified, count slots for that specific length
@@ -342,6 +342,15 @@ export class ParentRegistrationForm {
   }
 
   /**
+   * Get the proper day name format for registration comparison
+   * @param {string} day - Day name in lowercase (e.g., "monday")
+   * @returns {string} Capitalized day name (e.g., "Monday")
+   */
+  #getRegistrationDayName(day) {
+    return day.charAt(0).toUpperCase() + day.slice(1);
+  }
+
+  /**
    * Calculate available slots for a day considering existing registrations
    * @param {number} startMinutes - Day start time in minutes
    * @param {number} endMinutes - Day end time in minutes  
@@ -406,10 +415,10 @@ export class ParentRegistrationForm {
         
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
           // Count existing registrations for this instructor on this day
-          const dayIndex = dayMap[day];
+          const dayName = day.charAt(0).toUpperCase() + day.slice(1); // "monday" -> "Monday"
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
-            return regInstructorId === instructor.id && reg.day === dayIndex;
+            return regInstructorId === instructor.id && reg.day === dayName;
           });
           
           // Calculate actual available slots considering overlaps
@@ -486,10 +495,10 @@ export class ParentRegistrationForm {
         const endMinutes = this.#parseTime(endTime);
         
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
-          const dayIndex = dayMap[day];
+          const dayName = day.charAt(0).toUpperCase() + day.slice(1); // "monday" -> "Monday"
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
-            return regInstructorId === instructor.id && reg.day === dayIndex;
+            return regInstructorId === instructor.id && reg.day === dayName;
           });
           
           // If length is specified, count slots for that specific length
@@ -573,19 +582,22 @@ export class ParentRegistrationForm {
         const endMinutes = this.#parseTime(endTime);
         
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
-          const dayIndex = dayMap[day];
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
-            return regInstructorId === instructor.id && reg.day === dayIndex;
+            return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
           });
           
-          // Count all possible slots (30min, 45min, 60min) for this instructor on this day
-          const availableSlots = this.#calculateAvailableSlotsForDay(
-            startMinutes,
-            endMinutes,
-            existingRegistrations
-          );
-          availability[day] += availableSlots;
+          // Count all possible slots for each lesson length (30min, 45min, 60min)
+          [30, 45, 60].forEach(length => {
+            for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += 30) {
+              if (currentMinutes + length <= endMinutes) {
+                const hasConflict = this.#checkTimeSlotConflict(currentMinutes, length, existingRegistrations);
+                if (!hasConflict) {
+                  availability[day]++;
+                }
+              }
+            }
+          });
         }
       });
     });
@@ -646,10 +658,11 @@ export class ParentRegistrationForm {
         const endMinutes = this.#parseTime(endTime);
         
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
-          const dayIndex = dayMap[day];
+          // Convert day name to proper case for comparison with registration data
+          const dayName = day.charAt(0).toUpperCase() + day.slice(1); // "monday" -> "Monday"
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
-            return regInstructorId === instructor.id && reg.day === dayIndex;
+            return regInstructorId === instructor.id && reg.day === dayName;
           });
           
           // Count slots for each lesson length
@@ -728,10 +741,11 @@ export class ParentRegistrationForm {
         const endMinutes = this.#parseTime(endTime);
         
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
-          const dayIndex = dayMap[day];
+          // Convert day name to proper case for comparison with registration data
+          const dayName = day.charAt(0).toUpperCase() + day.slice(1); // "monday" -> "Monday"
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
-            return regInstructorId === instructor.id && reg.day === dayIndex;
+            return regInstructorId === instructor.id && reg.day === dayName;
           });
           
           if (selectedLength && selectedLength !== 'all') {
@@ -746,13 +760,17 @@ export class ParentRegistrationForm {
               }
             }
           } else {
-            // Count all possible slots
-            const availableSlots = this.#calculateAvailableSlotsForDay(
-              startMinutes,
-              endMinutes,
-              existingRegistrations
-            );
-            availability[instructor.id] += availableSlots;
+            // Count all possible slots for each lesson length (30min, 45min, 60min)
+            [30, 45, 60].forEach(length => {
+              for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += 30) {
+                if (currentMinutes + length <= endMinutes) {
+                  const hasConflict = this.#checkTimeSlotConflict(currentMinutes, length, existingRegistrations);
+                  if (!hasConflict) {
+                    availability[instructor.id]++;
+                  }
+                }
+              }
+            });
           }
         }
       });
@@ -945,10 +963,10 @@ export class ParentRegistrationForm {
             const theoreticalSlots = Math.floor(totalDuration / 30);
             
             // Count existing registrations for this instructor on this day
-            const dayIndex = dayMap[day];
+            const dayName = day.charAt(0).toUpperCase() + day.slice(1); // "monday" -> "Monday"
             const existingRegistrations = this.registrations.filter(reg => {
               const regInstructorId = reg.instructorId?.value || reg.instructorId;
-              return regInstructorId === instructor.id && reg.day === dayIndex;
+              return regInstructorId === instructor.id && reg.day === dayName;
             });
             
             const availableSlots = Math.max(0, theoreticalSlots - existingRegistrations.length);
@@ -1040,7 +1058,7 @@ export class ParentRegistrationForm {
           const dayIndex = dayMap[day];
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
-            return regInstructorId === instructor.id && reg.day === dayIndex;
+            return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
           });
           
           // Add slots for each instrument this instructor teaches
@@ -1220,7 +1238,7 @@ export class ParentRegistrationForm {
           const dayIndex = dayMap[day];
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
-            return regInstructorId === instructor.id && reg.day === dayIndex;
+            return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
           });
           
           // Count potential slots for each length
@@ -1286,7 +1304,7 @@ export class ParentRegistrationForm {
       const dayIndex = dayMap[day];
       const existingRegistrations = this.registrations.filter(reg => {
         const regInstructorId = reg.instructorId?.value || reg.instructorId;
-        return regInstructorId === instructor.id && reg.day === dayIndex;
+        return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
       });
       
       console.log(`    📝 Existing registrations: ${existingRegistrations.length}`);
@@ -1412,7 +1430,7 @@ export class ParentRegistrationForm {
       const dayIndex = dayMap[day];
       const existingRegistrations = this.registrations.filter(reg => {
         const regInstructorId = reg.instructorId?.value || reg.instructorId;
-        return regInstructorId === instructor.id && reg.day === dayIndex;
+        return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
       });
       
       console.log(`  📝 Existing registrations on ${day}:`, existingRegistrations.length);
@@ -2318,7 +2336,7 @@ export class ParentRegistrationForm {
       const dayIndex = dayMap[day];
       const existingRegistrations = this.registrations.filter(reg => {
         const regInstructorId = reg.instructorId?.value || reg.instructorId;
-        return regInstructorId === instructor.id && reg.day === dayIndex;
+        return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
       });
       
       console.log(`  📝 Existing registrations on ${day}:`, existingRegistrations.length);
