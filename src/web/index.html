@@ -320,6 +320,31 @@
             min-height: calc(100vh - 200px);
             border-radius: 0;
         }
+
+        /* Terms of Service modal - non-dismissible styling */
+        #terms-modal.modal {
+            position: fixed !important;
+        }
+
+        #terms-modal .modal-overlay {
+            pointer-events: none !important;
+            /* Prevent clicking on overlay to close */
+        }
+
+        /* Visual indicator that Terms modal cannot be dismissed */
+        #terms-modal .modal-content::before {
+            content: "⚠️ Please read and acknowledge to continue";
+            display: block;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 8px 12px;
+            margin: -20px -24px 20px -24px;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            border-radius: 4px 4px 0 0;
+        }
     </style>
 
     <title>Forte - Marin Country Day School</title>
@@ -756,7 +781,8 @@
             <div hidden class="tab-content" id="parent-registration" class="col s12" style="background-color: #fefefe">
 
                 <!-- Student Selection (conditionally shown) -->
-                <div id="parent-student-selection-section" class="student-selection-section" style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px; display: none;">
+                <div id="parent-student-selection-section" class="student-selection-section"
+                    style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px; display: none;">
                     <h6 style="margin: 0 0 15px 0; color: #2b68a4;"><b>Select Student</b></h6>
                     <div class="input-field">
                         <select id="parent-student-select">
@@ -768,7 +794,8 @@
                 </div>
 
                 <!-- Registration Type Selection -->
-                <div class="registration-type-section" style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+                <div class="registration-type-section"
+                    style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
                     <h6 style="margin: 0 0 15px 0; color: #2b68a4;"><b>Registration Type</b></h6>
                     <div class="input-field">
                         <select id="parent-registration-type-select">
@@ -783,147 +810,154 @@
                 <!-- Private Registration Container (hidden by default) -->
                 <div id="parent-private-registration-container" style="display: none;">
 
-                <!-- Hybrid Approach: Smart Chips + Interactive Time Slot Grid for Private Lessons -->
+                    <!-- Hybrid Approach: Smart Chips + Interactive Time Slot Grid for Private Lessons -->
 
-                <!-- Smart Filter Chips Section -->
-                <div class="availability-filters"
-                    style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
-                    <h6 style="margin: 0 0 15px 0; color: #2b68a4;"><b>Filter Available Options</b></h6>
+                    <!-- Smart Filter Chips Section -->
+                    <div class="availability-filters"
+                        style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+                        <h6 style="margin: 0 0 15px 0; color: #2b68a4;"><b>Filter Available Options</b></h6>
 
-                    <div class="filter-section" style="margin: 15px 0;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: bold;">Instructors:</label>
-                        <div class="chip-container" id="instructor-chips-container"
-                            style="display: flex; flex-wrap: wrap; gap: 8px;">
-                            <!-- Instructor chips will be populated programmatically -->
-                        </div>
-                    </div>
-
-                    <div class="filter-section" style="margin: 15px 0;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: bold;">Preferred Day:</label>
-                        <div class="chip-container" id="day-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                            <!-- Day chips will be populated programmatically -->
-                        </div>
-                    </div>
-
-                    <div class="filter-section" style="margin: 15px 0;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: bold;">Lesson Length:</label>
-                        <div class="chip-container" id="length-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                            <!-- Length chips will be populated programmatically -->
-                        </div>
-                    </div>
-
-                    <div class="filter-section" style="margin: 15px 0;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: bold;">Instrument:</label>
-                        <div class="chip-container" id="instrument-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                            <!-- Instrument chips will be populated programmatically -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Interactive Time Slot Grid Section -->
-                <div class="instructor-timeslot-grid" id="admin-instructor-timeslot-grid" style="margin-bottom: 250px;">
-                    <div class="section-header" style="margin-bottom: 15px;">
-                        <h6 style="margin: 0; color: #2b68a4;"><b>Available Time Slots</b></h6>
-                        <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Click on any available slot to
-                            select your lesson time</p>
-                    </div>
-
-                    <div class="instructor-card"
-                        style="border: 2px solid #ddd; margin: 15px 0; padding: 20px; border-radius: 8px; transition: border-color 0.3s;">
-                        <h6 style="margin: 0 0 15px 0; color: #2b68a4; display: flex; align-items: center;"><b>Jesse
-                                Brewster - Piano</b> <span
-                                style="margin-left: 10px; font-size: 12px; background: #e8f5e8; color: #4caf50; padding: 4px 8px; border-radius: 12px;">5
-                                available</span></h6>
-                        <div class="timeslot-grid" style="display: flex; flex-wrap: wrap; gap: 10px;">
-                            <div class="timeslot available" data-instructor-id="instructor-1" data-day="monday"
-                                data-time="14:00" data-length="30" data-instrument="Piano"
-                                style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Monday</div>
-                                <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">2:00 PM</div>
-                                <div style="font-size: 12px; color: #666;">30min • Piano</div>
+                        <div class="filter-section" style="margin: 15px 0;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: bold;">Instructors:</label>
+                            <div class="chip-container" id="instructor-chips-container"
+                                style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                <!-- Instructor chips will be populated programmatically -->
                             </div>
-                            <div class="timeslot available" data-instructor-id="instructor-1" data-day="monday"
-                                data-time="14:30" data-length="45" data-instrument="Piano"
-                                style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Monday</div>
-                                <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">2:30 PM</div>
-                                <div style="font-size: 12px; color: #666;">45min • Piano</div>
+                        </div>
+
+                        <div class="filter-section" style="margin: 15px 0;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: bold;">Preferred Day:</label>
+                            <div class="chip-container" id="day-chips-container"
+                                style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                <!-- Day chips will be populated programmatically -->
                             </div>
-                            <div class="timeslot unavailable"
-                                style="border: 2px solid #f44336; background: #ffebee; padding: 12px 16px; border-radius: 8px; cursor: not-allowed; min-width: 110px; text-align: center; opacity: 0.6;">
-                                <div style="font-weight: bold; color: #c62828; font-size: 14px;">Monday</div>
-                                <div style="font-weight: bold; color: #c62828; font-size: 16px;">3:00 PM</div>
-                                <div style="font-size: 12px; color: #666;">30min • Piano</div>
-                                <div style="font-size: 10px; color: #f44336; margin-top: 2px;">Booked</div>
+                        </div>
+
+                        <div class="filter-section" style="margin: 15px 0;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: bold;">Lesson Length:</label>
+                            <div class="chip-container" id="length-chips-container"
+                                style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                <!-- Length chips will be populated programmatically -->
                             </div>
-                            <div class="timeslot available" data-instructor-id="instructor-1" data-day="tuesday"
-                                data-time="13:15" data-length="45" data-instrument="Piano"
-                                style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Tuesday</div>
-                                <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">1:15 PM</div>
-                                <div style="font-size: 12px; color: #666;">45min • Piano</div>
-                            </div>
-                            <div class="timeslot available" data-instructor-id="instructor-1" data-day="wednesday"
-                                data-time="15:30" data-length="30" data-instrument="Piano"
-                                style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Wednesday</div>
-                                <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">3:30 PM</div>
-                                <div style="font-size: 12px; color: #666;">30min • Piano</div>
+                        </div>
+
+                        <div class="filter-section" style="margin: 15px 0;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: bold;">Instrument:</label>
+                            <div class="chip-container" id="instrument-chips-container"
+                                style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                <!-- Instrument chips will be populated programmatically -->
                             </div>
                         </div>
                     </div>
 
-                    <div class="instructor-card"
-                        style="border: 2px solid #ddd; margin: 15px 0; padding: 20px; border-radius: 8px; transition: border-color 0.3s;">
-                        <h6 style="margin: 0 0 15px 0; color: #2b68a4; display: flex; align-items: center;"><b>Cesar
-                                Cancino - Guitar</b> <span
-                                style="margin-left: 10px; font-size: 12px; background: #fff3e0; color: #ff9800; padding: 4px 8px; border-radius: 12px;">2
-                                available</span></h6>
-                        <div class="timeslot-grid" style="display: flex; flex-wrap: wrap; gap: 10px;">
-                            <div class="timeslot available" data-instructor-id="instructor-2" data-day="tuesday"
-                                data-time="13:30" data-length="30"
-                                style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Tuesday</div>
-                                <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">1:30 PM</div>
-                                <div style="font-size: 12px; color: #666;">30min</div>
+                    <!-- Interactive Time Slot Grid Section -->
+                    <div class="instructor-timeslot-grid" id="admin-instructor-timeslot-grid"
+                        style="margin-bottom: 250px;">
+                        <div class="section-header" style="margin-bottom: 15px;">
+                            <h6 style="margin: 0; color: #2b68a4;"><b>Available Time Slots</b></h6>
+                            <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Click on any available slot to
+                                select your lesson time</p>
+                        </div>
+
+                        <div class="instructor-card"
+                            style="border: 2px solid #ddd; margin: 15px 0; padding: 20px; border-radius: 8px; transition: border-color 0.3s;">
+                            <h6 style="margin: 0 0 15px 0; color: #2b68a4; display: flex; align-items: center;"><b>Jesse
+                                    Brewster - Piano</b> <span
+                                    style="margin-left: 10px; font-size: 12px; background: #e8f5e8; color: #4caf50; padding: 4px 8px; border-radius: 12px;">5
+                                    available</span></h6>
+                            <div class="timeslot-grid" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                                <div class="timeslot available" data-instructor-id="instructor-1" data-day="monday"
+                                    data-time="14:00" data-length="30" data-instrument="Piano"
+                                    style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                    <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Monday</div>
+                                    <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">2:00 PM</div>
+                                    <div style="font-size: 12px; color: #666;">30min • Piano</div>
+                                </div>
+                                <div class="timeslot available" data-instructor-id="instructor-1" data-day="monday"
+                                    data-time="14:30" data-length="45" data-instrument="Piano"
+                                    style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                    <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Monday</div>
+                                    <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">2:30 PM</div>
+                                    <div style="font-size: 12px; color: #666;">45min • Piano</div>
+                                </div>
+                                <div class="timeslot unavailable"
+                                    style="border: 2px solid #f44336; background: #ffebee; padding: 12px 16px; border-radius: 8px; cursor: not-allowed; min-width: 110px; text-align: center; opacity: 0.6;">
+                                    <div style="font-weight: bold; color: #c62828; font-size: 14px;">Monday</div>
+                                    <div style="font-weight: bold; color: #c62828; font-size: 16px;">3:00 PM</div>
+                                    <div style="font-size: 12px; color: #666;">30min • Piano</div>
+                                    <div style="font-size: 10px; color: #f44336; margin-top: 2px;">Booked</div>
+                                </div>
+                                <div class="timeslot available" data-instructor-id="instructor-1" data-day="tuesday"
+                                    data-time="13:15" data-length="45" data-instrument="Piano"
+                                    style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                    <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Tuesday</div>
+                                    <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">1:15 PM</div>
+                                    <div style="font-size: 12px; color: #666;">45min • Piano</div>
+                                </div>
+                                <div class="timeslot available" data-instructor-id="instructor-1" data-day="wednesday"
+                                    data-time="15:30" data-length="30" data-instrument="Piano"
+                                    style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                    <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Wednesday</div>
+                                    <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">3:30 PM</div>
+                                    <div style="font-size: 12px; color: #666;">30min • Piano</div>
+                                </div>
                             </div>
-                            <div class="timeslot limited" data-instructor-id="instructor-2" data-day="wednesday"
-                                data-time="16:00" data-length="45"
-                                style="border: 2px solid #ff9800; background: #fff3e0; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                <div style="font-weight: bold; color: #ef6c00; font-size: 14px;">Wednesday</div>
-                                <div style="font-weight: bold; color: #ef6c00; font-size: 16px;">4:00 PM</div>
-                                <div style="font-size: 12px; color: #666;">45min</div>
-                                <div style="font-size: 10px; color: #ff9800; margin-top: 2px;">Last slot</div>
+                        </div>
+
+                        <div class="instructor-card"
+                            style="border: 2px solid #ddd; margin: 15px 0; padding: 20px; border-radius: 8px; transition: border-color 0.3s;">
+                            <h6 style="margin: 0 0 15px 0; color: #2b68a4; display: flex; align-items: center;"><b>Cesar
+                                    Cancino - Guitar</b> <span
+                                    style="margin-left: 10px; font-size: 12px; background: #fff3e0; color: #ff9800; padding: 4px 8px; border-radius: 12px;">2
+                                    available</span></h6>
+                            <div class="timeslot-grid" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                                <div class="timeslot available" data-instructor-id="instructor-2" data-day="tuesday"
+                                    data-time="13:30" data-length="30"
+                                    style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                    <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Tuesday</div>
+                                    <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">1:30 PM</div>
+                                    <div style="font-size: 12px; color: #666;">30min</div>
+                                </div>
+                                <div class="timeslot limited" data-instructor-id="instructor-2" data-day="wednesday"
+                                    data-time="16:00" data-length="45"
+                                    style="border: 2px solid #ff9800; background: #fff3e0; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                    <div style="font-weight: bold; color: #ef6c00; font-size: 14px;">Wednesday</div>
+                                    <div style="font-weight: bold; color: #ef6c00; font-size: 16px;">4:00 PM</div>
+                                    <div style="font-size: 12px; color: #666;">45min</div>
+                                    <div style="font-size: 10px; color: #ff9800; margin-top: 2px;">Last slot</div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Selected Lesson Display - Fixed to bottom -->
-                <div id="admin-selected-lesson-display"
-                    style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; padding: 20px; background: #e3f2fd; border-top: 3px solid #2196f3; box-shadow: 0 -4px 12px rgba(0,0,0,0.15); display: none; pointer-events: none;">
-                    <div style="max-width: 1200px; margin: 0 auto; pointer-events: auto;">
-                        <h6 style="margin: 0 0 10px 0; color: #1976d2;"><b>Selected Lesson</b></h6>
-                        <div id="admin-selected-lesson-details" style="font-size: 16px; color: #333; margin-bottom: 15px;"></div>
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <button id="parent-confirm-registration-btn" class="btn waves-effect waves-light" 
+                    <!-- Selected Lesson Display - Fixed to bottom -->
+                    <div id="admin-selected-lesson-display"
+                        style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; padding: 20px; background: #e3f2fd; border-top: 3px solid #2196f3; box-shadow: 0 -4px 12px rgba(0,0,0,0.15); display: none; pointer-events: none;">
+                        <div style="max-width: 1200px; margin: 0 auto; pointer-events: auto;">
+                            <h6 style="margin: 0 0 10px 0; color: #1976d2;"><b>Selected Lesson</b></h6>
+                            <div id="admin-selected-lesson-details"
+                                style="font-size: 16px; color: #333; margin-bottom: 15px;"></div>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button id="parent-confirm-registration-btn" class="btn waves-effect waves-light"
                                     style="background-color: #2b68a4;">
-                                <i class="material-icons left">check</i>Create Registration
-                            </button>
-                            <button id="parent-clear-selection-btn" class="btn-flat waves-effect" style="color: #666;">
-                                Clear Selection
-                            </button>
+                                    <i class="material-icons left">check</i>Create Registration
+                                </button>
+                                <button id="parent-clear-selection-btn" class="btn-flat waves-effect"
+                                    style="color: #666;">
+                                    Clear Selection
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
                 </div> <!-- End of parent-private-registration-container -->
 
                 <!-- Group Registration Container (hidden by default) -->
                 <div id="parent-group-registration-container" style="display: none;">
-                    <div class="group-registration-section" style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+                    <div class="group-registration-section"
+                        style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
                         <h6 style="margin: 0 0 15px 0; color: #2b68a4;"><b>Select Group Class</b></h6>
-                        
+
                         <div class="input-field">
                             <select id="parent-class-select">
                                 <!-- Classes will be populated programmatically -->
@@ -933,9 +967,8 @@
 
                         <!-- Create Button -->
                         <div class="center-align" style="margin-top: 20px;">
-                            <button class="btn waves-effect waves-light" type="button" 
-                                    id="parent-create-group-registration-btn"
-                                    style="background-color: #2b68a4;">
+                            <button class="btn waves-effect waves-light" type="button"
+                                id="parent-create-group-registration-btn" style="background-color: #2b68a4;">
                                 <i class="material-icons left">group_add</i>
                                 <b>Register for Class</b>
                             </button>
@@ -950,12 +983,15 @@
             </div>
 
         </div>
-        
+
         <!-- Legal Links Footer - Always Visible, Full Width -->
-        <div class="legal-footer" style="width: 100%; margin: 40px -20px 0 -20px; padding: 30px 20px; border-top: 1px solid #e0e0e0; background-color: #fafafa; text-align: center;">
+        <div class="legal-footer"
+            style="width: 100%; margin: 40px -20px 0 -20px; padding: 30px 20px; border-top: 1px solid #e0e0e0; background-color: #fafafa; text-align: center;">
             <p style="margin: 0; color: #666; font-size: 14px;">
-                <a href="#terms-modal" class="modal-trigger" style="color: #2b68a4; text-decoration: underline; margin-right: 20px;">Terms of Service</a>
-                <a href="#privacy-modal" class="modal-trigger" style="color: #2b68a4; text-decoration: underline;">Privacy Policy</a>
+                <a href="#terms-modal" class="modal-trigger"
+                    style="color: #2b68a4; text-decoration: underline; margin-right: 20px;">Terms of Service</a>
+                <a href="#privacy-modal" class="modal-trigger"
+                    style="color: #2b68a4; text-decoration: underline;">Privacy Policy</a>
             </p>
         </div>
     </div>
@@ -1003,7 +1039,8 @@
             <button id="parent-confirmation-cancel" class="btn-flat waves-effect" style="margin-right: 10px;">
                 Cancel
             </button>
-            <button id="parent-confirmation-confirm" class="btn waves-effect waves-light" style="background-color: #2b68a4;">
+            <button id="parent-confirmation-confirm" class="btn waves-effect waves-light"
+                style="background-color: #2b68a4;">
                 <i class="material-icons left">check</i>
                 Confirm Registration
             </button>
@@ -1020,25 +1057,35 @@
             <div style="max-height: 400px; overflow-y: auto; padding-right: 10px;">
                 <p><strong>Effective Date:</strong> August 5, 2025</p>
                 <p><strong>Last Updated:</strong> August 5, 2025</p>
-                <p>Welcome to Tonic ("the App"), a registration platform designed to support Marin Country Day School's Forte offerings. By accessing or using the App, you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use the App.</p>
-                
+                <p>Welcome to Tonic ("the App"), a registration platform designed to support Marin Country Day School's
+                    Forte offerings. By accessing or using the App, you agree to be bound by these Terms of Service
+                    ("Terms"). If you do not agree to these Terms, do not use the App.</p>
+
                 <h6 style="color: #2b68a4; margin-top: 20px;"><strong>1. Eligibility</strong></h6>
-                <p>To use this App, you must be at least 18 years of age and the legal guardian of a student registering for a program. By using the App, you confirm that all information provided is accurate and complete.</p>
-                
+                <p>To use this App, you must be at least 18 years of age and the legal guardian of a student registering
+                    for a program. By using the App, you confirm that all information provided is accurate and complete.
+                </p>
+
                 <h6 style="color: #2b68a4; margin-top: 20px;"><strong>2. Permitted Use</strong></h6>
-                <p>The App is intended solely for the purpose of registering for and managing participation in after school programs offered by Marin Country Day School.</p>
+                <p>The App is intended solely for the purpose of registering for and managing participation in after
+                    school programs offered by Marin Country Day School.</p>
                 <p>You agree not to:</p>
                 <ul style="margin-left: 20px;">
                     <li>Use the App for any commercial, promotional, or unauthorized purposes.</li>
-                    <li>Access, copy, or distribute information from the App for use outside of official program-related purposes.</li>
+                    <li>Access, copy, or distribute information from the App for use outside of official program-related
+                        purposes.</li>
                     <li>Attempt to gain unauthorized access to the App or its systems.</li>
                     <li>Impersonate any person or entity, or misrepresent your affiliation with one.</li>
                 </ul>
-                
+
                 <h6 style="color: #2b68a4; margin-top: 20px;"><strong>3. Use of Information</strong></h6>
-                <p>You may access personal and schedule-related information only for your own household and only in connection with participation in the after school program. You may not use, share, copy, or repurpose any contact information, schedules, or participant details for any purpose outside the scope of program registration, implementation, and participation.</p>
-                <p>Unauthorized use of information may result in removal from the platform, program ineligibility, and potential legal consequences.</p>
-                
+                <p>You may access personal and schedule-related information only for your own household and only in
+                    connection with participation in the after school program. You may not use, share, copy, or
+                    repurpose any contact information, schedules, or participant details for any purpose outside the
+                    scope of program registration, implementation, and participation.</p>
+                <p>Unauthorized use of information may result in removal from the platform, program ineligibility, and
+                    potential legal consequences.</p>
+
                 <h6 style="color: #2b68a4; margin-top: 20px;"><strong>4. Data Collection and Privacy</strong></h6>
                 <p>We collect and store information such as:</p>
                 <ul style="margin-left: 20px;">
@@ -1047,24 +1094,33 @@
                     <li>Emergency contact and medical information</li>
                     <li>Program selections and schedules</li>
                 </ul>
-                <p>This data is used solely for internal administration of the program and is governed by our Privacy Policy. We take reasonable measures to protect your information through secure data handling and encryption protocols.</p>
-                
+                <p>This data is used solely for internal administration of the program and is governed by our Privacy
+                    Policy. We take reasonable measures to protect your information through secure data handling and
+                    encryption protocols.</p>
+
                 <h6 style="color: #2b68a4; margin-top: 20px;"><strong>5. Account Security</strong></h6>
-                <p>You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. Please notify the Forte Director immediately of any unauthorized use.</p>
-                
+                <p>You are responsible for maintaining the confidentiality of your account credentials and for all
+                    activities that occur under your account. Please notify the Forte Director immediately of any
+                    unauthorized use.</p>
+
                 <h6 style="color: #2b68a4; margin-top: 20px;"><strong>6. Availability and Support</strong></h6>
-                <p>We strive to keep the App available and functioning correctly. However, we cannot guarantee uninterrupted access and may make updates or perform maintenance from time to time.</p>
+                <p>We strive to keep the App available and functioning correctly. However, we cannot guarantee
+                    uninterrupted access and may make updates or perform maintenance from time to time.</p>
                 <p>For technical support, contact the Forte Director.</p>
-                
+
                 <h6 style="color: #2b68a4; margin-top: 20px;"><strong>7. Modifications</strong></h6>
-                <p>We reserve the right to modify these Terms at any time. Updated versions will be posted in the App and become effective upon posting. Continued use of the App constitutes your acceptance of the revised Terms.</p>
-                
+                <p>We reserve the right to modify these Terms at any time. Updated versions will be posted in the App
+                    and become effective upon posting. Continued use of the App constitutes your acceptance of the
+                    revised Terms.</p>
+
                 <h6 style="color: #2b68a4; margin-top: 20px;"><strong>8. Termination</strong></h6>
-                <p>We may suspend or terminate your access to the App at any time for violations of these Terms or at the request of Marin Country Day School.</p>
-                
+                <p>We may suspend or terminate your access to the App at any time for violations of these Terms or at
+                    the request of Marin Country Day School.</p>
+
                 <h6 style="color: #2b68a4; margin-top: 20px;"><strong>9. Governing Law</strong></h6>
-                <p>These Terms are governed by the laws of the State of California, without regard to its conflict of laws principles.</p>
-                
+                <p>These Terms are governed by the laws of the State of California, without regard to its conflict of
+                    laws principles.</p>
+
                 <h6 style="color: #2b68a4; margin-top: 20px;"><strong>10. Contact</strong></h6>
                 <p>For questions about these Terms, contact:</p>
                 <ul style="margin-left: 20px;">
@@ -1083,94 +1139,108 @@
 
     <!-- Privacy Policy Modal -->
     <div id="privacy-modal" class="modal">
-                <div class="modal-content">
-                        <h4 style="color: #2b68a4; margin-bottom: 20px;">
-                                <i class="material-icons" style="vertical-align: middle;">privacy_tip</i>
-                                Privacy Policy
-                        </h4>
-                        <div style="max-height: 400px; overflow-y: auto; padding-right: 10px;">
-                                <h5 style="margin-top:0;">Privacy Policy for Tonic Music Program Registration System</h5>
-                                <p><strong>Effective Date:</strong> August 4, 2025<br><strong>Last Updated:</strong> August 4, 2025</p>
-                                <h6 style="color: #2b68a4; margin-top: 20px;">1. Introduction</h6>
-                                <p>This Privacy Policy describes how the Tonic Music Program Registration System ("Tonic," "we," "us," or "our") collects, uses, and protects information when you use our student registration automation system for after-school lessons and programs.</p>
-                                <h6 style="color: #2b68a4; margin-top: 20px;">2. Information We Collect</h6>
-                                <ul>
-                                    <li><strong>Student Information:</strong> Names, IDs, grade levels, contact info, enrollment, attendance, instrument/class selections</li>
-                                    <li><strong>Parent/Guardian Information:</strong> Names, contact info, emails, emergency contacts, billing/payment info</li>
-                                    <li><strong>Instructor Information:</strong> Names, contact info, schedules, qualifications</li>
-                                    <li><strong>Technical Information:</strong> Login credentials, usage logs, IP/browser info, session data</li>
-                                </ul>
-                                <h6 style="color: #2b68a4; margin-top: 20px;">3. How We Use Information</h6>
-                                <ul>
-                                    <li><strong>Registration Management:</strong> Process/manage enrollments</li>
-                                    <li><strong>Communication:</strong> Send updates, schedules, notifications</li>
-                                    <li><strong>Scheduling:</strong> Coordinate lessons, instructors, rooms</li>
-                                    <li><strong>Attendance Tracking:</strong> Monitor participation/progress</li>
-                                    <li><strong>Administrative Operations:</strong> Maintain records</li>
-                                    <li><strong>System Improvement:</strong> Analyze usage</li>
-                                    <li><strong>Compliance:</strong> Meet legal/educational requirements</li>
-                                    <li><strong>Safety:</strong> Ensure student safety/supervision</li>
-                                </ul>
-                                <h6 style="color: #2b68a4; margin-top: 20px;">4. Information Sharing and Disclosure</h6>
-                                <ul>
-                                    <li><strong>Limited Sharing:</strong> Only with authorized staff, parents/guardians, students</li>
-                                    <li><strong>No Third-Party Sales:</strong> No selling/renting/trading info</li>
-                                    <li><strong>Required Disclosures:</strong> Legal, emergency, regulatory</li>
-                                </ul>
-                                <h6 style="color: #2b68a4; margin-top: 20px;">5. Data Storage and Security</h6>
-                                <ul>
-                                    <li><strong>Storage Location:</strong> Secure Google Sheets, cloud infrastructure, backups</li>
-                                    <li><strong>Security Measures:</strong> Authentication, encryption, access controls, updates</li>
-                                    <li><strong>Data Retention:</strong> Maintained for program duration, archived/deleted per policy</li>
-                                </ul>
-                                <h6 style="color: #2b68a4; margin-top: 20px;">6. User Rights and Choices</h6>
-                                <ul>
-                                    <li><strong>Access Rights:</strong> Request/review/correct info</li>
-                                    <li><strong>Communication Preferences:</strong> Manage email, opt-out, receive notifications</li>
-                                    <li><strong>Data Portability:</strong> Request portable data</li>
-                                </ul>
-                                <h6 style="color: #2b68a4; margin-top: 20px;">7. Children's Privacy (COPPA Compliance)</h6>
-                                <ul>
-                                    <li><strong>Parental Consent:</strong> Required for under 13, review/delete info</li>
-                                    <li><strong>Limited Collection:</strong> Only necessary info, no profiling, age-appropriate protections</li>
-                                </ul>
-                                <h6 style="color: #2b68a4; margin-top: 20px;">8. Cookies and Tracking</h6>
-                                <ul>
-                                    <li><strong>Essential Cookies:</strong> Session/authentication/security only</li>
-                                    <li><strong>Analytics:</strong> Basic usage analytics, no personal ID, option to disable</li>
-                                </ul>
-                                <h6 style="color: #2b68a4; margin-top: 20px;">9. Data Breach Response</h6>
-                                <ul>
-                                    <li><strong>Incident Response:</strong> Assess/contain, notify within 72 hours, coordinate with authorities</li>
-                                    <li><strong>Prevention Measures:</strong> Audits, staff training, monitoring</li>
-                                </ul>
-                                <h6 style="color: #2b68a4; margin-top: 20px;">10. International Data Transfers</h6>
-                                <p>Data processing occurs within secure, compliant cloud infrastructure. International transfers comply with privacy laws.</p>
-                                <h6 style="color: #2b68a4; margin-top: 20px;">11. Policy Updates</h6>
-                                <ul>
-                                    <li><strong>Notification:</strong> Users notified of changes, posted updates, continued use = acceptance</li>
-                                    <li><strong>Review Schedule:</strong> Reviewed annually, updated as needed</li>
-                                </ul>
-                                <h6 style="color: #2b68a4; margin-top: 20px;">12. Contact Information</h6>
-                                <ul>
-                                    <li><strong>Privacy Questions:</strong> Contact System Administrator<br>Email: [Contact Email]<br>Phone: [Contact Phone]<br>Address: [Institution Address]</li>
-                                    <li><strong>Data Protection Requests:</strong> Submit requests to admin, allow 30 days for processing</li>
-                                </ul>
-                                <h6 style="color: #2b68a4; margin-top: 20px;">13. Legal Framework</h6>
-                                <ul>
-                                    <li>FERPA, COPPA, state/local regulations, institutional policies</li>
-                                </ul>
-                                <h6 style="color: #2b68a4; margin-top: 20px;">14. Definitions</h6>
-                                <ul>
-                                    <li><strong>Personal Information:</strong> Info that identifies an individual</li>
-                                    <li><strong>Operator:</strong> Authorized system admin</li>
-                                    <li><strong>Student Record:</strong> Educational info related to participation</li>
-                                    <li><strong>System:</strong> Tonic Music Program Registration System</li>
-                                </ul>
-                                <hr>
-                                <p style="font-size:13px; color:#888;">Note: This privacy policy is specific to the Tonic Music Program Registration System. For institutional policies, contact your school or organization directly.<br><br>Document Version: 1.0<br>Review Date: August 4, 2026</p>
-                        </div>
-                </div>
+        <div class="modal-content">
+            <h4 style="color: #2b68a4; margin-bottom: 20px;">
+                <i class="material-icons" style="vertical-align: middle;">privacy_tip</i>
+                Privacy Policy
+            </h4>
+            <div style="max-height: 400px; overflow-y: auto; padding-right: 10px;">
+                <h5 style="margin-top:0;">Privacy Policy for Tonic Music Program Registration System</h5>
+                <p><strong>Effective Date:</strong> August 4, 2025<br><strong>Last Updated:</strong> August 4, 2025</p>
+                <h6 style="color: #2b68a4; margin-top: 20px;">1. Introduction</h6>
+                <p>This Privacy Policy describes how the Tonic Music Program Registration System ("Tonic," "we," "us,"
+                    or "our") collects, uses, and protects information when you use our student registration automation
+                    system for after-school lessons and programs.</p>
+                <h6 style="color: #2b68a4; margin-top: 20px;">2. Information We Collect</h6>
+                <ul>
+                    <li><strong>Student Information:</strong> Names, IDs, grade levels, contact info, enrollment,
+                        attendance, instrument/class selections</li>
+                    <li><strong>Parent/Guardian Information:</strong> Names, contact info, emails, emergency contacts,
+                        billing/payment info</li>
+                    <li><strong>Instructor Information:</strong> Names, contact info, schedules, qualifications</li>
+                    <li><strong>Technical Information:</strong> Login credentials, usage logs, IP/browser info, session
+                        data</li>
+                </ul>
+                <h6 style="color: #2b68a4; margin-top: 20px;">3. How We Use Information</h6>
+                <ul>
+                    <li><strong>Registration Management:</strong> Process/manage enrollments</li>
+                    <li><strong>Communication:</strong> Send updates, schedules, notifications</li>
+                    <li><strong>Scheduling:</strong> Coordinate lessons, instructors, rooms</li>
+                    <li><strong>Attendance Tracking:</strong> Monitor participation/progress</li>
+                    <li><strong>Administrative Operations:</strong> Maintain records</li>
+                    <li><strong>System Improvement:</strong> Analyze usage</li>
+                    <li><strong>Compliance:</strong> Meet legal/educational requirements</li>
+                    <li><strong>Safety:</strong> Ensure student safety/supervision</li>
+                </ul>
+                <h6 style="color: #2b68a4; margin-top: 20px;">4. Information Sharing and Disclosure</h6>
+                <ul>
+                    <li><strong>Limited Sharing:</strong> Only with authorized staff, parents/guardians, students</li>
+                    <li><strong>No Third-Party Sales:</strong> No selling/renting/trading info</li>
+                    <li><strong>Required Disclosures:</strong> Legal, emergency, regulatory</li>
+                </ul>
+                <h6 style="color: #2b68a4; margin-top: 20px;">5. Data Storage and Security</h6>
+                <ul>
+                    <li><strong>Storage Location:</strong> Secure Google Sheets, cloud infrastructure, backups</li>
+                    <li><strong>Security Measures:</strong> Authentication, encryption, access controls, updates</li>
+                    <li><strong>Data Retention:</strong> Maintained for program duration, archived/deleted per policy
+                    </li>
+                </ul>
+                <h6 style="color: #2b68a4; margin-top: 20px;">6. User Rights and Choices</h6>
+                <ul>
+                    <li><strong>Access Rights:</strong> Request/review/correct info</li>
+                    <li><strong>Communication Preferences:</strong> Manage email, opt-out, receive notifications</li>
+                    <li><strong>Data Portability:</strong> Request portable data</li>
+                </ul>
+                <h6 style="color: #2b68a4; margin-top: 20px;">7. Children's Privacy (COPPA Compliance)</h6>
+                <ul>
+                    <li><strong>Parental Consent:</strong> Required for under 13, review/delete info</li>
+                    <li><strong>Limited Collection:</strong> Only necessary info, no profiling, age-appropriate
+                        protections</li>
+                </ul>
+                <h6 style="color: #2b68a4; margin-top: 20px;">8. Cookies and Tracking</h6>
+                <ul>
+                    <li><strong>Essential Cookies:</strong> Session/authentication/security only</li>
+                    <li><strong>Analytics:</strong> Basic usage analytics, no personal ID, option to disable</li>
+                </ul>
+                <h6 style="color: #2b68a4; margin-top: 20px;">9. Data Breach Response</h6>
+                <ul>
+                    <li><strong>Incident Response:</strong> Assess/contain, notify within 72 hours, coordinate with
+                        authorities</li>
+                    <li><strong>Prevention Measures:</strong> Audits, staff training, monitoring</li>
+                </ul>
+                <h6 style="color: #2b68a4; margin-top: 20px;">10. International Data Transfers</h6>
+                <p>Data processing occurs within secure, compliant cloud infrastructure. International transfers comply
+                    with privacy laws.</p>
+                <h6 style="color: #2b68a4; margin-top: 20px;">11. Policy Updates</h6>
+                <ul>
+                    <li><strong>Notification:</strong> Users notified of changes, posted updates, continued use =
+                        acceptance</li>
+                    <li><strong>Review Schedule:</strong> Reviewed annually, updated as needed</li>
+                </ul>
+                <h6 style="color: #2b68a4; margin-top: 20px;">12. Contact Information</h6>
+                <ul>
+                    <li><strong>Privacy Questions:</strong> Contact System Administrator<br>Email: [Contact
+                        Email]<br>Phone: [Contact Phone]<br>Address: [Institution Address]</li>
+                    <li><strong>Data Protection Requests:</strong> Submit requests to admin, allow 30 days for
+                        processing</li>
+                </ul>
+                <h6 style="color: #2b68a4; margin-top: 20px;">13. Legal Framework</h6>
+                <ul>
+                    <li>FERPA, COPPA, state/local regulations, institutional policies</li>
+                </ul>
+                <h6 style="color: #2b68a4; margin-top: 20px;">14. Definitions</h6>
+                <ul>
+                    <li><strong>Personal Information:</strong> Info that identifies an individual</li>
+                    <li><strong>Operator:</strong> Authorized system admin</li>
+                    <li><strong>Student Record:</strong> Educational info related to participation</li>
+                    <li><strong>System:</strong> Tonic Music Program Registration System</li>
+                </ul>
+                <hr>
+                <p style="font-size:13px; color:#888;">Note: This privacy policy is specific to the Tonic Music Program
+                    Registration System. For institutional policies, contact your school or organization
+                    directly.<br><br>Document Version: 1.0<br>Review Date: August 4, 2026</p>
+            </div>
+        </div>
         <div class="modal-footer">
             <a href="#!" class="modal-close waves-effect waves-light btn" style="background-color: #2b68a4;">
                 <i class="material-icons left">check</i>I Understand
