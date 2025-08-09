@@ -19,7 +19,7 @@ export class UserController {
    */
   static async getOperatorUser(req, res) {
     try {
-      console.log('Temporarily bypassing operator user retrieval');
+      console.log('getOperatorUser - Temporarily bypassing operator user retrieval');
       return res.json(null);
 
       // Get operator email from environment

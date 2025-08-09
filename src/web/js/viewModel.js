@@ -91,8 +91,8 @@ export class ViewModel {
     //   console.log('Operator user has no seeded users - page will do nothing');
     // }
 
-    // Initialize login modal regardless
-    this.#initLoginModal();
+    // Initialize all modals
+    this.#initializeAllModals();
 
     // Check for stored access code and update login button
     this.#updateLoginButtonState();
@@ -104,11 +104,21 @@ export class ViewModel {
       return;
     }
 
-    // open modal
-    this.loginModal.open();
-
     this.#setPageLoading(false);
 
+    // check if the user has ever arrived at the site before
+    const hasAcceptedTermsOfService = window.UserSession.hasAcceptedTermsOfService();
+    if (!hasAcceptedTermsOfService) {
+      // show terms of service
+      this.#showTermsOfService(() => {
+        // After terms are accepted, open the login modal
+        this.loginModal.open();
+      });
+      return;
+    }
+
+    // open modal
+    this.loginModal.open();
   }
 
   async loadUserData(user, roleToClick = null) {
@@ -138,7 +148,7 @@ export class ViewModel {
 
     const loadingEndTime = performance.now();
     console.log(`📊 Data loading completed in ${(loadingEndTime - loadingStartTime).toFixed(2)}ms`);
-    
+
     // Log data counts
     console.log('📊 Data summary:');
     console.log(`  - Admins: ${admins.length}`);
@@ -167,10 +177,10 @@ export class ViewModel {
     this.admins = admins;
     this.instructors = instructors;
     this.students = students;
-    
+
     console.log('🔗 Starting registration matching process...');
     const matchingStartTime = performance.now();
-    
+
     // Track matching statistics
     let studentsMatched = 0;
     let studentsNotMatched = 0;
@@ -178,7 +188,7 @@ export class ViewModel {
     let instructorsNotMatched = 0;
     const unmatchedStudentIds = [];
     const unmatchedInstructorIds = [];
-    
+
     this.registrations = registrations.map((registration, index) => {
       if (index < 5) {
         console.log(`🔍 Processing registration ${index + 1}/${registrations.length}:`, {
@@ -189,7 +199,7 @@ export class ViewModel {
           startTime: registration.startTime
         });
       }
-      
+
       // ensure student is populated
       if (!registration.student) {
         registration.student = this.students.find(x => {
@@ -203,7 +213,7 @@ export class ViewModel {
           studentsNotMatched++;
           const regStudentId = registration.studentId?.value || registration.studentId;
           unmatchedStudentIds.push(regStudentId);
-          
+
           if (index < 5) {
             console.warn(`❌ Student not found for registration ${registration.id} with studentId "${regStudentId}" (${typeof regStudentId})`);
             console.warn(`   Available student IDs:`, students.map(s => `"${s.id?.value || s.id}" (${typeof (s.id?.value || s.id)})`).slice(0, 5));
@@ -215,7 +225,7 @@ export class ViewModel {
           }
         }
       }
-      
+
       // ensure instructor is populated
       if (!registration.instructor) {
         registration.instructor = this.instructors.find(x => {
@@ -223,13 +233,13 @@ export class ViewModel {
           const registrationInstructorId = registration.instructorId?.value || registration.instructorId;
           return instructorId === registrationInstructorId;
         });
-        
+
         // Log detailed matching info for instructors
         if (!registration.instructor) {
           instructorsNotMatched++;
           const regInstructorId = registration.instructorId?.value || registration.instructorId;
           unmatchedInstructorIds.push(regInstructorId);
-          
+
           if (index < 5) {
             console.warn(`❌ Instructor not found for registration ${registration.id} with instructorId "${regInstructorId}" (${typeof regInstructorId})`);
             console.warn(`   Available instructor IDs:`, instructors.map(i => `"${i.id?.value || i.id}" (${typeof (i.id?.value || i.id)})`));
@@ -243,23 +253,23 @@ export class ViewModel {
       }
       return registration;
     });
-    
+
     const matchingEndTime = performance.now();
     console.log(`🔗 Registration matching completed in ${(matchingEndTime - matchingStartTime).toFixed(2)}ms`);
-    
+
     // Log matching statistics
     console.log('📈 Matching statistics:');
     console.log(`  Students: ${studentsMatched} matched, ${studentsNotMatched} not matched`);
     console.log(`  Instructors: ${instructorsMatched} matched, ${instructorsNotMatched} not matched`);
-    
+
     if (unmatchedStudentIds.length > 0) {
       console.log(`⚠️ Unmatched student IDs (first 10):`, unmatchedStudentIds.slice(0, 10));
     }
-    
+
     if (unmatchedInstructorIds.length > 0) {
       console.log(`⚠️ Unmatched instructor IDs (first 10):`, unmatchedInstructorIds.slice(0, 10));
     }
-    
+
     // Log registration counts per student
     const studentRegistrationCounts = {};
     this.registrations.forEach(reg => {
@@ -268,18 +278,18 @@ export class ViewModel {
         studentRegistrationCounts[studentId] = (studentRegistrationCounts[studentId] || 0) + 1;
       }
     });
-    
+
     console.log('📊 Registration counts per student (top 10):');
     const sortedStudentCounts = Object.entries(studentRegistrationCounts)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 10);
-    
+
     sortedStudentCounts.forEach(([studentId, count]) => {
       const student = this.students.find(s => (s.id?.value || s.id) === studentId);
       const studentName = student ? `${student.firstName} ${student.lastName}` : 'Unknown';
       console.log(`  ${studentName}: ${count} registrations`);
     });
-    
+
     // Log registration counts per instructor
     const instructorRegistrationCounts = {};
     this.registrations.forEach(reg => {
@@ -288,16 +298,16 @@ export class ViewModel {
         instructorRegistrationCounts[instructorId] = (instructorRegistrationCounts[instructorId] || 0) + 1;
       }
     });
-    
+
     console.log('📊 Registration counts per instructor:');
     Object.entries(instructorRegistrationCounts)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .forEach(([instructorId, count]) => {
         const instructor = this.instructors.find(i => (i.id?.value || i.id) === instructorId);
         const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : 'Unknown';
         console.log(`  ${instructorName}: ${count} registrations`);
       });
-    
+
     this.classes = classes;
     this.rooms = rooms;
 
@@ -341,7 +351,7 @@ export class ViewModel {
         console.warn(`❌ Nav link not found for section: ${roleToClick}`);
       }
     }
-    
+
     // Reset UI state after data load to prevent scroll lock issues
     setTimeout(() => {
       this.#resetUIState();
@@ -398,7 +408,7 @@ export class ViewModel {
    */
   #initInstructorContent() {
     console.log('👩‍🏫 Initializing instructor content...');
-    
+
     // Get the current instructor's ID
     const currentInstructorId = this.currentUser.instructor?.id;
 
@@ -413,19 +423,19 @@ export class ViewModel {
     // Filter registrations to only show those for the current instructor
     console.log('🔍 Filtering registrations for instructor...');
     const filteringStartTime = performance.now();
-    
+
     const instructorRegistrations = this.registrations.filter(registration => {
       const registrationInstructorId = registration.instructorId?.value || registration.instructorId;
       const isMatch = registrationInstructorId === currentInstructorId;
-      
+
       return isMatch;
     });
-    
+
     const filteringEndTime = performance.now();
     console.log(`🔍 Instructor filtering completed in ${(filteringEndTime - filteringStartTime).toFixed(2)}ms`);
 
     console.log(`📊 Instructor ${currentInstructorId} has ${instructorRegistrations.length} registrations out of ${this.registrations.length} total`);
-    
+
     // Log some sample instructor registrations
     if (instructorRegistrations.length > 0) {
       console.log('📝 Sample instructor registrations:');
@@ -536,12 +546,12 @@ export class ViewModel {
   #initParentContent() {
     console.log('🔧 Initializing parent content...');
     console.log('🔍 Current user structure:', this.currentUser);
-    
+
     // Clear parent registration form selection when content is refreshed
     if (this.parentRegistrationForm) {
       this.parentRegistrationForm.clearSelection();
     }
-    
+
     // weekly schedule
     // Get the current parent's ID
     const currentParentId = this.currentUser.parent?.id;
@@ -556,7 +566,7 @@ export class ViewModel {
     console.log('  - currentParentId:', currentParentId);
     console.log('  - currentParentId type:', typeof currentParentId);
     console.log('  - Total registrations:', this.registrations.length);
-    
+
     // Log the first few registrations and their student data
     console.log('📋 Sample registrations and student data:');
     this.registrations.slice(0, 5).forEach((registration, index) => {
@@ -574,14 +584,14 @@ export class ViewModel {
         } : 'No student attached'
       });
     });
-    
+
     // Track parent matching statistics
     let parentMatchingStartTime = performance.now();
     let exactMatches = 0;
     let stringMatches = 0;
     let noMatches = 0;
     let missingStudents = 0;
-    
+
     const parentChildRegistrations = this.registrations.filter(registration => {
       const student = registration.student;
       if (!student) {
@@ -599,21 +609,21 @@ export class ViewModel {
 
       // Check if the current parent is either parent1 or parent2 of the student
       const exactMatch = student.parent1Id === currentParentId || student.parent2Id === currentParentId;
-      
+
       // Also try string comparison in case of type mismatches
       const stringMatch = !exactMatch && (
-        String(student.parent1Id) === String(currentParentId) || 
+        String(student.parent1Id) === String(currentParentId) ||
         String(student.parent2Id) === String(currentParentId)
       );
-      
+
       const isMatch = exactMatch || stringMatch;
-      
+
       if (noMatches + exactMatches + stringMatches < 10) { // Log first 10 for brevity
         console.log(`    - Exact match result: ${exactMatch}`);
         console.log(`    - String match result: ${stringMatch}`);
         console.log(`    - Final match: ${isMatch}`);
       }
-      
+
       if (exactMatch) {
         exactMatches++;
       } else if (stringMatch) {
@@ -621,12 +631,12 @@ export class ViewModel {
       } else {
         noMatches++;
       }
-      
+
       return isMatch;
     });
 
     let parentMatchingEndTime = performance.now();
-    
+
     console.log(`🔍 Parent filtering completed in ${(parentMatchingEndTime - parentMatchingStartTime).toFixed(2)}ms`);
     console.log('📊 Parent matching statistics:');
     console.log(`  - Exact matches: ${exactMatches}`);
@@ -696,16 +706,16 @@ export class ViewModel {
         console.log(`📅 Processing schedule for ${student.firstName} ${student.lastName}:`);
         const studentRegistrations = parentChildRegistrations.filter(x => x.studentId.value === student.id.value);
         console.log(`  - Found ${studentRegistrations.length} registrations for this student`);
-        
+
         if (studentRegistrations.length > 0) {
           console.log('  - Sample registrations before sorting:');
           studentRegistrations.slice(0, 3).forEach((reg, index) => {
             console.log(`    ${index + 1}. ${reg.day} ${reg.startTime} - ${reg.instrument || reg.classTitle}`);
           });
         }
-        
+
         const sortedStudentRegistrations = this.#sortRegistrations(studentRegistrations);
-        
+
         if (sortedStudentRegistrations.length > 0) {
           console.log('  - Sample registrations after sorting:');
           sortedStudentRegistrations.slice(0, 3).forEach((reg, index) => {
@@ -1203,10 +1213,10 @@ export class ViewModel {
    */
   #buildWeeklySchedule(tableId, enrollments) {
     console.log(`🏗️ Building weekly schedule table "${tableId}" with ${enrollments.length} enrollments`);
-    
+
     let matchingSuccesses = 0;
     let matchingFailures = 0;
-    
+
     return new Table(
       tableId,
       ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument'],
@@ -1231,14 +1241,14 @@ export class ViewModel {
           const enrollmentId = enrollment.id?.value || enrollment.id;
           const enrollmentInstructorId = enrollment.instructorId?.value || enrollment.instructorId;
           const enrollmentStudentId = enrollment.studentId?.value || enrollment.studentId;
-          
+
           console.warn(`❌ Instructor or student not found for enrollment: ${enrollmentId}`);
           console.warn(`   Looking for instructorId: "${enrollmentInstructorId}" (${typeof enrollmentInstructorId}), studentId: "${enrollmentStudentId}" (${typeof enrollmentStudentId})`);
-          
+
           if (!instructor) {
             console.warn(`   ❌ Instructor not found. Available instructor IDs:`, this.instructors.map(i => `"${i.id?.value || i.id}" (${typeof (i.id?.value || i.id)})`).slice(0, 10));
           }
-          
+
           if (!student) {
             console.warn(`   ❌ Student not found. Available student IDs:`, this.students.map(s => `"${s.id?.value || s.id}" (${typeof (s.id?.value || s.id)})`).slice(0, 10));
           }
@@ -1248,7 +1258,7 @@ export class ViewModel {
         } else {
           matchingSuccesses++;
         }
-        
+
         return `
                         <td>${enrollment.day}</td>
                         <td>${formatTime(enrollment.startTime) || 'N/A'}</td>
@@ -1272,7 +1282,7 @@ export class ViewModel {
         }
       }
     );
-    
+
     console.log(`✅ Weekly schedule table "${tableId}" built: ${matchingSuccesses} successful matches, ${matchingFailures} failures`);
   }
   /**
@@ -1295,7 +1305,7 @@ export class ViewModel {
           ? employee.roles.join(', ')
           : employee.roles || 'Unknown';
         const email = employee.email || 'No email';
-        
+
         return `
                         <td>${fullName}</td>
                         <td>${roles}</td>
@@ -1519,7 +1529,7 @@ export class ViewModel {
     // Get instruments from either specialties or instruments field
     const instruments = instructor.specialties || instructor.instruments || [];
     const instrumentsText = instruments.length > 0 ? instruments.join(', ') : 'Instructor';
-    
+
     // Format phone number using the formatPhone function
     const rawPhone = instructor.phone || instructor.phoneNumber || '';
     const formattedPhone = (rawPhone && !obscurePhone) ? formatPhone(rawPhone) : '';
@@ -1547,7 +1557,7 @@ export class ViewModel {
     const students = await HttpService.fetchAllPages(ServerFunctions.getStudents, x =>
       Student.fromApiData(x)
     );
-    
+
     const studentsEndTime = performance.now();
     console.log(`👩‍🎓 Fetched ${students.length} students from server in ${(studentsEndTime - studentsStartTime).toFixed(2)}ms`);
 
@@ -1566,22 +1576,22 @@ export class ViewModel {
         parent2IdType: typeof sampleStudent.parent2Id,
         parentEmails: sampleStudent.parentEmails
       });
-      
+
       // Log ID distribution analysis
       const idTypes = {};
       const parent1IdTypes = {};
       const parent2IdTypes = {};
-      
+
       students.forEach(student => {
         const idType = typeof (student.id?.value || student.id);
         const parent1IdType = typeof student.parent1Id;
         const parent2IdType = typeof student.parent2Id;
-        
+
         idTypes[idType] = (idTypes[idType] || 0) + 1;
         parent1IdTypes[parent1IdType] = (parent1IdTypes[parent1IdType] || 0) + 1;
         parent2IdTypes[parent2IdType] = (parent2IdTypes[parent2IdType] || 0) + 1;
       });
-      
+
       console.log('👩‍🎓 Student ID type distribution:', idTypes);
       console.log('👩‍🎓 Parent1 ID type distribution:', parent1IdTypes);
       console.log('👩‍🎓 Parent2 ID type distribution:', parent2IdTypes);
@@ -1612,6 +1622,10 @@ export class ViewModel {
       inDuration: 300,
       outDuration: 200
     });
+
+    // Make available globally for backward compatibility
+    window.loginModal = modalElement;
+    window.loginModalInstance = this.loginModal;
 
     // Get modal elements
     const accessCodeInput = document.getElementById('modal-access-code');
@@ -1666,6 +1680,120 @@ export class ViewModel {
   }
 
   /**
+   * Initialize all application modals (Terms, Privacy, and Login)
+   */
+  #initializeAllModals() {
+    console.log('🔧 Initializing all application modals in ViewModel...');
+
+    // Initialize Terms of Service modal (non-dismissible)
+    this.#initTermsModal();
+    
+    // Initialize Privacy Policy modal (dismissible)
+    this.#initPrivacyModal();
+    
+    // Initialize Login modal (dismissible)
+    this.#initLoginModal();
+
+    console.log('✅ All application modals initialized successfully in ViewModel');
+  }
+
+  /**
+   * Initialize Terms of Service modal with non-dismissible behavior
+   */
+  #initTermsModal() {
+    const termsModal = document.getElementById('terms-modal');
+    if (!termsModal) {
+      console.warn('⚠️ Terms of Service modal element not found');
+      return;
+    }
+
+    // Remove the modal-close class to prevent automatic closing
+    const termsBtn = termsModal.querySelector('.modal-footer .modal-close');
+    if (termsBtn) {
+      termsBtn.classList.remove('modal-close');
+    }
+
+    // Initialize with non-dismissible settings
+    this.termsModal = M.Modal.init(termsModal, {
+      dismissible: false,  // Prevent dismissal by clicking outside or ESC
+      opacity: 0.8,       // Higher opacity to emphasize non-dismissible nature
+      preventScrolling: true,
+      onCloseStart: function() {
+        // Additional safeguard - only allow programmatic closing from our button
+        return false;
+      }
+    });
+
+    // Make available globally
+    window.termsModal = termsModal;
+    window.termsModalInstance = this.termsModal;
+
+    // Add custom click handler for "I Understand" button
+    if (termsBtn) {
+      termsBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Mark terms as accepted
+        window.UserSession.acceptTermsOfService();
+
+        // Manually close the modal
+        this.termsModal.destroy();
+        termsModal.style.display = 'none';
+        document.body.classList.remove('modal-open');
+        // Remove overlay if it exists
+        const overlay = document.querySelector('.modal-overlay');
+        if (overlay) overlay.remove();
+
+        // Execute the callback if it exists
+        if (window.termsOnConfirmationCallback) {
+          window.termsOnConfirmationCallback();
+          window.termsOnConfirmationCallback = null; // Clear after use
+        }
+      });
+    }
+
+    // Prevent all keyboard shortcuts from closing modal
+    termsModal.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+
+    // Prevent clicking outside modal content from closing
+    termsModal.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+
+    console.log('✅ Terms of Service modal initialized (non-dismissible)');
+  }
+
+  /**
+   * Initialize Privacy Policy modal with dismissible behavior
+   */
+  #initPrivacyModal() {
+    const privacyModal = document.getElementById('privacy-modal');
+    if (!privacyModal) {
+      console.warn('⚠️ Privacy Policy modal element not found');
+      return;
+    }
+
+    // Initialize with normal dismissible settings
+    this.privacyModal = M.Modal.init(privacyModal, {
+      dismissible: true,   // Allow normal dismissal behavior
+      opacity: 0.5,       // Standard opacity
+      preventScrolling: true
+    });
+
+    // Make available globally
+    window.privacyModal = privacyModal;
+    window.privacyModalInstance = this.privacyModal;
+
+    console.log('✅ Privacy Policy modal initialized (dismissible)');
+  }
+
+  /**
    * Update login button state based on stored access code
    */
   #updateLoginButtonState() {
@@ -1697,9 +1825,9 @@ export class ViewModel {
   }
 
   /**
-   * Handle login form submission
+   * Handle login form submission (public method for modal event handlers)
    */
-  async #handleLogin() {
+  async handleLogin() {
     const accessCodeInput = document.getElementById('modal-access-code');
     const accessCode = accessCodeInput.value.trim();
 
@@ -1720,7 +1848,7 @@ export class ViewModel {
         // Handle successful login
         this.loginModal.close();
         accessCodeInput.value = ''; // Clear the input
-        
+
         // Reset UI state after modal close to prevent scroll lock
         setTimeout(() => {
           this.#resetUIState();
@@ -1731,6 +1859,51 @@ export class ViewModel {
         accessCodeInput.focus();
       }
     );
+  }
+
+  /**
+   * Handle login form submission (public method for modal event handlers)
+   */
+  async handleLogin() {
+    const accessCodeInput = document.getElementById('modal-access-code');
+    const accessCode = accessCodeInput.value.trim();
+
+    // Validate access code
+    if (accessCode.length < 4 || accessCode.length > 6) {
+      M.toast({
+        html: 'Access code must be 4-6 digits',
+        classes: 'red darken-1',
+        displayLength: 3000
+      });
+      accessCodeInput.focus();
+      return;
+    }
+
+    await this.#attemptLoginWithCode(
+      accessCode,
+      () => {
+        // Handle successful login
+        this.loginModal.close();
+        accessCodeInput.value = ''; // Clear the input
+
+        // Reset UI state after modal close to prevent scroll lock
+        setTimeout(() => {
+          this.#resetUIState();
+        }, 200); // Small delay to let modal close animation complete
+
+      },
+      () => {
+        accessCodeInput.focus();
+      }
+    );
+  }
+
+  /**
+   * Handle login form submission
+   */
+  async #handleLogin() {
+    // Delegate to public method
+    await this.handleLogin();
   }
 
   async #attemptLoginWithCode(accessCode, onSuccessfulLogin = null, onFailedLogin = null) {
@@ -1760,7 +1933,7 @@ export class ViewModel {
         // Clear cached data and reset initialization flags for new user
         console.log('Clearing cached data and resetting initialization flags for new user');
         this.#resetInitializationFlags();
-        
+
         // Clear cached data properties
         this.admins = null;
         this.instructors = null;
@@ -1841,12 +2014,12 @@ export class ViewModel {
     this.adminContentInitialized = false;
     this.instructorContentInitialized = false;
     this.parentContentInitialized = false;
-    
+
     // Clear parent registration form selection when user changes
     if (this.parentRegistrationForm) {
       this.parentRegistrationForm.clearSelection();
     }
-    
+
     // Comprehensive UI cleanup to prevent scroll lock issues
     this.#resetUIState();
   }
@@ -1860,41 +2033,41 @@ export class ViewModel {
       if (this.loginModal && this.loginModal.isOpen) {
         this.loginModal.close();
       }
-      
+
       // Reset scroll position
       window.scrollTo(0, 0);
       document.body.scrollTop = 0;
       document.documentElement.scrollTop = 0;
-      
+
       // Reset container scroll
       const container = document.querySelector('.container');
       if (container) {
         container.scrollTop = 0;
       }
-      
+
       // Reset page content scroll
       const pageContent = document.getElementById('page-content');
       if (pageContent) {
         pageContent.scrollTop = 0;
-        
+
         // Ensure overflow is not locked
         pageContent.style.overflow = '';
         pageContent.style.overflowY = '';
         pageContent.style.height = '';
         pageContent.style.position = '';
       }
-      
+
       // Reset body styles that might cause scroll lock
       document.body.style.overflow = '';
       document.body.style.overflowY = '';
       document.body.style.height = '';
       document.body.style.position = '';
-      
+
       // Reset html styles
       document.documentElement.style.overflow = '';
       document.documentElement.style.overflowY = '';
       document.documentElement.style.height = '';
-      
+
       // Hide any fixed elements that might interfere
       const fixedElements = document.querySelectorAll('[style*="position: fixed"]');
       fixedElements.forEach(element => {
@@ -1902,17 +2075,17 @@ export class ViewModel {
           element.style.display = 'none';
         }
       });
-      
+
       // Remove any modal overlay classes that might be stuck
       document.body.classList.remove('modal-open');
       document.documentElement.classList.remove('modal-open');
-      
+
       // Remove any potential overlay elements
       const overlays = document.querySelectorAll('.modal-overlay');
       overlays.forEach(overlay => overlay.remove());
-      
+
       console.log('✅ UI state reset completed');
-      
+
     } catch (error) {
       console.error('❌ Error resetting UI state:', error);
     }
@@ -2001,6 +2174,24 @@ export class ViewModel {
       }
     } catch (error) {
       console.error('Error showing admin tabs:', error);
+    }
+  }
+
+  /**
+   * Show Terms of Service modal with confirmation callback
+   * @param {Function} onConfirmation - Callback to execute when user accepts terms
+   */
+  #showTermsOfService(onConfirmation) {
+    console.log('Showing Terms of Service modal');
+
+    // Store the confirmation callback globally for the modal to access
+    window.termsOnConfirmationCallback = onConfirmation;
+
+    // Open the Terms of Service modal using ViewModel's instance
+    if (this.termsModal) {
+      this.termsModal.open();
+    } else {
+      console.error('Terms of Service modal not initialized in ViewModel');
     }
   }
 }

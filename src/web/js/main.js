@@ -140,11 +140,35 @@ const UserSession = {
   clearOperatorUser() {
     this.operatorUser = null;
     console.log('Operator user cleared from user session');
+  },
+
+  /**
+   * Check if the user has accepted the Terms of Service
+   * @returns {boolean} True if terms have been accepted
+   */
+  hasAcceptedTermsOfService() {
+    return localStorage.getItem('hasAcceptedTermsOfService') === 'true';
+  },
+
+  /**
+   * Mark that the user has accepted the Terms of Service
+   */
+  acceptTermsOfService() {
+    localStorage.setItem('hasAcceptedTermsOfService', 'true');
+    console.log('Terms of Service acceptance stored');
+  },
+
+  /**
+   * Mark that the user has not accepted the Terms of Service (for testing/reset purposes)
+   */
+  unacceptTermsOfService() {
+    localStorage.removeItem('hasAcceptedTermsOfService');
+    console.log('Terms of Service acceptance cleared');
   }
 };
 
 /**
- * Initialize the application
+ * Initialize application
  */
 async function initializeApplication() {
   try {
@@ -170,7 +194,9 @@ async function initializeApplication() {
       alert('Please authorize the application to access your account.');
     } else {
       alert(
-        `Failed to initialize the application: ${error.message}\n\nPlease refresh the page and try again.`
+        `Failed to initialize the application: ${error.message}
+
+Please refresh the page and try again.`
       );
     }
 
