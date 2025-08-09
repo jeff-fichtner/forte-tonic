@@ -2866,6 +2866,8 @@ export class ParentRegistrationForm {
       if (typeof M !== 'undefined') {
         M.Modal.getInstance(modal).close();
       }
+      // Ensure scrolling is restored
+      this.#restorePageScrolling();
       onConfirm();
     });
     
@@ -2873,6 +2875,8 @@ export class ParentRegistrationForm {
       if (typeof M !== 'undefined') {
         M.Modal.getInstance(modal).close();
       }
+      // Ensure scrolling is restored
+      this.#restorePageScrolling();
       // Do nothing on cancel
     });
     
@@ -2881,11 +2885,30 @@ export class ParentRegistrationForm {
       const modalInstance = M.Modal.init(modal, {
         dismissible: true,
         onCloseEnd: () => {
-          // Clear message when modal closes
+          // Clear message when modal closes and restore scrolling
           messageElement.innerHTML = '';
+          this.#restorePageScrolling();
         }
       });
       modalInstance.open();
+    }
+  }
+
+  /**
+   * Ensure page scrolling is restored after modal operations
+   */
+  #restorePageScrolling() {
+    // Remove any overflow restrictions that might prevent scrolling
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+    
+    // Remove any fixed positioning that might interfere
+    document.body.style.position = '';
+    
+    // Ensure no modal overlay is blocking interactions
+    const modalOverlay = document.querySelector('.modal-overlay');
+    if (modalOverlay && modalOverlay.style.display !== 'none') {
+      modalOverlay.style.display = 'none';
     }
   }
 
