@@ -547,11 +547,6 @@ export class ViewModel {
     console.log('🔧 Initializing parent content...');
     console.log('🔍 Current user structure:', this.currentUser);
 
-    // Clear parent registration form selection when content is refreshed
-    if (this.parentRegistrationForm) {
-      this.parentRegistrationForm.clearSelection();
-    }
-
     // weekly schedule
     // Get the current parent's ID
     const currentParentId = this.currentUser.parent?.id;
@@ -662,6 +657,25 @@ export class ViewModel {
       .filter(student => student && student.id) // Filter out undefined students and students without IDs
       .filter((student, index, self) => self.findIndex(s => s.id === student.id) === index);
 
+    // Get ALL children of this parent (not just those with registrations) for the registration form
+    console.log('🔍 Finding ALL children for parent registration form...');
+    const allParentChildren = this.students.filter(student => {
+      if (!student) return false;
+      
+      const isChild = student.parent1Id === currentParentId || 
+                     student.parent2Id === currentParentId ||
+                     String(student.parent1Id) === String(currentParentId) ||
+                     String(student.parent2Id) === String(currentParentId);
+      
+      if (isChild) {
+        console.log(`  ✅ Found child: ${student.firstName} ${student.lastName} (ID: ${student.id})`);
+      }
+      
+      return isChild;
+    });
+    
+    console.log(`📊 Parent has ${allParentChildren.length} total children, ${studentsWithRegistrations.length} with registrations`);
+
     const parentWeeklyScheduleTables = document.getElementById('parent-weekly-schedule-tables');
 
     // Clear existing content
@@ -732,6 +746,7 @@ export class ViewModel {
 
     // registration
     // Initialize parent registration form with hybrid interface
+    // Use ALL parent's children, not just those with existing registrations
     this.parentRegistrationForm = new ParentRegistrationForm(
       this.instructors,
       this.students,
@@ -746,16 +761,13 @@ export class ViewModel {
         // Refresh parent schedule after registration
         this.#initParentContent();
       },
-      studentsWithRegistrations // Pass parent's children
+      allParentChildren // Pass ALL parent's children, not just those with registrations
     );
 
-    // directory - only show instructors who teach the parent's children
+    // directory - show all instructors for parents, not just those teaching current children
+    // This allows parents without registered children to see all available instructors
     const mappedEmployees = this.adminEmployees().concat(
-      this.instructors
-        .filter(instructor =>
-          parentChildRegistrations.some(registration => registration.instructorId.value === instructor.id)
-        )
-        .map(instructor => this.instructorToEmployee(instructor, true))
+      this.instructors.map(instructor => this.instructorToEmployee(instructor, true))
     );
     // Sort employees to ensure admins appear at the top
     const sortedEmployees = this.#sortEmployeesForDirectory(mappedEmployees);
