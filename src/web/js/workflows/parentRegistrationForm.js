@@ -2112,6 +2112,10 @@ export class ParentRegistrationForm {
     const timeslotGrid = parentContainer.querySelector('.instructor-timeslot-grid');
     if (!timeslotGrid) return;
 
+    // Store current selection before regenerating
+    const currentSelection = this.selectedLesson;
+    console.log('Regenerating slots, preserving selection:', currentSelection);
+
     // Get current filter selections
     const selectedInstructor = parentContainer.querySelector('.instructor-chip.active')?.dataset.value || 'all';
     const selectedDay = parentContainer.querySelector('.day-chip.active')?.dataset.value || 'all';
@@ -2153,6 +2157,44 @@ export class ParentRegistrationForm {
 
     // Attach listeners after generating
     this.#attachTimeSlotListeners();
+
+    // Restore previous selection if it still exists
+    if (currentSelection) {
+      setTimeout(() => {
+        this.#restoreTimeSlotSelection(currentSelection);
+      }, 100);
+    }
+  }
+
+  /**
+   * Restore time slot selection after regeneration
+   */
+  #restoreTimeSlotSelection(selectionData) {
+    const parentContainer = document.getElementById('parent-registration');
+    if (!parentContainer || !selectionData) return;
+
+    const matchingSlot = parentContainer.querySelector(
+      `.timeslot[data-instructor-id="${selectionData.instructorId}"][data-day="${selectionData.day}"][data-time="${selectionData.time}"][data-length="${selectionData.length}"][data-instrument="${selectionData.instrument}"]`
+    );
+
+    if (matchingSlot) {
+      // Restore the selection
+      matchingSlot.classList.add('selected');
+      matchingSlot.style.border = '3px solid #1976d2';
+      matchingSlot.style.background = '#e3f2fd';
+      
+      // Ensure selectedLesson is restored
+      this.selectedLesson = selectionData;
+      
+      // Update display
+      this.#updateSelectionDisplay(matchingSlot);
+      
+      console.log('Time slot selection restored:', selectionData);
+    } else {
+      console.log('Could not restore time slot selection - slot no longer available:', selectionData);
+      // Clear the selection since the slot is no longer available
+      this.selectedLesson = null;
+    }
   }
 
   /**
@@ -2279,9 +2321,23 @@ export class ParentRegistrationForm {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
-    const timeSlots = parentContainer.querySelectorAll('.timeslot.available:not([data-listener-attached])');
+    // Remove existing listeners first to prevent duplicates
+    const existingSlots = parentContainer.querySelectorAll('.timeslot[data-listener-attached]');
+    existingSlots.forEach(slot => {
+      slot.removeAttribute('data-listener-attached');
+      // Clone node to remove all event listeners
+      const newSlot = slot.cloneNode(true);
+      slot.parentNode.replaceChild(newSlot, slot);
+    });
+
+    const timeSlots = parentContainer.querySelectorAll('.timeslot.available');
     timeSlots.forEach(slot => {
-      slot.addEventListener('click', () => {
+      slot.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        console.log('Time slot clicked:', slot.dataset);
+        
         // Remove previous selection and reset styling for all slots
         parentContainer.querySelectorAll('.timeslot').forEach(s => {
           s.classList.remove('selected');
@@ -2303,11 +2359,37 @@ export class ParentRegistrationForm {
         slot.style.border = '3px solid #1976d2';
         slot.style.background = '#e3f2fd';
 
-        // Update selection display
+        // Store the selected lesson data with validation
+        const instructorId = slot.dataset.instructorId;
+        const day = slot.dataset.day;
+        const time = slot.dataset.time;
+        const length = slot.dataset.length;
+        const instrument = slot.dataset.instrument;
+
+        if (!instructorId || !day || !time || !length || !instrument) {
+          console.error('Invalid time slot data:', slot.dataset);
+          M.toast({ html: 'Invalid time slot data. Please try selecting again.' });
+          return;
+        }
+
+        this.selectedLesson = {
+          instructorId: instructorId,
+          day: day,
+          time: time,
+          length: parseInt(length),
+          instrument: instrument
+        };
+
+        console.log('Selected lesson stored:', this.selectedLesson);
+
+        // Update the selection display
         this.#updateSelectionDisplay(slot);
       });
+      
       slot.dataset.listenerAttached = 'true';
     });
+    
+    console.log(`Attached listeners to ${timeSlots.length} time slots`);
   }
 
   /**
@@ -2498,15 +2580,8 @@ export class ParentRegistrationForm {
    * Update the selection display when a time slot is selected
    */
   #updateSelectionDisplay(slot) {
-    // Store the selected lesson data
-    this.selectedLesson = {
-      instructorId: slot.dataset.instructorId,
-      day: slot.dataset.day,
-      time: slot.dataset.time,
-      length: parseInt(slot.dataset.length),
-      instrument: slot.dataset.instrument
-    };
-
+    // Note: selectedLesson is now handled in the click handler with validation
+    
     // Update the selection display area
     const parentContainer = document.getElementById('parent-registration');
     const selectionDisplay = parentContainer.querySelector('#admin-selected-lesson-display');
@@ -2543,6 +2618,8 @@ export class ParentRegistrationForm {
    * Validate registration data
    */
   #validateRegistration() {
+    console.log('Validating registration...', { selectedLesson: this.selectedLesson });
+    
     // Check if student is selected (only if dropdown is visible for multiple students)
     const studentSection = document.getElementById('parent-student-selection-section');
     const studentSelect = document.getElementById('parent-student-select');
@@ -2550,21 +2627,34 @@ export class ParentRegistrationForm {
 
     // Only validate student selection if the section is visible (multiple students)
     if (studentSection && studentSection.style.display !== 'none' && !studentId) {
+      console.log('Validation failed: No student selected');
       M.toast({ html: 'Please select a student' });
       return false;
     }
 
     // For single student case, ensure there's still a student ID available
     if (!studentId) {
+      console.log('Validation failed: No student ID available');
       M.toast({ html: 'No student available for registration' });
       return false;
     }
 
     if (!this.selectedLesson) {
+      console.log('Validation failed: No lesson selected');
+      console.log('Current selected time slots:', document.querySelectorAll('.timeslot.selected'));
       M.toast({ html: 'Please select a lesson time slot' });
       return false;
     }
 
+    // Additional validation of selectedLesson data
+    if (!this.selectedLesson.instructorId || !this.selectedLesson.day || !this.selectedLesson.time) {
+      console.log('Validation failed: Incomplete lesson data', this.selectedLesson);
+      M.toast({ html: 'Selected lesson is incomplete. Please select again.' });
+      this.selectedLesson = null; // Clear invalid selection
+      return false;
+    }
+
+    console.log('Validation passed');
     return true;
   }
 
@@ -2895,6 +2985,42 @@ export class ParentRegistrationForm {
    * Public method to clear the form selection (can be called externally)
    */
   clearSelection() {
-    this.#clearForm();
+    this.#clearTimeSlotSelection();
+  }
+
+  /**
+   * Clear only the time slot selection without hiding containers
+   */
+  #clearTimeSlotSelection() {
+    this.selectedLesson = null;
+
+    const parentContainer = document.getElementById('parent-registration');
+    if (!parentContainer) return;
+
+    // Hide the selected lesson display
+    const selectedDisplay = parentContainer.querySelector('#admin-selected-lesson-display');
+    if (selectedDisplay) {
+      selectedDisplay.style.display = 'none';
+      selectedDisplay.style.pointerEvents = 'none';
+    }
+
+    // Remove selected class and reset styling for all time slots
+    parentContainer.querySelectorAll('.timeslot').forEach(slot => {
+      slot.classList.remove('selected');
+      // Reset to original styling based on availability
+      if (slot.classList.contains('available')) {
+        slot.style.border = '2px solid #4caf50';
+        slot.style.background = '#e8f5e8';
+      } else if (slot.classList.contains('limited')) {
+        slot.style.border = '2px solid #ff9800';
+        slot.style.background = '#fff3e0';
+      } else {
+        slot.style.border = '2px solid #f44336';
+        slot.style.background = '#ffebee';
+      }
+    });
+
+    // Clear any error messages
+    this.#clearRegistrationError();
   }
 }
