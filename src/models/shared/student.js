@@ -41,22 +41,32 @@ export class Student {
   constructor(data) {
     this.#validateConstructorData(data);
 
+    this._firstName = data.firstName;
+    this._lastName = data.lastName;
+    this.firstNickname = data.firstNickname || null;
+    this.lastNickname = data.lastNickname || null;
     this.id = new StudentId(data.id || data.studentId);
-    this.firstName = data.firstName;
-    this.lastName = data.lastName;
     this.email = data.email ? new Email(data.email) : null;
     this.grade = data.grade;
     this.age = data.age ? new Age(data.age) : null;
     this.dateOfBirth = data.dateOfBirth ? new Date(data.dateOfBirth) : null;
     this.parent1Id = data.parent1Id;
     this.parent2Id = data.parent2Id;
-    this.parentEmails = data.parentEmails || ''; // Store enriched parent emails from API
+    this.parentEmails = data.parentEmails || '';
     this.emergencyContactName = data.emergencyContactName;
     this.emergencyContactPhone = data.emergencyContactPhone;
     this.medicalNotes = data.medicalNotes;
-    this.isActive = data.isActive !== false; // Default to true
+    this.isActive = data.isActive !== false;
     this.createdAt = data.createdAt ? new Date(data.createdAt) : new Date();
     this.updatedAt = data.updatedAt ? new Date(data.updatedAt) : new Date();
+  }
+
+  get firstName() {
+    return this.firstNickname || this._firstName;
+  }
+
+  get lastName() {
+    return this.lastNickname || this._lastName;
   }
 
   #validateConstructorData(data) {
@@ -217,6 +227,8 @@ export class Student {
       id: this.id.value,
       firstName: this.firstName,
       lastName: this.lastName,
+      firstNickname: this.firstNickname,
+      lastNickname: this.lastNickname,
       email: this.email?.value,
       grade: this.grade,
       age: this.age?.value,
@@ -248,9 +260,10 @@ export class Student {
     const processedData = {
       ...data,
       id: extractStringValue(data.id),
-      studentId: extractStringValue(data.studentId)
+      studentId: extractStringValue(data.studentId),
+      firstNickname: data.firstNickname || null,
+      lastNickname: data.lastNickname || null
     };
-    
     return new Student(processedData);
   }
 

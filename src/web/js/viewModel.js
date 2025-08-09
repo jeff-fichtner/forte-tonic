@@ -1067,12 +1067,12 @@ export class ViewModel {
                         <td>${instructor.firstName} ${instructor.lastName}</td>
                         <td>${registration.registrationType === RegistrationType.GROUP ? (registration.classTitle || 'N/A') : (registration.instrument || 'N/A')}</td>
                         <td>
-                            <a href="#!" data-registration-id="${registration.id?.value || registration.id}">
+                            <a href="#" data-registration-id="${registration.id?.value || registration.id}">
                                 <i class="material-icons copy-parent-emails-table-icon gray-text text-darken-4">email</i>
                             </a>
                         </td>
                         <td>
-                            <a href="#!" data-registration-id="${registration.id?.value || registration.id}">
+                            <a href="#" data-registration-id="${registration.id?.value || registration.id}">
                                 <i class="material-icons remove-registration-table-icon red-text text-darken-4">delete</i>
                             </a>
                         </td>
