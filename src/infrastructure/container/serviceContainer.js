@@ -19,7 +19,7 @@ import { StudentRepository } from '../../repositories/studentRepository.js';
 import { ParentRepository } from '../../repositories/parentRepository.js';
 
 // Import services
-import { RegistrationApplicationService } from '../../services/registrationService.js';
+import { RegistrationApplicationService } from '../../services/registrationApplicationService.js';
 
 export class ServiceContainer {
   constructor() {

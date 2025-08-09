@@ -3,7 +3,9 @@
  */
 
 import { jest } from '@jest/globals';
-import { RegistrationApplicationService } from '../../src/services/registrationService.js';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { Registration } from '../../src/models/shared/registration.js';
+import { RegistrationApplicationService } from '../../src/services/registrationApplicationService.js';
 import { serviceContainer } from '../../src/infrastructure/container/serviceContainer.js';
 
 describe('Group Registration Service', () => {

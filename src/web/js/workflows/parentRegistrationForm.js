@@ -1347,6 +1347,9 @@ export class ParentRegistrationForm {
    * Initialize the hybrid registration interface
    */
   #initializeHybridInterface() {
+    // Hide all registration containers initially
+    this.#hideAllRegistrationContainers();
+    
     // Handle registration type selection first
     this.#attachRegistrationTypeListener();
     
@@ -1397,8 +1400,9 @@ export class ParentRegistrationForm {
 
     // Handle based on number of students
     if (this.parentChildren.length === 0) {
-      // No students - hide section
+      // No students - hide section and all registration containers
       studentSection.style.display = 'none';
+      this.#hideAllRegistrationContainers();
       console.warn('No students found for parent');
     } else if (this.parentChildren.length === 1) {
       // Single student - hide section and auto-select
@@ -1412,10 +1416,14 @@ export class ParentRegistrationForm {
       option.selected = true;
       studentSelect.appendChild(option);
       
+      // Show registration type container since student is selected
+      this.#showRegistrationTypeContainer();
+      
       console.log(`Auto-selected single student: ${student.firstName} ${student.lastName}`);
     } else {
-      // Multiple students - show section
+      // Multiple students - show section and hide registration containers until selection
       studentSection.style.display = 'block';
+      this.#hideAllRegistrationContainers();
       
       // Add student options
       this.parentChildren.forEach(student => {
@@ -1425,11 +1433,49 @@ export class ParentRegistrationForm {
         studentSelect.appendChild(option);
       });
       
+      // Add event listener for student selection changes
+      studentSelect.addEventListener('change', (event) => {
+        const selectedStudentId = event.target.value;
+        if (selectedStudentId) {
+          this.#showRegistrationTypeContainer();
+          // If group registration type is already selected, repopulate classes for new student
+          const registrationTypeSelect = document.getElementById('parent-registration-type-select');
+          if (registrationTypeSelect && registrationTypeSelect.value === 'public') {
+            this.#populateParentClassesDropdown();
+          }
+        } else {
+          this.#hideAllRegistrationContainers();
+        }
+      });
+      
       console.log(`Showing student selector with ${this.parentChildren.length} students`);
     }
 
     // Reinitialize Materialize select
     M.FormSelect.init(studentSelect);
+  }
+
+  /**
+   * Show the registration type container
+   */
+  #showRegistrationTypeContainer() {
+    const registrationTypeSection = document.querySelector('.registration-type-section');
+    if (registrationTypeSection) {
+      registrationTypeSection.style.display = 'block';
+    }
+  }
+
+  /**
+   * Hide all registration containers (type, private, group)
+   */
+  #hideAllRegistrationContainers() {
+    const registrationTypeSection = document.querySelector('.registration-type-section');
+    const privateContainer = document.getElementById('parent-private-registration-container');
+    const groupContainer = document.getElementById('parent-group-registration-container');
+    
+    if (registrationTypeSection) registrationTypeSection.style.display = 'none';
+    if (privateContainer) privateContainer.style.display = 'none';
+    if (groupContainer) groupContainer.style.display = 'none';
   }
 
   /**
@@ -1491,6 +1537,27 @@ export class ParentRegistrationForm {
       return;
     }
 
+    // Get selected student ID
+    const studentSelect = document.getElementById('parent-student-select');
+    const selectedStudentId = studentSelect?.value;
+    
+    if (!selectedStudentId) {
+      console.warn('No student selected for class filtering');
+      return;
+    }
+
+    // Filter classes where student is NOT already enrolled
+    const availableClasses = this.classes.filter(cls => {
+      // Check if student already has a group registration for this class
+      const hasExistingRegistration = this.registrations.some(registration => 
+        registration.studentId === selectedStudentId && 
+        registration.classId === cls.id &&
+        registration.registrationType === 'group'
+      );
+      
+      return !hasExistingRegistration;
+    });
+
     // Clear existing options
     classSelect.innerHTML = '';
 
@@ -1500,13 +1567,22 @@ export class ParentRegistrationForm {
     defaultOption.textContent = 'Select a class';
     classSelect.appendChild(defaultOption);
 
-    // Add all class options (show all classes, handle capacity in selection logic)
-    this.classes.forEach(cls => {
+    // Add available class options only
+    availableClasses.forEach(cls => {
       const option = document.createElement('option');
       option.value = cls.id;
       option.textContent = cls.formattedName || cls.title || cls.instrument || `Class ${cls.id}`;
       classSelect.appendChild(option);
     });
+
+    // Show message if no classes available
+    if (availableClasses.length === 0) {
+      const noClassesOption = document.createElement('option');
+      noClassesOption.value = '';
+      noClassesOption.textContent = 'No available classes (student already enrolled in all classes)';
+      noClassesOption.disabled = true;
+      classSelect.appendChild(noClassesOption);
+    }
 
     // Add event listener for class selection
     classSelect.addEventListener('change', (event) => {
@@ -1518,7 +1594,7 @@ export class ParentRegistrationForm {
       M.FormSelect.init(classSelect);
     }
 
-    console.log(`🎯 Populated parent classes dropdown with ${this.classes.length} classes`);
+    console.log(`🎯 Populated parent classes dropdown with ${availableClasses.length} available classes (filtered from ${this.classes.length} total)`);
   }
 
   /**

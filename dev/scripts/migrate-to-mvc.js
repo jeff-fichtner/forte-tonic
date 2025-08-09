@@ -204,7 +204,7 @@ async function main() {
       
       // Services
       { from: 'src/application/services/studentApplicationService.js', to: 'src/services/studentService.js' },
-      { from: 'src/application/services/registrationApplicationService.js', to: 'src/services/registrationService.js' },
+      { from: 'src/application/services/registrationApplicationService.js', to: 'src/services/registrationApplicationService.js' },
       { from: 'src/core/services/authenticator.js', to: 'src/services/authenticator.js' },
     ];
 

@@ -11,7 +11,8 @@
 
 import { GoogleSheetsDbClient } from '../../src/database/googleSheetsDbClient.js';
 import { RegistrationRepository } from '../../src/repositories/registrationRepository.js';
-import { RegistrationApplicationService } from '../../src/services/registrationService.js';
+import { ServiceContainer } from '../../src/infrastructure/container/serviceContainer.js';
+import { RegistrationApplicationService } from '../../src/services/registrationApplicationService.js';
 import { configService } from '../../src/services/configurationService.js';
 import { createLogger } from '../../src/utils/logger.js';
 
