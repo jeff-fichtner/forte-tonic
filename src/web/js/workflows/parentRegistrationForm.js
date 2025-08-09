@@ -5,6 +5,8 @@
 
 import { RegistrationType } from '../../../utils/values/registrationType.js';
 import { Select } from '../components/select.js';
+import { DomHelpers } from '../utilities/domHelpers.js';
+import { formatClassNameWithGradeCorrection } from '../utils/classNameFormatter.js';
 
 /**
  * Parent Registration Form with hybrid interface (progressive filters + time slot grid)
@@ -20,10 +22,10 @@ export class ParentRegistrationForm {
     this.registrations = registrations || [];
     this.sendDataFunction = sendDataFunction;
     this.parentChildren = parentChildren || [];
-    
+
     // Initialize basic properties
     this.selectedLesson = null;
-    
+
     // Defer complex initialization to avoid private method ordering issues
     setTimeout(() => {
       this.#initializeHybridInterface();
@@ -35,23 +37,23 @@ export class ParentRegistrationForm {
    */
   #parseTime(timeStr) {
     if (!timeStr) return null;
-    
+
     // Handle AM/PM format (e.g., "3:00 PM", "11:30 AM")
     if (timeStr.includes('AM') || timeStr.includes('PM')) {
       const isPM = timeStr.includes('PM');
       const timeOnly = timeStr.replace(/\s*(AM|PM)$/i, '').trim();
       const [hours, minutes] = timeOnly.split(':').map(Number);
-      
+
       let hour24 = hours;
       if (!isPM && hours === 12) {
         hour24 = 0; // 12:00 AM = 00:00
       } else if (isPM && hours !== 12) {
         hour24 = hours + 12; // Convert PM hours to 24-hour format
       }
-      
+
       return hour24 * 60 + (minutes || 0);
     }
-    
+
     // Handle 24-hour format (e.g., "15:00", "09:30")
     const [hours, minutes] = timeStr.split(':').map(Number);
     return hours * 60 + (minutes || 0);
@@ -66,7 +68,7 @@ export class ParentRegistrationForm {
     chip.dataset.type = type;
     chip.dataset.value = value;
     chip.textContent = text;
-    
+
     // Apply base styles
     const styles = {
       padding: '8px 12px',
@@ -76,7 +78,7 @@ export class ParentRegistrationForm {
       border: '2px solid',
       transition: 'all 0.3s'
     };
-    
+
     // Set active state for default chips
     if (isDefault) {
       chip.classList.add('active', 'selected');
@@ -112,12 +114,12 @@ export class ParentRegistrationForm {
         styles.cursor = 'pointer';
       }
     }
-    
+
     // Apply inline styles
     chip.style.cssText = Object.entries(styles)
       .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
       .join('; ');
-    
+
     return chip;
   }
 
@@ -126,19 +128,9 @@ export class ParentRegistrationForm {
    */
   #calculateInstructorAvailability() {
     const availability = {};
-    
-    // Debug: Log instructor and registration data
-    console.log('🔍 ParentRegistrationForm Debug - Instructors:', this.instructors.length);
-    console.log('🔍 ParentRegistrationForm Debug - Registrations:', this.registrations.length);
-    
-    if (this.instructors.length > 0) {
-      console.log('🔍 Sample instructor structure:', this.instructors[0]);
-    }
-    
-    if (this.registrations.length > 0) {
-      console.log('🔍 Sample registration structure:', this.registrations[0]);
-    }
-    
+
+    // Calculate availability for each instructor
+
     // Create day mapping for registration lookups
     const dayMap = {
       'monday': 0,
@@ -147,60 +139,49 @@ export class ParentRegistrationForm {
       'thursday': 3,
       'friday': 4
     };
-    
+
     this.instructors.forEach(instructor => {
       let slotCount = 0;
       const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-      
-      console.log(`🔍 Checking instructor ${instructor.id} (${instructor.firstName} ${instructor.lastName})`);
-      
+
+
       days.forEach(day => {
         const daySchedule = instructor.availability?.[day] || instructor[day];
-        console.log(`  📅 ${day} schedule:`, daySchedule);
-        
+
         // Enhanced availability validation
         if (!this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
           return; // Skip this day
         }
-        
+
         // Calculate theoretical slots for this day (every 30-45 minutes)
         const startTime = daySchedule.startTime;
         const endTime = daySchedule.endTime || '17:00'; // Default end time
-        
+
         const startMinutes = this.#parseTime(startTime);
         const endMinutes = this.#parseTime(endTime);
-        
+
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
-          // Calculate available 30-minute slots
-          const totalDuration = endMinutes - startMinutes;
-          const theoreticalSlots = Math.floor(totalDuration / 30);
-          
           // Count existing registrations for this instructor on this day
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
             return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
           });
-          
-          console.log(`    ⏰ ${startTime}-${endTime} (${totalDuration}min) = ${theoreticalSlots} theoretical slots`);
-          console.log(`    📝 Existing registrations on ${day}: ${existingRegistrations.length}`);
-          
+
           // Calculate actual available slots considering overlaps
           const availableSlots = this.#calculateAvailableSlotsForDay(
-            startMinutes, 
-            endMinutes, 
+            startMinutes,
+            endMinutes,
             existingRegistrations
           );
-          
+
           slotCount += availableSlots;
-          console.log(`    ✅ Available slots: ${availableSlots}`);
         }
       });
-      
-      console.log(`  📊 Total slots for ${instructor.firstName}: ${slotCount}`);
+
+      console.log(`📊 Total slots for ${instructor.firstName}: ${slotCount}`);
       availability[instructor.id] = slotCount;
     });
-    
-    console.log('🔍 Final availability:', availability);
+
     return availability;
   }
 
@@ -209,7 +190,7 @@ export class ParentRegistrationForm {
    */
   #calculateFilteredInstructorAvailability(selectedDay = null, selectedInstrument = null, selectedLength = null) {
     const availability = {};
-    
+
     // Create day mapping for registration lookups
     const dayMap = {
       'monday': 0,
@@ -218,51 +199,51 @@ export class ParentRegistrationForm {
       'thursday': 3,
       'friday': 4
     };
-    
+
     this.instructors.forEach(instructor => {
       let slotCount = 0;
       const days = selectedDay && selectedDay !== 'all' ? [selectedDay] : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-      
+
       // Check if instructor teaches the selected instrument
       if (selectedInstrument && selectedInstrument !== 'all') {
-        const instructorInstruments = instructor.specialties || instructor.instruments || 
+        const instructorInstruments = instructor.specialties || instructor.instruments ||
           (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
-        
-        const normalizedInstruments = Array.isArray(instructorInstruments) 
-          ? instructorInstruments 
+
+        const normalizedInstruments = Array.isArray(instructorInstruments)
+          ? instructorInstruments
           : [instructorInstruments].filter(Boolean);
-        
-        const teachesInstrument = normalizedInstruments.some(inst => 
+
+        const teachesInstrument = normalizedInstruments.some(inst =>
           inst && inst.toLowerCase().includes(selectedInstrument.toLowerCase())
         );
-        
+
         if (!teachesInstrument) {
           availability[instructor.id] = 0;
           return; // Skip this instructor
         }
       }
-      
+
       days.forEach(day => {
         const daySchedule = instructor.availability?.[day] || instructor[day];
-        
+
         // Enhanced availability validation
         if (!this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
           return; // Skip this day
         }
-        
+
         const startTime = daySchedule.startTime;
         const endTime = daySchedule.endTime || '17:00';
-        
+
         const startMinutes = this.#parseTime(startTime);
         const endMinutes = this.#parseTime(endTime);
-        
+
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
           // Count existing registrations for this instructor on this day
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
             return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
           });
-          
+
           // If length is specified, count slots for that specific length
           if (selectedLength && selectedLength !== 'all') {
             const lengthMinutes = parseInt(selectedLength);
@@ -286,10 +267,10 @@ export class ParentRegistrationForm {
           }
         }
       });
-      
+
       availability[instructor.id] = slotCount;
     });
-    
+
     return availability;
   }
 
@@ -303,39 +284,33 @@ export class ParentRegistrationForm {
   #isInstructorAvailableOnDay(instructor, day, daySchedule) {
     // Check 1: Day schedule must exist
     if (!daySchedule) {
-      console.log(`    ❌ ${day}: No schedule defined`);
       return false;
     }
-    
+
     // Check 2: Must be marked as available for this day
     if (!daySchedule.isAvailable) {
-      console.log(`    ❌ ${day}: Instructor marked as not available (isAvailable: ${daySchedule.isAvailable})`);
       return false;
     }
-    
+
     // Check 3: Must have start time
     if (!daySchedule.startTime) {
-      console.log(`    ❌ ${day}: No start time defined`);
       return false;
     }
-    
+
     // Check 4: Must have valid end time
     const endTime = daySchedule.endTime || '17:00';
     if (!endTime) {
-      console.log(`    ❌ ${day}: No end time defined`);
       return false;
     }
-    
+
     // Check 5: Start time must be before end time
     const startMinutes = this.#parseTime(daySchedule.startTime);
     const endMinutes = this.#parseTime(endTime);
-    
+
     if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
-      console.log(`    ❌ ${day}: Invalid time window (${daySchedule.startTime} - ${endTime})`);
       return false;
     }
-    
-    console.log(`    ✅ ${day}: Available ${daySchedule.startTime} - ${endTime}`);
+
     return true;
   }
 
@@ -357,7 +332,7 @@ export class ParentRegistrationForm {
    */
   #calculateAvailableSlotsForDay(startMinutes, endMinutes, existingRegistrations) {
     let availableSlots = 0;
-    
+
     // Check every 30-minute slot in the day
     for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += 30) {
       const hasConflict = this.#checkTimeSlotConflict(currentMinutes, 30, existingRegistrations);
@@ -365,7 +340,7 @@ export class ParentRegistrationForm {
         availableSlots++;
       }
     }
-    
+
     return availableSlots;
   }
 
@@ -376,7 +351,7 @@ export class ParentRegistrationForm {
   #calculateDayAvailability(instructorsToConsider = null) {
     const availability = {};
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    
+
     // Create day mapping for registration lookups
     const dayMap = {
       'monday': 0,
@@ -385,51 +360,51 @@ export class ParentRegistrationForm {
       'thursday': 3,
       'friday': 4
     };
-    
+
     // Initialize all days to 0
     days.forEach(day => {
       availability[day] = 0;
     });
-    
+
     // Use filtered instructors if provided, otherwise use all instructors
     const instructorsToUse = instructorsToConsider || this.instructors;
-    
+
     // Count slots for each day across selected instructors
     instructorsToUse.forEach(instructor => {
       days.forEach(day => {
         const daySchedule = instructor.availability?.[day] || instructor[day];
-        
+
         // Use enhanced availability checking
         if (!this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
           return; // Skip this instructor on this day
         }
-        
+
         // Calculate theoretical slots for this day
         const startTime = daySchedule.startTime;
         const endTime = daySchedule.endTime || '17:00';
-        
+
         const startMinutes = this.#parseTime(startTime);
         const endMinutes = this.#parseTime(endTime);
-        
+
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
           // Count existing registrations for this instructor on this day
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
             return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
           });
-          
+
           // Calculate actual available slots considering overlaps
           const availableSlots = this.#calculateAvailableSlotsForDay(
             startMinutes,
             endMinutes,
             existingRegistrations
           );
-          
+
           availability[day] += availableSlots;
         }
       });
     });
-    
+
     return availability;
   }
 
@@ -439,7 +414,7 @@ export class ParentRegistrationForm {
   #calculateFilteredDayAvailability(selectedInstructor = null, selectedInstrument = null, selectedLength = null) {
     const availability = {};
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    
+
     // Create day mapping for registration lookups
     const dayMap = {
       'monday': 0,
@@ -448,55 +423,55 @@ export class ParentRegistrationForm {
       'thursday': 3,
       'friday': 4
     };
-    
+
     // Initialize all days to 0
     days.forEach(day => {
       availability[day] = 0;
     });
-    
+
     // Filter instructors based on selected instructor and instrument
     let instructorsToUse = this.instructors;
-    
+
     if (selectedInstructor && selectedInstructor !== 'all') {
       instructorsToUse = instructorsToUse.filter(instructor => instructor.id === selectedInstructor);
     }
-    
+
     if (selectedInstrument && selectedInstrument !== 'all') {
       instructorsToUse = instructorsToUse.filter(instructor => {
-        const instructorInstruments = instructor.specialties || instructor.instruments || 
+        const instructorInstruments = instructor.specialties || instructor.instruments ||
           (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
-        
-        const normalizedInstruments = Array.isArray(instructorInstruments) 
-          ? instructorInstruments 
+
+        const normalizedInstruments = Array.isArray(instructorInstruments)
+          ? instructorInstruments
           : [instructorInstruments].filter(Boolean);
-        
-        return normalizedInstruments.some(inst => 
+
+        return normalizedInstruments.some(inst =>
           inst && inst.toLowerCase().includes(selectedInstrument.toLowerCase())
         );
       });
     }
-    
+
     // Count slots for each day across filtered instructors
     instructorsToUse.forEach(instructor => {
       days.forEach(day => {
         const daySchedule = instructor.availability?.[day] || instructor[day];
-        
+
         if (!this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
           return; // Skip this instructor on this day
         }
-        
+
         const startTime = daySchedule.startTime;
         const endTime = daySchedule.endTime || '17:00';
-        
+
         const startMinutes = this.#parseTime(startTime);
         const endMinutes = this.#parseTime(endTime);
-        
+
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
             return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
           });
-          
+
           // If length is specified, count slots for that specific length
           if (selectedLength && selectedLength !== 'all') {
             const lengthMinutes = parseInt(selectedLength);
@@ -519,7 +494,7 @@ export class ParentRegistrationForm {
         }
       });
     });
-    
+
     return availability;
   }
 
@@ -529,7 +504,7 @@ export class ParentRegistrationForm {
   #calculateCascadingDayAvailability(selectedInstrument = null) {
     const availability = {};
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    
+
     // Create day mapping for registration lookups
     const dayMap = {
       'monday': 0,
@@ -538,51 +513,51 @@ export class ParentRegistrationForm {
       'thursday': 3,
       'friday': 4
     };
-    
+
     // Initialize all days to 0
     days.forEach(day => {
       availability[day] = 0;
     });
-    
+
     // Filter instructors based only on selected instrument (cascading)
     let instructorsToUse = this.instructors;
-    
+
     if (selectedInstrument && selectedInstrument !== 'all') {
       instructorsToUse = instructorsToUse.filter(instructor => {
-        const instructorInstruments = instructor.specialties || instructor.instruments || 
+        const instructorInstruments = instructor.specialties || instructor.instruments ||
           (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
-        
-        const normalizedInstruments = Array.isArray(instructorInstruments) 
-          ? instructorInstruments 
+
+        const normalizedInstruments = Array.isArray(instructorInstruments)
+          ? instructorInstruments
           : [instructorInstruments].filter(Boolean);
-        
-        return normalizedInstruments.some(inst => 
+
+        return normalizedInstruments.some(inst =>
           inst && inst.toLowerCase().includes(selectedInstrument.toLowerCase())
         );
       });
     }
-    
+
     // Count all possible slots for each day across filtered instructors
     instructorsToUse.forEach(instructor => {
       days.forEach(day => {
         const daySchedule = instructor.availability?.[day] || instructor[day];
-        
+
         if (!this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
           return; // Skip this instructor on this day
         }
-        
+
         const startTime = daySchedule.startTime;
         const endTime = daySchedule.endTime || '17:00';
-        
+
         const startMinutes = this.#parseTime(startTime);
         const endMinutes = this.#parseTime(endTime);
-        
+
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
             return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
           });
-          
+
           // Count all possible slots for each lesson length (30min, 45min, 60min)
           [30, 45, 60].forEach(length => {
             for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += 30) {
@@ -597,7 +572,7 @@ export class ParentRegistrationForm {
         }
       });
     });
-    
+
     return availability;
   }
 
@@ -606,7 +581,7 @@ export class ParentRegistrationForm {
    */
   #calculateCascadingLengthAvailability(selectedInstrument = null, selectedDay = null) {
     const availability = { 30: 0, 45: 0, 60: 0 };
-    
+
     // Create day mapping for registration lookups
     const dayMap = {
       'monday': 0,
@@ -615,50 +590,50 @@ export class ParentRegistrationForm {
       'thursday': 3,
       'friday': 4
     };
-    
+
     // Filter instructors based only on selected instrument (cascading)
     let instructorsToUse = this.instructors;
-    
+
     if (selectedInstrument && selectedInstrument !== 'all') {
       instructorsToUse = instructorsToUse.filter(instructor => {
-        const instructorInstruments = instructor.specialties || instructor.instruments || 
+        const instructorInstruments = instructor.specialties || instructor.instruments ||
           (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
-        
-        const normalizedInstruments = Array.isArray(instructorInstruments) 
-          ? instructorInstruments 
+
+        const normalizedInstruments = Array.isArray(instructorInstruments)
+          ? instructorInstruments
           : [instructorInstruments].filter(Boolean);
-        
-        return normalizedInstruments.some(inst => 
+
+        return normalizedInstruments.some(inst =>
           inst && inst.toLowerCase().includes(selectedInstrument.toLowerCase())
         );
       });
     }
-    
+
     // Filter days based on selected day (cascading)
-    const daysToCheck = selectedDay && selectedDay !== 'all' ? [selectedDay] : 
+    const daysToCheck = selectedDay && selectedDay !== 'all' ? [selectedDay] :
       ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    
+
     // Count slots for each length across filtered instructors and days
     instructorsToUse.forEach(instructor => {
       daysToCheck.forEach(day => {
         const daySchedule = instructor.availability?.[day] || instructor[day];
-        
+
         if (!this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
           return; // Skip this instructor on this day
         }
-        
+
         const startTime = daySchedule.startTime;
         const endTime = daySchedule.endTime || '17:00';
-        
+
         const startMinutes = this.#parseTime(startTime);
         const endMinutes = this.#parseTime(endTime);
-        
+
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
             return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
           });
-          
+
           // Count slots for each lesson length
           [30, 45, 60].forEach(length => {
             for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += 30) {
@@ -673,7 +648,7 @@ export class ParentRegistrationForm {
         }
       });
     });
-    
+
     return availability;
   }
 
@@ -682,7 +657,7 @@ export class ParentRegistrationForm {
    */
   #calculateCascadingInstructorAvailability(selectedInstrument = null, selectedDay = null, selectedLength = null) {
     const availability = {};
-    
+
     // Create day mapping for registration lookups
     const dayMap = {
       'monday': 0,
@@ -691,55 +666,55 @@ export class ParentRegistrationForm {
       'thursday': 3,
       'friday': 4
     };
-    
+
     // Filter instructors based only on selected instrument (cascading)
     let instructorsToUse = this.instructors;
-    
+
     if (selectedInstrument && selectedInstrument !== 'all') {
       instructorsToUse = instructorsToUse.filter(instructor => {
-        const instructorInstruments = instructor.specialties || instructor.instruments || 
+        const instructorInstruments = instructor.specialties || instructor.instruments ||
           (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
-        
-        const normalizedInstruments = Array.isArray(instructorInstruments) 
-          ? instructorInstruments 
+
+        const normalizedInstruments = Array.isArray(instructorInstruments)
+          ? instructorInstruments
           : [instructorInstruments].filter(Boolean);
-        
-        return normalizedInstruments.some(inst => 
+
+        return normalizedInstruments.some(inst =>
           inst && inst.toLowerCase().includes(selectedInstrument.toLowerCase())
         );
       });
     }
-    
+
     // Filter days based on selected day (cascading)
-    const daysToCheck = selectedDay && selectedDay !== 'all' ? [selectedDay] : 
+    const daysToCheck = selectedDay && selectedDay !== 'all' ? [selectedDay] :
       ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    
+
     // Initialize instructor availability
     instructorsToUse.forEach(instructor => {
       availability[instructor.id] = 0;
     });
-    
+
     // Count slots for each instructor based on cascading filters
     instructorsToUse.forEach(instructor => {
       daysToCheck.forEach(day => {
         const daySchedule = instructor.availability?.[day] || instructor[day];
-        
+
         if (!this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
           return; // Skip this instructor on this day
         }
-        
+
         const startTime = daySchedule.startTime;
         const endTime = daySchedule.endTime || '17:00';
-        
+
         const startMinutes = this.#parseTime(startTime);
         const endMinutes = this.#parseTime(endTime);
-        
+
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
             return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
           });
-          
+
           if (selectedLength && selectedLength !== 'all') {
             // Count slots for specific length
             const lengthMinutes = parseInt(selectedLength);
@@ -767,7 +742,7 @@ export class ParentRegistrationForm {
         }
       });
     });
-    
+
     return availability;
   }
 
@@ -778,17 +753,17 @@ export class ParentRegistrationForm {
     // Find the instructor container specifically in parent registration
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
-    
+
     const instructorSection = Array.from(parentContainer.querySelectorAll('.filter-section')).find(section => {
       const label = section.querySelector('label');
       return label && label.textContent.includes('Instructors');
     });
-    
+
     if (!instructorSection) {
       console.warn('Parent instructor chip container not found');
       return;
     }
-    
+
     const instructorContainer = instructorSection.querySelector('.chip-container');
     if (!instructorContainer) {
       console.warn('Parent instructor chip container not found');
@@ -831,7 +806,7 @@ export class ParentRegistrationForm {
     // Find the day container specifically in parent registration
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
-    
+
     const dayContainer = parentContainer.querySelector('#day-chips-container');
     if (!dayContainer) {
       console.warn('Parent day chip container not found');
@@ -858,7 +833,7 @@ export class ParentRegistrationForm {
     // Create individual day chips
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    
+
     days.forEach((day, index) => {
       const slots = dayAvailability[day] || 0;
       const chipText = `${dayNames[index]} (${slots} slots)`;
@@ -875,7 +850,7 @@ export class ParentRegistrationForm {
     // Find the instrument container specifically in parent registration
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
-    
+
     const instrumentContainer = parentContainer.querySelector('#instrument-chips-container');
     if (!instrumentContainer) {
       console.warn('Parent instrument chip container not found');
@@ -914,7 +889,7 @@ export class ParentRegistrationForm {
    */
   #calculateInstrumentAvailability(instruments, instructorsToConsider) {
     const availability = {};
-    
+
     // Create day mapping for registration lookups
     const dayMap = {
       'monday': 0,
@@ -923,45 +898,45 @@ export class ParentRegistrationForm {
       'thursday': 3,
       'friday': 4
     };
-    
+
     // Initialize all instruments to 0
     instruments.forEach(instrument => {
       availability[instrument] = 0;
     });
-    
+
     // Count slots for each instrument across selected instructors
     instructorsToConsider.forEach(instructor => {
       const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-      
+
       // Get instructor's instruments
-      const instructorInstruments = instructor.specialties || instructor.instruments || 
+      const instructorInstruments = instructor.specialties || instructor.instruments ||
         (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
-      
-      const normalizedInstruments = Array.isArray(instructorInstruments) 
-        ? instructorInstruments 
+
+      const normalizedInstruments = Array.isArray(instructorInstruments)
+        ? instructorInstruments
         : [instructorInstruments].filter(Boolean);
-      
+
       days.forEach(day => {
         const daySchedule = instructor.availability?.[day] || instructor[day];
         if (daySchedule && daySchedule.startTime && daySchedule.isAvailable) {
           const startTime = daySchedule.startTime;
           const endTime = daySchedule.endTime || '17:00';
-          
+
           const startMinutes = this.#parseTime(startTime);
           const endMinutes = this.#parseTime(endTime);
-          
+
           if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
             const totalDuration = endMinutes - startMinutes;
             const theoreticalSlots = Math.floor(totalDuration / 30);
-            
+
             // Count existing registrations for this instructor on this day
             const existingRegistrations = this.registrations.filter(reg => {
               const regInstructorId = reg.instructorId?.value || reg.instructorId;
               return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
             });
-            
+
             const availableSlots = Math.max(0, theoreticalSlots - existingRegistrations.length);
-            
+
             // Add slots for each instrument this instructor teaches
             normalizedInstruments.forEach(instrument => {
               if (instrument && instrument.trim() && availability.hasOwnProperty(instrument.trim())) {
@@ -972,7 +947,7 @@ export class ParentRegistrationForm {
         }
       });
     });
-    
+
     return availability;
   }
 
@@ -981,7 +956,7 @@ export class ParentRegistrationForm {
    */
   #calculateFilteredInstrumentAvailability(selectedInstructor = null, selectedDay = null, selectedLength = null) {
     const availability = {};
-    
+
     // Create day mapping for registration lookups
     const dayMap = {
       'monday': 0,
@@ -990,68 +965,68 @@ export class ParentRegistrationForm {
       'thursday': 3,
       'friday': 4
     };
-    
+
     // Filter instructors based on selected instructor
     let instructorsToUse = this.instructors;
     if (selectedInstructor && selectedInstructor !== 'all') {
       instructorsToUse = instructorsToUse.filter(instructor => instructor.id === selectedInstructor);
     }
-    
+
     // Get all possible instruments from filtered instructors
     const instrumentsSet = new Set();
     instructorsToUse.forEach(instructor => {
-      const instructorInstruments = instructor.specialties || instructor.instruments || 
+      const instructorInstruments = instructor.specialties || instructor.instruments ||
         (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
-      
-      const normalizedInstruments = Array.isArray(instructorInstruments) 
-        ? instructorInstruments 
+
+      const normalizedInstruments = Array.isArray(instructorInstruments)
+        ? instructorInstruments
         : [instructorInstruments].filter(Boolean);
-      
+
       normalizedInstruments.forEach(instrument => {
         if (instrument && instrument.trim()) {
           instrumentsSet.add(instrument.trim());
         }
       });
     });
-    
+
     const instruments = Array.from(instrumentsSet);
-    
+
     // Initialize all instruments to 0
     instruments.forEach(instrument => {
       availability[instrument] = 0;
     });
-    
+
     // Calculate availability for each instrument
     instructorsToUse.forEach(instructor => {
       const days = selectedDay && selectedDay !== 'all' ? [selectedDay] : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-      
-      const instructorInstruments = instructor.specialties || instructor.instruments || 
+
+      const instructorInstruments = instructor.specialties || instructor.instruments ||
         (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
-      
-      const normalizedInstruments = Array.isArray(instructorInstruments) 
-        ? instructorInstruments 
+
+      const normalizedInstruments = Array.isArray(instructorInstruments)
+        ? instructorInstruments
         : [instructorInstruments].filter(Boolean);
-      
+
       days.forEach(day => {
         const daySchedule = instructor.availability?.[day] || instructor[day];
-        
+
         if (!this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
           return;
         }
-        
+
         const startTime = daySchedule.startTime;
         const endTime = daySchedule.endTime || '17:00';
-        
+
         const startMinutes = this.#parseTime(startTime);
         const endMinutes = this.#parseTime(endTime);
-        
+
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
           const dayIndex = dayMap[day];
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
             return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
           });
-          
+
           // Add slots for each instrument this instructor teaches
           normalizedInstruments.forEach(instrument => {
             if (instruments.includes(instrument)) {
@@ -1078,7 +1053,7 @@ export class ParentRegistrationForm {
         }
       });
     });
-    
+
     return availability;
   }
 
@@ -1089,7 +1064,7 @@ export class ParentRegistrationForm {
     // Find the length container specifically in parent registration
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
-    
+
     const lengthContainer = parentContainer.querySelector('#length-chips-container');
     if (!lengthContainer) {
       console.warn('Parent length chip container not found');
@@ -1107,7 +1082,7 @@ export class ParentRegistrationForm {
 
     // Get available lesson lengths based on cascading filters
     const availableLengths = this.#calculateCascadingLengthAvailability(selectedInstrument, selectedDay);
-    
+
     // Calculate total slots across all lengths
     const totalSlots = Object.values(availableLengths).reduce((sum, count) => sum + count, 0);
 
@@ -1136,23 +1111,17 @@ export class ParentRegistrationForm {
     const selectedInstructorChips = document.querySelectorAll('#instructor-chips-container .chip.selected');
     const availability = { 30: 0, 45: 0, 60: 0 };
 
-    console.log('🔍 Calculating length availability...');
-    console.log('Selected instructor chips:', selectedInstructorChips.length);
-
     if (selectedInstructorChips.length === 0) {
       // If no instructors selected, show all available from current filter
-      console.log('No instructors selected, using all instructors');
       this.instructors.forEach(instructor => {
         this.#addInstructorLengthAvailability(instructor, availability);
       });
     } else {
       // Calculate based on selected instructors
-      console.log('Using selected instructors');
       selectedInstructorChips.forEach(chip => {
         const instructorId = chip.dataset.value; // Fixed: use dataset.value instead of dataset.instructorId
         if (instructorId === 'all') {
           // If "All Instructors" is selected, process all instructors
-          console.log('All instructors selected, processing all instructors');
           this.instructors.forEach(instructor => {
             this.#addInstructorLengthAvailability(instructor, availability);
           });
@@ -1160,14 +1129,12 @@ export class ParentRegistrationForm {
           // Process specific instructor
           const instructor = this.instructors.find(inst => inst.id === instructorId);
           if (instructor) {
-            console.log('Adding availability for instructor:', instructor.firstName);
             this.#addInstructorLengthAvailability(instructor, availability);
           }
         }
       });
     }
 
-    console.log('Final availability:', availability);
     return availability;
   }
 
@@ -1176,7 +1143,7 @@ export class ParentRegistrationForm {
    */
   #calculateFilteredLengthAvailability(selectedInstructor = null, selectedDay = null, selectedInstrument = null) {
     const availability = { 30: 0, 45: 0, 60: 0 };
-    
+
     // Create day mapping for registration lookups
     const dayMap = {
       'monday': 0,
@@ -1185,53 +1152,53 @@ export class ParentRegistrationForm {
       'thursday': 3,
       'friday': 4
     };
-    
+
     // Filter instructors based on current selections
     let instructorsToUse = this.instructors;
-    
+
     if (selectedInstructor && selectedInstructor !== 'all') {
       instructorsToUse = instructorsToUse.filter(instructor => instructor.id === selectedInstructor);
     }
-    
+
     if (selectedInstrument && selectedInstrument !== 'all') {
       instructorsToUse = instructorsToUse.filter(instructor => {
-        const instructorInstruments = instructor.specialties || instructor.instruments || 
+        const instructorInstruments = instructor.specialties || instructor.instruments ||
           (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
-        
-        const normalizedInstruments = Array.isArray(instructorInstruments) 
-          ? instructorInstruments 
+
+        const normalizedInstruments = Array.isArray(instructorInstruments)
+          ? instructorInstruments
           : [instructorInstruments].filter(Boolean);
-        
-        return normalizedInstruments.some(inst => 
+
+        return normalizedInstruments.some(inst =>
           inst && inst.toLowerCase().includes(selectedInstrument.toLowerCase())
         );
       });
     }
-    
+
     // Calculate availability for each length
     instructorsToUse.forEach(instructor => {
       const days = selectedDay && selectedDay !== 'all' ? [selectedDay] : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-      
+
       days.forEach(day => {
         const daySchedule = instructor.availability?.[day] || instructor[day];
-        
+
         if (!this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
           return;
         }
-        
+
         const startTime = daySchedule.startTime;
         const endTime = daySchedule.endTime || '17:00';
-        
+
         const startMinutes = this.#parseTime(startTime);
         const endMinutes = this.#parseTime(endTime);
-        
+
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
           const dayIndex = dayMap[day];
           const existingRegistrations = this.registrations.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
             return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
           });
-          
+
           // Count potential slots for each length
           [30, 45, 60].forEach(length => {
             for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += 30) {
@@ -1246,7 +1213,7 @@ export class ParentRegistrationForm {
         }
       });
     });
-    
+
     return availability;
   }
 
@@ -1255,9 +1222,7 @@ export class ParentRegistrationForm {
    */
   #addInstructorLengthAvailability(instructor, availability) {
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    
-    console.log(`📊 Calculating availability for ${instructor.firstName} ${instructor.lastName}`);
-    
+
     // Create day mapping for registration lookups
     const dayMap = {
       'monday': 0,
@@ -1266,40 +1231,32 @@ export class ParentRegistrationForm {
       'thursday': 3,
       'friday': 4
     };
-    
+
     days.forEach(day => {
       const daySchedule = instructor.availability?.[day] || instructor[day];
-      
-      console.log(`  📅 ${day}:`, daySchedule);
-      
+
       // Check if instructor is available on this day
       if (!daySchedule || !daySchedule.isAvailable || !daySchedule.startTime || !daySchedule.endTime) {
-        console.log(`    ❌ Not available or missing schedule`);
         return;
       }
-      
+
       const startTime = daySchedule.startTime;
       const endTime = daySchedule.endTime;
-      
+
       const startMinutes = this.#parseTime(startTime);
       const endMinutes = this.#parseTime(endTime);
-      
-      console.log(`    🕐 ${startTime} - ${endTime} (${startMinutes} - ${endMinutes} minutes)`);
-      
+
       if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
-        console.log(`    ❌ Invalid time range`);
         return;
       }
-      
+
       // Get existing registrations for this instructor on this day
       const dayIndex = dayMap[day];
       const existingRegistrations = this.registrations.filter(reg => {
         const regInstructorId = reg.instructorId?.value || reg.instructorId;
         return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
       });
-      
-      console.log(`    📝 Existing registrations: ${existingRegistrations.length}`);
-      
+
       // Count actual available slots by checking each possible time slot
       // Generate potential time slots (every 30 minutes from start to end)
       for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += 30) {
@@ -1309,18 +1266,17 @@ export class ParentRegistrationForm {
           if (currentMinutes + length > endMinutes) {
             return;
           }
-          
+
           // Check if this length would conflict with existing registrations
           const lengthConflict = this.#checkTimeSlotConflict(currentMinutes, length, existingRegistrations);
           if (!lengthConflict) {
             availability[length]++;
-            console.log(`    ✅ Added ${length}min slot at ${this.#formatTimeFromMinutes(currentMinutes)}`);
           }
         });
       }
     });
-    
-    console.log(`  📊 Total for ${instructor.firstName}: 30min=${availability[30]}, 45min=${availability[45]}, 60min=${availability[60]}`);
+
+    console.log(`📊 Total for ${instructor.firstName}: 30min=${availability[30]}, 45min=${availability[45]}, 60min=${availability[60]}`);
   }
 
   /**
@@ -1329,7 +1285,7 @@ export class ParentRegistrationForm {
   #generateTimeSlots() {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
-    
+
     const timeslotGrid = parentContainer.querySelector('.instructor-timeslot-grid');
     if (!timeslotGrid) return;
 
@@ -1345,7 +1301,7 @@ export class ParentRegistrationForm {
         timeslotGrid.appendChild(card);
       }
     });
-    
+
     // Attach listeners after generating
     this.#attachTimeSlotListeners();
   }
@@ -1357,7 +1313,7 @@ export class ParentRegistrationForm {
     const timeSlots = [];
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    
+
     // Create day mapping for registration lookups
     const dayMap = {
       'monday': 0,
@@ -1366,100 +1322,78 @@ export class ParentRegistrationForm {
       'thursday': 3,
       'friday': 4
     };
-    
-    console.log(`🎯 Generating time slots for instructor ${instructor.firstName} ${instructor.lastName}`);
-    
+
     days.forEach((day, index) => {
       // Enhanced availability checking
       const daySchedule = instructor.availability?.[day] || instructor[day];
-      
-      console.log(`  📅 Checking ${day} availability:`, {
-        daySchedule,
-        isAvailable: daySchedule?.isAvailable,
-        startTime: daySchedule?.startTime,
-        endTime: daySchedule?.endTime
-      });
-      
+
       // Check 1: Instructor must be available on this day
       if (!daySchedule || !daySchedule.isAvailable) {
-        console.log(`  ❌ ${day}: Instructor not available (isAvailable: ${daySchedule?.isAvailable})`);
         return;
       }
-      
+
       // Check 2: Must have valid start and end times
       if (!daySchedule.startTime || !daySchedule.endTime) {
-        console.log(`  ❌ ${day}: Missing time schedule (start: ${daySchedule.startTime}, end: ${daySchedule.endTime})`);
         return;
       }
-      
+
       const startTime = daySchedule.startTime;
       const endTime = daySchedule.endTime;
-      
+
       const startMinutes = this.#parseTime(startTime);
       const endMinutes = this.#parseTime(endTime);
-      
+
       // Check 3: Valid time window
       if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
-        console.log(`  ❌ ${day}: Invalid time window (${startTime} - ${endTime})`);
         return;
       }
-      
-      console.log(`  ✅ ${day}: Available ${startTime} - ${endTime} (${endMinutes - startMinutes} minutes)`);
-      
+
       // Get all instruments this instructor teaches
-      const instructorInstruments = instructor.specialties || instructor.instruments || 
+      const instructorInstruments = instructor.specialties || instructor.instruments ||
         (instructor.primaryInstrument ? [instructor.primaryInstrument] : ['Piano']);
-      
-      const normalizedInstruments = Array.isArray(instructorInstruments) 
-        ? instructorInstruments 
+
+      const normalizedInstruments = Array.isArray(instructorInstruments)
+        ? instructorInstruments
         : [instructorInstruments].filter(Boolean);
-      
+
       // If no instruments found, default to Piano
       const instruments = normalizedInstruments.length > 0 ? normalizedInstruments : ['Piano'];
-      
+
       // Get existing registrations for this instructor on this day
       const dayIndex = dayMap[day];
       const existingRegistrations = this.registrations.filter(reg => {
         const regInstructorId = reg.instructorId?.value || reg.instructorId;
         return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
       });
-      
-      console.log(`  📝 Existing registrations on ${day}:`, existingRegistrations.length);
-      existingRegistrations.forEach(reg => {
-        console.log(`    - ${reg.startTime} (${reg.length || 30}min)`);
-      });
-      
+
+
       // Generate potential time slots (every 30 minutes from start to end)
       for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += 30) {
         const currentTimeStr = this.#formatTimeFromMinutes(currentMinutes);
-        
+
         // Check if this time slot conflicts with existing registrations
         const hasConflict = this.#checkTimeSlotConflict(currentMinutes, 30, existingRegistrations);
-        
+
         if (hasConflict) {
-          console.log(`    ⚠️  Conflict at ${currentTimeStr} - skipping`);
           continue;
         }
-        
+
         // Generate slots for different lesson lengths
         instruments.forEach(instrument => {
           [30, 45, 60].forEach(length => {
             // Check if this length would fit within instructor's available window
             if (currentMinutes + length > endMinutes) {
-              console.log(`    ⏰ ${currentTimeStr} (${length}min) extends past end time - skipping`);
               return;
             }
-            
+
             // Check if this length would conflict with existing registrations
             const lengthConflict = this.#checkTimeSlotConflict(currentMinutes, length, existingRegistrations);
             if (lengthConflict) {
-              console.log(`    ⚠️  ${currentTimeStr} (${length}min) conflicts with existing registration - skipping`);
               return;
             }
-            
+
             const slotTime = this.#formatTime(currentTimeStr);
-            console.log(`    ✅ Adding slot: ${currentTimeStr} (${length}min, ${instrument})`);
-            
+
             timeSlots.push({
               day: day,
               dayName: dayNames[index],
@@ -1473,7 +1407,7 @@ export class ParentRegistrationForm {
         });
       }
     });
-    
+
     console.log(`🎯 Generated ${timeSlots.length} total slots for ${instructor.firstName}`);
     return timeSlots.slice(0, 15); // Increased limit since we have better filtering
   }
@@ -1487,20 +1421,16 @@ export class ParentRegistrationForm {
    */
   #checkTimeSlotConflict(slotStartMinutes, slotLengthMinutes, existingRegistrations) {
     const slotEndMinutes = slotStartMinutes + slotLengthMinutes;
-    
+
     return existingRegistrations.some(reg => {
       const regStartMinutes = this.#parseTime(reg.startTime);
       if (regStartMinutes === null) return false;
-      
+
       const regEndMinutes = regStartMinutes + (reg.length || 30);
-      
+
       // Check for any overlap: slot starts before registration ends AND slot ends after registration starts
       const hasOverlap = (slotStartMinutes < regEndMinutes && slotEndMinutes > regStartMinutes);
-      
-      if (hasOverlap) {
-        console.log(`    🔍 Conflict detected: Slot ${this.#formatTimeFromMinutes(slotStartMinutes)}-${this.#formatTimeFromMinutes(slotEndMinutes)} overlaps with registration ${reg.startTime}-${this.#formatTimeFromMinutes(regEndMinutes)}`);
-      }
-      
+
       return hasOverlap;
     });
   }
@@ -1521,36 +1451,36 @@ export class ParentRegistrationForm {
     const card = document.createElement('div');
     card.className = 'instructor-card';
     card.style.cssText = 'border: 2px solid #ddd; margin: 15px 0; padding: 20px; border-radius: 8px; transition: border-color 0.3s;';
-    
+
     const header = document.createElement('h6');
     header.style.cssText = 'margin: 0 0 15px 0; color: #2b68a4; display: flex; align-items: center;';
-    
+
     // Get all instruments this instructor teaches
-    const instructorInstruments = instructor.specialties || instructor.instruments || 
+    const instructorInstruments = instructor.specialties || instructor.instruments ||
       (instructor.primaryInstrument ? [instructor.primaryInstrument] : ['Piano']);
-    
-    const normalizedInstruments = Array.isArray(instructorInstruments) 
-      ? instructorInstruments 
+
+    const normalizedInstruments = Array.isArray(instructorInstruments)
+      ? instructorInstruments
       : [instructorInstruments].filter(Boolean);
-    
-    const instrumentsDisplay = normalizedInstruments.length > 0 
-      ? normalizedInstruments.join(', ') 
+
+    const instrumentsDisplay = normalizedInstruments.length > 0
+      ? normalizedInstruments.join(', ')
       : 'Piano';
-    
+
     header.innerHTML = `<b>${instructor.firstName} ${instructor.lastName} - ${instrumentsDisplay}</b> <span style="margin-left: 10px; font-size: 12px; background: #e8f5e8; color: #4caf50; padding: 4px 8px; border-radius: 12px;">${timeSlots.length} available</span>`;
-    
+
     const timeslotGrid = document.createElement('div');
     timeslotGrid.className = 'timeslot-grid';
     timeslotGrid.style.cssText = 'display: flex; flex-wrap: wrap; gap: 10px;';
-    
+
     timeSlots.forEach(slot => {
       const timeslotElement = this.#createTimeSlotElement(slot);
       timeslotGrid.appendChild(timeslotElement);
     });
-    
+
     card.appendChild(header);
     card.appendChild(timeslotGrid);
-    
+
     return card;
   }
 
@@ -1565,15 +1495,15 @@ export class ParentRegistrationForm {
     element.dataset.time = slot.time;
     element.dataset.length = slot.length;
     element.dataset.instrument = slot.instrument;
-    
+
     element.style.cssText = 'border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);';
-    
+
     element.innerHTML = `
       <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">${slot.dayName}</div>
       <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">${slot.timeFormatted}</div>
       <div style="font-size: 12px; color: #666;">${slot.length}min • ${slot.instrument}</div>
     `;
-    
+
     return element;
   }
 
@@ -1595,35 +1525,35 @@ export class ParentRegistrationForm {
   #initializeHybridInterface() {
     // Hide all registration containers initially
     this.#hideAllRegistrationContainers();
-    
+
     // Handle registration type selection first
     this.#attachRegistrationTypeListener();
-    
+
     // Populate student selector
     this.#populateStudentSelector();
-    
+
     // Generate all filter chips dynamically with cascading order
     // Order: Instrument → Day → Length → Instructor
     this.#generateInstrumentChips();
     this.#generateDayChips();
     this.#generateLengthChips();
     this.#generateInstructorChips();
-    
+
     // Generate time slots dynamically
     this.#generateTimeSlots();
-    
+
     // Handle filter chips
     this.#attachFilterChipListeners();
-    
+
     // Handle time slot selection
     this.#attachTimeSlotListeners();
-    
+
     // Handle private registration submit button
     this.#attachSubmitButtonListener();
-    
+
     // Handle group registration submit button
     this.#attachGroupSubmitButtonListener();
-    
+
     // Handle clear button
     this.#attachClearButtonListener();
   }
@@ -1634,7 +1564,7 @@ export class ParentRegistrationForm {
   #populateStudentSelector() {
     const studentSelect = document.getElementById('parent-student-select');
     const studentSection = document.getElementById('parent-student-selection-section');
-    
+
     if (!studentSelect || !studentSection) {
       console.warn('Parent student selector elements not found');
       return;
@@ -1655,23 +1585,21 @@ export class ParentRegistrationForm {
       // Single student - hide section and auto-select
       studentSection.style.display = 'none';
       const student = this.parentChildren[0];
-      
+
       // Create option and select it
       const option = document.createElement('option');
       option.value = student.id;
       option.textContent = `${student.firstName} ${student.lastName}`;
       option.selected = true;
       studentSelect.appendChild(option);
-      
+
       // Show registration type container since student is selected
       this.#showRegistrationTypeContainer();
-      
-      console.log(`Auto-selected single student: ${student.firstName} ${student.lastName}`);
     } else {
       // Multiple students - show section and hide registration containers until selection
       studentSection.style.display = 'block';
       this.#hideAllRegistrationContainers();
-      
+
       // Add student options
       this.parentChildren.forEach(student => {
         const option = document.createElement('option');
@@ -1679,7 +1607,7 @@ export class ParentRegistrationForm {
         option.textContent = `${student.firstName} ${student.lastName}`;
         studentSelect.appendChild(option);
       });
-      
+
       // Add event listener for student selection changes
       studentSelect.addEventListener('change', (event) => {
         const selectedStudentId = event.target.value;
@@ -1694,8 +1622,6 @@ export class ParentRegistrationForm {
           this.#hideAllRegistrationContainers();
         }
       });
-      
-      console.log(`Showing student selector with ${this.parentChildren.length} students`);
     }
 
     // Reinitialize Materialize select
@@ -1719,7 +1645,7 @@ export class ParentRegistrationForm {
     const registrationTypeSection = document.querySelector('.registration-type-section');
     const privateContainer = document.getElementById('parent-private-registration-container');
     const groupContainer = document.getElementById('parent-group-registration-container');
-    
+
     if (registrationTypeSection) registrationTypeSection.style.display = 'none';
     if (privateContainer) privateContainer.style.display = 'none';
     if (groupContainer) groupContainer.style.display = 'none';
@@ -1731,34 +1657,30 @@ export class ParentRegistrationForm {
   #attachRegistrationTypeListener() {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
-    
+
     const registrationTypeSelect = document.getElementById('parent-registration-type-select');
     const privateContainer = document.getElementById('parent-private-registration-container');
     const groupContainer = document.getElementById('parent-group-registration-container');
-    
+
     if (registrationTypeSelect && privateContainer && groupContainer) {
       registrationTypeSelect.addEventListener('change', (event) => {
         const selectedType = event.target.value;
-        
+
         // Hide both containers first
         privateContainer.style.display = 'none';
         groupContainer.style.display = 'none';
-        
+
         if (selectedType === 'private') {
           // Show the private registration container
           privateContainer.style.display = 'block';
-          console.log('🎯 Private registration container shown');
         } else if (selectedType === 'public') {
           // Show the group registration container
           groupContainer.style.display = 'block';
-          console.log('🎯 Group registration container shown');
-          
+
           // Populate the classes dropdown
           this.#populateParentClassesDropdown();
-        } else {
-          console.log('🎯 All registration containers hidden');
         }
-        
+
         // Initialize Materialize select components
         setTimeout(() => {
           if (typeof M !== 'undefined') {
@@ -1766,7 +1688,7 @@ export class ParentRegistrationForm {
           }
         }, 100);
       });
-      
+
       // Initialize Materialize select
       if (typeof M !== 'undefined') {
         M.FormSelect.init(registrationTypeSelect);
@@ -1787,7 +1709,7 @@ export class ParentRegistrationForm {
     // Get selected student ID
     const studentSelect = document.getElementById('parent-student-select');
     const selectedStudentId = studentSelect?.value;
-    
+
     if (!selectedStudentId) {
       console.warn('No student selected for class filtering');
       return;
@@ -1796,12 +1718,12 @@ export class ParentRegistrationForm {
     // Filter classes where student is NOT already enrolled
     const availableClasses = this.classes.filter(cls => {
       // Check if student already has a group registration for this class
-      const hasExistingRegistration = this.registrations.some(registration => 
-        registration.studentId === selectedStudentId && 
+      const hasExistingRegistration = this.registrations.some(registration =>
+        registration.studentId === selectedStudentId &&
         registration.classId === cls.id &&
         registration.registrationType === 'group'
       );
-      
+
       return !hasExistingRegistration;
     });
 
@@ -1818,7 +1740,7 @@ export class ParentRegistrationForm {
     availableClasses.forEach(cls => {
       const option = document.createElement('option');
       option.value = cls.id;
-      option.textContent = cls.formattedName || cls.title || cls.instrument || `Class ${cls.id}`;
+      option.textContent = formatClassNameWithGradeCorrection(cls);
       classSelect.appendChild(option);
     });
 
@@ -1850,10 +1772,10 @@ export class ParentRegistrationForm {
   #handleClassSelection(classId) {
     const registerButton = document.getElementById('parent-create-group-registration-btn');
     const errorContainer = this.#getOrCreateErrorContainer();
-    
+
     // Clear previous error state
     this.#clearRegistrationError();
-    
+
     if (!classId) {
       // No class selected, disable button
       if (registerButton) {
@@ -1870,8 +1792,6 @@ export class ParentRegistrationForm {
       return;
     }
 
-    console.log('🔍 Checking capacity for class:', selectedClass);
-
     // Count current registrations for this class
     const currentRegistrations = this.registrations.filter(reg => {
       const regClassId = reg.classId?.value || reg.classId;
@@ -1886,7 +1806,6 @@ export class ParentRegistrationForm {
 
     if (!hasACapacityDefined) {
       // No capacity defined, assume unlimited
-      console.warn('No capacity defined for class:', selectedClass);
     }
 
     if (hasACapacityDefined && currentRegistrations.length >= classCapacity) {
@@ -1902,9 +1821,6 @@ export class ParentRegistrationForm {
         registerButton.disabled = false;
         registerButton.style.opacity = '1';
       }
-      
-      const availableSpots = classCapacity - currentRegistrations.length;
-      console.log(`✅ Class has ${availableSpots} available spots`);
     }
   }
 
@@ -1913,13 +1829,13 @@ export class ParentRegistrationForm {
    */
   #getOrCreateErrorContainer() {
     let errorContainer = document.getElementById('parent-class-error-message');
-    
+
     if (!errorContainer) {
       // Create error container
       errorContainer = document.createElement('div');
       errorContainer.id = 'parent-class-error-message';
       errorContainer.style.cssText = 'margin-top: 10px; padding: 10px; background: #ffebee; border: 1px solid #f44336; border-radius: 4px; color: #d32f2f; font-size: 14px; display: none;';
-      
+
       // Insert after the class select
       const classSelect = document.getElementById('parent-class-select');
       const inputField = classSelect?.closest('.input-field');
@@ -1927,7 +1843,7 @@ export class ParentRegistrationForm {
         inputField.parentNode.insertBefore(errorContainer, inputField.nextSibling);
       }
     }
-    
+
     return errorContainer;
   }
 
@@ -1959,16 +1875,16 @@ export class ParentRegistrationForm {
   #attachFilterChipListeners() {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
-    
+
     const chips = parentContainer.querySelectorAll('.chip:not(.unavailable):not([data-listener-attached])');
     chips.forEach(chip => {
       chip.addEventListener('click', () => {
         const chipType = chip.dataset.type;
         const chipValue = chip.dataset.value;
-        
+
         // Clear downstream selections when upstream chip is clicked (cascading)
         this.#clearDownstreamSelections(chipType);
-        
+
         // Handle chip selection logic
         const siblings = chip.parentElement.querySelectorAll('.chip');
         siblings.forEach(sibling => {
@@ -1981,19 +1897,19 @@ export class ParentRegistrationForm {
             sibling.style.border = isAvailable ? '2px solid #4caf50' : isLimited ? '2px solid #ff9800' : '2px solid #f44336';
           }
         });
-        
+
         // Activate this chip
         chip.classList.add('active', 'selected');
         chip.style.background = '#2b68a4';
         chip.style.color = 'white';
         chip.style.border = '2px solid #2b68a4';
-        
+
         // Regenerate downstream chips based on cascading logic
         this.#updateCascadingChips(chipType);
-        
+
         // Regenerate time slots based on current filter state
         this.#regenerateFilteredTimeSlots();
-        
+
         // Filter time slots based on selection
         this.#filterTimeSlots();
       });
@@ -2007,10 +1923,10 @@ export class ParentRegistrationForm {
   #clearDownstreamSelections(chipType) {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
-    
+
     const cascade = ['instrument', 'day', 'length', 'instructor'];
     const currentIndex = cascade.indexOf(chipType);
-    
+
     // Clear all downstream selections (chips after current one in cascade)
     for (let i = currentIndex + 1; i < cascade.length; i++) {
       const downstreamType = cascade[i];
@@ -2024,7 +1940,7 @@ export class ParentRegistrationForm {
         chip.style.color = 'inherit';
         chip.style.border = isAvailable ? '2px solid #4caf50' : isLimited ? '2px solid #ff9800' : '2px solid #f44336';
       });
-      
+
       // Activate the "All" chip for downstream categories
       const allChip = parentContainer.querySelector(`.${downstreamType}-chip[data-value="all"]`);
       if (allChip && !allChip.classList.contains('unavailable')) {
@@ -2042,7 +1958,7 @@ export class ParentRegistrationForm {
   #updateCascadingChips(changedChipType) {
     const cascade = ['instrument', 'day', 'length', 'instructor'];
     const currentIndex = cascade.indexOf(changedChipType);
-    
+
     // Regenerate only downstream chips (chips after current one in cascade)
     for (let i = currentIndex + 1; i < cascade.length; i++) {
       const downstreamType = cascade[i];
@@ -2058,7 +1974,7 @@ export class ParentRegistrationForm {
           break;
       }
     }
-    
+
     // Re-attach listeners to the new downstream chips
     this.#attachFilterChipListeners();
   }
@@ -2070,25 +1986,25 @@ export class ParentRegistrationForm {
     // Store current active selections
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
-    
+
     const currentInstructor = parentContainer.querySelector('.instructor-chip.active')?.dataset.value;
     const currentDay = parentContainer.querySelector('.day-chip.active')?.dataset.value;
     const currentInstrument = parentContainer.querySelector('.instrument-chip.active')?.dataset.value;
     const currentLength = parentContainer.querySelector('.length-chip.active')?.dataset.value;
-    
+
     // Cascading regeneration - each chip considers only upstream filters
     // 1. Instrument chips (no upstream filters - always show all)
     this.#generateInstrumentChips();
-    
+
     // 2. Day chips (filtered by selected instrument)
     this.#generateDayChips();
-    
+
     // 3. Length chips (filtered by selected instrument + day)
     this.#generateLengthChips();
-    
+
     // 4. Instructor chips (filtered by selected instrument + day + length)
     this.#generateInstructorChips();
-    
+
     // Restore the active states, but clear downstream selections if upstream changed
     if (currentInstrument) {
       const instructorChip = parentContainer.querySelector(`.instructor-chip[data-value="${currentInstructor}"]`);
@@ -2097,7 +2013,7 @@ export class ParentRegistrationForm {
         instructorChip.style.background = '#2b68a4';
         instructorChip.style.color = 'white';
         instructorChip.style.border = '2px solid #2b68a4';
-        
+
         // If a specific instructor was selected, ensure "All Instructors" is deselected
         if (currentInstructor !== 'all') {
           const allInstructorChip = parentContainer.querySelector('.instructor-chip[data-value="all"]');
@@ -2112,7 +2028,7 @@ export class ParentRegistrationForm {
         }
       }
     }
-    
+
     if (currentDay) {
       const dayChip = parentContainer.querySelector(`.day-chip[data-value="${currentDay}"]`);
       if (dayChip) {
@@ -2120,7 +2036,7 @@ export class ParentRegistrationForm {
         dayChip.style.background = '#2b68a4';
         dayChip.style.color = 'white';
         dayChip.style.border = '2px solid #2b68a4';
-        
+
         // If a specific day was selected, ensure "All Days" is deselected
         if (currentDay !== 'all') {
           const allDayChip = parentContainer.querySelector('.day-chip[data-value="all"]');
@@ -2135,7 +2051,7 @@ export class ParentRegistrationForm {
         }
       }
     }
-    
+
     if (currentInstrument) {
       const instrumentChip = parentContainer.querySelector(`.instrument-chip[data-value="${currentInstrument}"]`);
       if (instrumentChip) {
@@ -2143,7 +2059,7 @@ export class ParentRegistrationForm {
         instrumentChip.style.background = '#2b68a4';
         instrumentChip.style.color = 'white';
         instrumentChip.style.border = '2px solid #2b68a4';
-        
+
         // If a specific instrument was selected, ensure "All Instruments" is deselected
         if (currentInstrument !== 'all') {
           const allInstrumentChip = parentContainer.querySelector('.instrument-chip[data-value="all"]');
@@ -2158,7 +2074,7 @@ export class ParentRegistrationForm {
         }
       }
     }
-    
+
     if (currentLength) {
       const lengthChip = parentContainer.querySelector(`.length-chip[data-value="${currentLength}"]`);
       if (lengthChip) {
@@ -2166,7 +2082,7 @@ export class ParentRegistrationForm {
         lengthChip.style.background = '#2b68a4';
         lengthChip.style.color = 'white';
         lengthChip.style.border = '2px solid #2b68a4';
-        
+
         // If a specific length was selected, ensure "All Lengths" is deselected
         if (currentLength !== 'all') {
           const allLengthChip = parentContainer.querySelector('.length-chip[data-value="all"]');
@@ -2181,7 +2097,7 @@ export class ParentRegistrationForm {
         }
       }
     }
-    
+
     // Re-attach listeners to the new chips
     this.#attachFilterChipListeners();
   }
@@ -2192,7 +2108,7 @@ export class ParentRegistrationForm {
   #regenerateFilteredTimeSlots() {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
-    
+
     const timeslotGrid = parentContainer.querySelector('.instructor-timeslot-grid');
     if (!timeslotGrid) return;
 
@@ -2201,13 +2117,6 @@ export class ParentRegistrationForm {
     const selectedDay = parentContainer.querySelector('.day-chip.active')?.dataset.value || 'all';
     const selectedInstrument = parentContainer.querySelector('.instrument-chip.active')?.dataset.value || 'all';
     const selectedLength = parentContainer.querySelector('.length-chip.active')?.dataset.value || 'all';
-    
-    console.log('🔄 Regenerating time slots with filters:', {
-      instructor: selectedInstructor,
-      day: selectedDay,
-      instrument: selectedInstrument,
-      length: selectedLength
-    });
 
     // Clear existing instructor cards
     const existingCards = timeslotGrid.querySelectorAll('.instructor-card');
@@ -2215,25 +2124,23 @@ export class ParentRegistrationForm {
 
     // Determine which instructors to include
     let instructorsToInclude = this.instructors;
-    
+
     // Filter by selected instructor
     if (selectedInstructor !== 'all') {
       instructorsToInclude = instructorsToInclude.filter(instructor => instructor.id === selectedInstructor);
     }
-    
+
     // Filter by selected instrument
     if (selectedInstrument !== 'all') {
       instructorsToInclude = instructorsToInclude.filter(instructor => {
-        const instructorInstruments = instructor.specialties || instructor.instruments || 
+        const instructorInstruments = instructor.specialties || instructor.instruments ||
           (instructor.primaryInstrument ? [instructor.primaryInstrument] : ['Piano']);
-        const normalizedInstruments = Array.isArray(instructorInstruments) 
-          ? instructorInstruments 
+        const normalizedInstruments = Array.isArray(instructorInstruments)
+          ? instructorInstruments
           : [instructorInstruments].filter(Boolean);
         return normalizedInstruments.some(inst => inst.trim() === selectedInstrument);
       });
     }
-
-    console.log(`🎯 Generating slots for ${instructorsToInclude.length} filtered instructors`);
 
     // Generate cards for filtered instructors
     instructorsToInclude.forEach(instructor => {
@@ -2243,7 +2150,7 @@ export class ParentRegistrationForm {
         timeslotGrid.appendChild(card);
       }
     });
-    
+
     // Attach listeners after generating
     this.#attachTimeSlotListeners();
   }
@@ -2255,7 +2162,7 @@ export class ParentRegistrationForm {
     const timeSlots = [];
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    
+
     // Create day mapping for registration lookups
     const dayMap = {
       'monday': 0,
@@ -2264,109 +2171,89 @@ export class ParentRegistrationForm {
       'thursday': 3,
       'friday': 4
     };
-    
-    console.log(`🎯 Generating filtered time slots for instructor ${instructor.firstName} ${instructor.lastName}`);
-    
+
     // Filter days if a specific day is selected
     const daysToProcess = dayFilter !== 'all' ? [dayFilter] : days;
-    
+
     daysToProcess.forEach((day) => {
       const index = days.indexOf(day);
       if (index === -1) return; // Skip invalid days
-      
+
       // Enhanced availability checking
       const daySchedule = instructor.availability?.[day] || instructor[day];
-      
-      console.log(`  📅 Checking ${day} availability:`, {
-        daySchedule,
-        isAvailable: daySchedule?.isAvailable,
-        startTime: daySchedule?.startTime,
-        endTime: daySchedule?.endTime
-      });
-      
+
       // Check if instructor is available on this day
       if (!daySchedule || !daySchedule.isAvailable) {
-        console.log(`  ❌ ${day}: Instructor not available (isAvailable: ${daySchedule?.isAvailable})`);
         return;
       }
-      
+
       // Check for valid start and end times
       if (!daySchedule.startTime || !daySchedule.endTime) {
-        console.log(`  ❌ ${day}: Missing time schedule (start: ${daySchedule.startTime}, end: ${daySchedule.endTime})`);
         return;
       }
-      
+
       const startTime = daySchedule.startTime;
       const endTime = daySchedule.endTime;
-      
+
       const startMinutes = this.#parseTime(startTime);
       const endMinutes = this.#parseTime(endTime);
-      
+
       // Check for valid time window
       if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
-        console.log(`  ❌ ${day}: Invalid time window (${startTime} - ${endTime})`);
         return;
       }
-      
-      console.log(`  ✅ ${day}: Available ${startTime} - ${endTime} (${endMinutes - startMinutes} minutes)`);
-      
+
       // Get instructor's instruments
-      const instructorInstruments = instructor.specialties || instructor.instruments || 
+      const instructorInstruments = instructor.specialties || instructor.instruments ||
         (instructor.primaryInstrument ? [instructor.primaryInstrument] : ['Piano']);
-      
-      const normalizedInstruments = Array.isArray(instructorInstruments) 
-        ? instructorInstruments 
+
+      const normalizedInstruments = Array.isArray(instructorInstruments)
+        ? instructorInstruments
         : [instructorInstruments].filter(Boolean);
-      
+
       // Filter instruments if a specific instrument is selected
-      const instrumentsToProcess = instrumentFilter !== 'all' 
+      const instrumentsToProcess = instrumentFilter !== 'all'
         ? normalizedInstruments.filter(inst => inst.trim() === instrumentFilter)
         : (normalizedInstruments.length > 0 ? normalizedInstruments : ['Piano']);
-      
+
       // Get existing registrations for this instructor on this day
       const dayIndex = dayMap[day];
       const existingRegistrations = this.registrations.filter(reg => {
         const regInstructorId = reg.instructorId?.value || reg.instructorId;
         return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
       });
-      
-      console.log(`  📝 Existing registrations on ${day}:`, existingRegistrations.length);
-      
+
       // Generate potential time slots (every 30 minutes from start to end)
       for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += 30) {
         const currentTimeStr = this.#formatTimeFromMinutes(currentMinutes);
-        
+
         // Check if this time slot conflicts with existing registrations
         const hasConflict = this.#checkTimeSlotConflict(currentMinutes, 30, existingRegistrations);
-        
+
         if (hasConflict) {
-          console.log(`    ⚠️  Conflict at ${currentTimeStr} - skipping`);
           continue;
         }
-        
+
         // Generate slots for different lesson lengths and instruments
         instrumentsToProcess.forEach(instrument => {
-          const lengthsToProcess = lengthFilter !== 'all' 
+          const lengthsToProcess = lengthFilter !== 'all'
             ? [parseInt(lengthFilter)]
             : [30, 45, 60];
-            
+
           lengthsToProcess.forEach(length => {
             // Check if this length would fit within instructor's available window
             if (currentMinutes + length > endMinutes) {
-              console.log(`    ⏰ ${currentTimeStr} (${length}min) extends past end time - skipping`);
               return;
             }
-            
+
             // Check if this length would conflict with existing registrations
             const lengthConflict = this.#checkTimeSlotConflict(currentMinutes, length, existingRegistrations);
             if (lengthConflict) {
-              console.log(`    ⚠️  ${currentTimeStr} (${length}min) conflicts with existing registration - skipping`);
               return;
             }
-            
+
             const slotTime = this.#formatTime(currentTimeStr);
-            console.log(`    ✅ Adding slot: ${currentTimeStr} (${length}min, ${instrument})`);
-            
+
             timeSlots.push({
               day: day,
               dayName: dayNames[index],
@@ -2380,7 +2267,7 @@ export class ParentRegistrationForm {
         });
       }
     });
-    
+
     console.log(`🎯 Generated ${timeSlots.length} filtered slots for ${instructor.firstName}`);
     return timeSlots.slice(0, 20); // Limit to prevent overwhelming UI
   }
@@ -2391,7 +2278,7 @@ export class ParentRegistrationForm {
   #attachTimeSlotListeners() {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
-    
+
     const timeSlots = parentContainer.querySelectorAll('.timeslot.available:not([data-listener-attached])');
     timeSlots.forEach(slot => {
       slot.addEventListener('click', () => {
@@ -2410,12 +2297,12 @@ export class ParentRegistrationForm {
             s.style.background = '#ffebee';
           }
         });
-        
+
         // Select this slot
         slot.classList.add('selected');
         slot.style.border = '3px solid #1976d2';
         slot.style.background = '#e3f2fd';
-        
+
         // Update selection display
         this.#updateSelectionDisplay(slot);
       });
@@ -2429,23 +2316,23 @@ export class ParentRegistrationForm {
   #attachSubmitButtonListener() {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
-    
+
     const submitButton = document.getElementById('parent-confirm-registration-btn');
     if (submitButton) {
       // Remove existing onclick if any
       submitButton.removeAttribute('onclick');
-      
+
       submitButton.addEventListener('click', async (event) => {
         event.preventDefault();
-        
+
         if (!this.#validateRegistration()) {
           return;
         }
-        
+
         // Show confirmation modal before proceeding
         const registrationData = this.#getCreateRegistrationData();
         const confirmationMessage = this.#buildPrivateLessonConfirmationMessage(registrationData);
-        
+
         this.#showConfirmationModal(confirmationMessage, async () => {
           try {
             await this.sendDataFunction(registrationData);
@@ -2468,23 +2355,23 @@ export class ParentRegistrationForm {
   #attachGroupSubmitButtonListener() {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
-    
+
     const groupSubmitButton = document.getElementById('parent-create-group-registration-btn');
     if (groupSubmitButton) {
       // Remove existing onclick if any
       groupSubmitButton.removeAttribute('onclick');
-      
+
       groupSubmitButton.addEventListener('click', async (event) => {
         event.preventDefault();
-        
+
         if (!this.#validateGroupRegistration()) {
           return;
         }
-        
+
         // Show confirmation modal before proceeding
         const registrationData = this.#getCreateGroupRegistrationData();
         const confirmationMessage = this.#buildGroupClassConfirmationMessage(registrationData);
-        
+
         this.#showConfirmationModal(confirmationMessage, async () => {
           try {
             await this.sendDataFunction(registrationData);
@@ -2507,12 +2394,12 @@ export class ParentRegistrationForm {
   #attachClearButtonListener() {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
-    
+
     const clearButton = document.getElementById('parent-clear-selection-btn');
     if (clearButton) {
       // Remove existing onclick if any
       clearButton.removeAttribute('onclick');
-      
+
       clearButton.addEventListener('click', (event) => {
         event.preventDefault();
         this.clearSelection();
@@ -2537,7 +2424,7 @@ export class ParentRegistrationForm {
 
     // Get all time slots
     const timeSlots = parentContainer.querySelectorAll('.timeslot');
-    
+
     timeSlots.forEach(slot => {
       let show = true;
 
@@ -2589,11 +2476,11 @@ export class ParentRegistrationForm {
     if (!parentContainer) return;
 
     const instructorCards = parentContainer.querySelectorAll('.instructor-card');
-    
+
     instructorCards.forEach(card => {
       const visibleSlots = card.querySelectorAll('.timeslot[style*="display: block"], .timeslot:not([style*="display: none"])');
       const availableCount = visibleSlots.length;
-      
+
       // Update availability count in card header
       const availabilitySpan = card.querySelector('h6 span');
       if (availabilitySpan) {
@@ -2601,7 +2488,7 @@ export class ParentRegistrationForm {
         availabilitySpan.style.background = availableCount > 3 ? '#e8f5e8' : availableCount > 0 ? '#fff3e0' : '#ffebee';
         availabilitySpan.style.color = availableCount > 3 ? '#4caf50' : availableCount > 0 ? '#ff9800' : '#f44336';
       }
-      
+
       // Hide card if no slots are available
       card.style.display = availableCount > 0 ? 'block' : 'none';
     });
@@ -2629,7 +2516,7 @@ export class ParentRegistrationForm {
       const timeFormatted = this.#formatTime(slot.dataset.time);
       const instrument = slot.dataset.instrument;
       const length = slot.dataset.length;
-      
+
       const detailsElement = selectionDisplay.querySelector('#admin-selected-lesson-details');
       if (detailsElement) {
         detailsElement.innerHTML = `
@@ -2640,10 +2527,10 @@ export class ParentRegistrationForm {
           <div><strong>Instrument:</strong> ${instrument}</div>
         `;
       }
-      
+
       selectionDisplay.style.display = 'block';
       selectionDisplay.style.pointerEvents = 'none'; // Allow clicks to pass through
-      
+
       // Enable pointer events on the inner container
       const innerContainer = selectionDisplay.querySelector('div');
       if (innerContainer) {
@@ -2660,24 +2547,24 @@ export class ParentRegistrationForm {
     const studentSection = document.getElementById('parent-student-selection-section');
     const studentSelect = document.getElementById('parent-student-select');
     const studentId = studentSelect?.value;
-    
+
     // Only validate student selection if the section is visible (multiple students)
     if (studentSection && studentSection.style.display !== 'none' && !studentId) {
       M.toast({ html: 'Please select a student' });
       return false;
     }
-    
+
     // For single student case, ensure there's still a student ID available
     if (!studentId) {
       M.toast({ html: 'No student available for registration' });
       return false;
     }
-    
+
     if (!this.selectedLesson) {
       M.toast({ html: 'Please select a lesson time slot' });
       return false;
     }
-    
+
     return true;
   }
 
@@ -2689,28 +2576,28 @@ export class ParentRegistrationForm {
     const studentSection = document.getElementById('parent-student-selection-section');
     const studentSelect = document.getElementById('parent-student-select');
     const studentId = studentSelect?.value;
-    
+
     // Only validate student selection if the section is visible (multiple students)
     if (studentSection && studentSection.style.display !== 'none' && !studentId) {
       M.toast({ html: 'Please select a student' });
       return false;
     }
-    
+
     // For single student case, ensure there's still a student ID available
     if (!studentId) {
       M.toast({ html: 'No student available for registration' });
       return false;
     }
-    
+
     // Check if class is selected
     const classSelect = document.getElementById('parent-class-select');
     const classId = classSelect?.value;
-    
+
     if (!classId) {
       M.toast({ html: 'Please select a class' });
       return false;
     }
-    
+
     return true;
   }
 
@@ -2721,15 +2608,15 @@ export class ParentRegistrationForm {
     if (!this.selectedLesson) {
       return null;
     }
-    
+
     // Get selected student ID
     const studentSelect = document.getElementById('parent-student-select');
     const studentId = studentSelect?.value;
-    
+
     if (!studentId) {
       throw new Error('Please select a student');
     }
-    
+
     const dayMap = {
       'monday': 'Monday',
       'tuesday': 'Tuesday',
@@ -2737,7 +2624,7 @@ export class ParentRegistrationForm {
       'thursday': 'Thursday',
       'friday': 'Friday'
     };
-    
+
     return {
       studentId: studentId,
       registrationType: RegistrationType.PRIVATE,
@@ -2757,7 +2644,7 @@ export class ParentRegistrationForm {
     // Get selected student ID
     const studentSelect = document.getElementById('parent-student-select');
     const studentId = studentSelect?.value;
-    
+
     if (!studentId) {
       throw new Error('Please select a student');
     }
@@ -2765,14 +2652,14 @@ export class ParentRegistrationForm {
     // Get selected class ID
     const classSelect = document.getElementById('parent-class-select');
     const classId = classSelect?.value;
-    
+
     if (!classId) {
       throw new Error('Please select a class');
     }
 
     // Find the selected class to get its details
     const selectedClass = this.classes.find(cls => cls.id === classId);
-    
+
     if (!selectedClass) {
       throw new Error('Selected class not found');
     }
@@ -2795,16 +2682,25 @@ export class ParentRegistrationForm {
    */
   #clearForm() {
     this.selectedLesson = null;
-    
+
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
-    
+
     // Hide the fixed registration preview (using the correct ID)
     const selectedDisplay = parentContainer.querySelector('#admin-selected-lesson-display');
     if (selectedDisplay) {
       selectedDisplay.style.display = 'none';
       selectedDisplay.style.pointerEvents = 'none'; // Ensure it doesn't interfere when hidden
     }
+
+    // Reset registration type selector using consistent utility
+    DomHelpers.clearMaterializeSelect('parent-registration-type-select', true);
+
+    // Hide all registration containers (private and group)
+    this.#hideAllRegistrationContainers();
+
+    // Clear any error messages
+    this.#clearRegistrationError();
   }
 
   /**
@@ -2813,21 +2709,19 @@ export class ParentRegistrationForm {
   #clearGroupForm() {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
-    
-    // Clear class selection
-    const classSelect = document.getElementById('parent-class-select');
-    if (classSelect) {
-      classSelect.value = '';
-      
-      // Reinitialize Materialize select
-      if (typeof M !== 'undefined') {
-        M.FormSelect.init(classSelect);
-      }
-    }
-    
+
+    // Clear selects using consistent utility
+    DomHelpers.clearMaterializeSelects([
+      'parent-class-select',
+      'parent-registration-type-select'
+    ], true);
+
+    // Hide all registration containers (private and group)
+    this.#hideAllRegistrationContainers();
+
     // Clear any error messages
     this.#clearRegistrationError();
-    
+
     // Disable register button again
     const registerButton = document.getElementById('parent-create-group-registration-btn');
     if (registerButton) {
@@ -2844,23 +2738,23 @@ export class ParentRegistrationForm {
     const messageElement = document.getElementById('parent-confirmation-message');
     const confirmButton = document.getElementById('parent-confirmation-confirm');
     const cancelButton = document.getElementById('parent-confirmation-cancel');
-    
+
     if (!modal || !messageElement || !confirmButton || !cancelButton) {
       console.warn('Confirmation modal elements not found');
       // If modal is not available, proceed directly
       onConfirm();
       return;
     }
-    
+
     // Set the message
     messageElement.innerHTML = message;
-    
+
     // Remove any existing event listeners
     const newConfirmButton = confirmButton.cloneNode(true);
     const newCancelButton = cancelButton.cloneNode(true);
     confirmButton.parentNode.replaceChild(newConfirmButton, confirmButton);
     cancelButton.parentNode.replaceChild(newCancelButton, cancelButton);
-    
+
     // Add event listeners
     newConfirmButton.addEventListener('click', () => {
       if (typeof M !== 'undefined') {
@@ -2870,7 +2764,7 @@ export class ParentRegistrationForm {
       this.#restorePageScrolling();
       onConfirm();
     });
-    
+
     newCancelButton.addEventListener('click', () => {
       if (typeof M !== 'undefined') {
         M.Modal.getInstance(modal).close();
@@ -2879,7 +2773,7 @@ export class ParentRegistrationForm {
       this.#restorePageScrolling();
       // Do nothing on cancel
     });
-    
+
     // Initialize and open modal
     if (typeof M !== 'undefined') {
       const modalInstance = M.Modal.init(modal, {
@@ -2901,10 +2795,10 @@ export class ParentRegistrationForm {
     // Remove any overflow restrictions that might prevent scrolling
     document.body.style.overflow = '';
     document.documentElement.style.overflow = '';
-    
+
     // Remove any fixed positioning that might interfere
     document.body.style.position = '';
-    
+
     // Ensure no modal overlay is blocking interactions
     const modalOverlay = document.querySelector('.modal-overlay');
     if (modalOverlay && modalOverlay.style.display !== 'none') {
@@ -2918,14 +2812,14 @@ export class ParentRegistrationForm {
   #buildPrivateLessonConfirmationMessage(registrationData) {
     const studentSelect = document.getElementById('parent-student-select');
     const studentName = studentSelect?.selectedOptions[0]?.textContent || 'your child';
-    
+
     // Find instructor name
     const instructor = this.instructors.find(inst => inst.id === registrationData.instructorId);
     const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : 'the instructor';
-    
+
     // Format time
     const timeFormatted = this.#formatTime(registrationData.startTime);
-    
+
     return `
       <strong>Are you sure you want to register ${studentName} for a private lesson?</strong>
       <br><br>
@@ -2960,15 +2854,15 @@ export class ParentRegistrationForm {
   #buildGroupClassConfirmationMessage(registrationData) {
     const studentSelect = document.getElementById('parent-student-select');
     const studentName = studentSelect?.selectedOptions[0]?.textContent || 'your child';
-    
+
     // Find class details
     const selectedClass = this.classes.find(cls => cls.id === registrationData.classId);
-    const className = selectedClass ? (selectedClass.formattedName || selectedClass.title || selectedClass.instrument) : 'the class';
-    
+    const className = selectedClass ? formatClassNameWithGradeCorrection(selectedClass) : 'the class';
+
     // Find instructor name
     const instructor = this.instructors.find(inst => inst.id === registrationData.instructorId);
     const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : 'the instructor';
-    
+
     return `
       <strong>Are you sure you want to register ${studentName} for this group class?</strong>
       <br><br>
