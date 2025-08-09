@@ -167,8 +167,14 @@ export class GoogleSheetsDbClient {
           length: 5, // Length
           registrationType: 6, // RegistrationType
           roomId: 7, // RoomId
-          schoolYear: 8, // SchoolYear
-          createdBy: 9, // CreatedBy
+          instrument: 8, // Instrument
+          transportationType: 9, // TransportationType
+          notes: 10, // Notes
+          classId: 11, // ClassId
+          classTitle: 12, // ClassTitle
+          expectedStartDate: 13, // ExpectedStartDate
+          createdAt: 14, // CreatedAt
+          createdBy: 15, // CreatedBy
         },
         auditSheet: Keys.REGISTRATIONSAUDIT,
         postProcess: record => {
@@ -183,17 +189,26 @@ export class GoogleSheetsDbClient {
         sheet: Keys.REGISTRATIONSAUDIT,
         startRow: 2,
         columnMap: {
-          id: 0,
-          action: 1,
-          registrationId: 2,
-          studentId: 3,
-          instructorId: 4,
-          classId: 5,
-          registrationType: 6,
-          schoolYear: 7,
-          trimester: 8,
-          performedBy: 9,
-          performedAt: 10,
+          id: 0, // Id (unique GUID for audit record)
+          registrationId: 1, // RegistrationId (ID from the original registration record)
+          studentId: 2, // StudentId
+          instructorId: 3, // InstructorId
+          day: 4, // Day
+          startTime: 5, // StartTime
+          length: 6, // Length
+          registrationType: 7, // RegistrationType
+          roomId: 8, // RoomId
+          instrument: 9, // Instrument
+          transportationType: 10, // TransportationType
+          notes: 11, // Notes
+          classId: 12, // ClassId
+          classTitle: 13, // ClassTitle
+          expectedStartDate: 14, // ExpectedStartDate
+          createdAt: 15, // CreatedAt
+          createdBy: 16, // CreatedBy
+          isDeleted: 17, // IsDeleted
+          deletedAt: 18, // DeletedAt
+          deletedBy: 19, // DeletedBy
         },
       },
       [Keys.ATTENDANCE]: {
@@ -428,11 +443,18 @@ export class GoogleSheetsDbClient {
       await this.insertIntoSheet(sheetKey, processedRecord);
 
       if (auditSheet) {
-        const auditValues = this.#convertToAuditValues(Object.values(processedRecord));
-        await this.insertIntoSheet(
-          auditSheet,
-          this.#convertAuditValuesToObject(auditValues, auditSheet)
-        );
+        if (sheetKey === Keys.REGISTRATIONS) {
+          // Special handling for registration audits
+          const auditRecord = this.#createRegistrationAuditRecord(processedRecord, createdBy, false);
+          await this.insertIntoSheet(auditSheet, auditRecord);
+        } else {
+          // Legacy audit handling for other sheets
+          const auditValues = this.#convertToAuditValues(Object.values(processedRecord));
+          await this.insertIntoSheet(
+            auditSheet,
+            this.#convertAuditValuesToObject(auditValues, auditSheet)
+          );
+        }
       } else {
         this.logger.debug(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
       }
@@ -562,11 +584,18 @@ export class GoogleSheetsDbClient {
       await this.deleteFromSheet(sheetKey, rowIndex);
 
       if (auditSheet) {
-        const auditValues = this.#convertToAuditValues(Object.values(recordData), deletedBy);
-        await this.insertIntoSheet(
-          auditSheet,
-          this.#convertAuditValuesToObject(auditValues, auditSheet)
-        );
+        if (sheetKey === Keys.REGISTRATIONS) {
+          // Special handling for registration audits
+          const auditRecord = this.#createRegistrationAuditRecord(recordData, deletedBy, true);
+          await this.insertIntoSheet(auditSheet, auditRecord);
+        } else {
+          // Legacy audit handling for other sheets
+          const auditValues = this.#convertToAuditValues(Object.values(recordData), deletedBy);
+          await this.insertIntoSheet(
+            auditSheet,
+            this.#convertAuditValuesToObject(auditValues, auditSheet)
+          );
+        }
       } else {
         this.logger.debug(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
       }
@@ -698,6 +727,40 @@ export class GoogleSheetsDbClient {
       console.error(`Error getting max ID from sheet ${sheetKey}:`, error);
       return 0;
     }
+  }
+
+  /**
+   * Create a registration audit record with proper schema
+   * @param {Object} registrationRecord - The original registration record
+   * @param {string} performedBy - The user who performed the action
+   * @param {boolean} isDeleted - Whether this is a delete operation
+   * @returns {Object} Audit record formatted for the registrations-audit sheet
+   */
+  #createRegistrationAuditRecord(registrationRecord, performedBy, isDeleted = false) {
+    const now = new Date().toISOString();
+    
+    return {
+      id: UuidUtility.generateUuid(), // New unique GUID for audit record
+      registrationId: registrationRecord.id, // ID from the original registration
+      studentId: registrationRecord.studentId,
+      instructorId: registrationRecord.instructorId,
+      day: registrationRecord.day,
+      startTime: registrationRecord.startTime,
+      length: registrationRecord.length,
+      registrationType: registrationRecord.registrationType,
+      roomId: registrationRecord.roomId,
+      instrument: registrationRecord.instrument,
+      transportationType: registrationRecord.transportationType,
+      notes: registrationRecord.notes,
+      classId: registrationRecord.classId,
+      classTitle: registrationRecord.classTitle,
+      expectedStartDate: registrationRecord.expectedStartDate,
+      createdAt: registrationRecord.createdAt,
+      createdBy: registrationRecord.createdBy,
+      isDeleted: isDeleted,
+      deletedAt: isDeleted ? now : '',
+      deletedBy: isDeleted ? performedBy : '',
+    };
   }
 
   /**

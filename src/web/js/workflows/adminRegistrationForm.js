@@ -5,6 +5,7 @@
 
 import { RegistrationType } from '../../../utils/values/registrationType.js';
 import { Select } from '../components/select.js';
+import { formatClassNameWithGradeCorrection } from '../utils/classNameFormatter.js';
 
 /**
  * Admin Registration Form with simplified progressive filters
@@ -45,7 +46,7 @@ export class AdminRegistrationForm {
     this.classSelect = this.#buildClassSelect(
       this.classes.map(cls => ({
         value: cls.id,
-        label: cls.formattedName || cls.title || cls.instrument || `Class ${cls.id}`,
+        label: formatClassNameWithGradeCorrection(cls),
       }))
     );
     

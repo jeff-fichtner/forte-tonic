@@ -207,7 +207,10 @@ export class Class {
    * @returns {string} Formatted grade
    */
   formatGrade(grade) {
-    if (!grade) return '';
+    if (!grade && grade !== 0) return '';
+
+    // Handle numeric 0 and string "0" for kindergarten (consistent with numberExtensions.js)
+    if (grade === 0 || grade === '0') return 'K';
 
     const gradeStr = grade.toString().toLowerCase();
 
