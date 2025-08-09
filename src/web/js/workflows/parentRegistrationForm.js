@@ -1371,6 +1371,9 @@ export class ParentRegistrationForm {
     // Handle private registration submit button
     this.#attachSubmitButtonListener();
     
+    // Handle group registration submit button
+    this.#attachGroupSubmitButtonListener();
+    
     // Handle clear button
     this.#attachClearButtonListener();
   }
@@ -1565,7 +1568,7 @@ export class ParentRegistrationForm {
 
     if (hasACapacityDefined && currentRegistrations.length >= classCapacity) {
       // Class is full
-      this.#showRegistrationError('This class is full. Please reach out to an administrator.');
+      this.#showRegistrationError('This class is full. Please email forte@mcds.org to be placed on the waitlist or to explore other options.');
       if (registerButton) {
         registerButton.disabled = true;
         registerButton.style.opacity = '0.6';
@@ -2050,15 +2053,20 @@ export class ParentRegistrationForm {
           return;
         }
         
-        try {
-          const registrationData = this.#getCreateRegistrationData();
-          await this.sendDataFunction(registrationData);
-          this.#clearForm();
-          M.toast({ html: 'Registration created successfully!' });
-        } catch (error) {
-          console.error('Error creating registration:', error);
-          M.toast({ html: `Error creating registration: ${error.message}` });
-        }
+        // Show confirmation modal before proceeding
+        const registrationData = this.#getCreateRegistrationData();
+        const confirmationMessage = this.#buildPrivateLessonConfirmationMessage(registrationData);
+        
+        this.#showConfirmationModal(confirmationMessage, async () => {
+          try {
+            await this.sendDataFunction(registrationData);
+            this.#clearForm();
+            M.toast({ html: 'Registration created successfully!' });
+          } catch (error) {
+            console.error('Error creating registration:', error);
+            M.toast({ html: `Error creating registration: ${error.message}` });
+          }
+        });
       });
     } else {
       console.warn('Parent submit button not found');
@@ -2067,6 +2075,43 @@ export class ParentRegistrationForm {
 
   /**
    * Attach event listener to group registration submit button
+   */
+  #attachGroupSubmitButtonListener() {
+    const parentContainer = document.getElementById('parent-registration');
+    if (!parentContainer) return;
+    
+    const groupSubmitButton = document.getElementById('parent-create-group-registration-btn');
+    if (groupSubmitButton) {
+      // Remove existing onclick if any
+      groupSubmitButton.removeAttribute('onclick');
+      
+      groupSubmitButton.addEventListener('click', async (event) => {
+        event.preventDefault();
+        
+        if (!this.#validateGroupRegistration()) {
+          return;
+        }
+        
+        // Show confirmation modal before proceeding
+        const registrationData = this.#getCreateGroupRegistrationData();
+        const confirmationMessage = this.#buildGroupClassConfirmationMessage(registrationData);
+        
+        this.#showConfirmationModal(confirmationMessage, async () => {
+          try {
+            await this.sendDataFunction(registrationData);
+            this.#clearGroupForm();
+            M.toast({ html: 'Group registration created successfully!' });
+          } catch (error) {
+            console.error('Error creating group registration:', error);
+            M.toast({ html: `Error creating group registration: ${error.message}` });
+          }
+        });
+      });
+    } else {
+      console.warn('Parent group submit button not found');
+    }
+  }
+
   /**
    * Attach event listener to clear button
    */
@@ -2347,6 +2392,7 @@ export class ParentRegistrationForm {
       studentId: studentId,
       registrationType: RegistrationType.GROUP,
       classId: classId,
+      classTitle: selectedClass.formattedName || selectedClass.title || selectedClass.instrument || `Class ${selectedClass.id}`,
       instructorId: selectedClass.instructorId,
       day: selectedClass.day,
       startTime: selectedClass.startTime,
@@ -2418,6 +2464,144 @@ export class ParentRegistrationForm {
       registerButton.disabled = true;
       registerButton.style.opacity = '0.6';
     }
+  }
+
+  /**
+   * Show confirmation modal for parent registrations
+   */
+  #showConfirmationModal(message, onConfirm) {
+    const modal = document.getElementById('parent-registration-confirmation-modal');
+    const messageElement = document.getElementById('parent-confirmation-message');
+    const confirmButton = document.getElementById('parent-confirmation-confirm');
+    const cancelButton = document.getElementById('parent-confirmation-cancel');
+    
+    if (!modal || !messageElement || !confirmButton || !cancelButton) {
+      console.warn('Confirmation modal elements not found');
+      // If modal is not available, proceed directly
+      onConfirm();
+      return;
+    }
+    
+    // Set the message
+    messageElement.innerHTML = message;
+    
+    // Remove any existing event listeners
+    const newConfirmButton = confirmButton.cloneNode(true);
+    const newCancelButton = cancelButton.cloneNode(true);
+    confirmButton.parentNode.replaceChild(newConfirmButton, confirmButton);
+    cancelButton.parentNode.replaceChild(newCancelButton, cancelButton);
+    
+    // Add event listeners
+    newConfirmButton.addEventListener('click', () => {
+      if (typeof M !== 'undefined') {
+        M.Modal.getInstance(modal).close();
+      }
+      onConfirm();
+    });
+    
+    newCancelButton.addEventListener('click', () => {
+      if (typeof M !== 'undefined') {
+        M.Modal.getInstance(modal).close();
+      }
+      // Do nothing on cancel
+    });
+    
+    // Initialize and open modal
+    if (typeof M !== 'undefined') {
+      const modalInstance = M.Modal.init(modal, {
+        dismissible: true,
+        onCloseEnd: () => {
+          // Clear message when modal closes
+          messageElement.innerHTML = '';
+        }
+      });
+      modalInstance.open();
+    }
+  }
+
+  /**
+   * Build confirmation message for private lesson registration
+   */
+  #buildPrivateLessonConfirmationMessage(registrationData) {
+    const studentSelect = document.getElementById('parent-student-select');
+    const studentName = studentSelect?.selectedOptions[0]?.textContent || 'your child';
+    
+    // Find instructor name
+    const instructor = this.instructors.find(inst => inst.id === registrationData.instructorId);
+    const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : 'the instructor';
+    
+    // Format time
+    const timeFormatted = this.#formatTime(registrationData.startTime);
+    
+    return `
+      <strong>Are you sure you want to register ${studentName} for a private lesson?</strong>
+      <br><br>
+      <strong>Lesson Details:</strong><br>
+      • <strong>Instructor:</strong> ${instructorName}<br>
+      • <strong>Instrument:</strong> ${registrationData.instrument}<br>
+      • <strong>Day:</strong> ${registrationData.day}<br>
+      • <strong>Time:</strong> ${timeFormatted}<br>
+      • <strong>Duration:</strong> ${registrationData.length} minutes
+      <br><br>
+      <p>If you need to change or cancel this registration, please contact forte@mcds.org. The last day to cancel registrations without charge is August 29th. After this date, all registrations will be billed in full for the Fall Trimester.</p>
+      
+      <p><strong>Absence and Cancellation Policy:</strong></p>
+      
+      <p>Lessons missed due to student absence are charged in full except in the case of school-sponsored field trips or religious holidays. Sports practices or games are not considered school-sponsored activities.</p>
+      
+      <p>There will be no charge for lessons canceled by instructors unless the instructor schedules a make-up lesson at a later date.</p>
+      
+      <p>Instructors are encouraged to schedule make-up lessons for lessons they have missed; however, as they are working professionals in their fields, make-up lessons may not always be possible. The scheduling of make-up lessons will be at the instructor's discretion.</p>
+      
+      <p>Please notify your instructor at least 24 hours in advance of any student absence when possible. Instructor contact details will be emailed shortly after your child's first lesson. Additionally, notify FORTE staff of student absences at forte@mcds.org.</p>
+      
+      <p>Instructor cancellations will be communicated to parents/guardians via phone or email at least 24 hours in advance whenever possible. Same-day cancellations by instructors will result in no charge for PM care.</p>
+      
+      <p><strong>By clicking "Confirm Registration," you confirm your child's registration for the Fall Trimester in the FORTE program and acknowledge that you have read and agree to these terms and conditions.</strong></p>
+    `;
+  }
+
+  /**
+   * Build confirmation message for group class registration
+   */
+  #buildGroupClassConfirmationMessage(registrationData) {
+    const studentSelect = document.getElementById('parent-student-select');
+    const studentName = studentSelect?.selectedOptions[0]?.textContent || 'your child';
+    
+    // Find class details
+    const selectedClass = this.classes.find(cls => cls.id === registrationData.classId);
+    const className = selectedClass ? (selectedClass.formattedName || selectedClass.title || selectedClass.instrument) : 'the class';
+    
+    // Find instructor name
+    const instructor = this.instructors.find(inst => inst.id === registrationData.instructorId);
+    const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : 'the instructor';
+    
+    return `
+      <strong>Are you sure you want to register ${studentName} for this group class?</strong>
+      <br><br>
+      <strong>Class Details:</strong><br>
+      • <strong>Class:</strong> ${className}<br>
+      • <strong>Instructor:</strong> ${instructorName}<br>
+      • <strong>Day:</strong> ${registrationData.day}<br>
+      • <strong>Time:</strong> ${registrationData.startTime}<br>
+      • <strong>Duration:</strong> ${registrationData.length} minutes
+      <br><br>
+      <p>If you need to change or cancel this registration, please contact forte@mcds.org. The last day to cancel registrations without charge is August 29th. After this date, all registrations will be billed in full for the Fall Trimester.</p>
+      
+      <p><strong>Absence and Cancellation Policy:</strong></p>
+      
+      <p>Lessons missed due to student absence are charged in full except in the case of school-sponsored field trips or religious holidays. Sports practices or games are not considered school-sponsored activities.</p>
+      
+      <p>There will be no charge for lessons canceled by instructors unless the instructor schedules a make-up lesson at a later date.</p>
+      
+      <p>Instructors are encouraged to schedule make-up lessons for lessons they have missed; however, as they are working professionals in their fields, make-up lessons may not always be possible. The scheduling of make-up lessons will be at the instructor's discretion.</p>
+      
+      <p>Please notify your instructor at least 24 hours in advance of any student absence when possible. Instructor contact details will be emailed shortly after your child's first lesson. Additionally, notify FORTE staff of student absences at forte@mcds.org.</p>
+      
+      <p>Instructor cancellations will be communicated to parents/guardians via phone or email at least 24 hours in advance whenever possible. Same-day cancellations by instructors will result in no charge for PM care.</p>
+      
+      <p><strong>By confirming, you acknowledge that you have read and agree to these terms and conditions.</strong></p>
+    `;
   }
 
   /**

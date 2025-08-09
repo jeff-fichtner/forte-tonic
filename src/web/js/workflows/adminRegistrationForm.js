@@ -410,6 +410,7 @@ export class AdminRegistrationForm {
         studentId: studentId,
         registrationType: RegistrationType.GROUP,
         classId: selectedClassId,
+        classTitle: selectedClass.formattedName || selectedClass.title || selectedClass.instrument || `Class ${selectedClass.id}`,
         instructorId: selectedClass.instructorId,
         day: selectedClass.day,
         startTime: selectedClass.startTime,
