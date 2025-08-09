@@ -2694,7 +2694,7 @@ export class ParentRegistrationForm {
     }
 
     // Reset registration type selector using consistent utility
-    DomHelpers.clearMaterializeSelect('parent-registration-type-select', true);
+    DomHelpers.resetMaterializeSelect('parent-registration-type-select', true);
 
     // Hide all registration containers (private and group)
     this.#hideAllRegistrationContainers();
@@ -2711,7 +2711,7 @@ export class ParentRegistrationForm {
     if (!parentContainer) return;
 
     // Clear selects using consistent utility
-    DomHelpers.clearMaterializeSelects([
+    DomHelpers.resetMaterializeSelects([
       'parent-class-select',
       'parent-registration-type-select'
     ], true);

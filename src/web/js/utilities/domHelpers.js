@@ -15,16 +15,16 @@ export class DomHelpers {
   }
 
   /**
-   * Clear a Materialize CSS select element consistently
+   * Reset a Materialize CSS select element consistently
    * 
-   * This provides a consistent way to clear Materialize selects across the app,
+   * This provides a consistent way to reset Materialize selects across the app,
    * following the same pattern as the Select component's clearSelectedOption() method.
    * Use this for native select elements that aren't wrapped in the Select component.
    * 
    * @param {string|HTMLElement} selectElement - Select element ID or element reference
-   * @param {boolean} triggerChange - Whether to trigger a change event after clearing
+   * @param {boolean} triggerChange - Whether to trigger a change event after resetting
    */
-  static clearMaterializeSelect(selectElement, triggerChange = false) {
+  static resetMaterializeSelect(selectElement, triggerChange = false) {
     const select = typeof selectElement === 'string' 
       ? document.getElementById(selectElement) 
       : selectElement;
@@ -34,7 +34,7 @@ export class DomHelpers {
       return;
     }
 
-    console.log(`🔄 Clearing select: ${select.id || 'unnamed select'}, current value: "${select.value}"`);
+    console.log(`🔄 Resetting select: ${select.id || 'unnamed select'}, current value: "${select.value}"`);
 
     // Clear the value
     select.value = '';
@@ -56,17 +56,17 @@ export class DomHelpers {
       console.log(`📢 Triggered change event for: ${select.id}`);
     }
     
-    console.log(`✅ Select cleared: ${select.id || 'unnamed select'}, new value: "${select.value}"`);
+    console.log(`✅ Select reset: ${select.id || 'unnamed select'}, new value: "${select.value}"`);
   }
 
   /**
-   * Clear multiple Materialize CSS select elements consistently
+   * Reset multiple Materialize CSS select elements consistently
    * @param {Array<string|HTMLElement>} selectElements - Array of select element IDs or element references
-   * @param {boolean} triggerChange - Whether to trigger change events after clearing
+   * @param {boolean} triggerChange - Whether to trigger change events after resetting
    */
-  static clearMaterializeSelects(selectElements, triggerChange = false) {
+  static resetMaterializeSelects(selectElements, triggerChange = false) {
     selectElements.forEach(selectElement => {
-      this.clearMaterializeSelect(selectElement, triggerChange);
+      this.resetMaterializeSelect(selectElement, triggerChange);
     });
   }
 }
