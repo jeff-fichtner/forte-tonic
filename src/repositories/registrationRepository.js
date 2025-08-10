@@ -186,18 +186,8 @@ export class RegistrationRepository extends BaseRepository {
         createdBy: registrationData.createdBy || (() => { throw new Error('createdBy is required for audit trail'); })()
       });
 
-      // Convert to database row format (16 columns)
-      const row = registration.toDatabaseRow();
-
-      // Append to spreadsheet
-      await this.dbClient.sheets.spreadsheets.values.append({
-        spreadsheetId: this.dbClient.spreadsheetId,
-        range: 'registrations!A:P',
-        valueInputOption: 'RAW',
-        resource: {
-          values: [row]
-        }
-      });
+      // Use the new appendRecordv2 method that handles direct Google Sheets append and audit
+      await this.dbClient.appendRecordv2('registrations', registration, registrationData.createdBy);
 
       // Clear cache after mutation to ensure data consistency
       this.clearCache();
@@ -216,8 +206,12 @@ export class RegistrationRepository extends BaseRepository {
   /**
    * Delete a registration by ID
    */
-  async delete(id, userId = 'SYSTEM') {
+  async delete(id, userId) {
     try {
+      if (!userId) {
+        throw new Error('userId is required for audit trail');
+      }
+
       const registrationId = typeof id === 'string' ? new RegistrationId(id) : id;
       
       // First verify the registration exists using cached data
@@ -226,45 +220,12 @@ export class RegistrationRepository extends BaseRepository {
         throw new Error(`Registration with ID ${registrationId.getValue()} not found`);
       }
       
-      // For deletion, we need to get fresh data to find the exact row position
-      // This is unavoidable since we need row numbers for deletion
-      const response = await this.dbClient.sheets.spreadsheets.values.get({
-        spreadsheetId: this.dbClient.spreadsheetId,
-        range: 'registrations!A:Z'
-      });
-
-      const values = response.data.values || [];
-      const rows = values.slice(1); // Skip header row
-
-      // Find row index where first column (Id) matches UUID
-      const rowIndex = rows.findIndex(row => row[0] === registrationId.getValue());
-      
-      if (rowIndex === -1) {
-        throw new Error(`Registration with ID ${registrationId.getValue()} not found in sheet`);
-      }
-
-      // Delete the row (note: +2 because findIndex is 0-based, and we need to account for header row)
-      const actualRowNumber = rowIndex + 2;
-      
-      await this.dbClient.sheets.spreadsheets.batchUpdate({
-        spreadsheetId: this.dbClient.spreadsheetId,
-        resource: {
-          requests: [{
-            deleteDimension: {
-              range: {
-                sheetId: 1484108306, // Correct sheetId for registrations sheet
-                dimension: 'ROWS',
-                startIndex: actualRowNumber - 1, // 0-based for API
-                endIndex: actualRowNumber
-              }
-            }
-          }]
-        }
-      });
+      // Use the database client's deleteRecord method which handles audit trails and proper deletion
+      await this.dbClient.deleteRecord('registrations', registrationId.getValue(), userId);
 
       // Clear cache after mutation
       this.clearCache();
-      this.dbClient.clearCache('registrations'); // Also clear the database client cache (both cache and timestamps)
+      this.dbClient.clearCache('registrations');
 
       return true;
     } catch (error) {

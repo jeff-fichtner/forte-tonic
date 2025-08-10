@@ -153,8 +153,8 @@ export class RegistrationApplicationService {
         );
       }
 
-      // Step 6: Create domain entity
-      console.log('📝 Registration data before creating entity:', registrationData);
+      // Step 6: Create registration model
+      console.log('📝 Registration data before creating model:', registrationData);
       const registrationEntity = Registration.createNew(
         registrationData.studentId,
         registrationData.instructorId,
@@ -171,7 +171,7 @@ export class RegistrationApplicationService {
           transportationType: registrationData.transportationType,
           notes: registrationData.notes,
           expectedStartDate: registrationData.expectedStartDate,
-          createdBy: userId, // Use createdBy instead of registeredBy to match audit schema
+          createdBy: userId,
         }
       );
 

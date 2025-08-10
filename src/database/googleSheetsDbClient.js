@@ -477,6 +477,65 @@ export class GoogleSheetsDbClient {
   }
 
   /**
+   * Enhanced append record method that performs direct Google Sheets append without ID mutation
+   * and includes audit functionality at the end
+   */
+  async appendRecordv2(sheetKey, record, createdBy) {
+    try {
+      console.log(`📝 AppendRecordv2: Appending record to ${sheetKey} with createdBy: ${createdBy}`);
+      
+      // Direct Google Sheets API call (migrated from RegistrationRepository)
+      const sheetInfo = this.workingSheetInfo[sheetKey];
+      if (!sheetInfo) {
+        throw new Error(`Sheet info not found for key: ${sheetKey}`);
+      }
+
+      // Convert record to database row format using the record's own method
+      const row = record.toDatabaseRow ? record.toDatabaseRow() : this.#convertObjectToRow(record, sheetInfo.columnMap);
+
+      // Append directly to spreadsheet
+      const response = await this.sheets.spreadsheets.values.append({
+        spreadsheetId: this.spreadsheetId,
+        range: `${sheetInfo.sheet}!A:P`,
+        valueInputOption: 'RAW',
+        resource: {
+          values: [row]
+        }
+      });
+
+      // Clear cache for this sheet since we modified it
+      this.clearCache(sheetKey);
+
+      // Add audit functionality (from existing appendRecord method)
+      const { auditSheet } = sheetInfo;
+      if (auditSheet) {
+        console.log(`📋 Creating audit record for ${sheetKey} in ${auditSheet}`);
+        if (sheetKey === 'registrations') {
+          // Special handling for registration audits
+          const auditRecord = this.#createRegistrationAuditRecord(record, createdBy, false);
+          await this.insertIntoSheet(auditSheet, auditRecord);
+          console.log(`✅ Successfully inserted registration audit record into ${auditSheet}`);
+        } else {
+          // Legacy audit handling for other sheets
+          const auditValues = this.#convertToAuditValues(Object.values(record));
+          await this.insertIntoSheet(
+            auditSheet,
+            this.#convertAuditValuesToObject(auditValues, auditSheet)
+          );
+          console.log(`✅ Successfully inserted legacy audit record into ${auditSheet}`);
+        }
+      } else {
+        this.logger.debug(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
+      }
+
+      return record; // Return the original record without mutation
+    } catch (error) {
+      console.error(`Error in appendRecordv2 for sheet ${sheetKey}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Insert data into sheet and invalidate cache
    */
   async insertIntoSheet(sheetKey, data) {
@@ -749,24 +808,35 @@ export class GoogleSheetsDbClient {
   #createRegistrationAuditRecord(registrationRecord, performedBy, isDeleted = false) {
     const now = new Date().toISOString();
     
+    // Helper function to extract value from value objects or return the value as-is
+    const extractValue = (field) => {
+      if (field && typeof field === 'object' && field.value !== undefined) {
+        return field.value;
+      }
+      if (field && typeof field === 'object' && field.getValue && typeof field.getValue === 'function') {
+        return field.getValue();
+      }
+      return field;
+    };
+    
     return {
       id: UuidUtility.generateUuid(), // New unique GUID for audit record
-      registrationId: registrationRecord.id, // ID from the original registration
-      studentId: registrationRecord.studentId,
-      instructorId: registrationRecord.instructorId,
-      day: registrationRecord.day,
-      startTime: registrationRecord.startTime,
-      length: registrationRecord.length,
-      registrationType: registrationRecord.registrationType,
-      roomId: registrationRecord.roomId,
-      instrument: registrationRecord.instrument,
-      transportationType: registrationRecord.transportationType,
-      notes: registrationRecord.notes,
-      classId: registrationRecord.classId,
-      classTitle: registrationRecord.classTitle,
-      expectedStartDate: registrationRecord.expectedStartDate,
-      createdAt: registrationRecord.createdAt,
-      createdBy: registrationRecord.createdBy,
+      registrationId: extractValue(registrationRecord.id), // ID from the original registration
+      studentId: extractValue(registrationRecord.studentId),
+      instructorId: extractValue(registrationRecord.instructorId),
+      day: extractValue(registrationRecord.day),
+      startTime: extractValue(registrationRecord.startTime),
+      length: extractValue(registrationRecord.length),
+      registrationType: extractValue(registrationRecord.registrationType),
+      roomId: extractValue(registrationRecord.roomId),
+      instrument: extractValue(registrationRecord.instrument),
+      transportationType: extractValue(registrationRecord.transportationType),
+      notes: extractValue(registrationRecord.notes),
+      classId: extractValue(registrationRecord.classId),
+      classTitle: extractValue(registrationRecord.classTitle),
+      expectedStartDate: extractValue(registrationRecord.expectedStartDate),
+      createdAt: extractValue(registrationRecord.createdAt),
+      createdBy: extractValue(registrationRecord.createdBy),
       isDeleted: isDeleted,
       deletedAt: isDeleted ? now : '',
       deletedBy: isDeleted ? performedBy : '',

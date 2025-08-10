@@ -43,7 +43,7 @@ export class AttendanceRepository extends BaseRepository {
       attendanceData.recordedAt = new Date().toISOString();
 
       // Save via parent
-      const created = await super.create(attendanceData);
+      const created = await super.create(attendanceData, attendanceData.recordedBy);
 
       console.log('✅ Attendance recorded with ID:', created.id);
       return created;

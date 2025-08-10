@@ -20,14 +20,18 @@ export class BaseRepository {
   /**
    * Creates a new record
    */
-  async create(entityData) {
+  async create(entityData, createdBy) {
     try {
-      console.log(`📝 Creating new ${this.entityName}`);
+      if (!createdBy) {
+        throw new Error(`createdBy is required for audit trail when creating ${this.entityName}`);
+      }
+
+      console.log(`📝 Creating new ${this.entityName} by ${createdBy}`);
 
       // Convert model instance to plain object if needed
       const data = entityData.toJSON ? entityData.toJSON() : entityData;
 
-      const created = await this.dbClient.appendRecord(this.entityName, data);
+      const created = await this.dbClient.appendRecord(this.entityName, data, createdBy);
       this.clearCache(); // Clear cache after mutation
 
       console.log(`✅ Created ${this.entityName} with ID:`, created.id);
