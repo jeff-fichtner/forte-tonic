@@ -3109,9 +3109,6 @@ export class ParentRegistrationForm {
     const transportationTypeRadio = document.querySelector('input[name="parent-transportation-type"]:checked');
     const transportationType = transportationTypeRadio?.value || 'pickup'; // Default to pickup if not selected
 
-    // Get the current authenticated user's access code for audit purposes
-    const accessCode = window.AccessCodeManager?.getStoredAccessCode() || null;
-
     const dayMap = {
       'monday': 'Monday',
       'tuesday': 'Tuesday',
@@ -3129,7 +3126,6 @@ export class ParentRegistrationForm {
       day: dayMap[this.selectedLesson.day],
       startTime: this.selectedLesson.time,
       length: this.selectedLesson.length,
-      accessCode: accessCode || null, // Include access code for audit trail
     };
   }
 
@@ -3164,9 +3160,6 @@ export class ParentRegistrationForm {
     const transportationTypeRadio = document.querySelector('input[name="parent-group-transportation-type"]:checked');
     const transportationType = transportationTypeRadio?.value || 'pickup'; // Default to pickup if not selected
 
-    // Get the current authenticated user's access code for audit purposes
-    const accessCode = window.AccessCodeManager?.getStoredAccessCode() || null;
-
     return {
       studentId: studentId,
       registrationType: RegistrationType.GROUP,
@@ -3178,7 +3171,6 @@ export class ParentRegistrationForm {
       startTime: selectedClass.startTime,
       length: selectedClass.length,
       instrument: selectedClass.instrument,
-      accessCode: accessCode || null, // Include access code for audit trail
     };
   }
 
