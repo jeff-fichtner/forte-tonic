@@ -36,6 +36,9 @@ router.post('/testConnection', SystemController.testConnection);
 // Test endpoint to get data from a specific sheet
 router.post('/testSheetData', SystemController.testSheetData);
 
+// Admin-only cache clear endpoint
+router.post('/admin/clearCache', SystemController.clearCache);
+
 router.post('/getAdmins', UserController.getAdmins);
 
 router.post('/getInstructors', UserController.getInstructors);
@@ -73,14 +76,9 @@ router.post('/attendance', initializeRepositories, AttendanceController.markAtte
 router.get('/attendance/summary/:registrationId', AttendanceController.getAttendanceSummary);
 
 /**
- * Registration endpoints - Legacy and Repository patterns
+ * Registration endpoints - Unified patterns
  */
-router.post('/register', RegistrationController.register);
 router.post('/unregister', initializeRepositories, RegistrationController.unregister);
-
-// New Repository Pattern endpoints
-router.post('/registerWithRepository', RegistrationController.registerWithRepository);
-router.post('/unregisterWithRepository', RegistrationController.unregisterWithRepository);
 
 /**
  * Attendance endpoints

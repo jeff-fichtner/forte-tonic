@@ -5,7 +5,7 @@
 
 import { RegistrationType } from '../../../utils/values/registrationType.js';
 import { Select } from '../components/select.js';
-import { formatClassNameWithGradeCorrection } from '../utils/classNameFormatter.js';
+import { formatClassNameWithGradeCorrection } from '../utilities/classNameFormatter.js';
 
 /**
  * Admin Registration Form with simplified progressive filters

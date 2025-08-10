@@ -17,7 +17,6 @@ export const Sections = {
 // Server API function names
 export const ServerFunctions = {
   getOperatorUser: 'getOperatorUser',
-  getOperatorUser: 'getOperatorUser',
   getAdmins: 'getAdmins',
   getInstructors: 'getInstructors',
   getStudents: 'getStudents',

@@ -122,4 +122,45 @@ export class SystemController {
       });
     }
   }
+
+  /**
+   * Admin-only cache clearing endpoint
+   */
+  static async clearCache(req, res) {
+    try {
+      const { adminCode } = req.body;
+
+      if (!adminCode) {
+        return res.status(400).json({ error: 'Admin code is required' });
+      }
+
+      // Create a database client instance to validate admin access code
+      const { GoogleSheetsDbClient } = await import('../database/googleSheetsDbClient.js');
+      const dbClient = new GoogleSheetsDbClient();
+
+      // Check if the access code matches any admin user
+      const admins = await dbClient.getAllRecords('admins', row => ({
+        id: row[0],
+        email: row[1],
+        lastName: row[2],
+        firstName: row[3],
+        phone: row[4],
+        accessCode: row[5] // Access code is typically in column F (index 5)
+      }));
+
+      const validAdmin = admins.find(admin => admin.accessCode === adminCode);
+      if (!validAdmin) {
+        return res.status(401).json({ error: 'Invalid admin code' });
+      }
+
+      // Clear the database client cache
+      dbClient.clearCache();
+
+      console.log(`Cache cleared by admin: ${validAdmin.email}`);
+      res.json({ success: true, message: 'Cache cleared successfully' });
+    } catch (error) {
+      console.error('Error clearing cache:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
 }

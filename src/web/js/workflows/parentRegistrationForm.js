@@ -6,7 +6,7 @@
 import { RegistrationType } from '../../../utils/values/registrationType.js';
 import { Select } from '../components/select.js';
 import { DomHelpers } from '../utilities/domHelpers.js';
-import { formatClassNameWithGradeCorrection } from '../utils/classNameFormatter.js';
+import { formatClassNameWithGradeCorrection } from '../utilities/classNameFormatter.js';
 
 /**
  * Parent Registration Form with hybrid interface (progressive filters + time slot grid)
@@ -1860,7 +1860,7 @@ export class ParentRegistrationForm {
           if (conflictCheck.hasConflict) {
             const conflict = conflictCheck.conflictDetails;
             const conflictMessage = conflict.type === 'PRIVATE' 
-              ? `This class conflicts with an existing lesson on ${conflict.day} at ${conflict.startTime} with ${conflict.instructorName}.`
+              ? `This class conflicts with an existing ${conflict.instrument} lesson with ${conflict.instructorName} on ${conflict.day} at ${conflict.startTime}.`
               : `This class conflicts with existing class "${conflict.className}" on ${conflict.day} at ${conflict.startTime}.`;
             
             this.#showRegistrationError(conflictMessage);
@@ -2753,14 +2753,60 @@ export class ParentRegistrationForm {
         } else if (registration.instructorName) {
           instructorName = registration.instructorName;
         }
+
+        // Get instrument for private lessons
+        let instrument = 'Unknown';
+        if (registration.instrument) {
+          instrument = registration.instrument;
+        }
+
+        // Get class name - look up from classes array if we have a classId
+        let className = 'Unknown';
+        
+        // Debug: Log the registration object to see what properties are available
+        console.log('🔍 Debug registration object for class name lookup:', {
+          classId: registration.classId,
+          classTitle: registration.classTitle,
+          className: registration.className,
+          class: registration.class,
+          registrationType: registration.registrationType,
+          allKeys: Object.keys(registration)
+        });
+        
+        // Try classTitle first (this is the proper property for group classes)
+        if (registration.classTitle) {
+          className = registration.classTitle;
+          console.log('✅ Used registration.classTitle:', className);
+        } else if (registration.classId) {
+          const regClassId = typeof registration.classId === 'object' ? registration.classId.value : registration.classId;
+          console.log('🔍 Looking for class with ID:', regClassId);
+          const classObj = this.classes.find(cls => cls.id === regClassId);
+          if (classObj) {
+            className = formatClassNameWithGradeCorrection(classObj);
+            console.log('✅ Found class object, formatted name:', className);
+          } else {
+            console.log('❌ No class found with ID:', regClassId);
+            console.log('📋 Available classes:', this.classes.map(cls => ({ id: cls.id, title: cls.title || cls.instrument })));
+          }
+        } else if (registration.class) {
+          // Try direct class object property
+          className = formatClassNameWithGradeCorrection(registration.class);
+          console.log('✅ Used registration.class, formatted name:', className);
+        } else if (registration.className) {
+          className = registration.className;
+          console.log('✅ Used registration.className:', className);
+        } else {
+          console.log('❌ No class information found in registration');
+        }
         
         const conflictDetails = {
           type: conflictType,
           day: regDay,
           startTime: formattedStartTime,
           length: regLengthMinutes,
-          className: registration.className || 'Unknown',
-          instructorName: instructorName
+          className: className,
+          instructorName: instructorName,
+          instrument: instrument
         };
 
         console.log('Time conflict detected:', conflictDetails);

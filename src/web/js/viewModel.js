@@ -386,13 +386,8 @@ export class ViewModel {
       this.students,
       this.classes,
       async data => {
-        const response = await HttpService.post(ServerFunctions.register, data);
-        const newRegistration = Registration.fromApiData(response.data);
-
-        // handle response - toast is handled by the form component
-        this.registrations.push(newRegistration);
-        // Refresh all relevant tables after registration
-        this.#refreshTablesAfterRegistration();
+        // Use shared method for registration creation with enrichment
+        await this.#createRegistrationWithEnrichment(data);
       }
     );
     // weekly schedule
@@ -754,13 +749,8 @@ export class ViewModel {
       this.classes,
       this.registrations, // Pass existing registrations for availability calculation
       async data => {
-        const response = await HttpService.post(ServerFunctions.register, data);
-        const newRegistration = Registration.fromApiData(response.data);
-
-        // handle response - toast is handled by the form component
-        this.registrations.push(newRegistration);
-        // Refresh all relevant tables after registration
-        this.#refreshTablesAfterRegistration();
+        // Use shared method for registration creation with enrichment
+        await this.#createRegistrationWithEnrichment(data);
       },
       allParentChildren // Pass ALL parent's children, not just those with registrations
     );
@@ -798,6 +788,50 @@ export class ViewModel {
       console.log('Refreshing parent weekly schedule');
       this.#initParentContent();
     }
+  }
+
+  /**
+   * Shared method to create registration with proper enrichment
+   * This method handles the API call and enriches the response with instructor and student objects
+   */
+  async #createRegistrationWithEnrichment(data) {
+    const response = await HttpService.post(ServerFunctions.register, data);
+    const newRegistration = Registration.fromApiData(response.data);
+
+    // Enrich the registration with instructor and student objects (same logic as initial data loading)
+    if (!newRegistration.student) {
+      newRegistration.student = this.students.find(x => {
+        const studentId = x.id?.value || x.id;
+        const registrationStudentId = newRegistration.studentId?.value || newRegistration.studentId;
+        return studentId === registrationStudentId;
+      });
+
+      if (!newRegistration.student) {
+        console.warn(`❌ Student not found for new registration with studentId "${newRegistration.studentId?.value || newRegistration.studentId}"`);
+      } else {
+        console.log(`✅ Student enriched: ${newRegistration.student.firstName} ${newRegistration.student.lastName}`);
+      }
+    }
+
+    if (!newRegistration.instructor) {
+      newRegistration.instructor = this.instructors.find(x => {
+        const instructorId = x.id?.value || x.id;
+        const registrationInstructorId = newRegistration.instructorId?.value || newRegistration.instructorId;
+        return instructorId === registrationInstructorId;
+      });
+
+      if (!newRegistration.instructor) {
+        console.warn(`❌ Instructor not found for new registration with instructorId "${newRegistration.instructorId?.value || newRegistration.instructorId}"`);
+      } else {
+        console.log(`✅ Instructor enriched: ${newRegistration.instructor.firstName} ${newRegistration.instructor.lastName}`);
+      }
+    }
+
+    // Add to registrations and refresh tables
+    this.registrations.push(newRegistration);
+    this.#refreshTablesAfterRegistration();
+
+    return newRegistration;
   }
 
   /**
@@ -1488,7 +1522,18 @@ export class ViewModel {
 
     try {
       this.#setAdminRegistrationLoading(true);
-      const requestPayload = { registrationId: registrationToDeleteId };
+      
+      // Get the access code for audit trail
+      const accessCode = window.AccessCodeManager?.getStoredAccessCode() || null;
+      if (!accessCode) {
+        M.toast({ html: 'Access code required for deletion. Please log in again.' });
+        return;
+      }
+      
+      const requestPayload = { 
+        registrationId: registrationToDeleteId, 
+        accessCode: accessCode 
+      };
       console.log('Sending delete request with payload:', requestPayload);
 
       const response = await HttpService.post(ServerFunctions.unregister, requestPayload);
@@ -1682,13 +1727,22 @@ export class ViewModel {
       const numericValue = e.target.value.replace(/[^0-9]/g, '');
       e.target.value = numericValue;
 
+      // Check if input is exactly 4 or 6 digits
+      const isValidLength = numericValue.length === 4 || numericValue.length === 6;
+
       // Update MaterializeCSS validation classes
-      if (numericValue.length >= 4 && numericValue.length <= 6) {
+      if (isValidLength) {
         e.target.classList.add('valid');
         e.target.classList.remove('invalid');
+        // Enable login button
+        loginButton.disabled = false;
+        loginButton.classList.remove('disabled');
       } else {
         e.target.classList.add('invalid');
         e.target.classList.remove('valid');
+        // Disable login button
+        loginButton.disabled = true;
+        loginButton.classList.add('disabled');
       }
     });
 
@@ -1702,7 +1756,19 @@ export class ViewModel {
     modalElement.addEventListener('modal-open', () => {
       accessCodeInput.value = '';
       accessCodeInput.classList.remove('valid', 'invalid');
+      // Initially disable login button
+      loginButton.disabled = true;
+      loginButton.classList.add('disabled');
       accessCodeInput.focus();
+    });
+
+    // Reset button state when modal closes
+    modalElement.addEventListener('modal-close', () => {
+      accessCodeInput.value = '';
+      accessCodeInput.classList.remove('valid', 'invalid');
+      // Disable login button when modal closes
+      loginButton.disabled = true;
+      loginButton.classList.add('disabled');
     });
 
     // Attach keyboard handlers using the centralized utility
@@ -1920,7 +1986,7 @@ export class ViewModel {
     // Validate access code
     if (accessCode.length < 4 || accessCode.length > 6) {
       M.toast({
-        html: 'Access code must be 4-6 digits',
+        html: 'Invalid access code.',
         classes: 'red darken-1',
         displayLength: 3000
       });
@@ -1928,11 +1994,13 @@ export class ViewModel {
       return;
     }
 
+    // Close modal before attempting login
+    this.loginModal.close();
+
     await this.#attemptLoginWithCode(
       accessCode,
       () => {
         // Handle successful login
-        this.loginModal.close();
         accessCodeInput.value = ''; // Clear the input
 
         // Reset UI state after modal close to prevent scroll lock
@@ -1942,44 +2010,11 @@ export class ViewModel {
 
       },
       () => {
-        accessCodeInput.focus();
-      }
-    );
-  }
-
-  /**
-   * Handle login form submission (public method for modal event handlers)
-   */
-  async handleLogin() {
-    const accessCodeInput = document.getElementById('modal-access-code');
-    const accessCode = accessCodeInput.value.trim();
-
-    // Validate access code
-    if (accessCode.length < 4 || accessCode.length > 6) {
-      M.toast({
-        html: 'Access code must be 4-6 digits',
-        classes: 'red darken-1',
-        displayLength: 3000
-      });
-      accessCodeInput.focus();
-      return;
-    }
-
-    await this.#attemptLoginWithCode(
-      accessCode,
-      () => {
-        // Handle successful login
-        this.loginModal.close();
-        accessCodeInput.value = ''; // Clear the input
-
-        // Reset UI state after modal close to prevent scroll lock
+        // Handle failed login - reopen modal and focus input
+        this.loginModal.open();
         setTimeout(() => {
-          this.#resetUIState();
-        }, 200); // Small delay to let modal close animation complete
-
-      },
-      () => {
-        accessCodeInput.focus();
+          accessCodeInput.focus();
+        }, 300); // Delay to ensure modal is open before focusing
       }
     );
   }
