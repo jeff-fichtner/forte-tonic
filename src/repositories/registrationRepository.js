@@ -182,8 +182,8 @@ export class RegistrationRepository extends BaseRepository {
         classId: registrationData.classId,
         classTitle: registrationData.classTitle,
         expectedStartDate: registrationData.expectedStartDate,
-        createdAt: registrationData.createdAt || new Date().toISOString(),
-        createdBy: registrationData.createdBy || 'SYSTEM'
+        createdAt: new Date().toISOString(),
+        createdBy: registrationData.createdBy || (() => { throw new Error('createdBy is required for audit trail'); })()
       });
 
       // Convert to database row format (16 columns)

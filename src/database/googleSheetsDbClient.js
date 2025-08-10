@@ -440,13 +440,22 @@ export class GoogleSheetsDbClient {
         processedRecord = postProcess(processedRecord);
       }
 
+      console.log(`📝 Appending record to ${sheetKey} with createdBy: ${createdBy}`);
       await this.insertIntoSheet(sheetKey, processedRecord);
 
       if (auditSheet) {
+        console.log(`📋 Creating audit record for ${sheetKey} in ${auditSheet}`);
         if (sheetKey === Keys.REGISTRATIONS) {
           // Special handling for registration audits
           const auditRecord = this.#createRegistrationAuditRecord(processedRecord, createdBy, false);
+          console.log(`🔍 Created registration audit record:`, {
+            id: auditRecord.id,
+            registrationId: auditRecord.registrationId,
+            createdBy: auditRecord.createdBy,
+            auditSheet
+          });
           await this.insertIntoSheet(auditSheet, auditRecord);
+          console.log(`✅ Successfully inserted registration audit record into ${auditSheet}`);
         } else {
           // Legacy audit handling for other sheets
           const auditValues = this.#convertToAuditValues(Object.values(processedRecord));
@@ -454,6 +463,7 @@ export class GoogleSheetsDbClient {
             auditSheet,
             this.#convertAuditValuesToObject(auditValues, auditSheet)
           );
+          console.log(`✅ Successfully inserted legacy audit record into ${auditSheet}`);
         }
       } else {
         this.logger.debug(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);

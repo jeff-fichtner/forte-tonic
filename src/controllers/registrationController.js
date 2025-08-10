@@ -6,6 +6,7 @@
  * and application services for business logic coordination.
  */
 
+import { getAuthenticatedUserEmail } from '../middleware/auth.js';
 import { RegistrationType } from '../utils/values/registrationType.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
 import { _fetchData } from '../utils/helpers.js';
@@ -93,7 +94,16 @@ export class RegistrationController {
   static async createRegistration(req, res) {
     try {
       const requestData = req.body;
-      const userId = req.currentUser?.email || 'system';
+      
+      // Get the authenticated user's email for audit purposes
+      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
+      
+      console.log('🎯 Registration creation request received:', {
+        ...requestData,
+        authenticatedUser: authenticatedUserEmail,
+        currentUser: req.currentUser,
+        hasAccessCode: !!requestData.accessCode
+      });
 
       // Basic validation
       if (!requestData.studentId || !requestData.registrationType) {
@@ -112,10 +122,10 @@ export class RegistrationController {
         trimester: requestData.trimester || 'Fall',
       };
 
-      // Process registration through application service
+      // Process registration through application service with authenticated user
       const result = await registrationApplicationService.processRegistration(
         registrationData,
-        userId
+        authenticatedUserEmail
       );
 
       // Return enriched response with complete registration data
@@ -165,7 +175,7 @@ export class RegistrationController {
     try {
       const { registrationId } = req.params;
       const updates = req.body;
-      const userId = req.currentUser?.email || 'system';
+      const userId = getAuthenticatedUserEmail(req);
 
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
 
@@ -196,14 +206,22 @@ export class RegistrationController {
     try {
       const { registrationId } = req.params;
       const { reason } = req.body;
-      const userId = req.currentUser?.email || 'system';
+      
+      // Get the authenticated user's email for audit purposes
+      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
+      
+      console.log('🎯 Registration cancellation request received:', {
+        registrationId,
+        reason,
+        authenticatedUser: authenticatedUserEmail
+      });
 
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
 
       const result = await registrationApplicationService.cancelRegistration(
         registrationId,
         reason,
-        userId
+        authenticatedUserEmail
       );
 
       res.json({
@@ -264,12 +282,125 @@ export class RegistrationController {
   }
 
   /**
+   * Register - New Repository Pattern
+   */
+  static async registerWithRepository(req, res) {
+    try {
+      const registrationData = req.body;
+      
+      // Get the authenticated user's email for audit purposes
+      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
+      
+      console.log('🎯 Registration request received:', {
+        ...registrationData,
+        authenticatedUser: authenticatedUserEmail
+      });
+
+      const programRepository = req.programRepository || serviceContainer.get('programRepository');
+
+      // Get additional data needed for registration
+      const userRepository = req.userRepository || serviceContainer.get('userRepository');
+      
+      let groupClass = null;
+      if (registrationData.classId) {
+        const classes = await programRepository.getClasses();
+        groupClass = classes.find(c => c.id === registrationData.classId);
+      }
+
+      let instructor = null;
+      if (registrationData.instructorId) {
+        instructor = await userRepository.getInstructorById(registrationData.instructorId);
+      }
+
+      // Pass the authenticated user email to the register method
+      const result = await programRepository.register(
+        registrationData, 
+        groupClass, 
+        instructor, 
+        authenticatedUserEmail // Use authenticated user email instead of 'SYSTEM'
+      );
+
+      res.status(201).json({
+        success: true,
+        data: result,
+        message: 'Registration created successfully'
+      });
+
+    } catch (error) {
+      console.error('❌ Error in register:', error);
+      res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Unregister - New Repository Pattern  
+   */
+  static async unregisterWithRepository(req, res) {
+    try {
+      const { registrationId } = req.body;
+      
+      // Get the authenticated user's email for audit purposes
+      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
+      
+      console.log('🎯 Unregister request received:', {
+        registrationId,
+        authenticatedUser: authenticatedUserEmail
+      });
+
+      if (!registrationId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Registration ID is required'
+        });
+      }
+
+      const programRepository = req.programRepository || serviceContainer.get('programRepository');
+      
+      // Pass the authenticated user email to the unregister method
+      const result = await programRepository.unregister(registrationId, authenticatedUserEmail);
+
+      if (result.success) {
+        res.json({
+          success: true,
+          message: 'Registration removed successfully',
+          ...result
+        });
+      } else {
+        res.status(400).json({
+          success: false,
+          error: result.error
+        });
+      }
+
+    } catch (error) {
+      console.error('❌ Error in unregister:', error);
+      res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  /**
    * Register student (legacy endpoint for backward compatibility)
    */
   static async register(req, res) {
     try {
       const { studentId, classId, instructorId, registrationType } = req.body;
-      const userId = req.currentUser?.email || 'system';
+      
+      // Get the authenticated user's email for audit purposes
+      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
+      
+      console.log('🎯 Legacy registration request received:', {
+        studentId,
+        classId,
+        instructorId,
+        registrationType,
+        authenticatedUser: authenticatedUserEmail
+      });
 
       if (!studentId || !registrationType) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -287,7 +418,7 @@ export class RegistrationController {
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
       const result = await registrationApplicationService.processRegistration(
         registrationData,
-        userId
+        authenticatedUserEmail
       );
 
       res.json({ success: true, registration: result });
@@ -312,7 +443,13 @@ export class RegistrationController {
         registrationId = req.body.registrationId;
       }
       
-      const userId = req.currentUser?.email || 'system';
+      // Get the authenticated user's email for audit purposes
+      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
+      
+      console.log('🎯 Legacy unregister request received:', {
+        registrationId,
+        authenticatedUser: authenticatedUserEmail
+      });
 
       console.log('Extracted registrationId:', registrationId);
       console.log('registrationId type:', typeof registrationId);
@@ -326,7 +463,7 @@ export class RegistrationController {
       await registrationApplicationService.cancelRegistration(
         registrationId,
         'Unregistered via legacy endpoint',
-        userId
+        authenticatedUserEmail
       );
 
       res.json({ success: true, message: 'Registration removed' });

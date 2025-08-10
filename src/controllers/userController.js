@@ -7,6 +7,7 @@
  */
 
 import { UserTransformService } from '../services/userTransformService.js';
+import { getAuthenticatedUserEmail } from '../middleware/auth.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
 import { _fetchData } from '../utils/helpers.js';
 import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
@@ -173,7 +174,7 @@ export class UserController {
     try {
       const { studentId } = req.params;
       const updates = req.body;
-      const userId = req.currentUser?.email || 'system';
+      const userId = getAuthenticatedUserEmail(req);
 
       const studentApplicationService = serviceContainer.get('studentApplicationService');
 
@@ -203,7 +204,7 @@ export class UserController {
   static async enrollStudent(req, res) {
     try {
       const studentData = req.body;
-      const userId = req.currentUser?.email || 'system';
+      const userId = getAuthenticatedUserEmail(req);
 
       const studentApplicationService = serviceContainer.get('studentApplicationService');
 

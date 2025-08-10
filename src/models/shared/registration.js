@@ -312,6 +312,7 @@ export class Registration {
       classId: options.classId,
       classTitle: options.classTitle,
       expectedStartDate: options.expectedStartDate,
+      createdAt: new Date().toISOString(),
       createdBy: options.createdBy
     });
   }

@@ -937,6 +937,24 @@
                             <h6 style="margin: 0 0 10px 0; color: #1976d2;"><b>Selected Lesson</b></h6>
                             <div id="admin-selected-lesson-details"
                                 style="font-size: 16px; color: #333; margin-bottom: 15px;"></div>
+                            
+                            <!-- Transportation Type Selection -->
+                            <div style="margin-bottom: 15px; padding: 12px; background: rgba(255,255,255,0.7); border-radius: 6px;">
+                                <h6 style="margin: 0 0 8px 0; color: #1976d2; font-size: 14px;"><b>Transportation</b></h6>
+                                <p style="margin: 0; font-size: 12px; color: #666;">
+                                    <label>
+                                        <input type="radio" name="parent-transportation-type" value="pickup" checked="checked" />
+                                        <span>Late Pick Up</span>
+                                    </label>
+                                </p>
+                                <p style="margin: 0; font-size: 12px; color: #666;">
+                                    <label>
+                                        <input type="radio" name="parent-transportation-type" value="bus" />
+                                        <span>Late Bus</span>
+                                    </label>
+                                </p>
+                            </div>
+                            
                             <div style="display: flex; gap: 10px; align-items: center;">
                                 <button id="parent-confirm-registration-btn" class="btn waves-effect waves-light"
                                     style="background-color: #2b68a4;">
@@ -963,6 +981,23 @@
                                 <!-- Classes will be populated programmatically -->
                             </select>
                             <label for="parent-class-select">Available Classes</label>
+                        </div>
+
+                        <!-- Transportation Type Selection for Group Classes -->
+                        <div style="margin: 20px 0; padding: 15px; background: rgba(255,255,255,0.8); border-radius: 6px; border: 1px solid #e0e0e0;">
+                            <h6 style="margin: 0 0 10px 0; color: #2b68a4; font-size: 14px;"><b>Transportation</b></h6>
+                            <p style="margin: 0; font-size: 14px; color: #666;">
+                                <label>
+                                    <input type="radio" name="parent-group-transportation-type" value="pickup" checked="checked" />
+                                    <span>Late Pick Up</span>
+                                </label>
+                            </p>
+                            <p style="margin: 0; font-size: 14px; color: #666;">
+                                <label>
+                                    <input type="radio" name="parent-group-transportation-type" value="bus" />
+                                    <span>Late Bus</span>
+                                </label>
+                            </p>
                         </div>
 
                         <!-- Create Button -->

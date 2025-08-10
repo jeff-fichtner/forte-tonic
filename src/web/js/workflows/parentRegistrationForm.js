@@ -1556,6 +1556,9 @@ export class ParentRegistrationForm {
 
     // Handle clear button
     this.#attachClearButtonListener();
+
+    // Attach keyboard handlers for time slot interface
+    this.#attachTimeSlotKeyboardHandlers();
   }
 
   /**
@@ -1617,7 +1620,16 @@ export class ParentRegistrationForm {
           const registrationTypeSelect = document.getElementById('parent-registration-type-select');
           if (registrationTypeSelect && registrationTypeSelect.value === 'public') {
             this.#populateParentClassesDropdown();
+            
+            // Re-check any currently selected class for conflicts with the new student
+            const classSelect = document.getElementById('parent-class-select');
+            if (classSelect && classSelect.value) {
+              this.#handleClassSelection(classSelect.value);
+            }
           }
+          
+          // Clear any selected time slots when student changes
+          this.#clearTimeSlotSelection();
         } else {
           this.#hideAllRegistrationContainers();
         }
@@ -1680,6 +1692,9 @@ export class ParentRegistrationForm {
           // Populate the classes dropdown
           this.#populateParentClassesDropdown();
         }
+
+        // Restore page scrolling to prevent scroll lock
+        this.#restorePageScrolling();
 
         // Initialize Materialize select components
         setTimeout(() => {
@@ -1816,7 +1831,49 @@ export class ParentRegistrationForm {
         registerButton.style.opacity = '0.6';
       }
     } else if (!hasACapacityDefined || classCapacity > 0) {
-      // Class has space (or assume unlimited capacity)
+      // Class has space (or assume unlimited capacity), now check for conflicts
+      
+      // Get current student
+      const studentSelect = document.getElementById('parent-student-select');
+      const studentId = studentSelect?.value;
+      
+      if (studentId) {
+        // Check for duplicate enrollment
+        if (this.#checkStudentClassDuplicate(studentId, classId)) {
+          this.#showRegistrationError('Student is already enrolled in this class.');
+          if (registerButton) {
+            registerButton.disabled = true;
+            registerButton.style.opacity = '0.6';
+          }
+          return;
+        }
+
+        // Check for time conflicts
+        if (selectedClass.day && selectedClass.startTime && selectedClass.length) {
+          const conflictCheck = this.#checkStudentTimeConflict(
+            studentId,
+            selectedClass.day,
+            selectedClass.startTime,
+            selectedClass.length
+          );
+
+          if (conflictCheck.hasConflict) {
+            const conflict = conflictCheck.conflictDetails;
+            const conflictMessage = conflict.type === 'PRIVATE' 
+              ? `This class conflicts with an existing lesson on ${conflict.day} at ${conflict.startTime} with ${conflict.instructorName}.`
+              : `This class conflicts with existing class "${conflict.className}" on ${conflict.day} at ${conflict.startTime}.`;
+            
+            this.#showRegistrationError(conflictMessage);
+            if (registerButton) {
+              registerButton.disabled = true;
+              registerButton.style.opacity = '0.6';
+            }
+            return;
+          }
+        }
+      }
+      
+      // No conflicts found, enable registration
       if (registerButton) {
         registerButton.disabled = false;
         registerButton.style.opacity = '1';
@@ -1907,11 +1964,15 @@ export class ParentRegistrationForm {
         // Regenerate downstream chips based on cascading logic
         this.#updateCascadingChips(chipType);
 
-        // Regenerate time slots based on current filter state
-        this.#regenerateFilteredTimeSlots();
-
-        // Filter time slots based on selection
-        this.#filterTimeSlots();
+        // Debounce the time slot regeneration to prevent race conditions
+        clearTimeout(this.regenerateTimeout);
+        this.regenerateTimeout = setTimeout(() => {
+          // Regenerate time slots based on current filter state
+          this.#regenerateFilteredTimeSlots();
+          
+          // Filter time slots based on selection
+          this.#filterTimeSlots();
+        }, 50);
       });
       chip.dataset.listenerAttached = 'true';
     });
@@ -2192,8 +2253,22 @@ export class ParentRegistrationForm {
       console.log('Time slot selection restored:', selectionData);
     } else {
       console.log('Could not restore time slot selection - slot no longer available:', selectionData);
-      // Clear the selection since the slot is no longer available
-      this.selectedLesson = null;
+      // Only clear the selection if we're absolutely sure the slot is no longer available
+      // Check if the slot is still in the DOM but just wasn't found by the query
+      const stillAvailableSlot = document.querySelector(
+        `.timeslot[data-instructor-id="${selectionData.instructorId}"][data-day="${selectionData.day}"][data-time="${selectionData.time}"][data-length="${selectionData.length}"][data-instrument="${selectionData.instrument}"]`
+      );
+      
+      if (!stillAvailableSlot) {
+        console.log('Confirmed: slot no longer exists in DOM, clearing selection');
+        this.selectedLesson = null;
+      } else {
+        console.log('Slot still exists in DOM, keeping selection but re-selecting it');
+        stillAvailableSlot.classList.add('selected');
+        stillAvailableSlot.style.border = '3px solid #1976d2';
+        stillAvailableSlot.style.background = '#e3f2fd';
+        this.#updateSelectionDisplay(stillAvailableSlot);
+      }
     }
   }
 
@@ -2615,6 +2690,161 @@ export class ParentRegistrationForm {
   }
 
   /**
+   * Check if a student has a time conflict with existing registrations
+   * @param {string} studentId - Student ID to check
+   * @param {string} day - Day name (e.g., 'Monday')
+   * @param {string} startTime - Start time (e.g., '14:30')
+   * @param {number} lengthMinutes - Lesson length in minutes
+   * @returns {object} Conflict result with hasConflict boolean and conflictDetails
+   */
+  #checkStudentTimeConflict(studentId, day, startTime, lengthMinutes) {
+    if (!studentId || !day || !startTime || !lengthMinutes) {
+      console.warn('Invalid parameters for conflict check:', { studentId, day, startTime, lengthMinutes });
+      return { hasConflict: false, conflictDetails: null };
+    }
+
+    // Convert start time to minutes since midnight
+    const startMinutes = this.#parseTime(startTime);
+    const endMinutes = startMinutes + lengthMinutes;
+
+    console.log(`Checking time conflicts for student ${studentId} on ${day} from ${startTime} (${startMinutes}min) for ${lengthMinutes}min`);
+
+    // Check against all existing registrations for this student
+    const studentRegistrations = this.registrations.filter(reg => {
+      const regStudentId = typeof reg.studentId === 'object' ? reg.studentId.value : reg.studentId;
+      return regStudentId === studentId;
+    });
+
+    console.log(`Found ${studentRegistrations.length} existing registrations for student:`, studentRegistrations);
+
+    for (const registration of studentRegistrations) {
+      // Check day conflict
+      const regDay = registration.day;
+      if (regDay !== day) {
+        continue; // Different day, no conflict
+      }
+
+      // Parse registration time and calculate end time
+      const regStartTime = registration.startTime || registration.time;
+      if (!regStartTime) {
+        console.warn('Registration missing start time:', registration);
+        continue;
+      }
+
+      const regStartMinutes = this.#parseTime(regStartTime);
+      const regLengthMinutes = registration.length || registration.lengthMinutes || 30; // Default to 30 if not specified
+      const regEndMinutes = regStartMinutes + regLengthMinutes;
+
+      console.log(`Comparing with existing: ${regDay} ${regStartTime} (${regStartMinutes}-${regEndMinutes}min) vs new: ${day} ${startTime} (${startMinutes}-${endMinutes}min)`);
+
+      // Check for time overlap
+      const hasOverlap = (startMinutes < regEndMinutes) && (endMinutes > regStartMinutes);
+
+      if (hasOverlap) {
+        const conflictType = registration.registrationType || 'unknown';
+        
+        // Format the time properly for display
+        const formattedStartTime = this.#formatTime(regStartTime);
+        
+        // Get instructor name from the instructor object if available
+        let instructorName = 'Unknown';
+        if (registration.instructor && registration.instructor.firstName && registration.instructor.lastName) {
+          instructorName = `${registration.instructor.firstName} ${registration.instructor.lastName}`;
+        } else if (registration.instructorName) {
+          instructorName = registration.instructorName;
+        }
+        
+        const conflictDetails = {
+          type: conflictType,
+          day: regDay,
+          startTime: formattedStartTime,
+          length: regLengthMinutes,
+          className: registration.className || 'Unknown',
+          instructorName: instructorName
+        };
+
+        console.log('Time conflict detected:', conflictDetails);
+        return { hasConflict: true, conflictDetails };
+      }
+    }
+
+    console.log('No time conflicts found');
+    return { hasConflict: false, conflictDetails: null };
+  }
+
+  /**
+   * Check if a student is already enrolled in a specific class
+   * @param {string} studentId - Student ID to check
+   * @param {string} classId - Class ID to check
+   * @returns {boolean} True if student is already enrolled
+   */
+  #checkStudentClassDuplicate(studentId, classId) {
+    if (!studentId || !classId) {
+      return false;
+    }
+
+    const existingEnrollment = this.registrations.find(reg => {
+      const regStudentId = typeof reg.studentId === 'object' ? reg.studentId.value : reg.studentId;
+      const regClassId = typeof reg.classId === 'object' ? reg.classId.value : reg.classId;
+      return regStudentId === studentId && regClassId === classId;
+    });
+
+    if (existingEnrollment) {
+      console.log('Duplicate class enrollment detected:', existingEnrollment);
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if Late Bus transportation is valid for the selected time
+   * @param {string} day - Day of the week (e.g., 'Monday', 'Wednesday')
+   * @param {string} startTime - Start time (e.g., '14:30')
+   * @param {number} lengthMinutes - Duration in minutes
+   * @param {string} transportationType - Selected transportation type
+   * @returns {object} Validation result with isValid boolean and errorMessage
+   */
+  #validateBusTimeRestrictions(day, startTime, lengthMinutes, transportationType) {
+    // Only validate if Late Bus is selected
+    if (transportationType !== 'bus') {
+      return { isValid: true, errorMessage: null };
+    }
+
+    // Parse start time and calculate end time
+    const startMinutes = this.#parseTime(startTime);
+    const endMinutes = startMinutes + lengthMinutes;
+
+    // Convert end time back to time string for display (use 12-hour format)
+    const endTimeHHMM = this.#formatTimeFromMinutes(endMinutes);
+    const endTimeDisplay = this.#formatTime(endTimeHHMM);
+
+    // Bus schedule restrictions
+    const busDeadlines = {
+      'Monday': '16:45',    // 4:45 PM
+      'Tuesday': '16:45',   // 4:45 PM
+      'Wednesday': '16:15', // 4:15 PM
+      'Thursday': '16:45',  // 4:45 PM
+      'Friday': '16:45'     // 4:45 PM
+    };
+
+    const deadlineTime = busDeadlines[day];
+    if (!deadlineTime) {
+      return { isValid: true, errorMessage: null }; // Unknown day, allow
+    }
+
+    const deadlineMinutes = this.#parseTime(deadlineTime);
+    const deadlineDisplay = this.#formatTime(deadlineTime);
+
+    if (endMinutes > deadlineMinutes) {
+      const errorMessage = `Late Bus is not available for lessons ending after ${deadlineDisplay} on ${day}. This lesson ends at ${endTimeDisplay}. Please select "Late Pick Up" instead or choose a different time slot.`;
+      return { isValid: false, errorMessage };
+    }
+
+    return { isValid: true, errorMessage: null };
+  }
+
+  /**
    * Validate registration data
    */
   #validateRegistration() {
@@ -2640,10 +2870,45 @@ export class ParentRegistrationForm {
     }
 
     if (!this.selectedLesson) {
-      console.log('Validation failed: No lesson selected');
-      console.log('Current selected time slots:', document.querySelectorAll('.timeslot.selected'));
-      M.toast({ html: 'Please select a lesson time slot' });
-      return false;
+      console.log('Validation failed: No lesson selected in memory, checking DOM for selected slots...');
+      
+      // Check if there's a selected time slot in the DOM as fallback
+      const selectedSlots = document.querySelectorAll('.timeslot.selected');
+      console.log('Current selected time slots in DOM:', selectedSlots);
+      
+      if (selectedSlots.length === 1) {
+        // Try to rebuild selectedLesson from DOM state
+        const slot = selectedSlots[0];
+        const instructorId = slot.dataset.instructorId;
+        const day = slot.dataset.day;
+        const time = slot.dataset.time;
+        const length = slot.dataset.length;
+        const instrument = slot.dataset.instrument;
+        
+        if (instructorId && day && time && length && instrument) {
+          console.log('Rebuilding selectedLesson from DOM state');
+          this.selectedLesson = {
+            instructorId: instructorId,
+            day: day,
+            time: time,
+            length: parseInt(length),
+            instrument: instrument
+          };
+          console.log('Rebuilt selectedLesson:', this.selectedLesson);
+        } else {
+          console.log('Selected slot in DOM has incomplete data');
+          M.toast({ html: 'Please select a lesson time slot' });
+          return false;
+        }
+      } else if (selectedSlots.length > 1) {
+        console.log('Multiple slots selected, this should not happen');
+        M.toast({ html: 'Multiple time slots selected. Please select only one.' });
+        return false;
+      } else {
+        console.log('No selected time slots found in DOM either');
+        M.toast({ html: 'Please select a lesson time slot' });
+        return false;
+      }
     }
 
     // Additional validation of selectedLesson data
@@ -2651,6 +2916,43 @@ export class ParentRegistrationForm {
       console.log('Validation failed: Incomplete lesson data', this.selectedLesson);
       M.toast({ html: 'Selected lesson is incomplete. Please select again.' });
       this.selectedLesson = null; // Clear invalid selection
+      return false;
+    }
+
+    // Check for time conflicts with existing registrations
+    const dayName = this.selectedLesson.day.charAt(0).toUpperCase() + this.selectedLesson.day.slice(1);
+    const conflictCheck = this.#checkStudentTimeConflict(
+      studentId,
+      dayName,
+      this.selectedLesson.time,
+      this.selectedLesson.length
+    );
+
+    if (conflictCheck.hasConflict) {
+      const conflict = conflictCheck.conflictDetails;
+      const conflictMessage = conflict.type === 'GROUP' 
+        ? `This lesson time conflicts with the student's existing class "${conflict.className}" on ${conflict.day} at ${conflict.startTime}.`
+        : `This lesson time conflicts with the student's existing lesson on ${conflict.day} at ${conflict.startTime} with ${conflict.instructorName}.`;
+      
+      console.log('Validation failed: Time conflict detected', conflict);
+      M.toast({ html: conflictMessage });
+      return false;
+    }
+
+    // Check bus time restrictions for Late Bus transportation
+    const transportationTypeRadio = document.querySelector('input[name="parent-transportation-type"]:checked');
+    const transportationType = transportationTypeRadio?.value || 'pickup';
+    
+    const busValidation = this.#validateBusTimeRestrictions(
+      dayName,
+      this.selectedLesson.time,
+      this.selectedLesson.length,
+      transportationType
+    );
+
+    if (!busValidation.isValid) {
+      console.log('Validation failed: Bus time restriction violated');
+      M.toast({ html: busValidation.errorMessage });
       return false;
     }
 
@@ -2688,6 +2990,56 @@ export class ParentRegistrationForm {
       return false;
     }
 
+    // Check for duplicate class enrollment
+    if (this.#checkStudentClassDuplicate(studentId, classId)) {
+      M.toast({ html: 'Student is already enrolled in this class.' });
+      return false;
+    }
+
+    // Check for time conflicts with existing registrations
+    // First, get the class details to find the schedule
+    const selectedClass = this.classes.find(cls => {
+      const clsId = typeof cls.id === 'object' ? cls.id.value : cls.id;
+      return clsId === classId;
+    });
+
+    if (selectedClass && selectedClass.day && selectedClass.startTime && selectedClass.length) {
+      const conflictCheck = this.#checkStudentTimeConflict(
+        studentId,
+        selectedClass.day,
+        selectedClass.startTime,
+        selectedClass.length
+      );
+
+      if (conflictCheck.hasConflict) {
+        const conflict = conflictCheck.conflictDetails;
+        const conflictMessage = conflict.type === 'PRIVATE' 
+          ? `This class time conflicts with the student's existing lesson on ${conflict.day} at ${conflict.startTime} with ${conflict.instructorName}.`
+          : `This class time conflicts with the student's existing class "${conflict.className}" on ${conflict.day} at ${conflict.startTime}.`;
+        
+        console.log('Group validation failed: Time conflict detected', conflict);
+        M.toast({ html: conflictMessage });
+        return false;
+      }
+
+      // Check bus time restrictions for Late Bus transportation
+      const transportationTypeRadio = document.querySelector('input[name="parent-group-transportation-type"]:checked');
+      const transportationType = transportationTypeRadio?.value || 'pickup';
+      
+      const busValidation = this.#validateBusTimeRestrictions(
+        selectedClass.day,
+        selectedClass.startTime,
+        selectedClass.length,
+        transportationType
+      );
+
+      if (!busValidation.isValid) {
+        console.log('Group validation failed: Bus time restriction violated');
+        M.toast({ html: busValidation.errorMessage });
+        return false;
+      }
+    }
+
     return true;
   }
 
@@ -2707,6 +3059,13 @@ export class ParentRegistrationForm {
       throw new Error('Please select a student');
     }
 
+    // Get selected transportation type
+    const transportationTypeRadio = document.querySelector('input[name="parent-transportation-type"]:checked');
+    const transportationType = transportationTypeRadio?.value || 'pickup'; // Default to pickup if not selected
+
+    // Get the current authenticated user's access code for audit purposes
+    const accessCode = window.AccessCodeManager?.getStoredAccessCode() || null;
+
     const dayMap = {
       'monday': 'Monday',
       'tuesday': 'Tuesday',
@@ -2718,12 +3077,13 @@ export class ParentRegistrationForm {
     return {
       studentId: studentId,
       registrationType: RegistrationType.PRIVATE,
-      transportationType: 'pickup', // Default for parent form
+      transportationType: transportationType,
       instructorId: this.selectedLesson.instructorId,
       instrument: this.selectedLesson.instrument,
       day: dayMap[this.selectedLesson.day],
       startTime: this.selectedLesson.time,
       length: this.selectedLesson.length,
+      accessCode: accessCode || null, // Include access code for audit trail
     };
   }
 
@@ -2754,9 +3114,17 @@ export class ParentRegistrationForm {
       throw new Error('Selected class not found');
     }
 
+    // Get selected transportation type (for group registration)
+    const transportationTypeRadio = document.querySelector('input[name="parent-group-transportation-type"]:checked');
+    const transportationType = transportationTypeRadio?.value || 'pickup'; // Default to pickup if not selected
+
+    // Get the current authenticated user's access code for audit purposes
+    const accessCode = window.AccessCodeManager?.getStoredAccessCode() || null;
+
     return {
       studentId: studentId,
       registrationType: RegistrationType.GROUP,
+      transportationType: transportationType,
       classId: classId,
       classTitle: selectedClass.formattedName || selectedClass.title || selectedClass.instrument || `Class ${selectedClass.id}`,
       instructorId: selectedClass.instructorId,
@@ -2764,6 +3132,7 @@ export class ParentRegistrationForm {
       startTime: selectedClass.startTime,
       length: selectedClass.length,
       instrument: selectedClass.instrument,
+      accessCode: accessCode || null, // Include access code for audit trail
     };
   }
 
@@ -2781,6 +3150,18 @@ export class ParentRegistrationForm {
     if (selectedDisplay) {
       selectedDisplay.style.display = 'none';
       selectedDisplay.style.pointerEvents = 'none'; // Ensure it doesn't interfere when hidden
+    }
+
+    // Reset transportation type to default (pickup)
+    const pickupRadio = document.querySelector('input[name="parent-transportation-type"][value="pickup"]');
+    if (pickupRadio) {
+      pickupRadio.checked = true;
+    }
+    
+    // Reset group transportation type to default (pickup) for consistency
+    const groupPickupRadio = document.querySelector('input[name="parent-group-transportation-type"][value="pickup"]');
+    if (groupPickupRadio) {
+      groupPickupRadio.checked = true;
     }
 
     // Reset registration type selector using consistent utility
@@ -2805,6 +3186,18 @@ export class ParentRegistrationForm {
       'parent-class-select',
       'parent-registration-type-select'
     ], true);
+
+    // Reset transportation type to default (pickup) for both forms
+    const pickupRadio = document.querySelector('input[name="parent-transportation-type"][value="pickup"]');
+    if (pickupRadio) {
+      pickupRadio.checked = true;
+    }
+    
+    // Reset group transportation type to default (pickup)
+    const groupPickupRadio = document.querySelector('input[name="parent-group-transportation-type"][value="pickup"]');
+    if (groupPickupRadio) {
+      groupPickupRadio.checked = true;
+    }
 
     // Hide all registration containers (private and group)
     this.#hideAllRegistrationContainers();
@@ -2874,6 +3267,23 @@ export class ParentRegistrationForm {
           this.#restorePageScrolling();
         }
       });
+
+      // Attach keyboard handlers for this confirmation modal
+      ModalKeyboardHandler.attachKeyboardHandlers(modal, {
+        allowEscape: true,
+        allowEnter: true,
+        onConfirm: (event) => {
+          // Handle Enter key press for confirmation
+          console.log('Confirmation modal: Enter key pressed');
+          newConfirmButton.click();
+        },
+        onCancel: (event) => {
+          // Handle ESC key press for confirmation
+          console.log('Confirmation modal: ESC key pressed');
+          newCancelButton.click();
+        }
+      });
+
       modalInstance.open();
     }
   }
@@ -2910,6 +3320,9 @@ export class ParentRegistrationForm {
     // Format time
     const timeFormatted = this.#formatTime(registrationData.startTime);
 
+    // Format transportation type
+    const transportationDisplay = registrationData.transportationType === 'bus' ? 'Late Bus' : 'Late Pick Up';
+
     return `
       <strong>Are you sure you want to register ${studentName} for a private lesson?</strong>
       <br><br>
@@ -2918,7 +3331,8 @@ export class ParentRegistrationForm {
       • <strong>Instrument:</strong> ${registrationData.instrument}<br>
       • <strong>Day:</strong> ${registrationData.day}<br>
       • <strong>Time:</strong> ${timeFormatted}<br>
-      • <strong>Duration:</strong> ${registrationData.length} minutes
+      • <strong>Duration:</strong> ${registrationData.length} minutes<br>
+      • <strong>Transportation:</strong> ${transportationDisplay}
       <br><br>
       <p>If you need to change or cancel this registration, please contact forte@mcds.org. The last day to cancel registrations without charge is August 29th. After this date, all registrations will be billed in full for the Fall Trimester.</p>
       
@@ -2953,6 +3367,9 @@ export class ParentRegistrationForm {
     const instructor = this.instructors.find(inst => inst.id === registrationData.instructorId);
     const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : 'the instructor';
 
+    // Format transportation type
+    const transportationDisplay = registrationData.transportationType === 'bus' ? 'Late Bus' : 'Late Pick Up';
+
     return `
       <strong>Are you sure you want to register ${studentName} for this group class?</strong>
       <br><br>
@@ -2961,7 +3378,8 @@ export class ParentRegistrationForm {
       • <strong>Instructor:</strong> ${instructorName}<br>
       • <strong>Day:</strong> ${registrationData.day}<br>
       • <strong>Time:</strong> ${registrationData.startTime}<br>
-      • <strong>Duration:</strong> ${registrationData.length} minutes
+      • <strong>Duration:</strong> ${registrationData.length} minutes<br>
+      • <strong>Transportation:</strong> ${transportationDisplay}
       <br><br>
       <p>If you need to change or cancel this registration, please contact forte@mcds.org. The last day to cancel registrations without charge is August 29th. After this date, all registrations will be billed in full for the Fall Trimester.</p>
       
@@ -3004,6 +3422,18 @@ export class ParentRegistrationForm {
       selectedDisplay.style.pointerEvents = 'none';
     }
 
+    // Reset transportation type to default (pickup) when clearing selection
+    const pickupRadio = document.querySelector('input[name="parent-transportation-type"][value="pickup"]');
+    if (pickupRadio) {
+      pickupRadio.checked = true;
+    }
+    
+    // Reset group transportation type to default (pickup) for consistency
+    const groupPickupRadio = document.querySelector('input[name="parent-group-transportation-type"][value="pickup"]');
+    if (groupPickupRadio) {
+      groupPickupRadio.checked = true;
+    }
+
     // Remove selected class and reset styling for all time slots
     parentContainer.querySelectorAll('.timeslot').forEach(slot => {
       slot.classList.remove('selected');
@@ -3022,5 +3452,42 @@ export class ParentRegistrationForm {
 
     // Clear any error messages
     this.#clearRegistrationError();
+  }
+
+  /**
+   * Attach keyboard handlers for time slot interface
+   */
+  #attachTimeSlotKeyboardHandlers() {
+    const parentContainer = document.getElementById('parent-registration');
+    if (!parentContainer) {
+      console.warn('Parent registration container not found for keyboard handlers');
+      return;
+    }
+
+    // Attach keyboard handlers for time slot selection
+    ModalKeyboardHandler.attachTimeSlotKeyboardHandlers(parentContainer, {
+      onConfirm: (event, selectedSlot) => {
+        console.log('Time slot keyboard: Enter pressed on selected slot');
+        // Try to submit the registration if a slot is selected
+        const submitButton = document.getElementById('parent-confirm-registration-btn');
+        if (submitButton && !submitButton.disabled && this.selectedLesson) {
+          submitButton.click();
+        }
+      },
+      onCancel: (event) => {
+        console.log('Time slot keyboard: ESC pressed, clearing selection');
+        // Clear time slot selection
+        this.#clearTimeSlotSelection();
+        // Also clear the selected lesson data
+        this.selectedLesson = null;
+        // Disable submit button since no lesson is selected
+        const submitButton = document.getElementById('parent-confirm-registration-btn');
+        if (submitButton) {
+          submitButton.disabled = true;
+        }
+      }
+    });
+
+    console.log('Time slot keyboard handlers attached');
   }
 }

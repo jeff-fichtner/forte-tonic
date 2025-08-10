@@ -36,8 +36,10 @@ export class AttendanceRepository extends BaseRepository {
       // Generate unique ID
       attendanceData.id = existingId;
 
-      // Add audit fields
-      attendanceData.recordedBy = attendanceData.recordedBy || 'system';
+      // Add audit fields - recordedBy must be provided by calling code
+      if (!attendanceData.recordedBy) {
+        throw new Error('recordedBy is required for audit trail');
+      }
       attendanceData.recordedAt = new Date().toISOString();
 
       // Save via parent

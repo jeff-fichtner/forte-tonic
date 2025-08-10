@@ -16,9 +16,8 @@ export const initializeRepositories = async (req, res, next) => {
     req.userRepository = userRepository;
     req.programRepository = programRepository;
     
-    // Always set user to null - user objects are created only in specific controllers
-    req.currentUser = null;
-    req.user = null;
+    // Try to extract authenticated user from request
+    await extractAuthenticatedUser(req, userRepository);
     
   } catch (error) {
     console.error('Error initializing repositories:', error);
@@ -29,3 +28,136 @@ export const initializeRepositories = async (req, res, next) => {
   }
   next();
 };
+
+/**
+ * Get authenticated user email with proper priority:
+ * 1. Operator email (if present)
+ * 2. Access code owner email
+ * Throws error if no authenticated user is found
+ */
+export function getAuthenticatedUserEmail(req) {
+  // Priority 1: Operator email
+  const operatorEmail = req.currentUser?.operatorEmail || req.user?.operatorEmail;
+  if (operatorEmail) {
+    console.log('🔑 Using operator email for audit:', operatorEmail);
+    return operatorEmail;
+  }
+
+  // Priority 2: Access code owner email
+  const userEmail = req.currentUser?.email || req.user?.email;
+  if (userEmail) {
+    console.log('👤 Using access code owner email for audit:', userEmail);
+    return userEmail;
+  }
+
+  // No authenticated user found - provide detailed error message
+  console.error('❌ Authentication failed for audit trail:', {
+    hasCurrentUser: !!req.currentUser,
+    currentUserEmail: req.currentUser?.email,
+    operatorEmail: req.currentUser?.operatorEmail,
+    hasUser: !!req.user,
+    userEmail: req.user?.email
+  });
+  
+  throw new Error('Authentication required: No authenticated user found for audit trail. Please provide a valid access code.');
+}
+
+/**
+ * Middleware to initialize repositories with authentication check
+ */
+async function extractAuthenticatedUser(req, userRepository) {
+  try {
+    // Initialize to null
+    req.currentUser = null;
+    req.user = null;
+
+    // Debug logging
+    console.log('🔍 Auth middleware - extracting user from request:', {
+      hasBody: !!req.body,
+      bodyKeys: req.body ? Object.keys(req.body) : [],
+      bodyAccessCode: req.body?.accessCode ? req.body.accessCode.substring(0, 3) + '***' : 'none',
+      hasHeaders: !!req.headers,
+      headerAccessCode: req.headers['x-access-code'] ? req.headers['x-access-code'].substring(0, 3) + '***' : 'none',
+      queryAccessCode: req.query?.accessCode ? req.query.accessCode.substring(0, 3) + '***' : 'none',
+      userAgent: req.headers?.['user-agent']?.substring(0, 50) || 'unknown'
+    });
+
+        // Method 1: Check for operator user first
+    const operatorEmail = currentConfig.operatorEmail;
+    let operatorRole = null;
+    if (operatorEmail) {
+      operatorRole = await userRepository.getOperatorByEmail(operatorEmail);
+      if (operatorRole) {
+        console.log('🔑 Operator available:', operatorEmail);
+      }
+    }
+
+    // Method 2: Check for access code to determine the acting user
+    let accessCode = null;
+    
+    // Debug: log the actual access code values
+    console.log('🔍 Access code values:', {
+      bodyAccessCode: req.body?.accessCode,
+      bodyAccessCodeType: typeof req.body?.accessCode,
+      headerAccessCode: req.headers['x-access-code'],
+      queryAccessCode: req.query?.accessCode
+    });
+    
+    if (req.body?.accessCode && req.body.accessCode !== null && req.body.accessCode !== '') {
+      accessCode = req.body.accessCode;
+      console.log('📝 Found accessCode in body:', accessCode.substring(0, 2) + '***');
+    } else if (req.headers['x-access-code']) {
+      accessCode = req.headers['x-access-code'];
+      console.log('📝 Found accessCode in headers:', accessCode.substring(0, 2) + '***');
+    } else if (req.query?.accessCode) {
+      accessCode = req.query.accessCode;
+      console.log('📝 Found accessCode in query:', accessCode.substring(0, 2) + '***');
+    } else {
+      console.log('📝 No valid accessCode found in request body, headers, or query');
+    }
+
+    if (accessCode) {
+      console.log('🔍 Attempting to authenticate with access code:', accessCode.substring(0, 2) + '***');
+      
+      // Try to find user by access code
+      const userResult = await userRepository.getUserByAccessCode(accessCode);
+      console.log('🔍 Database lookup result:', userResult ? `Found ${userResult.userType}: ${userResult.user.email}` : 'Not found');
+      
+      if (userResult) {
+        const { user, userType } = userResult;
+        req.currentUser = { 
+          email: user.email, 
+          accessCode: accessCode,
+          userType: userType,
+          isOperator: false,
+          operatorEmail: operatorRole ? operatorEmail : null // Store operator email if available
+        };
+        req.user = req.currentUser;
+        console.log(`✅ User authenticated: ${user.email} (${userType})` + 
+                   (operatorRole ? ` with operator: ${operatorEmail}` : ''));
+        return;
+      } else {
+        console.warn(`⚠️ Access code ${accessCode.substring(0, 2)}*** not found in any user records`);
+      }
+    }
+
+    // Method 3: If no access code but operator is available, use operator
+    if (operatorRole) {
+      req.currentUser = { 
+        email: operatorEmail, 
+        isOperator: true,
+        operatorEmail: operatorEmail
+      };
+      req.user = req.currentUser;
+      console.log('🔑 Operator user authenticated (no access code):', operatorEmail);
+      return;
+    }
+
+    console.log('⚠️ No authenticated user found - audit operations will require valid authentication');
+    
+  } catch (error) {
+    console.error('❌ Error extracting authenticated user:', error);
+    req.currentUser = null;
+    req.user = null;
+  }
+}

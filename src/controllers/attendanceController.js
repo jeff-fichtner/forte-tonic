@@ -3,6 +3,8 @@
  * Handles attendance recording, removal, and summary reporting
  */
 
+import { getAuthenticatedUserEmail } from '../middleware/auth.js';
+
 export class AttendanceController {
   /**
    * Mark Attendance - New Repository Pattern
@@ -10,6 +12,15 @@ export class AttendanceController {
   static async markAttendance(req, res) {
     try {
       const { registrationId, week, schoolYear, trimester } = req.body;
+
+      // Get the authenticated user's email for audit purposes
+      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
+      
+      console.log('🎯 Mark attendance request received:', {
+        registrationId,
+        week,
+        authenticatedUser: authenticatedUserEmail
+      });
 
       // Validation
       if (!registrationId || !week) {
@@ -40,7 +51,7 @@ export class AttendanceController {
         week: parseInt(week),
         schoolYear: schoolYear || '2025-2026',
         trimester: trimester || 'Fall',
-        recordedBy: req.currentUser?.email || 'system',
+        recordedBy: authenticatedUserEmail,
         recordedAt: new Date().toISOString(),
       };
 
@@ -104,10 +115,18 @@ export class AttendanceController {
   static async recordAttendance(req, res) {
     try {
       const data = req.body;
+      
+      // Get the authenticated user's email for audit purposes
+      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
+      
+      console.log('🎯 Record attendance request received:', {
+        registrationId: data.registrationId,
+        authenticatedUser: authenticatedUserEmail
+      });
 
       const attendanceRecord = await req.programRepository.recordAttendance(
         data.registrationId,
-        req.currentUser.email
+        authenticatedUserEmail
       );
 
       res.json({ attendanceRecord });
@@ -123,10 +142,18 @@ export class AttendanceController {
   static async removeAttendance(req, res) {
     try {
       const data = req.body;
+      
+      // Get the authenticated user's email for audit purposes
+      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
+      
+      console.log('🎯 Remove attendance request received:', {
+        registrationId: data.registrationId,
+        authenticatedUser: authenticatedUserEmail
+      });
 
       const success = await req.programRepository.removeAttendance(
         data.registrationId,
-        req.currentUser.email
+        authenticatedUserEmail
       );
 
       res.json({ success });
