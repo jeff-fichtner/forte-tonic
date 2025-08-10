@@ -63,6 +63,19 @@ export class RegistrationApplicationService {
         throw new Error(`Registration validation failed: ${basicValidation.errors.join(', ')}`);
       }
 
+      // Step 2.5: Validate bus time restrictions for Late Bus transportation
+      if (registrationData.transportationType === 'bus') {
+        const busValidation = this.#validateBusTimeRestrictions(
+          registrationData.day,
+          registrationData.startTime,
+          registrationData.length
+        );
+        
+        if (!busValidation.isValid) {
+          throw new Error(busValidation.errorMessage);
+        }
+      }
+
       // Step 3: Get related entities
       const [student, instructor, groupClass] = await Promise.all([
         this.userRepository.getStudentById(registrationData.studentId),
@@ -158,13 +171,16 @@ export class RegistrationApplicationService {
           transportationType: registrationData.transportationType,
           notes: registrationData.notes,
           expectedStartDate: registrationData.expectedStartDate,
-          registeredBy: userId,
+          createdBy: userId, // Use createdBy instead of registeredBy to match audit schema
         }
       );
 
       // Step 7: Persist the registration
+      const registrationDataObject = registrationEntity.toDataObject();
+      console.log('📊 Registration data object before persistence:', registrationDataObject);
+      
       const persistedRegistration = await this.registrationRepository.create(
-        registrationEntity.toDataObject()
+        registrationDataObject
       );
 
       // Step 8: Audit logging
@@ -414,5 +430,85 @@ export class RegistrationApplicationService {
       console.error('❌ Error getting registrations:', error);
       throw error;
     }
+  }
+
+  /**
+   * Parse time string (supports both "HH:MM" and "H:MM AM/PM" formats) to minutes since midnight
+   */
+  #parseTime(timeStr) {
+    if (!timeStr) return null;
+
+    // Handle AM/PM format (e.g., "3:00 PM", "11:30 AM")
+    if (timeStr.includes('AM') || timeStr.includes('PM')) {
+      const [time, period] = timeStr.split(' ');
+      const [hours, minutes] = time.split(':').map(Number);
+      let hour24 = hours;
+      
+      if (period === 'PM' && hours !== 12) {
+        hour24 += 12;
+      } else if (period === 'AM' && hours === 12) {
+        hour24 = 0;
+      }
+      
+      return hour24 * 60 + (minutes || 0);
+    }
+
+    // Handle 24-hour format (e.g., "15:00", "09:30")
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + (minutes || 0);
+  }
+
+  /**
+   * Helper method to format minutes since midnight back to HH:MM format
+   */
+  #formatTimeFromMinutes(minutes) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  }
+
+  /**
+   * Validate bus time restrictions for Late Bus transportation
+   * @param {string} day - Day of the week (e.g., 'Monday', 'Wednesday')
+   * @param {string} startTime - Start time (e.g., '14:30')
+   * @param {number} lengthMinutes - Duration in minutes
+   * @returns {object} Validation result with isValid boolean and errorMessage
+   */
+  #validateBusTimeRestrictions(day, startTime, lengthMinutes) {
+    console.log('🚌 Validating bus time restrictions:', { day, startTime, lengthMinutes });
+
+    // Parse start time and calculate end time
+    const startMinutes = this.#parseTime(startTime);
+    const endMinutes = startMinutes + lengthMinutes;
+
+    // Convert end time back to time string for display
+    const endTimeDisplay = this.#formatTimeFromMinutes(endMinutes);
+
+    // Bus schedule restrictions
+    const busDeadlines = {
+      'Monday': '16:45',    // 4:45 PM
+      'Tuesday': '16:45',   // 4:45 PM
+      'Wednesday': '16:15', // 4:15 PM
+      'Thursday': '16:45',  // 4:45 PM
+      'Friday': '16:45'     // 4:45 PM
+    };
+
+    const deadlineTime = busDeadlines[day];
+    if (!deadlineTime) {
+      console.log('🚌 Unknown day, allowing bus transportation');
+      return { isValid: true, errorMessage: null }; // Unknown day, allow
+    }
+
+    const deadlineMinutes = this.#parseTime(deadlineTime);
+    const deadlineDisplay = this.#formatTimeFromMinutes(deadlineMinutes);
+
+    if (endMinutes > deadlineMinutes) {
+      const errorMessage = `Late Bus is not available for lessons ending after ${deadlineDisplay} on ${day}. This lesson ends at ${endTimeDisplay}. Please select "Late Pick Up" instead or choose a different time slot.`;
+      console.log('🚌 Bus time restriction violated:', errorMessage);
+      return { isValid: false, errorMessage };
+    }
+
+    console.log('🚌 Bus time validation passed');
+    return { isValid: true, errorMessage: null };
   }
 }

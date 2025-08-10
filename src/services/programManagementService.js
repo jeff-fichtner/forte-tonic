@@ -112,14 +112,6 @@ export class ProgramManagementService {
       }
     }
 
-    // Transportation type validation (if provided)
-    if (
-      registrationData.transportationType &&
-      !['pickup', 'dropoff', 'both', 'none'].includes(registrationData.transportationType)
-    ) {
-      errors.push('Invalid transportation type');
-    }
-
     return {
       isValid: errors.length === 0,
       errors,

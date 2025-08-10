@@ -12,6 +12,7 @@ import { RegistrationController } from '../controllers/registrationController.js
 import { SystemController } from '../controllers/systemController.js';
 import { AttendanceController } from '../controllers/attendanceController.js';
 import { extractSingleRequestData, extractPaginatedRequestData } from '../middleware/requestDataNormalizer.js';
+import { initializeRepositories } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -59,24 +60,32 @@ router.post('/getRooms', extractPaginatedRequestData, RegistrationController.get
 /**
  * Create Registration - New Repository Pattern
  */
-router.post('/registrations', RegistrationController.createRegistration);
+router.post('/registrations', initializeRepositories, RegistrationController.createRegistration);
 
 /**
  * Mark Attendance - New Repository Pattern
  */
-router.post('/attendance', AttendanceController.markAttendance);
+router.post('/attendance', initializeRepositories, AttendanceController.markAttendance);
 
 /**
  * Get Attendance Summary
  */
 router.get('/attendance/summary/:registrationId', AttendanceController.getAttendanceSummary);
 
+/**
+ * Registration endpoints - Legacy and Repository patterns
+ */
 router.post('/register', RegistrationController.register);
+router.post('/unregister', initializeRepositories, RegistrationController.unregister);
 
-router.post('/unregister', RegistrationController.unregister);
+// New Repository Pattern endpoints
+router.post('/registerWithRepository', RegistrationController.registerWithRepository);
+router.post('/unregisterWithRepository', RegistrationController.unregisterWithRepository);
 
+/**
+ * Attendance endpoints
+ */
 router.post('/recordAttendance', AttendanceController.recordAttendance);
-
 router.post('/removeAttendance', AttendanceController.removeAttendance);
 
 export default router;

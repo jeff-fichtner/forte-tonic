@@ -28,6 +28,7 @@ import './utilities/domHelpers.js';
 import './utilities/durationHelpers.js';
 import './utilities/promiseHelpers.js';
 import './utilities/phoneHelpers.js';
+import './utilities/modalKeyboardHandler.js';
 import './extensions/durationExtensions.js';
 import './extensions/numberExtensions.js';
 import './extensions/stringExtensions.js';

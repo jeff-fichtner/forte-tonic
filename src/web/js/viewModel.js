@@ -391,7 +391,8 @@ export class ViewModel {
 
         // handle response - toast is handled by the form component
         this.registrations.push(newRegistration);
-        this.masterScheduleTable.replaceRange(this.registrations);
+        // Refresh all relevant tables after registration
+        this.#refreshTablesAfterRegistration();
       }
     );
     // weekly schedule
@@ -758,8 +759,8 @@ export class ViewModel {
 
         // handle response - toast is handled by the form component
         this.registrations.push(newRegistration);
-        // Refresh parent schedule after registration
-        this.#initParentContent();
+        // Refresh all relevant tables after registration
+        this.#refreshTablesAfterRegistration();
       },
       allParentChildren // Pass ALL parent's children, not just those with registrations
     );
@@ -773,6 +774,32 @@ export class ViewModel {
     const sortedEmployees = this.#sortEmployeesForDirectory(mappedEmployees);
     this.parentDirectoryTable = this.#buildDirectory('parent-directory-table', sortedEmployees);
   }
+
+  /**
+   * Refresh all relevant tables after a new registration is created
+   * This ensures all views stay synchronized when new data is added
+   */
+  #refreshTablesAfterRegistration() {
+    // Always update the master schedule table if it exists (for admin view)
+    if (this.masterScheduleTable) {
+      console.log('Refreshing master schedule table with updated registrations');
+      const sortedRegistrations = this.#sortRegistrations(this.registrations);
+      this.masterScheduleTable.replaceRange(sortedRegistrations);
+    }
+
+    // Update instructor weekly schedules if current user is an instructor
+    if (this.currentUser?.instructor && this.instructorContentInitialized) {
+      console.log('Refreshing instructor weekly schedule');
+      this.#initInstructorContent();
+    }
+
+    // Update parent weekly schedules if current user is a parent
+    if (this.currentUser?.parent && this.parentContentInitialized) {
+      console.log('Refreshing parent weekly schedule');
+      this.#initParentContent();
+    }
+  }
+
   /**
    *
    */
@@ -1665,17 +1692,6 @@ export class ViewModel {
       }
     });
 
-    // Handle enter key press in input
-    accessCodeInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter'
-        // and modal is open
-        && this.loginModal.isOpen
-      ) {
-        e.preventDefault();
-        this.#handleLogin();
-      }
-    });
-
     // Handle login button click
     loginButton.addEventListener('click', (e) => {
       e.preventDefault();
@@ -1687,6 +1703,22 @@ export class ViewModel {
       accessCodeInput.value = '';
       accessCodeInput.classList.remove('valid', 'invalid');
       accessCodeInput.focus();
+    });
+
+    // Attach keyboard handlers using the centralized utility
+    ModalKeyboardHandler.attachKeyboardHandlers(modalElement, {
+      allowEscape: true,
+      allowEnter: true,
+      onConfirm: (event) => {
+        // Handle Enter key press for login
+        console.log('Login modal: Enter key pressed');
+        this.#handleLogin();
+      },
+      onCancel: (event) => {
+        // Handle ESC key press for login
+        console.log('Login modal: ESC key pressed');
+        this.loginModal.close();
+      }
     });
 
     console.log('Login modal initialized successfully');
@@ -1720,21 +1752,13 @@ export class ViewModel {
       return;
     }
 
-    // Remove the modal-close class to prevent automatic closing
     const termsBtn = termsModal.querySelector('.modal-footer .modal-close');
-    if (termsBtn) {
-      termsBtn.classList.remove('modal-close');
-    }
-
-    // Initialize with non-dismissible settings
+    
+    // Initialize modal with default dismissible behavior for footer links
     this.termsModal = M.Modal.init(termsModal, {
-      dismissible: false,  // Prevent dismissal by clicking outside or ESC
-      opacity: 0.8,       // Higher opacity to emphasize non-dismissible nature
-      preventScrolling: true,
-      onCloseStart: function() {
-        // Additional safeguard - only allow programmatic closing from our button
-        return false;
-      }
+      dismissible: true,
+      opacity: 0.5,
+      preventScrolling: true
     });
 
     // Make available globally
@@ -1747,39 +1771,72 @@ export class ViewModel {
         e.preventDefault();
         e.stopPropagation();
 
-        // Mark terms as accepted
-        window.UserSession.acceptTermsOfService();
-
-        // Manually close the modal
-        this.termsModal.destroy();
-        termsModal.style.display = 'none';
-        document.body.classList.remove('modal-open');
-        // Remove overlay if it exists
-        const overlay = document.querySelector('.modal-overlay');
-        if (overlay) overlay.remove();
-
-        // Execute the callback if it exists
-        if (window.termsOnConfirmationCallback) {
-          window.termsOnConfirmationCallback();
-          window.termsOnConfirmationCallback = null; // Clear after use
+        // Check if this is the initial non-dismissible terms acceptance
+        const hasAcceptedTerms = window.UserSession.hasAcceptedTermsOfService();
+        
+        if (!hasAcceptedTerms) {
+          // Mark terms as accepted for first-time users
+          window.UserSession.acceptTermsOfService();
+          
+          // Clean up temporary event handlers if they exist
+          if (termsModal._tempKeydownHandler) {
+            termsModal.removeEventListener('keydown', termsModal._tempKeydownHandler);
+            delete termsModal._tempKeydownHandler;
+          }
+          if (termsModal._tempClickHandler) {
+            termsModal.removeEventListener('click', termsModal._tempClickHandler);
+            delete termsModal._tempClickHandler;
+          }
+          
+          // Restore normal dismissible behavior for future footer link clicks
+          this.termsModal.destroy();
+          this.termsModal = M.Modal.init(termsModal, {
+            dismissible: true,
+            opacity: 0.5,
+            preventScrolling: true
+          });
+          
+          // Execute the callback if it exists (for initial login flow)
+          if (window.termsOnConfirmationCallback) {
+            window.termsOnConfirmationCallback();
+            window.termsOnConfirmationCallback = null; // Clear after use
+          }
         }
+
+        // Close the modal normally
+        this.termsModal.close();
       });
     }
 
-    // Prevent all keyboard shortcuts from closing modal
-    termsModal.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        e.stopPropagation();
+    // Attach keyboard handlers for normal usage (when dismissible)
+    ModalKeyboardHandler.attachKeyboardHandlers(termsModal, {
+      allowEscape: true,
+      allowEnter: true,
+      onConfirm: (event) => {
+        // Handle Enter key press for Terms of Service
+        console.log('Terms modal: Enter key pressed');
+        if (termsBtn) {
+          termsBtn.click();
+        }
+      },
+      onCancel: (event) => {
+        // Handle ESC key press for Terms of Service
+        console.log('Terms modal: ESC key pressed');
+        
+        // Check if this is non-dismissible mode
+        const hasAcceptedTerms = window.UserSession.hasAcceptedTermsOfService();
+        if (!hasAcceptedTerms && window.termsOnConfirmationCallback) {
+          // In non-dismissible mode, prevent ESC
+          console.log('Terms modal: ESC blocked in non-dismissible mode');
+          return;
+        }
+        
+        // Allow normal ESC behavior
+        this.termsModal.close();
       }
     });
 
-    // Prevent clicking outside modal content from closing
-    termsModal.addEventListener('click', (e) => {
-      e.stopPropagation();
-    });
-
-    console.log('✅ Terms of Service modal initialized (non-dismissible)');
+    console.log('✅ Terms of Service modal initialized');
   }
 
   /**
@@ -1802,6 +1859,22 @@ export class ViewModel {
     // Make available globally
     window.privacyModal = privacyModal;
     window.privacyModalInstance = this.privacyModal;
+
+    // Attach keyboard handlers
+    ModalKeyboardHandler.attachKeyboardHandlers(privacyModal, {
+      allowEscape: true,
+      allowEnter: true,
+      onConfirm: (event) => {
+        // Handle Enter key press for Privacy Policy
+        console.log('Privacy modal: Enter key pressed');
+        this.privacyModal.close();
+      },
+      onCancel: (event) => {
+        // Handle ESC key press for Privacy Policy
+        console.log('Privacy modal: ESC key pressed');
+        this.privacyModal.close();
+      }
+    });
 
     console.log('✅ Privacy Policy modal initialized (dismissible)');
   }
@@ -2197,8 +2270,45 @@ export class ViewModel {
   #showTermsOfService(onConfirmation) {
     console.log('Showing Terms of Service modal');
 
+    const termsModal = document.getElementById('terms-modal');
+    const hasAcceptedTerms = window.UserSession.hasAcceptedTermsOfService();
+
     // Store the confirmation callback globally for the modal to access
     window.termsOnConfirmationCallback = onConfirmation;
+
+    // Configure modal as non-dismissible for first-time users
+    if (!hasAcceptedTerms && this.termsModal) {
+      // Temporarily make the modal non-dismissible for initial terms acceptance
+      this.termsModal.destroy();
+      this.termsModal = M.Modal.init(termsModal, {
+        dismissible: false,
+        opacity: 0.8,
+        preventScrolling: true,
+        onCloseStart: function() {
+          return false; // Prevent closing
+        }
+      });
+      
+      // Add keyboard event prevention for non-dismissible mode
+      const keydownHandler = (e) => {
+        if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      };
+      
+      // Add click prevention for non-dismissible mode
+      const clickHandler = (e) => {
+        e.stopPropagation();
+      };
+      
+      termsModal.addEventListener('keydown', keydownHandler);
+      termsModal.addEventListener('click', clickHandler);
+      
+      // Store handlers for cleanup
+      termsModal._tempKeydownHandler = keydownHandler;
+      termsModal._tempClickHandler = clickHandler;
+    }
 
     // Open the Terms of Service modal using ViewModel's instance
     if (this.termsModal) {

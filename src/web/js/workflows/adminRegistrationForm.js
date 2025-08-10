@@ -339,6 +339,87 @@ export class AdminRegistrationForm {
   }
 
   /**
+   * Parse time string (supports both "HH:MM" and "H:MM AM/PM" formats) to minutes since midnight
+   */
+  #parseTime(timeStr) {
+    if (!timeStr) return null;
+
+    // Handle AM/PM format (e.g., "3:00 PM", "11:30 AM")
+    if (timeStr.includes('AM') || timeStr.includes('PM')) {
+      const [time, period] = timeStr.split(' ');
+      const [hours, minutes] = time.split(':').map(Number);
+      let hour24 = hours;
+      
+      if (period === 'PM' && hours !== 12) {
+        hour24 += 12;
+      } else if (period === 'AM' && hours === 12) {
+        hour24 = 0;
+      }
+      
+      return hour24 * 60 + (minutes || 0);
+    }
+
+    // Handle 24-hour format (e.g., "15:00", "09:30")
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + (minutes || 0);
+  }
+
+  /**
+   * Helper method to format minutes since midnight back to HH:MM format
+   */
+  #formatTimeFromMinutes(minutes) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  }
+
+  /**
+   * Check if Late Bus transportation is valid for the selected time
+   * @param {string} day - Day of the week (e.g., 'Monday', 'Wednesday')
+   * @param {string} startTime - Start time (e.g., '14:30')
+   * @param {number} lengthMinutes - Duration in minutes
+   * @param {string} transportationType - Selected transportation type
+   * @returns {object} Validation result with isValid boolean and errorMessage
+   */
+  #validateBusTimeRestrictions(day, startTime, lengthMinutes, transportationType) {
+    // Only validate if Late Bus is selected
+    if (transportationType !== 'bus') {
+      return { isValid: true, errorMessage: null };
+    }
+
+    // Parse start time and calculate end time
+    const startMinutes = this.#parseTime(startTime);
+    const endMinutes = startMinutes + lengthMinutes;
+
+    // Convert end time back to time string for display
+    const endTimeDisplay = this.#formatTimeFromMinutes(endMinutes);
+
+    // Bus schedule restrictions
+    const busDeadlines = {
+      'Monday': '16:45',    // 4:45 PM
+      'Tuesday': '16:45',   // 4:45 PM
+      'Wednesday': '16:15', // 4:15 PM
+      'Thursday': '16:45',  // 4:45 PM
+      'Friday': '16:45'     // 4:45 PM
+    };
+
+    const deadlineTime = busDeadlines[day];
+    if (!deadlineTime) {
+      return { isValid: true, errorMessage: null }; // Unknown day, allow
+    }
+
+    const deadlineMinutes = this.#parseTime(deadlineTime);
+    const deadlineDisplay = this.#formatTimeFromMinutes(deadlineMinutes);
+
+    if (endMinutes > deadlineMinutes) {
+      const errorMessage = `Late Bus is not available for lessons ending after ${deadlineDisplay} on ${day}. This lesson ends at ${endTimeDisplay}. Please select "Late Pick Up" instead or choose a different time slot.`;
+      return { isValid: false, errorMessage };
+    }
+
+    return { isValid: true, errorMessage: null };
+  }
+
+  /**
    * Simple validation without restrictions
    */
   #validateRegistration() {
@@ -378,14 +459,48 @@ export class AdminRegistrationForm {
           errors.push('Start Time');
         }
         if (!registrationData.length) {
-          errors.push('Length');
+          errors.push('Lesson Length');
         }
         if (!registrationData.instrument) {
           errors.push('Instrument');
         }
       }
       M.toast({ html: `Please fill out the following fields:<br>${errors.join('<br>')}` });
+      return false;
     }
+
+    // Check bus time restrictions for Late Bus transportation
+    if (registrationData.transportationType === 'bus') {
+      let busValidation;
+
+      if (isPrivate) {
+        // For private lessons
+        busValidation = this.#validateBusTimeRestrictions(
+          registrationData.day,
+          registrationData.startTime,
+          registrationData.length,
+          registrationData.transportationType
+        );
+      } else if (isGroup) {
+        // For group classes, get class details
+        const selectedClass = this.classes.find(c => c.id === registrationData.classId);
+        if (selectedClass) {
+          busValidation = this.#validateBusTimeRestrictions(
+            selectedClass.day,
+            selectedClass.startTime,
+            selectedClass.length,
+            registrationData.transportationType
+          );
+        }
+      }
+
+      if (busValidation && !busValidation.isValid) {
+        console.log('Admin validation failed: Bus time restriction violated');
+        M.toast({ html: busValidation.errorMessage });
+        return false;
+      }
+    }
+
     return isValid;
   }
 
@@ -407,9 +522,13 @@ export class AdminRegistrationForm {
         throw new Error('Please select a valid class');
       }
       
+      // Get transportation type for group registration
+      const transportationType = document.querySelector('input[name="transportation-type"]:checked');
+      
       return {
         studentId: studentId,
         registrationType: RegistrationType.GROUP,
+        transportationType: transportationType ? transportationType.value : null,
         classId: selectedClassId,
         classTitle: selectedClass.formattedName || selectedClass.title || selectedClass.instrument || `Class ${selectedClass.id}`,
         instructorId: selectedClass.instructorId,
