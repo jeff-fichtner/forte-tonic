@@ -72,10 +72,18 @@ async function extractAuthenticatedUser(req, userRepository) {
     req.user = null;
 
     // Debug logging
+    let bodyAccessCodeDisplay = 'none';
+    if (Array.isArray(req.body) && req.body[0]?.data?.accessCode) {
+      bodyAccessCodeDisplay = req.body[0].data.accessCode.substring(0, 3) + '***';
+    } else if (req.body?.accessCode) {
+      bodyAccessCodeDisplay = req.body.accessCode.substring(0, 3) + '***';
+    }
+    
     console.log('🔍 Auth middleware - extracting user from request:', {
       hasBody: !!req.body,
       bodyKeys: req.body ? Object.keys(req.body) : [],
-      bodyAccessCode: req.body?.accessCode ? req.body.accessCode.substring(0, 3) + '***' : 'none',
+      bodyAccessCode: bodyAccessCodeDisplay,
+      bodyHasAccessCode: req.body && 'accessCode' in req.body,
       hasHeaders: !!req.headers,
       headerAccessCode: req.headers['x-access-code'] ? req.headers['x-access-code'].substring(0, 3) + '***' : 'none',
       queryAccessCode: req.query?.accessCode ? req.query.accessCode.substring(0, 3) + '***' : 'none',
@@ -95,16 +103,28 @@ async function extractAuthenticatedUser(req, userRepository) {
     // Method 2: Check for access code to determine the acting user
     let accessCode = null;
     
+    // Check for access code in different locations, including HttpService array format
+    let bodyAccessCode = null;
+    
+    // Handle HttpService payload format: [{ data: { accessCode } }]
+    if (Array.isArray(req.body) && req.body[0]?.data?.accessCode) {
+      bodyAccessCode = req.body[0].data.accessCode;
+    } else if (req.body?.accessCode) {
+      // Handle direct body format: { accessCode, ... }
+      bodyAccessCode = req.body.accessCode;
+    }
+    
     // Debug: log the actual access code values
     console.log('🔍 Access code values:', {
-      bodyAccessCode: req.body?.accessCode,
-      bodyAccessCodeType: typeof req.body?.accessCode,
+      bodyAccessCode: bodyAccessCode,
+      bodyAccessCodeType: typeof bodyAccessCode,
+      bodyAccessCodeValue: bodyAccessCode ? bodyAccessCode.substring(0, 2) + '***' : 'null/undefined',
       headerAccessCode: req.headers['x-access-code'],
       queryAccessCode: req.query?.accessCode
     });
     
-    if (req.body?.accessCode && req.body.accessCode !== null && req.body.accessCode !== '') {
-      accessCode = req.body.accessCode;
+    if (bodyAccessCode && bodyAccessCode !== null && bodyAccessCode !== '') {
+      accessCode = bodyAccessCode;
       console.log('📝 Found accessCode in body:', accessCode.substring(0, 2) + '***');
     } else if (req.headers['x-access-code']) {
       accessCode = req.headers['x-access-code'];

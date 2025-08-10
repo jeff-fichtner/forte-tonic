@@ -167,11 +167,22 @@ export class HttpService {
   static #callServerFunction(serverFunctionName, payload, mapper = null, context = null) {
     return new Promise(async (resolve, reject) => {
       try {
+        // Get stored access code for authentication
+        const headers = {
+          'Content-Type': 'application/json',
+        };
+        
+        // Include access code in header if available
+        if (window.AccessCodeManager) {
+          const storedAccessCode = window.AccessCodeManager.getStoredAccessCode();
+          if (storedAccessCode) {
+            headers['x-access-code'] = storedAccessCode;
+          }
+        }
+
         const response = await fetch(`/api/${serverFunctionName}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: headers,
           body: JSON.stringify(payload),
           credentials: 'same-origin', // Include session cookies
         });

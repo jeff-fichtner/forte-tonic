@@ -207,8 +207,29 @@ export class AdminRegistrationForm {
       ],
       event => {
         console.log('Day selected:', event.target.value);
+        const hasDay = !!event.target.value;
+        
         // Show the lesson length and start time container when day is selected
-        this.#showContainer('instructor-day-selected-info-container', !!event.target.value);
+        this.#showContainer('instructor-day-selected-info-container', hasDay);
+        
+        // Reset start time, lesson length, and instrument when day is cleared
+        if (!hasDay) {
+          // Reset lesson length radio buttons to default (30 minutes)
+          const lengthRadios = document.querySelectorAll('input[name="lesson-length"]');
+          if (lengthRadios.length > 0) {
+            lengthRadios[0].checked = true;
+          }
+          
+          // Clear start time selection
+          if (this.startTimeSelect) {
+            this.startTimeSelect.clearSelectedOption();
+          }
+          
+          // Clear instrument selection
+          if (this.instrumentSelect) {
+            this.instrumentSelect.clearSelectedOption();
+          }
+        }
       }
     );
 

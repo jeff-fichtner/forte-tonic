@@ -1523,16 +1523,8 @@ export class ViewModel {
     try {
       this.#setAdminRegistrationLoading(true);
       
-      // Get the access code for audit trail
-      const accessCode = window.AccessCodeManager?.getStoredAccessCode() || null;
-      if (!accessCode) {
-        M.toast({ html: 'Access code required for deletion. Please log in again.' });
-        return;
-      }
-      
       const requestPayload = { 
-        registrationId: registrationToDeleteId, 
-        accessCode: accessCode 
+        registrationId: registrationToDeleteId
       };
       console.log('Sending delete request with payload:', requestPayload);
 
@@ -1862,6 +1854,23 @@ export class ViewModel {
             preventScrolling: true
           });
           
+          // Reattach keyboard handlers after reinitializing the modal
+          const newTermsBtn = termsModal.querySelector('.modal-footer .modal-close');
+          ModalKeyboardHandler.attachKeyboardHandlers(termsModal, {
+            allowEscape: true,
+            allowEnter: true,
+            onConfirm: (event) => {
+              console.log('Terms modal: Enter key pressed (reattached)');
+              if (newTermsBtn) {
+                newTermsBtn.click();
+              }
+            },
+            onCancel: (event) => {
+              console.log('Terms modal: ESC key pressed (reattached)');
+              this.termsModal.close();
+            }
+          });
+          
           // Execute the callback if it exists (for initial login flow)
           if (window.termsOnConfirmationCallback) {
             window.termsOnConfirmationCallback();
@@ -1915,6 +1924,8 @@ export class ViewModel {
       return;
     }
 
+    const privacyBtn = privacyModal.querySelector('.modal-footer .modal-close');
+
     // Initialize with normal dismissible settings
     this.privacyModal = M.Modal.init(privacyModal, {
       dismissible: true,   // Allow normal dismissal behavior
@@ -1931,9 +1942,13 @@ export class ViewModel {
       allowEscape: true,
       allowEnter: true,
       onConfirm: (event) => {
-        // Handle Enter key press for Privacy Policy
+        // Handle Enter key press for Privacy Policy - trigger button click
         console.log('Privacy modal: Enter key pressed');
-        this.privacyModal.close();
+        if (privacyBtn) {
+          privacyBtn.click();
+        } else {
+          this.privacyModal.close();
+        }
       },
       onCancel: (event) => {
         // Handle ESC key press for Privacy Policy
@@ -2324,17 +2339,23 @@ export class ViewModel {
         }
       });
       
-      // Add keyboard event prevention for non-dismissible mode
+      // Add keyboard event prevention for non-dismissible mode (only block ESC, allow Enter)
       const keydownHandler = (e) => {
-        if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+        if (e.key === 'Escape') {
           e.preventDefault();
           e.stopPropagation();
+          console.log('Terms modal: ESC blocked in non-dismissible mode');
         }
+        // Allow Enter key to work for button activation
       };
       
-      // Add click prevention for non-dismissible mode
+      // Add click prevention for non-dismissible mode (only prevent overlay clicks)
       const clickHandler = (e) => {
-        e.stopPropagation();
+        // Only prevent clicks on the overlay, not on modal content
+        if (e.target === termsModal) {
+          e.stopPropagation();
+          e.preventDefault();
+        }
       };
       
       termsModal.addEventListener('keydown', keydownHandler);
@@ -2343,6 +2364,23 @@ export class ViewModel {
       // Store handlers for cleanup
       termsModal._tempKeydownHandler = keydownHandler;
       termsModal._tempClickHandler = clickHandler;
+      
+      // Reattach keyboard handlers for the non-dismissible modal
+      const termsBtn = termsModal.querySelector('.modal-footer .modal-close');
+      ModalKeyboardHandler.attachKeyboardHandlers(termsModal, {
+        allowEscape: false, // Block ESC in non-dismissible mode
+        allowEnter: true,   // Allow Enter for button activation
+        onConfirm: (event) => {
+          console.log('Terms modal: Enter key pressed (non-dismissible mode)');
+          if (termsBtn) {
+            termsBtn.click();
+          }
+        },
+        onCancel: (event) => {
+          // Should not be called since allowEscape is false
+          console.log('Terms modal: ESC blocked in non-dismissible mode');
+        }
+      });
     }
 
     // Open the Terms of Service modal using ViewModel's instance
