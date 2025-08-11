@@ -845,6 +845,25 @@ export class ViewModel {
     // Show/hide the parent wait list table based on whether there are wait list registrations
     const parentWaitListTable = document.getElementById('parent-wait-list-table');
     if (parentWaitListRegistrations.length > 0) {
+      // Create a title container for the wait list table
+      const waitListContainer = parentWaitListTable.parentElement;
+      if (waitListContainer) {
+        // Remove any existing wait list title
+        const existingTitle = waitListContainer.querySelector('.parent-wait-list-title');
+        if (existingTitle) {
+          existingTitle.remove();
+        }
+        
+        // Create and add the wait list title
+        const waitListTitle = document.createElement('h5');
+        waitListTitle.className = 'parent-wait-list-title';
+        waitListTitle.style.cssText = 'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px; margin-top: 20px;';
+        waitListTitle.textContent = 'Rock Band Wait List';
+        
+        // Insert the title before the table
+        waitListContainer.insertBefore(waitListTitle, parentWaitListTable);
+      }
+      
       // Build and show the wait list table
       this.parentWaitListTable = this.#buildParentWaitListTable(parentWaitListRegistrations, currentParentId);
       
@@ -858,25 +877,45 @@ export class ViewModel {
       // Hide the wait list table if no wait list registrations
       if (parentWaitListTable) {
         parentWaitListTable.setAttribute('hidden', '');
+        
+        // Also remove the title if it exists
+        const waitListContainer = parentWaitListTable.parentElement;
+        if (waitListContainer) {
+          const existingTitle = waitListContainer.querySelector('.parent-wait-list-title');
+          if (existingTitle) {
+            existingTitle.remove();
+          }
+        }
       }
       
       console.log('⚠️ No wait list registrations found - hiding parent wait list table');
     }
 
     // registration
-    // Initialize parent registration form with hybrid interface
+    // Initialize parent registration form with hybrid interface only if it doesn't exist
     // Use ALL parent's children, not just those with existing registrations
-    this.parentRegistrationForm = new ParentRegistrationForm(
-      this.instructors,
-      this.students,
-      this.classes,
-      this.registrations, // Pass existing registrations for availability calculation
-      async data => {
-        // Use shared method for registration creation with enrichment
-        await this.#createRegistrationWithEnrichment(data);
-      },
-      allParentChildren // Pass ALL parent's children, not just those with registrations
-    );
+    if (!this.parentRegistrationForm) {
+      this.parentRegistrationForm = new ParentRegistrationForm(
+        this.instructors,
+        this.students,
+        this.classes,
+        this.registrations, // Pass existing registrations for availability calculation
+        async data => {
+          // Use shared method for registration creation with enrichment
+          await this.#createRegistrationWithEnrichment(data);
+        },
+        allParentChildren // Pass ALL parent's children, not just those with registrations
+      );
+    } else {
+      // Update existing form with latest data instead of recreating it
+      this.parentRegistrationForm.updateData(
+        this.instructors,
+        this.students,
+        this.classes,
+        this.registrations,
+        allParentChildren
+      );
+    }
 
     // directory - show all instructors for parents, not just those teaching current children
     // This allows parents without registered children to see all available instructors
@@ -949,10 +988,29 @@ export class ViewModel {
         if (parentWaitListRegistrations.length > 0) {
           if (parentWaitListTableElement) {
             parentWaitListTableElement.removeAttribute('hidden');
+            
+            // Ensure the title is present
+            const waitListContainer = parentWaitListTableElement.parentElement;
+            if (waitListContainer && !waitListContainer.querySelector('.parent-wait-list-title')) {
+              const waitListTitle = document.createElement('h5');
+              waitListTitle.className = 'parent-wait-list-title';
+              waitListTitle.style.cssText = 'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px; margin-top: 20px;';
+              waitListTitle.textContent = 'Rock Band Wait List';
+              waitListContainer.insertBefore(waitListTitle, parentWaitListTableElement);
+            }
           }
         } else {
           if (parentWaitListTableElement) {
             parentWaitListTableElement.setAttribute('hidden', '');
+            
+            // Remove the title if it exists
+            const waitListContainer = parentWaitListTableElement.parentElement;
+            if (waitListContainer) {
+              const existingTitle = waitListContainer.querySelector('.parent-wait-list-title');
+              if (existingTitle) {
+                existingTitle.remove();
+              }
+            }
           }
         }
       }
@@ -1663,7 +1721,7 @@ export class ViewModel {
 
     return new Table(
       tableId,
-      ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument'],
+      ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument/Class'],
       // row
       enrollment => {
         // More flexible instructor matching
