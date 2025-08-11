@@ -3034,7 +3034,13 @@ export class ParentRegistrationForm {
 
     // Parse start time and calculate end time
     const startMinutes = this.#parseTime(startTime);
-    const endMinutes = startMinutes + lengthMinutes;
+    if (startMinutes === null) {
+      console.error('Invalid start time:', startTime);
+      return { isValid: true, errorMessage: null }; // Skip validation if time is invalid
+    }
+    
+    const lengthInMinutes = parseInt(lengthMinutes) || 0; // Ensure it's a number
+    const endMinutes = startMinutes + lengthInMinutes;
 
     // Convert end time back to time string for display (use 12-hour format)
     const endTimeHHMM = this.#formatTimeFromMinutes(endMinutes);
