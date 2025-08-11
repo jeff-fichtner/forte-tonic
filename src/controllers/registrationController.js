@@ -136,7 +136,7 @@ export class RegistrationController {
           registrationType: result.registration.registrationType,
           instrument: result.registration.instrument,
           classId: result.registration.classId,
-          className: result.registration.className,
+          classTitle: result.registration.classTitle,
           roomId: result.registration.roomId,
           transportationType: result.registration.transportationType,
           notes: result.registration.notes,

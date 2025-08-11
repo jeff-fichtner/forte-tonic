@@ -12,6 +12,64 @@ import { formatPhone } from './utilities/phoneHelpers.js';
 import { formatGrade, formatTime } from './extensions/numberExtensions.js';
 
 /**
+ * Format a datetime value for display in tables
+ * @param {string|Date|number} timestamp - The timestamp to format
+ * @returns {string} Formatted datetime string
+ */
+function formatDateTime(timestamp) {
+  if (!timestamp) return 'N/A';
+  
+  try {
+    let date;
+    
+    // Handle different input types
+    if (timestamp instanceof Date) {
+      date = timestamp;
+    } else if (typeof timestamp === 'string') {
+      // Handle ISO strings or other date strings
+      date = new Date(timestamp);
+    } else if (typeof timestamp === 'number') {
+      // Handle Google Sheets serial dates or Unix timestamps
+      if (timestamp > 1 && timestamp < 100000) {
+        // Likely a Google Sheets serial date (days since 1899-12-30)
+        const googleEpoch = new Date(1899, 11, 30); // Month is 0-indexed
+        const msPerDay = 24 * 60 * 60 * 1000;
+        date = new Date(googleEpoch.getTime() + timestamp * msPerDay);
+      } else {
+        // Assume Unix timestamp (milliseconds or seconds)
+        date = new Date(timestamp > 1000000000000 ? timestamp : timestamp * 1000);
+      }
+    } else {
+      // Try to convert to string and parse
+      date = new Date(String(timestamp));
+    }
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid timestamp:', timestamp);
+      return 'Invalid Date';
+    }
+    
+    // Format as "Aug 10 - 8:11 PM"
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    const month = monthNames[date.getMonth()];
+    const day = date.getDate();
+    const time = date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit', 
+      hour12: true 
+    });
+    
+    return `${month} ${day} - ${time}`;
+  } catch (error) {
+    console.warn('Error formatting timestamp:', timestamp, error);
+    return 'Invalid Date';
+  }
+}
+
+/**
  *
  */
 export class ViewModel {
@@ -373,12 +431,23 @@ export class ViewModel {
       tabsContainer.hidden = false;
     }
 
-    // master schedule tab
-    const sortedRegistrations = this.#sortRegistrations(this.registrations);
-    console.log(`Building master schedule table with ${sortedRegistrations.length} registrations`);
+    // master schedule tab - exclude wait list classes from master schedule
+    const nonWaitlistRegistrations = this.registrations.filter(registration => {
+      return !ClassManager.isRockBandClass(registration.classId);
+    });
+    const sortedRegistrations = this.#sortRegistrations(nonWaitlistRegistrations);
+    console.log(`Building master schedule table with ${sortedRegistrations.length} registrations (excluding wait list classes)`);
     this.masterScheduleTable = this.#buildRegistrationTable(sortedRegistrations);
     console.log('Master schedule table built successfully');
     this.#populateFilterDropdowns();
+
+    // wait list tab - filter registrations with Rock Band class IDs (G001 and G012)
+    const waitListRegistrations = this.registrations.filter(registration => {
+      return ClassManager.isRockBandClass(registration.classId);
+    });
+    console.log(`Building wait list table with ${waitListRegistrations.length} registrations (Rock Band classes)`);
+    this.adminWaitListTable = this.#buildWaitListTable(waitListRegistrations);
+    console.log('Wait list table built successfully');
 
     // registration form
     this.adminRegistrationForm = new AdminRegistrationForm(
@@ -609,10 +678,14 @@ export class ViewModel {
 
       const isMatch = exactMatch || stringMatch;
 
+      // Exclude Rock Band classes (wait list classes) from parent weekly schedule
+      const isWaitlistClass = ClassManager.isRockBandClass(registration.classId);
+
       if (noMatches + exactMatches + stringMatches < 10) { // Log first 10 for brevity
         console.log(`    - Exact match result: ${exactMatch}`);
         console.log(`    - String match result: ${stringMatch}`);
-        console.log(`    - Final match: ${isMatch}`);
+        console.log(`    - Is waitlist class: ${isWaitlistClass}`);
+        console.log(`    - Final match: ${isMatch && !isWaitlistClass}`);
       }
 
       if (exactMatch) {
@@ -623,7 +696,7 @@ export class ViewModel {
         noMatches++;
       }
 
-      return isMatch;
+      return isMatch && !isWaitlistClass;
     });
 
     let parentMatchingEndTime = performance.now();
@@ -634,7 +707,7 @@ export class ViewModel {
     console.log(`  - String matches: ${stringMatches}`);
     console.log(`  - No matches: ${noMatches}`);
     console.log(`  - Missing students: ${missingStudents}`);
-    console.log(`  - Total parent-child registrations found: ${parentChildRegistrations.length}`);
+    console.log(`  - Total parent-child registrations found (excluding wait list classes): ${parentChildRegistrations.length}`);
 
     // Log details about the matched registrations
     if (parentChildRegistrations.length > 0) {
@@ -740,6 +813,56 @@ export class ViewModel {
       });
     }
 
+    // Parent wait list table - Show wait list registrations for this parent's children
+    console.log('🔍 Building parent wait list table...');
+    
+    // Filter for wait list registrations belonging to this parent's children
+    const parentWaitListRegistrations = this.registrations.filter(registration => {
+      const student = registration.student;
+      if (!student) {
+        return false;
+      }
+
+      // Check if the current parent is either parent1 or parent2 of the student
+      const exactMatch = student.parent1Id === currentParentId || student.parent2Id === currentParentId;
+
+      // Also try string comparison in case of type mismatches
+      const stringMatch = !exactMatch && (
+        String(student.parent1Id) === String(currentParentId) ||
+        String(student.parent2Id) === String(currentParentId)
+      );
+
+      const isMatch = exactMatch || stringMatch;
+
+      // Include only Rock Band classes (wait list classes)
+      const isWaitlistClass = ClassManager.isRockBandClass(registration.classId);
+
+      return isMatch && isWaitlistClass;
+    });
+
+    console.log(`📊 Found ${parentWaitListRegistrations.length} wait list registrations for parent's children`);
+
+    // Show/hide the parent wait list table based on whether there are wait list registrations
+    const parentWaitListTable = document.getElementById('parent-wait-list-table');
+    if (parentWaitListRegistrations.length > 0) {
+      // Build and show the wait list table
+      this.parentWaitListTable = this.#buildParentWaitListTable(parentWaitListRegistrations, currentParentId);
+      
+      // Make the table visible
+      if (parentWaitListTable) {
+        parentWaitListTable.removeAttribute('hidden');
+      }
+      
+      console.log('✅ Parent wait list table built and made visible');
+    } else {
+      // Hide the wait list table if no wait list registrations
+      if (parentWaitListTable) {
+        parentWaitListTable.setAttribute('hidden', '');
+      }
+      
+      console.log('⚠️ No wait list registrations found - hiding parent wait list table');
+    }
+
     // registration
     // Initialize parent registration form with hybrid interface
     // Use ALL parent's children, not just those with existing registrations
@@ -773,8 +896,66 @@ export class ViewModel {
     // Always update the master schedule table if it exists (for admin view)
     if (this.masterScheduleTable) {
       console.log('Refreshing master schedule table with updated registrations');
-      const sortedRegistrations = this.#sortRegistrations(this.registrations);
+      const nonWaitlistRegistrations = this.registrations.filter(registration => {
+        return !ClassManager.isRockBandClass(registration.classId);
+      });
+      const sortedRegistrations = this.#sortRegistrations(nonWaitlistRegistrations);
       this.masterScheduleTable.replaceRange(sortedRegistrations);
+    }
+
+    // Always update the wait list table if it exists (for admin view)
+    if (this.adminWaitListTable) {
+      console.log('Refreshing wait list table with updated registrations');
+      const waitListRegistrations = this.registrations.filter(registration => {
+        return ClassManager.isRockBandClass(registration.classId);
+      });
+      this.adminWaitListTable.replaceRange(waitListRegistrations);
+    }
+
+    // Update parent wait list table if it exists (for parent view)
+    if (this.parentWaitListTable && this.currentUser?.parent) {
+      console.log('Refreshing parent wait list table with updated registrations');
+      const currentParentId = this.currentUser.parent?.id;
+      
+      if (currentParentId) {
+        // Filter for wait list registrations belonging to this parent's children
+        const parentWaitListRegistrations = this.registrations.filter(registration => {
+          const student = registration.student;
+          if (!student) {
+            return false;
+          }
+
+          // Check if the current parent is either parent1 or parent2 of the student
+          const exactMatch = student.parent1Id === currentParentId || student.parent2Id === currentParentId;
+
+          // Also try string comparison in case of type mismatches
+          const stringMatch = !exactMatch && (
+            String(student.parent1Id) === String(currentParentId) ||
+            String(student.parent2Id) === String(currentParentId)
+          );
+
+          const isMatch = exactMatch || stringMatch;
+
+          // Include only Rock Band classes (wait list classes)
+          const isWaitlistClass = ClassManager.isRockBandClass(registration.classId);
+
+          return isMatch && isWaitlistClass;
+        });
+
+        this.parentWaitListTable.replaceRange(parentWaitListRegistrations);
+        
+        // Show/hide the table based on whether there are wait list registrations
+        const parentWaitListTableElement = document.getElementById('parent-wait-list-table');
+        if (parentWaitListRegistrations.length > 0) {
+          if (parentWaitListTableElement) {
+            parentWaitListTableElement.removeAttribute('hidden');
+          }
+        } else {
+          if (parentWaitListTableElement) {
+            parentWaitListTableElement.setAttribute('hidden', '');
+          }
+        }
+      }
     }
 
     // Update instructor weekly schedules if current user is an instructor
@@ -1107,7 +1288,7 @@ export class ViewModel {
   /**
    *
    */
-  #buildRegistrationTable(defaultRegistrations) {
+  #buildRegistrationTable(registrations) {
     return new Table(
       'master-schedule-table',
       [
@@ -1161,7 +1342,7 @@ export class ViewModel {
                         </td>
                     `;
       },
-      defaultRegistrations,
+      registrations,
       // on click
       async event => {
         const isCopy = event.target.classList.contains('copy-parent-emails-table-icon');
@@ -1281,6 +1462,196 @@ export class ViewModel {
       }
     );
   }
+  /**
+   * Build wait list table for registrations with Rock Band class IDs (G001 and G012)
+   */
+  #buildWaitListTable(registrations) {
+    return new Table(
+      'admin-wait-list-table',
+      [
+        'Student',
+        'Grade',
+        'Class Title',
+        'Timestamp',
+        'Contact',
+        'Remove',
+      ],
+      // row
+      registration => {
+        // Extract primitive values for comparison
+        const studentIdToFind = registration.studentId?.value || registration.studentId;
+
+        // Find student
+        const student = this.students.find(x => {
+          const studentId = x.id?.value || x.id;
+          return studentId === studentIdToFind;
+        });
+
+        if (!student) {
+          console.warn(`Student not found for registration: ${registration.id}`);
+          console.warn(`Looking for studentId: ${studentIdToFind}`);
+          return '';
+        }
+        
+        return `
+                        <td>${student.firstName} ${student.lastName}</td>
+                        <td>${formatGrade(student.grade) || 'N/A'}</td>
+                        <td>${registration.classTitle || 'N/A'}</td>
+                        <td>${formatDateTime(registration.createdAt) || 'N/A'}</td>
+                        <td>
+                            <a href="#" data-registration-id="${registration.id?.value || registration.id}">
+                                <i class="material-icons copy-parent-emails-table-icon gray-text text-darken-4">email</i>
+                            </a>
+                        </td>
+                        <td>
+                            <a href="#" data-registration-id="${registration.id?.value || registration.id}">
+                                <i class="material-icons remove-registration-table-icon red-text text-darken-4">delete</i>
+                            </a>
+                        </td>
+                    `;
+      },
+      registrations,
+      // on click
+      async event => {
+        const isCopy = event.target.classList.contains('copy-parent-emails-table-icon');
+        const isDelete = event.target.classList.contains('remove-registration-table-icon');
+        if (!isCopy && !isDelete) {
+          return;
+        }
+        event.preventDefault();
+
+        // Get the registration ID from the data attribute
+        const linkElement = event.target.closest('a');
+        const registrationId = linkElement?.getAttribute('data-registration-id');
+        if (!registrationId) return;
+
+        // Find the registration by ID in the original registrations array
+        const currentRegistration = this.registrations.find(r =>
+          (r.id?.value || r.id) === registrationId
+        );
+        if (!currentRegistration) return;
+
+        if (isCopy) {
+          // Get the student ID from the current registration
+          const studentIdToFind = currentRegistration.studentId?.value || currentRegistration.studentId;
+
+          // Find the full student object with parent emails from this.students
+          const fullStudent = this.students.find(x => {
+            const studentId = x.id?.value || x.id;
+            return studentId === studentIdToFind;
+          });
+
+          if (fullStudent && fullStudent.parentEmails && fullStudent.parentEmails.trim()) {
+            await this.#copyToClipboard(fullStudent.parentEmails);
+          } else {
+            M.toast({ html: 'No parent email available for this student.' });
+          }
+          return;
+        }
+        if (isDelete) {
+          const idToDelete = currentRegistration.id?.value || currentRegistration.id;
+          await this.#requestDeleteRegistrationAsync(idToDelete);
+          return;
+        }
+      },
+      // filter function - no filtering for wait list
+      registration => true,
+      // no filter change handlers needed for wait list
+      [],
+      {
+        pagination: true,
+        itemsPerPage: 50,
+        pageSizeOptions: [25, 50, 100],
+        rowClassFunction: registration => {
+          // All wait list items are group registrations with special styling
+          return 'registration-row-waitlist';
+        }
+      }
+    );
+  }
+
+  /**
+   * Build parent wait list table for the current parent's children
+   */
+  #buildParentWaitListTable(registrations, currentParentId) {
+    return new Table(
+      'parent-wait-list-table',
+      [
+        'Student',
+        'Grade',
+        'Class Title',
+      ],
+      // row
+      registration => {
+        // Extract primitive values for comparison
+        const studentIdToFind = registration.studentId?.value || registration.studentId;
+
+        // Find student
+        const student = this.students.find(x => {
+          const studentId = x.id?.value || x.id;
+          return studentId === studentIdToFind;
+        });
+
+        if (!student) {
+          console.warn(`Student not found for registration: ${registration.id}`);
+          console.warn(`Looking for studentId: ${studentIdToFind}`);
+          return '';
+        }
+        
+        return `
+                        <td>${student.firstName} ${student.lastName}</td>
+                        <td>${formatGrade(student.grade) || 'N/A'}</td>
+                        <td>${registration.classTitle || 'N/A'}</td>
+                    `;
+      },
+      registrations,
+      // on click
+      async event => {
+        const isCopy = event.target.classList.contains('copy-parent-emails-table-icon');
+        if (!isCopy) {
+          return;
+        }
+        event.preventDefault();
+
+        // Get the registration ID from the data attribute
+        const linkElement = event.target.closest('a');
+        const registrationId = linkElement?.getAttribute('data-registration-id');
+        if (!registrationId) return;
+
+        // Find the registration by ID in the original registrations array
+        const currentRegistration = this.registrations.find(r =>
+          (r.id?.value || r.id) === registrationId
+        );
+        if (!currentRegistration) return;
+
+        // Get the student ID from the current registration
+        const studentIdToFind = currentRegistration.studentId?.value || currentRegistration.studentId;
+
+        // Find the full student object with parent emails from this.students
+        const fullStudent = this.students.find(x => {
+          const studentId = x.id?.value || x.id;
+          return studentId === studentIdToFind;
+        });
+
+        if (fullStudent && fullStudent.parentEmails && fullStudent.parentEmails.trim()) {
+          await this.#copyToClipboard(fullStudent.parentEmails);
+        } else {
+          M.toast({ html: 'No parent email available for this student.' });
+        }
+      },
+      // filter function - no filtering for parent wait list
+      registration => true,
+      // no filter change handlers needed for parent wait list
+      [],
+      {
+        rowClassFunction: registration => {
+          // All wait list items are group registrations with special styling
+          return 'registration-row-waitlist';
+        }
+      }
+    );
+  }
+
   /**
    *
    */
@@ -1506,8 +1877,8 @@ export class ViewModel {
    *
    */
   async #requestDeleteRegistrationAsync(registrationToDeleteId) {
-    // confirm delete
-    if (!confirm(`Are you sure you want to delete?`)) {
+    // Confirm delete
+    if (!confirm('Are you sure you want to delete this registration?')) {
       return;
     }
 
@@ -1535,9 +1906,8 @@ export class ViewModel {
       M.toast({ html: 'Registration deleted successfully.' });
       this.registrations.splice(registrationIndex, 1);
 
-      // Sort the registrations before updating the table to maintain sort order
-      const sortedRegistrations = this.#sortRegistrations(this.registrations);
-      this.masterScheduleTable.replaceRange(sortedRegistrations);
+      // Refresh all relevant tables after deletion
+      this.#refreshTablesAfterRegistration();
     } catch (error) {
       console.error('Error deleting registration:', error);
       M.toast({ html: 'Error deleting registration.' });
