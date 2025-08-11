@@ -33,6 +33,43 @@ export class ParentRegistrationForm {
   }
 
   /**
+   * Update the form data without recreating the instance
+   */
+  updateData(instructors, students, classes, registrations, parentChildren) {
+    this.instructors = instructors;
+    this.students = students;
+    this.classes = classes;
+    this.registrations = registrations || [];
+    this.parentChildren = parentChildren || [];
+    
+    // Refresh the interface with new data by re-running initialization
+    this.#refreshInterface();
+  }
+
+  /**
+   * Refresh the interface with current data
+   */
+  #refreshInterface() {
+    // Clear current selection
+    this.selectedLesson = null;
+    
+    // Re-populate student selector with updated data
+    this.#populateStudentSelector();
+    
+    // Regenerate filter chips with new data
+    this.#generateInstrumentChips();
+    this.#generateDayChips();
+    this.#generateLengthChips();
+    this.#generateInstructorChips();
+    
+    // Regenerate time slots
+    this.#generateTimeSlots();
+    
+    // Clear any form data
+    this.#clearGroupForm();
+  }
+
+  /**
    * Parse time string (supports both "HH:MM" and "H:MM AM/PM" formats) to minutes since midnight
    */
   #parseTime(timeStr) {
@@ -2579,13 +2616,18 @@ export class ParentRegistrationForm {
         const confirmationMessage = this.#buildPrivateLessonConfirmationMessage(registrationData);
 
         this.#showConfirmationModal(confirmationMessage, async () => {
+          const submitButton = document.getElementById('parent-confirm-registration-btn');
           try {
+            this.#setButtonLoading(submitButton, true);
             await this.sendDataFunction(registrationData);
             this.#clearForm();
+            this.#initializeHybridInterface();
             M.toast({ html: 'Registration created successfully!' });
           } catch (error) {
             console.error('Error creating registration:', error);
             M.toast({ html: `Error creating registration: ${error.message}` });
+          } finally {
+            this.#setButtonLoading(submitButton, false);
           }
         });
       });
@@ -2617,29 +2659,39 @@ export class ParentRegistrationForm {
         const registrationData = this.#getCreateGroupRegistrationData();
         
         // Check if this is a waitlist class (Rock Band classes)
-        let confirmationMessage;
         if (ClassManager.isRockBandClass(registrationData.classId)) {
-          confirmationMessage = this.#buildWaitlistClassConfirmationMessage(registrationData);
+          // Wait list classes require confirmation
+          const confirmationMessage = this.#buildWaitlistClassConfirmationMessage(registrationData);
+          
+          this.#showConfirmationModal(confirmationMessage, async () => {
+            const confirmButton = document.getElementById('parent-confirmation-confirm');
+            try {
+              this.#setButtonLoading(confirmButton, true);
+              await this.sendDataFunction(registrationData);
+              this.#clearGroupForm();
+              M.toast({ html: 'Wait list joined.' });
+            } catch (error) {
+              console.error('Error joining wait list:', error);
+              M.toast({ html: `Error joining wait list: ${error.message}` });
+            } finally {
+              this.#setButtonLoading(confirmButton, false);
+            }
+          });
         } else {
-          confirmationMessage = this.#buildGroupClassConfirmationMessage(registrationData);
-        }
-
-        this.#showConfirmationModal(confirmationMessage, async () => {
+          // Regular group classes create registration immediately without confirmation
           try {
+            this.#setButtonLoading(groupSubmitButton, true);
             await this.sendDataFunction(registrationData);
             this.#clearGroupForm();
-            
-            // Show different success message for waitlist vs regular classes
-            if (ClassManager.isRockBandClass(registrationData.classId)) {
-              M.toast({ html: 'Wait list joined.' });
-            } else {
-              M.toast({ html: 'Group registration created successfully!' });
-            }
+            this.#initializeHybridInterface();
+            M.toast({ html: 'Group registration created successfully!' });
           } catch (error) {
             console.error('Error creating group registration:', error);
             M.toast({ html: `Error creating group registration: ${error.message}` });
+          } finally {
+            this.#setButtonLoading(groupSubmitButton, false);
           }
-        });
+        }
       });
     } else {
       console.warn('Parent group submit button not found');
@@ -3746,5 +3798,53 @@ export class ParentRegistrationForm {
     });
 
     console.log('Time slot keyboard handlers attached');
+  }
+
+  /**
+   * Set button loading state
+   * @param {HTMLElement} button - Button element
+   * @param {boolean} isLoading - Whether button should show loading state
+   * @param {string} originalText - Original button text to restore
+   */
+  #setButtonLoading(button, isLoading, originalText = null) {
+    if (!button) return;
+
+    if (isLoading) {
+      // Store original text if not provided
+      if (!originalText) {
+        originalText = button.innerHTML;
+        button.dataset.originalText = originalText;
+      }
+      
+      // Disable button and show loading
+      button.disabled = true;
+      button.innerHTML = `<i class="material-icons left" style="font-size: 16px;">autorenew</i>Loading...`;
+      
+      // Add spinning animation
+      const icon = button.querySelector('i');
+      if (icon) {
+        icon.style.animation = 'spin 1s linear infinite';
+        // Add CSS for spin animation if not already present
+        if (!document.getElementById('button-loading-styles')) {
+          const style = document.createElement('style');
+          style.id = 'button-loading-styles';
+          style.textContent = `
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+      }
+    } else {
+      // Restore original state
+      button.disabled = false;
+      const storedText = button.dataset.originalText || originalText;
+      if (storedText) {
+        button.innerHTML = storedText;
+        delete button.dataset.originalText;
+      }
+    }
   }
 }
