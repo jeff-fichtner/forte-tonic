@@ -11,8 +11,9 @@ export class OperatorUserResponse {
    * @param {object} [admin] - Admin data (if using positional parameters)
    * @param {object} [instructor] - Instructor data (if using positional parameters)
    * @param {object} [parent] - Parent data (if using positional parameters)
+   * @param {object} [configuration] - Application configuration (if using positional parameters)
    */
-  constructor(data, admin, instructor, parent) {
+  constructor(data, admin, instructor, parent, configuration) {
     if (typeof data === 'object' && data !== null) {
       // Object destructuring constructor (web pattern)
       const {
@@ -20,6 +21,7 @@ export class OperatorUserResponse {
         admin: adminData,
         instructor: instructorData,
         parent: parentData,
+        configuration: configData,
         roles = [],
       } = data;
 
@@ -27,6 +29,7 @@ export class OperatorUserResponse {
       this.admin = adminData ? Admin.fromApiData(adminData) : null;
       this.instructor = instructorData ? Instructor.fromApiData(instructorData) : null;
       this.parent = parentData ? Parent.fromApiData(parentData) : null;
+      this.configuration = configData || {};
       this.roles = Array.isArray(roles) ? roles : [];
     } else {
       // Positional constructor (core pattern)
@@ -34,6 +37,7 @@ export class OperatorUserResponse {
       this.admin = admin;
       this.instructor = instructor;
       this.parent = parent;
+      this.configuration = configuration || {};
       this.roles = [];
     }
   }
@@ -102,6 +106,7 @@ export class OperatorUserResponse {
       admin: this.admin,
       instructor: this.instructor,
       parent: this.parent,
+      configuration: this.configuration,
       roles: this.roles,
       primaryRole: this.getPrimaryRole(),
       displayName: this.getDisplayName()
