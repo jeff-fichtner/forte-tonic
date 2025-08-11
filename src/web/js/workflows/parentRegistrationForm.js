@@ -7,6 +7,8 @@ import { RegistrationType } from '../../../utils/values/registrationType.js';
 import { Select } from '../components/select.js';
 import { DomHelpers } from '../utilities/domHelpers.js';
 import { formatClassNameWithGradeCorrection } from '../utilities/classNameFormatter.js';
+import { ClassManager } from '../utilities/classManager.js';
+import { formatTime } from '../extensions/numberExtensions.js';
 
 /**
  * Parent Registration Form with hybrid interface (progressive filters + time slot grid)
@@ -41,7 +43,7 @@ export class ParentRegistrationForm {
     this.classes = classes;
     this.registrations = registrations || [];
     this.parentChildren = parentChildren || [];
-    
+
     // Refresh the interface with new data by re-running initialization
     this.#refreshInterface();
   }
@@ -52,19 +54,22 @@ export class ParentRegistrationForm {
   #refreshInterface() {
     // Clear current selection
     this.selectedLesson = null;
-    
+
     // Re-populate student selector with updated data
     this.#populateStudentSelector();
-    
+
+    // Re-attach registration type dropdown listener
+    this.#attachRegistrationTypeListener();
+
     // Regenerate filter chips with new data
     this.#generateInstrumentChips();
     this.#generateDayChips();
     this.#generateLengthChips();
     this.#generateInstructorChips();
-    
+
     // Regenerate time slots
     this.#generateTimeSlots();
-    
+
     // Clear any form data
     this.#clearGroupForm();
   }
@@ -536,7 +541,7 @@ export class ParentRegistrationForm {
   }
 
   /**
-   * Calculate cascading day availability based only on selected instrument
+   * Calculate cascading day availability based on selected instrument
    */
   #calculateCascadingDayAvailability(selectedInstrument = null) {
     const availability = {};
@@ -1655,16 +1660,16 @@ export class ParentRegistrationForm {
           this.#showRegistrationTypeContainer();
           // If group registration type is already selected, repopulate classes for new student
           const registrationTypeSelect = document.getElementById('parent-registration-type-select');
-          if (registrationTypeSelect && registrationTypeSelect.value === 'public') {
+          if (registrationTypeSelect && registrationTypeSelect.value === RegistrationType.GROUP) {
             this.#populateParentClassesDropdown();
-            
+
             // Re-check any currently selected class for conflicts with the new student
             const classSelect = document.getElementById('parent-class-select');
             if (classSelect && classSelect.value) {
               this.#handleClassSelection(classSelect.value);
             }
           }
-          
+
           // Clear any selected time slots when student changes
           this.#clearTimeSlotSelection();
         } else {
@@ -1722,7 +1727,7 @@ export class ParentRegistrationForm {
         if (selectedType === RegistrationType.PRIVATE) {
           // Show the private registration container
           privateContainer.style.display = 'block';
-        } else if (selectedType === 'public') {
+        } else if (selectedType === RegistrationType.GROUP) {
           // Show the group registration container
           groupContainer.style.display = 'block';
 
@@ -1792,7 +1797,7 @@ export class ParentRegistrationForm {
     availableClasses.forEach(cls => {
       const option = document.createElement('option');
       option.value = cls.id;
-      option.textContent = formatClassNameWithGradeCorrection(cls);
+      option.textContent = ClassManager.formatClassNameWithTime(cls, formatClassNameWithGradeCorrection, formatTime);
       classSelect.appendChild(option);
     });
 
@@ -1834,7 +1839,7 @@ export class ParentRegistrationForm {
       if (registerButton) {
         registerButton.disabled = true;
         registerButton.style.opacity = '0.6';
-        
+
         // Reset button text to default
         const buttonTextElement = registerButton.querySelector('b');
         if (buttonTextElement) {
@@ -1873,7 +1878,7 @@ export class ParentRegistrationForm {
       if (registerButton) {
         registerButton.disabled = true;
         registerButton.style.opacity = '0.6';
-        
+
         // Reset button text when disabled
         const buttonTextElement = registerButton.querySelector('b');
         if (buttonTextElement) {
@@ -1882,11 +1887,11 @@ export class ParentRegistrationForm {
       }
     } else if (!hasACapacityDefined || classCapacity > 0) {
       // Class has space (or assume unlimited capacity), now check for conflicts
-      
+
       // Get current student
       const studentSelect = document.getElementById('parent-student-select');
       const studentId = studentSelect?.value;
-      
+
       if (studentId) {
         // Check for duplicate enrollment
         if (this.#checkStudentClassDuplicate(studentId, classId)) {
@@ -1894,7 +1899,7 @@ export class ParentRegistrationForm {
           if (registerButton) {
             registerButton.disabled = true;
             registerButton.style.opacity = '0.6';
-            
+
             // Reset button text when disabled
             const buttonTextElement = registerButton.querySelector('b');
             if (buttonTextElement) {
@@ -1915,15 +1920,15 @@ export class ParentRegistrationForm {
 
           if (conflictCheck.hasConflict) {
             const conflict = conflictCheck.conflictDetails;
-            const conflictMessage = conflict.type === RegistrationType.PRIVATE 
+            const conflictMessage = conflict.type === RegistrationType.PRIVATE
               ? `This class conflicts with an existing ${conflict.instrument} lesson with ${conflict.instructorName} on ${conflict.day} at ${conflict.startTime}.`
               : `This class conflicts with existing class "${conflict.className}" on ${conflict.day} at ${conflict.startTime}.`;
-            
+
             this.#showRegistrationError(conflictMessage);
             if (registerButton) {
               registerButton.disabled = true;
               registerButton.style.opacity = '0.6';
-              
+
               // Reset button text when disabled
               const buttonTextElement = registerButton.querySelector('b');
               if (buttonTextElement) {
@@ -1934,13 +1939,13 @@ export class ParentRegistrationForm {
           }
         }
       }
-      
+
       // Check if this is a special waitlist class (Rock Band classes)
       const isWaitlistClass = ClassManager.isRockBandClass(classId);
       if (isWaitlistClass) {
         // Show waitlist message for these special classes
         this.#showRegistrationMessage('You will be joining the wait list.', 'info');
-        
+
         // Update button text for waitlist classes
         if (registerButton) {
           const buttonTextElement = registerButton.querySelector('b');
@@ -1957,7 +1962,7 @@ export class ParentRegistrationForm {
           }
         }
       }
-      
+
       // No conflicts found, enable registration
       if (registerButton) {
         registerButton.disabled = false;
@@ -2021,7 +2026,7 @@ export class ParentRegistrationForm {
       // Create info message container
       messageContainer = document.createElement('div');
       messageContainer.id = 'parent-class-info-message';
-      
+
       // Insert after the class select
       const classSelect = document.getElementById('parent-class-select');
       const inputField = classSelect?.closest('.input-field');
@@ -2094,7 +2099,7 @@ export class ParentRegistrationForm {
         this.regenerateTimeout = setTimeout(() => {
           // Regenerate time slots based on current filter state
           this.#regenerateFilteredTimeSlots();
-          
+
           // Filter time slots based on selection
           this.#filterTimeSlots();
         }, 50);
@@ -2368,13 +2373,13 @@ export class ParentRegistrationForm {
       matchingSlot.classList.add('selected');
       matchingSlot.style.border = '3px solid #1976d2';
       matchingSlot.style.background = '#e3f2fd';
-      
+
       // Ensure selectedLesson is restored
       this.selectedLesson = selectionData;
-      
+
       // Update display
       this.#updateSelectionDisplay(matchingSlot);
-      
+
       console.log('Time slot selection restored:', selectionData);
     } else {
       console.log('Could not restore time slot selection - slot no longer available:', selectionData);
@@ -2383,7 +2388,7 @@ export class ParentRegistrationForm {
       const stillAvailableSlot = document.querySelector(
         `.timeslot[data-instructor-id="${selectionData.instructorId}"][data-day="${selectionData.day}"][data-time="${selectionData.time}"][data-length="${selectionData.length}"][data-instrument="${selectionData.instrument}"]`
       );
-      
+
       if (!stillAvailableSlot) {
         console.log('Confirmed: slot no longer exists in DOM, clearing selection');
         this.selectedLesson = null;
@@ -2535,9 +2540,9 @@ export class ParentRegistrationForm {
       slot.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
-        
+
         console.log('Time slot clicked:', slot.dataset);
-        
+
         // Remove previous selection and reset styling for all slots
         parentContainer.querySelectorAll('.timeslot').forEach(s => {
           s.classList.remove('selected');
@@ -2585,10 +2590,10 @@ export class ParentRegistrationForm {
         // Update the selection display
         this.#updateSelectionDisplay(slot);
       });
-      
+
       slot.dataset.listenerAttached = 'true';
     });
-    
+
     console.log(`Attached listeners to ${timeSlots.length} time slots`);
   }
 
@@ -2657,41 +2662,28 @@ export class ParentRegistrationForm {
 
         // Show confirmation modal before proceeding
         const registrationData = this.#getCreateGroupRegistrationData();
-        
-        // Check if this is a waitlist class (Rock Band classes)
+        let confirmationMessage;
         if (ClassManager.isRockBandClass(registrationData.classId)) {
-          // Wait list classes require confirmation
-          const confirmationMessage = this.#buildWaitlistClassConfirmationMessage(registrationData);
-          
-          this.#showConfirmationModal(confirmationMessage, async () => {
-            const confirmButton = document.getElementById('parent-confirmation-confirm');
-            try {
-              this.#setButtonLoading(confirmButton, true);
-              await this.sendDataFunction(registrationData);
-              this.#clearGroupForm();
-              M.toast({ html: 'Wait list joined.' });
-            } catch (error) {
-              console.error('Error joining wait list:', error);
-              M.toast({ html: `Error joining wait list: ${error.message}` });
-            } finally {
-              this.#setButtonLoading(confirmButton, false);
-            }
-          });
+          confirmationMessage = this.#buildWaitlistClassConfirmationMessage(registrationData);
         } else {
-          // Regular group classes create registration immediately without confirmation
+          confirmationMessage = this.#buildGroupClassConfirmationMessage(registrationData);
+        }
+
+        this.#showConfirmationModal(confirmationMessage, async () => {
+          const confirmButton = document.getElementById('parent-confirmation-confirm');
           try {
-            this.#setButtonLoading(groupSubmitButton, true);
+            this.#setButtonLoading(confirmButton, true);
             await this.sendDataFunction(registrationData);
             this.#clearGroupForm();
             this.#initializeHybridInterface();
-            M.toast({ html: 'Group registration created successfully!' });
+            M.toast({ html: ClassManager.isRockBandClass(registrationData.classId) ? 'Wait list joined.' : 'Group registration created successfully!' });
           } catch (error) {
             console.error('Error creating group registration:', error);
             M.toast({ html: `Error creating group registration: ${error.message}` });
           } finally {
-            this.#setButtonLoading(groupSubmitButton, false);
+            this.#setButtonLoading(confirmButton, false);
           }
-        }
+        });
       });
     } else {
       console.warn('Parent group submit button not found');
@@ -2809,7 +2801,7 @@ export class ParentRegistrationForm {
    */
   #updateSelectionDisplay(slot) {
     // Note: selectedLesson is now handled in the click handler with validation
-    
+
     // Update the selection display area
     const parentContainer = document.getElementById('parent-registration');
     const selectionDisplay = parentContainer.querySelector('#admin-selected-lesson-display');
@@ -2877,16 +2869,35 @@ export class ParentRegistrationForm {
         continue; // Different day, no conflict
       }
 
-      // Parse registration time and calculate end time
-      const regStartTime = registration.startTime || registration.time;
-      if (!regStartTime) {
-        console.warn('Registration missing start time:', registration);
-        continue;
-      }
+      // For waitlist classes (Rock Band), use special conflict times instead of actual class times
+      let regStartMinutes, regLengthMinutes, regEndMinutes;
+      let regStartTime = registration.startTime || registration.time;
 
-      const regStartMinutes = this.#parseTime(regStartTime);
-      const regLengthMinutes = registration.length || registration.lengthMinutes || 30; // Default to 30 if not specified
-      const regEndMinutes = regStartMinutes + regLengthMinutes;
+      if (ClassManager.isRockBandClass(registration.classId)) {
+        // Use special waitlist class times for conflict checking
+        if (regDay === 'Monday') {
+          regStartMinutes = 15 * 60; // 15:00 (3:00 PM)
+          regLengthMinutes = 120; // 2 hours
+        } else if (regDay === 'Friday') {
+          regStartMinutes = 15 * 60; // 15:00 (3:00 PM)
+          regLengthMinutes = 60; // 1 hour
+        } else {
+          // If waitlist class is on other days, skip conflict checking
+          continue;
+        }
+        regEndMinutes = regStartMinutes + regLengthMinutes;
+        console.log(`🎸 Waitlist class detected - using special conflict times: ${regDay} ${this.#formatTimeFromMinutes(regStartMinutes)}-${this.#formatTimeFromMinutes(regEndMinutes)}`);
+      } else {
+        // Parse registration time and calculate end time for regular classes
+        if (!regStartTime) {
+          console.warn('Registration missing start time:', registration);
+          continue;
+        }
+
+        regStartMinutes = this.#parseTime(regStartTime);
+        regLengthMinutes = registration.length || registration.lengthMinutes || 30; // Default to 30 if not specified
+        regEndMinutes = regStartMinutes + regLengthMinutes;
+      }
 
       console.log(`Comparing with existing: ${regDay} ${regStartTime} (${regStartMinutes}-${regEndMinutes}min) vs new: ${day} ${startTime} (${startMinutes}-${endMinutes}min)`);
 
@@ -2895,10 +2906,16 @@ export class ParentRegistrationForm {
 
       if (hasOverlap) {
         const conflictType = registration.registrationType || 'unknown';
-        
+
         // Format the time properly for display
-        const formattedStartTime = this.#formatTime(regStartTime);
-        
+        let formattedStartTime;
+        if (ClassManager.isRockBandClass(registration.classId)) {
+          // For waitlist classes, show the special conflict time instead of actual class time
+          formattedStartTime = this.#formatTime(this.#formatTimeFromMinutes(regStartMinutes));
+        } else {
+          formattedStartTime = this.#formatTime(regStartTime);
+        }
+
         // Get instructor name from the instructor object if available
         let instructorName = 'Unknown';
         if (registration.instructor && registration.instructor.firstName && registration.instructor.lastName) {
@@ -2915,7 +2932,7 @@ export class ParentRegistrationForm {
 
         // Get class name - look up from classes array if we have a classId
         let className = 'Unknown';
-        
+
         // Debug: Log the registration object to see what properties are available
         console.log('🔍 Debug registration object for class name lookup:', {
           classId: registration.classId,
@@ -2925,7 +2942,7 @@ export class ParentRegistrationForm {
           registrationType: registration.registrationType,
           allKeys: Object.keys(registration)
         });
-        
+
         // Try classTitle first (this is the proper property for group classes)
         if (registration.classTitle) {
           className = registration.classTitle;
@@ -2951,7 +2968,7 @@ export class ParentRegistrationForm {
         } else {
           console.log('❌ No class information found in registration');
         }
-        
+
         const conflictDetails = {
           type: conflictType,
           day: regDay,
@@ -3048,7 +3065,7 @@ export class ParentRegistrationForm {
    */
   #validateRegistration() {
     console.log('Validating registration...', { selectedLesson: this.selectedLesson });
-    
+
     // Check if student is selected (only if dropdown is visible for multiple students)
     const studentSection = document.getElementById('parent-student-selection-section');
     const studentSelect = document.getElementById('parent-student-select');
@@ -3070,11 +3087,11 @@ export class ParentRegistrationForm {
 
     if (!this.selectedLesson) {
       console.log('Validation failed: No lesson selected in memory, checking DOM for selected slots...');
-      
+
       // Check if there's a selected time slot in the DOM as fallback
       const selectedSlots = document.querySelectorAll('.timeslot.selected');
       console.log('Current selected time slots in DOM:', selectedSlots);
-      
+
       if (selectedSlots.length === 1) {
         // Try to rebuild selectedLesson from DOM state
         const slot = selectedSlots[0];
@@ -3083,7 +3100,7 @@ export class ParentRegistrationForm {
         const time = slot.dataset.time;
         const length = slot.dataset.length;
         const instrument = slot.dataset.instrument;
-        
+
         if (instructorId && day && time && length && instrument) {
           console.log('Rebuilding selectedLesson from DOM state');
           this.selectedLesson = {
@@ -3132,7 +3149,7 @@ export class ParentRegistrationForm {
       const conflictMessage = conflict.type === RegistrationType.GROUP
         ? `This lesson time conflicts with the student's existing class "${conflict.className}" on ${conflict.day} at ${conflict.startTime}.`
         : `This lesson time conflicts with the student's existing lesson on ${conflict.day} at ${conflict.startTime} with ${conflict.instructorName}.`;
-      
+
       console.log('Validation failed: Time conflict detected', conflict);
       M.toast({ html: conflictMessage });
       return false;
@@ -3141,7 +3158,7 @@ export class ParentRegistrationForm {
     // Check bus time restrictions for Late Bus transportation
     const transportationTypeRadio = document.querySelector('input[name="parent-transportation-type"]:checked');
     const transportationType = transportationTypeRadio?.value || 'pickup';
-    
+
     const busValidation = this.#validateBusTimeRestrictions(
       dayName,
       this.selectedLesson.time,
@@ -3203,19 +3220,31 @@ export class ParentRegistrationForm {
     });
 
     if (selectedClass && selectedClass.day && selectedClass.startTime && selectedClass.length) {
+      // For waitlist classes (Rock Band), use special conflict times
+      let conflictDay = selectedClass.day;
+      let conflictStartTime = selectedClass.startTime;
+      let conflictLength = selectedClass.length;
+
+      if (ClassManager.isRockBandClass(classId)) {
+        // Override with special waitlist class conflict times
+        conflictStartTime = '15:00';
+        conflictLength = 120; // 2 hours for Monday, 1 hour for Friday
+        console.log(`🎸 Waitlist class conflict check using special times: ${conflictDay} ${conflictStartTime} for ${conflictLength} minutes`);
+      }
+
       const conflictCheck = this.#checkStudentTimeConflict(
         studentId,
-        selectedClass.day,
-        selectedClass.startTime,
-        selectedClass.length
+        conflictDay,
+        conflictStartTime,
+        conflictLength
       );
 
       if (conflictCheck.hasConflict) {
         const conflict = conflictCheck.conflictDetails;
-        const conflictMessage = conflict.type === 'PRIVATE' 
+        const conflictMessage = conflict.type === 'PRIVATE'
           ? `This class time conflicts with the student's existing lesson on ${conflict.day} at ${conflict.startTime} with ${conflict.instructorName}.`
           : `This class time conflicts with the student's existing class "${conflict.className}" on ${conflict.day} at ${conflict.startTime}.`;
-        
+
         console.log('Group validation failed: Time conflict detected', conflict);
         M.toast({ html: conflictMessage });
         return false;
@@ -3224,7 +3253,7 @@ export class ParentRegistrationForm {
       // Check bus time restrictions for Late Bus transportation
       const transportationTypeRadio = document.querySelector('input[name="parent-group-transportation-type"]:checked');
       const transportationType = transportationTypeRadio?.value || 'pickup';
-      
+
       const busValidation = this.#validateBusTimeRestrictions(
         selectedClass.day,
         selectedClass.startTime,
@@ -3348,7 +3377,7 @@ export class ParentRegistrationForm {
     if (pickupRadio) {
       pickupRadio.checked = true;
     }
-    
+
     // Reset group transportation type to default (pickup) for consistency
     const groupPickupRadio = document.querySelector('input[name="parent-group-transportation-type"][value="pickup"]');
     if (groupPickupRadio) {
@@ -3363,6 +3392,9 @@ export class ParentRegistrationForm {
 
     // Clear any error messages
     this.#clearRegistrationError();
+
+    // Reinitialize the hybrid interface to restore proper form state
+    this.#initializeHybridInterface();
   }
 
   /**
@@ -3383,7 +3415,7 @@ export class ParentRegistrationForm {
     if (pickupRadio) {
       pickupRadio.checked = true;
     }
-    
+
     // Reset group transportation type to default (pickup)
     const groupPickupRadio = document.querySelector('input[name="parent-group-transportation-type"][value="pickup"]');
     if (groupPickupRadio) {
@@ -3401,7 +3433,7 @@ export class ParentRegistrationForm {
     if (registerButton) {
       registerButton.disabled = true;
       registerButton.style.opacity = '0.6';
-      
+
       // Reset button text to default
       const buttonTextElement = registerButton.querySelector('b');
       if (buttonTextElement) {
@@ -3481,6 +3513,9 @@ export class ParentRegistrationForm {
         }
       });
 
+      // Scroll to top before opening modal
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
       modalInstance.open();
     }
   }
@@ -3541,11 +3576,11 @@ export class ParentRegistrationForm {
       
       <p>Instructors are encouraged to schedule make-up lessons for lessons they have missed; however, as they are working professionals in their fields, make-up lessons may not always be possible. The scheduling of make-up lessons will be at the instructor's discretion.</p>
       
-      <p>Please notify your instructor at least 24 hours in advance of any student absence when possible. Instructor contact details will be emailed shortly after your child's first lesson. Additionally, notify FORTE staff of student absences at forte@mcds.org.</p>
+      <p>Please notify your instructor at least 24 hours in advance of any student absence when possible. Additionally, notify FORTE staff of student absences at forte@mcds.org.</p>
       
       <p>Instructor cancellations will be communicated to parents/guardians via phone or email at least 24 hours in advance whenever possible. Same-day cancellations by instructors will result in no charge for PM care.</p>
       
-      <p><strong>By clicking "Confirm Registration," you confirm your child's registration for the Fall Trimester in the FORTE program and acknowledge that you have read and agree to these terms and conditions.</strong></p>
+      <p><strong>By confirming, you acknowledge that you have read and agree to these terms and conditions.</strong></p>
     `;
   }
 
@@ -3564,6 +3599,9 @@ export class ParentRegistrationForm {
     const instructor = this.instructors.find(inst => inst.id === registrationData.instructorId);
     const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : 'the instructor';
 
+    // Format time
+    const timeFormatted = this.#formatTime(registrationData.startTime);
+
     // Format transportation type
     const transportationDisplay = registrationData.transportationType === 'bus' ? 'Late Bus' : 'Late Pick Up';
 
@@ -3574,21 +3612,19 @@ export class ParentRegistrationForm {
       • <strong>Class:</strong> ${className}<br>
       • <strong>Instructor:</strong> ${instructorName}<br>
       • <strong>Day:</strong> ${registrationData.day}<br>
-      • <strong>Time:</strong> ${registrationData.startTime}<br>
+      • <strong>Time:</strong> ${timeFormatted}<br>
       • <strong>Duration:</strong> ${registrationData.length} minutes<br>
       • <strong>Transportation:</strong> ${transportationDisplay}
       <br><br>
-      <p>If you need to change or cancel this registration, please contact forte@mcds.org. The last day to cancel registrations without charge is August 29th. After this date, all registrations will be billed in full for the Fall Trimester.</p>
+      <p>If you need to change or cancel this class, please contact forte@mcds.org. The last day to cancel classes without charge is August 29th. After this date, all classes will be billed in full for the Fall Trimester.</p>
       
       <p><strong>Absence and Cancellation Policy:</strong></p>
       
-      <p>Lessons missed due to student absence are charged in full except in the case of school-sponsored field trips or religious holidays. Sports practices or games are not considered school-sponsored activities.</p>
+      <p>Classes missed due to student absence are charged in full except in the case of school-sponsored field trips or religious holidays. Sports practices or games are not considered school-sponsored activities.</p>
       
-      <p>There will be no charge for lessons canceled by instructors unless the instructor schedules a make-up lesson at a later date.</p>
+      <p>There will be no charge for classes canceled by instructors. There are no makeup classes.</p>
       
-      <p>Instructors are encouraged to schedule make-up lessons for lessons they have missed; however, as they are working professionals in their fields, make-up lessons may not always be possible. The scheduling of make-up lessons will be at the instructor's discretion.</p>
-      
-      <p>Please notify your instructor at least 24 hours in advance of any student absence when possible. Instructor contact details will be emailed shortly after your child's first lesson. Additionally, notify FORTE staff of student absences at forte@mcds.org.</p>
+      <p>Please notify your instructor at least 24 hours in advance of any student absence when possible. Additionally, notify FORTE staff of student absences at forte@mcds.org.</p>
       
       <p>Instructor cancellations will be communicated to parents/guardians via phone or email at least 24 hours in advance whenever possible. Same-day cancellations by instructors will result in no charge for PM care.</p>
       
@@ -3611,33 +3647,30 @@ export class ParentRegistrationForm {
     const instructor = this.instructors.find(inst => inst.id === registrationData.instructorId);
     const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : 'the instructor';
 
+    // Format time
+    const timeFormatted = this.#formatTime(registrationData.startTime);
+
     // Format transportation type
     const transportationDisplay = registrationData.transportationType === 'bus' ? 'Late Bus' : 'Late Pick Up';
 
     return `
-      <strong>Are you sure you want to join the wait list for this group class?</strong>
+      <strong>All new registrations for Rock Band are put on a waitlist and then assigned to one of the three Rock Band classes (class meeting times below). We at FORTE work with the Rock Band teacher, Paul Montes, to match students to the Rock Band that is right for them based on skill level, ensemble dynamics, and current Rock Band instrument needs.</strong>
       <br><br>
-      <p><strong>Please note:</strong> This class is currently full. By registering, ${studentName} will be placed on the wait list and will be enrolled if a spot becomes available.</p>
-      <br>
       <strong>Class Details:</strong><br>
       • <strong>Class:</strong> ${className}<br>
       • <strong>Instructor:</strong> ${instructorName}<br>
-      • <strong>Day:</strong> ${registrationData.day}<br>
-      • <strong>Time:</strong> ${registrationData.startTime}<br>
-      • <strong>Duration:</strong> ${registrationData.length} minutes<br>
+      • <strong>Possible Class Times:</strong> Monday 3-4 PM or Monday 4-5 PM or Friday 3-4 PM<br>
       • <strong>Transportation:</strong> ${transportationDisplay}
       <br><br>
-      <p>You will be notified by email if a spot becomes available in this class. If you need to change or cancel this wait list registration, please contact forte@mcds.org.</p>
+      <p>You will be notified by email when a spot has been found for your student. If you need to change or cancel this wait list registration, please contact forte@mcds.org.</p>
       
       <p><strong>Absence and Cancellation Policy:</strong></p>
       
-      <p>Lessons missed due to student absence are charged in full except in the case of school-sponsored field trips or religious holidays. Sports practices or games are not considered school-sponsored activities.</p>
+      <p>Classes missed due to student absence are charged in full except in the case of school-sponsored field trips or religious holidays. Sports practices or games are not considered school-sponsored activities.</p>
       
-      <p>There will be no charge for lessons canceled by instructors unless the instructor schedules a make-up lesson at a later date.</p>
+      <p>There will be no charge for classes canceled by instructors. There are no makeup classes.</p>
       
-      <p>Instructors are encouraged to schedule make-up lessons for lessons they have missed; however, as they are working professionals in their fields, make-up lessons may not always be possible. The scheduling of make-up lessons will be at the instructor's discretion.</p>
-      
-      <p>Please notify your instructor at least 24 hours in advance of any student absence when possible. Instructor contact details will be emailed shortly after your child's first lesson. Additionally, notify FORTE staff of student absences at forte@mcds.org.</p>
+      <p>Please notify your instructor at least 24 hours in advance of any student absence when possible. Additionally, notify FORTE staff of student absences at forte@mcds.org.</p>
       
       <p>Instructor cancellations will be communicated to parents/guardians via phone or email at least 24 hours in advance whenever possible. Same-day cancellations by instructors will result in no charge for PM care.</p>
       
@@ -3674,7 +3707,7 @@ export class ParentRegistrationForm {
     if (pickupRadio) {
       pickupRadio.checked = true;
     }
-    
+
     // Reset group transportation type to default (pickup) for consistency
     const groupPickupRadio = document.querySelector('input[name="parent-group-transportation-type"][value="pickup"]');
     if (groupPickupRadio) {
@@ -3815,11 +3848,11 @@ export class ParentRegistrationForm {
         originalText = button.innerHTML;
         button.dataset.originalText = originalText;
       }
-      
+
       // Disable button and show loading
       button.disabled = true;
       button.innerHTML = `<i class="material-icons left" style="font-size: 16px;">autorenew</i>Loading...`;
-      
+
       // Add spinning animation
       const icon = button.querySelector('i');
       if (icon) {

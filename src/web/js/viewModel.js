@@ -10,6 +10,7 @@ import { AdminRegistrationForm } from './workflows/adminRegistrationForm.js';
 import { ParentRegistrationForm } from './workflows/parentRegistrationForm.js';
 import { formatPhone } from './utilities/phoneHelpers.js';
 import { formatGrade, formatTime } from './extensions/numberExtensions.js';
+import { ClassManager } from './utilities/classManager.js';
 
 /**
  * Format a datetime value for display in tables
@@ -94,6 +95,12 @@ export class ViewModel {
 
     // Save user in user session
     window.UserSession.saveOperatorUser(operatorUser);
+
+    // Update ClassManager with Rock Band class IDs from server configuration
+    if (operatorUser && operatorUser.configuration && operatorUser.configuration.rockBandClassIds) {
+      ClassManager.updateRockBandClassIds(operatorUser.configuration.rockBandClassIds);
+      console.log('Updated ClassManager with Rock Band class IDs:', operatorUser.configuration.rockBandClassIds);
+    }
 
     // Show nav links only if operator user returned successfully
     // const nav = document.getElementById('nav-mobile');
@@ -441,7 +448,7 @@ export class ViewModel {
     console.log('Master schedule table built successfully');
     this.#populateFilterDropdowns();
 
-    // wait list tab - filter registrations with Rock Band class IDs (G001 and G012)
+    // wait list tab - filter registrations with Rock Band class IDs (configured via environment)
     const waitListRegistrations = this.registrations.filter(registration => {
       return ClassManager.isRockBandClass(registration.classId);
     });
@@ -1521,7 +1528,7 @@ export class ViewModel {
     );
   }
   /**
-   * Build wait list table for registrations with Rock Band class IDs (G001 and G012)
+   * Build wait list table for registrations with Rock Band class IDs (configured via environment)
    */
   #buildWaitListTable(registrations) {
     return new Table(

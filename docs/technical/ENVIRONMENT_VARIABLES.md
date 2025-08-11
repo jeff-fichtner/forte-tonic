@@ -19,6 +19,7 @@ This document serves as the single source of truth for all environment variables
 |----------|-------------|---------|---------|
 | `PORT` | Server port | `3000` | Development only (Render sets automatically) |
 | `LOG_LEVEL` | Logging level | `info` | All environments |
+| `ROCK_BAND_CLASS_IDS` | Comma-separated Rock Band class IDs for waitlist handling | `G001,G002` | All environments |
 | `EMAIL_HOST` | SMTP host | `smtp.gmail.com` | If email features used |
 | `EMAIL_PORT` | SMTP port | `587` | If email features used |
 | `EMAIL_USER` | Email username | - | If email features used |

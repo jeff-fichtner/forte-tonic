@@ -10,6 +10,7 @@
 
 import { RegistrationType } from '../utils/values/registrationType.js';
 import { DateHelpers } from '../utils/nativeDateTimeHelpers.js';
+import { ConfigurationService } from './configurationService.js';
 
 export class ProgramManagementService {
   /**
@@ -93,7 +94,12 @@ export class ProgramManagementService {
 
     // Group class specific validation
     if (groupClass) {
-      if (!groupClass.day || !groupClass.startTime || !groupClass.length) {
+      // Only validate day/time/length for non-waitlist classes
+      // Waitlist classes (Rock Band) don't need specific scheduling validation
+      const rockBandClassIds = ConfigurationService.getRockBandClassIds();
+      const isWaitlistClass = rockBandClassIds.includes(groupClass.id);
+      
+      if (!isWaitlistClass && (!groupClass.day || !groupClass.startTime || !groupClass.length)) {
         errors.push('Group class must have day, start time, and length');
       }
       if (!groupClass.title) {

@@ -31,6 +31,9 @@ export class ConfigurationService {
       smtpUser: process.env.SMTP_USER,
       smtpPassword: process.env.SMTP_PASSWORD,
       defaultFromAddress: process.env.DEFAULT_FROM_EMAIL || process.env.SMTP_USER,
+
+      // Application Configuration
+      rockBandClassIds: process.env.ROCK_BAND_CLASS_IDS ? process.env.ROCK_BAND_CLASS_IDS.split(',') : [],
     };
   }
 
@@ -89,6 +92,32 @@ export class ConfigurationService {
       smtpPassword: this._config.smtpPassword,
       defaultFromAddress: this._config.defaultFromAddress,
     };
+  }
+
+  /**
+   * Get application configuration.
+   */
+  getApplicationConfig() {
+    return {
+      rockBandClassIds: this._config.rockBandClassIds,
+    };
+  }
+
+  /**
+   * Get Rock Band class IDs for waitlist functionality.
+   * @returns {string[]} Array of Rock Band class IDs
+   */
+  getRockBandClassIds() {
+    return this._config.rockBandClassIds;
+  }
+
+  /**
+   * Static method to get Rock Band class IDs for convenience
+   * @returns {string[]} Array of Rock Band class IDs
+   */
+  static getRockBandClassIds() {
+    // Return the env variable directly for static access
+    return process.env.ROCK_BAND_CLASS_IDS ? process.env.ROCK_BAND_CLASS_IDS.split(',') : [];
   }
 
   /**

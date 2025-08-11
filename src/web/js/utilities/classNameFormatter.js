@@ -43,11 +43,33 @@ export function formatClassNameForDropdown(cls) {
 
 /**
  * Enhanced version that specifically ensures kindergarten displays as "K"
+ * Returns class name WITHOUT time information since ClassManager.formatClassNameWithTime() handles time display
  * @param {object} cls - Class object
- * @returns {string} Formatted class name with proper kindergarten handling
+ * @returns {string} Formatted class name with proper kindergarten handling (no time)
  */
 export function formatClassNameWithGradeCorrection(cls) {
-  let displayName = cls.formattedName || cls.title || cls.instrument || `Class ${cls.id}`;
+  // Build class name with grade range but WITHOUT time to avoid duplication
+  // since ClassManager.formatClassNameWithTime() will add time appropriately
+  let displayName;
+  
+  if (cls.title && (cls.minimumGrade !== undefined || cls.maximumGrade !== undefined)) {
+    // Format grade range using the same logic as Class model
+    const minGrade = cls.formattedMinimumGrade || formatGrade(cls.minimumGrade) || '';
+    const maxGrade = cls.formattedMaximumGrade || formatGrade(cls.maximumGrade) || '';
+    
+    if (minGrade && maxGrade) {
+      displayName = `${cls.title} (${minGrade}-${maxGrade})`;
+    } else if (minGrade) {
+      displayName = `${cls.title} (${minGrade}+)`;
+    } else if (maxGrade) {
+      displayName = `${cls.title} (up to ${maxGrade})`;
+    } else {
+      displayName = cls.title;
+    }
+  } else {
+    // Fallback to basic class identification
+    displayName = cls.title || cls.instrument || `Class ${cls.id}`;
+  }
   
   // Check if the display name contains "kindergarten" and replace it with "K"
   displayName = displayName.replace(/\bkindergarten\b/gi, 'K');

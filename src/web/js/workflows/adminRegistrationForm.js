@@ -6,6 +6,8 @@
 import { RegistrationType } from '../../../utils/values/registrationType.js';
 import { Select } from '../components/select.js';
 import { formatClassNameWithGradeCorrection } from '../utilities/classNameFormatter.js';
+import { ClassManager } from '../utilities/classManager.js';
+import { formatTime } from '../extensions/numberExtensions.js';
 
 /**
  * Admin Registration Form with simplified progressive filters
@@ -46,7 +48,7 @@ export class AdminRegistrationForm {
     this.classSelect = this.#buildClassSelect(
       this.classes.map(cls => ({
         value: cls.id,
-        label: formatClassNameWithGradeCorrection(cls),
+        label: ClassManager.formatClassNameWithTime(cls, formatClassNameWithGradeCorrection, formatTime),
       }))
     );
     
@@ -610,9 +612,21 @@ export class AdminRegistrationForm {
   }
 
   /**
+   * Public method to clear the form (can be called externally when switching users)
+   */
+  clearForm() {
+    this.#clearForm();
+  }
+
+  /**
    * Clear the form after successful submission
    */
   #clearForm() {
+    // Clear registration type selection and hide containers
+    this.registrationTypeSelect.clearSelectedOption();
+    this.#showPrivateRegistrationContainer(false);
+    this.#showGroupRegistrationContainer(false);
+    
     // Clear group class selection
     this.classSelect.clearSelectedOption();
     
