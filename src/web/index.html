@@ -523,6 +523,8 @@
                 <li hidden class="tab col s3 admin-tab"><a href="#admin-master-schedule"
                         style="color: #2b68a4"><b>Master
                             Schedule</b></a></li>
+                <li hidden class="tab col s3 admin-tab"><a href="#admin-wait-list" style="color: #2b68a4"><b>Wait
+                            List</b></a></li>
                 <li hidden class="tab col s3 admin-tab"><a href="#admin-registration"
                         style="color: #2b68a4"><b>Registration</b></a></li>
 
@@ -576,6 +578,17 @@
 
                         <!-- <p hidden id="master-schedule-no-lessons-message">Not enrolled in any lessons.</p> -->
                         <table hidden id="master-schedule-table">
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div hidden class="tab-content" id="admin-wait-list" class="col s12" style="background-color: #fefefe">
+                <div class="card">
+                    <div class="card-content">
+                        <span class="card-title" style="color: #2b68a4"><b>Rock Band Wait List</b></span>
+
+                        <table hidden id="admin-wait-list-table">
                         </table>
                     </div>
                 </div>
@@ -775,6 +788,8 @@
             <!-- Parent Section -->
             <div hidden class="tab-content" id="parent-weekly-schedule" class="col s12"
                 style="background-color: #fefefe">
+                <table hidden id="parent-wait-list-table">
+                </table>
                 <div id="parent-weekly-schedule-tables">
                 </div>
             </div>
@@ -937,13 +952,16 @@
                             <h6 style="margin: 0 0 10px 0; color: #1976d2;"><b>Selected Lesson</b></h6>
                             <div id="admin-selected-lesson-details"
                                 style="font-size: 16px; color: #333; margin-bottom: 15px;"></div>
-                            
+
                             <!-- Transportation Type Selection -->
-                            <div style="margin-bottom: 15px; padding: 12px; background: rgba(255,255,255,0.7); border-radius: 6px;">
-                                <h6 style="margin: 0 0 8px 0; color: #1976d2; font-size: 14px;"><b>Transportation</b></h6>
+                            <div
+                                style="margin-bottom: 15px; padding: 12px; background: rgba(255,255,255,0.7); border-radius: 6px;">
+                                <h6 style="margin: 0 0 8px 0; color: #1976d2; font-size: 14px;"><b>Transportation</b>
+                                </h6>
                                 <p style="margin: 0; font-size: 12px; color: #666;">
                                     <label>
-                                        <input type="radio" name="parent-transportation-type" value="pickup" checked="checked" />
+                                        <input type="radio" name="parent-transportation-type" value="pickup"
+                                            checked="checked" />
                                         <span>Late Pick Up</span>
                                     </label>
                                 </p>
@@ -954,7 +972,7 @@
                                     </label>
                                 </p>
                             </div>
-                            
+
                             <div style="display: flex; gap: 10px; align-items: center;">
                                 <button id="parent-confirm-registration-btn" class="btn waves-effect waves-light"
                                     style="background-color: #2b68a4;">
@@ -984,11 +1002,13 @@
                         </div>
 
                         <!-- Transportation Type Selection for Group Classes -->
-                        <div style="margin: 20px 0; padding: 15px; background: rgba(255,255,255,0.8); border-radius: 6px; border: 1px solid #e0e0e0;">
+                        <div
+                            style="margin: 20px 0; padding: 15px; background: rgba(255,255,255,0.8); border-radius: 6px; border: 1px solid #e0e0e0;">
                             <h6 style="margin: 0 0 10px 0; color: #2b68a4; font-size: 14px;"><b>Transportation</b></h6>
                             <p style="margin: 0; font-size: 14px; color: #666;">
                                 <label>
-                                    <input type="radio" name="parent-group-transportation-type" value="pickup" checked="checked" />
+                                    <input type="radio" name="parent-group-transportation-type" value="pickup"
+                                        checked="checked" />
                                     <span>Late Pick Up</span>
                                 </label>
                             </p>
@@ -1052,7 +1072,7 @@
         <div class="modal-footer">
             <a href="#!" class="modal-close waves-effect waves-light btn-flat"
                 style="color: #666; margin-right: 10px;">Cancel</a>
-            <a href="#!" id="login-submit-btn" class="waves-effect waves-light btn disabled" style="background-color: #2b68a4;">
+            <a href="#!" id="login-submit-btn" class="waves-effect waves-light btn" style="background-color: #2b68a4;">
                 <i class="material-icons left">login</i>Login
             </a>
         </div>

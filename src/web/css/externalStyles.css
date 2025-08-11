@@ -44727,3 +44727,7 @@ noscript {
 .registration-row-private {
   background-color: #fffef0 !important; /* Super light yellow */
 }
+
+.registration-row-waitlist {
+  background-color: #fff0f0 !important; /* Super light red for wait list */
+}

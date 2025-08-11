@@ -1682,7 +1682,7 @@ export class ParentRegistrationForm {
         privateContainer.style.display = 'none';
         groupContainer.style.display = 'none';
 
-        if (selectedType === 'private') {
+        if (selectedType === RegistrationType.PRIVATE) {
           // Show the private registration container
           privateContainer.style.display = 'block';
         } else if (selectedType === 'public') {
@@ -1736,7 +1736,7 @@ export class ParentRegistrationForm {
       const hasExistingRegistration = this.registrations.some(registration =>
         registration.studentId === selectedStudentId &&
         registration.classId === cls.id &&
-        registration.registrationType === 'group'
+        registration.registrationType === RegistrationType.GROUP
       );
 
       return !hasExistingRegistration;
@@ -1788,14 +1788,21 @@ export class ParentRegistrationForm {
     const registerButton = document.getElementById('parent-create-group-registration-btn');
     const errorContainer = this.#getOrCreateErrorContainer();
 
-    // Clear previous error state
+    // Clear previous error and info message states
     this.#clearRegistrationError();
+    this.#clearRegistrationMessage();
 
     if (!classId) {
-      // No class selected, disable button
+      // No class selected, disable button and reset text
       if (registerButton) {
         registerButton.disabled = true;
         registerButton.style.opacity = '0.6';
+        
+        // Reset button text to default
+        const buttonTextElement = registerButton.querySelector('b');
+        if (buttonTextElement) {
+          buttonTextElement.textContent = 'Register for Class';
+        }
       }
       return;
     }
@@ -1829,6 +1836,12 @@ export class ParentRegistrationForm {
       if (registerButton) {
         registerButton.disabled = true;
         registerButton.style.opacity = '0.6';
+        
+        // Reset button text when disabled
+        const buttonTextElement = registerButton.querySelector('b');
+        if (buttonTextElement) {
+          buttonTextElement.textContent = 'Register for Class';
+        }
       }
     } else if (!hasACapacityDefined || classCapacity > 0) {
       // Class has space (or assume unlimited capacity), now check for conflicts
@@ -1844,6 +1857,12 @@ export class ParentRegistrationForm {
           if (registerButton) {
             registerButton.disabled = true;
             registerButton.style.opacity = '0.6';
+            
+            // Reset button text when disabled
+            const buttonTextElement = registerButton.querySelector('b');
+            if (buttonTextElement) {
+              buttonTextElement.textContent = 'Register for Class';
+            }
           }
           return;
         }
@@ -1859,7 +1878,7 @@ export class ParentRegistrationForm {
 
           if (conflictCheck.hasConflict) {
             const conflict = conflictCheck.conflictDetails;
-            const conflictMessage = conflict.type === 'PRIVATE' 
+            const conflictMessage = conflict.type === RegistrationType.PRIVATE 
               ? `This class conflicts with an existing ${conflict.instrument} lesson with ${conflict.instructorName} on ${conflict.day} at ${conflict.startTime}.`
               : `This class conflicts with existing class "${conflict.className}" on ${conflict.day} at ${conflict.startTime}.`;
             
@@ -1867,8 +1886,37 @@ export class ParentRegistrationForm {
             if (registerButton) {
               registerButton.disabled = true;
               registerButton.style.opacity = '0.6';
+              
+              // Reset button text when disabled
+              const buttonTextElement = registerButton.querySelector('b');
+              if (buttonTextElement) {
+                buttonTextElement.textContent = 'Register for Class';
+              }
             }
             return;
+          }
+        }
+      }
+      
+      // Check if this is a special waitlist class (Rock Band classes)
+      const isWaitlistClass = ClassManager.isRockBandClass(classId);
+      if (isWaitlistClass) {
+        // Show waitlist message for these special classes
+        this.#showRegistrationMessage('You will be joining the wait list.', 'info');
+        
+        // Update button text for waitlist classes
+        if (registerButton) {
+          const buttonTextElement = registerButton.querySelector('b');
+          if (buttonTextElement) {
+            buttonTextElement.textContent = 'Join Wait List';
+          }
+        }
+      } else {
+        // Reset button text for regular classes
+        if (registerButton) {
+          const buttonTextElement = registerButton.querySelector('b');
+          if (buttonTextElement) {
+            buttonTextElement.textContent = 'Register for Class';
           }
         }
       }
@@ -1923,6 +1971,46 @@ export class ParentRegistrationForm {
     if (errorContainer) {
       errorContainer.style.display = 'none';
       errorContainer.textContent = '';
+    }
+  }
+
+  /**
+   * Show registration message (info or warning)
+   */
+  #showRegistrationMessage(message, type = 'info') {
+    let messageContainer = document.getElementById('parent-class-info-message');
+
+    if (!messageContainer) {
+      // Create info message container
+      messageContainer = document.createElement('div');
+      messageContainer.id = 'parent-class-info-message';
+      
+      // Insert after the class select
+      const classSelect = document.getElementById('parent-class-select');
+      const inputField = classSelect?.closest('.input-field');
+      if (inputField) {
+        inputField.parentNode.insertBefore(messageContainer, inputField.nextSibling);
+      }
+    }
+
+    // Set styles based on message type
+    if (type === 'info') {
+      messageContainer.style.cssText = 'margin-top: 10px; padding: 10px; background: #e3f2fd; border: 1px solid #2196f3; border-radius: 4px; color: #1976d2; font-size: 14px; display: block;';
+    } else if (type === 'warning') {
+      messageContainer.style.cssText = 'margin-top: 10px; padding: 10px; background: #fff3e0; border: 1px solid #ff9800; border-radius: 4px; color: #f57c00; font-size: 14px; display: block;';
+    }
+
+    messageContainer.textContent = message;
+  }
+
+  /**
+   * Clear registration info message
+   */
+  #clearRegistrationMessage() {
+    const messageContainer = document.getElementById('parent-class-info-message');
+    if (messageContainer) {
+      messageContainer.style.display = 'none';
+      messageContainer.textContent = '';
     }
   }
 
@@ -2527,13 +2615,26 @@ export class ParentRegistrationForm {
 
         // Show confirmation modal before proceeding
         const registrationData = this.#getCreateGroupRegistrationData();
-        const confirmationMessage = this.#buildGroupClassConfirmationMessage(registrationData);
+        
+        // Check if this is a waitlist class (Rock Band classes)
+        let confirmationMessage;
+        if (ClassManager.isRockBandClass(registrationData.classId)) {
+          confirmationMessage = this.#buildWaitlistClassConfirmationMessage(registrationData);
+        } else {
+          confirmationMessage = this.#buildGroupClassConfirmationMessage(registrationData);
+        }
 
         this.#showConfirmationModal(confirmationMessage, async () => {
           try {
             await this.sendDataFunction(registrationData);
             this.#clearGroupForm();
-            M.toast({ html: 'Group registration created successfully!' });
+            
+            // Show different success message for waitlist vs regular classes
+            if (ClassManager.isRockBandClass(registrationData.classId)) {
+              M.toast({ html: 'Wait list joined.' });
+            } else {
+              M.toast({ html: 'Group registration created successfully!' });
+            }
           } catch (error) {
             console.error('Error creating group registration:', error);
             M.toast({ html: `Error creating group registration: ${error.message}` });
@@ -2976,7 +3077,7 @@ export class ParentRegistrationForm {
 
     if (conflictCheck.hasConflict) {
       const conflict = conflictCheck.conflictDetails;
-      const conflictMessage = conflict.type === 'GROUP' 
+      const conflictMessage = conflict.type === RegistrationType.GROUP
         ? `This lesson time conflicts with the student's existing class "${conflict.className}" on ${conflict.day} at ${conflict.startTime}.`
         : `This lesson time conflicts with the student's existing lesson on ${conflict.day} at ${conflict.startTime} with ${conflict.instructorName}.`;
       
@@ -3248,6 +3349,12 @@ export class ParentRegistrationForm {
     if (registerButton) {
       registerButton.disabled = true;
       registerButton.style.opacity = '0.6';
+      
+      // Reset button text to default
+      const buttonTextElement = registerButton.querySelector('b');
+      if (buttonTextElement) {
+        buttonTextElement.textContent = 'Register for Class';
+      }
     }
   }
 
@@ -3438,10 +3545,60 @@ export class ParentRegistrationForm {
   }
 
   /**
+   * Build confirmation message for waitlist group class registration (Rock Band classes)
+   */
+  #buildWaitlistClassConfirmationMessage(registrationData) {
+    const studentSelect = document.getElementById('parent-student-select');
+    const studentName = studentSelect?.selectedOptions[0]?.textContent || 'your child';
+
+    // Find class details
+    const selectedClass = this.classes.find(cls => cls.id === registrationData.classId);
+    const className = selectedClass ? formatClassNameWithGradeCorrection(selectedClass) : 'the class';
+
+    // Find instructor name
+    const instructor = this.instructors.find(inst => inst.id === registrationData.instructorId);
+    const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : 'the instructor';
+
+    // Format transportation type
+    const transportationDisplay = registrationData.transportationType === 'bus' ? 'Late Bus' : 'Late Pick Up';
+
+    return `
+      <strong>Are you sure you want to join the wait list for this group class?</strong>
+      <br><br>
+      <p><strong>Please note:</strong> This class is currently full. By registering, ${studentName} will be placed on the wait list and will be enrolled if a spot becomes available.</p>
+      <br>
+      <strong>Class Details:</strong><br>
+      • <strong>Class:</strong> ${className}<br>
+      • <strong>Instructor:</strong> ${instructorName}<br>
+      • <strong>Day:</strong> ${registrationData.day}<br>
+      • <strong>Time:</strong> ${registrationData.startTime}<br>
+      • <strong>Duration:</strong> ${registrationData.length} minutes<br>
+      • <strong>Transportation:</strong> ${transportationDisplay}
+      <br><br>
+      <p>You will be notified by email if a spot becomes available in this class. If you need to change or cancel this wait list registration, please contact forte@mcds.org.</p>
+      
+      <p><strong>Absence and Cancellation Policy:</strong></p>
+      
+      <p>Lessons missed due to student absence are charged in full except in the case of school-sponsored field trips or religious holidays. Sports practices or games are not considered school-sponsored activities.</p>
+      
+      <p>There will be no charge for lessons canceled by instructors unless the instructor schedules a make-up lesson at a later date.</p>
+      
+      <p>Instructors are encouraged to schedule make-up lessons for lessons they have missed; however, as they are working professionals in their fields, make-up lessons may not always be possible. The scheduling of make-up lessons will be at the instructor's discretion.</p>
+      
+      <p>Please notify your instructor at least 24 hours in advance of any student absence when possible. Instructor contact details will be emailed shortly after your child's first lesson. Additionally, notify FORTE staff of student absences at forte@mcds.org.</p>
+      
+      <p>Instructor cancellations will be communicated to parents/guardians via phone or email at least 24 hours in advance whenever possible. Same-day cancellations by instructors will result in no charge for PM care.</p>
+      
+      <p><strong>By confirming, you acknowledge that you understand this is a wait list registration and that you have read and agree to these terms and conditions.</strong></p>
+    `;
+  }
+
+  /**
    * Public method to clear the form selection (can be called externally)
    */
   clearSelection() {
     this.#clearTimeSlotSelection();
+    this.#resetCompleteForm();
   }
 
   /**
@@ -3487,9 +3644,71 @@ export class ParentRegistrationForm {
         slot.style.background = '#ffebee';
       }
     });
+  }
+
+  /**
+   * Complete form reset - used when switching users or need full reset
+   */
+  #resetCompleteForm() {
+    // Reset registration type dropdown to default state
+    const registrationTypeSelect = document.getElementById('parent-registration-type-select');
+    if (registrationTypeSelect) {
+      registrationTypeSelect.value = '';
+      // Re-initialize Materialize select to update the display
+      if (typeof M !== 'undefined') {
+        M.FormSelect.init(registrationTypeSelect);
+      }
+    }
+
+    // Reset class selection dropdown
+    const classSelect = document.getElementById('parent-class-select');
+    if (classSelect) {
+      classSelect.value = '';
+      if (typeof M !== 'undefined') {
+        M.FormSelect.init(classSelect);
+      }
+    }
 
     // Clear any error messages
     this.#clearRegistrationError();
+
+    // Hide all registration containers (type, private, group)
+    this.#hideAllRegistrationContainers();
+
+    // Reset all filter chips to default state
+    this.#resetFilterChips();
+
+    // Show registration type container for next selection
+    this.#showRegistrationTypeContainer();
+  }
+
+  /**
+   * Reset all filter chips to their default state
+   */
+  #resetFilterChips() {
+    const parentContainer = document.getElementById('parent-registration');
+    if (!parentContainer) return;
+
+    // Remove active class from all filter chips
+    const allChips = parentContainer.querySelectorAll('.chip');
+    allChips.forEach(chip => {
+      chip.classList.remove('active');
+      // Reset to default styling
+      chip.style.cssText = 'padding: 8px 12px; border-radius: 16px; display: flex; align-items: center; border: 2px solid #ddd; background: #f5f5f5; color: #666; transition: all 0.3s; cursor: pointer;';
+    });
+
+    // Set "All" chips as active by default
+    const allInstrumentChip = parentContainer.querySelector('.instrument-chip[data-value="all"]');
+    const allDayChip = parentContainer.querySelector('.day-chip[data-value="all"]');
+    const allLengthChip = parentContainer.querySelector('.length-chip[data-value="all"]');
+    const allInstructorChip = parentContainer.querySelector('.instructor-chip[data-value="all"]');
+
+    [allInstrumentChip, allDayChip, allLengthChip, allInstructorChip].forEach(chip => {
+      if (chip) {
+        chip.classList.add('active');
+        chip.style.cssText = 'padding: 8px 12px; border-radius: 16px; display: flex; align-items: center; border: 2px solid #2b68a4; background: #2b68a4; color: white; transition: all 0.3s; cursor: pointer;';
+      }
+    });
   }
 
   /**
