@@ -302,18 +302,16 @@ class IncomingStudentsReplacementMigration {
     console.log('=================================================================================');
 
     if (this.useNewTables) {
-      console.log('📋 NEW TABLES MODE: Creating students_new, parents_new, registrations_new');
+      console.log('📋 NEW TABLES MODE: Creating students_new, parents_new');
       console.log('   Original tables will remain unchanged');
     } else {
       // Create automatic backup before starting (only for replace mode)
       console.log('📦 Creating automatic backup...');
-      const backupResult = createMigrationBackup(this.migrationId, ['students', 'parents', 'registrations']);
-      
+      const backupResult = createMigrationBackup(this.migrationId, ['students', 'parents']);
       if (!backupResult.success) {
         console.error('❌ Failed to create backup, aborting migration');
         throw new Error(`Backup failed: ${backupResult.error}`);
       }
-      
       console.log('✅ Backup created successfully');
     }
 
@@ -321,32 +319,20 @@ class IncomingStudentsReplacementMigration {
       // Step 1: Analyze current state and incoming data
       console.log('\n📊 Step 1: Analyzing current state and incoming data...');
       const analysisResults = this.analyzeDataForMigration();
-      
       // Step 2: Prepare new data structures
       console.log('\n🔧 Step 2: Preparing new students and parents data...');
       const preparedData = this.prepareNewData(analysisResults);
-      
-      // Step 3: Create or clean up registrations
-      if (this.useNewTables) {
-        console.log('\n📝 Step 3: Creating new registrations table...');
-        this.createNewRegistrationsTable(analysisResults);
-      } else {
-        console.log('\n🧹 Step 3: Cleaning up registrations for removed students...');
-        this.cleanupOrphanedRegistrations(analysisResults.studentsToDelete);
-      }
-      
+      // Step 3: (SKIPPED) Do not modify registrations
       // Step 4: Create or replace students and parents data
-      console.log('\n🔄 Step 4: Creating/replacing students and parents data...');
+      console.log('\n🔄 Step 3: Creating/replacing students and parents data...');
       this.replaceStudentsAndParents(preparedData);
-      
       const modeText = this.useNewTables ? 'to new tables' : 'in existing tables';
       console.log(`\n✅ Migration completed successfully ${modeText}!`);
       console.log('📊 Migration Summary:');
       console.log(`   - Students processed: ${this.changes.newStudents.length}`);
       console.log(`   - Parents processed: ${this.changes.newParents.length}`);
-      
       if (this.useNewTables) {
-        console.log(`   - New tables created: ${Object.values(this.tableNames).join(', ')}`);
+        console.log(`   - New tables created: ${this.tableNames.students}, ${this.tableNames.parents}`);
         console.log('\n🔑 Next Steps:');
         console.log('   - Run verification: verifyIncomingStudentsReplacementMigrationNewTables()');
         console.log('   - Review new tables');
@@ -354,14 +340,12 @@ class IncomingStudentsReplacementMigration {
         console.log('   - Or run cleanupNewTables() to remove test tables');
       } else {
         console.log(`   - Students removed: ${this.changes.studentsToDelete.length}`);
-        console.log(`   - Registrations cleaned: ${this.changes.registrationsToDelete.length}`);
         console.log(`   - Nicknames preserved: ${this.changes.preservedNicknames.length}`);
         console.log('\n🔑 Next Steps:');
         console.log('   - Run verification: verifyIncomingStudentsReplacementMigration()');
         console.log('   - Test application functionality');
         console.log('   - Verify student-parent relationships');
       }
-      
     } catch (error) {
       console.error('❌ Migration failed:', error.message);
       if (!this.useNewTables) {
@@ -455,13 +439,6 @@ class IncomingStudentsReplacementMigration {
     
     console.log(`   👥 Found ${parentsRows.length} current parent records`);
     
-    console.log('   🔍 Loading registrations data...');
-    const registrationsSheet = this.spreadsheet.getSheetByName('registrations');
-    const registrationsData = registrationsSheet.getDataRange().getValues();
-    const registrationsRows = registrationsData.slice(1).filter(row => row[0]);
-    
-    console.log(`   📝 Found ${registrationsRows.length} registration records`);
-    
     // Find students to delete (current students not in incoming list)
     const incomingPersonIds = new Set(incomingRows.map(row => row[0].toString()));
     const currentStudentsMap = new Map();
@@ -495,14 +472,6 @@ class IncomingStudentsReplacementMigration {
     console.log(`   ⚠️  Students to be removed: ${studentsToDelete.length}`);
     console.log(`   🏷️  Nicknames to preserve: ${nicknamesToPreserve.length}`);
     
-    // Find registrations to clean up
-    const registrationsToCleanup = registrationsRows.filter(row => {
-      const studentId = row[1]; // Assuming studentId is in column B
-      return studentsToDelete.includes(studentId.toString());
-    });
-    
-    console.log(`   🧹 Registrations to clean up: ${registrationsToCleanup.length}`);
-    
     return {
       incomingStudents: incomingRows,
       incomingHeaders: incomingHeaders,
@@ -510,7 +479,6 @@ class IncomingStudentsReplacementMigration {
       currentStudentsMap: currentStudentsMap,
       currentParents: parentsRows,
       studentsToDelete: studentsToDelete,
-      registrationsToCleanup: registrationsToCleanup,
       nicknamesToPreserve: nicknamesToPreserve
     };
   }
@@ -892,37 +860,49 @@ class IncomingStudentsReplacementMigration {
       // For new tables, directly write data
       const allData = [headers, ...dataRows];
       parentsSheet.getRange(1, 1, allData.length, headers.length).setValues(allData);
-      
       // Format AccessCode column as text to preserve leading zeros
       if (dataRows.length > 0) {
         const accessCodeRange = parentsSheet.getRange(2, 6, dataRows.length, 1);
         accessCodeRange.setNumberFormat('@');
+        // Re-write access codes as strings to ensure format
+        for (let i = 0; i < dataRows.length; i++) {
+          const code = dataRows[i][4].toString().padStart(4, '0');
+          parentsSheet.getRange(i + 2, 6).setValue(code);
+        }
       }
-      
       console.log(`   ✅ Created ${targetSheetName} with ${dataRows.length} records`);
     } else {
       // Apply safe copy-modify-replace for existing tables
       const tempSheetName = 'parents_temp_' + Date.now();
       const tempSheet = this.spreadsheet.insertSheet(tempSheetName);
-      
       try {
         const allData = [headers, ...dataRows];
         tempSheet.getRange(1, 1, allData.length, headers.length).setValues(allData);
-        
+        // Format AccessCode column as text to preserve leading zeros
+        if (dataRows.length > 0) {
+          const accessCodeRange = tempSheet.getRange(2, 6, dataRows.length, 1);
+          accessCodeRange.setNumberFormat('@');
+          // Re-write access codes as strings to ensure format
+          for (let i = 0; i < dataRows.length; i++) {
+            const code = dataRows[i][4].toString().padStart(4, '0');
+            tempSheet.getRange(i + 2, 6).setValue(code);
+          }
+        }
         // Clear and replace original
         parentsSheet.clear();
         const sourceRange = tempSheet.getRange(1, 1, allData.length, headers.length);
         const targetRange = parentsSheet.getRange(1, 1, allData.length, headers.length);
         sourceRange.copyTo(targetRange);
-        
         // Format AccessCode column as text to preserve leading zeros
         if (dataRows.length > 0) {
           const accessCodeRange = parentsSheet.getRange(2, 6, dataRows.length, 1);
           accessCodeRange.setNumberFormat('@');
+          for (let i = 0; i < dataRows.length; i++) {
+            const code = dataRows[i][4].toString().padStart(4, '0');
+            parentsSheet.getRange(i + 2, 6).setValue(code);
+          }
         }
-        
         console.log(`   ✅ Replaced parents table with ${dataRows.length} records`);
-        
       } finally {
         this.spreadsheet.deleteSheet(tempSheet);
       }

@@ -163,4 +163,20 @@ export class SystemController {
       res.status(500).json({ error: error.message });
     }
   }
+
+  /**
+   * Get application configuration for frontend
+   */
+  static async getApplicationConfig(req, res) {
+    try {
+      const appConfig = configService.getApplicationConfig();
+      res.json({
+        success: true,
+        config: appConfig
+      });
+    } catch (error) {
+      console.error('Error getting application config:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
 }
