@@ -1774,6 +1774,11 @@ export class ParentRegistrationForm {
 
     // Filter classes where student is NOT already enrolled
     const availableClasses = this.classes.filter(cls => {
+      // First, filter out restricted classes
+      if (ClassManager.isRestrictedClass(cls.id)) {
+        return false;
+      }
+
       // Check if student already has a group registration for this class
       const hasExistingRegistration = this.registrations.some(registration =>
         registration.studentId === selectedStudentId &&

@@ -85,6 +85,32 @@ class ClassManager {
   static getRockBandClassLength() {
     return 60; // Default length for Rock Band classes
   }
+
+  /**
+   * Restricted class IDs that should not be available for parent registration
+   * These are classes that should be filtered out from the registration form
+   */
+  static RESTRICTED_CLASS_IDS = ['G001', 'G012', 'G014'];
+
+  /**
+   * Check if a class ID is restricted from parent registration
+   * @param {string|object} classId - The class ID to check (can be string or object with .value property)
+   * @returns {boolean} True if the class is restricted from registration
+   */
+  static isRestrictedClass(classId) {
+    // Handle both direct string values and objects with .value property
+    const id = classId?.value || classId;
+    return this.RESTRICTED_CLASS_IDS.includes(id);
+  }
+
+  /**
+   * Filter classes to exclude restricted ones from parent registration
+   * @param {Array} classes - Array of class objects
+   * @returns {Array} Filtered array with restricted classes removed
+   */
+  static filterRestrictedClasses(classes) {
+    return classes.filter(cls => !this.isRestrictedClass(cls.id));
+  }
 }
 
 // Make it available globally like other managers
