@@ -93,28 +93,26 @@ export class RegistrationApplicationService {
         throw new Error(`Instructor not found: ${registrationData.instructorId}`);
       }
 
-      // Step 3.5: For group registrations, populate room assignment from instructor's schedule
-      if (registrationData.registrationType === 'group' && registrationData.classId) {
-        const dayName = registrationData.day.toLowerCase();
-        const roomIdKey = `${dayName}RoomId`;
-        
-        // Get room ID from instructor's availability for the specific day
-        if (instructor.availability && instructor.availability[dayName] && instructor.availability[dayName].roomId) {
-          registrationData.roomId = instructor.availability[dayName].roomId;
-        } else if (instructor[roomIdKey]) {
-          // Fallback: try direct property access on instructor object
-          registrationData.roomId = instructor[roomIdKey];
-        } else {
-          console.warn(`No room assignment found for instructor ${instructor.id} on ${dayName}`);
-          registrationData.roomId = 'ROOM-001'; // Default fallback
-        }
-
-        console.log('🏫 Room assignment for group registration:', {
-          day: dayName,
-          instructorId: instructor.id,
-          roomId: registrationData.roomId
-        });
+      // Step 3.5: Populate room assignment from instructor's schedule for both group and private registrations
+      const dayName = registrationData.day.toLowerCase();
+      const roomIdKey = `${dayName}RoomId`;
+      
+      // Get room ID from instructor's availability for the specific day
+      if (instructor.availability && instructor.availability[dayName] && instructor.availability[dayName].roomId) {
+        registrationData.roomId = instructor.availability[dayName].roomId;
+      } else if (instructor[roomIdKey]) {
+        // Fallback: try direct property access on instructor object
+        registrationData.roomId = instructor[roomIdKey];
+      } else {
+        console.warn(`No room assignment found for instructor ${instructor.id} on ${dayName}`);
+        registrationData.roomId = 'ROOM-001'; // Default fallback
       }
+
+      console.log(`🏫 Room assignment for ${registrationData.registrationType} registration:`, {
+        day: dayName,
+        instructorId: instructor.id,
+        roomId: registrationData.roomId
+      });
 
       // Step 4: Program-specific validation
       const programValidation = ProgramManagementService.validateRegistration(

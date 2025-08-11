@@ -13,6 +13,7 @@ import { _fetchData } from '../utils/helpers.js';
 import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
 import { OperatorUserResponse } from '../models/shared/responses/operatorUserResponse.js';
 import { currentConfig } from '../config/environment.js';
+import { ConfigurationService } from '../services/configurationService.js';
 
 export class UserController {
   /**
@@ -21,7 +22,17 @@ export class UserController {
   static async getOperatorUser(req, res) {
     try {
       console.log('getOperatorUser - Temporarily bypassing operator user retrieval');
-      return res.json(null);
+      // Even when bypassed, return basic configuration
+      const bypassedResponse = new OperatorUserResponse(
+        null,
+        null,
+        null,
+        null,
+        {
+          rockBandClassIds: ConfigurationService.getRockBandClassIds()
+        }
+      );
+      return res.json(bypassedResponse);
 
       // Get operator email from environment
       const operatorEmail = currentConfig.operatorEmail;
@@ -69,7 +80,10 @@ export class UserController {
         operatorEmail,
         admin,
         instructor,
-        parent
+        parent,
+        {
+          rockBandClassIds: ConfigurationService.getRockBandClassIds()
+        }
       );
 
       res.json(operatorUser);
