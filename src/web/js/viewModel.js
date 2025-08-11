@@ -924,10 +924,30 @@ export class ViewModel {
       );
     }
 
-    // directory - show all instructors for parents, not just those teaching current children
-    // This allows parents without registered children to see all available instructors
+    // directory - show only instructors where parent has students with registrations
+    // Filter to only show instructors who are teaching this parent's children
+    const parentChildrenIds = allParentChildren.map(child => child.id?.value || child.id);
+    const parentRegistrations = this.registrations.filter(registration => {
+      const studentId = typeof registration.studentId === 'object' ? 
+        registration.studentId.value : registration.studentId;
+      return parentChildrenIds.includes(studentId);
+    });
+    
+    // Get unique instructor IDs from parent's registrations
+    const parentInstructorIds = [...new Set(parentRegistrations.map(registration => {
+      return typeof registration.instructorId === 'object' ? 
+        registration.instructorId.value : registration.instructorId;
+    }).filter(Boolean))];
+    
+    console.log(`🎯 Parent has registrations with ${parentInstructorIds.length} instructors:`, parentInstructorIds);
+    
+    // Filter instructors to only include those teaching this parent's children
+    const relevantInstructors = this.instructors.filter(instructor => 
+      parentInstructorIds.includes(instructor.id)
+    );
+    
     const mappedEmployees = this.adminEmployees().concat(
-      this.instructors.map(instructor => this.instructorToEmployee(instructor, true))
+      relevantInstructors.map(instructor => this.instructorToEmployee(instructor, true))
     );
     // Sort employees to ensure admins appear at the top
     const sortedEmployees = this.#sortEmployeesForDirectory(mappedEmployees);
