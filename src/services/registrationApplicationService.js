@@ -65,10 +65,13 @@ export class RegistrationApplicationService {
 
       // Step 2.5: Validate bus time restrictions for Late Bus transportation
       if (registrationData.transportationType === 'bus') {
+        // Ensure length is a number (convert from string if needed)
+        const lengthMinutes = parseInt(registrationData.length) || 0;
+        
         const busValidation = this.#validateBusTimeRestrictions(
           registrationData.day,
           registrationData.startTime,
-          registrationData.length
+          lengthMinutes
         );
         
         if (!busValidation.isValid) {
@@ -473,11 +476,17 @@ export class RegistrationApplicationService {
    * @returns {object} Validation result with isValid boolean and errorMessage
    */
   #validateBusTimeRestrictions(day, startTime, lengthMinutes) {
-    console.log('🚌 Validating bus time restrictions:', { day, startTime, lengthMinutes });
+    console.log('🚌 Validating bus time restrictions:', { day, startTime, lengthMinutes, lengthType: typeof lengthMinutes });
+
+    // Ensure lengthMinutes is a number
+    const durationMinutes = parseInt(lengthMinutes) || 0;
+    if (durationMinutes !== lengthMinutes) {
+      console.warn(`⚠️  Length was not a number: "${lengthMinutes}" (${typeof lengthMinutes}), converted to: ${durationMinutes}`);
+    }
 
     // Parse start time and calculate end time
     const startMinutes = this.#parseTime(startTime);
-    const endMinutes = startMinutes + lengthMinutes;
+    const endMinutes = startMinutes + durationMinutes;
 
     // Convert end time back to time string for display
     const endTimeDisplay = this.#formatTimeFromMinutes(endMinutes);
