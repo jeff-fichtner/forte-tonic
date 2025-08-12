@@ -64,12 +64,20 @@ export class Class {
       ? DateHelpers.parseTimeString(endTime).to24Hour()
       : endTime;
 
+    // Ensure length is parsed as a number (duration in minutes)
+    const processedLength = parseInt(length) || 0;
+    
+    // Log warning if length field contains invalid data
+    if (isNaN(parseInt(length)) || length.toString().includes(':')) {
+      console.warn(`⚠️  Class ${id} has invalid length field: "${length}". Expected duration in minutes, got: ${typeof length}. Using ${processedLength} minutes.`);
+    }
+
     return new Class(
       id,
       instructorId,
       day,
       processedStartTime,
-      length,
+      processedLength,
       processedEndTime,
       instrument,
       title,
