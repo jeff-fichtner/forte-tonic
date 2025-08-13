@@ -29,7 +29,7 @@
     "check:all": "npm run format:check && npm run lint && npm test",
     "build": "npm run check:all",
     "build:production": "echo 'Production build - version increment handled by deployment process'",
-    "build:staging": "echo 'Staging build - version increment handled by deployment process'",
+    "build:staging": "./scripts/auto-increment-version.sh && npm run check:all",
     "version:increment": "npm version patch --no-git-tag-version",
     "version:increment:minor": "npm version minor --no-git-tag-version",
     "version:increment:major": "npm version major --no-git-tag-version",
