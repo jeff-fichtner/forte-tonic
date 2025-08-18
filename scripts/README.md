@@ -1,6 +1,6 @@
-# Render Deployment Setup
+# Google Cloud Run Deployment Setup
 
-This directory contains build configuration and automation for deploying Tonic to Render.
+This directory contains build configuration and automation for deploying Tonic to Google Cloud Run.
 
 ## 📁 Files in This Setup
 

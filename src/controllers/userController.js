@@ -133,28 +133,10 @@ export class UserController {
    */
   static async getStudents(req, res) {
     try {
-      // Use the normalized request data from middleware
-      const request = req.requestData || {};
-
       const userRepository = serviceContainer.get('userRepository');
       const data = await userRepository.getStudents();
       const transformedData = UserTransformService.transformArray(data, 'student');
-
-      // Apply pagination directly for compatibility with frontend expectations
-      const page = request.page || 0;
-      const pageSize = request.pageSize || 1000;
-      const startIndex = page * pageSize;
-      const endIndex = startIndex + pageSize;
-      const paginatedData = transformedData.slice(startIndex, endIndex);
-
-      const result = {
-        data: paginatedData,
-        total: transformedData.length,
-        page,
-        pageSize,
-      };
-
-      res.json(result);
+      res.json(transformedData);
     } catch (error) {
       console.error('Error getting students:', error);
       res.status(500).json({ error: error.message });

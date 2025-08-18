@@ -48,11 +48,10 @@ jest.unstable_mockModule('../../src/database/googleSheetsDbClient.js', () => ({
   })),
 }));
 
-// Mock the email service
-jest.unstable_mockModule('../../src/email/emailService.js', () => ({
-  EmailService: jest.fn().mockImplementation(() => ({
+// Mock the email client
+jest.unstable_mockModule('../../src/email/emailClient.js', () => ({
+  EmailClient: jest.fn().mockImplementation(() => ({
     sendEmail: jest.fn().mockResolvedValue({ success: true }),
-    validateConfig: jest.fn().mockReturnValue(true),
   })),
 }));
 
