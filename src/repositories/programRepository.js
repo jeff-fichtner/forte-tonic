@@ -132,4 +132,14 @@ export class ProgramRepository {
     
     return true;
   }
+
+  /**
+   * Clear all repository-level caches
+   */
+  clearCache() {
+    this.classes = null;
+    this.registrations = null;
+    this.attendanceRecords = null;
+    console.log('🧹 ProgramRepository cache cleared');
+  }
 }

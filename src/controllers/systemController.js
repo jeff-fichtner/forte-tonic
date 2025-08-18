@@ -134,30 +134,57 @@ export class SystemController {
         return res.status(400).json({ error: 'Admin code is required' });
       }
 
-      // Create a database client instance to validate admin access code
-      const { GoogleSheetsDbClient } = await import('../database/googleSheetsDbClient.js');
-      const dbClient = new GoogleSheetsDbClient();
+      // Use dependency injection to get the same repository instances used throughout the app
+      const { serviceContainer } = await import('../infrastructure/container/serviceContainer.js');
+      const userRepository = serviceContainer.get('userRepository');
 
-      // Check if the access code matches any admin user
-      const admins = await dbClient.getAllRecords('admins', row => ({
-        id: row[0],
-        email: row[1],
-        lastName: row[2],
-        firstName: row[3],
-        phone: row[4],
-        accessCode: row[5] // Access code is typically in column F (index 5)
-      }));
-
-      const validAdmin = admins.find(admin => admin.accessCode === adminCode);
+      // Validate admin access code using the repository
+      const validAdmin = await userRepository.getAdminByAccessCode(adminCode);
       if (!validAdmin) {
         return res.status(401).json({ error: 'Invalid admin code' });
       }
 
-      // Clear the database client cache
+      // Clear ALL caches in the system
+      
+      // 1. Clear database client cache (the main Google Sheets cache)
+      const dbClient = userRepository.dbClient;
       dbClient.clearCache();
+      console.log('✅ Database client cache cleared');
 
-      console.log(`Cache cleared by admin: ${validAdmin.email}`);
-      res.json({ success: true, message: 'Cache cleared successfully' });
+      // 2. Clear ALL repository-level caches systematically
+      const repositoryTypes = [
+        'userRepository',
+        'registrationRepository',
+        'instructorRepository',
+        'studentRepository', 
+        'adminRepository',
+        'parentRepository',
+        'attendanceRepository',
+        'programRepository'
+      ];
+
+      let clearedRepositories = [];
+      for (const repoType of repositoryTypes) {
+        try {
+          const repository = serviceContainer.get(repoType);
+          if (repository && typeof repository.clearCache === 'function') {
+            repository.clearCache();
+            clearedRepositories.push(repoType);
+          }
+        } catch (e) {
+          // Repository might not be registered or initialized yet
+          console.log(`⚠️ Could not clear cache for ${repoType}: ${e.message}`);
+        }
+      }
+      
+      console.log(`✅ Repository caches cleared: ${clearedRepositories.join(', ')}`)
+
+      console.log(`🧹 All caches cleared by admin: ${validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName}`);
+      res.json({ 
+        success: true, 
+        message: 'All caches cleared successfully',
+        clearedBy: validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName
+      });
     } catch (error) {
       console.error('Error clearing cache:', error);
       res.status(500).json({ error: error.message });
