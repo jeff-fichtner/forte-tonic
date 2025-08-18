@@ -5,6 +5,7 @@
  * Repository for simplified registration model with UUID primary keys
  */
 
+import crypto from 'crypto';
 import { BaseRepository } from './baseRepository.js';
 import { Registration } from '../models/shared/registration.js';
 import { RegistrationId } from '../utils/values/registrationId.js';

@@ -33,13 +33,13 @@ The system detects build server environments using:
 ### Manual Version Increment
 ```bash
 # Increment patch version (1.0.0 -> 1.0.1)
-./scripts/version-bump.sh patch
+./scripts/version-manager.sh bump patch
 
 # Increment minor version (1.0.0 -> 1.1.0)
-./scripts/version-bump.sh minor
+./scripts/version-manager.sh bump minor
 
 # Increment major version (1.0.0 -> 2.0.0)
-./scripts/version-bump.sh major
+./scripts/version-manager.sh bump major
 ```
 
 ### Deploy to Staging with Version Increment

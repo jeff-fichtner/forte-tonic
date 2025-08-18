@@ -1,5 +1,5 @@
 # GitHub Actions workflow for automated testing and code quality
-# Render handles actual deployment via auto-deploy from branches
+# Cloud Build handles deployment via triggers
 
 name: Tonic CI/CD
 
@@ -39,7 +39,7 @@ jobs:
     - name: Run tests
       run: npm test
     
-    # Note: Build is handled by Render during deployment
+    # Note: Build is handled by Cloud Build during deployment
     # This workflow focuses on code quality validation only
 
   deployment-status:
@@ -51,10 +51,10 @@ jobs:
     - name: Deployment notification
       run: |
         if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-          echo "🚀 Production build & deployment will be triggered automatically by Render"
-          echo "📍 Monitor deployment at: Render Dashboard > tonic-production"
+          echo "🚀 Production build & deployment will be triggered automatically by Cloud Build"
+          echo "📍 Monitor deployment at: https://console.cloud.google.com/run"
         elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
-          echo "🧪 Staging build & deployment will be triggered automatically by Render" 
-          echo "📍 Monitor deployment at: Render Dashboard > tonic-staging"
+          echo "🧪 Staging build & deployment will be triggered automatically by Cloud Build" 
+          echo "📍 Monitor deployment at: https://console.cloud.google.com/run"
         fi
-        echo "✅ Code quality checks passed - Render will handle build & deployment"
+        echo "✅ Code quality checks passed - Cloud Build will handle build & deployment"

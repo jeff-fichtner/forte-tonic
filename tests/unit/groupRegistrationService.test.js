@@ -3,7 +3,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import { Registration } from '../../src/models/shared/registration.js';
 import { RegistrationApplicationService } from '../../src/services/registrationApplicationService.js';
 import { serviceContainer } from '../../src/infrastructure/container/serviceContainer.js';

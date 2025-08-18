@@ -7,11 +7,11 @@
 set -e
 
 # Configuration
-PROJECT_ID="${1:-tonic-production}"  # Use provided project ID or default
-REGION="us-central1"
+PROJECT_ID="${1:-tonic-467721}"  # Use provided project ID or correct default
+REGION="us-west1"
 SERVICE_NAME="tonic-staging"
-REPO_OWNER="ndemoss-mcds"
-REPO_NAME="Tonic"
+REPO_OWNER="jeff-fichtner"
+REPO_NAME="forte-tonic"
 
 echo "🚀 Setting up GCP CI/CD Pipeline for Tonic"
 echo "=========================================="
@@ -38,7 +38,7 @@ gcloud services enable cloudbuild.googleapis.com
 gcloud services enable run.googleapis.com
 gcloud services enable containerregistry.googleapis.com
 gcloud services enable secretmanager.googleapis.com
-gcloud services enable sourcerepo.googleapis.com
+# Note: sourcerepo.googleapis.com not needed since we're using GitHub
 
 # Get Cloud Build service account email
 BUILD_SA=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")@cloudbuild.gserviceaccount.com
@@ -68,30 +68,7 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
     --role="roles/source.admin"
 
 echo ""
-echo "🔒 Setting up secrets in Secret Manager..."
-
-# Check if secrets exist, create if they don't
-create_secret_if_not_exists() {
-    local secret_name=$1
-    local description=$2
-    
-    if gcloud secrets describe $secret_name >/dev/null 2>&1; then
-        echo "✅ Secret '$secret_name' already exists"
-    else
-        echo "📝 Creating secret: $secret_name"
-        echo "Please enter the value for $description:"
-        read -s secret_value
-        echo "$secret_value" | gcloud secrets create $secret_name --data-file=-
-        echo "✅ Secret '$secret_name' created"
-    fi
-}
-
-# Create required secrets
-create_secret_if_not_exists "working-spreadsheet-id" "Working Spreadsheet ID"
-create_secret_if_not_exists "google-service-account-email" "Google Service Account Email"
-create_secret_if_not_exists "google-private-key" "Google Private Key (paste the entire key including -----BEGIN/END-----)"
-create_secret_if_not_exists "github-token" "GitHub Personal Access Token (with repo permissions)"
-
+echo "ℹ️  Skipping Secret Manager setup (you can add secrets manually later)"
 echo ""
 echo "🔗 Creating Cloud Build trigger..."
 
@@ -100,7 +77,7 @@ gcloud builds triggers create github \
     --repo-name=$REPO_NAME \
     --repo-owner=$REPO_OWNER \
     --branch-pattern=dev \
-    --build-config=cloudbuild.yaml \
+    --build-config=src/build/cloudbuild.yaml \
     --description="Auto CI/CD for dev branch: Test → Deploy → Increment Version" \
     --name="tonic-dev-cicd" || echo "⚠️  Trigger may already exist"
 
@@ -108,11 +85,11 @@ echo ""
 echo "🏗️  Testing the setup with a sample build..."
 
 # Trigger a test build
-echo "This will run: gcloud builds submit --config cloudbuild.yaml"
+echo "This will run: gcloud builds submit --config src/build/cloudbuild.yaml"
 read -p "Run test build now? (y/N): " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    gcloud builds submit --config cloudbuild.yaml
+    gcloud builds submit --config src/build/cloudbuild.yaml
 else
     echo "⏭️  Skipping test build"
 fi

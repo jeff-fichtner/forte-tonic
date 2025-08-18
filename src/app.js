@@ -126,3 +126,4 @@ export async function initializeApp() {
 }
 
 export { app, PORT };
+export default app;

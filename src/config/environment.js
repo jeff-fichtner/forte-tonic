@@ -1,5 +1,5 @@
 /**
- * Environment Configuration for Render Deployments
+ * Environment Configuration for Google Cloud Run Deployments
  * Manages different settings for staging vs production environments
  */
 
@@ -49,7 +49,7 @@ const config = {
       privateKey: process.env.GOOGLE_PRIVATE_KEY,
     },
     operatorEmail: process.env.OPERATOR_EMAIL,
-    baseUrl: process.env.RENDER_EXTERNAL_URL || 'https://tonic-staging.onrender.com',
+    baseUrl: process.env.CLOUD_RUN_SERVICE_URL || 'https://tonic-staging-staging.run.app',
     logLevel: LogLevel.INFO,
   },
 
@@ -61,7 +61,7 @@ const config = {
       privateKey: process.env.GOOGLE_PRIVATE_KEY,
     },
     operatorEmail: process.env.OPERATOR_EMAIL,
-    baseUrl: process.env.RENDER_EXTERNAL_URL || 'https://tonic.onrender.com',
+    baseUrl: process.env.CLOUD_RUN_SERVICE_URL || 'https://tonic-production.run.app',
     logLevel: LogLevel.WARN,
   },
 };
@@ -103,7 +103,7 @@ export const currentFeatures = features[environment];
 export const version = {
   number: getVersionNumber(),
   buildDate: getBuildDate(),
-  gitCommit: process.env.RENDER_GIT_COMMIT || getLocalGitCommit(),
+  gitCommit: process.env.BUILD_GIT_COMMIT || getLocalGitCommit(),
   environment,
   isStaging: environment === NodeEnv.STAGING,
   displayVersion: environment !== NodeEnv.PRODUCTION // Show in all environments except production
@@ -113,8 +113,8 @@ export const version = {
  * Get version number - only use package.json version on build server
  */
 function getVersionNumber() {
-  // On Render build server, use package.json version
-  if (process.env.RENDER || process.env.CI) {
+  // On Cloud Build server, use package.json version
+  if (process.env.CLOUD_BUILD || process.env.CI) {
     return packageJson.version;
   }
   
@@ -126,8 +126,8 @@ function getVersionNumber() {
  * Get build date - only use current date on build server
  */
 function getBuildDate() {
-  // On Render build server, use current timestamp
-  if (process.env.RENDER || process.env.CI) {
+  // On Cloud Build server, use current timestamp
+  if (process.env.CLOUD_BUILD || process.env.CI) {
     return new Date().toISOString();
   }
   
@@ -140,7 +140,7 @@ function getBuildDate() {
  */
 function getLocalGitCommit() {
   // For local development, just return a static identifier
-  // The actual git commit will be available on the build server via RENDER_GIT_COMMIT
+  // The actual git commit will be available on the build server via BUILD_GIT_COMMIT
   return 'local-dev';
 }
 

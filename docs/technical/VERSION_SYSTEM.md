@@ -60,7 +60,7 @@ This script:
 ### Manual Version Increment
 ```bash
 # Just increment version without deployment
-./scripts/version-bump.sh [patch|minor|major]
+./scripts/version-manager.sh bump [patch|minor|major]
 ```
 
 ## Version Badge Behavior
@@ -83,7 +83,7 @@ This script:
 ```
 scripts/
 ├── deploy-staging.sh      # Full deployment with version increment
-├── version-bump.sh        # Version increment only
+├── version-manager.sh     # Consolidated version management (auto, bump, overflow)
 └── deploy-production.sh   # (Future: production deployment)
 
 src/config/environment.js  # Version detection logic
