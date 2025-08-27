@@ -1,23 +1,24 @@
 #!/bin/bash
 
 # GCP CI/CD Management Script for Tonic
-# This script consolidates setup, cleanup, and destroy operations for GCP resources
+# This script provides folder-based project management for staging and production environments
 # 
 # Usage:
-#   ./manage-gcp-cicd.sh setup [PROJECT_ID]   - Create all CI/CD infrastructure
-#   ./manage-gcp-cicd.sh cleanup [PROJECT_ID] - Remove CI/CD only, preserve services
-#   ./manage-gcp-cicd.sh destroy [PROJECT_ID] - Remove everything including services
+#   ./manage-gcp-cicd.sh setup-gcp --folder=FOLDER_ID     - Create staging and production projects
+#   ./manage-gcp-cicd.sh status-gcp --folder=FOLDER_ID    - Show status of all Tonic projects in folder
+#   ./manage-gcp-cicd.sh cleanup-gcp --folder=FOLDER_ID   - Remove CI/CD infrastructure only
+#   ./manage-gcp-cicd.sh destroy-gcp --folder=FOLDER_ID   - Remove everything including services
+#   ./manage-gcp-cicd.sh update-permissions --project=PROJECT_ID --user=USER_EMAIL - Update user permissions
 #
-# Run this once to configure your GCP project, then use cleanup/destroy as needed
+# Folder-based operations manage both staging and production projects simultaneously
 
 set -e
 
 # Shared Configuration
-PROJECT_ID="${2:-tonic-467721}"  # Use provided project ID or default
 REGION="us-west1"
-SERVICE_NAME="tonic-staging"
 REPO_OWNER="jeff-fichtner"
 REPO_NAME="forte-tonic"
+APPLICATION_LABEL="application=tonic"
 
 # Colors for output
 RED='\033[0;31m'
@@ -62,14 +63,300 @@ check_gcloud() {
     fi
 }
 
-get_build_service_account() {
-    local project_number
-    project_number=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)" 2>/dev/null)
-    if [ $? -ne 0 ]; then
+# Parse command line arguments
+parse_args() {
+    FOLDER_ID=""
+    PROJECT_ID=""
+    USER_EMAIL=""
+    TEMPLATE_PROJECT=""
+    OPERATION_MODE=""  # 'folder', 'project', or 'organization'
+    
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --folder=*)
+                FOLDER_ID="${1#*=}"
+                OPERATION_MODE="folder"
+                shift
+                ;;
+            --project=*)
+                PROJECT_ID="${1#*=}"
+                OPERATION_MODE="project"
+                shift
+                ;;
+            --user=*)
+                USER_EMAIL="${1#*=}"
+                shift
+                ;;
+            --template=*)
+                TEMPLATE_PROJECT="${1#*=}"
+                shift
+                ;;
+            --organization)
+                OPERATION_MODE="organization"
+                shift
+                ;;
+            *)
+                log_error "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
+    
+    # Set default operation mode for setup if none specified
+    if [[ -z "$OPERATION_MODE" ]]; then
+        OPERATION_MODE="organization"
+    fi
+}
+
+# Validate required folder ID for folder-based operations
+validate_folder_id() {
+    if [[ -z "$FOLDER_ID" ]]; then
+        log_error "Folder ID is required for this operation"
+        echo "Usage: $0 $1 --folder=FOLDER_ID"
+        exit 1
+    fi
+    
+    # Validate folder exists and is accessible
+    if ! gcloud resource-manager folders describe "$FOLDER_ID" >/dev/null 2>&1; then
+        log_error "Cannot access folder $FOLDER_ID. Check folder ID and permissions."
+        exit 1
+    fi
+}
+
+# Validate project ID and accessibility
+validate_project_id() {
+    local command_name=$1
+    if [[ -z "$PROJECT_ID" ]]; then
+        log_error "Project ID is required for this operation"
+        echo "Usage: $0 $command_name --project=PROJECT_ID"
+        exit 1
+    fi
+    
+    # Verify project exists and is accessible
+    if ! gcloud projects describe "$PROJECT_ID" >/dev/null 2>&1; then
         log_error "Cannot access project $PROJECT_ID. Check project ID and permissions."
         exit 1
     fi
+    
+    # Verify project has tonic label (with warning, not error)
+    local labels
+    labels=$(gcloud projects describe "$PROJECT_ID" --format="value(labels)" 2>/dev/null || echo "")
+    if [[ ! "$labels" == *"application=tonic"* ]]; then
+        log_warning "Project $PROJECT_ID does not have 'application=tonic' label."
+        echo "This may not be a Tonic project. Continue anyway? (y/N)"
+        read -p "Continue: " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Operation cancelled by user"
+            exit 0
+        fi
+    fi
+}
+
+# Enhanced validation for flexible operation modes
+validate_operation_mode() {
+    local command_name=$1
+    
+    case "$command_name" in
+        "setup-gcp")
+            # Setup can work with folder (preferred) or without (organization-level)
+            if [[ -n "$FOLDER_ID" ]]; then
+                validate_folder_id "$command_name"
+            fi
+            # No validation needed if no folder - will create at org level
+            ;;
+        "status-gcp"|"cleanup-gcp")
+            # These commands require either folder or project or organization
+            if [[ -z "$FOLDER_ID" && -z "$PROJECT_ID" && "$OPERATION_MODE" != "organization" ]]; then
+                log_error "Either --folder=FOLDER_ID, --project=PROJECT_ID, or --organization is required"
+                echo "Usage: $0 $command_name --folder=FOLDER_ID    # Operate on all projects in folder"
+                echo "   or: $0 $command_name --project=PROJECT_ID  # Operate on single project"
+                echo "   or: $0 $command_name --organization        # Operate on all projects in organization"
+                exit 1
+            fi
+            if [[ -n "$FOLDER_ID" && -n "$PROJECT_ID" ]]; then
+                log_error "Cannot specify both --folder and --project. Choose one."
+                echo "Usage: $0 $command_name --folder=FOLDER_ID    # Operate on all projects in folder"
+                echo "   or: $0 $command_name --project=PROJECT_ID  # Operate on single project"
+                exit 1
+            fi
+            if [[ -n "$FOLDER_ID" ]]; then
+                validate_folder_id "$command_name"
+            fi
+            if [[ -n "$PROJECT_ID" ]]; then
+                validate_project_id "$command_name"
+            fi
+            ;;
+        "destroy-gcp")
+            # Only allow folder or project for destroy-gcp
+            if [[ -z "$FOLDER_ID" && -z "$PROJECT_ID" ]]; then
+                log_error "Either --folder=FOLDER_ID or --project=PROJECT_ID is required for destroy-gcp"
+                echo "Usage: $0 destroy-gcp --folder=FOLDER_ID    # Operate on all projects in folder"
+                echo "   or: $0 destroy-gcp --project=PROJECT_ID  # Operate on single project"
+                exit 1
+            fi
+            if [[ -n "$FOLDER_ID" && -n "$PROJECT_ID" ]]; then
+                log_error "Cannot specify both --folder and --project. Choose one."
+                echo "Usage: $0 destroy-gcp --folder=FOLDER_ID    # Operate on all projects in folder"
+                echo "   or: $0 destroy-gcp --project=PROJECT_ID  # Operate on single project"
+                exit 1
+            fi
+            if [[ -n "$FOLDER_ID" ]]; then
+                validate_folder_id "$command_name"
+            fi
+            if [[ -n "$PROJECT_ID" ]]; then
+                validate_project_id "$command_name"
+            fi
+            ;;
+    esac
+}
+
+# Get all Tonic projects in a folder
+get_tonic_projects_in_folder() {
+    local folder_id=$1
+    gcloud projects list --folder="$folder_id" --filter="labels.$APPLICATION_LABEL" --format="value(projectId)" 2>/dev/null || echo ""
+}
+
+# Get all Tonic projects in organization (no folder restriction)
+get_all_tonic_projects_in_org() {
+    gcloud projects list --filter="labels.$APPLICATION_LABEL" --format="value(projectId)" 2>/dev/null || echo ""
+}
+
+# Get projects based on operation mode
+get_target_projects() {
+    case "$OPERATION_MODE" in
+        "folder")
+            get_tonic_projects_in_folder "$FOLDER_ID"
+            ;;
+        "project")
+            echo "$PROJECT_ID"
+            ;;
+    # organization intentionally not supported for destroy-gcp
+        *)
+            log_error "Invalid operation mode: $OPERATION_MODE"
+            exit 1
+            ;;
+    esac
+}
+
+# Generate unique project ID with suffix
+generate_project_id() {
+    local base_name=$1
+    local timestamp=$(date +%s | tail -c 6)  # Last 6 digits of timestamp
+    echo "${base_name}-${timestamp}"
+}
+
+# Get build service account for a project
+get_build_service_account() {
+    local project_id=$1
+    local project_number
+    project_number=$(gcloud projects describe "$project_id" --format="value(projectNumber)" 2>/dev/null)
+    if [ $? -ne 0 ]; then
+        log_error "Cannot access project $project_id. Check project ID and permissions."
+        return 1
+    fi
     echo "${project_number}@cloudbuild.gserviceaccount.com"
+}
+
+# Create a new GCP project in a folder
+create_project() {
+    local project_id=$1
+    local project_name=$2
+    local folder_id=$3
+    
+    log_info "Creating project: $project_id ($project_name)"
+    
+    # Create project
+    gcloud projects create "$project_id" \
+        --name="$project_name" \
+        --folder="$folder_id" \
+        --labels="$APPLICATION_LABEL" || {
+        log_error "Failed to create project $project_id"
+        return 1
+    }
+    
+    # Link billing account (if available)
+    local billing_account
+    billing_account=$(gcloud billing accounts list --filter="open=true" --limit=1 --format="value(name)" 2>/dev/null || echo "")
+    if [[ -n "$billing_account" ]]; then
+        log_info "Linking billing account to $project_id"
+        gcloud billing projects link "$project_id" --billing-account="$billing_account" || {
+            log_warning "Could not link billing account - you may need to do this manually"
+        }
+    else
+        log_warning "No billing account found - you may need to link billing manually"
+    fi
+    
+    log_success "Project $project_id created successfully"
+}
+
+# Create a new GCP project at organization level (no folder)
+create_project_org_level() {
+    local project_id=$1
+    local project_name=$2
+    
+    log_info "Creating project at organization level: $project_id ($project_name)"
+    
+    # Create project without folder
+    gcloud projects create "$project_id" \
+        --name="$project_name" \
+        --labels="$APPLICATION_LABEL" || {
+        log_error "Failed to create project $project_id"
+        return 1
+    }
+    
+    # Link billing account (if available)
+    local billing_account
+    billing_account=$(gcloud billing accounts list --filter="open=true" --limit=1 --format="value(name)" 2>/dev/null || echo "")
+    if [[ -n "$billing_account" ]]; then
+        log_info "Linking billing account to $project_id"
+        gcloud billing projects link "$project_id" --billing-account="$billing_account" || {
+            log_warning "Could not link billing account - you may need to do this manually"
+        }
+    else
+        log_warning "No billing account found - you may need to link billing manually"
+    fi
+    
+    log_success "Project $project_id created successfully at organization level"
+}
+
+# Enable required APIs for a project
+enable_apis() {
+    local project_id=$1
+    
+    log_info "Enabling required APIs for $project_id..."
+    gcloud services enable cloudbuild.googleapis.com --project="$project_id"
+    gcloud services enable run.googleapis.com --project="$project_id"
+    gcloud services enable containerregistry.googleapis.com --project="$project_id"
+    gcloud services enable secretmanager.googleapis.com --project="$project_id"
+    gcloud services enable cloudbuildgithub.googleapis.com --project="$project_id"
+    
+    log_success "APIs enabled for $project_id"
+}
+
+# Set up IAM permissions for Cloud Build
+setup_build_permissions() {
+    local project_id=$1
+    local build_sa
+    build_sa=$(get_build_service_account "$project_id")
+    
+    log_info "Setting up IAM permissions for $project_id..."
+    log_info "Cloud Build Service Account: $build_sa"
+    
+    # Grant required permissions
+    gcloud projects add-iam-policy-binding "$project_id" \
+        --member="serviceAccount:$build_sa" \
+        --role="roles/run.admin"
+    
+    gcloud projects add-iam-policy-binding "$project_id" \
+        --member="serviceAccount:$build_sa" \
+        --role="roles/secretmanager.secretAccessor"
+    
+    gcloud projects add-iam-policy-binding "$project_id" \
+        --member="serviceAccount:$build_sa" \
+        --role="roles/iam.serviceAccountUser"
+    
+    log_success "IAM permissions configured for $project_id"
 }
 
 # Function to create secret safely
@@ -94,148 +381,214 @@ create_secret_with_placeholder() {
     log_success "Secret $secret_name configured with placeholder"
 }
 
-setup_command() {
-    echo "🚀 Setting up GCP CI/CD Pipeline for Tonic"
-    echo "=========================================="
-    echo "Project ID: $PROJECT_ID"
-    echo "Region: $REGION"
-    echo "Service: $SERVICE_NAME"
-    echo "Repository: $REPO_OWNER/$REPO_NAME"
-    echo ""
-
-    check_gcloud
-
-    # Set project
-    log_info "Setting GCP project..."
-    gcloud config set project $PROJECT_ID
-
+# Helper function to setup infrastructure for a project
+setup_project_infrastructure() {
+    local project_id="$1"
+    local env_type="$2"
+    
+    log_info "Setting up infrastructure for $project_id ($env_type)..."
+    
+    # Set current project
+    gcloud config set project "$project_id"
+    
     # Enable required APIs
     log_info "Enabling required APIs..."
     gcloud services enable cloudbuild.googleapis.com
     gcloud services enable run.googleapis.com
     gcloud services enable containerregistry.googleapis.com
     gcloud services enable secretmanager.googleapis.com
-
+    
     # Get Cloud Build service account email
     BUILD_SA=$(get_build_service_account)
     log_info "Cloud Build Service Account: $BUILD_SA"
-
+    
     # Grant required permissions to Cloud Build service account
     log_info "Granting permissions to Cloud Build service account..."
-
+    
     # Cloud Run permissions
-    gcloud projects add-iam-policy-binding $PROJECT_ID \
+    gcloud projects add-iam-policy-binding "$project_id" \
         --member="serviceAccount:$BUILD_SA" \
         --role="roles/run.admin"
-
-    # Secret Manager permissions  
-    gcloud projects add-iam-policy-binding $PROJECT_ID \
+    
+    # Secret Manager permissions
+    gcloud projects add-iam-policy-binding "$project_id" \
         --member="serviceAccount:$BUILD_SA" \
         --role="roles/secretmanager.secretAccessor"
-
+    
     # Service Account User (to deploy to Cloud Run)
-    gcloud projects add-iam-policy-binding $PROJECT_ID \
+    gcloud projects add-iam-policy-binding "$project_id" \
         --member="serviceAccount:$BUILD_SA" \
         --role="roles/iam.serviceAccountUser"
+    
+    log_success "Infrastructure setup complete for $project_id"
+}
 
-    # Source Repository Admin (to push version changes back)
-    gcloud projects add-iam-policy-binding $PROJECT_ID \
-        --member="serviceAccount:$BUILD_SA" \
-        --role="roles/source.admin"
-
-    echo ""
-    log_info "Setting up secrets in Secret Manager with placeholder values..."
-
-    # Initialize temp file for logging
-    > /tmp/gcp_secrets_to_update.txt
-
-    # Create secrets with placeholder values from .env.example
-    create_secret_with_placeholder "working-spreadsheet-id" "your-development-spreadsheet-id-here" "Google Sheets ID for Tonic app" "Google Sheets ID"
-    create_secret_with_placeholder "google-service-account-email" "your-service-account@your-project.iam.gserviceaccount.com" "Google service account email" "Service Account Email"
+# Helper function to setup secrets for a project
+setup_project_secrets() {
+    local project_id="$1"
+    local env_type="$2"
+    
+    log_info "Setting up secrets for $project_id ($env_type)..."
+    
+    # Set current project
+    gcloud config set project "$project_id"
+    
+    # Create secrets with placeholder values
+    create_secret_with_placeholder "working-spreadsheet-id" "your-$env_type-spreadsheet-id-here" "Google Sheets ID for Tonic app" "Google Sheets ID"
+    create_secret_with_placeholder "google-service-account-email" "your-service-account@$project_id.iam.gserviceaccount.com" "Google service account email" "Service Account Email"
     create_secret_with_placeholder "google-private-key" "-----BEGIN PRIVATE KEY-----
-...your-private-key-content...
+...your-private-key-content-for-$env_type...
 -----END PRIVATE KEY-----" "Google service account private key" "Service Account Private Key"
-    create_secret_with_placeholder "operator-email" "your-operator-email@domain.com" "Operator email for admin access" "Operator Email"
+    create_secret_with_placeholder "operator-email" "your-operator-email-$env_type@domain.com" "Operator email for admin access" "Operator Email"
     create_secret_with_placeholder "rock-band-class-ids" "G001,G002" "Rock Band class IDs for waitlist handling" "Rock Band Class IDs"
+    
+    log_success "Secrets setup complete for $project_id"
+}
 
-    # GitHub token for pushing version increments back to repo
-    create_secret_with_placeholder "github-token" "your-github-personal-access-token-here" "GitHub token for repo access" "GitHub Personal Access Token"
+# Helper function to setup build triggers for a project
+setup_build_triggers() {
+    local project_id="$1"
+    local env_type="$2"
+    
+    log_info "Setting up build triggers for $project_id ($env_type)..."
+    
+    # Set current project
+    gcloud config set project "$project_id"
+    
+    if [[ "$env_type" == "staging" ]]; then
+        # Staging trigger: semver tags only
+        gcloud builds triggers create github \
+            --repo-name="$REPO_NAME" \
+            --repo-owner="$REPO_OWNER" \
+            --tag-pattern="^v[0-9]+\.[0-9]+\.[0-9]+$" \
+            --build-config=src/build/cloudbuild.yaml \
+            --description="Tonic staging deployment (semver tags)" \
+            --name="tonic-staging-deploy" \
+            --substitutions="_ENV_TYPE=staging,_DEPLOY_REGION=$REGION" || log_warning "Trigger may already exist"
+    else
+        # Production trigger: main branch pushes
+        gcloud builds triggers create github \
+            --repo-name="$REPO_NAME" \
+            --repo-owner="$REPO_OWNER" \
+            --branch-pattern="^main$" \
+            --build-config=src/build/cloudbuild.yaml \
+            --description="Tonic production deployment (main branch)" \
+            --name="tonic-production-deploy" \
+            --substitutions="_ENV_TYPE=production,_DEPLOY_REGION=$REGION" || log_warning "Trigger may already exist"
+    fi
+    
+    log_success "Build triggers setup complete for $project_id"
+}
 
+setup_gcp_command() {
+    validate_operation_mode
+    check_gcloud
+
+    if [[ "$OPERATION_MODE" == "folder" ]]; then
+        echo "🚀 Setting up GCP CI/CD Pipeline for Tonic (Folder-based)"
+        echo "=========================================================="
+        echo "Folder ID: $FOLDER_ID"
+        echo "Region: $REGION"
+        echo "Repository: $REPO_OWNER/$REPO_NAME"
+        echo ""
+        echo "This will create:"
+        echo "  • Staging project in folder (triggers on semver tags)"
+        echo "  • Production project in folder (triggers on main branch pushes)"
+        echo "  • Environment-isolated secrets for each project"
+        echo "  • Proper IAM permissions and Cloud Build triggers"
+        echo ""
+        
+        # Create staging project
+        log_info "Creating staging project in folder..."
+        STAGING_PROJECT_ID=$(create_project_folder_level "tonic-staging" "$FOLDER_ID")
+        log_success "Created staging project: $STAGING_PROJECT_ID"
+        
+        # Create production project  
+        log_info "Creating production project in folder..."
+        PRODUCTION_PROJECT_ID=$(create_project_folder_level "tonic-production" "$FOLDER_ID")
+        log_success "Created production project: $PRODUCTION_PROJECT_ID"
+        
+    else
+        echo "🚀 Setting up GCP CI/CD Pipeline for Tonic (Organization-level)"
+        echo "==============================================================="
+        echo "Region: $REGION"
+        echo "Repository: $REPO_OWNER/$REPO_NAME"
+        echo ""
+        echo "This will create:"
+        echo "  • Staging project in organization (triggers on semver tags)"
+        echo "  • Production project in organization (triggers on main branch pushes)"
+        echo "  • Environment-isolated secrets for each project"
+        echo "  • Proper IAM permissions and Cloud Build triggers"
+        echo ""
+        
+        # Create staging project
+        log_info "Creating staging project in organization..."
+        STAGING_PROJECT_ID=$(create_project_org_level "tonic-staging")
+        log_success "Created staging project: $STAGING_PROJECT_ID"
+        
+        # Create production project
+        log_info "Creating production project in organization..."
+        PRODUCTION_PROJECT_ID=$(create_project_org_level "tonic-production")
+        log_success "Created production project: $PRODUCTION_PROJECT_ID"
+    fi
+
+    # Setup staging project
     echo ""
-    log_info "Creating Cloud Build trigger..."
+    log_info "Setting up staging project ($STAGING_PROJECT_ID)..."
+    setup_project_infrastructure "$STAGING_PROJECT_ID" "staging"
+    setup_project_secrets "$STAGING_PROJECT_ID" "staging"
+    setup_build_triggers "$STAGING_PROJECT_ID" "staging"
 
-    # Create build trigger for dev branch
-    gcloud builds triggers create github \
-        --repo-name=$REPO_NAME \
-        --repo-owner=$REPO_OWNER \
-        --branch-pattern=dev \
-        --build-config=src/build/cloudbuild.yaml \
-        --description="Auto CI/CD for dev branch: Test → Deploy → Increment Version" \
-        --name="tonic-dev-cicd" || log_warning "Trigger may already exist"
+    # Setup production project
+    echo ""
+    log_info "Setting up production project ($PRODUCTION_PROJECT_ID)..."
+    setup_project_infrastructure "$PRODUCTION_PROJECT_ID" "production"
+    setup_project_secrets "$PRODUCTION_PROJECT_ID" "production"
+    setup_build_triggers "$PRODUCTION_PROJECT_ID" "production"
 
     echo ""
     log_success "GCP CI/CD Setup Complete!"
     echo "=============================="
     echo ""
-    echo "📋 What was configured:"
-    echo "  ✅ APIs enabled (Cloud Build, Cloud Run, etc.)"
-    echo "  ✅ IAM permissions for Cloud Build service account"
-    echo "  ✅ Secrets created in Secret Manager with placeholder values"
-    echo "  ✅ Build trigger created for dev branch"
-    echo ""
-
-    # Display secrets that need to be updated
-    log_warning "IMPORTANT: Update these secrets in Google Cloud Console"
-    echo "============================================================="
-    echo ""
-    echo "Go to: https://console.cloud.google.com/security/secret-manager?project=$PROJECT_ID"
-    echo ""
-    if [[ -f "/tmp/gcp_secrets_to_update.txt" ]]; then
-        echo "The following secrets were created with PLACEHOLDER values and MUST be updated:"
-        echo ""
-        
-        while IFS='|' read -r display_name secret_name placeholder_value; do
-            echo "🔑 $display_name"
-            echo "   Secret Name: $secret_name"
-            echo "   Current Value: $placeholder_value"
-            echo "   Action: Click on '$secret_name' → 'New Version' → Update with real value"
-            echo ""
-        done < "/tmp/gcp_secrets_to_update.txt"
-        
-        # Clean up temp file
-        rm -f "/tmp/gcp_secrets_to_update.txt"
-        
-        log_warning "THE CI/CD PIPELINE WILL FAIL until these placeholder values are replaced!"
-        echo ""
+    
+    if [[ "$OPERATION_MODE" == "folder" ]]; then
+        echo "📋 Created in folder $FOLDER_ID:"
     else
-        echo "No secrets log file found - you may need to update secrets manually."
+        echo "📋 Created in organization:"
     fi
+    echo "  ✅ Staging project: $STAGING_PROJECT_ID"
+    echo "  ✅ Production project: $PRODUCTION_PROJECT_ID"
+    echo "  ✅ APIs enabled for both projects"
+    echo "  ✅ IAM permissions configured"
+    echo "  ✅ Secrets created with placeholder values"
+    echo "  ✅ Build triggers configured"
+    echo ""
 
+    log_warning "IMPORTANT: Update secrets in both projects"
+    echo "=========================================="
+    echo ""
+    echo "Staging Console:  https://console.cloud.google.com/security/secret-manager?project=$STAGING_PROJECT_ID"
+    echo "Production Console: https://console.cloud.google.com/security/secret-manager?project=$PRODUCTION_PROJECT_ID"
+    echo ""
+    echo "🔑 Secrets to update in BOTH projects:"
+    echo "  • working-spreadsheet-id"
+    echo "  • google-service-account-email"
+    echo "  • google-private-key"
+    echo "  • operator-email"
+    echo "  • rock-band-class-ids"
+    echo ""
+    
     echo "🔄 CI/CD Workflow:"
-    echo "  1. Push to dev branch"
-    echo "  2. Cloud Build triggers automatically"
-    echo "  3. Runs unit tests"
-    echo "  4. Builds Docker image"
-    echo "  5. Deploys to Cloud Run"
-    echo "  6. Increments patch version"
-    echo "  7. Commits version back to repo"
+    echo "  • Staging: Triggered by semver tags (v1.2.3)"
+    echo "  • Production: Triggered by pushes to main branch"
+    echo "  • GitHub Actions handles testing and versioning on dev branch"
     echo ""
-    echo "🔗 Useful links:"
-    echo "  • Secret Manager: https://console.cloud.google.com/security/secret-manager?project=$PROJECT_ID"
-    echo "  • Cloud Build: https://console.cloud.google.com/cloud-build/builds?project=$PROJECT_ID"
-    echo "  • Cloud Run: https://console.cloud.google.com/run?project=$PROJECT_ID"
-    echo ""
+    
     echo "🎯 Next steps:"
-    echo "  1. ⚠️  FIRST: Update all secrets in Secret Manager console (see above)"
-    echo "  2. Push a change to the dev branch to test the pipeline"
-    echo "  3. Monitor the build in Cloud Build console"
-    echo "  4. Check the deployed service in Cloud Run console"
-    echo "  5. Verify version increment in your repository"
+    echo "  1. ⚠️  Update secrets in BOTH projects (use console links above)"
+    echo "  2. Push to dev branch to trigger GitHub Actions → versioning → staging deploy"
+    echo "  3. Merge to main to trigger production deploy"
     echo ""
-    echo "💡 Tips:"
-    echo "  • All secrets were created with placeholder values - update them before deploying"
-    echo "  • Use 'Create New Version' in Secret Manager to update secret values"
-    echo "  • The GitHub token needs 'repo' scope for version auto-increment to work"
 }
 
 cleanup_command() {
@@ -749,30 +1102,573 @@ status_command() {
 show_usage() {
     echo "GCP CI/CD Management Script for Tonic"
     echo ""
-    echo "Usage:"
-    echo "  $0 setup [PROJECT_ID]   - Create all CI/CD infrastructure"
-    echo "  $0 cleanup [PROJECT_ID] - Remove CI/CD only, preserve services"  
-    echo "  $0 destroy [PROJECT_ID] - Remove everything including services"
-    echo "  $0 status [PROJECT_ID]  - Show detailed status of all resources"
+    echo "Setup Commands:"
+    echo "  $0 setup-gcp --folder=FOLDER_ID         - Create staging + production projects in folder"
+    echo "  $0 setup-gcp --organization             - Create staging + production projects at org level"
     echo ""
-    echo "Commands:"
-    echo "  setup   - Enable APIs, create IAM permissions, secrets, and build triggers"
-    echo "  cleanup - Remove CI/CD infrastructure but keep running services"
-    echo "  destroy - Complete destruction of all resources (IRREVERSIBLE)"
-    echo "  status  - Comprehensive readout of all GCP assets and their state"
+    echo "Management Commands:"
+    echo "  $0 status-gcp --folder=FOLDER_ID        - Status of all Tonic projects in folder"
+    echo "  $0 status-gcp --project=PROJECT_ID      - Status of single project"
+    echo "  $0 status-gcp --organization            - Status of all Tonic projects in organization"
+    echo ""
+    echo "  $0 cleanup-gcp --folder=FOLDER_ID       - Clean all Tonic projects in folder"
+    echo "  $0 cleanup-gcp --project=PROJECT_ID     - Clean single project"
+    echo "  $0 cleanup-gcp --organization           - Clean all Tonic projects in organization"
+    echo ""
+    echo "  $0 destroy-gcp --folder=FOLDER_ID       - DESTROY all Tonic projects in folder"
+    echo "  $0 destroy-gcp --project=PROJECT_ID     - DESTROY single project"
+    echo ""
+    echo "Permission Management:"
+    echo "  $0 update-permissions --project=PROJECT_ID --user=USER_EMAIL"
     echo ""
     echo "Examples:"
-    echo "  $0 setup tonic-467721              # Setup CI/CD for project"
-    echo "  $0 cleanup                         # Cleanup using default project"
-    echo "  $0 destroy tonic-production        # Destroy everything in production"
-    echo "  $0 status                          # Check current resource status"
+    echo "  $0 setup-gcp --folder=123456789"
+    echo "  $0 setup-gcp --organization"
+    echo "  $0 status-gcp --project=tonic-staging-abcdef"
+    echo "  $0 cleanup-gcp --folder=123456789"
+    echo "  $0 destroy-gcp --project=tonic-production-abcdef"
+    echo "  $0 update-permissions --project=tonic-staging-abcdef --user=dev@company.com"
+}
+
+# Create all required secrets for a project
+create_project_secrets() {
+    local project_id=$1
+    local env_type=$2  # 'staging' or 'production'
+    
+    log_info "Setting up secrets for $project_id ($env_type)..."
+    
+    # Initialize temp file for logging
+    > "/tmp/gcp_secrets_to_update_${project_id}.txt"
+    
+    # Create secrets with placeholder values - same names for both environments
+    create_secret_with_placeholder "$project_id" "working-spreadsheet-id" "your-${env_type}-spreadsheet-id-here" "Google Sheets ID for $env_type" "Google Sheets ID ($env_type)"
+    create_secret_with_placeholder "$project_id" "google-service-account-email" "your-service-account@${project_id}.iam.gserviceaccount.com" "Google service account email for $env_type" "Service Account Email ($env_type)"
+    create_secret_with_placeholder "$project_id" "google-private-key" "-----BEGIN PRIVATE KEY-----
+...your-${env_type}-private-key-content...
+-----END PRIVATE KEY-----" "Google service account private key for $env_type" "Service Account Private Key ($env_type)"
+    create_secret_with_placeholder "$project_id" "operator-email" "your-operator-email@domain.com" "Operator email for admin access ($env_type)" "Operator Email ($env_type)"
+    create_secret_with_placeholder "$project_id" "rock-band-class-ids" "G001,G002" "Rock Band class IDs for waitlist handling ($env_type)" "Rock Band Class IDs ($env_type)"
+    
+    log_success "Secrets created for $project_id ($env_type)"
+}
+
+# Create Cloud Build triggers
+create_build_triggers() {
+    local staging_project=$1
+    local production_project=$2
+    
+    log_info "Creating Cloud Build triggers..."
+    
+    # Staging trigger - only strict semver tags
+    log_info "Creating staging trigger for $staging_project..."
+    gcloud builds triggers create github \
+        --project="$staging_project" \
+        --repo-name="$REPO_NAME" \
+        --repo-owner="$REPO_OWNER" \
+        --tag-pattern='^v[0-9]+\.[0-9]+\.[0-9]+$' \
+        --build-config=src/build/cloudbuild.yaml \
+        --description="Tonic Staging - Triggers on semver tags only" \
+        --name="tonic-staging-deploy" \
+        --substitutions="_DEPLOY_REGION=$REGION,_ENV_TYPE=staging" || log_warning "Staging trigger may already exist"
+    
+    # Production trigger - all pushes to main
+    log_info "Creating production trigger for $production_project..."
+    gcloud builds triggers create github \
+        --project="$production_project" \
+        --repo-name="$REPO_NAME" \
+        --repo-owner="$REPO_OWNER" \
+        --branch-pattern="main" \
+        --build-config=src/build/cloudbuild.yaml \
+        --description="Tonic Production - Triggers on main branch pushes" \
+        --name="tonic-production-deploy" \
+        --substitutions="_DEPLOY_REGION=$REGION,_ENV_TYPE=production" || log_warning "Production trigger may already exist"
+    
+    log_success "Build triggers created"
+}
+
+# Status command for folder-based operations
+status_gcp_command() {
+    validate_operation_mode
+    check_gcloud
+    
+    if [[ "$OPERATION_MODE" == "folder" ]]; then
+        echo "📊 GCP Resources Status for Tonic (Folder-based)"
+        echo "================================================"
+        echo "Folder ID: $FOLDER_ID"
+        echo "Region: $REGION"
+        echo ""
+    elif [[ "$OPERATION_MODE" == "project" ]]; then
+        echo "📊 GCP Resources Status for Tonic (Single Project)"
+        echo "=================================================="
+        echo "Project ID: $PROJECT_ID"
+        echo "Region: $REGION"
+        echo ""
+    else
+        echo "📊 GCP Resources Status for Tonic (Organization-wide)"
+        echo "====================================================="
+        echo "Region: $REGION"
+        echo ""
+    fi
+    
+    # Get target projects using flexible function
+    local tonic_projects
+    tonic_projects=$(get_target_projects)
+    
+    if [[ -z "$tonic_projects" ]]; then
+        if [[ "$OPERATION_MODE" == "folder" ]]; then
+            log_info "No Tonic projects found in folder $FOLDER_ID"
+            echo ""
+            echo "🎯 To create projects:"
+            echo "  $0 setup-gcp --folder=$FOLDER_ID"
+        elif [[ "$OPERATION_MODE" == "project" ]]; then
+            log_info "Project $PROJECT_ID not found or not accessible"
+        else
+            log_info "No Tonic projects found in organization"
+            echo ""
+            echo "🎯 To create projects:"
+            echo "  $0 setup-gcp"
+        fi
+        return 0
+    fi
+    
+    echo "📋 Found Tonic projects:"
+    echo "$tonic_projects" | while read -r project_id; do
+        if [[ -n "$project_id" ]]; then
+            local env_type="Unknown"
+            if [[ "$project_id" == *"staging"* ]]; then
+                env_type="Staging"
+            elif [[ "$project_id" == *"production"* ]]; then
+                env_type="Production"
+            fi
+            echo "  • $project_id ($env_type)"
+        fi
+    done
     echo ""
-    echo "Default project: $PROJECT_ID"
+    
+    # Display status for each project
+    echo "$tonic_projects" | while read -r project_id; do
+        if [[ -n "$project_id" ]]; then
+            local env_type="Unknown"
+            if [[ "$project_id" == *"staging"* ]]; then
+                env_type="Staging"
+            elif [[ "$project_id" == *"production"* ]]; then
+                env_type="Production"
+            fi
+            
+            echo "═══ $project_id ($env_type) ═══"
+            
+            # Quick status check for this project
+            local build_sa
+            build_sa=$(get_build_service_account "$project_id" 2>/dev/null || echo "NOT_AVAILABLE")
+            
+            # Check APIs
+            local apis_enabled=0
+            local total_apis=4
+            local api_names=("cloudbuild.googleapis.com" "run.googleapis.com" "containerregistry.googleapis.com" "secretmanager.googleapis.com")
+            
+            for api in "${api_names[@]}"; do
+                if gcloud services list --enabled --project="$project_id" --filter="name:$api" --format="value(name)" 2>/dev/null | grep -q "$api"; then
+                    apis_enabled=$((apis_enabled + 1))
+                fi
+            done
+            
+            # Check secrets
+            local secrets_count=0
+            local total_secrets=5
+            local secret_names=("working-spreadsheet-id" "google-service-account-email" "google-private-key" "operator-email" "rock-band-class-ids")
+            
+            for secret in "${secret_names[@]}"; do
+                if gcloud secrets describe "$secret" --project="$project_id" >/dev/null 2>&1; then
+                    secrets_count=$((secrets_count + 1))
+                fi
+            done
+            
+            # Check Cloud Run services
+            local services
+            services=$(gcloud run services list --region="$REGION" --project="$project_id" --format="value(metadata.name)" 2>/dev/null || echo "")
+            local service_count
+            service_count=$(echo "$services" | grep -c . 2>/dev/null || echo "0")
+            
+            # Check build triggers
+            local triggers
+            triggers=$(gcloud builds triggers list --project="$project_id" --format="value(name)" 2>/dev/null || echo "")
+            local trigger_count
+            trigger_count=$(echo "$triggers" | grep -c . 2>/dev/null || echo "0")
+            
+            # Display summary
+            echo "📊 Quick Status:"
+            echo "  • APIs Enabled: $apis_enabled/$total_apis"
+            echo "  • Secrets: $secrets_count/$total_secrets"
+            echo "  • Cloud Run Services: $service_count"
+            echo "  • Build Triggers: $trigger_count"
+            echo "  • Build Service Account: $build_sa"
+            
+            # Status indicator
+            if [[ $apis_enabled -eq $total_apis ]] && [[ $secrets_count -eq $total_secrets ]] && [[ $trigger_count -gt 0 ]]; then
+                log_success "READY"
+            elif [[ $apis_enabled -gt 0 ]] || [[ $secrets_count -gt 0 ]]; then
+                log_warning "PARTIAL SETUP"
+            else
+                log_info "NOT CONFIGURED"
+            fi
+            
+            echo "🔗 Console Links:"
+            echo "  • Secret Manager: https://console.cloud.google.com/security/secret-manager?project=$project_id"
+            echo "  • Cloud Build: https://console.cloud.google.com/cloud-build/builds?project=$project_id"
+            echo "  • Cloud Run: https://console.cloud.google.com/run?project=$project_id"
+            echo "  • Triggers: https://console.cloud.google.com/cloud-build/triggers?project=$project_id"
+            echo ""
+        fi
+    done
+}
+
+# Cleanup command for folder-based operations
+cleanup_gcp_command() {
+    validate_operation_mode
+    check_gcloud
+    
+    if [[ "$OPERATION_MODE" == "folder" ]]; then
+        echo "🧹 Cleaning up GCP CI/CD Infrastructure (Folder-based)"
+        echo "======================================================"
+        echo "Folder ID: $FOLDER_ID"
+        echo ""
+        echo "This will remove CI/CD infrastructure from ALL Tonic projects in the folder"
+        echo "but preserve running services and data."
+    elif [[ "$OPERATION_MODE" == "project" ]]; then
+        echo "🧹 Cleaning up GCP CI/CD Infrastructure (Single Project)"
+        echo "========================================================"
+        echo "Project ID: $PROJECT_ID"
+        echo ""
+        echo "This will remove CI/CD infrastructure from the specified project"
+        echo "but preserve running services and data."
+    else
+        echo "🧹 Cleaning up GCP CI/CD Infrastructure (Organization-wide)"
+        echo "==========================================================="
+        echo ""
+        echo "This will remove CI/CD infrastructure from ALL Tonic projects in the organization"
+        echo "but preserve running services and data."
+    fi
+    
+    # Get target projects using flexible function
+    local tonic_projects
+    tonic_projects=$(get_target_projects)
+    
+    if [[ -z "$tonic_projects" ]]; then
+        if [[ "$OPERATION_MODE" == "folder" ]]; then
+            log_info "No Tonic projects found in folder $FOLDER_ID"
+        elif [[ "$OPERATION_MODE" == "project" ]]; then
+            log_info "Project $PROJECT_ID not found or not accessible"
+        else
+            log_info "No Tonic projects found in organization"
+        fi
+        return 0
+    fi
+    
+    echo "📋 Projects that will be cleaned up:"
+    echo "$tonic_projects" | while read -r project_id; do
+        if [[ -n "$project_id" ]]; then
+            echo "  • $project_id"
+        fi
+    done
+    echo ""
+    
+    confirm_action "⚠️  This will remove IAM permissions, secrets, and build triggers from all projects."
+    
+    # Clean up each project
+    echo "$tonic_projects" | while read -r project_id; do
+        if [[ -n "$project_id" ]]; then
+            log_info "Cleaning up $project_id..."
+            
+            # Get build service account
+            local build_sa
+            build_sa=$(get_build_service_account "$project_id" 2>/dev/null || echo "NOT_AVAILABLE")
+            
+            if [[ "$build_sa" != "NOT_AVAILABLE" ]]; then
+                # Remove IAM permissions
+                log_info "  Removing IAM permissions..."
+                gcloud projects remove-iam-policy-binding "$project_id" \
+                    --member="serviceAccount:$build_sa" \
+                    --role="roles/run.admin" 2>/dev/null || true
+                
+                gcloud projects remove-iam-policy-binding "$project_id" \
+                    --member="serviceAccount:$build_sa" \
+                    --role="roles/secretmanager.secretAccessor" 2>/dev/null || true
+                
+                gcloud projects remove-iam-policy-binding "$project_id" \
+                    --member="serviceAccount:$build_sa" \
+                    --role="roles/iam.serviceAccountUser" 2>/dev/null || true
+            fi
+            
+            # Delete secrets
+            log_info "  Deleting secrets..."
+            local secret_names=("working-spreadsheet-id" "google-service-account-email" "google-private-key" "operator-email" "rock-band-class-ids")
+            for secret in "${secret_names[@]}"; do
+                gcloud secrets delete "$secret" --project="$project_id" --quiet 2>/dev/null || true
+            done
+            
+            # Delete build triggers
+            log_info "  Deleting build triggers..."
+            local triggers
+            triggers=$(gcloud builds triggers list --project="$project_id" --format="value(name)" 2>/dev/null || echo "")
+            if [[ -n "$triggers" ]]; then
+                echo "$triggers" | while read -r trigger_name; do
+                    if [[ -n "$trigger_name" ]]; then
+                        gcloud builds triggers delete "$trigger_name" --project="$project_id" --quiet 2>/dev/null || true
+                    fi
+                done
+            fi
+            
+            log_success "  Cleaned up $project_id"
+        fi
+    done
+    
+    echo ""
+    if [[ "$OPERATION_MODE" == "folder" ]]; then
+        log_success "Folder-based cleanup complete!"
+    elif [[ "$OPERATION_MODE" == "project" ]]; then
+        log_success "Project cleanup complete!"
+    else
+        log_success "Organization-wide cleanup complete!"
+    fi
+    echo ""
+    echo "📋 What was removed from all projects:"
+    echo "  ✅ IAM permissions for Cloud Build service accounts"
+    echo "  ✅ All secrets deleted from Secret Manager"
+    echo "  ✅ All build triggers deleted"
+    echo ""
+    echo "📋 What was preserved:"
+    echo "  • GCP APIs (left enabled)"
+    echo "  • Running Cloud Run services"
+    echo "  • Container images"
+    echo "  • Projects themselves"
+}
+
+# Destroy command for folder-based operations
+destroy_gcp_command() {
+    validate_operation_mode
+    check_gcloud
+    
+    if [[ "$OPERATION_MODE" == "folder" ]]; then
+        echo "💥 Destroying ALL GCP Resources (Folder-based)"
+        echo "==============================================="
+        echo "Folder ID: $FOLDER_ID"
+        echo ""
+        echo "⚠️  DANGER: This will PERMANENTLY DELETE all Tonic projects in the folder!"
+        echo "⚠️  This includes ALL data, services, and configurations!"
+    elif [[ "$OPERATION_MODE" == "project" ]]; then
+        echo "💥 Destroying GCP Project"
+        echo "========================="
+        echo "Project ID: $PROJECT_ID"
+        echo ""
+        echo "⚠️  DANGER: This will PERMANENTLY DELETE the specified project!"
+        echo "⚠️  This includes ALL data, services, and configurations!"
+    else
+        echo "💥 Destroying ALL GCP Resources (Organization-wide)"
+        echo "==================================================="
+        echo ""
+        echo "⚠️  DANGER: This will PERMANENTLY DELETE all Tonic projects in the organization!"
+        echo "⚠️  This includes ALL data, services, and configurations!"
+    fi
+    echo ""
+    
+    # Get target projects using flexible function
+    local tonic_projects
+    tonic_projects=$(get_target_projects)
+    
+    if [[ -z "$tonic_projects" ]]; then
+        if [[ "$OPERATION_MODE" == "folder" ]]; then
+            log_info "No Tonic projects found in folder $FOLDER_ID"
+        elif [[ "$OPERATION_MODE" == "project" ]]; then
+            log_info "Project $PROJECT_ID not found or not accessible"
+        else
+            log_info "No Tonic projects found in organization"
+        fi
+        return 0
+    fi
+    
+    echo "💀 Projects that will be PERMANENTLY DELETED:"
+    echo "$tonic_projects" | while read -r project_id; do
+        if [[ -n "$project_id" ]]; then
+            echo "  💥 $project_id"
+        fi
+    done
+    echo ""
+    echo "⚠️  This action CANNOT be undone!"
+    echo "⚠️  All data will be lost!"
+    echo "⚠️  All running applications will be stopped!"
+    echo ""
+    
+    # First confirmation
+    echo "Type 'DELETE' to confirm you want to destroy all projects:"
+    read -p "Confirmation: " -r
+    if [[ $REPLY != "DELETE" ]]; then
+        log_info "Operation cancelled by user"
+        return 0
+    fi
+    
+    # Second confirmation with project count
+    local project_count
+    project_count=$(echo "$tonic_projects" | grep -c . 2>/dev/null || echo "0")
+    echo ""
+    echo "You are about to PERMANENTLY DELETE $project_count projects."
+    echo "Type the exact number '$project_count' to proceed:"
+    read -p "Project count confirmation: " -r
+    if [[ $REPLY != "$project_count" ]]; then
+        log_info "Operation cancelled - incorrect project count"
+        return 0
+    fi
+    
+    # Final confirmation
+    confirm_action "💥 FINAL CONFIRMATION: DESTROY ALL PROJECTS?"
+    
+    # Delete each project entirely
+    echo "$tonic_projects" | while read -r project_id; do
+        if [[ -n "$project_id" ]]; then
+            log_info "Deleting project: $project_id"
+            if gcloud projects delete "$project_id" --quiet; then
+                log_success "  Deleted $project_id"
+            else
+                log_warning "  Failed to delete $project_id (may require manual intervention)"
+            fi
+        fi
+    done
+    
+    echo ""
+    log_success "💥 DESTRUCTION COMPLETE!"
+    echo "========================"
+    echo ""
+    echo "📋 What was DESTROYED:"
+    if [[ "$OPERATION_MODE" == "folder" ]]; then
+        echo "  💥 ALL Tonic projects in folder $FOLDER_ID"
+        echo "  💥 ALL resources within those projects"
+        echo "  💥 ALL data and configurations"
+        echo ""
+        echo "🔄 To start over:"
+        echo "  $0 setup-gcp --folder=$FOLDER_ID"
+    elif [[ "$OPERATION_MODE" == "project" ]]; then
+        echo "  💥 Project $PROJECT_ID"
+        echo "  💥 ALL resources within the project"
+        echo "  💥 ALL data and configurations"
+        echo ""
+        echo "🔄 To start over:"
+        echo "  $0 setup-gcp"
+    else
+        echo "  💥 ALL Tonic projects in organization"
+        echo "  💥 ALL resources within those projects"
+        echo "  💥 ALL data and configurations"
+        echo ""
+        echo "🔄 To start over:"
+        echo "  $0 setup-gcp"
+    fi
+}
+
+# Update user permissions function
+update_permissions_command() {
+    if [[ -z "$PROJECT_ID" ]] || [[ -z "$USER_EMAIL" ]]; then
+        log_error "Both project ID and user email are required"
+        echo "Usage: $0 update-permissions --project=PROJECT_ID --user=USER_EMAIL"
+        exit 1
+    fi
+    
+    echo "🔐 Updating User Permissions for Least-Privilege Access"
+    echo "======================================================"
+    echo "Project: $PROJECT_ID"
+    echo "User: $USER_EMAIL"
+    echo ""
+    echo "This will:"
+    echo "  • Remove roles/owner from the user"
+    echo "  • Grant roles/editor (general edit permissions)"
+    echo "  • Grant roles/iam.serviceAccountUser (service account usage)"
+    echo "  • NOT grant secret manager or billing permissions"
+    echo ""
+    
+    confirm_action "⚠️  This will modify IAM permissions for $USER_EMAIL on $PROJECT_ID."
+    
+    check_gcloud
+    
+    # Verify project exists
+    if ! gcloud projects describe "$PROJECT_ID" >/dev/null 2>&1; then
+        log_error "Project $PROJECT_ID not found or not accessible"
+        exit 1
+    fi
+    
+    # Check if user currently has owner role
+    local has_owner
+    has_owner=$(gcloud projects get-iam-policy "$PROJECT_ID" --format="json" 2>/dev/null | \
+        grep -c "user:$USER_EMAIL" | head -1 || echo "0")
+    
+    if [[ "$has_owner" == "0" ]]; then
+        log_warning "User $USER_EMAIL not found in project IAM policy"
+    fi
+    
+    # Remove owner role
+    log_info "Removing owner role from $USER_EMAIL..."
+    if gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
+        --member="user:$USER_EMAIL" \
+        --role="roles/owner" 2>/dev/null; then
+        log_success "  Owner role removed"
+    else
+        log_warning "  User may not have had owner role"
+    fi
+    
+    # Add editor role
+    log_info "Adding editor role to $USER_EMAIL..."
+    gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+        --member="user:$USER_EMAIL" \
+        --role="roles/editor"
+    
+    # Add service account user role
+    log_info "Adding service account user role to $USER_EMAIL..."
+    gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+        --member="user:$USER_EMAIL" \
+        --role="roles/iam.serviceAccountUser"
+    
+    echo ""
+    log_success "Permissions updated for $USER_EMAIL on $PROJECT_ID"
+    echo ""
+    echo "📋 Current roles for $USER_EMAIL:"
+    echo "  ✅ roles/editor - General resource management"
+    echo "  ✅ roles/iam.serviceAccountUser - Can use service accounts"
+    echo "  ❌ roles/secretmanager.* - No secret access"
+    echo "  ❌ roles/billing.* - No billing access"
+    echo ""
+    echo "💡 The user can now manage CI/CD and resources but cannot access secrets or billing."
+    echo ""
+    echo "🔗 Verify permissions at:"
+    echo "  https://console.cloud.google.com/iam-admin/iam?project=$PROJECT_ID"
 }
 
 # Main script logic
 case "${1:-}" in
+    setup-gcp)
+        parse_args "${@:2}"
+        setup_gcp_command
+        ;;
+    status-gcp)
+        parse_args "${@:2}"
+        status_gcp_command
+        ;;
+    cleanup-gcp)
+        parse_args "${@:2}"
+        cleanup_gcp_command
+        ;;
+    destroy-gcp)
+        parse_args "${@:2}"
+        destroy_gcp_command
+        ;;
+    update-permissions)
+        parse_args "${@:2}"
+        update_permissions_command
+        ;;
+    # Legacy commands (backwards compatibility)
     setup)
+        log_warning "Using legacy command. Consider using 'setup-gcp' instead."
+        if [[ -z "$2" ]]; then
+            log_error "Project ID is required for legacy setup"
+            echo "Usage: $0 setup PROJECT_ID"
+            exit 1
+        fi
+        PROJECT_ID="$2"
         setup_command
         ;;
     cleanup)
@@ -782,6 +1678,13 @@ case "${1:-}" in
         destroy_command
         ;;
     status)
+        log_warning "Using legacy command. Consider using 'status-gcp --project=PROJECT_ID' instead."
+        if [[ -z "$2" ]]; then
+            log_error "Project ID is required for legacy status"
+            echo "Usage: $0 status PROJECT_ID"
+            exit 1
+        fi
+        PROJECT_ID="$2"
         status_command
         ;;
     help|--help|-h)
