@@ -163,9 +163,9 @@ export class ViewModel {
     this.#updateLoginButtonState();
     this.#showLoginButton();
 
-    const storedCode = window.AccessCodeManager.getStoredAccessCode();
-    if (storedCode) {
-      await this.#attemptLoginWithCode(storedCode);
+    const storedAuthData = window.AccessCodeManager.getStoredAuthData();
+    if (storedAuthData) {
+      await this.#attemptLoginWithCode(storedAuthData.accessCode, storedAuthData.loginType);
       return;
     }
 
@@ -2160,38 +2160,31 @@ export class ViewModel {
     window.loginModalInstance = this.loginModal;
 
     // Get modal elements
-    const accessCodeInput = document.getElementById('modal-access-code');
+    const parentTab = document.getElementById('parent-login-tab');
+    const employeeTab = document.getElementById('employee-login-tab');
+    const parentSection = document.getElementById('parent-login-section');
+    const employeeSection = document.getElementById('employee-login-section');
+    const parentPhoneInput = document.getElementById('parent-phone-input');
+    const employeeCodeInput = document.getElementById('employee-access-code');
     const loginButton = document.getElementById('login-submit-btn');
 
-    if (!accessCodeInput || !loginButton) {
+    if (!parentTab || !employeeTab || !parentSection || !employeeSection || 
+        !parentPhoneInput || !employeeCodeInput || !loginButton) {
       console.warn('Login modal elements not found');
       return;
     }
 
-    // Only allow numeric input
-    accessCodeInput.addEventListener('input', (e) => {
-      // Remove any non-numeric characters
-      const numericValue = e.target.value.replace(/[^0-9]/g, '');
-      e.target.value = numericValue;
+    // Track current login type
+    this.currentLoginType = 'parent';
 
-      // Check if input is exactly 4 or 6 digits
-      const isValidLength = numericValue.length === 4 || numericValue.length === 6;
+    // Initialize login type switching
+    this.#initLoginTypeSwitching(parentTab, employeeTab, parentSection, employeeSection);
 
-      // Update MaterializeCSS validation classes
-      if (isValidLength) {
-        e.target.classList.add('valid');
-        e.target.classList.remove('invalid');
-        // Enable login button
-        loginButton.disabled = false;
-        loginButton.classList.remove('disabled');
-      } else {
-        e.target.classList.add('invalid');
-        e.target.classList.remove('valid');
-        // Disable login button
-        loginButton.disabled = true;
-        loginButton.classList.add('disabled');
-      }
-    });
+    // Initialize parent phone input
+    this.#initParentPhoneInput(parentPhoneInput, loginButton);
+
+    // Initialize employee access code input
+    this.#initEmployeeCodeInput(employeeCodeInput, loginButton);
 
     // Handle login button click
     loginButton.addEventListener('click', (e) => {
@@ -2199,42 +2192,297 @@ export class ViewModel {
       this.#handleLogin();
     });
 
-    // Clear input when modal opens
-    modalElement.addEventListener('modal-open', () => {
-      accessCodeInput.value = '';
-      accessCodeInput.classList.remove('valid', 'invalid');
-      // Initially disable login button
-      loginButton.disabled = true;
-      loginButton.classList.add('disabled');
-      accessCodeInput.focus();
+    // Clear inputs when modal opens - use proper Materialize events
+    modalElement.addEventListener('modal:opened', () => {
+      console.log('Modal opened - resetting login modal');
+      this.#resetLoginModal(parentPhoneInput, employeeCodeInput, loginButton);
+      setTimeout(() => {
+        this.#focusCurrentInput();
+        // Ensure validation runs after reset
+        this.#validateCurrentInput();
+      }, 100); // Small delay to ensure modal is fully rendered
     });
 
-    // Reset button state when modal closes
-    modalElement.addEventListener('modal-close', () => {
-      accessCodeInput.value = '';
-      accessCodeInput.classList.remove('valid', 'invalid');
-      // Disable login button when modal closes
-      loginButton.disabled = true;
-      loginButton.classList.add('disabled');
+    // Reset state when modal closes
+    modalElement.addEventListener('modal:closed', () => {
+      console.log('Modal closed - resetting login modal');
+      this.#resetLoginModal(parentPhoneInput, employeeCodeInput, loginButton);
     });
 
-    // Attach keyboard handlers using the centralized utility
+    // Attach keyboard handlers
     ModalKeyboardHandler.attachKeyboardHandlers(modalElement, {
       allowEscape: true,
       allowEnter: true,
       onConfirm: (event) => {
-        // Handle Enter key press for login
         console.log('Login modal: Enter key pressed');
-        this.#handleLogin();
+        if (!loginButton.disabled) {
+          this.#handleLogin();
+        }
       },
       onCancel: (event) => {
-        // Handle ESC key press for login
         console.log('Login modal: ESC key pressed');
         this.loginModal.close();
       }
     });
 
     console.log('Login modal initialized successfully');
+  }
+
+  /**
+   * Initialize login type switching functionality
+   */
+  #initLoginTypeSwitching(parentTab, employeeTab, parentSection, employeeSection) {
+    // Parent tab click handler
+    parentTab.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (this.currentLoginType !== 'parent') {
+        this.currentLoginType = 'parent';
+        
+        // Update tab appearance
+        parentTab.classList.remove('inactive-login-type');
+        parentTab.classList.add('active-login-type');
+        employeeTab.classList.remove('active-login-type');
+        employeeTab.classList.add('inactive-login-type');
+        
+        // Show/hide sections
+        parentSection.style.display = 'block';
+        parentSection.classList.remove('inactive-section');
+        parentSection.classList.add('active-section');
+        employeeSection.style.display = 'none';
+        employeeSection.classList.remove('active-section');
+        employeeSection.classList.add('inactive-section');
+        
+        // Reset validation and focus
+        this.#validateCurrentInput();
+        this.#focusCurrentInput();
+      }
+    });
+
+    // Employee tab click handler
+    employeeTab.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (this.currentLoginType !== 'employee') {
+        this.currentLoginType = 'employee';
+        
+        // Update tab appearance
+        employeeTab.classList.remove('inactive-login-type');
+        employeeTab.classList.add('active-login-type');
+        parentTab.classList.remove('active-login-type');
+        parentTab.classList.add('inactive-login-type');
+        
+        // Show/hide sections
+        employeeSection.style.display = 'block';
+        employeeSection.classList.remove('inactive-section');
+        employeeSection.classList.add('active-section');
+        parentSection.style.display = 'none';
+        parentSection.classList.remove('active-section');
+        parentSection.classList.add('inactive-section');
+        
+        // Reset validation and focus
+        this.#validateCurrentInput();
+        this.#focusCurrentInput();
+      }
+    });
+  }
+
+  /**
+   * Initialize parent phone input with formatting and validation
+   */
+  #initParentPhoneInput(phoneInput, loginButton) {
+    phoneInput.addEventListener('input', (e) => {
+      // Format phone number as user types
+      if (typeof window.formatPhoneAsTyped === 'function') {
+        const formattedValue = window.formatPhoneAsTyped(e.target.value);
+        e.target.value = formattedValue;
+      } else {
+        // Fallback formatting - basic cleanup
+        const digits = e.target.value.replace(/\D/g, '').substring(0, 10);
+        if (digits.length <= 3) {
+          e.target.value = digits;
+        } else if (digits.length <= 6) {
+          e.target.value = `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+        } else {
+          e.target.value = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+        }
+      }
+      
+      if (this.currentLoginType === 'parent') {
+        this.#validateCurrentInput();
+      }
+    });
+
+    // Handle focus events to ensure validation runs
+    phoneInput.addEventListener('focus', (e) => {
+      console.log('Phone input focused');
+      if (this.currentLoginType === 'parent') {
+        setTimeout(() => {
+          this.#validateCurrentInput();
+        }, 50);
+      }
+    });
+
+    // Handle paste events
+    phoneInput.addEventListener('paste', (e) => {
+      setTimeout(() => {
+        if (typeof window.formatPhoneAsTyped === 'function') {
+          const formattedValue = window.formatPhoneAsTyped(e.target.value);
+          e.target.value = formattedValue;
+        }
+        if (this.currentLoginType === 'parent') {
+          this.#validateCurrentInput();
+        }
+      }, 0);
+    });
+  }
+
+  /**
+   * Initialize employee access code input with validation
+   */
+  #initEmployeeCodeInput(codeInput, loginButton) {
+    codeInput.addEventListener('input', (e) => {
+      // Only allow numeric input, max 6 digits
+      const numericValue = e.target.value.replace(/[^0-9]/g, '').substring(0, 6);
+      e.target.value = numericValue;
+      
+      if (this.currentLoginType === 'employee') {
+        this.#validateCurrentInput();
+      }
+    });
+
+    // Handle focus events to ensure validation runs
+    codeInput.addEventListener('focus', (e) => {
+      console.log('Code input focused');
+      if (this.currentLoginType === 'employee') {
+        setTimeout(() => {
+          this.#validateCurrentInput();
+        }, 50);
+      }
+    });
+  }
+
+  /**
+   * Validate the current active input and update button state
+   */
+  #validateCurrentInput() {
+    const loginButton = document.getElementById('login-submit-btn');
+    let isValid = false;
+
+    if (this.currentLoginType === 'parent') {
+      const phoneInput = document.getElementById('parent-phone-input');
+      const phoneValue = phoneInput.value;
+      
+      // Check if phone validation function is available
+      if (typeof window.isValidPhoneNumber === 'function') {
+        isValid = window.isValidPhoneNumber(phoneValue);
+        console.log('Phone validation:', phoneValue, '->', isValid);
+      } else {
+        // Fallback validation - just check for 10 digits
+        const digits = phoneValue.replace(/\D/g, '');
+        isValid = digits.length === 10 && digits !== '0000000000';
+        console.warn('Phone validation function not available, using fallback:', phoneValue, '->', isValid);
+      }
+      
+      // Update input validation classes
+      if (phoneValue.length > 0) {
+        if (isValid) {
+          phoneInput.classList.add('valid');
+          phoneInput.classList.remove('invalid');
+        } else {
+          phoneInput.classList.add('invalid');
+          phoneInput.classList.remove('valid');
+        }
+      } else {
+        phoneInput.classList.remove('valid', 'invalid');
+      }
+    } else {
+      const codeInput = document.getElementById('employee-access-code');
+      const codeValue = codeInput.value;
+      isValid = codeValue.length === 6;
+      
+      // Update input validation classes
+      if (codeValue.length > 0) {
+        if (isValid) {
+          codeInput.classList.add('valid');
+          codeInput.classList.remove('invalid');
+        } else {
+          codeInput.classList.add('invalid');
+          codeInput.classList.remove('valid');
+        }
+      } else {
+        codeInput.classList.remove('valid', 'invalid');
+      }
+    }
+
+    // Update login button state (for Materialize <a> buttons)
+    if (isValid) {
+      loginButton.removeAttribute('disabled');
+      loginButton.classList.remove('disabled');
+      loginButton.style.opacity = '1';
+      loginButton.style.pointerEvents = 'auto';
+      loginButton.style.cursor = 'pointer';
+      console.log('Login button ENABLED');
+    } else {
+      loginButton.setAttribute('disabled', 'disabled');
+      loginButton.classList.add('disabled');
+      loginButton.style.opacity = '0.6';
+      loginButton.style.pointerEvents = 'none';
+      loginButton.style.cursor = 'not-allowed';
+      console.log('Login button DISABLED');
+    }
+  }
+
+  /**
+   * Focus the current active input
+   */
+  #focusCurrentInput() {
+    if (this.currentLoginType === 'parent') {
+      const phoneInput = document.getElementById('parent-phone-input');
+      phoneInput.focus();
+    } else {
+      const codeInput = document.getElementById('employee-access-code');
+      codeInput.focus();
+    }
+  }
+
+  /**
+   * Reset login modal to initial state
+   */
+  #resetLoginModal(parentPhoneInput, employeeCodeInput, loginButton) {
+    // Clear inputs
+    parentPhoneInput.value = '';
+    employeeCodeInput.value = '';
+    
+    // Clear validation classes
+    parentPhoneInput.classList.remove('valid', 'invalid');
+    employeeCodeInput.classList.remove('valid', 'invalid');
+    
+    // Disable login button (for Materialize <a> buttons)
+    loginButton.setAttribute('disabled', 'disabled');
+    loginButton.classList.add('disabled');
+    loginButton.style.opacity = '0.6';
+    loginButton.style.pointerEvents = 'none';
+    loginButton.style.cursor = 'not-allowed';
+    
+    // Reset to parent login type
+    this.currentLoginType = 'parent';
+    const parentTab = document.getElementById('parent-login-tab');
+    const employeeTab = document.getElementById('employee-login-tab');
+    const parentSection = document.getElementById('parent-login-section');
+    const employeeSection = document.getElementById('employee-login-section');
+    
+    // Update tab appearance
+    parentTab.classList.remove('inactive-login-type');
+    parentTab.classList.add('active-login-type');
+    employeeTab.classList.remove('active-login-type');
+    employeeTab.classList.add('inactive-login-type');
+    
+    // Show parent section, hide employee section
+    parentSection.style.display = 'block';
+    parentSection.classList.remove('inactive-section');
+    parentSection.classList.add('active-section');
+    employeeSection.style.display = 'none';
+    employeeSection.classList.remove('active-section');
+    employeeSection.classList.add('inactive-section');
   }
 
   /**
@@ -2450,28 +2698,55 @@ export class ViewModel {
    * Handle login form submission (public method for modal event handlers)
    */
   async handleLogin() {
-    const accessCodeInput = document.getElementById('modal-access-code');
-    const accessCode = accessCodeInput.value.trim();
+    let loginValue = '';
+    let loginType = this.currentLoginType;
 
-    // Validate access code
-    if (accessCode.length < 4 || accessCode.length > 6) {
-      M.toast({
-        html: 'Invalid access code.',
-        classes: 'red darken-1',
-        displayLength: 3000
-      });
-      accessCodeInput.focus();
-      return;
+    if (loginType === 'parent') {
+      const phoneInput = document.getElementById('parent-phone-input');
+      const phoneValue = phoneInput.value.trim();
+      
+      // Validate phone number
+      if (!window.isValidPhoneNumber(phoneValue)) {
+        M.toast({
+          html: 'Please enter a valid 10-digit phone number.',
+          classes: 'red darken-1',
+          displayLength: 3000
+        });
+        phoneInput.focus();
+        return;
+      }
+      
+      // Strip formatting for backend
+      loginValue = window.stripPhoneFormatting(phoneValue);
+    } else {
+      const codeInput = document.getElementById('employee-access-code');
+      const codeValue = codeInput.value.trim();
+      
+      // Validate access code
+      if (codeValue.length !== 6) {
+        M.toast({
+          html: 'Please enter a valid 6-digit access code.',
+          classes: 'red darken-1',
+          displayLength: 3000
+        });
+        codeInput.focus();
+        return;
+      }
+      
+      loginValue = codeValue;
     }
 
     // Close modal before attempting login
     this.loginModal.close();
 
     await this.#attemptLoginWithCode(
-      accessCode,
+      loginValue,
+      loginType,
       () => {
         // Handle successful login
-        accessCodeInput.value = ''; // Clear the input
+        // Clear the inputs
+        document.getElementById('parent-phone-input').value = '';
+        document.getElementById('employee-access-code').value = '';
 
         // Reset UI state after modal close to prevent scroll lock
         setTimeout(() => {
@@ -2480,10 +2755,10 @@ export class ViewModel {
 
       },
       () => {
-        // Handle failed login - reopen modal and focus input
+        // Handle failed login - reopen modal and focus appropriate input
         this.loginModal.open();
         setTimeout(() => {
-          accessCodeInput.focus();
+          this.#focusCurrentInput();
         }, 300); // Delay to ensure modal is open before focusing
       }
     );
@@ -2493,26 +2768,30 @@ export class ViewModel {
    * Handle login form submission
    */
   async #handleLogin() {
+    debugger
     // Delegate to public method
     await this.handleLogin();
   }
 
-  async #attemptLoginWithCode(accessCode, onSuccessfulLogin = null, onFailedLogin = null) {
+  async #attemptLoginWithCode(loginValue, loginType, onSuccessfulLogin = null, onFailedLogin = null) {
 
-    console.log('Login attempt with access code:', accessCode);
+    console.log('Login attempt with value:', loginValue, 'type:', loginType);
 
     try {
       this.#setPageLoading(true);
 
-      // Send access code to backend
-      const authenticatedUser = await HttpService.post(ServerFunctions.authenticateByAccessCode, { accessCode });
+      // Send login data to backend
+      const authenticatedUser = await HttpService.post(ServerFunctions.authenticateByAccessCode, { 
+        accessCode: loginValue,
+        loginType: loginType 
+      });
 
       // Check if authentication was successful (non-null response)
       const loginSuccess = authenticatedUser !== null;
 
       if (loginSuccess) {
-        // Save the access code securely in the browser
-        window.AccessCodeManager.saveAccessCodeSecurely(accessCode);
+        // Save the login value securely in the browser
+        window.AccessCodeManager.saveAccessCodeSecurely(loginValue, loginType);
 
         // Update login button state to show "Change User"
         this.#updateLoginButtonState();
