@@ -202,6 +202,16 @@ export class UserRepository {
   }
 
   /**
+   * Get parent by phone number
+   * @param {string} phone - The phone number to search for (10-digit format)
+   * @returns {Promise<Parent|undefined>} Parent with matching phone number
+   */
+  async getParentByPhone(phone) {
+    const parents = await this.getParents();
+    return parents.find(x => x.phone === phone);
+  }
+
+  /**
    *
    */
   async getRooms(forceRefresh = false) {
