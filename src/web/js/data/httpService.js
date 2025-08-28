@@ -172,11 +172,12 @@ export class HttpService {
           'Content-Type': 'application/json',
         };
         
-        // Include access code in header if available
+        // Include access code and login type in header if available
         if (window.AccessCodeManager) {
-          const storedAccessCode = window.AccessCodeManager.getStoredAccessCode();
-          if (storedAccessCode) {
-            headers['x-access-code'] = storedAccessCode;
+          const storedAuthData = window.AccessCodeManager.getStoredAuthData();
+          if (storedAuthData) {
+            headers['x-access-code'] = storedAuthData.accessCode;
+            headers['x-login-type'] = storedAuthData.loginType;
           }
         }
 
