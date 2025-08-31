@@ -202,6 +202,16 @@ export class UserRepository {
   }
 
   /**
+   * Get parent by phone number
+   * @param {string} phone - The phone number to search for (10-digit format)
+   * @returns {Promise<Parent|undefined>} Parent with matching phone number
+   */
+  async getParentByPhone(phone) {
+    const parents = await this.getParents();
+    return parents.find(x => x.phone === phone);
+  }
+
+  /**
    *
    */
   async getRooms(forceRefresh = false) {
@@ -248,5 +258,18 @@ export class UserRepository {
 
     // Not found in any user type
     return null;
+  }
+
+  /**
+   * Clear all repository-level caches
+   */
+  clearCache() {
+    this.admins = null;
+    this.instructors = null;
+    this.students = null;
+    this.parents = null;
+    this.rooms = null;
+    this.roles = null;
+    console.log('🧹 UserRepository cache cleared');
   }
 }

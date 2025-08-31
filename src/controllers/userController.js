@@ -282,7 +282,7 @@ export class UserController {
    */
   static async authenticateByAccessCode(req, res) {
     try {
-      const { accessCode } = req.body;
+      const { accessCode, loginType } = req.body;
 
       if (!accessCode) {
         return res.status(400).json({
@@ -297,8 +297,26 @@ export class UserController {
       let instructor = null;
       let parent = null;
 
-      // First check 6-digit codes against admins and instructors
-      if (accessCode.length === 6) {
+      // Auto-detect authentication type based on access code format
+      const isPhoneNumber = accessCode.length === 10 && /^\d{10}$/.test(accessCode);
+      const isAccessCode = accessCode.length === 6 && /^\d{6}$/.test(accessCode);
+      
+      console.log('🔍 UserController access code format detection:', { 
+        accessCodeLength: accessCode.length, 
+        isPhoneNumber, 
+        isAccessCode,
+        requestedLoginType: loginType 
+      });
+
+      // Handle parent login with phone number (primary attempt)
+      if (isPhoneNumber || loginType === 'parent') {
+        console.log('🔍 UserController attempting parent authentication with phone number');
+        parent = await userRepository.getParentByPhone(accessCode);
+      }
+
+      // Handle employee login with 6-digit access code (primary attempt)  
+      if (!parent && (isAccessCode || loginType === 'employee')) {
+        console.log('🔍 UserController attempting employee authentication with access code');
         // Check admin first
         admin = await userRepository.getAdminByAccessCode(accessCode);
 
@@ -308,13 +326,23 @@ export class UserController {
         }
       }
 
-      // Then check 4-digit codes against parents
-      if (accessCode.length === 4 && !admin && !instructor) {
-        parent = await userRepository.getParentByAccessCode(accessCode);
+      // Fallback attempts if primary method failed
+      if (!admin && !instructor && !parent) {
+        if (isPhoneNumber && loginType !== 'parent') {
+          console.log('🔍 UserController fallback: Trying parent authentication for phone-like access code');
+          parent = await userRepository.getParentByPhone(accessCode);
+        } else if (isAccessCode && loginType !== 'employee') {
+          console.log('🔍 UserController fallback: Trying employee authentication');
+          admin = await userRepository.getAdminByAccessCode(accessCode);
+          if (!admin) {
+            instructor = await userRepository.getInstructorByAccessCode(accessCode);
+          }
+        }
       }
 
       // If no match found, return null
       if (!admin && !instructor && !parent) {
+        console.log(`Authentication failed for ${loginType} login with value: ${accessCode}`);
         return res.json(null);
       }
 
@@ -326,6 +354,12 @@ export class UserController {
         instructor,
         parent
       );
+
+      console.log(`Authentication successful for ${loginType} login:`, {
+        admin: !!admin,
+        instructor: !!instructor,
+        parent: !!parent
+      });
 
       res.json(authenticatedUser);
     } catch (error) {
