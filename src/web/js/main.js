@@ -45,13 +45,15 @@ const AccessCodeManager = {
   /**
    * Save access code securely in the browser
    * @param {string} accessCode - The access code to save
+   * @param {string} loginType - The type of login ('parent' or 'employee')
    */
-  saveAccessCodeSecurely(accessCode) {
+  saveAccessCodeSecurely(accessCode, loginType = 'employee') {
     try {
       // Use sessionStorage for secure, session-based storage
       // Data persists only for the browser session and is cleared when tab is closed
       const secureData = {
         accessCode: accessCode,
+        loginType: loginType,
         timestamp: Date.now(),
         sessionId: this.generateSessionId()
       };
@@ -66,6 +68,7 @@ const AccessCodeManager = {
       // Fallback to memory storage if sessionStorage fails
       this._accessCodeCache = {
         accessCode: accessCode,
+        loginType: loginType,
         timestamp: Date.now()
       };
     }
@@ -105,6 +108,44 @@ const AccessCodeManager = {
     } catch (error) {
       console.error('Failed to retrieve stored access code:', error);
       return this._accessCodeCache?.accessCode || null;
+    }
+  },
+
+  /**
+   * Retrieve the securely stored access code and login type
+   * @returns {Object|null} Object with accessCode and loginType, or null if not found/expired
+   */
+  getStoredAuthData() {
+    try {
+      const encodedData = sessionStorage.getItem('forte_auth_session');
+      if (!encodedData) {
+        return this._accessCodeCache ? {
+          accessCode: this._accessCodeCache.accessCode,
+          loginType: this._accessCodeCache.loginType || 'employee'
+        } : null;
+      }
+
+      const secureData = JSON.parse(atob(encodedData));
+
+      // Check if session is still valid (optional: add expiration logic)
+      const sessionAge = Date.now() - secureData.timestamp;
+      const maxSessionAge = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+
+      if (sessionAge > maxSessionAge) {
+        this.clearStoredAccessCode();
+        return null;
+      }
+
+      return {
+        accessCode: secureData.accessCode,
+        loginType: secureData.loginType || 'employee'
+      };
+    } catch (error) {
+      console.error('Failed to retrieve stored auth data:', error);
+      return this._accessCodeCache ? {
+        accessCode: this._accessCodeCache.accessCode,
+        loginType: this._accessCodeCache.loginType || 'employee'
+      } : null;
     }
   },
 

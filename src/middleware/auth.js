@@ -139,8 +139,52 @@ async function extractAuthenticatedUser(req, userRepository) {
     if (accessCode) {
       console.log('🔍 Attempting to authenticate with access code:', accessCode.substring(0, 2) + '***');
       
-      // Try to find user by access code
-      const userResult = await userRepository.getUserByAccessCode(accessCode);
+      // Check for login type in headers to determine authentication method
+      const loginType = req.headers['x-login-type'];
+      console.log('🔍 Login type from headers:', loginType);
+      
+      let userResult = null;
+      
+      // Auto-detect login type based on access code format if needed
+      const isPhoneNumber = accessCode.length === 10 && /^\d{10}$/.test(accessCode);
+      const isAccessCode = accessCode.length === 6 && /^\d{6}$/.test(accessCode);
+      
+      console.log('🔍 Access code format detection:', { 
+        accessCodeLength: accessCode.length, 
+        isPhoneNumber, 
+        isAccessCode,
+        storedLoginType: loginType 
+      });
+      
+      if (isPhoneNumber || loginType === 'parent') {
+        // For parent login, accessCode is actually a phone number
+        console.log('🔍 Attempting parent authentication with phone number');
+        const parent = await userRepository.getParentByPhone(accessCode);
+        if (parent) {
+          userResult = { user: parent, userType: 'parent' };
+        }
+      } 
+      
+      if (!userResult && (isAccessCode || loginType === 'employee')) {
+        // For employee login (admin/instructor), use the standard access code method
+        console.log('🔍 Attempting employee authentication with access code');
+        userResult = await userRepository.getUserByAccessCode(accessCode);
+      }
+      
+      // Fallback: if no match yet, try the opposite method
+      if (!userResult) {
+        if (isPhoneNumber && loginType !== 'parent') {
+          console.log('🔍 Fallback: Trying parent authentication for phone-like access code');
+          const parent = await userRepository.getParentByPhone(accessCode);
+          if (parent) {
+            userResult = { user: parent, userType: 'parent' };
+          }
+        } else if (isAccessCode && loginType !== 'employee') {
+          console.log('🔍 Fallback: Trying employee authentication for access code');
+          userResult = await userRepository.getUserByAccessCode(accessCode);
+        }
+      }
+      
       console.log('🔍 Database lookup result:', userResult ? `Found ${userResult.userType}: ${userResult.user.email}` : 'Not found');
       
       if (userResult) {
