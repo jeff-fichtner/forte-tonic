@@ -1,0 +1,152 @@
+{
+  "timestamp": "2025-08-31T23:11:26.517Z",
+  "projectContext": "Tonic Music Registration System",
+  "analysisVersion": "v2025.08.31.1",
+  "codeDocumentationSync": {
+    "analysis_type": "code-doc-sync",
+    "timestamp": "2025-08-31T23:11:26.706Z",
+    "status": "simulated",
+    "security_audit": {
+      "exposed_secrets": [],
+      "credential_patterns": [
+        "dev/credentials/ directory pattern detected"
+      ],
+      "security_issues": []
+    },
+    "auto_fixes_applied": [],
+    "should_rerun_analysis": false,
+    "results": {
+      "issues_found": 0,
+      "recommendations": [],
+      "priority_actions": []
+    },
+    "note": "This is a simulation. Real implementation would call AI service with the constructed prompt."
+  },
+  "architectureConsistency": {
+    "analysis_type": "architecture-consistency",
+    "timestamp": "2025-08-31T23:11:26.708Z",
+    "status": "simulated",
+    "security_audit": {
+      "exposed_secrets": [],
+      "credential_patterns": [
+        "dev/credentials/ directory pattern detected"
+      ],
+      "security_issues": []
+    },
+    "auto_fixes_applied": [],
+    "should_rerun_analysis": false,
+    "results": {
+      "issues_found": 0,
+      "recommendations": [],
+      "priority_actions": []
+    },
+    "note": "This is a simulation. Real implementation would call AI service with the constructed prompt."
+  },
+  "testCoverage": {
+    "analysis_type": "test-coverage",
+    "timestamp": "2025-08-31T23:11:28.603Z",
+    "status": "simulated",
+    "security_audit": {
+      "exposed_secrets": [],
+      "credential_patterns": [
+        "dev/credentials/ directory pattern detected"
+      ],
+      "security_issues": []
+    },
+    "auto_fixes_applied": [],
+    "should_rerun_analysis": false,
+    "results": {
+      "issues_found": 0,
+      "recommendations": [],
+      "priority_actions": []
+    },
+    "note": "This is a simulation. Real implementation would call AI service with the constructed prompt."
+  },
+  "documentationAudit": {
+    "analysis_type": "documentation-audit",
+    "timestamp": "2025-08-31T23:11:28.607Z",
+    "status": "simulated",
+    "security_audit": {
+      "exposed_secrets": [],
+      "credential_patterns": [
+        "dev/credentials/ directory pattern detected"
+      ],
+      "security_issues": []
+    },
+    "auto_fixes_applied": [],
+    "should_rerun_analysis": false,
+    "results": {
+      "issues_found": 0,
+      "recommendations": [],
+      "priority_actions": []
+    },
+    "note": "This is a simulation. Real implementation would call AI service with the constructed prompt."
+  },
+  "featureLifecycle": {
+    "analysis_type": "feature-lifecycle",
+    "timestamp": "2025-08-31T23:11:28.627Z",
+    "status": "simulated",
+    "security_audit": {
+      "exposed_secrets": [],
+      "credential_patterns": [
+        "dev/credentials/ directory pattern detected"
+      ],
+      "security_issues": []
+    },
+    "auto_fixes_applied": [],
+    "should_rerun_analysis": false,
+    "results": {
+      "issues_found": 0,
+      "recommendations": [],
+      "priority_actions": []
+    },
+    "note": "This is a simulation. Real implementation would call AI service with the constructed prompt."
+  },
+  "promptEvolution": {
+    "commonIssues": [],
+    "emergingPatterns": [
+      {
+        "type": "file_growth",
+        "trend": "stable",
+        "impact": "monitor_for_architectural_drift"
+      },
+      {
+        "type": "authentication_complexity",
+        "trend": "stable",
+        "impact": "review_access_code_implementations"
+      }
+    ],
+    "promptAdjustments": []
+  },
+  "recommendations": [],
+  "selfAnalysis": {
+    "toolFiles": 5,
+    "currentCapabilities": [
+      "Code-documentation synchronization analysis",
+      "Architecture consistency checking",
+      "Test coverage and quality analysis",
+      "Documentation consolidation audit",
+      "Feature lifecycle analysis",
+      "Historical trend tracking",
+      "Self-referential evolution",
+      "Tonic-specific pattern recognition"
+    ],
+    "evolutionSince": {
+      "newCapabilities": [],
+      "removedCapabilities": [],
+      "stabilityScore": "stable"
+    },
+    "selfImprovementSuggestions": [
+      {
+        "area": "tonic_patterns",
+        "suggestion": "Add deeper analysis of accessCode authentication patterns",
+        "priority": "medium"
+      },
+      {
+        "area": "gas_integration",
+        "suggestion": "Enhance Google Apps Script migration analysis capabilities",
+        "priority": "medium"
+      }
+    ]
+  }
+}

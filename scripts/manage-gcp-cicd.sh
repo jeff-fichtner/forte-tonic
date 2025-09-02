@@ -20,6 +20,16 @@ REPO_OWNER="jeff-fichtner"
 REPO_NAME="forte-tonic"
 APPLICATION_LABEL="application=tonic"
 
+# Environment Configuration - easily extensible for new environments
+declare -A ENVIRONMENTS=(
+    ["staging"]="semver_tags:^v[0-9]+\.[0-9]+\.[0-9]+$:Staging environment for semver tag deployments"
+    ["production"]="main_branch:^main$:Production environment for main branch deployments"
+)
+
+# Add new environments here as needed:
+# ["dev"]="dev_branch:^dev$:Development environment for dev branch testing"
+# ["qa"]="qa_branch:^qa$:QA environment for quality assurance testing"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -61,6 +71,296 @@ check_gcloud() {
         echo "Install it from: https://cloud.google.com/sdk/docs/install"
         exit 1
     fi
+}
+
+# Environment Configuration Helper Functions
+get_environment_trigger_type() {
+    local env_name=$1
+    echo "${ENVIRONMENTS[$env_name]}" | cut -d: -f1
+}
+
+get_environment_pattern() {
+    local env_name=$1
+    echo "${ENVIRONMENTS[$env_name]}" | cut -d: -f2
+}
+
+get_environment_description() {
+    local env_name=$1
+    echo "${ENVIRONMENTS[$env_name]}" | cut -d: -f3
+}
+
+list_configured_environments() {
+    for env in "${!ENVIRONMENTS[@]}"; do
+        echo "$env"
+    done | sort
+}
+
+# Service Account Management Functions
+
+# Create a dedicated service account for an environment
+create_service_account() {
+    local project_id=$1
+    local env_name=$2
+    local sa_name="tonic-${env_name}-sa"
+    local sa_display_name="Tonic ${env_name^} Service Account"
+    local sa_description="Dedicated service account for Tonic ${env_name} environment"
+    
+    log_info "Creating service account: $sa_name for $project_id"
+    
+    # Check if service account already exists
+    if gcloud iam service-accounts describe "${sa_name}@${project_id}.iam.gserviceaccount.com" \
+       --project="$project_id" >/dev/null 2>&1; then
+        log_warning "Service account $sa_name already exists in $project_id"
+        return 0
+    fi
+    
+    # Create the service account
+    gcloud iam service-accounts create "$sa_name" \
+        --project="$project_id" \
+        --display-name="$sa_display_name" \
+        --description="$sa_description" || {
+        log_error "Failed to create service account $sa_name"
+        return 1
+    }
+    
+    log_success "Service account $sa_name created successfully"
+}
+
+# Generate and store service account key
+generate_service_account_key() {
+    local project_id=$1
+    local env_name=$2
+    local sa_name="tonic-${env_name}-sa"
+    local sa_email="${sa_name}@${project_id}.iam.gserviceaccount.com"
+    
+    log_info "Generating private key for service account: $sa_email"
+    
+    # Create a temporary file for the key
+    local temp_key_file
+    temp_key_file=$(mktemp)
+    
+    # Generate the key
+    if gcloud iam service-accounts keys create "$temp_key_file" \
+       --iam-account="$sa_email" \
+       --project="$project_id"; then
+        
+        # Read the private key from the JSON file
+        local private_key
+        private_key=$(cat "$temp_key_file" | jq -r '.private_key' 2>/dev/null || echo "")
+        
+        if [[ -n "$private_key" ]]; then
+            # Store the private key in Secret Manager
+            log_info "Storing private key in Secret Manager..."
+            echo "$private_key" | gcloud secrets versions add "google-private-key" \
+                --project="$project_id" \
+                --data-file=- || {
+                log_warning "Failed to store private key in Secret Manager"
+            }
+            
+            # Also update the service account email secret
+            echo "$sa_email" | gcloud secrets versions add "google-service-account-email" \
+                --project="$project_id" \
+                --data-file=- || {
+                log_warning "Failed to update service account email in Secret Manager"
+            }
+            
+            log_success "Service account key generated and stored securely"
+        else
+            log_error "Failed to extract private key from generated key file"
+        fi
+        
+        # Clean up the temporary file
+        rm -f "$temp_key_file"
+    else
+        log_error "Failed to generate service account key"
+        rm -f "$temp_key_file"
+        return 1
+    fi
+}
+
+# Set up IAM permissions for the service account
+setup_service_account_permissions() {
+    local project_id=$1
+    local env_name=$2
+    local sa_name="tonic-${env_name}-sa"
+    local sa_email="${sa_name}@${project_id}.iam.gserviceaccount.com"
+    
+    log_info "Setting up IAM permissions for $sa_email"
+    
+    # Required roles for the service account
+    local required_roles=(
+        "roles/run.admin"                    # Cloud Run management
+        "roles/secretmanager.secretAccessor" # Secret Manager access
+        "roles/iam.serviceAccountUser"       # Service account usage
+        "roles/storage.admin"                # Cloud Storage (for container images)
+        "roles/logging.logWriter"            # Write logs
+        "roles/monitoring.metricWriter"      # Write metrics
+    )
+    
+    # Grant each role
+    for role in "${required_roles[@]}"; do
+        log_info "  Granting $role to $sa_email"
+        gcloud projects add-iam-policy-binding "$project_id" \
+            --member="serviceAccount:$sa_email" \
+            --role="$role" || {
+            log_warning "Failed to grant $role"
+        }
+    done
+    
+    # Also grant the Cloud Build service account permission to use this service account
+    local build_sa
+    build_sa=$(get_build_service_account "$project_id")
+    if [[ "$build_sa" != "NOT_AVAILABLE" ]]; then
+        log_info "  Granting Cloud Build SA permission to use $sa_email"
+        gcloud iam service-accounts add-iam-policy-binding "$sa_email" \
+            --member="serviceAccount:$build_sa" \
+            --role="roles/iam.serviceAccountUser" \
+            --project="$project_id" || {
+            log_warning "Failed to grant Cloud Build SA permission to use service account"
+        }
+    fi
+    
+    log_success "IAM permissions configured for $sa_email"
+}
+
+# Create environment-specific service account (combines all steps)
+create_environment_service_account() {
+    local project_id=$1
+    local env_name=$2
+    
+    log_info "Setting up dedicated service account for $env_name environment in $project_id"
+    
+    # Step 1: Create the service account
+    create_service_account "$project_id" "$env_name" || return 1
+    
+    # Step 2: Set up permissions
+    setup_service_account_permissions "$project_id" "$env_name" || return 1
+    
+    # Step 3: Generate and store key (only if secrets exist)
+    if gcloud secrets describe "google-private-key" --project="$project_id" >/dev/null 2>&1; then
+        generate_service_account_key "$project_id" "$env_name" || {
+            log_warning "Failed to generate key, but service account was created"
+        }
+    else
+        log_info "Secrets not yet created - will generate key later"
+    fi
+    
+    log_success "Environment service account setup complete for $env_name"
+}
+
+# Template-based Environment Creation Functions
+
+# Create project in folder with unique ID generation
+create_project_folder_level() {
+    local base_name=$1
+    local folder_id=$2
+    local project_id
+    project_id=$(generate_project_id "$base_name")
+    
+    create_project "$project_id" "$base_name" "$folder_id" || return 1
+    echo "$project_id"
+}
+
+# Create project at organization level with unique ID generation  
+create_project_org_level_new() {
+    local base_name=$1
+    local project_id
+    project_id=$(generate_project_id "$base_name")
+    
+    create_project_org_level "$project_id" "$base_name" || return 1
+    echo "$project_id"
+}
+
+# Environment-specific build trigger setup
+setup_environment_build_triggers() {
+    local project_id=$1
+    local env_name=$2
+    
+    local trigger_type
+    local pattern
+    local description
+    trigger_type=$(get_environment_trigger_type "$env_name")
+    pattern=$(get_environment_pattern "$env_name")
+    description=$(get_environment_description "$env_name")
+    
+    log_info "Setting up build triggers for $env_name environment ($project_id)"
+    
+    # Set current project
+    gcloud config set project "$project_id"
+    
+    # Create trigger based on environment type
+    case "$trigger_type" in
+        "semver_tags")
+            gcloud builds triggers create github \
+                --repo-name="$REPO_NAME" \
+                --repo-owner="$REPO_OWNER" \
+                --tag-pattern="$pattern" \
+                --build-config=src/build/cloudbuild.yaml \
+                --description="Tonic $env_name - $description" \
+                --name="tonic-$env_name-deploy" \
+                --substitutions="_ENV_TYPE=$env_name,_DEPLOY_REGION=$REGION" || log_warning "Trigger may already exist"
+            ;;
+        "main_branch"|"*_branch")
+            local branch_name
+            if [[ "$trigger_type" == "main_branch" ]]; then
+                branch_name="main"
+            else
+                branch_name="${trigger_type%_branch}"
+            fi
+            
+            gcloud builds triggers create github \
+                --repo-name="$REPO_NAME" \
+                --repo-owner="$REPO_OWNER" \
+                --branch-pattern="$pattern" \
+                --build-config=src/build/cloudbuild.yaml \
+                --description="Tonic $env_name - $description" \
+                --name="tonic-$env_name-deploy" \
+                --substitutions="_ENV_TYPE=$env_name,_DEPLOY_REGION=$REGION" || log_warning "Trigger may already exist"
+            ;;
+        *)
+            log_warning "Unknown trigger type: $trigger_type for environment $env_name"
+            ;;
+    esac
+    
+    log_success "Build triggers setup complete for $env_name environment"
+}
+
+# Template function for creating new environments
+create_new_environment() {
+    local env_name=$1
+    local trigger_type=$2  # semver_tags, main_branch, dev_branch, etc.
+    local pattern=$3       # regex pattern for triggers
+    local description=$4   # human readable description
+    local folder_id=${5:-} # optional folder ID
+    
+    log_info "Creating new environment: $env_name"
+    
+    # Add to environments array (this would need to be persistent)
+    ENVIRONMENTS[$env_name]="$trigger_type:$pattern:$description"
+    
+    # Create the project
+    local project_id
+    if [[ -n "$folder_id" ]]; then
+        project_id=$(create_project_folder_level "tonic-$env_name" "$folder_id")
+    else
+        project_id=$(create_project_org_level_new "tonic-$env_name")
+    fi
+    
+    # Setup the environment
+    setup_project_infrastructure "$project_id" "$env_name"
+    setup_project_secrets "$project_id" "$env_name"
+    create_environment_service_account "$project_id" "$env_name"
+    setup_environment_build_triggers "$project_id" "$env_name"
+    
+    log_success "New environment '$env_name' created successfully!"
+    echo "Project ID: $project_id"
+    echo "Trigger: $trigger_type matching $pattern"
+    echo "Description: $description"
+    echo ""
+    echo "Console Links:"
+    echo "  • Secret Manager: https://console.cloud.google.com/security/secret-manager?project=$project_id"
+    echo "  • Service Accounts: https://console.cloud.google.com/iam-admin/serviceaccounts?project=$project_id"
+    echo "  • Build Triggers: https://console.cloud.google.com/cloud-build/triggers?project=$project_id"
 }
 
 # Parse command line arguments
@@ -484,67 +784,76 @@ setup_gcp_command() {
     validate_operation_mode
     check_gcloud
 
+    local environments
+    environments=$(list_configured_environments)
+    local env_count
+    env_count=$(echo "$environments" | wc -l | tr -d ' ')
+
     if [[ "$OPERATION_MODE" == "folder" ]]; then
         echo "🚀 Setting up GCP CI/CD Pipeline for Tonic (Folder-based)"
         echo "=========================================================="
         echo "Folder ID: $FOLDER_ID"
         echo "Region: $REGION"
         echo "Repository: $REPO_OWNER/$REPO_NAME"
+        echo "Environments: $env_count ($(echo "$environments" | tr '\n' ', ' | sed 's/, $//'))"
         echo ""
-        echo "This will create:"
-        echo "  • Staging project in folder (triggers on semver tags)"
-        echo "  • Production project in folder (triggers on main branch pushes)"
-        echo "  • Environment-isolated secrets for each project"
-        echo "  • Proper IAM permissions and Cloud Build triggers"
+        echo "This will create for each environment:"
+        echo "  • Dedicated GCP project in folder"
+        echo "  • Environment-specific service account"
+        echo "  • Environment-isolated secrets"
+        echo "  • Build triggers with environment-specific patterns"
+        echo "  • Proper IAM permissions"
         echo ""
-        
-        # Create staging project
-        log_info "Creating staging project in folder..."
-        STAGING_PROJECT_ID=$(create_project_folder_level "tonic-staging" "$FOLDER_ID")
-        log_success "Created staging project: $STAGING_PROJECT_ID"
-        
-        # Create production project  
-        log_info "Creating production project in folder..."
-        PRODUCTION_PROJECT_ID=$(create_project_folder_level "tonic-production" "$FOLDER_ID")
-        log_success "Created production project: $PRODUCTION_PROJECT_ID"
-        
     else
         echo "🚀 Setting up GCP CI/CD Pipeline for Tonic (Organization-level)"
         echo "==============================================================="
         echo "Region: $REGION"
         echo "Repository: $REPO_OWNER/$REPO_NAME"
+        echo "Environments: $env_count ($(echo "$environments" | tr '\n' ', ' | sed 's/, $//'))"
         echo ""
-        echo "This will create:"
-        echo "  • Staging project in organization (triggers on semver tags)"
-        echo "  • Production project in organization (triggers on main branch pushes)"
-        echo "  • Environment-isolated secrets for each project"
-        echo "  • Proper IAM permissions and Cloud Build triggers"
+        echo "This will create for each environment:"
+        echo "  • Dedicated GCP project in organization"
+        echo "  • Environment-specific service account"
+        echo "  • Environment-isolated secrets"
+        echo "  • Build triggers with environment-specific patterns"
+        echo "  • Proper IAM permissions"
         echo ""
-        
-        # Create staging project
-        log_info "Creating staging project in organization..."
-        STAGING_PROJECT_ID=$(create_project_org_level "tonic-staging")
-        log_success "Created staging project: $STAGING_PROJECT_ID"
-        
-        # Create production project
-        log_info "Creating production project in organization..."
-        PRODUCTION_PROJECT_ID=$(create_project_org_level "tonic-production")
-        log_success "Created production project: $PRODUCTION_PROJECT_ID"
     fi
 
-    # Setup staging project
-    echo ""
-    log_info "Setting up staging project ($STAGING_PROJECT_ID)..."
-    setup_project_infrastructure "$STAGING_PROJECT_ID" "staging"
-    setup_project_secrets "$STAGING_PROJECT_ID" "staging"
-    setup_build_triggers "$STAGING_PROJECT_ID" "staging"
+    # Create projects for each environment
+    declare -A PROJECT_IDS
+    
+    while read -r env_name; do
+        if [[ -n "$env_name" ]]; then
+            local env_description
+            env_description=$(get_environment_description "$env_name")
+            
+            log_info "Creating $env_name project ($env_description)..."
+            
+            if [[ "$OPERATION_MODE" == "folder" ]]; then
+                PROJECT_IDS[$env_name]=$(create_project_folder_level "tonic-$env_name" "$FOLDER_ID")
+            else
+                PROJECT_IDS[$env_name]=$(create_project_org_level_new "tonic-$env_name")
+            fi
+            
+            log_success "Created $env_name project: ${PROJECT_IDS[$env_name]}"
+        fi
+    done <<< "$environments"
 
-    # Setup production project
-    echo ""
-    log_info "Setting up production project ($PRODUCTION_PROJECT_ID)..."
-    setup_project_infrastructure "$PRODUCTION_PROJECT_ID" "production"
-    setup_project_secrets "$PRODUCTION_PROJECT_ID" "production"
-    setup_build_triggers "$PRODUCTION_PROJECT_ID" "production"
+    # Setup each environment
+    while read -r env_name; do
+        if [[ -n "$env_name" ]]; then
+            local project_id="${PROJECT_IDS[$env_name]}"
+            echo ""
+            log_info "Setting up $env_name environment ($project_id)..."
+            
+            # Setup infrastructure, secrets, and service account
+            setup_project_infrastructure "$project_id" "$env_name"
+            setup_project_secrets "$project_id" "$env_name"
+            create_environment_service_account "$project_id" "$env_name"
+            setup_environment_build_triggers "$project_id" "$env_name"
+        fi
+    done <<< "$environments"
 
     echo ""
     log_success "GCP CI/CD Setup Complete!"
@@ -556,39 +865,74 @@ setup_gcp_command() {
     else
         echo "📋 Created in organization:"
     fi
-    echo "  ✅ Staging project: $STAGING_PROJECT_ID"
-    echo "  ✅ Production project: $PRODUCTION_PROJECT_ID"
-    echo "  ✅ APIs enabled for both projects"
+    
+    # Display created projects
+    while read -r env_name; do
+        if [[ -n "$env_name" ]]; then
+            echo "  ✅ ${env_name^} project: ${PROJECT_IDS[$env_name]}"
+        fi
+    done <<< "$environments"
+    
+    echo "  ✅ APIs enabled for all projects"
+    echo "  ✅ Environment-specific service accounts created"
     echo "  ✅ IAM permissions configured"
-    echo "  ✅ Secrets created with placeholder values"
-    echo "  ✅ Build triggers configured"
+    echo "  ✅ Secrets created with actual service account details"
+    echo "  ✅ Build triggers configured with environment patterns"
     echo ""
 
-    log_warning "IMPORTANT: Update secrets in both projects"
-    echo "=========================================="
+    log_success "AUTOMATED: Service account keys generated and stored"
+    echo "=================================================="
     echo ""
-    echo "Staging Console:  https://console.cloud.google.com/security/secret-manager?project=$STAGING_PROJECT_ID"
-    echo "Production Console: https://console.cloud.google.com/security/secret-manager?project=$PRODUCTION_PROJECT_ID"
-    echo ""
-    echo "🔑 Secrets to update in BOTH projects:"
-    echo "  • working-spreadsheet-id"
-    echo "  • google-service-account-email"
-    echo "  • google-private-key"
-    echo "  • operator-email"
-    echo "  • rock-band-class-ids"
+    
+    # Display console links for each environment
+    while read -r env_name; do
+        if [[ -n "$env_name" ]]; then
+            local project_id="${PROJECT_IDS[$env_name]}"
+            echo "${env_name^} Console Links:"
+            echo "  • Secret Manager: https://console.cloud.google.com/security/secret-manager?project=$project_id"
+            echo "  • Service Accounts: https://console.cloud.google.com/iam-admin/serviceaccounts?project=$project_id"
+            echo "  • Build Triggers: https://console.cloud.google.com/cloud-build/triggers?project=$project_id"
+            echo ""
+        fi
+    done <<< "$environments"
+    
+    echo "🔑 Secrets automatically configured in ALL projects:"
+    echo "  • working-spreadsheet-id (still needs environment-specific values)"
+    echo "  • google-service-account-email (✅ populated with actual SA email)"
+    echo "  • google-private-key (✅ populated with generated key)"
+    echo "  • operator-email (still needs your email)"
+    echo "  • rock-band-class-ids (still needs class IDs)"
     echo ""
     
     echo "🔄 CI/CD Workflow:"
-    echo "  • Staging: Triggered by semver tags (v1.2.3)"
-    echo "  • Production: Triggered by pushes to main branch"
-    echo "  • GitHub Actions handles testing and versioning on dev branch"
+    while read -r env_name; do
+        if [[ -n "$env_name" ]]; then
+            local trigger_type
+            local pattern
+            trigger_type=$(get_environment_trigger_type "$env_name")
+            pattern=$(get_environment_pattern "$env_name")
+            
+            case "$trigger_type" in
+                "semver_tags")
+                    echo "  • ${env_name^}: Triggered by semver tags matching $pattern"
+                    ;;
+                "main_branch")
+                    echo "  • ${env_name^}: Triggered by pushes to main branch"
+                    ;;
+                *)
+                    echo "  • ${env_name^}: Triggered by $trigger_type matching $pattern"
+                    ;;
+            esac
+        fi
+    done <<< "$environments"
     echo ""
     
     echo "🎯 Next steps:"
-    echo "  1. ⚠️  Update secrets in BOTH projects (use console links above)"
+    echo "  1. Update remaining secrets in ALL projects (working-spreadsheet-id, operator-email, rock-band-class-ids)"
     echo "  2. Push to dev branch to trigger GitHub Actions → versioning → staging deploy"
     echo "  3. Merge to main to trigger production deploy"
     echo ""
+    echo "✨ NEW: Each environment now has its own dedicated service account for better security isolation!"
 }
 
 cleanup_command() {

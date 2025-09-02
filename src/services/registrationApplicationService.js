@@ -341,19 +341,6 @@ export class RegistrationApplicationService {
     }
   }
 
-  /**
-   * Private method: Request cancellation approval for special cases
-   */
-  async #requestCancellationApproval(registration, reason, userId) {
-    // This would typically create a workflow/approval request
-    // For now, return a pending status
-    return {
-      success: false,
-      status: 'pending_approval',
-      message: 'Cancellation requires managerial approval due to timing constraints',
-      approvalRequired: true,
-    };
-  }
 
   /**
    * Get registrations with filtering and pagination

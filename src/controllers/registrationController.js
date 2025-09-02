@@ -7,7 +7,6 @@
  */
 
 import { getAuthenticatedUserEmail } from '../middleware/auth.js';
-import { RegistrationType } from '../utils/values/registrationType.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
 import { _fetchData } from '../utils/helpers.js';
 

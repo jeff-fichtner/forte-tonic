@@ -653,7 +653,7 @@ export class ViewModel {
     });
 
     // Track parent matching statistics
-    let parentMatchingStartTime = performance.now();
+    const parentMatchingStartTime = performance.now();
     let exactMatches = 0;
     let stringMatches = 0;
     let noMatches = 0;
@@ -706,7 +706,7 @@ export class ViewModel {
       return isMatch && !isWaitlistClass;
     });
 
-    let parentMatchingEndTime = performance.now();
+    const parentMatchingEndTime = performance.now();
 
     console.log(`🔍 Parent filtering completed in ${(parentMatchingEndTime - parentMatchingStartTime).toFixed(2)}ms`);
     console.log('📊 Parent matching statistics:');
@@ -1231,104 +1231,7 @@ export class ViewModel {
     M.FormSelect.init(selects);
   }
 
-  /**
-   * Create an instructor chip element
-   * @param {string} name - The instructor name to display
-   * @param {string|null} instructorId - The instructor ID (null for "All Instructors")
-   * @param {number} slotCount - Number of available slots
-   * @param {string} availability - 'available', 'limited', or 'unavailable'
-   * @param {boolean} isActive - Whether this chip should be active by default
-   * @returns {HTMLElement} The chip element
-   */
-  #createInstructorChip(name, instructorId, slotCount, availability, isActive) {
-    const chip = document.createElement('div');
-    chip.className = `chip instructor-chip ${availability}${isActive ? ' active' : ''}`;
-    chip.dataset.instructorId = instructorId || 'all';
 
-    // Set styles based on availability and active state
-    let styles = 'padding: 8px 12px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; transition: all 0.3s; border: 2px solid;';
-
-    if (isActive) {
-      styles += ' background: #2b68a4; color: white; border-color: #2b68a4;';
-    } else {
-      switch (availability) {
-        case 'available':
-          styles += ' background: #e8f5e8; border-color: #4caf50; color: #2e7d32;';
-          break;
-        case 'limited':
-          styles += ' background: #fff3e0; border-color: #ff9800; color: #ef6c00;';
-          break;
-        case 'unavailable':
-          styles += ' background: #ffebee; border-color: #f44336; color: #c62828; cursor: not-allowed; opacity: 0.6;';
-          break;
-      }
-    }
-
-    chip.style.cssText = styles;
-
-    // Create slot count span with appropriate color
-    let slotColor = '#ccc';
-    if (!isActive) {
-      switch (availability) {
-        case 'available':
-          slotColor = '#4caf50';
-          break;
-        case 'limited':
-          slotColor = '#ff9800';
-          break;
-        case 'unavailable':
-          slotColor = '#f44336';
-          break;
-      }
-    }
-
-    const slotText = instructorId ? ` (${slotCount} slots)` : ` (${slotCount} slots)`;
-    chip.innerHTML = `${name} <span style="color: ${slotColor}; font-weight: bold; margin-left: 5px;">${slotText}</span>`;
-
-    // Add click handler for chip selection (except for unavailable chips)
-    if (availability !== 'unavailable') {
-      chip.addEventListener('click', () => {
-        this.#handleInstructorChipClick(chip, instructorId);
-      });
-    }
-
-    return chip;
-  }
-
-  /**
-   * Handle instructor chip click events
-   * @param {HTMLElement} clickedChip - The chip that was clicked
-   * @param {string|null} instructorId - The instructor ID (null for "All Instructors")
-   */
-  #handleInstructorChipClick(clickedChip, instructorId) {
-    // Remove active class from all instructor chips
-    const allChips = document.querySelectorAll('.instructor-chip');
-    allChips.forEach(chip => {
-      chip.classList.remove('active');
-      // Reset background color based on availability
-      if (chip.classList.contains('available')) {
-        chip.style.background = '#e8f5e8';
-        chip.style.borderColor = '#4caf50';
-        chip.style.color = '#2e7d32';
-      } else if (chip.classList.contains('limited')) {
-        chip.style.background = '#fff3e0';
-        chip.style.borderColor = '#ff9800';
-        chip.style.color = '#ef6c00';
-      }
-    });
-
-    // Add active class to clicked chip
-    clickedChip.classList.add('active');
-    clickedChip.style.background = '#2b68a4';
-    clickedChip.style.borderColor = '#2b68a4';
-    clickedChip.style.color = 'white';
-
-    // Filter time slots based on selected instructor
-    console.log(`Instructor filter selected: ${instructorId || 'all'}`);
-
-    // TODO: Implement time slot filtering logic here
-    // This would update the time slot grid to show only slots for the selected instructor
-  }
 
   /**
    * Sort registrations by day, then start time, then length, then registration type (private first, then group)
@@ -1746,7 +1649,7 @@ export class ViewModel {
     let matchingSuccesses = 0;
     let matchingFailures = 0;
 
-    return new Table(
+    const table = new Table(
       tableId,
       ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument/Class'],
       // row
@@ -1813,6 +1716,7 @@ export class ViewModel {
     );
 
     console.log(`✅ Weekly schedule table "${tableId}" built: ${matchingSuccesses} successful matches, ${matchingFailures} failures`);
+    return table;
   }
   /**
    * Build directory table for employees (admins + instructors)
@@ -1917,45 +1821,6 @@ export class ViewModel {
 
       // Mixed types: admins come before instructors
       return aIsInstructor ? 1 : -1;
-    });
-  }
-  // TODO: This method has been partially migrated to DomHelpers.resetMaterializeSelect()
-  // Consider consolidating all select operations to use the shared utilities
-  /**
-   *
-   */
-  #updateSelectOptions(selectId, options, defaultOptionText, forceRefresh = false) {
-    const select = document.getElementById(selectId);
-    if (!select) {
-      console.error(`Select element with ID "${selectId}" not found.`);
-      return;
-    }
-    // get current selected option
-    const currentSelectedValue = select.value;
-    // Clear existing options
-    select.innerHTML = '';
-    // Create a default option
-    const defaultOption = document.createElement('option');
-    defaultOption.value = '';
-    defaultOption.textContent = defaultOptionText;
-    select.appendChild(defaultOption);
-    // Populate new options
-    options.forEach(option => {
-      const opt = document.createElement('option');
-      opt.value = option.value;
-      opt.textContent = option.label;
-      if (!forceRefresh && currentSelectedValue && option.value == currentSelectedValue) {
-        opt.selected = true;
-      }
-      select.appendChild(opt);
-    });
-    M.FormSelect.init(select, {
-      classes: selectId,
-      dropdownOptions: {
-        alignment: 'left',
-        coverTrigger: false,
-        constrainWidth: false,
-      },
     });
   }
   /**
@@ -2699,7 +2564,7 @@ export class ViewModel {
    */
   async handleLogin() {
     let loginValue = '';
-    let loginType = this.currentLoginType;
+    const loginType = this.currentLoginType;
 
     if (loginType === 'parent') {
       const phoneInput = document.getElementById('parent-phone-input');
@@ -2980,72 +2845,6 @@ export class ViewModel {
     }
   }
 
-  /**
-   * Show admin tabs and click the first one
-   */
-  #showAdminTabsAndSelectFirst() {
-    console.log('🔍 Showing admin tabs and selecting the first one');
-
-    try {
-      // Show tabs container first
-      const tabsContainer = document.querySelector('.tabs');
-      if (tabsContainer) {
-        tabsContainer.hidden = false;
-        console.log('✅ Tabs container shown');
-      }
-
-      // Show all admin tabs
-      const adminTabs = document.querySelectorAll('.tabs .tab.admin-tab');
-      console.log(`Found ${adminTabs.length} admin tabs to show`);
-
-      if (adminTabs.length > 0) {
-        adminTabs.forEach(tab => {
-          tab.hidden = false;
-          console.log(`Showing admin tab:`, tab);
-        });
-
-        // Get the first admin tab and click it
-        const firstAdminTab = adminTabs[0];
-        const firstAdminTabLink = firstAdminTab.querySelector('a');
-
-        if (firstAdminTabLink) {
-          console.log(`Clicking first admin tab: ${firstAdminTabLink.getAttribute('href')}`);
-
-          // Hide all tab content first
-          const allTabContent = document.querySelectorAll('.tab-content');
-          allTabContent.forEach(content => {
-            content.hidden = true;
-          });
-
-          // Show the target tab content
-          const targetContent = document.querySelector(firstAdminTabLink.getAttribute('href'));
-          if (targetContent) {
-            targetContent.hidden = false;
-            console.log(`Showing tab content: ${targetContent.id}`);
-          }
-
-          // Add active class to the first tab
-          const allTabLinks = document.querySelectorAll('.tabs .tab a');
-          allTabLinks.forEach(link => {
-            link.classList.remove('active');
-          });
-          firstAdminTabLink.classList.add('active');
-
-          // Ensure master schedule table is visible if it exists
-          const masterScheduleTable = document.getElementById('master-schedule-table');
-          if (masterScheduleTable) {
-            masterScheduleTable.hidden = false;
-          }
-        }
-
-        console.log('✅ Admin tabs shown and first tab selected');
-      } else {
-        console.warn('❌ No admin tabs found');
-      }
-    } catch (error) {
-      console.error('Error showing admin tabs:', error);
-    }
-  }
 
   /**
    * Show Terms of Service modal with confirmation callback
