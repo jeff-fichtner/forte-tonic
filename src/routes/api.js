@@ -1,12 +1,7 @@
 import express from 'express';
-import { RegistrationType } from '../utils/values/registrationType.js';
-import { _fetchData } from '../utils/helpers.js';
-import { configService } from '../services/configurationService.js';
-import { UserTransformService } from '../services/userTransformService.js';
-import { currentConfig, isProduction, isStaging, version } from '../config/environment.js';
+import { version } from '../config/environment.js';
 
 // Import application layer controllers
-import { Router } from 'express';
 import { UserController } from '../controllers/userController.js';
 import { RegistrationController } from '../controllers/registrationController.js';
 import { SystemController } from '../controllers/systemController.js';

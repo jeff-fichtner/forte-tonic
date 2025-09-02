@@ -62,7 +62,7 @@ class ClassManager {
 
   /**
    * Format class name with time display, showing special waitlist times for Rock Band classes
-   * @param {Object} cls - Class object with properties like id, title, day, startTime
+   * @param {object} cls - Class object with properties like id, title, day, startTime
    * @param {Function} formatClassNameFn - Function to format the base class name
    * @param {Function} formatTimeFn - Function to format time
    * @returns {string} Formatted class name with time

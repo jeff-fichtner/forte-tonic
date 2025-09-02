@@ -800,10 +800,10 @@ export class GoogleSheetsDbClient {
 
   /**
    * Create a registration audit record with proper schema
-   * @param {Object} registrationRecord - The original registration record
+   * @param {object} registrationRecord - The original registration record
    * @param {string} performedBy - The user who performed the action
    * @param {boolean} isDeleted - Whether this is a delete operation
-   * @returns {Object} Audit record formatted for the registrations-audit sheet
+   * @returns {object} Audit record formatted for the registrations-audit sheet
    */
   #createRegistrationAuditRecord(registrationRecord, performedBy, isDeleted = false) {
     const now = new Date().toISOString();

@@ -163,7 +163,7 @@ export class SystemController {
         'programRepository'
       ];
 
-      let clearedRepositories = [];
+      const clearedRepositories = [];
       for (const repoType of repositoryTypes) {
         try {
           const repository = serviceContainer.get(repoType);

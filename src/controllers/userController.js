@@ -9,10 +9,8 @@
 import { UserTransformService } from '../services/userTransformService.js';
 import { getAuthenticatedUserEmail } from '../middleware/auth.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
-import { _fetchData } from '../utils/helpers.js';
 import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
 import { OperatorUserResponse } from '../models/shared/responses/operatorUserResponse.js';
-import { currentConfig } from '../config/environment.js';
 import { ConfigurationService } from '../services/configurationService.js';
 
 export class UserController {
@@ -33,60 +31,6 @@ export class UserController {
         }
       );
       return res.json(bypassedResponse);
-
-      // Get operator email from environment
-      const operatorEmail = currentConfig.operatorEmail;
-      if (!operatorEmail) {
-        console.log('No OPERATOR_EMAIL set - returning null');
-        return res.json(null);
-      }
-
-      const userRepository = req.userRepository || serviceContainer.get('userRepository');
-
-      // Check if the operator email exists in the roles table
-      const operatorRole = await userRepository.getOperatorByEmail(operatorEmail);
-      if (!operatorRole) {
-        console.log(`Operator email ${operatorEmail} not found in roles table - returning null`);
-        return res.json(null);
-      }
-
-      // Get user data based on roles
-      let admin = null;
-      let instructor = null;
-      let parent = null;
-
-      if (operatorRole.admin) {
-        admin = await userRepository.getAdminByAccessCode(operatorRole.admin);
-        if (!admin) {
-          console.warn(`Admin with access code ${operatorRole.admin} not found`);
-        }
-      }
-
-      if (operatorRole.instructor) {
-        instructor = await userRepository.getInstructorByAccessCode(operatorRole.instructor);
-        if (!instructor) {
-          console.warn(`Instructor with access code ${operatorRole.instructor} not found`);
-        }
-      }
-
-      if (operatorRole.parent) {
-        parent = await userRepository.getParentByAccessCode(operatorRole.parent);
-        if (!parent) {
-          console.warn(`Parent with access code ${operatorRole.parent} not found`);
-        }
-      }
-
-      const operatorUser = new OperatorUserResponse(
-        operatorEmail,
-        admin,
-        instructor,
-        parent,
-        {
-          rockBandClassIds: ConfigurationService.getRockBandClassIds()
-        }
-      );
-
-      res.json(operatorUser);
     } catch (error) {
       console.error('Error getting operator user:', error);
       // Return null instead of error to allow app to continue
@@ -244,41 +188,11 @@ export class UserController {
   /**
    * Private method: Get parent emails for a student
    */
-  static async #getParentEmails(studentId) {
-    try {
-      const userRepository = serviceContainer.get('userRepository');
-      const student = await userRepository.getStudentById(studentId);
-
-      if (!student) return '';
-
-      const allParents = await userRepository.getParents();
-      const parent1 = allParents.find(p => p.id === student.parent1Id);
-      const parent2 = allParents.find(p => p.id === student.parent2Id);
-
-      return [parent1?.email, parent2?.email].filter(email => email).join(', ');
-    } catch (error) {
-      console.error('Error getting parent emails:', error);
-      return '';
-    }
-  }
-
-  /**
-   * Private method: Calculate average recommended lesson duration
-   */
-  static #calculateAverageRecommendedDuration(students) {
-    if (students.length === 0) return 0;
-
-    const total = students.reduce(
-      (sum, student) => sum + (student.recommendedLessonDuration || 0),
-      0
-    );
-    return Math.round(total / students.length);
-  }
 
   /**
    * Authenticate user by access code
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
+   * @param {object} req - Express request object
+   * @param {object} res - Express response object
    */
   static async authenticateByAccessCode(req, res) {
     try {
