@@ -598,7 +598,7 @@ export class ViewModel {
           return gradeA.localeCompare(gradeB);
         });
 
-      this.#buildWeeklySchedule(tableId, dayRegistrations);
+      this.#buildWeeklySchedule(tableId, dayRegistrations, 'instructor');
     });
 
     const mappedEmployees = this.adminEmployees().concat(
@@ -815,7 +815,8 @@ export class ViewModel {
 
         this.#buildWeeklySchedule(
           tableId,
-          sortedStudentRegistrations
+          sortedStudentRegistrations,
+          'parent'
         );
       });
     }
@@ -1740,8 +1741,8 @@ export class ViewModel {
   /**
    *
    */
-  #buildWeeklySchedule(tableId, enrollments) {
-    console.log(`🏗️ Building weekly schedule table "${tableId}" with ${enrollments.length} enrollments`);
+  #buildWeeklySchedule(tableId, enrollments, viewContext = 'instructor') {
+    console.log(`🏗️ Building weekly schedule table "${tableId}" with ${enrollments.length} enrollments for ${viewContext} view`);
 
     let matchingSuccesses = 0;
     let matchingFailures = 0;
@@ -1797,8 +1798,8 @@ export class ViewModel {
                         <td>${instructor.firstName} ${instructor.lastName}</td>
                         <td>${enrollment.registrationType === RegistrationType.GROUP ? (enrollment.classTitle || enrollment.className || 'N/A') : (enrollment.instrument || 'N/A')}</td>
                         <td>
-                            <a href="#" data-registration-id="${enrollment.id?.value || enrollment.id}">
-                                <i class="material-icons copy-parent-emails-table-icon gray-text text-darken-4">email</i>
+                            <a href="#" data-registration-id="${enrollment.id?.value || enrollment.id}" data-view-context="${viewContext}">
+                                <i class="material-icons copy-emails-table-icon gray-text text-darken-4">email</i>
                             </a>
                         </td>
                     `;
@@ -1806,15 +1807,17 @@ export class ViewModel {
       enrollments,
       // on click
       async event => {
-        const isCopy = event.target.classList.contains('copy-parent-emails-table-icon');
+        const isCopy = event.target.classList.contains('copy-emails-table-icon');
         if (!isCopy) {
           return;
         }
         event.preventDefault();
 
-        // Get the registration ID from the data attribute
+        // Get the registration ID and view context from the data attributes
         const linkElement = event.target.closest('a');
         const registrationId = linkElement?.getAttribute('data-registration-id');
+        const viewContext = linkElement?.getAttribute('data-view-context') || 'instructor';
+        
         if (!registrationId) return;
 
         // Find the enrollment by ID in the enrollments array
@@ -1823,19 +1826,32 @@ export class ViewModel {
         );
         if (!currentEnrollment) return;
 
-        // Get the student ID from the current enrollment
-        const studentIdToFind = currentEnrollment.studentId?.value || currentEnrollment.studentId;
+        if (viewContext === 'parent') {
+          // Parent view: show instructor emails
+          const instructorIdToFind = currentEnrollment.instructorId?.value || currentEnrollment.instructorId;
+          const instructor = this.instructors.find(x => {
+            const instructorId = x.id?.value || x.id;
+            return instructorId === instructorIdToFind;
+          });
 
-        // Find the full student object with parent emails from this.students
-        const fullStudent = this.students.find(x => {
-          const studentId = x.id?.value || x.id;
-          return studentId === studentIdToFind;
-        });
-
-        if (fullStudent && fullStudent.parentEmails && fullStudent.parentEmails.trim()) {
-          await this.#copyToClipboard(fullStudent.parentEmails);
+          if (instructor && instructor.email && instructor.email.trim()) {
+            await this.#copyToClipboard(instructor.email);
+          } else {
+            M.toast({ html: 'No instructor email available.' });
+          }
         } else {
-          M.toast({ html: 'No parent email available for this student.' });
+          // Instructor view: show parent emails
+          const studentIdToFind = currentEnrollment.studentId?.value || currentEnrollment.studentId;
+          const fullStudent = this.students.find(x => {
+            const studentId = x.id?.value || x.id;
+            return studentId === studentIdToFind;
+          });
+
+          if (fullStudent && fullStudent.parentEmails && fullStudent.parentEmails.trim()) {
+            await this.#copyToClipboard(fullStudent.parentEmails);
+          } else {
+            M.toast({ html: 'No parent email available for this student.' });
+          }
         }
       },
       null, // filterFunction
@@ -2806,7 +2822,6 @@ export class ViewModel {
    * Handle login form submission
    */
   async #handleLogin() {
-    debugger
     // Delegate to public method
     await this.handleLogin();
   }
