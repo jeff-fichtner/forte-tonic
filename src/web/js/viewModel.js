@@ -1748,7 +1748,7 @@ export class ViewModel {
 
     return new Table(
       tableId,
-      ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument/Class'],
+      ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument/Class', 'Contact'],
       // row
       enrollment => {
         // More flexible instructor matching
@@ -1796,10 +1796,48 @@ export class ViewModel {
                         <td>${formatGrade(student.grade) || 'N/A'}</td>
                         <td>${instructor.firstName} ${instructor.lastName}</td>
                         <td>${enrollment.registrationType === RegistrationType.GROUP ? (enrollment.classTitle || enrollment.className || 'N/A') : (enrollment.instrument || 'N/A')}</td>
+                        <td>
+                            <a href="#" data-registration-id="${enrollment.id?.value || enrollment.id}">
+                                <i class="material-icons copy-parent-emails-table-icon gray-text text-darken-4">email</i>
+                            </a>
+                        </td>
                     `;
       },
       enrollments,
-      null, // onClickFunction
+      // on click
+      async event => {
+        const isCopy = event.target.classList.contains('copy-parent-emails-table-icon');
+        if (!isCopy) {
+          return;
+        }
+        event.preventDefault();
+
+        // Get the registration ID from the data attribute
+        const linkElement = event.target.closest('a');
+        const registrationId = linkElement?.getAttribute('data-registration-id');
+        if (!registrationId) return;
+
+        // Find the enrollment by ID in the enrollments array
+        const currentEnrollment = enrollments.find(e =>
+          (e.id?.value || e.id) === registrationId
+        );
+        if (!currentEnrollment) return;
+
+        // Get the student ID from the current enrollment
+        const studentIdToFind = currentEnrollment.studentId?.value || currentEnrollment.studentId;
+
+        // Find the full student object with parent emails from this.students
+        const fullStudent = this.students.find(x => {
+          const studentId = x.id?.value || x.id;
+          return studentId === studentIdToFind;
+        });
+
+        if (fullStudent && fullStudent.parentEmails && fullStudent.parentEmails.trim()) {
+          await this.#copyToClipboard(fullStudent.parentEmails);
+        } else {
+          M.toast({ html: 'No parent email available for this student.' });
+        }
+      },
       null, // filterFunction
       null, // onFilterChanges
       {

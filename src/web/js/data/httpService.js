@@ -38,14 +38,34 @@ export class HttpService {
       console.log(
         `Fetched page ${page} with size ${pageSize} from server function ${serverFunctionName}`
       );
+      console.log(`🔍 HttpService.fetchPage response for ${serverFunctionName}:`, response);
       if (!response) {
         return { data: [], total: 0 };
       }
 
-      const parsedResults = response.data.map(y => mapper(y));
+      // Handle different response formats:
+      // 1. Paginated format: { data: [...], total: 123 }
+      // 2. Direct array format: [...]
+      let responseData, responseTotal;
+      
+      if (response.data) {
+        // Paginated format
+        responseData = response.data;
+        responseTotal = response.total || 0;
+      } else if (Array.isArray(response)) {
+        // Direct array format
+        responseData = response;
+        responseTotal = response.length;
+        console.log(`🔍 HttpService.fetchPage: Using direct array format for ${serverFunctionName}, length: ${responseTotal}`);
+      } else {
+        console.warn(`⚠️ HttpService.fetchPage: Unexpected response format for ${serverFunctionName}. Response:`, response);
+        return { data: [], total: 0 };
+      }
+
+      const parsedResults = responseData.map(y => mapper(y));
       return {
         data: parsedResults,
-        total: response.total || 0,
+        total: responseTotal,
       };
     } catch (error) {
       console.error(`Error fetching ${serverFunctionName} page ${page}:`, error);
