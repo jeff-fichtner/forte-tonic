@@ -86,6 +86,7 @@ async function extractAuthenticatedUser(req, userRepository) {
       bodyHasAccessCode: req.body && 'accessCode' in req.body,
       hasHeaders: !!req.headers,
       headerAccessCode: req.headers['x-access-code'] ? req.headers['x-access-code'].substring(0, 3) + '***' : 'none',
+      headerLoginType: req.headers['x-login-type'] || 'none',
       queryAccessCode: req.query?.accessCode ? req.query.accessCode.substring(0, 3) + '***' : 'none',
       userAgent: req.headers?.['user-agent']?.substring(0, 50) || 'unknown'
     });
