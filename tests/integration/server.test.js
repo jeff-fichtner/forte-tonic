@@ -174,7 +174,7 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
       primaryRole: 'admin',
       displayName: 'Test Admin',
       operatorEmail: process.env.OPERATOR_EMAIL || 'test-operator@example.com',
-      toJSON: function() {
+      toJSON: function () {
         return {
           email: this.email,
           admin: this.admin,
@@ -182,14 +182,14 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
           parent: this.parent,
           roles: this.roles,
           primaryRole: this.primaryRole,
-          displayName: this.displayName
+          displayName: this.displayName,
         };
-      }
+      },
     };
     req.user = req.currentUser; // For compatibility
     next();
   },
-  getAuthenticatedUserEmail: jest.fn().mockImplementation((req) => {
+  getAuthenticatedUserEmail: jest.fn().mockImplementation(req => {
     return req.currentUser?.operatorEmail || req.currentUser?.email || 'test-operator@example.com';
   }),
   requireAuth: (req, res, next) => next(),
@@ -317,9 +317,7 @@ describe('Server Integration Tests', () => {
 
     describe('POST /api/getStudents', () => {
       test('should return list of students', async () => {
-        const response = await request(app)
-          .post('/api/getStudents')
-          .expect(200);
+        const response = await request(app).post('/api/getStudents').expect(200);
 
         let result;
         try {
@@ -327,7 +325,7 @@ describe('Server Integration Tests', () => {
         } catch {
           result = JSON.parse(response.text);
         }
-        
+
         // Should return direct array like other user endpoints
         expect(Array.isArray(result)).toBe(true);
         expect(result.length).toBeGreaterThan(0);
@@ -414,16 +412,16 @@ describe('Server Integration Tests', () => {
           lastName: 'Admin',
           phone: '555-1234',
           accessCode: '123456',
-          toJSON: function() {
+          toJSON: function () {
             return {
               id: this.id,
               email: this.email,
               firstName: this.firstName,
               lastName: this.lastName,
               phone: this.phone,
-              accessCode: this.accessCode
+              accessCode: this.accessCode,
             };
-          }
+          },
         });
 
         const response = await request(app)
@@ -437,7 +435,7 @@ describe('Server Integration Tests', () => {
         } catch {
           user = JSON.parse(response.text);
         }
-        
+
         expect(user).toHaveProperty('email', 'admin@test.com');
         expect(user).toHaveProperty('admin');
         expect(user.admin).toHaveProperty('firstName', 'Test');

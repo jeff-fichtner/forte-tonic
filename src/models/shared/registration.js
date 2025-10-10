@@ -1,7 +1,7 @@
 /**
  * Registration Model with UUID Primary Keys
  * =========================================
- * 
+ *
  * Simplified registration model without audit fields
  */
 
@@ -14,27 +14,27 @@ function extractStringValue(value) {
   if (value === null || value === undefined) {
     return value;
   }
-  
+
   if (typeof value === 'string') {
     return value;
   }
-  
+
   if (typeof value === 'object') {
     // If it's an object, it might have an id, value, or _value property
     if (value.id) return String(value.id);
     if (value.value) return String(value.value);
     if (value._value) return String(value._value);
     if (value.uuid) return String(value.uuid);
-    
+
     // If it's an array, take the first element
     if (Array.isArray(value) && value.length > 0) {
       return String(value[0]);
     }
-    
+
     console.warn('Unable to extract string from object:', value);
     return String(value); // This will produce "[object Object]"
   }
-  
+
   return String(value);
 }
 
@@ -44,27 +44,27 @@ export class Registration {
 
     // UUID primary key (new)
     this.id = new RegistrationId(data.id);
-    
+
     // Core relationship fields
     this.studentId = new StudentId(data.studentId);
     this.instructorId = new InstructorId(data.instructorId);
-    
+
     // Scheduling fields
     this.day = data.day;
     this.startTime = data.startTime;
     this.length = parseInt(data.length) || 30;
-    
+
     // Registration details
     this.registrationType = data.registrationType; // Already normalized in validation
     this.roomId = data.roomId;
     this.instrument = data.instrument;
     this.transportationType = data.transportationType;
     this.notes = data.notes;
-    
+
     // Group lesson fields
     this.classId = data.classId;
     this.classTitle = data.classTitle;
-    
+
     // Lifecycle fields (simplified - no audit trail)
     this.expectedStartDate = data.expectedStartDate ? new Date(data.expectedStartDate) : null;
     this.createdAt = data.createdAt ? new Date(data.createdAt) : new Date();
@@ -106,9 +106,9 @@ export class Registration {
     if (!type || typeof type !== 'string') {
       return 'private'; // Default fallback
     }
-    
+
     const normalized = type.toLowerCase().trim();
-    
+
     // Handle common variations
     if (normalized.includes('group') || normalized.includes('class')) {
       return 'group';
@@ -116,12 +116,12 @@ export class Registration {
     if (normalized.includes('private') || normalized.includes('individual')) {
       return 'private';
     }
-    
+
     // If it's exactly 'private' or 'group', return as-is
     if (['private', 'group'].includes(normalized)) {
       return normalized;
     }
-    
+
     // Default fallback for unknown types
     return 'private';
   }
@@ -170,13 +170,13 @@ export class Registration {
     if (!row || !row[0] || !Array.isArray(row) || row.length === 0) {
       return null;
     }
-    
+
     // Skip header rows (check if first column is "Id", "ID", or other header-like values)
     const firstCell = String(row[0]).trim().toLowerCase();
     if (firstCell === 'id' || firstCell === 'registrationid' || firstCell === 'registration_id') {
       return null;
     }
-    
+
     // Skip rows where the ID doesn't look like a UUID (basic check)
     const idValue = String(row[0]).trim();
     if (idValue.length < 10 || idValue === 'Id' || !idValue.includes('-')) {
@@ -186,27 +186,27 @@ export class Registration {
 
     try {
       // Map array indices to field names based on registration schema
-      // Order: Id, StudentId, InstructorId, Day, StartTime, Length, RegistrationType, 
-      //        RoomId, Instrument, TransportationType, Notes, ClassId, ClassTitle, 
+      // Order: Id, StudentId, InstructorId, Day, StartTime, Length, RegistrationType,
+      //        RoomId, Instrument, TransportationType, Notes, ClassId, ClassTitle,
       //        ExpectedStartDate, CreatedAt, CreatedBy
-      
+
       return new Registration({
-        id: row[0] ? String(row[0]) : row[0],  // Id (UUID) - ensure string
-        studentId: row[1] ? String(row[1]) : row[1],     // StudentId - ensure string
-        instructorId: row[2] ? String(row[2]) : row[2],  // InstructorId - ensure string
-        day: row[3],                     // Day
-        startTime: row[4],               // StartTime
-        length: row[5],                  // Length
-        registrationType: row[6],        // RegistrationType
-        roomId: row[7],                  // RoomId
-        instrument: row[8],              // Instrument
-        transportationType: row[9],      // TransportationType
-        notes: row[10],                  // Notes
-        classId: row[11],                // ClassId
-        classTitle: row[12],             // ClassTitle
-        expectedStartDate: row[13],      // ExpectedStartDate
-        createdAt: row[14],              // CreatedAt
-        createdBy: row[15]               // CreatedBy
+        id: row[0] ? String(row[0]) : row[0], // Id (UUID) - ensure string
+        studentId: row[1] ? String(row[1]) : row[1], // StudentId - ensure string
+        instructorId: row[2] ? String(row[2]) : row[2], // InstructorId - ensure string
+        day: row[3], // Day
+        startTime: row[4], // StartTime
+        length: row[5], // Length
+        registrationType: row[6], // RegistrationType
+        roomId: row[7], // RoomId
+        instrument: row[8], // Instrument
+        transportationType: row[9], // TransportationType
+        notes: row[10], // Notes
+        classId: row[11], // ClassId
+        classTitle: row[12], // ClassTitle
+        expectedStartDate: row[13], // ExpectedStartDate
+        createdAt: row[14], // CreatedAt
+        createdBy: row[15], // CreatedBy
       });
     } catch (error) {
       console.warn(`Failed to create Registration from row [${row.join(', ')}]:`, error.message);
@@ -225,9 +225,9 @@ export class Registration {
       ...data,
       id: extractStringValue(data.id),
       studentId: extractStringValue(data.studentId),
-      instructorId: extractStringValue(data.instructorId)
+      instructorId: extractStringValue(data.instructorId),
     };
-    
+
     return new Registration(processedData);
   }
 
@@ -251,7 +251,7 @@ export class Registration {
       this.classTitle || '',
       this.expectedStartDate ? this.expectedStartDate.toISOString() : '',
       this.createdAt.toISOString(),
-      this.createdBy || ''
+      this.createdBy || '',
     ];
   }
 
@@ -260,7 +260,7 @@ export class Registration {
    */
   toDataObject() {
     // Helper function to safely extract values from value objects or plain values
-    const extractValue = (valueOrObject) => {
+    const extractValue = valueOrObject => {
       if (!valueOrObject) return null;
       if (typeof valueOrObject === 'string' || typeof valueOrObject === 'number') {
         return valueOrObject;
@@ -290,7 +290,7 @@ export class Registration {
       classTitle: this.classTitle,
       expectedStartDate: this.expectedStartDate,
       createdAt: this.createdAt,
-      createdBy: this.createdBy
+      createdBy: this.createdBy,
     };
   }
 
@@ -313,8 +313,7 @@ export class Registration {
       classTitle: options.classTitle,
       expectedStartDate: options.expectedStartDate,
       createdAt: new Date().toISOString(),
-      createdBy: options.createdBy
+      createdBy: options.createdBy,
     });
   }
-
 }

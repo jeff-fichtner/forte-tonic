@@ -77,15 +77,17 @@ app.use(express.urlencoded({ extended: true }));
 const isDevelopment = serverConfig.nodeEnv === 'development';
 
 // Development cache headers to prevent caching issues
-const developmentStaticOptions = isDevelopment ? {
-  setHeaders: (res, _path) => {
-    res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
-    });
-  }
-} : {};
+const developmentStaticOptions = isDevelopment
+  ? {
+      setHeaders: (res, _path) => {
+        res.set({
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        });
+      },
+    }
+  : {};
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'web'), developmentStaticOptions));

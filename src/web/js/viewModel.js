@@ -1,7 +1,14 @@
 import { HttpService } from './data/httpService.js';
 import { ServerFunctions, Sections, RegistrationType } from './constants.js';
 import { OperatorUserResponse } from '../../models/shared/responses/operatorUserResponse.js';
-import { Admin, Instructor, Student, Registration, Class, Room } from '../../models/shared/index.js';
+import {
+  Admin,
+  Instructor,
+  Student,
+  Registration,
+  Class,
+  Room,
+} from '../../models/shared/index.js';
 import { DomHelpers } from './utilities/domHelpers.js';
 import { NavTabs } from './components/navTabs.js';
 import { Table } from './components/table.js';
@@ -18,10 +25,10 @@ import { ClassManager } from './utilities/classManager.js';
  */
 function formatDateTime(timestamp) {
   if (!timestamp) return 'N/A';
-  
+
   try {
     let date;
-    
+
     // Handle different input types
     if (timestamp instanceof Date) {
       date = timestamp;
@@ -43,25 +50,37 @@ function formatDateTime(timestamp) {
       // Try to convert to string and parse
       date = new Date(String(timestamp));
     }
-    
+
     // Check if date is valid
     if (isNaN(date.getTime())) {
       console.warn('Invalid timestamp:', timestamp);
       return 'Invalid Date';
     }
-    
+
     // Format as "Aug 10 - 8:11 PM"
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
     const month = monthNames[date.getMonth()];
     const day = date.getDate();
-    const time = date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit', 
-      hour12: true 
+    const time = date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
     });
-    
+
     return `${month} ${day} - ${time}`;
   } catch (error) {
     console.warn('Error formatting timestamp:', timestamp, error);
@@ -83,11 +102,9 @@ export class ViewModel {
   }
 
   async initializeAsync() {
-
     // Get operator user when page first loads
-    const operatorUser = await HttpService.fetch(
-      ServerFunctions.getOperatorUser,
-      x => OperatorUserResponse.fromApiData(x)
+    const operatorUser = await HttpService.fetch(ServerFunctions.getOperatorUser, x =>
+      OperatorUserResponse.fromApiData(x)
     );
 
     console.log('Operator user loaded:', operatorUser);
@@ -98,7 +115,10 @@ export class ViewModel {
     // Update ClassManager with Rock Band class IDs from server configuration
     if (operatorUser && operatorUser.configuration && operatorUser.configuration.rockBandClassIds) {
       ClassManager.updateRockBandClassIds(operatorUser.configuration.rockBandClassIds);
-      console.log('Updated ClassManager with Rock Band class IDs:', operatorUser.configuration.rockBandClassIds);
+      console.log(
+        'Updated ClassManager with Rock Band class IDs:',
+        operatorUser.configuration.rockBandClassIds
+      );
     }
 
     // Show nav links only if operator user returned successfully
@@ -226,14 +246,18 @@ export class ViewModel {
     console.log('👩‍🏫 Instructor IDs and details:');
     instructors.forEach((instructor, index) => {
       const id = instructor.id?.value || instructor.id;
-      console.log(`  ${index + 1}. ID: "${id}" (${typeof id}) - ${instructor.firstName} ${instructor.lastName} (${instructor.email})`);
+      console.log(
+        `  ${index + 1}. ID: "${id}" (${typeof id}) - ${instructor.firstName} ${instructor.lastName} (${instructor.email})`
+      );
     });
 
     // Log student details (first 10 for brevity)
     console.log(`👩‍🎓 Student IDs and details (showing first 10 of ${students.length}):`);
     students.slice(0, 10).forEach((student, index) => {
       const id = student.id?.value || student.id;
-      console.log(`  ${index + 1}. ID: "${id}" (${typeof id}) - ${student.firstName} ${student.lastName}`);
+      console.log(
+        `  ${index + 1}. ID: "${id}" (${typeof id}) - ${student.firstName} ${student.lastName}`
+      );
     });
 
     M.AutoInit();
@@ -260,7 +284,7 @@ export class ViewModel {
           studentId: registration.studentId?.value || registration.studentId,
           instructorId: registration.instructorId?.value || registration.instructorId,
           day: registration.day,
-          startTime: registration.startTime
+          startTime: registration.startTime,
         });
       }
 
@@ -279,13 +303,22 @@ export class ViewModel {
           unmatchedStudentIds.push(regStudentId);
 
           if (index < 5) {
-            console.warn(`❌ Student not found for registration ${registration.id} with studentId "${regStudentId}" (${typeof regStudentId})`);
-            console.warn(`   Available student IDs:`, students.map(s => `"${s.id?.value || s.id}" (${typeof (s.id?.value || s.id)})`).slice(0, 5));
+            console.warn(
+              `❌ Student not found for registration ${registration.id} with studentId "${regStudentId}" (${typeof regStudentId})`
+            );
+            console.warn(
+              `   Available student IDs:`,
+              students
+                .map(s => `"${s.id?.value || s.id}" (${typeof (s.id?.value || s.id)})`)
+                .slice(0, 5)
+            );
           }
         } else {
           studentsMatched++;
           if (index < 5) {
-            console.log(`✅ Student matched: ${registration.student.firstName} ${registration.student.lastName}`);
+            console.log(
+              `✅ Student matched: ${registration.student.firstName} ${registration.student.lastName}`
+            );
           }
         }
       }
@@ -294,7 +327,8 @@ export class ViewModel {
       if (!registration.instructor) {
         registration.instructor = this.instructors.find(x => {
           const instructorId = x.id?.value || x.id;
-          const registrationInstructorId = registration.instructorId?.value || registration.instructorId;
+          const registrationInstructorId =
+            registration.instructorId?.value || registration.instructorId;
           return instructorId === registrationInstructorId;
         });
 
@@ -305,13 +339,20 @@ export class ViewModel {
           unmatchedInstructorIds.push(regInstructorId);
 
           if (index < 5) {
-            console.warn(`❌ Instructor not found for registration ${registration.id} with instructorId "${regInstructorId}" (${typeof regInstructorId})`);
-            console.warn(`   Available instructor IDs:`, instructors.map(i => `"${i.id?.value || i.id}" (${typeof (i.id?.value || i.id)})`));
+            console.warn(
+              `❌ Instructor not found for registration ${registration.id} with instructorId "${regInstructorId}" (${typeof regInstructorId})`
+            );
+            console.warn(
+              `   Available instructor IDs:`,
+              instructors.map(i => `"${i.id?.value || i.id}" (${typeof (i.id?.value || i.id)})`)
+            );
           }
         } else {
           instructorsMatched++;
           if (index < 5) {
-            console.log(`✅ Instructor matched: ${registration.instructor.firstName} ${registration.instructor.lastName}`);
+            console.log(
+              `✅ Instructor matched: ${registration.instructor.firstName} ${registration.instructor.lastName}`
+            );
           }
         }
       }
@@ -319,12 +360,16 @@ export class ViewModel {
     });
 
     const matchingEndTime = performance.now();
-    console.log(`🔗 Registration matching completed in ${(matchingEndTime - matchingStartTime).toFixed(2)}ms`);
+    console.log(
+      `🔗 Registration matching completed in ${(matchingEndTime - matchingStartTime).toFixed(2)}ms`
+    );
 
     // Log matching statistics
     console.log('📈 Matching statistics:');
     console.log(`  Students: ${studentsMatched} matched, ${studentsNotMatched} not matched`);
-    console.log(`  Instructors: ${instructorsMatched} matched, ${instructorsNotMatched} not matched`);
+    console.log(
+      `  Instructors: ${instructorsMatched} matched, ${instructorsNotMatched} not matched`
+    );
 
     if (unmatchedStudentIds.length > 0) {
       console.log(`⚠️ Unmatched student IDs (first 10):`, unmatchedStudentIds.slice(0, 10));
@@ -359,7 +404,8 @@ export class ViewModel {
     this.registrations.forEach(reg => {
       if (reg.instructor) {
         const instructorId = reg.instructor.id?.value || reg.instructor.id;
-        instructorRegistrationCounts[instructorId] = (instructorRegistrationCounts[instructorId] || 0) + 1;
+        instructorRegistrationCounts[instructorId] =
+          (instructorRegistrationCounts[instructorId] || 0) + 1;
       }
     });
 
@@ -368,7 +414,9 @@ export class ViewModel {
       .sort(([, a], [, b]) => b - a)
       .forEach(([instructorId, count]) => {
         const instructor = this.instructors.find(i => (i.id?.value || i.id) === instructorId);
-        const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : 'Unknown';
+        const instructorName = instructor
+          ? `${instructor.firstName} ${instructor.lastName}`
+          : 'Unknown';
         console.log(`  ${instructorName}: ${count} registrations`);
       });
 
@@ -400,7 +448,8 @@ export class ViewModel {
     }
 
     // For operator users, show all sections available; for authenticated users, use default section
-    const isOperatorUser = user instanceof OperatorUserResponse || (user.isOperator && user.isOperator());
+    const isOperatorUser =
+      user instanceof OperatorUserResponse || (user.isOperator && user.isOperator());
     const defaultSectionToUse = isOperatorUser ? null : defaultSection;
     this.navTabs = new NavTabs(defaultSectionToUse);
     this.#setPageLoading(false);
@@ -442,7 +491,9 @@ export class ViewModel {
       return !ClassManager.isRockBandClass(registration.classId);
     });
     const sortedRegistrations = this.#sortRegistrations(nonWaitlistRegistrations);
-    console.log(`Building master schedule table with ${sortedRegistrations.length} registrations (excluding wait list classes)`);
+    console.log(
+      `Building master schedule table with ${sortedRegistrations.length} registrations (excluding wait list classes)`
+    );
     this.masterScheduleTable = this.#buildRegistrationTable(sortedRegistrations);
     console.log('Master schedule table built successfully');
     this.#populateFilterDropdowns();
@@ -451,7 +502,9 @@ export class ViewModel {
     const waitListRegistrations = this.registrations.filter(registration => {
       return ClassManager.isRockBandClass(registration.classId);
     });
-    console.log(`Building wait list table with ${waitListRegistrations.length} registrations (Rock Band classes)`);
+    console.log(
+      `Building wait list table with ${waitListRegistrations.length} registrations (Rock Band classes)`
+    );
     this.adminWaitListTable = this.#buildWaitListTable(waitListRegistrations);
     console.log('Wait list table built successfully');
 
@@ -489,29 +542,38 @@ export class ViewModel {
       return;
     }
 
-    console.log(`🔍 Current instructor ID: "${currentInstructorId}" (${typeof currentInstructorId})`);
+    console.log(
+      `🔍 Current instructor ID: "${currentInstructorId}" (${typeof currentInstructorId})`
+    );
 
     // Filter registrations to only show those for the current instructor
     console.log('🔍 Filtering registrations for instructor...');
     const filteringStartTime = performance.now();
 
     const instructorRegistrations = this.registrations.filter(registration => {
-      const registrationInstructorId = registration.instructorId?.value || registration.instructorId;
+      const registrationInstructorId =
+        registration.instructorId?.value || registration.instructorId;
       const isMatch = registrationInstructorId === currentInstructorId;
 
       return isMatch;
     });
 
     const filteringEndTime = performance.now();
-    console.log(`🔍 Instructor filtering completed in ${(filteringEndTime - filteringStartTime).toFixed(2)}ms`);
+    console.log(
+      `🔍 Instructor filtering completed in ${(filteringEndTime - filteringStartTime).toFixed(2)}ms`
+    );
 
-    console.log(`📊 Instructor ${currentInstructorId} has ${instructorRegistrations.length} registrations out of ${this.registrations.length} total`);
+    console.log(
+      `📊 Instructor ${currentInstructorId} has ${instructorRegistrations.length} registrations out of ${this.registrations.length} total`
+    );
 
     // Log some sample instructor registrations
     if (instructorRegistrations.length > 0) {
       console.log('📝 Sample instructor registrations:');
       instructorRegistrations.slice(0, 5).forEach((registration, index) => {
-        console.log(`  ${index + 1}. ${registration.student?.firstName || 'Unknown'} ${registration.student?.lastName || 'Student'} - ${registration.day} ${registration.startTime} (${registration.instrument || registration.classTitle || 'Unknown'})`);
+        console.log(
+          `  ${index + 1}. ${registration.student?.firstName || 'Unknown'} ${registration.student?.lastName || 'Student'} - ${registration.day} ${registration.startTime} (${registration.instrument || registration.classTitle || 'Unknown'})`
+        );
       });
       if (instructorRegistrations.length > 5) {
         console.log(`  ... and ${instructorRegistrations.length - 5} more registrations`);
@@ -556,7 +618,8 @@ export class ViewModel {
       // Add a day header for better organization
       const dayHeader = document.createElement('h5');
       dayHeader.textContent = day;
-      dayHeader.style.cssText = 'color: #2b68a4; margin-bottom: 15px; margin-top: 20px; font-weight: bold;';
+      dayHeader.style.cssText =
+        'color: #2b68a4; margin-bottom: 15px; margin-top: 20px; font-weight: bold;';
       dayContainer.appendChild(dayHeader);
 
       const tableId = `instructor-weekly-schedule-table-${day}`;
@@ -640,14 +703,16 @@ export class ViewModel {
         id: registration.id,
         studentId: registration.studentId,
         hasStudent: !!registration.student,
-        studentData: registration.student ? {
-          id: registration.student.id,
-          name: `${registration.student.firstName} ${registration.student.lastName}`,
-          parent1Id: registration.student.parent1Id,
-          parent2Id: registration.student.parent2Id,
-          parent1IdType: typeof registration.student.parent1Id,
-          parent2IdType: typeof registration.student.parent2Id
-        } : 'No student attached'
+        studentData: registration.student
+          ? {
+              id: registration.student.id,
+              name: `${registration.student.firstName} ${registration.student.lastName}`,
+              parent1Id: registration.student.parent1Id,
+              parent2Id: registration.student.parent2Id,
+              parent1IdType: typeof registration.student.parent1Id,
+              parent2IdType: typeof registration.student.parent2Id,
+            }
+          : 'No student attached',
       });
     });
 
@@ -666,28 +731,35 @@ export class ViewModel {
         return false;
       }
 
-      if (noMatches + exactMatches + stringMatches < 10) { // Log first 10 for brevity
+      if (noMatches + exactMatches + stringMatches < 10) {
+        // Log first 10 for brevity
         console.log(`  🔍 Checking student: ${student.firstName} ${student.lastName}`);
-        console.log(`    - student.parent1Id: "${student.parent1Id}" (${typeof student.parent1Id})`);
-        console.log(`    - student.parent2Id: "${student.parent2Id}" (${typeof student.parent2Id})`);
+        console.log(
+          `    - student.parent1Id: "${student.parent1Id}" (${typeof student.parent1Id})`
+        );
+        console.log(
+          `    - student.parent2Id: "${student.parent2Id}" (${typeof student.parent2Id})`
+        );
         console.log(`    - currentParentId: "${currentParentId}" (${typeof currentParentId})`);
       }
 
       // Check if the current parent is either parent1 or parent2 of the student
-      const exactMatch = student.parent1Id === currentParentId || student.parent2Id === currentParentId;
+      const exactMatch =
+        student.parent1Id === currentParentId || student.parent2Id === currentParentId;
 
       // Also try string comparison in case of type mismatches
-      const stringMatch = !exactMatch && (
-        String(student.parent1Id) === String(currentParentId) ||
-        String(student.parent2Id) === String(currentParentId)
-      );
+      const stringMatch =
+        !exactMatch &&
+        (String(student.parent1Id) === String(currentParentId) ||
+          String(student.parent2Id) === String(currentParentId));
 
       const isMatch = exactMatch || stringMatch;
 
       // Exclude Rock Band classes (wait list classes) from parent weekly schedule
       const isWaitlistClass = ClassManager.isRockBandClass(registration.classId);
 
-      if (noMatches + exactMatches + stringMatches < 10) { // Log first 10 for brevity
+      if (noMatches + exactMatches + stringMatches < 10) {
+        // Log first 10 for brevity
         console.log(`    - Exact match result: ${exactMatch}`);
         console.log(`    - String match result: ${stringMatch}`);
         console.log(`    - Is waitlist class: ${isWaitlistClass}`);
@@ -707,19 +779,25 @@ export class ViewModel {
 
     const parentMatchingEndTime = performance.now();
 
-    console.log(`🔍 Parent filtering completed in ${(parentMatchingEndTime - parentMatchingStartTime).toFixed(2)}ms`);
+    console.log(
+      `🔍 Parent filtering completed in ${(parentMatchingEndTime - parentMatchingStartTime).toFixed(2)}ms`
+    );
     console.log('📊 Parent matching statistics:');
     console.log(`  - Exact matches: ${exactMatches}`);
     console.log(`  - String matches: ${stringMatches}`);
     console.log(`  - No matches: ${noMatches}`);
     console.log(`  - Missing students: ${missingStudents}`);
-    console.log(`  - Total parent-child registrations found (excluding wait list classes): ${parentChildRegistrations.length}`);
+    console.log(
+      `  - Total parent-child registrations found (excluding wait list classes): ${parentChildRegistrations.length}`
+    );
 
     // Log details about the matched registrations
     if (parentChildRegistrations.length > 0) {
       console.log('📝 Parent-child registrations details:');
       parentChildRegistrations.slice(0, 5).forEach((registration, index) => {
-        console.log(`  ${index + 1}. ${registration.student.firstName} ${registration.student.lastName} - ${registration.day} ${registration.startTime} (${registration.instrument || registration.classTitle})`);
+        console.log(
+          `  ${index + 1}. ${registration.student.firstName} ${registration.student.lastName} - ${registration.day} ${registration.startTime} (${registration.instrument || registration.classTitle})`
+        );
       });
       if (parentChildRegistrations.length > 5) {
         console.log(`  ... and ${parentChildRegistrations.length - 5} more registrations`);
@@ -736,20 +814,25 @@ export class ViewModel {
     console.log('🔍 Finding ALL children for parent registration form...');
     const allParentChildren = this.students.filter(student => {
       if (!student) return false;
-      
-      const isChild = student.parent1Id === currentParentId || 
-                     student.parent2Id === currentParentId ||
-                     String(student.parent1Id) === String(currentParentId) ||
-                     String(student.parent2Id) === String(currentParentId);
-      
+
+      const isChild =
+        student.parent1Id === currentParentId ||
+        student.parent2Id === currentParentId ||
+        String(student.parent1Id) === String(currentParentId) ||
+        String(student.parent2Id) === String(currentParentId);
+
       if (isChild) {
-        console.log(`  ✅ Found child: ${student.firstName} ${student.lastName} (ID: ${student.id})`);
+        console.log(
+          `  ✅ Found child: ${student.firstName} ${student.lastName} (ID: ${student.id})`
+        );
       }
-      
+
       return isChild;
     });
-    
-    console.log(`📊 Parent has ${allParentChildren.length} total children, ${studentsWithRegistrations.length} with registrations`);
+
+    console.log(
+      `📊 Parent has ${allParentChildren.length} total children, ${studentsWithRegistrations.length} with registrations`
+    );
 
     const parentWeeklyScheduleTables = document.getElementById('parent-weekly-schedule-tables');
 
@@ -769,7 +852,6 @@ export class ViewModel {
       `;
       parentWeeklyScheduleTables.appendChild(noRegistrationsMessage);
     } else {
-
       // Create a separate table for each child
       studentsWithRegistrations.forEach(student => {
         // Create a container for each child's schedule
@@ -779,7 +861,8 @@ export class ViewModel {
 
         // Add student name header
         const studentHeader = document.createElement('h5');
-        studentHeader.style.cssText = 'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px;';
+        studentHeader.style.cssText =
+          'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px;';
         studentHeader.textContent = `${student.firstName} ${student.lastName}'s Schedule`;
         studentContainer.appendChild(studentHeader);
 
@@ -793,13 +876,17 @@ export class ViewModel {
 
         // Filter registrations for this student and sort by day, then start time
         console.log(`📅 Processing schedule for ${student.firstName} ${student.lastName}:`);
-        const studentRegistrations = parentChildRegistrations.filter(x => x.studentId.value === student.id.value);
+        const studentRegistrations = parentChildRegistrations.filter(
+          x => x.studentId.value === student.id.value
+        );
         console.log(`  - Found ${studentRegistrations.length} registrations for this student`);
 
         if (studentRegistrations.length > 0) {
           console.log('  - Sample registrations before sorting:');
           studentRegistrations.slice(0, 3).forEach((reg, index) => {
-            console.log(`    ${index + 1}. ${reg.day} ${reg.startTime} - ${reg.instrument || reg.classTitle}`);
+            console.log(
+              `    ${index + 1}. ${reg.day} ${reg.startTime} - ${reg.instrument || reg.classTitle}`
+            );
           });
         }
 
@@ -808,21 +895,19 @@ export class ViewModel {
         if (sortedStudentRegistrations.length > 0) {
           console.log('  - Sample registrations after sorting:');
           sortedStudentRegistrations.slice(0, 3).forEach((reg, index) => {
-            console.log(`    ${index + 1}. ${reg.day} ${reg.startTime} - ${reg.instrument || reg.classTitle}`);
+            console.log(
+              `    ${index + 1}. ${reg.day} ${reg.startTime} - ${reg.instrument || reg.classTitle}`
+            );
           });
         }
 
-        this.#buildWeeklySchedule(
-          tableId,
-          sortedStudentRegistrations,
-          'parent'
-        );
+        this.#buildWeeklySchedule(tableId, sortedStudentRegistrations, 'parent');
       });
     }
 
     // Parent wait list table - Show wait list registrations for this parent's children
     console.log('🔍 Building parent wait list table...');
-    
+
     // Filter for wait list registrations belonging to this parent's children
     const parentWaitListRegistrations = this.registrations.filter(registration => {
       const student = registration.student;
@@ -831,13 +916,14 @@ export class ViewModel {
       }
 
       // Check if the current parent is either parent1 or parent2 of the student
-      const exactMatch = student.parent1Id === currentParentId || student.parent2Id === currentParentId;
+      const exactMatch =
+        student.parent1Id === currentParentId || student.parent2Id === currentParentId;
 
       // Also try string comparison in case of type mismatches
-      const stringMatch = !exactMatch && (
-        String(student.parent1Id) === String(currentParentId) ||
-        String(student.parent2Id) === String(currentParentId)
-      );
+      const stringMatch =
+        !exactMatch &&
+        (String(student.parent1Id) === String(currentParentId) ||
+          String(student.parent2Id) === String(currentParentId));
 
       const isMatch = exactMatch || stringMatch;
 
@@ -847,7 +933,9 @@ export class ViewModel {
       return isMatch && isWaitlistClass;
     });
 
-    console.log(`📊 Found ${parentWaitListRegistrations.length} wait list registrations for parent's children`);
+    console.log(
+      `📊 Found ${parentWaitListRegistrations.length} wait list registrations for parent's children`
+    );
 
     // Show/hide the parent wait list table based on whether there are wait list registrations
     const parentWaitListTable = document.getElementById('parent-wait-list-table');
@@ -860,31 +948,35 @@ export class ViewModel {
         if (existingTitle) {
           existingTitle.remove();
         }
-        
+
         // Create and add the wait list title
         const waitListTitle = document.createElement('h5');
         waitListTitle.className = 'parent-wait-list-title';
-        waitListTitle.style.cssText = 'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px; margin-top: 20px;';
+        waitListTitle.style.cssText =
+          'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px; margin-top: 20px;';
         waitListTitle.textContent = 'Rock Band Wait List';
-        
+
         // Insert the title before the table
         waitListContainer.insertBefore(waitListTitle, parentWaitListTable);
       }
-      
+
       // Build and show the wait list table
-      this.parentWaitListTable = this.#buildParentWaitListTable(parentWaitListRegistrations, currentParentId);
-      
+      this.parentWaitListTable = this.#buildParentWaitListTable(
+        parentWaitListRegistrations,
+        currentParentId
+      );
+
       // Make the table visible
       if (parentWaitListTable) {
         parentWaitListTable.removeAttribute('hidden');
       }
-      
+
       console.log('✅ Parent wait list table built and made visible');
     } else {
       // Hide the wait list table if no wait list registrations
       if (parentWaitListTable) {
         parentWaitListTable.setAttribute('hidden', '');
-        
+
         // Also remove the title if it exists
         const waitListContainer = parentWaitListTable.parentElement;
         if (waitListContainer) {
@@ -894,7 +986,7 @@ export class ViewModel {
           }
         }
       }
-      
+
       console.log('⚠️ No wait list registrations found - hiding parent wait list table');
     }
 
@@ -928,24 +1020,36 @@ export class ViewModel {
     // Filter to only show instructors who are teaching this parent's children
     const parentChildrenIds = allParentChildren.map(child => child.id?.value || child.id);
     const parentRegistrations = this.registrations.filter(registration => {
-      const studentId = typeof registration.studentId === 'object' ? 
-        registration.studentId.value : registration.studentId;
+      const studentId =
+        typeof registration.studentId === 'object'
+          ? registration.studentId.value
+          : registration.studentId;
       return parentChildrenIds.includes(studentId);
     });
-    
+
     // Get unique instructor IDs from parent's registrations
-    const parentInstructorIds = [...new Set(parentRegistrations.map(registration => {
-      return typeof registration.instructorId === 'object' ? 
-        registration.instructorId.value : registration.instructorId;
-    }).filter(Boolean))];
-    
-    console.log(`🎯 Parent has registrations with ${parentInstructorIds.length} instructors:`, parentInstructorIds);
-    
+    const parentInstructorIds = [
+      ...new Set(
+        parentRegistrations
+          .map(registration => {
+            return typeof registration.instructorId === 'object'
+              ? registration.instructorId.value
+              : registration.instructorId;
+          })
+          .filter(Boolean)
+      ),
+    ];
+
+    console.log(
+      `🎯 Parent has registrations with ${parentInstructorIds.length} instructors:`,
+      parentInstructorIds
+    );
+
     // Filter instructors to only include those teaching this parent's children
-    const relevantInstructors = this.instructors.filter(instructor => 
+    const relevantInstructors = this.instructors.filter(instructor =>
       parentInstructorIds.includes(instructor.id)
     );
-    
+
     const mappedEmployees = this.adminEmployees().concat(
       relevantInstructors.map(instructor => this.instructorToEmployee(instructor, true))
     );
@@ -982,7 +1086,7 @@ export class ViewModel {
     if (this.parentWaitListTable && this.currentUser?.parent) {
       console.log('Refreshing parent wait list table with updated registrations');
       const currentParentId = this.currentUser.parent?.id;
-      
+
       if (currentParentId) {
         // Filter for wait list registrations belonging to this parent's children
         const parentWaitListRegistrations = this.registrations.filter(registration => {
@@ -992,13 +1096,14 @@ export class ViewModel {
           }
 
           // Check if the current parent is either parent1 or parent2 of the student
-          const exactMatch = student.parent1Id === currentParentId || student.parent2Id === currentParentId;
+          const exactMatch =
+            student.parent1Id === currentParentId || student.parent2Id === currentParentId;
 
           // Also try string comparison in case of type mismatches
-          const stringMatch = !exactMatch && (
-            String(student.parent1Id) === String(currentParentId) ||
-            String(student.parent2Id) === String(currentParentId)
-          );
+          const stringMatch =
+            !exactMatch &&
+            (String(student.parent1Id) === String(currentParentId) ||
+              String(student.parent2Id) === String(currentParentId));
 
           const isMatch = exactMatch || stringMatch;
 
@@ -1009,19 +1114,20 @@ export class ViewModel {
         });
 
         this.parentWaitListTable.replaceRange(parentWaitListRegistrations);
-        
+
         // Show/hide the table based on whether there are wait list registrations
         const parentWaitListTableElement = document.getElementById('parent-wait-list-table');
         if (parentWaitListRegistrations.length > 0) {
           if (parentWaitListTableElement) {
             parentWaitListTableElement.removeAttribute('hidden');
-            
+
             // Ensure the title is present
             const waitListContainer = parentWaitListTableElement.parentElement;
             if (waitListContainer && !waitListContainer.querySelector('.parent-wait-list-title')) {
               const waitListTitle = document.createElement('h5');
               waitListTitle.className = 'parent-wait-list-title';
-              waitListTitle.style.cssText = 'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px; margin-top: 20px;';
+              waitListTitle.style.cssText =
+                'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px; margin-top: 20px;';
               waitListTitle.textContent = 'Rock Band Wait List';
               waitListContainer.insertBefore(waitListTitle, parentWaitListTableElement);
             }
@@ -1029,7 +1135,7 @@ export class ViewModel {
         } else {
           if (parentWaitListTableElement) {
             parentWaitListTableElement.setAttribute('hidden', '');
-            
+
             // Remove the title if it exists
             const waitListContainer = parentWaitListTableElement.parentElement;
             if (waitListContainer) {
@@ -1073,23 +1179,32 @@ export class ViewModel {
       });
 
       if (!newRegistration.student) {
-        console.warn(`❌ Student not found for new registration with studentId "${newRegistration.studentId?.value || newRegistration.studentId}"`);
+        console.warn(
+          `❌ Student not found for new registration with studentId "${newRegistration.studentId?.value || newRegistration.studentId}"`
+        );
       } else {
-        console.log(`✅ Student enriched: ${newRegistration.student.firstName} ${newRegistration.student.lastName}`);
+        console.log(
+          `✅ Student enriched: ${newRegistration.student.firstName} ${newRegistration.student.lastName}`
+        );
       }
     }
 
     if (!newRegistration.instructor) {
       newRegistration.instructor = this.instructors.find(x => {
         const instructorId = x.id?.value || x.id;
-        const registrationInstructorId = newRegistration.instructorId?.value || newRegistration.instructorId;
+        const registrationInstructorId =
+          newRegistration.instructorId?.value || newRegistration.instructorId;
         return instructorId === registrationInstructorId;
       });
 
       if (!newRegistration.instructor) {
-        console.warn(`❌ Instructor not found for new registration with instructorId "${newRegistration.instructorId?.value || newRegistration.instructorId}"`);
+        console.warn(
+          `❌ Instructor not found for new registration with instructorId "${newRegistration.instructorId?.value || newRegistration.instructorId}"`
+        );
       } else {
-        console.log(`✅ Instructor enriched: ${newRegistration.instructor.firstName} ${newRegistration.instructor.lastName}`);
+        console.log(
+          `✅ Instructor enriched: ${newRegistration.instructor.firstName} ${newRegistration.instructor.lastName}`
+        );
       }
     }
 
@@ -1178,13 +1293,23 @@ export class ViewModel {
       // Get unique days from registrations
       const uniqueDays = [...new Set(this.registrations.map(reg => reg.day))];
       // Sort days in logical weekday order
-      const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-      uniqueDays.sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b)).forEach(day => {
-        const option = document.createElement('option');
-        option.value = day;
-        option.textContent = day;
-        daySelect.appendChild(option);
-      });
+      const dayOrder = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+      ];
+      uniqueDays
+        .sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b))
+        .forEach(day => {
+          const option = document.createElement('option');
+          option.value = day;
+          option.textContent = day;
+          daySelect.appendChild(option);
+        });
     }
 
     // Populate grade dropdown
@@ -1202,8 +1327,8 @@ export class ViewModel {
       }
 
       // Get unique grades from students who have registrations
-      const registeredStudentIds = this.registrations.map(reg =>
-        reg.studentId?.value || reg.studentId
+      const registeredStudentIds = this.registrations.map(
+        reg => reg.studentId?.value || reg.studentId
       );
       const registeredStudents = this.students.filter(student =>
         registeredStudentIds.includes(student.id?.value || student.id)
@@ -1230,8 +1355,6 @@ export class ViewModel {
     const selects = document.querySelectorAll('select');
     M.FormSelect.init(selects);
   }
-
-
 
   /**
    * Sort registrations by day, then start time, then length, then registration type (private first, then group)
@@ -1305,9 +1428,14 @@ export class ViewModel {
 
         if (!instructor || !student) {
           console.warn(`Instructor or student not found for registration: ${registration.id}`);
-          console.warn(`Looking for instructorId: ${instructorIdToFind}, studentId: ${studentIdToFind}`);
+          console.warn(
+            `Looking for instructorId: ${instructorIdToFind}, studentId: ${studentIdToFind}`
+          );
           console.warn('Available instructor IDs:', this.instructors.map(i => i.id).slice(0, 5));
-          console.warn('Available student IDs:', this.students.map(s => s.id?.value || s.id).slice(0, 5));
+          console.warn(
+            'Available student IDs:',
+            this.students.map(s => s.id?.value || s.id).slice(0, 5)
+          );
           return '';
         }
         return `
@@ -1317,7 +1445,7 @@ export class ViewModel {
                         <td>${student.firstName} ${student.lastName}</td>
                         <td>${formatGrade(student.grade) || 'N/A'}</td>
                         <td>${instructor.firstName} ${instructor.lastName}</td>
-                        <td>${registration.registrationType === RegistrationType.GROUP ? (registration.classTitle || 'N/A') : (registration.instrument || 'N/A')}</td>
+                        <td>${registration.registrationType === RegistrationType.GROUP ? registration.classTitle || 'N/A' : registration.instrument || 'N/A'}</td>
                         <td>
                             <a href="#" data-registration-id="${registration.id?.value || registration.id}">
                                 <i class="material-icons copy-parent-emails-table-icon gray-text text-darken-4">email</i>
@@ -1346,12 +1474,14 @@ export class ViewModel {
         if (!registrationId) return;
 
         // Find the registration by ID in the original registrations array
-        const currentRegistration = this.registrations.find(r =>
-          (r.id?.value || r.id) === registrationId
+        const currentRegistration = this.registrations.find(
+          r => (r.id?.value || r.id) === registrationId
         );
-        if (!currentRegistration) return; if (isCopy) {
+        if (!currentRegistration) return;
+        if (isCopy) {
           // Get the student ID from the current registration
-          const studentIdToFind = currentRegistration.studentId?.value || currentRegistration.studentId;
+          const studentIdToFind =
+            currentRegistration.studentId?.value || currentRegistration.studentId;
 
           // Find the full student object with parent emails from this.students
           const fullStudent = this.students.find(x => {
@@ -1375,7 +1505,9 @@ export class ViewModel {
       // filter
       registration => {
         // Get selected values from multi-select dropdowns
-        const instructorSelect = document.getElementById('master-schedule-instructor-filter-select');
+        const instructorSelect = document.getElementById(
+          'master-schedule-instructor-filter-select'
+        );
         const daySelect = document.getElementById('master-schedule-day-filter-select');
         const gradeSelect = document.getElementById('master-schedule-grade-filter-select');
 
@@ -1426,16 +1558,16 @@ export class ViewModel {
       [
         {
           filterId: 'master-schedule-instructor-filter-select',
-          type: 'select-multiple'
+          type: 'select-multiple',
         },
         {
           filterId: 'master-schedule-day-filter-select',
-          type: 'select-multiple'
+          type: 'select-multiple',
         },
         {
           filterId: 'master-schedule-grade-filter-select',
-          type: 'select-multiple'
-        }
+          type: 'select-multiple',
+        },
       ],
       {
         pagination: true,
@@ -1446,7 +1578,7 @@ export class ViewModel {
           return registration.registrationType === RegistrationType.GROUP
             ? 'registration-row-group'
             : 'registration-row-private';
-        }
+        },
       }
     );
   }
@@ -1456,14 +1588,7 @@ export class ViewModel {
   #buildWaitListTable(registrations) {
     return new Table(
       'admin-wait-list-table',
-      [
-        'Student',
-        'Grade',
-        'Class Title',
-        'Timestamp',
-        'Contact',
-        'Remove',
-      ],
+      ['Student', 'Grade', 'Class Title', 'Timestamp', 'Contact', 'Remove'],
       // row
       registration => {
         // Extract primitive values for comparison
@@ -1480,7 +1605,7 @@ export class ViewModel {
           console.warn(`Looking for studentId: ${studentIdToFind}`);
           return '';
         }
-        
+
         return `
                         <td>${student.firstName} ${student.lastName}</td>
                         <td>${formatGrade(student.grade) || 'N/A'}</td>
@@ -1514,14 +1639,15 @@ export class ViewModel {
         if (!registrationId) return;
 
         // Find the registration by ID in the original registrations array
-        const currentRegistration = this.registrations.find(r =>
-          (r.id?.value || r.id) === registrationId
+        const currentRegistration = this.registrations.find(
+          r => (r.id?.value || r.id) === registrationId
         );
         if (!currentRegistration) return;
 
         if (isCopy) {
           // Get the student ID from the current registration
-          const studentIdToFind = currentRegistration.studentId?.value || currentRegistration.studentId;
+          const studentIdToFind =
+            currentRegistration.studentId?.value || currentRegistration.studentId;
 
           // Find the full student object with parent emails from this.students
           const fullStudent = this.students.find(x => {
@@ -1553,7 +1679,7 @@ export class ViewModel {
         rowClassFunction: registration => {
           // All wait list items are group registrations with special styling
           return 'registration-row-waitlist';
-        }
+        },
       }
     );
   }
@@ -1564,11 +1690,7 @@ export class ViewModel {
   #buildParentWaitListTable(registrations, currentParentId) {
     return new Table(
       'parent-wait-list-table',
-      [
-        'Student',
-        'Grade',
-        'Class Title',
-      ],
+      ['Student', 'Grade', 'Class Title'],
       // row
       registration => {
         // Extract primitive values for comparison
@@ -1585,7 +1707,7 @@ export class ViewModel {
           console.warn(`Looking for studentId: ${studentIdToFind}`);
           return '';
         }
-        
+
         return `
                         <td>${student.firstName} ${student.lastName}</td>
                         <td>${formatGrade(student.grade) || 'N/A'}</td>
@@ -1607,13 +1729,14 @@ export class ViewModel {
         if (!registrationId) return;
 
         // Find the registration by ID in the original registrations array
-        const currentRegistration = this.registrations.find(r =>
-          (r.id?.value || r.id) === registrationId
+        const currentRegistration = this.registrations.find(
+          r => (r.id?.value || r.id) === registrationId
         );
         if (!currentRegistration) return;
 
         // Get the student ID from the current registration
-        const studentIdToFind = currentRegistration.studentId?.value || currentRegistration.studentId;
+        const studentIdToFind =
+          currentRegistration.studentId?.value || currentRegistration.studentId;
 
         // Find the full student object with parent emails from this.students
         const fullStudent = this.students.find(x => {
@@ -1635,7 +1758,7 @@ export class ViewModel {
         rowClassFunction: registration => {
           // All wait list items are group registrations with special styling
           return 'registration-row-waitlist';
-        }
+        },
       }
     );
   }
@@ -1644,14 +1767,25 @@ export class ViewModel {
    *
    */
   #buildWeeklySchedule(tableId, enrollments, viewContext = 'instructor') {
-    console.log(`🏗️ Building weekly schedule table "${tableId}" with ${enrollments.length} enrollments for ${viewContext} view`);
+    console.log(
+      `🏗️ Building weekly schedule table "${tableId}" with ${enrollments.length} enrollments for ${viewContext} view`
+    );
 
     let matchingSuccesses = 0;
     let matchingFailures = 0;
 
     const table = new Table(
       tableId,
-      ['Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument/Class', 'Contact'],
+      [
+        'Weekday',
+        'Start Time',
+        'Length',
+        'Student',
+        'Grade',
+        'Instructor',
+        'Instrument/Class',
+        'Contact',
+      ],
       // row
       enrollment => {
         // More flexible instructor matching
@@ -1661,7 +1795,7 @@ export class ViewModel {
           return instructorId === enrollmentInstructorId;
         });
 
-        // More flexible student matching  
+        // More flexible student matching
         const student = this.students.find(x => {
           const studentId = x.id?.value || x.id;
           const enrollmentStudentId = enrollment.studentId?.value || enrollment.studentId;
@@ -1675,14 +1809,26 @@ export class ViewModel {
           const enrollmentStudentId = enrollment.studentId?.value || enrollment.studentId;
 
           console.warn(`❌ Instructor or student not found for enrollment: ${enrollmentId}`);
-          console.warn(`   Looking for instructorId: "${enrollmentInstructorId}" (${typeof enrollmentInstructorId}), studentId: "${enrollmentStudentId}" (${typeof enrollmentStudentId})`);
+          console.warn(
+            `   Looking for instructorId: "${enrollmentInstructorId}" (${typeof enrollmentInstructorId}), studentId: "${enrollmentStudentId}" (${typeof enrollmentStudentId})`
+          );
 
           if (!instructor) {
-            console.warn(`   ❌ Instructor not found. Available instructor IDs:`, this.instructors.map(i => `"${i.id?.value || i.id}" (${typeof (i.id?.value || i.id)})`).slice(0, 10));
+            console.warn(
+              `   ❌ Instructor not found. Available instructor IDs:`,
+              this.instructors
+                .map(i => `"${i.id?.value || i.id}" (${typeof (i.id?.value || i.id)})`)
+                .slice(0, 10)
+            );
           }
 
           if (!student) {
-            console.warn(`   ❌ Student not found. Available student IDs:`, this.students.map(s => `"${s.id?.value || s.id}" (${typeof (s.id?.value || s.id)})`).slice(0, 10));
+            console.warn(
+              `   ❌ Student not found. Available student IDs:`,
+              this.students
+                .map(s => `"${s.id?.value || s.id}" (${typeof (s.id?.value || s.id)})`)
+                .slice(0, 10)
+            );
           }
 
           // Return empty string to skip this enrollment rather than crashing
@@ -1698,7 +1844,7 @@ export class ViewModel {
                         <td>${student.firstName} ${student.lastName}</td>
                         <td>${formatGrade(student.grade) || 'N/A'}</td>
                         <td>${instructor.firstName} ${instructor.lastName}</td>
-                        <td>${enrollment.registrationType === RegistrationType.GROUP ? (enrollment.classTitle || enrollment.className || 'N/A') : (enrollment.instrument || 'N/A')}</td>
+                        <td>${enrollment.registrationType === RegistrationType.GROUP ? enrollment.classTitle || enrollment.className || 'N/A' : enrollment.instrument || 'N/A'}</td>
                         <td>
                             <a href="#" data-registration-id="${enrollment.id?.value || enrollment.id}" data-view-context="${viewContext}">
                                 <i class="material-icons copy-emails-table-icon gray-text text-darken-4">email</i>
@@ -1719,18 +1865,17 @@ export class ViewModel {
         const linkElement = event.target.closest('a');
         const registrationId = linkElement?.getAttribute('data-registration-id');
         const viewContext = linkElement?.getAttribute('data-view-context') || 'instructor';
-        
+
         if (!registrationId) return;
 
         // Find the enrollment by ID in the enrollments array
-        const currentEnrollment = enrollments.find(e =>
-          (e.id?.value || e.id) === registrationId
-        );
+        const currentEnrollment = enrollments.find(e => (e.id?.value || e.id) === registrationId);
         if (!currentEnrollment) return;
 
         if (viewContext === 'parent') {
           // Parent view: show instructor emails
-          const instructorIdToFind = currentEnrollment.instructorId?.value || currentEnrollment.instructorId;
+          const instructorIdToFind =
+            currentEnrollment.instructorId?.value || currentEnrollment.instructorId;
           const instructor = this.instructors.find(x => {
             const instructorId = x.id?.value || x.id;
             return instructorId === instructorIdToFind;
@@ -1764,11 +1909,13 @@ export class ViewModel {
           return enrollment.registrationType === RegistrationType.GROUP
             ? 'registration-row-group'
             : 'registration-row-private';
-        }
+        },
       }
     );
 
-    console.log(`✅ Weekly schedule table "${tableId}" built: ${matchingSuccesses} successful matches, ${matchingFailures} failures`);
+    console.log(
+      `✅ Weekly schedule table "${tableId}" built: ${matchingSuccesses} successful matches, ${matchingFailures} failures`
+    );
     return table;
   }
   /**
@@ -1833,7 +1980,7 @@ export class ViewModel {
   #sortEmployeesForDirectory(employees) {
     return employees.sort((a, b) => {
       // Define admin role priorities (lower number = higher priority)
-      const getAdminPriority = (employee) => {
+      const getAdminPriority = employee => {
         if (!employee.roles || !Array.isArray(employee.roles)) return 999;
 
         for (const role of employee.roles) {
@@ -1896,15 +2043,15 @@ export class ViewModel {
 
     try {
       this.#setAdminRegistrationLoading(true);
-      
-      const requestPayload = { 
-        registrationId: registrationToDeleteId
+
+      const requestPayload = {
+        registrationId: registrationToDeleteId,
       };
       console.log('Sending delete request with payload:', requestPayload);
 
       const response = await HttpService.post(ServerFunctions.unregister, requestPayload);
-      const registrationIndex = this.registrations.findIndex(x =>
-        (x.id?.value || x.id) === registrationToDeleteId
+      const registrationIndex = this.registrations.findIndex(
+        x => (x.id?.value || x.id) === registrationToDeleteId
       );
       M.toast({ html: 'Registration deleted successfully.' });
       this.registrations.splice(registrationIndex, 1);
@@ -1982,7 +2129,7 @@ export class ViewModel {
 
     // Format phone number using the formatPhone function
     const rawPhone = instructor.phone || instructor.phoneNumber || '';
-    const formattedPhone = (rawPhone && !obscurePhone) ? formatPhone(rawPhone) : '';
+    const formattedPhone = rawPhone && !obscurePhone ? formatPhone(rawPhone) : '';
 
     return {
       id: instructor.id,
@@ -2009,7 +2156,9 @@ export class ViewModel {
     );
 
     const studentsEndTime = performance.now();
-    console.log(`👩‍🎓 Fetched ${students.length} students from server in ${(studentsEndTime - studentsStartTime).toFixed(2)}ms`);
+    console.log(
+      `👩‍🎓 Fetched ${students.length} students from server in ${(studentsEndTime - studentsStartTime).toFixed(2)}ms`
+    );
 
     // Log sample student data structure
     if (students.length > 0) {
@@ -2024,7 +2173,7 @@ export class ViewModel {
         parent1IdType: typeof sampleStudent.parent1Id,
         parent2Id: sampleStudent.parent2Id,
         parent2IdType: typeof sampleStudent.parent2Id,
-        parentEmails: sampleStudent.parentEmails
+        parentEmails: sampleStudent.parentEmails,
       });
 
       // Log ID distribution analysis
@@ -2070,7 +2219,7 @@ export class ViewModel {
       dismissible: true,
       opacity: 0.5,
       inDuration: 300,
-      outDuration: 200
+      outDuration: 200,
     });
 
     // Make available globally for backward compatibility
@@ -2086,8 +2235,15 @@ export class ViewModel {
     const employeeCodeInput = document.getElementById('employee-access-code');
     const loginButton = document.getElementById('login-submit-btn');
 
-    if (!parentTab || !employeeTab || !parentSection || !employeeSection || 
-        !parentPhoneInput || !employeeCodeInput || !loginButton) {
+    if (
+      !parentTab ||
+      !employeeTab ||
+      !parentSection ||
+      !employeeSection ||
+      !parentPhoneInput ||
+      !employeeCodeInput ||
+      !loginButton
+    ) {
       console.warn('Login modal elements not found');
       return;
     }
@@ -2105,7 +2261,7 @@ export class ViewModel {
     this.#initEmployeeCodeInput(employeeCodeInput, loginButton);
 
     // Handle login button click
-    loginButton.addEventListener('click', (e) => {
+    loginButton.addEventListener('click', e => {
       e.preventDefault();
       this.#handleLogin();
     });
@@ -2131,16 +2287,16 @@ export class ViewModel {
     ModalKeyboardHandler.attachKeyboardHandlers(modalElement, {
       allowEscape: true,
       allowEnter: true,
-      onConfirm: (event) => {
+      onConfirm: event => {
         console.log('Login modal: Enter key pressed');
         if (!loginButton.disabled) {
           this.#handleLogin();
         }
       },
-      onCancel: (event) => {
+      onCancel: event => {
         console.log('Login modal: ESC key pressed');
         this.loginModal.close();
-      }
+      },
     });
 
     console.log('Login modal initialized successfully');
@@ -2151,17 +2307,17 @@ export class ViewModel {
    */
   #initLoginTypeSwitching(parentTab, employeeTab, parentSection, employeeSection) {
     // Parent tab click handler
-    parentTab.addEventListener('click', (e) => {
+    parentTab.addEventListener('click', e => {
       e.preventDefault();
       if (this.currentLoginType !== 'parent') {
         this.currentLoginType = 'parent';
-        
+
         // Update tab appearance
         parentTab.classList.remove('inactive-login-type');
         parentTab.classList.add('active-login-type');
         employeeTab.classList.remove('active-login-type');
         employeeTab.classList.add('inactive-login-type');
-        
+
         // Show/hide sections
         parentSection.style.display = 'block';
         parentSection.classList.remove('inactive-section');
@@ -2169,7 +2325,7 @@ export class ViewModel {
         employeeSection.style.display = 'none';
         employeeSection.classList.remove('active-section');
         employeeSection.classList.add('inactive-section');
-        
+
         // Reset validation and focus
         this.#validateCurrentInput();
         this.#focusCurrentInput();
@@ -2177,17 +2333,17 @@ export class ViewModel {
     });
 
     // Employee tab click handler
-    employeeTab.addEventListener('click', (e) => {
+    employeeTab.addEventListener('click', e => {
       e.preventDefault();
       if (this.currentLoginType !== 'employee') {
         this.currentLoginType = 'employee';
-        
+
         // Update tab appearance
         employeeTab.classList.remove('inactive-login-type');
         employeeTab.classList.add('active-login-type');
         parentTab.classList.remove('active-login-type');
         parentTab.classList.add('inactive-login-type');
-        
+
         // Show/hide sections
         employeeSection.style.display = 'block';
         employeeSection.classList.remove('inactive-section');
@@ -2195,7 +2351,7 @@ export class ViewModel {
         parentSection.style.display = 'none';
         parentSection.classList.remove('active-section');
         parentSection.classList.add('inactive-section');
-        
+
         // Reset validation and focus
         this.#validateCurrentInput();
         this.#focusCurrentInput();
@@ -2207,7 +2363,7 @@ export class ViewModel {
    * Initialize parent phone input with formatting and validation
    */
   #initParentPhoneInput(phoneInput, loginButton) {
-    phoneInput.addEventListener('input', (e) => {
+    phoneInput.addEventListener('input', e => {
       // Format phone number as user types
       if (typeof window.formatPhoneAsTyped === 'function') {
         const formattedValue = window.formatPhoneAsTyped(e.target.value);
@@ -2223,14 +2379,14 @@ export class ViewModel {
           e.target.value = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
         }
       }
-      
+
       if (this.currentLoginType === 'parent') {
         this.#validateCurrentInput();
       }
     });
 
     // Handle focus events to ensure validation runs
-    phoneInput.addEventListener('focus', (e) => {
+    phoneInput.addEventListener('focus', e => {
       console.log('Phone input focused');
       if (this.currentLoginType === 'parent') {
         setTimeout(() => {
@@ -2240,7 +2396,7 @@ export class ViewModel {
     });
 
     // Handle paste events
-    phoneInput.addEventListener('paste', (e) => {
+    phoneInput.addEventListener('paste', e => {
       setTimeout(() => {
         if (typeof window.formatPhoneAsTyped === 'function') {
           const formattedValue = window.formatPhoneAsTyped(e.target.value);
@@ -2257,18 +2413,18 @@ export class ViewModel {
    * Initialize employee access code input with validation
    */
   #initEmployeeCodeInput(codeInput, loginButton) {
-    codeInput.addEventListener('input', (e) => {
+    codeInput.addEventListener('input', e => {
       // Only allow numeric input, max 6 digits
       const numericValue = e.target.value.replace(/[^0-9]/g, '').substring(0, 6);
       e.target.value = numericValue;
-      
+
       if (this.currentLoginType === 'employee') {
         this.#validateCurrentInput();
       }
     });
 
     // Handle focus events to ensure validation runs
-    codeInput.addEventListener('focus', (e) => {
+    codeInput.addEventListener('focus', e => {
       console.log('Code input focused');
       if (this.currentLoginType === 'employee') {
         setTimeout(() => {
@@ -2288,7 +2444,7 @@ export class ViewModel {
     if (this.currentLoginType === 'parent') {
       const phoneInput = document.getElementById('parent-phone-input');
       const phoneValue = phoneInput.value;
-      
+
       // Check if phone validation function is available
       if (typeof window.isValidPhoneNumber === 'function') {
         isValid = window.isValidPhoneNumber(phoneValue);
@@ -2297,9 +2453,14 @@ export class ViewModel {
         // Fallback validation - just check for 10 digits
         const digits = phoneValue.replace(/\D/g, '');
         isValid = digits.length === 10 && digits !== '0000000000';
-        console.warn('Phone validation function not available, using fallback:', phoneValue, '->', isValid);
+        console.warn(
+          'Phone validation function not available, using fallback:',
+          phoneValue,
+          '->',
+          isValid
+        );
       }
-      
+
       // Update input validation classes
       if (phoneValue.length > 0) {
         if (isValid) {
@@ -2316,7 +2477,7 @@ export class ViewModel {
       const codeInput = document.getElementById('employee-access-code');
       const codeValue = codeInput.value;
       isValid = codeValue.length === 6;
-      
+
       // Update input validation classes
       if (codeValue.length > 0) {
         if (isValid) {
@@ -2369,31 +2530,31 @@ export class ViewModel {
     // Clear inputs
     parentPhoneInput.value = '';
     employeeCodeInput.value = '';
-    
+
     // Clear validation classes
     parentPhoneInput.classList.remove('valid', 'invalid');
     employeeCodeInput.classList.remove('valid', 'invalid');
-    
+
     // Disable login button (for Materialize <a> buttons)
     loginButton.setAttribute('disabled', 'disabled');
     loginButton.classList.add('disabled');
     loginButton.style.opacity = '0.6';
     loginButton.style.pointerEvents = 'none';
     loginButton.style.cursor = 'not-allowed';
-    
+
     // Reset to parent login type
     this.currentLoginType = 'parent';
     const parentTab = document.getElementById('parent-login-tab');
     const employeeTab = document.getElementById('employee-login-tab');
     const parentSection = document.getElementById('parent-login-section');
     const employeeSection = document.getElementById('employee-login-section');
-    
+
     // Update tab appearance
     parentTab.classList.remove('inactive-login-type');
     parentTab.classList.add('active-login-type');
     employeeTab.classList.remove('active-login-type');
     employeeTab.classList.add('inactive-login-type');
-    
+
     // Show parent section, hide employee section
     parentSection.style.display = 'block';
     parentSection.classList.remove('inactive-section');
@@ -2411,10 +2572,10 @@ export class ViewModel {
 
     // Initialize Terms of Service modal (non-dismissible)
     this.#initTermsModal();
-    
+
     // Initialize Privacy Policy modal (dismissible)
     this.#initPrivacyModal();
-    
+
     // Initialize Login modal (dismissible)
     this.#initLoginModal();
 
@@ -2432,12 +2593,12 @@ export class ViewModel {
     }
 
     const termsBtn = termsModal.querySelector('.modal-footer .modal-close');
-    
+
     // Initialize modal with default dismissible behavior for footer links
     this.termsModal = M.Modal.init(termsModal, {
       dismissible: true,
       opacity: 0.5,
-      preventScrolling: true
+      preventScrolling: true,
     });
 
     // Make available globally
@@ -2446,17 +2607,17 @@ export class ViewModel {
 
     // Add custom click handler for "I Understand" button
     if (termsBtn) {
-      termsBtn.addEventListener('click', (e) => {
+      termsBtn.addEventListener('click', e => {
         e.preventDefault();
         e.stopPropagation();
 
         // Check if this is the initial non-dismissible terms acceptance
         const hasAcceptedTerms = window.UserSession.hasAcceptedTermsOfService();
-        
+
         if (!hasAcceptedTerms) {
           // Mark terms as accepted for first-time users
           window.UserSession.acceptTermsOfService();
-          
+
           // Clean up temporary event handlers if they exist
           if (termsModal._tempKeydownHandler) {
             termsModal.removeEventListener('keydown', termsModal._tempKeydownHandler);
@@ -2466,32 +2627,32 @@ export class ViewModel {
             termsModal.removeEventListener('click', termsModal._tempClickHandler);
             delete termsModal._tempClickHandler;
           }
-          
+
           // Restore normal dismissible behavior for future footer link clicks
           this.termsModal.destroy();
           this.termsModal = M.Modal.init(termsModal, {
             dismissible: true,
             opacity: 0.5,
-            preventScrolling: true
+            preventScrolling: true,
           });
-          
+
           // Reattach keyboard handlers after reinitializing the modal
           const newTermsBtn = termsModal.querySelector('.modal-footer .modal-close');
           ModalKeyboardHandler.attachKeyboardHandlers(termsModal, {
             allowEscape: true,
             allowEnter: true,
-            onConfirm: (event) => {
+            onConfirm: event => {
               console.log('Terms modal: Enter key pressed (reattached)');
               if (newTermsBtn) {
                 newTermsBtn.click();
               }
             },
-            onCancel: (event) => {
+            onCancel: event => {
               console.log('Terms modal: ESC key pressed (reattached)');
               this.termsModal.close();
-            }
+            },
           });
-          
+
           // Execute the callback if it exists (for initial login flow)
           if (window.termsOnConfirmationCallback) {
             window.termsOnConfirmationCallback();
@@ -2508,17 +2669,17 @@ export class ViewModel {
     ModalKeyboardHandler.attachKeyboardHandlers(termsModal, {
       allowEscape: true,
       allowEnter: true,
-      onConfirm: (event) => {
+      onConfirm: event => {
         // Handle Enter key press for Terms of Service
         console.log('Terms modal: Enter key pressed');
         if (termsBtn) {
           termsBtn.click();
         }
       },
-      onCancel: (event) => {
+      onCancel: event => {
         // Handle ESC key press for Terms of Service
         console.log('Terms modal: ESC key pressed');
-        
+
         // Check if this is non-dismissible mode
         const hasAcceptedTerms = window.UserSession.hasAcceptedTermsOfService();
         if (!hasAcceptedTerms && window.termsOnConfirmationCallback) {
@@ -2526,10 +2687,10 @@ export class ViewModel {
           console.log('Terms modal: ESC blocked in non-dismissible mode');
           return;
         }
-        
+
         // Allow normal ESC behavior
         this.termsModal.close();
-      }
+      },
     });
 
     console.log('✅ Terms of Service modal initialized');
@@ -2549,9 +2710,9 @@ export class ViewModel {
 
     // Initialize with normal dismissible settings
     this.privacyModal = M.Modal.init(privacyModal, {
-      dismissible: true,   // Allow normal dismissal behavior
-      opacity: 0.5,       // Standard opacity
-      preventScrolling: true
+      dismissible: true, // Allow normal dismissal behavior
+      opacity: 0.5, // Standard opacity
+      preventScrolling: true,
     });
 
     // Make available globally
@@ -2562,7 +2723,7 @@ export class ViewModel {
     ModalKeyboardHandler.attachKeyboardHandlers(privacyModal, {
       allowEscape: true,
       allowEnter: true,
-      onConfirm: (event) => {
+      onConfirm: event => {
         // Handle Enter key press for Privacy Policy - trigger button click
         console.log('Privacy modal: Enter key pressed');
         if (privacyBtn) {
@@ -2571,11 +2732,11 @@ export class ViewModel {
           this.privacyModal.close();
         }
       },
-      onCancel: (event) => {
+      onCancel: event => {
         // Handle ESC key press for Privacy Policy
         console.log('Privacy modal: ESC key pressed');
         this.privacyModal.close();
-      }
+      },
     });
 
     console.log('✅ Privacy Policy modal initialized (dismissible)');
@@ -2595,13 +2756,18 @@ export class ViewModel {
     const storedCode = window.AccessCodeManager.getStoredAccessCode();
     const operatorUser = window.UserSession?.getOperatorUser();
 
-    if (storedCode || operatorUser && (operatorUser.admin || operatorUser.instructor || operatorUser.parent)) {
+    if (
+      storedCode ||
+      (operatorUser && (operatorUser.admin || operatorUser.instructor || operatorUser.parent))
+    ) {
       // Change button text to "Change User" if access code exists or operator is available
       const buttonTextNode = loginButton.childNodes[loginButton.childNodes.length - 1];
       if (buttonTextNode && buttonTextNode.nodeType === Node.TEXT_NODE) {
         buttonTextNode.textContent = 'Change User';
       }
-      console.log('Login button updated to "Change User" - stored access code or operator user found');
+      console.log(
+        'Login button updated to "Change User" - stored access code or operator user found'
+      );
     } else {
       // Ensure button text is "Login" if no stored code and no operator
       const buttonTextNode = loginButton.childNodes[loginButton.childNodes.length - 1];
@@ -2622,35 +2788,35 @@ export class ViewModel {
     if (loginType === 'parent') {
       const phoneInput = document.getElementById('parent-phone-input');
       const phoneValue = phoneInput.value.trim();
-      
+
       // Validate phone number
       if (!window.isValidPhoneNumber(phoneValue)) {
         M.toast({
           html: 'Please enter a valid 10-digit phone number.',
           classes: 'red darken-1',
-          displayLength: 3000
+          displayLength: 3000,
         });
         phoneInput.focus();
         return;
       }
-      
+
       // Strip formatting for backend
       loginValue = window.stripPhoneFormatting(phoneValue);
     } else {
       const codeInput = document.getElementById('employee-access-code');
       const codeValue = codeInput.value.trim();
-      
+
       // Validate access code
       if (codeValue.length !== 6) {
         M.toast({
           html: 'Please enter a valid 6-digit access code.',
           classes: 'red darken-1',
-          displayLength: 3000
+          displayLength: 3000,
         });
         codeInput.focus();
         return;
       }
-      
+
       loginValue = codeValue;
     }
 
@@ -2670,7 +2836,6 @@ export class ViewModel {
         setTimeout(() => {
           this.#resetUIState();
         }, 200); // Small delay to let modal close animation complete
-
       },
       () => {
         // Handle failed login - reopen modal and focus appropriate input
@@ -2690,17 +2855,21 @@ export class ViewModel {
     await this.handleLogin();
   }
 
-  async #attemptLoginWithCode(loginValue, loginType, onSuccessfulLogin = null, onFailedLogin = null) {
-
+  async #attemptLoginWithCode(
+    loginValue,
+    loginType,
+    onSuccessfulLogin = null,
+    onFailedLogin = null
+  ) {
     console.log('Login attempt with value:', loginValue, 'type:', loginType);
 
     try {
       this.#setPageLoading(true);
 
       // Send login data to backend
-      const authenticatedUser = await HttpService.post(ServerFunctions.authenticateByAccessCode, { 
+      const authenticatedUser = await HttpService.post(ServerFunctions.authenticateByAccessCode, {
         accessCode: loginValue,
-        loginType: loginType 
+        loginType: loginType,
       });
 
       // Check if authentication was successful (non-null response)
@@ -2754,7 +2923,11 @@ export class ViewModel {
       }
     } catch (error) {
       console.error('Login error:', error);
-      M.toast({ html: 'Login failed. Please try again.', classes: 'red darken-1', displayLength: 4000 });
+      M.toast({
+        html: 'Login failed. Please try again.',
+        classes: 'red darken-1',
+        displayLength: 4000,
+      });
       onFailedLogin?.();
     } finally {
       this.#setPageLoading(false);
@@ -2872,7 +3045,6 @@ export class ViewModel {
       overlays.forEach(overlay => overlay.remove());
 
       console.log('✅ UI state reset completed');
-
     } catch (error) {
       console.error('❌ Error resetting UI state:', error);
     }
@@ -2897,7 +3069,6 @@ export class ViewModel {
     }
   }
 
-
   /**
    * Show Terms of Service modal with confirmation callback
    * @param {Function} onConfirmation - Callback to execute when user accepts terms
@@ -2919,13 +3090,13 @@ export class ViewModel {
         dismissible: false,
         opacity: 0.8,
         preventScrolling: true,
-        onCloseStart: function() {
+        onCloseStart: function () {
           return false; // Prevent closing
-        }
+        },
       });
-      
+
       // Add keyboard event prevention for non-dismissible mode (only block ESC, allow Enter)
-      const keydownHandler = (e) => {
+      const keydownHandler = e => {
         if (e.key === 'Escape') {
           e.preventDefault();
           e.stopPropagation();
@@ -2933,38 +3104,38 @@ export class ViewModel {
         }
         // Allow Enter key to work for button activation
       };
-      
+
       // Add click prevention for non-dismissible mode (only prevent overlay clicks)
-      const clickHandler = (e) => {
+      const clickHandler = e => {
         // Only prevent clicks on the overlay, not on modal content
         if (e.target === termsModal) {
           e.stopPropagation();
           e.preventDefault();
         }
       };
-      
+
       termsModal.addEventListener('keydown', keydownHandler);
       termsModal.addEventListener('click', clickHandler);
-      
+
       // Store handlers for cleanup
       termsModal._tempKeydownHandler = keydownHandler;
       termsModal._tempClickHandler = clickHandler;
-      
+
       // Reattach keyboard handlers for the non-dismissible modal
       const termsBtn = termsModal.querySelector('.modal-footer .modal-close');
       ModalKeyboardHandler.attachKeyboardHandlers(termsModal, {
         allowEscape: false, // Block ESC in non-dismissible mode
-        allowEnter: true,   // Allow Enter for button activation
-        onConfirm: (event) => {
+        allowEnter: true, // Allow Enter for button activation
+        onConfirm: event => {
           console.log('Terms modal: Enter key pressed (non-dismissible mode)');
           if (termsBtn) {
             termsBtn.click();
           }
         },
-        onCancel: (event) => {
+        onCancel: event => {
           // Should not be called since allowEscape is false
           console.log('Terms modal: ESC blocked in non-dismissible mode');
-        }
+        },
       });
     }
 

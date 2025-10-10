@@ -33,7 +33,7 @@ export class UserTransformService {
   static transformInstructor(instructor) {
     if (!instructor) return null;
 
-        // Collect all instruments for the instructor
+    // Collect all instruments for the instructor
     const instruments = [
       instructor.instrument1,
       instructor.instrument2,

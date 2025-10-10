@@ -24,7 +24,7 @@ export class RepositoryHelper {
     // Set loading flag and start loading
     console.log(`Loading ${name}`);
     this[loadingKey] = setFieldFunc();
-    
+
     try {
       await this[loadingKey];
       console.log(`${getFieldFunc().length} ${name} found`);

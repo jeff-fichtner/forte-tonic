@@ -102,10 +102,10 @@ export class ProgramRepository {
       new AttendanceRecord(registrationId),
       createdBy
     );
-    
+
     // Clear cache after mutation
     this.cache.clear(); // Clear all caches since we recorded attendance
-    
+
     return result;
   }
 
@@ -126,10 +126,10 @@ export class ProgramRepository {
     }
 
     await this.dbClient.deleteRecord(Keys.ATTENDANCE, registrationId, deletedBy);
-    
+
     // Clear cache after mutation
     this.cache.clear(); // Clear all caches since we removed attendance
-    
+
     return true;
   }
 

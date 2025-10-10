@@ -55,7 +55,7 @@ const AccessCodeManager = {
         accessCode: accessCode,
         loginType: loginType,
         timestamp: Date.now(),
-        sessionId: this.generateSessionId()
+        sessionId: this.generateSessionId(),
       };
 
       // Store encrypted/encoded data
@@ -69,7 +69,7 @@ const AccessCodeManager = {
       this._accessCodeCache = {
         accessCode: accessCode,
         loginType: loginType,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
     }
   },
@@ -119,10 +119,12 @@ const AccessCodeManager = {
     try {
       const encodedData = sessionStorage.getItem('forte_auth_session');
       if (!encodedData) {
-        return this._accessCodeCache ? {
-          accessCode: this._accessCodeCache.accessCode,
-          loginType: this._accessCodeCache.loginType || 'employee'
-        } : null;
+        return this._accessCodeCache
+          ? {
+              accessCode: this._accessCodeCache.accessCode,
+              loginType: this._accessCodeCache.loginType || 'employee',
+            }
+          : null;
       }
 
       const secureData = JSON.parse(atob(encodedData));
@@ -138,14 +140,16 @@ const AccessCodeManager = {
 
       return {
         accessCode: secureData.accessCode,
-        loginType: secureData.loginType || 'employee'
+        loginType: secureData.loginType || 'employee',
       };
     } catch (error) {
       console.error('Failed to retrieve stored auth data:', error);
-      return this._accessCodeCache ? {
-        accessCode: this._accessCodeCache.accessCode,
-        loginType: this._accessCodeCache.loginType || 'employee'
-      } : null;
+      return this._accessCodeCache
+        ? {
+            accessCode: this._accessCodeCache.accessCode,
+            loginType: this._accessCodeCache.loginType || 'employee',
+          }
+        : null;
     }
   },
 
@@ -162,7 +166,7 @@ const AccessCodeManager = {
       console.error('Failed to clear stored access code:', error);
       return false;
     }
-  }
+  },
 };
 
 /**
@@ -207,7 +211,7 @@ const UserSession = {
   unacceptTermsOfService() {
     localStorage.removeItem('hasAcceptedTermsOfService');
     console.log('Terms of Service acceptance cleared');
-  }
+  },
 };
 
 /**
@@ -268,7 +272,7 @@ async function initializeVersionDisplay() {
         versionDisplay: !!versionDisplay,
         versionNumber: !!versionNumber,
         versionEnv: !!versionEnv,
-        versionCommit: !!versionCommit
+        versionCommit: !!versionCommit,
       });
 
       if (versionDisplay && versionNumber && versionEnv && versionCommit) {
@@ -290,7 +294,9 @@ Git Commit: ${versionInfo.gitCommit}
           alert(details);
         });
 
-        console.log(`🏷️ Version display initialized: v${versionInfo.number} (${versionInfo.environment})`);
+        console.log(
+          `🏷️ Version display initialized: v${versionInfo.number} (${versionInfo.environment})`
+        );
       } else {
         console.warn('🏷️ Version display elements not found in DOM');
       }
@@ -309,7 +315,7 @@ Git Commit: ${versionInfo.gitCommit}
 async function main() {
   try {
     await initializeApplication();
-    
+
     // Version display is optional and not critical
     try {
       await initializeVersionDisplay();

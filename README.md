@@ -33,18 +33,21 @@ Originally built as a Google Apps Script application, Tonic has been migrated to
 ## Key Features
 
 ### For Parents
+
 - Register students for music lessons using phone number authentication
 - View available classes and time slots
 - Manage student registrations and attendance
 - Real-time availability checking
 
-### For Instructors  
+### For Instructors
+
 - Access class rosters and student information
 - Mark attendance for lessons
 - View teaching schedule
 - Manage class-specific details
 
 ### For Administrators
+
 - Full system access and user management
 - Create and modify classes, rooms, and schedules
 - Generate reports and analytics
@@ -52,6 +55,7 @@ Originally built as a Google Apps Script application, Tonic has been migrated to
 - Cache management and data operations
 
 ### Technical Features
+
 - **Caching System**: Intelligent caching with TTL for improved performance
 - **Data Validation**: Comprehensive validation for all user inputs
 - **Audit Trail**: Complete logging of all data modifications
@@ -61,6 +65,7 @@ Originally built as a Google Apps Script application, Tonic has been migrated to
 ## System Architecture
 
 ### Backend Architecture
+
 ```
 src/
 ├── controllers/          # HTTP request handlers
@@ -75,6 +80,7 @@ src/
 ```
 
 ### Key Architectural Patterns
+
 - **Controller-Repository Pattern**: Clean separation of concerns
 - **Domain-Driven Design**: Rich domain models with business logic
 - **Service Layer**: Business operations abstracted from controllers
@@ -82,8 +88,9 @@ src/
 - **Factory Pattern**: Model creation with multiple construction methods
 
 ### Authentication System
+
 - **Parent Login**: Phone number (10-digit) authentication
-- **Employee Login**: 6-digit AccessCode authentication  
+- **Employee Login**: 6-digit AccessCode authentication
 - **Role Detection**: Automatic login type detection with fallback
 - **Operator Mode**: Special administrative access mode
 
@@ -99,12 +106,14 @@ src/
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd tonic
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
@@ -116,11 +125,13 @@ src/
    - Share your Google Sheets with the service account email
 
 4. **Configure environment variables**
+
    ```bash
    cp .env.example .env
    ```
-   
+
    Edit `.env` with your configuration:
+
    ```bash
    NODE_ENV=development
    WORKING_SPREADSHEET_ID=your-spreadsheet-id-here
@@ -132,6 +143,7 @@ src/
    See [docs/technical/ENVIRONMENT_VARIABLES.md](docs/technical/ENVIRONMENT_VARIABLES.md) for complete variable reference.
 
 5. **Run the application**
+
    ```bash
    npm start
    # or for development with auto-reload:
@@ -145,42 +157,50 @@ src/
 ## User Roles
 
 ### Parent Users
+
 - **Authentication**: 10-digit phone number
 - **Capabilities**: Student registration, schedule viewing, attendance tracking
 - **Access Level**: Limited to own children's data
 
-### Instructor Users  
+### Instructor Users
+
 - **Authentication**: 6-digit AccessCode
 - **Capabilities**: Class management, attendance marking, roster access
 - **Access Level**: Classes they teach
 
 ### Admin Users
-- **Authentication**: 6-digit AccessCode  
+
+- **Authentication**: 6-digit AccessCode
 - **Capabilities**: Full system access, user management, system configuration
 - **Access Level**: Complete system administration
 
 ## API Documentation
 
 ### Authentication Endpoints
+
 - `POST /api/authenticateByAccessCode` - Authenticate user by access code
 - `POST /api/getOperatorUser` - Get current operator user
 
 ### User Management
+
 - `POST /api/getAdmins` - Retrieve all administrators
-- `POST /api/getInstructors` - Retrieve all instructors  
+- `POST /api/getInstructors` - Retrieve all instructors
 - `POST /api/getStudents` - Retrieve students (paginated)
 
 ### Registration System
+
 - `POST /api/registrations` - Create new registration
 - `POST /api/unregister` - Remove registration
 - `POST /api/getRegistrations` - Get registrations (paginated)
 - `POST /api/getClasses` - Get available classes (paginated)
 
 ### Attendance System
+
 - `POST /api/attendance` - Mark attendance
 - `GET /api/attendance/summary/:registrationId` - Get attendance summary
 
 ### System Operations
+
 - `GET /api/health` - Health check endpoint
 - `GET /api/version` - Application version
 - `POST /api/admin/clearCache` - Clear system cache (admin only)
@@ -196,7 +216,7 @@ For detailed API documentation, see the generated docs at `docs/generated/`.
 npm run dev                 # Start with auto-reload
 npm start                  # Start production server
 
-# Testing  
+# Testing
 npm test                   # Run all tests
 npm run test:unit          # Run unit tests only
 npm run test:integration   # Run integration tests only
@@ -216,7 +236,7 @@ npm run docs:serve         # Serve documentation with live reload
 ### Testing Strategy
 
 - **Unit Tests**: Individual component testing with Jest
-- **Integration Tests**: API endpoint testing with Supertest  
+- **Integration Tests**: API endpoint testing with Supertest
 - **Mock Testing**: Google Sheets API mocking for CI/CD
 - **Debug Tests**: Development debugging utilities
 
@@ -238,6 +258,7 @@ The project includes Infrastructure-as-Code configuration for Render deployment:
    - **Staging**: `develop` branch → `tonic-staging` service
 
 2. **Deploy with Blueprint**
+
    ```bash
    # Deploy using config/render.yaml
    # In Render Dashboard: New Blueprint → Select repository → Use config/render.yaml
@@ -253,7 +274,7 @@ For detailed deployment instructions, see [docs/business/RENDER_DEPLOYMENT.md](d
 ```bash
 # Version management
 npm run version:increment        # Patch version bump
-npm run version:increment:minor  # Minor version bump  
+npm run version:increment:minor  # Minor version bump
 npm run version:increment:major  # Major version bump
 
 # Deployment preparation
@@ -266,7 +287,7 @@ npm run deploy:check           # Pre-deployment verification
 ```
 tonic/
 ├── 📁 src/                     # Application source code
-│   ├── 📁 controllers/         # HTTP request handlers  
+│   ├── 📁 controllers/         # HTTP request handlers
 │   ├── 📁 repositories/        # Data access layer
 │   ├── 📁 services/           # Business logic services
 │   ├── 📁 models/             # Domain models (shared)
@@ -297,7 +318,7 @@ tonic/
 │   ├── 📁 technical/          # Technical documentation
 │   └── 📁 generated/          # Auto-generated docs
 ├── 📁 config/                 # Configuration files
-├── 📁 scripts/                # Deployment and utility scripts  
+├── 📁 scripts/                # Deployment and utility scripts
 └── 📁 dev/                    # Development tools
     ├── 📁 tools/              # Analysis and development tools
     └── 📁 credentials/        # Development credentials
@@ -316,12 +337,14 @@ tonic/
 ## Google Apps Script Integration
 
 ### Data Persistence
+
 - All data stored in Google Sheets via Google Sheets API
 - Service account authentication for secure access
 - Automatic data validation and type conversion
 - Caching layer for improved performance
 
 ### Migration System
+
 The `gas-src/` directory contains a complete migration system for database schema changes:
 
 ```bash
@@ -331,8 +354,9 @@ npm run open          # Open GAS editor to run migrations
 ```
 
 ### Available Migrations
+
 - **Active Migrations**: Current schema updates in `gas-migrations/active/`
-- **Development Migrations**: Testing data in `gas-migrations/dev/`  
+- **Development Migrations**: Testing data in `gas-migrations/dev/`
 - **Recurring Migrations**: Periodic maintenance in `gas-migrations/recurring/`
 
 ## Contributing
@@ -349,6 +373,7 @@ npm run open          # Open GAS editor to run migrations
 8. **Create Pull Request** with comprehensive description
 
 ### Code Quality Requirements
+
 - All code must pass ESLint and Prettier checks
 - Unit tests required for new functionality
 - Integration tests for API changes
@@ -356,6 +381,7 @@ npm run open          # Open GAS editor to run migrations
 - No console errors or warnings
 
 ### Branch Strategy
+
 - **`main`**: Production-ready code
 - **`develop`**: Integration branch for features
 - **`feature/*`**: Feature development branches
@@ -364,11 +390,13 @@ npm run open          # Open GAS editor to run migrations
 ## Documentation
 
 ### Business Documentation
+
 - **[Technical Hosting Proposal](docs/business/TECHNICAL_HOSTING_PROPOSAL.md)**: Hosting recommendations
 - **[Deployment Checklist](docs/business/DEPLOYMENT_CHECKLIST.md)**: Pre-deployment verification
 - **[Privacy Policy](docs/business/PRIVACY_POLICY.md)**: Data handling policies
 
-### Technical Documentation  
+### Technical Documentation
+
 - **[Architecture Overview](docs/technical/ARCHITECTURE.md)**: System architecture details
 - **[Environment Setup](docs/technical/ENVIRONMENT_VARIABLES.md)**: Configuration guide
 - **[Migration Summary](docs/technical/MIGRATION_SUMMARY.md)**: GAS to Node.js migration details
@@ -392,7 +420,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 For questions, issues, or contributions:
 
 1. **Check existing issues** in the GitHub repository
-2. **Review documentation** in the `docs/` directory  
+2. **Review documentation** in the `docs/` directory
 3. **Create new issue** with detailed description
 4. **Contact maintainers** for urgent matters
 

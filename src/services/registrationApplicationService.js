@@ -52,7 +52,7 @@ export class RegistrationApplicationService {
           instructorId: registrationData.instructorId,
           day: registrationData.day,
           startTime: registrationData.startTime,
-          instrument: registrationData.instrument
+          instrument: registrationData.instrument,
         });
       }
 
@@ -67,13 +67,13 @@ export class RegistrationApplicationService {
       if (registrationData.transportationType === 'bus') {
         // Ensure length is a number (convert from string if needed)
         const lengthMinutes = parseInt(registrationData.length) || 0;
-        
+
         const busValidation = this.#validateBusTimeRestrictions(
           registrationData.day,
           registrationData.startTime,
           lengthMinutes
         );
-        
+
         if (!busValidation.isValid) {
           throw new Error(busValidation.errorMessage);
         }
@@ -99,9 +99,13 @@ export class RegistrationApplicationService {
       // Step 3.5: Populate room assignment from instructor's schedule for both group and private registrations
       const dayName = registrationData.day.toLowerCase();
       const roomIdKey = `${dayName}RoomId`;
-      
+
       // Get room ID from instructor's availability for the specific day
-      if (instructor.availability && instructor.availability[dayName] && instructor.availability[dayName].roomId) {
+      if (
+        instructor.availability &&
+        instructor.availability[dayName] &&
+        instructor.availability[dayName].roomId
+      ) {
         registrationData.roomId = instructor.availability[dayName].roomId;
       } else if (instructor[roomIdKey]) {
         // Fallback: try direct property access on instructor object
@@ -114,7 +118,7 @@ export class RegistrationApplicationService {
       console.log(`🏫 Room assignment for ${registrationData.registrationType} registration:`, {
         day: dayName,
         instructorId: instructor.id,
-        roomId: registrationData.roomId
+        roomId: registrationData.roomId,
       });
 
       // Step 4: Program-specific validation
@@ -129,20 +133,23 @@ export class RegistrationApplicationService {
 
       // Step 5: Check for conflicts with existing registrations
       const existingRegistrations = await this.registrationRepository.findAll();
-      
+
       // Check for duplicate group registrations (student can only be enrolled in a class once)
       if (registrationData.registrationType === 'group' && registrationData.classId) {
-        const existingGroupRegistration = existingRegistrations.find(reg => 
-          reg.studentId === registrationData.studentId && 
-          reg.classId === registrationData.classId &&
-          reg.registrationType === 'group'
+        const existingGroupRegistration = existingRegistrations.find(
+          reg =>
+            reg.studentId === registrationData.studentId &&
+            reg.classId === registrationData.classId &&
+            reg.registrationType === 'group'
         );
-        
+
         if (existingGroupRegistration) {
-          throw new Error(`Student is already enrolled in this class. Students can only be enrolled in a class once.`);
+          throw new Error(
+            `Student is already enrolled in this class. Students can only be enrolled in a class once.`
+          );
         }
       }
-      
+
       const conflictCheck = await RegistrationConflictService.checkConflicts(
         registrationData,
         existingRegistrations
@@ -179,10 +186,9 @@ export class RegistrationApplicationService {
       // Step 7: Persist the registration
       const registrationDataObject = registrationEntity.toDataObject();
       console.log('📊 Registration data object before persistence:', registrationDataObject);
-      
-      const persistedRegistration = await this.registrationRepository.create(
-        registrationDataObject
-      );
+
+      const persistedRegistration =
+        await this.registrationRepository.create(registrationDataObject);
 
       // Step 8: Audit logging
       if (this.auditService) {
@@ -200,7 +206,7 @@ export class RegistrationApplicationService {
           expectedStartDate: persistedRegistration.expectedStartDate || new Date(),
           day: persistedRegistration.day,
           startTime: persistedRegistration.startTime,
-          length: persistedRegistration.length
+          length: persistedRegistration.length,
         };
 
         if (scheduleData.day && scheduleData.startTime && scheduleData.length) {
@@ -246,7 +252,7 @@ export class RegistrationApplicationService {
 
       // For admin/operator deletions, bypass complex business logic checks
       // and proceed with deletion (as requested - work with current schema)
-      
+
       // Perform cancellation
       await this.registrationRepository.delete(registrationId, userId);
 
@@ -265,7 +271,7 @@ export class RegistrationApplicationService {
 
       return {
         success: true,
-        message: 'Registration cancelled successfully'
+        message: 'Registration cancelled successfully',
       };
     } catch (error) {
       console.error('❌ Registration cancellation failed:', error);
@@ -297,7 +303,9 @@ export class RegistrationApplicationService {
         student,
         instructor,
         groupClass,
-        lessonSchedule: ProgramManagementService.generateLessonSchedule(registration.toDataObject()),
+        lessonSchedule: ProgramManagementService.generateLessonSchedule(
+          registration.toDataObject()
+        ),
         nextLessonDate: registration.getNextLessonDate(),
         canModify: registration.canBeModified(),
         cancellationInfo: registration.canBeCancelled(),
@@ -341,7 +349,6 @@ export class RegistrationApplicationService {
     }
   }
 
-
   /**
    * Get registrations with filtering and pagination
    */
@@ -359,7 +366,7 @@ export class RegistrationApplicationService {
           registrations: [],
           totalCount: 0,
           page: options.page || 1,
-          pageSize: options.pageSize || 1000
+          pageSize: options.pageSize || 1000,
         };
       }
 
@@ -431,13 +438,13 @@ export class RegistrationApplicationService {
       const [time, period] = timeStr.split(' ');
       const [hours, minutes] = time.split(':').map(Number);
       let hour24 = hours;
-      
+
       if (period === 'PM' && hours !== 12) {
         hour24 += 12;
       } else if (period === 'AM' && hours === 12) {
         hour24 = 0;
       }
-      
+
       return hour24 * 60 + (minutes || 0);
     }
 
@@ -463,12 +470,19 @@ export class RegistrationApplicationService {
    * @returns {object} Validation result with isValid boolean and errorMessage
    */
   #validateBusTimeRestrictions(day, startTime, lengthMinutes) {
-    console.log('🚌 Validating bus time restrictions:', { day, startTime, lengthMinutes, lengthType: typeof lengthMinutes });
+    console.log('🚌 Validating bus time restrictions:', {
+      day,
+      startTime,
+      lengthMinutes,
+      lengthType: typeof lengthMinutes,
+    });
 
     // Ensure lengthMinutes is a number
     const durationMinutes = parseInt(lengthMinutes) || 0;
     if (durationMinutes !== lengthMinutes) {
-      console.warn(`⚠️  Length was not a number: "${lengthMinutes}" (${typeof lengthMinutes}), converted to: ${durationMinutes}`);
+      console.warn(
+        `⚠️  Length was not a number: "${lengthMinutes}" (${typeof lengthMinutes}), converted to: ${durationMinutes}`
+      );
     }
 
     // Parse start time and calculate end time
@@ -480,11 +494,11 @@ export class RegistrationApplicationService {
 
     // Bus schedule restrictions
     const busDeadlines = {
-      'Monday': '16:45',    // 4:45 PM
-      'Tuesday': '16:45',   // 4:45 PM
-      'Wednesday': '16:15', // 4:15 PM
-      'Thursday': '16:45',  // 4:45 PM
-      'Friday': '16:45'     // 4:45 PM
+      Monday: '16:45', // 4:45 PM
+      Tuesday: '16:45', // 4:45 PM
+      Wednesday: '16:15', // 4:15 PM
+      Thursday: '16:45', // 4:45 PM
+      Friday: '16:45', // 4:45 PM
     };
 
     const deadlineTime = busDeadlines[day];

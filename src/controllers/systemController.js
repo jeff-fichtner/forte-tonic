@@ -145,7 +145,7 @@ export class SystemController {
       }
 
       // Clear ALL caches in the system
-      
+
       // 1. Clear database client cache (the main Google Sheets cache)
       const dbClient = userRepository.dbClient;
       dbClient.clearCache();
@@ -156,11 +156,11 @@ export class SystemController {
         'userRepository',
         'registrationRepository',
         'instructorRepository',
-        'studentRepository', 
+        'studentRepository',
         'adminRepository',
         'parentRepository',
         'attendanceRepository',
-        'programRepository'
+        'programRepository',
       ];
 
       const clearedRepositories = [];
@@ -176,14 +176,16 @@ export class SystemController {
           console.log(`⚠️ Could not clear cache for ${repoType}: ${e.message}`);
         }
       }
-      
-      console.log(`✅ Repository caches cleared: ${clearedRepositories.join(', ')}`)
 
-      console.log(`🧹 All caches cleared by admin: ${validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName}`);
-      res.json({ 
-        success: true, 
+      console.log(`✅ Repository caches cleared: ${clearedRepositories.join(', ')}`);
+
+      console.log(
+        `🧹 All caches cleared by admin: ${validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName}`
+      );
+      res.json({
+        success: true,
         message: 'All caches cleared successfully',
-        clearedBy: validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName
+        clearedBy: validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName,
       });
     } catch (error) {
       console.error('Error clearing cache:', error);
@@ -199,7 +201,7 @@ export class SystemController {
       const appConfig = configService.getApplicationConfig();
       res.json({
         success: true,
-        config: appConfig
+        config: appConfig,
       });
     } catch (error) {
       console.error('Error getting application config:', error);

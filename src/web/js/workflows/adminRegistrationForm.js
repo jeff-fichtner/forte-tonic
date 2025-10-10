@@ -21,7 +21,7 @@ export class AdminRegistrationForm {
     this.students = students;
     this.classes = classes;
     this.sendDataFunction = sendDataFunction;
-    
+
     // Initialize form elements
     this.#initializeFormElements();
   }
@@ -32,26 +32,30 @@ export class AdminRegistrationForm {
   #initializeFormElements() {
     // Initialize students autocomplete
     this.#setStudentAutocomplete(this.students);
-    
+
     // Initialize registration type selector
     this.registrationTypeSelect = this.#buildRegistrationTypeSelect();
-    
-    // Initialize instructor selector  
+
+    // Initialize instructor selector
     this.instructorSelect = this.#buildInstructorSelect(
       this.instructors.map(instructor => ({
         value: instructor.id,
         label: `${instructor.firstName} ${instructor.lastName}`,
       }))
     );
-    
+
     // Initialize class selector
     this.classSelect = this.#buildClassSelect(
       this.classes.map(cls => ({
         value: cls.id,
-        label: ClassManager.formatClassNameWithTime(cls, formatClassNameWithGradeCorrection, formatTime),
+        label: ClassManager.formatClassNameWithTime(
+          cls,
+          formatClassNameWithGradeCorrection,
+          formatTime
+        ),
       }))
     );
-    
+
     // Handle submit button
     this.#attachSubmitButtonListener();
   }
@@ -67,19 +71,23 @@ export class AdminRegistrationForm {
       M.Autocomplete.init(elem, { data: {} });
       return;
     }
-    
+
     const data = students.reduce((acc, student) => {
-      const fullName = student.getFullName ? student.getFullName() : `${student.firstName || ''} ${student.lastName || ''}`.trim();
+      const fullName = student.getFullName
+        ? student.getFullName()
+        : `${student.firstName || ''} ${student.lastName || ''}`.trim();
       acc[fullName] = null;
       return acc;
     }, {});
-    
+
     this.studentMap = students.reduce((acc, student) => {
-      const fullName = student.getFullName ? student.getFullName() : `${student.firstName || ''} ${student.lastName || ''}`.trim();
+      const fullName = student.getFullName
+        ? student.getFullName()
+        : `${student.firstName || ''} ${student.lastName || ''}`.trim();
       acc[fullName] = student.id;
       return acc;
     }, {});
-    
+
     const options = {
       data: data,
       limit: 20,
@@ -129,10 +137,10 @@ export class AdminRegistrationForm {
         const selectedValue = event.target.value;
         const currentInstructor = this.instructors.find(x => x.id === selectedValue);
         console.log('Instructor selected:', currentInstructor);
-        
+
         // Show lesson details when instructor is selected
         this.#showLessonDetailsContainer(!!selectedValue);
-        
+
         // Initialize lesson detail selectors
         if (selectedValue) {
           this.#initializeLessonDetailsSelectors();
@@ -205,15 +213,15 @@ export class AdminRegistrationForm {
         { value: '1', label: 'Tuesday' },
         { value: '2', label: 'Wednesday' },
         { value: '3', label: 'Thursday' },
-        { value: '4', label: 'Friday' }
+        { value: '4', label: 'Friday' },
       ],
       event => {
         console.log('Day selected:', event.target.value);
         const hasDay = !!event.target.value;
-        
+
         // Show the lesson length and start time container when day is selected
         this.#showContainer('instructor-day-selected-info-container', hasDay);
-        
+
         // Reset start time, lesson length, and instrument when day is cleared
         if (!hasDay) {
           // Reset lesson length radio buttons to default (30 minutes)
@@ -221,12 +229,12 @@ export class AdminRegistrationForm {
           if (lengthRadios.length > 0) {
             lengthRadios[0].checked = true;
           }
-          
+
           // Clear start time selection
           if (this.startTimeSelect) {
             this.startTimeSelect.clearSelectedOption();
           }
-          
+
           // Clear instrument selection
           if (this.instrumentSelect) {
             this.instrumentSelect.clearSelectedOption();
@@ -249,7 +257,7 @@ export class AdminRegistrationForm {
         { value: 'Voice', label: 'Voice' },
         { value: 'Drums', label: 'Drums' },
         { value: 'Bass', label: 'Bass' },
-        { value: 'Other', label: 'Other' }
+        { value: 'Other', label: 'Other' },
       ],
       event => {
         console.log('Instrument selected:', event.target.value);
@@ -303,13 +311,13 @@ export class AdminRegistrationForm {
 
     // Get instructor's instruments from specialties field
     const instructorInstruments = instructor.specialties || [];
-    
+
     // Create instrument options based on instructor's specialties
     let instrumentOptions = [];
     if (instructorInstruments.length > 0) {
       instrumentOptions = instructorInstruments.map(instrument => ({
         value: instrument,
-        label: instrument
+        label: instrument,
       }));
     } else {
       // Fallback to default instruments if instructor has no specialties
@@ -320,14 +328,20 @@ export class AdminRegistrationForm {
         { value: 'Voice', label: 'Voice' },
         { value: 'Drums', label: 'Drums' },
         { value: 'Bass', label: 'Bass' },
-        { value: 'Other', label: 'Other' }
+        { value: 'Other', label: 'Other' },
       ];
     }
 
     // Update the instrument select with new options
     this.instrumentSelect.populateOptions(instrumentOptions, true);
-    
-    console.log('Updated instrument options for instructor:', instructor.firstName, instructor.lastName, 'with instruments:', instructorInstruments);
+
+    console.log(
+      'Updated instrument options for instructor:',
+      instructor.firstName,
+      instructor.lastName,
+      'with instruments:',
+      instructorInstruments
+    );
   }
 
   /**
@@ -336,13 +350,13 @@ export class AdminRegistrationForm {
   #attachSubmitButtonListener() {
     const submitButton = document.getElementById('create-registration-submit-btn');
     if (submitButton) {
-      submitButton.addEventListener('click', async (event) => {
+      submitButton.addEventListener('click', async event => {
         event.preventDefault();
-        
+
         if (!this.#validateRegistration()) {
           return;
         }
-        
+
         try {
           this.#setAdminRegistrationLoading(true);
           const registrationData = this.#getCreateRegistrationData();
@@ -372,13 +386,13 @@ export class AdminRegistrationForm {
       const [time, period] = timeStr.split(' ');
       const [hours, minutes] = time.split(':').map(Number);
       let hour24 = hours;
-      
+
       if (period === 'PM' && hours !== 12) {
         hour24 += 12;
       } else if (period === 'AM' && hours === 12) {
         hour24 = 0;
       }
-      
+
       return hour24 * 60 + (minutes || 0);
     }
 
@@ -419,11 +433,11 @@ export class AdminRegistrationForm {
 
     // Bus schedule restrictions
     const busDeadlines = {
-      'Monday': '16:45',    // 4:45 PM
-      'Tuesday': '16:45',   // 4:45 PM
-      'Wednesday': '16:15', // 4:15 PM
-      'Thursday': '16:45',  // 4:45 PM
-      'Friday': '16:45'     // 4:45 PM
+      Monday: '16:45', // 4:45 PM
+      Tuesday: '16:45', // 4:45 PM
+      Wednesday: '16:15', // 4:15 PM
+      Thursday: '16:45', // 4:45 PM
+      Friday: '16:45', // 4:45 PM
     };
 
     const deadlineTime = busDeadlines[day];
@@ -449,17 +463,18 @@ export class AdminRegistrationForm {
     const registrationData = this.#getCreateRegistrationData();
     const isPrivate = registrationData.registrationType === RegistrationType.PRIVATE;
     const isGroup = registrationData.registrationType === RegistrationType.GROUP;
-    
+
     const isValid =
       registrationData.studentId &&
       registrationData.registrationType &&
       ((isGroup && registrationData.classId) ||
-        (isPrivate && registrationData.instructorId && 
-         registrationData.day !== undefined && 
-         registrationData.startTime && 
-         registrationData.length && 
-         registrationData.instrument));
-    
+        (isPrivate &&
+          registrationData.instructorId &&
+          registrationData.day !== undefined &&
+          registrationData.startTime &&
+          registrationData.length &&
+          registrationData.instrument));
+
     if (!isValid) {
       const errors = [];
       if (!registrationData.studentId) {
@@ -475,7 +490,11 @@ export class AdminRegistrationForm {
         if (!registrationData.instructorId) {
           errors.push('Instructor');
         }
-        if (registrationData.day === undefined || registrationData.day === null || registrationData.day === '') {
+        if (
+          registrationData.day === undefined ||
+          registrationData.day === null ||
+          registrationData.day === ''
+        ) {
           errors.push('Day');
         }
         if (!registrationData.startTime) {
@@ -532,28 +551,36 @@ export class AdminRegistrationForm {
    */
   #getCreateRegistrationData() {
     // get student - extract the actual ID value if it's an object
-    const studentId = this.selectedStudent ? 
-      (typeof this.selectedStudent.id === 'object' ? this.selectedStudent.id.value : this.selectedStudent.id) : 
-      null;
+    const studentId = this.selectedStudent
+      ? typeof this.selectedStudent.id === 'object'
+        ? this.selectedStudent.id.value
+        : this.selectedStudent.id
+      : null;
     const registrationType = this.registrationTypeSelect.getSelectedOption();
-    
+
     if (registrationType === RegistrationType.GROUP) {
       const selectedClassId = this.classSelect.getSelectedOption();
       const selectedClass = this.classes.find(c => c.id === selectedClassId);
-      
+
       if (!selectedClass) {
         throw new Error('Please select a valid class');
       }
-      
+
       // Get transportation type for group registration
-      const transportationType = document.querySelector('input[name="transportation-type"]:checked');
-      
+      const transportationType = document.querySelector(
+        'input[name="transportation-type"]:checked'
+      );
+
       return {
         studentId: studentId,
         registrationType: RegistrationType.GROUP,
         transportationType: transportationType ? transportationType.value : null,
         classId: selectedClassId,
-        classTitle: selectedClass.formattedName || selectedClass.title || selectedClass.instrument || `Class ${selectedClass.id}`,
+        classTitle:
+          selectedClass.formattedName ||
+          selectedClass.title ||
+          selectedClass.instrument ||
+          `Class ${selectedClass.id}`,
         instructorId: selectedClass.instructorId,
         day: selectedClass.day,
         startTime: selectedClass.startTime,
@@ -561,22 +588,26 @@ export class AdminRegistrationForm {
         instrument: selectedClass.instrument,
       };
     }
-    
+
     // For private lessons, basic data only
     if (registrationType === RegistrationType.PRIVATE) {
       // get transportation type response
-      const transportationType = document.querySelector('input[name="transportation-type"]:checked');
-      
+      const transportationType = document.querySelector(
+        'input[name="transportation-type"]:checked'
+      );
+
       // Get lesson details from selectors
       const dayValue = this.daySelect ? this.daySelect.getSelectedOption() : '0';
       const startTime = this.startTimeSelect ? this.startTimeSelect.getSelectedOption() : '15:00';
       const length = document.querySelector('input[name="lesson-length"]:checked')?.value || '30';
-      const instrument = this.instrumentSelect ? this.instrumentSelect.getSelectedOption() : 'Piano';
-      
+      const instrument = this.instrumentSelect
+        ? this.instrumentSelect.getSelectedOption()
+        : 'Piano';
+
       // Convert numeric day to day name
       const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
       const dayName = dayNames[parseInt(dayValue)] || 'Monday';
-      
+
       return {
         studentId: studentId,
         registrationType: registrationType,
@@ -588,7 +619,7 @@ export class AdminRegistrationForm {
         instrument: instrument,
       };
     }
-    
+
     return {
       studentId: studentId,
       registrationType: registrationType,
@@ -626,13 +657,13 @@ export class AdminRegistrationForm {
     this.registrationTypeSelect.clearSelectedOption();
     this.#showPrivateRegistrationContainer(false);
     this.#showGroupRegistrationContainer(false);
-    
+
     // Clear group class selection
     this.classSelect.clearSelectedOption();
-    
+
     // Clear instructor selection
     this.instructorSelect.clearSelectedOption();
-    
+
     // Clear lesson details
     if (this.daySelect) {
       this.daySelect.clearSelectedOption();
@@ -648,16 +679,16 @@ export class AdminRegistrationForm {
     if (this.startTimeSelect) {
       this.startTimeSelect.clearSelectedOption();
     }
-    
+
     // Hide lesson details container
     this.#showLessonDetailsContainer(false);
-    
+
     // Hide day-selected container
     this.#showContainer('instructor-day-selected-info-container', false);
-    
+
     // Clear students
     this.#setCurrentStudent(null);
-    
+
     // Clear transportation type
     const transportationTypeRadios = document.querySelectorAll('input[name="transportation-type"]');
     if (transportationTypeRadios.length > 0) {
