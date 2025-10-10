@@ -158,6 +158,7 @@ render-build.log
 # Build output and cache
 dist/
 build/
+!src/build/
 .cache/
 
 *.DS_Store
