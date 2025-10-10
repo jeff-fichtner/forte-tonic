@@ -1,7 +1,3 @@
-import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
-import { OperatorUserResponse } from '../models/shared/responses/operatorUserResponse.js';
-import { Admin } from '../models/shared/admin.js';
-import { configService } from '../services/configurationService.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
 import { currentConfig } from '../config/environment.js';
 

@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 describe('Parent Weekly Schedule Logic', () => {
   let mockParentUser;
   let mockStudents;

@@ -1,5 +1,4 @@
 import { jest } from '@jest/globals';
-import { Registration, Student, Instructor, Admin } from '../../src/models/shared/index.js';
 import { StudentId } from '../../src/utils/values/studentId.js';
 import { InstructorId } from '../../src/utils/values/instructorId.js';
 import { RegistrationType } from '../../src/utils/values/registrationType.js';

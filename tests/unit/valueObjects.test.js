@@ -1,4 +1,3 @@
-import { jest } from '@jest/globals';
 import { StudentId } from '../../src/utils/values/studentId.js';
 import { InstructorId } from '../../src/utils/values/instructorId.js';
 

@@ -13,7 +13,6 @@
 import { jest } from '@jest/globals';
 import { RegistrationRepository } from '../../../src/repositories/registrationRepository.js';
 import { RegistrationId } from '../../../src/utils/values/registrationId.js';
-import { Registration } from '../../../src/models/shared/registration.js';
 
 describe('RegistrationRepository - Delete Functionality', () => {
   let repository;
