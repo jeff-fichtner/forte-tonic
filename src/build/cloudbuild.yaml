@@ -19,8 +19,9 @@ steps:
     args: [
       'build', 
       '-f', 'src/build/Dockerfile',
-      '-t', 'gcr.io/$PROJECT_ID/tonic:${BRANCH_NAME}-${SHORT_SHA}',
-      '-t', 'gcr.io/$PROJECT_ID/tonic:${BRANCH_NAME}-latest',
+      '-t', 'gcr.io/$PROJECT_ID/tonic:${SHORT_SHA}',
+      '-t', 'gcr.io/$PROJECT_ID/tonic:${_ENV_TYPE}-${SHORT_SHA}',
+      '-t', 'gcr.io/$PROJECT_ID/tonic:${_ENV_TYPE}-latest',
       '-t', 'gcr.io/$PROJECT_ID/tonic:latest',
       '.'
     ]
@@ -36,7 +37,7 @@ steps:
   - name: 'gcr.io/cloud-builders/gcloud'
     args: [
       'run', 'deploy', 'tonic-${_ENV_TYPE}',
-      '--image=gcr.io/$PROJECT_ID/tonic:${BRANCH_NAME}-${SHORT_SHA}',
+      '--image=gcr.io/$PROJECT_ID/tonic:${_ENV_TYPE}-${SHORT_SHA}',
       '--region=${_DEPLOY_REGION}',
       '--platform=managed',
       '--set-env-vars=NODE_ENV=${_ENV_TYPE}',
@@ -94,7 +95,8 @@ steps:
         echo "📅 Time: $(date)"
         echo "🏗️  Build ID: ${BUILD_ID}"
         echo "📝 Commit: ${SHORT_SHA}"
-        echo "🌿 Branch/Tag: ${BRANCH_NAME}${TAG_NAME}"
+        echo "🌿 Environment: ${_ENV_TYPE}"
+        echo "📋 Branch/Tag: ${BRANCH_NAME}${TAG_NAME}"
         echo "======================================="
     id: 'deployment-summary'
     waitFor: ['health-check']
