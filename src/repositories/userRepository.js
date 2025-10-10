@@ -103,7 +103,7 @@ export class UserRepository {
     return instructors.find(x => x.email === email);
   }
 
-    /**
+  /**
    * Get instructor by access code
    * @param {string} accessCode - The access code to search for
    * @returns {Promise<Instructor|undefined>} Instructor with matching access code

@@ -78,7 +78,7 @@ const isDevelopment = serverConfig.nodeEnv === 'development';
 
 // Development cache headers to prevent caching issues
 const developmentStaticOptions = isDevelopment ? {
-  setHeaders: (res, path) => {
+  setHeaders: (res, _path) => {
     res.set({
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Pragma': 'no-cache',
@@ -110,7 +110,7 @@ app.use('*', (req, res) => {
 });
 
 // Error handling middleware
-app.use((error, req, res, next) => {
+app.use((error, req, res, _next) => {
   console.error('Unhandled error:', error);
   res.status(500).json({
     error: 'Internal server error',
