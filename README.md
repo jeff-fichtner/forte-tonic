@@ -30,6 +30,10 @@ Tonic is designed to streamline music program registration for schools by provid
 
 Originally built as a Google Apps Script application, Tonic has been migrated to Node.js for improved performance, scalability, and maintainability while preserving all original functionality.
 
+### 🚀 Platform Evolution
+
+**Current Status**: The application is transitioning from Render.com to Google Cloud Platform for enhanced integration with Google Workspace and improved reliability. See the [Deployment](#deployment) section for platform-specific instructions.
+
 ## Key Features
 
 ### For Parents
@@ -249,9 +253,42 @@ npm run docs:serve         # Serve documentation with live reload
 
 ## Deployment
 
-### Production Deployment (Render)
+### ⚠️ Platform Transition Notice
 
-The project includes Infrastructure-as-Code configuration for Render deployment:
+**The Tonic application is currently transitioning from Render to Google Cloud Platform (GCP).**
+
+- **Current Platform**: Render.com (legacy deployment)
+- **Target Platform**: Google Cloud Platform (recommended)
+- **Transition Status**: In progress
+
+### Production Deployment Options
+
+#### Option 1: Google Cloud Platform (RECOMMENDED) 🎯
+
+For new deployments and better integration with Google Workspace:
+
+1. **Platform Benefits**
+   - Seamless Google Sheets integration
+   - Better performance and reliability
+   - Native Google Workspace authentication
+   - Cost-effective for educational institutions
+
+2. **Deployment Process**
+
+   ```bash
+   # Option A: Manual deployment
+   gcloud app deploy
+
+   # Option B: Automated CI/CD setup (recommended)
+   ./scripts/manage-gcp-cicd.sh setup-gcp --folder=YOUR_FOLDER_ID
+   ```
+
+3. **Environment Variables**
+   Configure in Google Cloud Console (see [ENVIRONMENT_VARIABLES.md](docs/technical/ENVIRONMENT_VARIABLES.md))
+
+#### Option 2: Render.com (LEGACY) 📦
+
+For existing deployments still using Render:
 
 1. **Two-Environment Setup**
    - **Production**: `main` branch → `tonic-production` service
@@ -265,9 +302,22 @@ The project includes Infrastructure-as-Code configuration for Render deployment:
    ```
 
 3. **Environment Variables**
-   Set required variables in Render Dashboard (see [ENVIRONMENT_VARIABLES.md](docs/technical/ENVIRONMENT_VARIABLES.md))
+   Set required variables in Render Dashboard
 
-For detailed deployment instructions, see [docs/business/RENDER_DEPLOYMENT.md](docs/business/RENDER_DEPLOYMENT.md).
+### Migration Path
+
+If migrating from Render to GCP:
+
+1. **Prepare GCP Environment**: Follow [TECHNICAL_HOSTING_PROPOSAL.md](docs/business/TECHNICAL_HOSTING_PROPOSAL.md)
+2. **Test Deployment**: Deploy to GCP staging environment first
+3. **Data Migration**: Ensure Google Sheets access is configured
+4. **DNS Update**: Point domain to new GCP deployment
+5. **Monitoring**: Verify application functionality
+
+For detailed deployment instructions:
+
+- **GCP Setup**: [docs/business/TECHNICAL_HOSTING_PROPOSAL.md](docs/business/TECHNICAL_HOSTING_PROPOSAL.md)
+- **Render Legacy**: [docs/business/RENDER_DEPLOYMENT.md](docs/business/RENDER_DEPLOYMENT.md)
 
 ### Local Development Scripts
 
@@ -280,6 +330,10 @@ npm run version:increment:major  # Major version bump
 # Deployment preparation
 npm run build                   # Run all checks and tests
 npm run deploy:check           # Pre-deployment verification
+
+# GCP Management (when transitioning to GCP)
+./scripts/manage-gcp-cicd.sh setup-gcp --folder=FOLDER_ID    # Setup GCP CI/CD
+./scripts/manage-gcp-cicd.sh status-gcp --folder=FOLDER_ID   # Check GCP status
 ```
 
 ## Project Structure
@@ -427,5 +481,6 @@ For questions, issues, or contributions:
 ---
 
 **Version**: 1.1.0  
-**Last Updated**: August 31, 2025  
-**Node.js**: 18+
+**Last Updated**: October 9, 2025  
+**Node.js**: 18+  
+**Platform Status**: Transitioning from Render to Google Cloud Platform
