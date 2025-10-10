@@ -100,7 +100,7 @@ jobs:
           
           # Add and commit the version change
           git add package.json
-          git commit -m "chore: auto-increment version $CURRENT_VERSION → $NEW_VERSION [skip ci]"
+          git commit -m "chore: auto-increment version $CURRENT_VERSION → $NEW_VERSION"
           
           echo "✅ Version increment committed"
       
