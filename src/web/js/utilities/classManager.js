@@ -69,13 +69,13 @@ class ClassManager {
    */
   static formatClassNameWithTime(cls, formatClassNameFn, formatTimeFn) {
     const baseName = formatClassNameFn(cls);
-    
+
     // Check if this is a waitlist class (Rock Band class)
     if (this.isRockBandClass(cls.id)) {
       // Show special waitlist times with "or" separators, skip day and actual time
       return `${baseName}: Monday 3-4 PM or Monday 4-5 PM or Friday 3-4 PM`;
     }
-    
+
     // For regular classes, show day and time
     const timeDisplay = formatTimeFn(cls.startTime) || 'TBD';
     const dayDisplay = cls.day || 'TBD';

@@ -1,6 +1,6 @@
 /**
  * Middleware to normalize HttpService.post request body format
- * 
+ *
  * HttpService.post sends data as [{ data: actualData }, ...args]
  * This middleware provides utilities to extract the data properly.
  */

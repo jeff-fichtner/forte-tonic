@@ -90,7 +90,7 @@ describe('UserRepository', () => {
     test('should return array of instructor models', async () => {
       // Import Instructor to create proper instances
       const { Instructor } = await import('../../src/models/shared/instructor.js');
-      
+
       // Mock some simple instructors with minimal parameters
       const mockInstructors = [
         new Instructor({
@@ -148,7 +148,7 @@ describe('UserRepository', () => {
     test('should return array of student models', async () => {
       // Import Student to create proper instances
       const { Student } = await import('../../src/models/shared/student.js');
-      
+
       const mockStudents = [
         new Student({
           id: 'student-1',
@@ -185,7 +185,7 @@ describe('UserRepository', () => {
       expect(result[0]).toEqual(
         expect.objectContaining({
           firstName: 'Emma',
-          lastName: 'Johnson', 
+          lastName: 'Johnson',
           grade: '5',
           parent1Id: 'parent-1',
           parent2Id: null,

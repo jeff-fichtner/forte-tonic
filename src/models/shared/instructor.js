@@ -8,27 +8,27 @@ function extractStringValue(value) {
   if (value === null || value === undefined) {
     return value;
   }
-  
+
   if (typeof value === 'string') {
     return value;
   }
-  
+
   if (typeof value === 'object') {
     // If it's an object, it might have an id, value, or _value property
     if (value.value) return String(value.value);
     if (value.id) return String(value.id);
     if (value._value) return String(value._value);
     if (value.uuid) return String(value.uuid);
-    
+
     // If it's an array, take the first element
     if (Array.isArray(value) && value.length > 0) {
       return String(value[0]);
     }
-    
+
     console.warn('Unable to extract string from object:', value);
     return String(value); // This will produce "[object Object]"
   }
-  
+
   return String(value);
 }
 
@@ -174,13 +174,13 @@ export class Instructor {
       lastName,
       firstName,
       phone,
-      isDeactivated,     // Position 5
-      minimumGrade,      // Position 6
-      maximumGrade,      // Position 7
-      instrument1,       // Position 8
-      instrument2,       // Position 9
-      instrument3,       // Position 10
-      instrument4,       // Position 11
+      isDeactivated, // Position 5
+      minimumGrade, // Position 6
+      maximumGrade, // Position 7
+      instrument1, // Position 8
+      instrument2, // Position 9
+      instrument3, // Position 10
+      instrument4, // Position 11
       isAvailableMonday,
       mondayStartTime,
       mondayEndTime,
@@ -201,7 +201,7 @@ export class Instructor {
       fridayStartTime,
       fridayEndTime,
       fridayRoomId,
-      accessCode,        // Position 32 - access code for authentication
+      accessCode, // Position 32 - access code for authentication
     ] = row;
 
     const specialties = [instrument1, instrument2, instrument3, instrument4].filter(Boolean);
@@ -247,7 +247,7 @@ export class Instructor {
       lastName,
       firstName,
       phoneNumber: phone,
-      accessCode,        // Add access code back
+      accessCode, // Add access code back
       specialties,
       isActive: !isDeactivated,
       availability,
@@ -269,9 +269,9 @@ export class Instructor {
     // Handle ID field that might be an object or other type
     const processedData = {
       ...data,
-      id: extractStringValue(data.id)
+      id: extractStringValue(data.id),
     };
-    
+
     return new Instructor(processedData);
   }
 

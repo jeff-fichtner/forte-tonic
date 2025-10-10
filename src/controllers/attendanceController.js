@@ -15,11 +15,11 @@ export class AttendanceController {
 
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
-      
+
       console.log('🎯 Mark attendance request received:', {
         registrationId,
         week,
-        authenticatedUser: authenticatedUserEmail
+        authenticatedUser: authenticatedUserEmail,
       });
 
       // Validation
@@ -115,13 +115,13 @@ export class AttendanceController {
   static async recordAttendance(req, res) {
     try {
       const data = req.body;
-      
+
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
-      
+
       console.log('🎯 Record attendance request received:', {
         registrationId: data.registrationId,
-        authenticatedUser: authenticatedUserEmail
+        authenticatedUser: authenticatedUserEmail,
       });
 
       const attendanceRecord = await req.programRepository.recordAttendance(
@@ -142,13 +142,13 @@ export class AttendanceController {
   static async removeAttendance(req, res) {
     try {
       const data = req.body;
-      
+
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
-      
+
       console.log('🎯 Remove attendance request received:', {
         registrationId: data.registrationId,
-        authenticatedUser: authenticatedUserEmail
+        authenticatedUser: authenticatedUserEmail,
       });
 
       const success = await req.programRepository.removeAttendance(

@@ -446,12 +446,16 @@ export class GoogleSheetsDbClient {
         console.log(`📋 Creating audit record for ${sheetKey} in ${auditSheet}`);
         if (sheetKey === Keys.REGISTRATIONS) {
           // Special handling for registration audits
-          const auditRecord = this.#createRegistrationAuditRecord(processedRecord, createdBy, false);
+          const auditRecord = this.#createRegistrationAuditRecord(
+            processedRecord,
+            createdBy,
+            false
+          );
           console.log(`🔍 Created registration audit record:`, {
             id: auditRecord.id,
             registrationId: auditRecord.registrationId,
             createdBy: auditRecord.createdBy,
-            auditSheet
+            auditSheet,
           });
           await this.insertIntoSheet(auditSheet, auditRecord);
           console.log(`✅ Successfully inserted registration audit record into ${auditSheet}`);
@@ -481,8 +485,10 @@ export class GoogleSheetsDbClient {
    */
   async appendRecordv2(sheetKey, record, createdBy) {
     try {
-      console.log(`📝 AppendRecordv2: Appending record to ${sheetKey} with createdBy: ${createdBy}`);
-      
+      console.log(
+        `📝 AppendRecordv2: Appending record to ${sheetKey} with createdBy: ${createdBy}`
+      );
+
       // Direct Google Sheets API call (migrated from RegistrationRepository)
       const sheetInfo = this.workingSheetInfo[sheetKey];
       if (!sheetInfo) {
@@ -490,7 +496,9 @@ export class GoogleSheetsDbClient {
       }
 
       // Convert record to database row format using the record's own method
-      const row = record.toDatabaseRow ? record.toDatabaseRow() : this.#convertObjectToRow(record, sheetInfo.columnMap);
+      const row = record.toDatabaseRow
+        ? record.toDatabaseRow()
+        : this.#convertObjectToRow(record, sheetInfo.columnMap);
 
       // Append directly to spreadsheet
       const response = await this.sheets.spreadsheets.values.append({
@@ -498,8 +506,8 @@ export class GoogleSheetsDbClient {
         range: `${sheetInfo.sheet}!A:P`,
         valueInputOption: 'RAW',
         resource: {
-          values: [row]
-        }
+          values: [row],
+        },
       });
 
       // Clear cache for this sheet since we modified it
@@ -806,18 +814,23 @@ export class GoogleSheetsDbClient {
    */
   #createRegistrationAuditRecord(registrationRecord, performedBy, isDeleted = false) {
     const now = new Date().toISOString();
-    
+
     // Helper function to extract value from value objects or return the value as-is
-    const extractValue = (field) => {
+    const extractValue = field => {
       if (field && typeof field === 'object' && field.value !== undefined) {
         return field.value;
       }
-      if (field && typeof field === 'object' && field.getValue && typeof field.getValue === 'function') {
+      if (
+        field &&
+        typeof field === 'object' &&
+        field.getValue &&
+        typeof field.getValue === 'function'
+      ) {
         return field.getValue();
       }
       return field;
     };
-    
+
     return {
       id: UuidUtility.generateUuid(), // New unique GUID for audit record
       registrationId: extractValue(registrationRecord.id), // ID from the original registration

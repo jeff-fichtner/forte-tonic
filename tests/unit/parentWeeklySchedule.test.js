@@ -58,7 +58,7 @@ describe('Parent Weekly Schedule Logic', () => {
     ];
   });
 
-  test('should filter registrations to show only parent\'s children', () => {
+  test("should filter registrations to show only parent's children", () => {
     // Arrange
     const currentParentId = mockParentUser.parent?.id;
 
@@ -66,7 +66,7 @@ describe('Parent Weekly Schedule Logic', () => {
     const parentChildRegistrations = mockRegistrations.filter(registration => {
       const student = registration.student;
       if (!student) return false;
-      
+
       // Check if the current parent is either parent1 or parent2 of the student
       return student.parent1Id === currentParentId || student.parent2Id === currentParentId;
     });
@@ -80,7 +80,7 @@ describe('Parent Weekly Schedule Logic', () => {
     // Assert
     expect(parentChildRegistrations.length).toBe(2); // Alice and Charlie's registrations
     expect(studentsWithRegistrations.length).toBe(2); // Alice and Charlie
-    
+
     const studentNames = studentsWithRegistrations.map(s => `${s.firstName} ${s.lastName}`);
     expect(studentNames).toContain('Alice Smith');
     expect(studentNames).toContain('Charlie Brown');
@@ -104,7 +104,7 @@ describe('Parent Weekly Schedule Logic', () => {
     const parentChildRegistrations = registrationsWithoutParentChildren.filter(registration => {
       const student = registration.student;
       if (!student) return false;
-      
+
       return student.parent1Id === currentParentId || student.parent2Id === currentParentId;
     });
 
@@ -129,12 +129,12 @@ describe('Parent Weekly Schedule Logic', () => {
 
     // Act
     expect(currentParentId).toBeUndefined();
-    
+
     // The filter would return empty array
     const parentChildRegistrations = mockRegistrations.filter(registration => {
       const student = registration.student;
       if (!student) return false;
-      
+
       return student.parent1Id === currentParentId || student.parent2Id === currentParentId;
     });
 
@@ -145,11 +145,12 @@ describe('Parent Weekly Schedule Logic', () => {
   test('should handle student with parent2Id as current parent', () => {
     // Arrange - Test Charlie who has the current parent as parent2
     const currentParentId = 'parent123';
-    
+
     // Act
     const charlieRegistration = mockRegistrations.find(reg => reg.student.firstName === 'Charlie');
-    const isCharliesParent = charlieRegistration.student.parent1Id === currentParentId || 
-                            charlieRegistration.student.parent2Id === currentParentId;
+    const isCharliesParent =
+      charlieRegistration.student.parent1Id === currentParentId ||
+      charlieRegistration.student.parent2Id === currentParentId;
 
     // Assert
     expect(isCharliesParent).toBe(true);

@@ -97,9 +97,9 @@ const mockUserRepository = {
   ]),
   getInstructorById: jest.fn().mockResolvedValue(null),
   getInstructorByEmail: jest.fn().mockResolvedValue(null),
-  getInstructorByAccessCode: jest.fn().mockImplementation((accessCode) => {
+  getInstructorByAccessCode: jest.fn().mockImplementation(accessCode => {
     console.log(`🔍 DEBUG: getInstructorByAccessCode called with: "${accessCode}"`);
-    
+
     const instructors = [
       {
         id: 'INSTRUCTOR1@TEST.COM',
@@ -127,10 +127,13 @@ const mockUserRepository = {
         phoneNumber: '555-0002',
       },
     ];
-    
+
     const found = instructors.find(i => i.accessCode === accessCode);
-    console.log(`🔍 DEBUG: Found instructor:`, found ? `${found.firstName} ${found.lastName} (${found.email})` : 'null');
-    
+    console.log(
+      `🔍 DEBUG: Found instructor:`,
+      found ? `${found.firstName} ${found.lastName} (${found.email})` : 'null'
+    );
+
     return Promise.resolve(found || null);
   }),
   getStudents: jest.fn().mockResolvedValue([]),
@@ -146,9 +149,9 @@ const mockUserRepository = {
 // Mock the service container
 jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js', () => ({
   serviceContainer: {
-    get: jest.fn().mockImplementation((serviceName) => {
+    get: jest.fn().mockImplementation(serviceName => {
       console.log(`🔍 DEBUG: Service container requested: "${serviceName}"`);
-      
+
       if (serviceName === 'userRepository') {
         return mockUserRepository;
       }
@@ -172,7 +175,7 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
   beforeEach(() => {
     // Reset all mocks before each test
     jest.clearAllMocks();
-    
+
     // Enable detailed console logging for debugging
     console.log('\n🧪 Starting new test...');
   });
@@ -184,10 +187,10 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
   describe('Success Cases', () => {
     test('should return instructor data for valid access code', async () => {
       console.log('🎯 Testing valid access code: 654321');
-      
+
       // BREAKPOINT: Add debugger statement for debugging
       // debugger;
-      
+
       const accessCode = '654321';
       const expectedInstructor = {
         id: 'INSTRUCTOR1@TEST.COM',
@@ -201,17 +204,17 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
       };
 
       console.log('📤 Sending request to /api/getInstructorByAccessCode');
-      
+
       const response = await request(app)
         .post('/api/getInstructorByAccessCode')
         .send({ accessCode })
         .expect(200);
 
       console.log('📥 Response received:', response.body);
-      
+
       // BREAKPOINT: Examine response data
       // debugger;
-      
+
       // Verify the response structure
       expect(response.body).toHaveProperty('id', expectedInstructor.id);
       expect(response.body).toHaveProperty('email', expectedInstructor.email);
@@ -222,30 +225,30 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
       // Verify repository was called correctly
       expect(mockUserRepository.getInstructorByAccessCode).toHaveBeenCalledWith(accessCode);
       expect(mockUserRepository.getInstructorByAccessCode).toHaveBeenCalledTimes(1);
-      
+
       console.log('✅ All assertions passed for valid access code test');
     });
 
     test('should return second instructor for different valid access code', async () => {
       console.log('🎯 Testing second valid access code: 789012');
-      
+
       // BREAKPOINT: Test with different instructor
       // debugger;
-      
+
       const accessCode = '789012';
-      
+
       const response = await request(app)
         .post('/api/getInstructorByAccessCode')
         .send({ accessCode })
         .expect(200);
 
       console.log('📥 Response for second instructor:', response.body);
-      
+
       expect(response.body).toHaveProperty('id', 'INSTRUCTOR2@TEST.COM');
       expect(response.body).toHaveProperty('firstName', 'Jane');
       expect(response.body).toHaveProperty('lastName', 'Teacher');
       expect(response.body).toHaveProperty('accessCode', '789012');
-      
+
       console.log('✅ Second instructor test passed');
     });
   });
@@ -253,28 +256,28 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
   describe('Error Cases', () => {
     test('should return 400 when access code is missing', async () => {
       console.log('🎯 Testing missing access code');
-      
+
       // BREAKPOINT: Test validation error
       // debugger;
-      
+
       const response = await request(app)
         .post('/api/getInstructorByAccessCode')
         .send({}) // No accessCode provided
         .expect(400);
 
       console.log('📥 Error response for missing access code:', response.body);
-      
+
       expect(response.body).toHaveProperty('error', 'Access code is required');
-      
+
       // Verify repository was NOT called
       expect(mockUserRepository.getInstructorByAccessCode).not.toHaveBeenCalled();
-      
+
       console.log('✅ Missing access code validation test passed');
     });
 
     test('should return 400 when access code is empty string', async () => {
       console.log('🎯 Testing empty access code');
-      
+
       const response = await request(app)
         .post('/api/getInstructorByAccessCode')
         .send({ accessCode: '' })
@@ -282,31 +285,34 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
 
       expect(response.body).toHaveProperty('error', 'Access code is required');
       expect(mockUserRepository.getInstructorByAccessCode).not.toHaveBeenCalled();
-      
+
       console.log('✅ Empty access code validation test passed');
     });
 
     test('should return 404 when instructor not found', async () => {
       console.log('🎯 Testing invalid access code: 999999');
-      
+
       // BREAKPOINT: Test not found scenario
       // debugger;
-      
+
       const accessCode = '999999';
-      
+
       const response = await request(app)
         .post('/api/getInstructorByAccessCode')
         .send({ accessCode })
         .expect(404);
 
       console.log('📥 Error response for invalid access code:', response.body);
-      
-      expect(response.body).toHaveProperty('error', 'Instructor not found with provided access code');
-      
+
+      expect(response.body).toHaveProperty(
+        'error',
+        'Instructor not found with provided access code'
+      );
+
       // Verify repository was called but found nothing
       expect(mockUserRepository.getInstructorByAccessCode).toHaveBeenCalledWith(accessCode);
       expect(mockUserRepository.getInstructorByAccessCode).toHaveBeenCalledTimes(1);
-      
+
       console.log('✅ Instructor not found test passed');
     });
   });
@@ -314,27 +320,27 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
   describe('Edge Cases', () => {
     test('should handle null access code', async () => {
       console.log('🎯 Testing null access code');
-      
+
       const response = await request(app)
         .post('/api/getInstructorByAccessCode')
         .send({ accessCode: null })
         .expect(400);
 
       expect(response.body).toHaveProperty('error', 'Access code is required');
-      
+
       console.log('✅ Null access code test passed');
     });
 
     test('should handle access code with whitespace', async () => {
       console.log('🎯 Testing access code with whitespace');
-      
+
       // Override mock to handle trimmed input
-      mockUserRepository.getInstructorByAccessCode.mockImplementationOnce((accessCode) => {
+      mockUserRepository.getInstructorByAccessCode.mockImplementationOnce(accessCode => {
         console.log(`🔍 DEBUG: Received access code with potential whitespace: "${accessCode}"`);
-        
+
         // In real implementation, this might be trimmed
         const trimmedCode = accessCode?.trim();
-        
+
         if (trimmedCode === '654321') {
           return Promise.resolve({
             id: 'INSTRUCTOR1@TEST.COM',
@@ -344,17 +350,17 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
             accessCode: '654321',
           });
         }
-        
+
         return Promise.resolve(null);
       });
-      
+
       const response = await request(app)
         .post('/api/getInstructorByAccessCode')
         .send({ accessCode: '  654321  ' })
         .expect(200);
 
       expect(response.body).toHaveProperty('firstName', 'John');
-      
+
       console.log('✅ Whitespace handling test passed');
     });
   });
@@ -362,10 +368,10 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
   describe('Service Integration', () => {
     test('should verify UserTransformService integration', async () => {
       console.log('🎯 Testing UserTransformService integration');
-      
+
       // BREAKPOINT: Check service transformation
       // debugger;
-      
+
       const response = await request(app)
         .post('/api/getInstructorByAccessCode')
         .send({ accessCode: '654321' })
@@ -376,10 +382,10 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
       expect(response.body).toHaveProperty('email');
       expect(response.body).toHaveProperty('firstName');
       expect(response.body).toHaveProperty('lastName');
-      
+
       // Check that transformation occurred (UserTransformService.transform was called)
       console.log('📊 Transformed response structure verified');
-      
+
       console.log('✅ Service integration test passed');
     });
   });
