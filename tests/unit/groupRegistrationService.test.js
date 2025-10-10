@@ -2,7 +2,7 @@
  * Test for group registration service functionality
  */
 
-import { describe, expect, beforeEach } from '@jest/globals';
+import { describe, expect, beforeEach, jest } from '@jest/globals';
 import { RegistrationApplicationService } from '../../src/services/registrationApplicationService.js';
 import { serviceContainer } from '../../src/infrastructure/container/serviceContainer.js';
 
