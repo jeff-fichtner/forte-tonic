@@ -15,8 +15,10 @@ export class GoogleSheetsDbClient {
    * Initialize the Google Sheets client with caching capabilities
    */
   constructor(configurationService = configService) {
+    console.log('🔧 GoogleSheetsDbClient constructor starting...');
     this.configService = configurationService;
     this.logger = getLogger();
+    console.log('🔧 Logger initialized');
 
     // Performance optimization: Add caching
     this.cache = new Map();
@@ -24,8 +26,11 @@ export class GoogleSheetsDbClient {
     this.CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
 
     // Get authentication configuration from config service
+    console.log('🔧 Getting auth config...');
     const authConfig = this.configService.getGoogleSheetsAuth();
+    console.log('🔧 Getting sheets config...');
     const sheetsConfig = this.configService.getGoogleSheetsConfig();
+    console.log('🔧 Config retrieved successfully');
 
     // Initialize Google API clients with service account only
     this.logger.log('🔑', 'Using service account authentication...');
