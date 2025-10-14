@@ -96,7 +96,9 @@ export class ServiceContainer {
     }
 
     if (hasErrors) {
-      console.log('⚠️ Infrastructure services initialized with some failures - app will continue but some features may not work');
+      console.log(
+        '⚠️ Infrastructure services initialized with some failures - app will continue but some features may not work'
+      );
     } else {
       console.log('✅ All infrastructure services initialized successfully');
     }
