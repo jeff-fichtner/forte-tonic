@@ -138,7 +138,7 @@ jobs:
           echo "=============================================="
           echo "✅ Tests: PASSED"
           echo "✅ Version: $CURRENT_VERSION → $NEW_VERSION"
-          echo "🏷️  Tag: $TAG_NAME"
+          echo "🏷️ Tag: $TAG_NAME"
           echo "📅 Time: $(date -u)"
           echo "🔗 Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           echo "=============================================="

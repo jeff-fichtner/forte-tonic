@@ -95,7 +95,7 @@ git commit -m "chore: bump version to $NEW_VERSION for staging deployment"
 
 # Create deployment tag
 DEPLOYMENT_TAG="staging-v$NEW_VERSION-$(date +%Y%m%d-%H%M%S)"
-echo "🏷️  Creating deployment tag: $DEPLOYMENT_TAG"
+echo "🏷️ Creating deployment tag: $DEPLOYMENT_TAG"
 git tag $DEPLOYMENT_TAG
 
 # Push to staging branch (this will trigger Render auto-deployment)
@@ -106,7 +106,7 @@ git push origin $DEPLOYMENT_TAG
 echo ""
 echo "✅ Staging deployment initiated!"
 echo "📦 Version: $NEW_VERSION"
-echo "🏷️  Tag: $DEPLOYMENT_TAG"
+echo "🏷️ Tag: $DEPLOYMENT_TAG"
 echo "🌐 Render will automatically deploy when it detects the push to 'dev' branch"
 echo "🔗 Check deployment status at: https://console.cloud.google.com/run"
 echo ""
@@ -135,7 +135,7 @@ git push origin $DEPLOYMENT_TAG
 echo ""
 echo "✅ Staging deployment initiated!"
 echo "📦 Version: $NEW_VERSION (will be visible after build)"
-echo "🏷️  Tag: $DEPLOYMENT_TAG"
+echo "🏷️ Tag: $DEPLOYMENT_TAG"
 echo "🌐 Check deployment status at: https://console.cloud.google.com/run"
 echo ""
 echo "📝 Note: Version display shows:"
