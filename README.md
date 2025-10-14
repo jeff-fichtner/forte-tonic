@@ -2,6 +2,8 @@
 
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![CI/CD](https://github.com/jeff-fichtner/forte-tonic/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/jeff-fichtner/forte-tonic/actions/workflows/ci-cd.yml)
+[![Dev Branch](https://github.com/jeff-fichtner/forte-tonic/actions/workflows/dev-branch.yml/badge.svg?branch=dev)](https://github.com/jeff-fichtner/forte-tonic/actions/workflows/dev-branch.yml)
 
 A comprehensive Node.js web application for automated student registration in after-school music lessons and programs. Built for educational institutions, Tonic provides a role-based registration system with Google Sheets integration for data persistence.
 
