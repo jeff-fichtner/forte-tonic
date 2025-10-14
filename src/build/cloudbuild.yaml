@@ -92,7 +92,7 @@ steps:
         echo "🌍 Environment: ${_ENV_TYPE}"
         echo "🔗 URL: $$SERVICE_URL"
         echo "📅 Time: $(date)"
-        echo "🏗️  Build ID: ${BUILD_ID}"
+        echo "🏗️ Build ID: ${BUILD_ID}"
         echo "📝 Commit: ${SHORT_SHA}"
         echo "🌿 Environment: ${_ENV_TYPE}"
         echo "📋 Branch/Tag: ${BRANCH_NAME}${TAG_NAME}"
