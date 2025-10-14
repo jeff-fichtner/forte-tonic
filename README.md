@@ -254,7 +254,7 @@ npm run docs:serve         # Serve documentation with live reload
 # 1. Fix code formatting (required)
 npm run format
 
-# 2. Check linting (required) 
+# 2. Check linting (required)
 npm run lint
 
 # 3. Verify formatting is correct (required)
@@ -268,8 +268,9 @@ npm run format && npm run lint && npm run format:check && npm test
 ```
 
 **GitHub Actions Requirements:**
+
 - ✅ All linting rules must pass (`npm run lint`)
-- ✅ Code must follow Prettier formatting (`npm run format:check`) 
+- ✅ Code must follow Prettier formatting (`npm run format:check`)
 - ✅ All unit tests must pass (`npm test`)
 - ❌ Any failure in these steps will block the build
 
