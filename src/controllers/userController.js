@@ -274,13 +274,13 @@ export class UserController {
       res.json(authenticatedUser);
     } catch (error) {
       console.error('Error authenticating by access code:', error);
-      
+
       // Return a server error message for infrastructure/system issues
       // This distinguishes from "no match found" (which returns null)
       return res.status(500).json({
         error: 'There was an issue logging in. Please try again.',
         success: false,
-        systemError: true
+        systemError: true,
       });
     }
   }

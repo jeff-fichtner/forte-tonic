@@ -42,7 +42,7 @@ export class GoogleSheetsDbClient {
       const keyEndMatch = authConfig.privateKey.includes('-----END PRIVATE KEY-----');
       const hasNewlines = authConfig.privateKey.includes('\n');
       const keyLength = authConfig.privateKey.length;
-      
+
       const keyLines = authConfig.privateKey.split('\n');
       this.logger.log('🔍', 'Private Key Format Analysis:', {
         hasProperStart: !!keyStartMatch,
@@ -53,7 +53,7 @@ export class GoogleSheetsDbClient {
         lastLine: keyLines[keyLines.length - 1] || 'NO_LAST_LINE',
         secondToLastLine: keyLines[keyLines.length - 2] || 'NO_SECOND_TO_LAST',
         lineCount: keyLines.length,
-        lastFewLines: keyLines.slice(-3)
+        lastFewLines: keyLines.slice(-3),
       });
 
       // Check for common key format issues
@@ -417,19 +417,22 @@ export class GoogleSheetsDbClient {
         this.logger.log('✅', 'Successfully obtained access token:', {
           tokenExists: !!accessToken.token,
           tokenLength: accessToken.token ? accessToken.token.length : 0,
-          tokenPrefix: accessToken.token ? accessToken.token.substring(0, 10) + '...' : 'NONE'
+          tokenPrefix: accessToken.token ? accessToken.token.substring(0, 10) + '...' : 'NONE',
         });
       } catch (authError) {
         this.logger.log('❌', 'Authentication failed when getting access token:', {
           error: authError.message,
           errorCode: authError.code,
-          errorDetails: authError.details || 'No additional details'
+          errorDetails: authError.details || 'No additional details',
         });
         throw new Error(`Google Sheets authentication failed: ${authError.message}`);
       }
 
       // Use a more reasonable range - expand to column AZ to capture access codes
-      this.logger.log('🔍', `Making Google Sheets API call to: ${sheetInfo.sheet}!A${sheetInfo.startRow}:AZ1000`);
+      this.logger.log(
+        '🔍',
+        `Making Google Sheets API call to: ${sheetInfo.sheet}!A${sheetInfo.startRow}:AZ1000`
+      );
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: spreadsheetId,
         range: `${sheetInfo.sheet}!A${sheetInfo.startRow}:AZ1000`,
@@ -438,7 +441,7 @@ export class GoogleSheetsDbClient {
       this.logger.log('✅', `Successfully retrieved data from ${sheetKey}:`, {
         rowCount: response.data.values ? response.data.values.length : 0,
         hasData: !!(response.data.values && response.data.values.length > 0),
-        range: `${sheetInfo.sheet}!A${sheetInfo.startRow}:AZ1000`
+        range: `${sheetInfo.sheet}!A${sheetInfo.startRow}:AZ1000`,
       });
 
       const rows = response.data.values || [];
@@ -449,27 +452,31 @@ export class GoogleSheetsDbClient {
         errorCode: error.code,
         errorStatus: error.status,
         errorDetails: error.details || 'No additional details',
-        isAuthError: error.message && (
-          error.message.includes('invalid_grant') ||
-          error.message.includes('account not found') ||
-          error.message.includes('unauthorized') ||
-          error.message.includes('permission denied') ||
-          error.message.includes('authentication')
-        ),
-        stackTrace: error.stack ? error.stack.split('\n').slice(0, 3).join('\n') : 'No stack trace'
+        isAuthError:
+          error.message &&
+          (error.message.includes('invalid_grant') ||
+            error.message.includes('account not found') ||
+            error.message.includes('unauthorized') ||
+            error.message.includes('permission denied') ||
+            error.message.includes('authentication')),
+        stackTrace: error.stack ? error.stack.split('\n').slice(0, 3).join('\n') : 'No stack trace',
       });
-      
+
       // Enhanced error message for authentication issues
       if (error.message && error.message.includes('invalid_grant')) {
-        this.logger.log('🔍', 'AUTHENTICATION DIAGNOSIS: invalid_grant error suggests service account key issues:', {
-          possibleCauses: [
-            'Service account key is malformed or corrupted',
-            'Private key missing proper BEGIN/END markers',
-            'Private key missing newline characters (\\n)',
-            'Service account deleted or disabled in Google Cloud Console',
-            'System clock is significantly out of sync'
-          ]
-        });
+        this.logger.log(
+          '🔍',
+          'AUTHENTICATION DIAGNOSIS: invalid_grant error suggests service account key issues:',
+          {
+            possibleCauses: [
+              'Service account key is malformed or corrupted',
+              'Private key missing proper BEGIN/END markers',
+              'Private key missing newline characters (\\n)',
+              'Service account deleted or disabled in Google Cloud Console',
+              'System clock is significantly out of sync',
+            ],
+          }
+        );
       }
 
       console.error(`Error getting data from sheet ${sheetKey}:`, error);

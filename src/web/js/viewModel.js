@@ -2921,19 +2921,19 @@ export class ViewModel {
         // Check if it's a system error or just no match found
         if (authenticatedUser?.systemError && authenticatedUser?.error) {
           // Server-side system error (Google Sheets, DB connection, etc.)
-          M.toast({ 
-            html: authenticatedUser.error, 
-            classes: 'red darken-1', 
-            displayLength: 4000 
+          M.toast({
+            html: authenticatedUser.error,
+            classes: 'red darken-1',
+            displayLength: 4000,
           });
         } else {
           // No match found - client-side validation message
           const isPhoneNumber = loginValue.length === 10 && /^\d{10}$/.test(loginValue);
           const errorMessage = isPhoneNumber ? 'Invalid phone number' : 'Invalid access code';
-          M.toast({ 
-            html: errorMessage, 
-            classes: 'red darken-1', 
-            displayLength: 3000 
+          M.toast({
+            html: errorMessage,
+            classes: 'red darken-1',
+            displayLength: 3000,
           });
         }
         onFailedLogin?.();
