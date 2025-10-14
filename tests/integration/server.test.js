@@ -123,6 +123,7 @@ const mockUserRepository = {
   }),
   getInstructorByEmail: jest.fn().mockResolvedValue(null),
   getParentByEmail: jest.fn().mockResolvedValue(null),
+  getParentByPhone: jest.fn().mockResolvedValue(null),
 };
 
 const mockProgramRepository = {
@@ -444,10 +445,11 @@ describe('Server Integration Tests', () => {
       });
 
       test('should return null for invalid access code', async () => {
-        // Mock all repository methods to return null/undefined
-        mockUserRepository.getAdminByAccessCode.mockResolvedValueOnce(null);
-        mockUserRepository.getInstructorByAccessCode.mockResolvedValueOnce(null);
-        mockUserRepository.getParentByAccessCode.mockResolvedValueOnce(null);
+        // Mock all repository methods to return null/undefined (using mockResolvedValue instead of mockResolvedValueOnce
+        // because the controller may call these methods multiple times in fallback logic)
+        mockUserRepository.getAdminByAccessCode.mockResolvedValue(null);
+        mockUserRepository.getInstructorByAccessCode.mockResolvedValue(null);
+        mockUserRepository.getParentByPhone.mockResolvedValue(null);
 
         const response = await request(app)
           .post('/api/authenticateByAccessCode')
