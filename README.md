@@ -246,6 +246,35 @@ npm run docs:serve         # Serve documentation with live reload
 - **Mock Testing**: Google Sheets API mocking for CI/CD
 - **Debug Tests**: Development debugging utilities
 
+### Pre-Commit Workflow
+
+**Before pushing changes, run these commands to ensure GitHub Actions will pass:**
+
+```bash
+# 1. Fix code formatting (required)
+npm run format
+
+# 2. Check linting (required) 
+npm run lint
+
+# 3. Verify formatting is correct (required)
+npm run format:check
+
+# 4. Run all tests (required)
+npm test
+
+# Optional: Run all checks at once
+npm run format && npm run lint && npm run format:check && npm test
+```
+
+**GitHub Actions Requirements:**
+- ✅ All linting rules must pass (`npm run lint`)
+- ✅ Code must follow Prettier formatting (`npm run format:check`) 
+- ✅ All unit tests must pass (`npm test`)
+- ❌ Any failure in these steps will block the build
+
+**Pro Tip:** Run `npm run format` before committing to automatically fix formatting issues.
+
 ### Code Standards
 
 - **ESLint**: Enforced coding standards with Prettier integration
