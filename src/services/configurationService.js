@@ -23,6 +23,7 @@ export class ConfigurationService {
       port: process.env.PORT || 3000,
       nodeEnv: process.env.NODE_ENV || 'development',
       cloudRunServiceUrl: process.env.CLOUD_RUN_SERVICE_URL,
+      logLevel: process.env.LOG_LEVEL || 'info',
 
       // Email Configuration
       smtpHost: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -66,6 +67,7 @@ export class ConfigurationService {
       port: this._config.port,
       nodeEnv: this._config.nodeEnv,
       cloudRunServiceUrl: this._config.cloudRunServiceUrl,
+      logLevel: this._config.logLevel,
       isDevelopment: this._config.nodeEnv !== 'production',
       isTest: this._config.nodeEnv === 'test',
       isProduction: this._config.nodeEnv === 'production',
