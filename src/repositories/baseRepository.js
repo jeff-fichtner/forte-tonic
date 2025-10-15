@@ -28,7 +28,7 @@ export class BaseRepository extends BaseService {
         throw new Error(`createdBy is required for audit trail when creating ${this.entityName}`);
       }
 
-      console.log(`📝 Creating new ${this.entityName} by ${createdBy}`);
+      this.logger.info(`📝 Creating new ${this.entityName} by ${createdBy}`);
 
       // Convert model instance to plain object if needed
       const data = entityData.toJSON ? entityData.toJSON() : entityData;
@@ -36,10 +36,10 @@ export class BaseRepository extends BaseService {
       const created = await this.dbClient.appendRecord(this.entityName, data, createdBy);
       this.clearCache(); // Clear cache after mutation
 
-      console.log(`✅ Created ${this.entityName} with ID:`, created.id);
+      this.logger.info(`✅ Created ${this.entityName} with ID:`, created.id);
       return this.convertToModel(created);
     } catch (error) {
-      console.error(`❌ Error creating ${this.entityName}:`, error);
+      this.logger.error(`❌ Error creating ${this.entityName}:`, error);
       throw new Error(`Failed to create ${this.entityName}: ${error.message}`);
     }
   }
@@ -49,7 +49,7 @@ export class BaseRepository extends BaseService {
    */
   async update(id, entityData) {
     try {
-      console.log(`📝 Updating ${this.entityName} with ID:`, id);
+      this.logger.info(`📝 Updating ${this.entityName} with ID:`, id);
 
       // Convert model instance to plain object if needed
       const data = entityData.toJSON ? entityData.toJSON() : entityData;
@@ -58,10 +58,10 @@ export class BaseRepository extends BaseService {
       const updated = await this.dbClient.updateRecord(this.entityName, data);
       this.clearCache(); // Clear cache after mutation
 
-      console.log(`✅ Updated ${this.entityName} with ID:`, id);
+      this.logger.info(`✅ Updated ${this.entityName} with ID:`, id);
       return this.convertToModel(updated);
     } catch (error) {
-      console.error(`❌ Error updating ${this.entityName}:`, error);
+      this.logger.error(`❌ Error updating ${this.entityName}:`, error);
       throw new Error(`Failed to update ${this.entityName}: ${error.message}`);
     }
   }
@@ -90,14 +90,14 @@ export class BaseRepository extends BaseService {
    */
   async findAll(options = {}) {
     try {
-      console.log(`📋 Finding all ${this.entityName}s`);
+      this.logger.info(`📋 Finding all ${this.entityName}s`);
       const cacheKey = `${this.entityName}:all`;
 
       // Check cache first
       if (this.cache.has(cacheKey)) {
         const cached = this.cache.get(cacheKey);
         if (Date.now() - cached.timestamp < this.cacheTtl) {
-          console.log(`📦 Returning cached ${this.entityName}s`);
+          this.logger.info(`📦 Returning cached ${this.entityName}s`);
           return cached.data;
         }
       }
@@ -115,10 +115,10 @@ export class BaseRepository extends BaseService {
         timestamp: Date.now(),
       });
 
-      console.log(`✅ Found ${records.length} ${this.entityName}s`);
+      this.logger.info(`✅ Found ${records.length} ${this.entityName}s`);
       return records;
     } catch (error) {
-      console.error(`❌ Error finding all ${this.entityName}s:`, error);
+      this.logger.error(`❌ Error finding all ${this.entityName}s:`, error);
       throw new Error(`Failed to find ${this.entityName}s: ${error.message}`);
     }
   }
@@ -128,11 +128,11 @@ export class BaseRepository extends BaseService {
    */
   async findBy(field, value) {
     try {
-      console.log(`🔍 Finding ${this.entityName}s by ${field}: ${value}`);
+      this.logger.info(`🔍 Finding ${this.entityName}s by ${field}: ${value}`);
       const allRecords = await this.findAll();
       return allRecords.filter(record => record[field] === value);
     } catch (error) {
-      console.error(`❌ Error finding ${this.entityName}s by ${field}:`, error);
+      this.logger.error(`❌ Error finding ${this.entityName}s by ${field}:`, error);
       throw new Error(`Failed to find ${this.entityName}s by ${field}: ${error.message}`);
     }
   }
@@ -142,11 +142,11 @@ export class BaseRepository extends BaseService {
    */
   async findById(id) {
     try {
-      console.log(`🔍 Finding ${this.entityName} by ID: ${id}`);
+      this.logger.info(`🔍 Finding ${this.entityName} by ID: ${id}`);
       const allRecords = await this.findAll();
       return allRecords.find(record => record.id === id) || null;
     } catch (error) {
-      console.error(`❌ Error finding ${this.entityName} by ID:`, error);
+      this.logger.error(`❌ Error finding ${this.entityName} by ID:`, error);
       throw new Error(`Failed to find ${this.entityName} by ID: ${error.message}`);
     }
   }

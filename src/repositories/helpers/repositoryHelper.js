@@ -22,12 +22,12 @@ export class RepositoryHelper {
     }
 
     // Set loading flag and start loading
-    console.log(`Loading ${name}`);
+    this.logger.info(`Loading ${name}`);
     this[loadingKey] = setFieldFunc();
 
     try {
       await this[loadingKey];
-      console.log(`${getFieldFunc().length} ${name} found`);
+      this.logger.info(`${getFieldFunc().length} ${name} found`);
     } finally {
       // Clear the loading flag
       delete this[loadingKey];

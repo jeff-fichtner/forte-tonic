@@ -93,7 +93,7 @@ export class ProgramRepository {
       existingAttendance
     );
     if (!validation.canRecord) {
-      console.warn(`Cannot record attendance: ${validation.errors.join(', ')}`);
+      this.logger.warn(`Cannot record attendance: ${validation.errors.join(', ')}`);
       return validation.existingRecord;
     }
 
@@ -121,7 +121,7 @@ export class ProgramRepository {
       existingAttendance
     );
     if (!validation.canRemove) {
-      console.warn(`Cannot remove attendance: ${validation.errors.join(', ')}`);
+      this.logger.warn(`Cannot remove attendance: ${validation.errors.join(', ')}`);
       return true; // Return true for consistency but log warning
     }
 
@@ -140,6 +140,6 @@ export class ProgramRepository {
     this.classes = null;
     this.registrations = null;
     this.attendanceRecords = null;
-    console.log('🧹 ProgramRepository cache cleared');
+    this.logger.info('🧹 ProgramRepository cache cleared');
   }
 }

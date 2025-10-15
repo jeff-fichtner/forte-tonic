@@ -143,7 +143,7 @@ export class UserRepository {
 
           // Debug log for first few students to verify parent emails are populated
           if (students.indexOf(student) < 3) {
-            console.log(
+            this.logger.info(
               `Student ${student.firstName} ${student.lastName}: parentEmails = "${parentEmails}"`
             );
           }
@@ -270,6 +270,6 @@ export class UserRepository {
     this.parents = null;
     this.rooms = null;
     this.roles = null;
-    console.log('🧹 UserRepository cache cleared');
+    this.logger.info('🧹 UserRepository cache cleared');
   }
 }
