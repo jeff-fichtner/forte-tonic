@@ -4,20 +4,19 @@ import { RegistrationType } from '../utils/values/registrationType.js';
 import { CloneUtility } from '../utils/cloneUtility.js';
 import { UuidUtility } from '../utils/uuidUtility.js';
 import { configService } from '../services/configurationService.js';
-import { getLogger } from '../utils/logger.js';
+import { BaseService } from '../infrastructure/base/baseService.js';
 
 /**
  * Enhanced GoogleSheetsDbClient with caching and performance optimizations
  * Consolidated from multiple client versions for better maintainability
  */
-export class GoogleSheetsDbClient {
+export class GoogleSheetsDbClient extends BaseService {
   /**
    * Initialize the Google Sheets client with caching capabilities
    */
   constructor(configurationService = configService) {
     console.log('🔧 GoogleSheetsDbClient constructor starting...');
-    this.configService = configurationService;
-    this.logger = getLogger();
+    super(configurationService); // Initialize logger via BaseService
     console.log('🔧 Logger initialized');
 
     // Performance optimization: Add caching

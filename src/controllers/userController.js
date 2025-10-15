@@ -12,6 +12,9 @@ import { serviceContainer } from '../infrastructure/container/serviceContainer.j
 import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
 import { OperatorUserResponse } from '../models/shared/responses/operatorUserResponse.js';
 import { ConfigurationService } from '../services/configurationService.js';
+import { getLogger } from '../utils/logger.js';
+
+const logger = getLogger();
 
 export class UserController {
   /**
@@ -19,14 +22,14 @@ export class UserController {
    */
   static async getOperatorUser(req, res) {
     try {
-      console.log('getOperatorUser - Temporarily bypassing operator user retrieval');
+      logger.info('getOperatorUser - Temporarily bypassing operator user retrieval');
       // Even when bypassed, return basic configuration
       const bypassedResponse = new OperatorUserResponse(null, null, null, null, {
         rockBandClassIds: ConfigurationService.getRockBandClassIds(),
       });
       return res.json(bypassedResponse);
     } catch (error) {
-      console.error('Error getting operator user:', error);
+      logger.error('Error getting operator user:', error);
       // Return null instead of error to allow app to continue
       res.json(null);
     }
@@ -42,7 +45,7 @@ export class UserController {
       const transformedData = UserTransformService.transformArray(data, 'admin');
       res.json(transformedData);
     } catch (error) {
-      console.error('Error getting admins:', error);
+      logger.error('Error getting admins:', error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -61,7 +64,7 @@ export class UserController {
       // No need to transform again with UserTransformService
       res.json(data);
     } catch (error) {
-      console.error('Error in getInstructors:', error);
+      logger.error('Error in getInstructors:', error);
       res.status(500).json({ error: 'Failed to retrieve instructors' });
     }
   }
@@ -76,7 +79,7 @@ export class UserController {
       const transformedData = UserTransformService.transformArray(data, 'student');
       res.json(transformedData);
     } catch (error) {
-      console.error('Error getting students:', error);
+      logger.error('Error getting students:', error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -96,7 +99,7 @@ export class UserController {
         data: details,
       });
     } catch (error) {
-      console.error('Error getting student details:', error);
+      logger.error('Error getting student details:', error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -124,7 +127,7 @@ export class UserController {
         message: 'Student profile updated successfully',
       });
     } catch (error) {
-      console.error('Error updating student:', error);
+      logger.error('Error updating student:', error);
       res.status(400).json({
         success: false,
         error: error.message,
@@ -150,7 +153,7 @@ export class UserController {
         message: 'Student enrolled successfully',
       });
     } catch (error) {
-      console.error('Error enrolling student:', error);
+      logger.error('Error enrolling student:', error);
       res.status(400).json({
         success: false,
         error: error.message,
@@ -174,7 +177,7 @@ export class UserController {
         data: report,
       });
     } catch (error) {
-      console.error('Error generating progress report:', error);
+      logger.error('Error generating progress report:', error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -209,7 +212,7 @@ export class UserController {
       const isPhoneNumber = accessCode.length === 10 && /^\d{10}$/.test(accessCode);
       const isAccessCode = accessCode.length === 6 && /^\d{6}$/.test(accessCode);
 
-      console.log('🔍 UserController access code format detection:', {
+      logger.info('🔍 UserController access code format detection:', {
         accessCodeLength: accessCode.length,
         isPhoneNumber,
         isAccessCode,
@@ -218,13 +221,13 @@ export class UserController {
 
       // Handle parent login with phone number (primary attempt)
       if (isPhoneNumber || loginType === 'parent') {
-        console.log('🔍 UserController attempting parent authentication with phone number');
+        logger.info('🔍 UserController attempting parent authentication with phone number');
         parent = await userRepository.getParentByPhone(accessCode);
       }
 
       // Handle employee login with 6-digit access code (primary attempt)
       if (!parent && (isAccessCode || loginType === 'employee')) {
-        console.log('🔍 UserController attempting employee authentication with access code');
+        logger.info('🔍 UserController attempting employee authentication with access code');
         // Check admin first
         admin = await userRepository.getAdminByAccessCode(accessCode);
 
@@ -237,12 +240,12 @@ export class UserController {
       // Fallback attempts if primary method failed
       if (!admin && !instructor && !parent) {
         if (isPhoneNumber && loginType !== 'parent') {
-          console.log(
+          logger.info(
             '🔍 UserController fallback: Trying parent authentication for phone-like access code'
           );
           parent = await userRepository.getParentByPhone(accessCode);
         } else if (isAccessCode && loginType !== 'employee') {
-          console.log('🔍 UserController fallback: Trying employee authentication');
+          logger.info('🔍 UserController fallback: Trying employee authentication');
           admin = await userRepository.getAdminByAccessCode(accessCode);
           if (!admin) {
             instructor = await userRepository.getInstructorByAccessCode(accessCode);
@@ -252,7 +255,7 @@ export class UserController {
 
       // If no match found, return null
       if (!admin && !instructor && !parent) {
-        console.log(`Authentication failed for ${loginType} login with value: ${accessCode}`);
+        logger.info(`Authentication failed for ${loginType} login with value: ${accessCode}`);
         return res.json(null);
       }
 
@@ -265,7 +268,7 @@ export class UserController {
         parent
       );
 
-      console.log(`Authentication successful for ${loginType} login:`, {
+      logger.info(`Authentication successful for ${loginType} login:`, {
         admin: !!admin,
         instructor: !!instructor,
         parent: !!parent,
@@ -273,7 +276,7 @@ export class UserController {
 
       res.json(authenticatedUser);
     } catch (error) {
-      console.error('Error authenticating by access code:', error);
+      logger.error('Error authenticating by access code:', error);
 
       // Return a server error message for infrastructure/system issues
       // This distinguishes from "no match found" (which returns null)
@@ -306,7 +309,7 @@ export class UserController {
       const transformedData = UserTransformService.transform(admin, 'admin');
       res.json(transformedData);
     } catch (error) {
-      console.error('Error getting admin by access code:', error);
+      logger.error('Error getting admin by access code:', error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -332,7 +335,7 @@ export class UserController {
       const transformedData = UserTransformService.transform(instructor, 'instructor');
       res.json(transformedData);
     } catch (error) {
-      console.error('❌ ERROR in getInstructorByAccessCode:', error);
+      logger.error('❌ ERROR in getInstructorByAccessCode:', error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -358,7 +361,7 @@ export class UserController {
       const transformedData = UserTransformService.transform(parent, 'parent');
       res.json(transformedData);
     } catch (error) {
-      console.error('Error getting parent by access code:', error);
+      logger.error('Error getting parent by access code:', error);
       res.status(500).json({ error: error.message });
     }
   }

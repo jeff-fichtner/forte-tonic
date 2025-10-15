@@ -3,13 +3,15 @@
  * Provides caching, error handling, and standardized data access
  */
 
+import { BaseService } from '../infrastructure/base/baseService.js';
 import { GoogleSheetsDbClient } from '../database/googleSheetsDbClient.js';
 
 /**
  * Abstract base repository with caching and standardized data access
  */
-export class BaseRepository {
-  constructor(entityName, modelClass, dbClient = null) {
+export class BaseRepository extends BaseService {
+  constructor(entityName, modelClass, dbClient = null, configService) {
+    super(configService); // Initialize logger via BaseService
     this.entityName = entityName;
     this.modelClass = modelClass;
     this.dbClient = dbClient || new GoogleSheetsDbClient();

@@ -7,8 +7,17 @@
  */
 
 import { getAuthenticatedUserEmail } from '../middleware/auth.js';
+import { getLogger } from '../utils/logger.js';
+
+const logger = getLogger();
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
+import { getLogger } from '../utils/logger.js';
+
+const logger = getLogger();
 import { _fetchData } from '../utils/helpers.js';
+import { getLogger } from '../utils/logger.js';
+
+const logger = getLogger();
 
 export class RegistrationController {
   /**
@@ -20,7 +29,7 @@ export class RegistrationController {
       const data = await programRepository.getClasses();
       res.json(data);
     } catch (error) {
-      console.error('Error getting classes:', error);
+      logger.error('Error getting classes:', error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -68,7 +77,7 @@ export class RegistrationController {
 
       res.json(legacyResult);
     } catch (error) {
-      console.error('Error getting registrations:', error);
+      logger.error('Error getting registrations:', error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -82,7 +91,7 @@ export class RegistrationController {
       const data = await userRepository.getRooms();
       res.json(data);
     } catch (error) {
-      console.error('Error getting rooms:', error);
+      logger.error('Error getting rooms:', error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -97,7 +106,7 @@ export class RegistrationController {
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
 
-      console.log('🎯 Registration creation request received:', {
+      logger.info('🎯 Registration creation request received:', {
         ...requestData,
         authenticatedUser: authenticatedUserEmail,
         currentUser: req.currentUser,
@@ -148,7 +157,7 @@ export class RegistrationController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error('Error creating registration:', error);
+      logger.error('Error creating registration:', error);
       res.status(400).json({
         success: false,
         message: 'Failed to create registration',
@@ -180,7 +189,7 @@ export class RegistrationController {
         data: result,
       });
     } catch (error) {
-      console.error('Error updating registration:', error);
+      logger.error('Error updating registration:', error);
       res.status(400).json({
         success: false,
         error: error.message,
@@ -199,7 +208,7 @@ export class RegistrationController {
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
 
-      console.log('🎯 Registration cancellation request received:', {
+      logger.info('🎯 Registration cancellation request received:', {
         registrationId,
         reason,
         authenticatedUser: authenticatedUserEmail,
@@ -219,7 +228,7 @@ export class RegistrationController {
         data: result,
       });
     } catch (error) {
-      console.error('Error cancelling registration:', error);
+      logger.error('Error cancelling registration:', error);
       res.status(400).json({
         success: false,
         error: error.message,
@@ -244,7 +253,7 @@ export class RegistrationController {
         data: validation,
       });
     } catch (error) {
-      console.error('Error validating registration:', error);
+      logger.error('Error validating registration:', error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -265,7 +274,7 @@ export class RegistrationController {
         data: conflicts,
       });
     } catch (error) {
-      console.error('Error getting registration conflicts:', error);
+      logger.error('Error getting registration conflicts:', error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -280,7 +289,7 @@ export class RegistrationController {
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
 
-      console.log('🎯 Legacy registration request received:', {
+      logger.info('🎯 Legacy registration request received:', {
         studentId,
         classId,
         instructorId,
@@ -309,7 +318,7 @@ export class RegistrationController {
 
       res.json({ success: true, registration: result });
     } catch (error) {
-      console.error('Error registering student:', error);
+      logger.error('Error registering student:', error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -319,7 +328,7 @@ export class RegistrationController {
    */
   static async unregister(req, res) {
     try {
-      console.log('Unregister endpoint called with body:', req.body);
+      logger.info('Unregister endpoint called with body:', req.body);
 
       // Handle HttpService payload format: [{ data: { registrationId, accessCode } }]
       let registrationId, accessCode;
@@ -344,7 +353,7 @@ export class RegistrationController {
             authenticatedUserEmail = operatorUser.email || authenticatedUserEmail;
           }
         } catch (accessCodeError) {
-          console.warn(
+          logger.warn(
             'Could not validate access code for audit, using session user:',
             accessCodeError.message
           );
@@ -356,17 +365,17 @@ export class RegistrationController {
         return res.status(401).json({ error: 'Authentication required for registration deletion' });
       }
 
-      console.log('🎯 Legacy unregister request received:', {
+      logger.info('🎯 Legacy unregister request received:', {
         registrationId,
         authenticatedUser: authenticatedUserEmail,
         hasAccessCode: !!accessCode,
       });
 
-      console.log('Extracted registrationId:', registrationId);
-      console.log('registrationId type:', typeof registrationId);
+      logger.info('Extracted registrationId:', registrationId);
+      logger.info('registrationId type:', typeof registrationId);
 
       if (!registrationId) {
-        console.error('Missing registrationId in request body');
+        logger.error('Missing registrationId in request body');
         return res.status(400).json({ error: 'Missing registrationId' });
       }
 
@@ -379,7 +388,7 @@ export class RegistrationController {
 
       res.json({ success: true, message: 'Registration removed' });
     } catch (error) {
-      console.error('Error unregistering student:', error);
+      logger.error('Error unregistering student:', error);
       res.status(500).json({ error: error.message });
     }
   }
