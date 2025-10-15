@@ -117,11 +117,14 @@ export class RegistrationApplicationService extends BaseService {
         registrationData.roomId = 'ROOM-001'; // Default fallback
       }
 
-      this.logger.info(`🏫 Room assignment for ${registrationData.registrationType} registration:`, {
-        day: dayName,
-        instructorId: instructor.id,
-        roomId: registrationData.roomId,
-      });
+      this.logger.info(
+        `🏫 Room assignment for ${registrationData.registrationType} registration:`,
+        {
+          day: dayName,
+          instructorId: instructor.id,
+          roomId: registrationData.roomId,
+        }
+      );
 
       // Step 4: Program-specific validation
       const programValidation = ProgramManagementService.validateRegistration(

@@ -51,8 +51,12 @@ const hasProperEnd = processedKey.includes('-----END PRIVATE KEY-----');
 const hasNewlines = processedKey.includes('\n');
 const keyLength = processedKey.length;
 
-console.log(`✓ Total length: ${keyLength} chars ${keyLength < 1600 ? '⚠️  (seems short, expected ~1700+)' : ''}`);
-console.log(`✓ Line count: ${keyLines.length} ${keyLines.length < 26 ? '⚠️  (seems low, expected ~28)' : ''}`);
+console.log(
+  `✓ Total length: ${keyLength} chars ${keyLength < 1600 ? '⚠️  (seems short, expected ~1700+)' : ''}`
+);
+console.log(
+  `✓ Line count: ${keyLines.length} ${keyLines.length < 26 ? '⚠️  (seems low, expected ~28)' : ''}`
+);
 console.log(`✓ Has proper BEGIN marker: ${hasProperStart ? '✅' : '❌'}`);
 console.log(`✓ Has proper END marker: ${hasProperEnd ? '✅' : '❌'}`);
 console.log(`✓ Has newline characters: ${hasNewlines ? '✅' : '❌'}`);
@@ -92,7 +96,9 @@ try {
   console.log('✅ Access token obtained successfully');
   console.log(`✓ Token type: ${tokenResponse.token ? 'Bearer' : 'Unknown'}`);
   console.log(`✓ Token length: ${tokenResponse.token ? tokenResponse.token.length : 0} chars`);
-  console.log(`✓ Token prefix: ${tokenResponse.token ? tokenResponse.token.substring(0, 20) + '...' : 'N/A'}`);
+  console.log(
+    `✓ Token prefix: ${tokenResponse.token ? tokenResponse.token.substring(0, 20) + '...' : 'N/A'}`
+  );
 
   // Step 4: Test Google Sheets API access
   console.log('\n📊 Step 4: Testing Google Sheets API Access\n');
@@ -155,7 +161,6 @@ try {
   console.log('  - Is the service account shared with the spreadsheet?');
   console.log('  - Are there any network/firewall issues in your deployment?');
   console.log('='.repeat(60) + '\n');
-
 } catch (error) {
   console.error('\n❌ AUTHENTICATION FAILED!\n');
   console.error('Error details:');

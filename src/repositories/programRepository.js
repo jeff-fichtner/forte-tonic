@@ -27,7 +27,8 @@ export class ProgramRepository {
           Class.fromDatabaseRow(x)
         )),
       Keys.CLASSES,
-      forceRefresh
+      forceRefresh,
+      this.logger
     );
   }
 
@@ -52,7 +53,8 @@ export class ProgramRepository {
           return newRegistration;
         })),
       Keys.REGISTRATIONS,
-      forceRefresh
+      forceRefresh,
+      this.logger
     );
   }
 
@@ -75,7 +77,9 @@ export class ProgramRepository {
           Keys.ATTENDANCE,
           x => new AttendanceRecord(...x)
         )),
-      Keys.ATTENDANCE
+      Keys.ATTENDANCE,
+      false,
+      this.logger
     );
 
     return records.filter(x => registrationIds.includes(x.registrationId));
