@@ -50,7 +50,7 @@ const config = {
     },
     operatorEmail: process.env.OPERATOR_EMAIL,
     baseUrl: process.env.CLOUD_RUN_SERVICE_URL || 'https://tonic-staging-staging.run.app',
-    logLevel: LogLevel.INFO,
+    logLevel: process.env.LOG_LEVEL || LogLevel.INFO,
   },
 
   [NodeEnv.PRODUCTION]: {
@@ -62,7 +62,7 @@ const config = {
     },
     operatorEmail: process.env.OPERATOR_EMAIL,
     baseUrl: process.env.CLOUD_RUN_SERVICE_URL || 'https://tonic-production.run.app',
-    logLevel: LogLevel.WARN,
+    logLevel: process.env.LOG_LEVEL || LogLevel.WARN,
   },
 };
 
