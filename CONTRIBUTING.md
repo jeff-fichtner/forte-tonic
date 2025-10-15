@@ -67,9 +67,8 @@ Short descriptive title (50 chars or less)
 When assisting with this codebase:
 
 1. **Before ANY commit**, MUST run:
-   - `npm run format`
-   - `npm run lint` (check for errors)
-   - `npm run test:unit` (all must pass)
+   - `npm run check:all` (runs format:check, lint, and tests)
+   - OR individually: `npm run format`, `npm run lint`, `npm run test:unit`
 
 2. **Review changes** with `git status` and `git diff`
 
@@ -79,8 +78,13 @@ When assisting with this codebase:
    git add path/to/specific/file.js
    ```
 
-4. **Never** use `git add -A`, `git add .`, or `git commit -a`
+4. **Never** use:
+   - ❌ `git add -A` or `git add .`
+   - ❌ `git commit -a`
+   - ❌ **`git push`** - AI should NEVER push code
 
 5. **Verify staged** with `git diff --staged`
 
 6. **Commit with clear message** describing what changed and why
+
+7. **⚠️ CRITICAL: NEVER PUSH CODE** - User will push manually after review
