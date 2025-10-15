@@ -3,6 +3,8 @@
  * Provides conditional logging based on environment configuration
  */
 
+import { configService as defaultConfigService } from '../services/configurationService.js';
+
 /**
  * Log levels enum - ordered by severity
  */
@@ -123,7 +125,9 @@ export function createLogger(configService) {
 
 export function getLogger() {
   if (!loggerInstance) {
-    throw new Error('Logger not initialized. Call createLogger(configService) first.');
+    // Auto-initialize with default config service if not already initialized
+    // This allows any module to call getLogger() without explicit initialization
+    loggerInstance = new Logger(defaultConfigService);
   }
   return loggerInstance;
 }
