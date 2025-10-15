@@ -25,11 +25,11 @@ export class GoogleSheetsDbClient extends BaseService {
     this.CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
 
     // Get authentication configuration from config service
-    console.log('🔧 Getting auth config...');
+    this.logger.log('🔧 Getting auth config...');
     const authConfig = this.configService.getGoogleSheetsAuth();
-    console.log('🔧 Getting sheets config...');
+    this.logger.log('🔧 Getting sheets config...');
     const sheetsConfig = this.configService.getGoogleSheetsConfig();
-    console.log('🔧 Config retrieved successfully');
+    this.logger.log('🔧 Config retrieved successfully');
 
     // Initialize Google API clients with service account only
     this.logger.log('🔑', 'Using service account authentication...');
@@ -342,7 +342,7 @@ export class GoogleSheetsDbClient extends BaseService {
 
       return dataMap;
     } catch (error) {
-      console.error('❌ Batch load failed:', error);
+      this.logger.error('❌ Batch load failed:', error);
       throw error;
     }
   }
@@ -483,7 +483,7 @@ export class GoogleSheetsDbClient extends BaseService {
         );
       }
 
-      console.error(`Error getting data from sheet ${sheetKey}:`, error);
+      this.logger.error(`Error getting data from sheet ${sheetKey}:`, error);
       throw error;
     }
   }
@@ -508,7 +508,7 @@ export class GoogleSheetsDbClient extends BaseService {
       const rows = response.data.values || [];
       return this.#convertRowsToObjects(rows, sheetInfo.columnMap);
     } catch (error) {
-      console.error(`Error getting data from sheet ${sheetKey}:`, error);
+      this.logger.error(`Error getting data from sheet ${sheetKey}:`, error);
       throw error;
     }
   }
@@ -542,11 +542,11 @@ export class GoogleSheetsDbClient extends BaseService {
         processedRecord = postProcess(processedRecord);
       }
 
-      console.log(`📝 Appending record to ${sheetKey} with createdBy: ${createdBy}`);
+      this.logger.log(`📝 Appending record to ${sheetKey} with createdBy: ${createdBy}`);
       await this.insertIntoSheet(sheetKey, processedRecord);
 
       if (auditSheet) {
-        console.log(`📋 Creating audit record for ${sheetKey} in ${auditSheet}`);
+        this.logger.log(`📋 Creating audit record for ${sheetKey} in ${auditSheet}`);
         if (sheetKey === Keys.REGISTRATIONS) {
           // Special handling for registration audits
           const auditRecord = this.#createRegistrationAuditRecord(
@@ -554,14 +554,14 @@ export class GoogleSheetsDbClient extends BaseService {
             createdBy,
             false
           );
-          console.log(`🔍 Created registration audit record:`, {
+          this.logger.log(`🔍 Created registration audit record:`, {
             id: auditRecord.id,
             registrationId: auditRecord.registrationId,
             createdBy: auditRecord.createdBy,
             auditSheet,
           });
           await this.insertIntoSheet(auditSheet, auditRecord);
-          console.log(`✅ Successfully inserted registration audit record into ${auditSheet}`);
+          this.logger.log(`✅ Successfully inserted registration audit record into ${auditSheet}`);
         } else {
           // Legacy audit handling for other sheets
           const auditValues = this.#convertToAuditValues(Object.values(processedRecord));
@@ -569,7 +569,7 @@ export class GoogleSheetsDbClient extends BaseService {
             auditSheet,
             this.#convertAuditValuesToObject(auditValues, auditSheet)
           );
-          console.log(`✅ Successfully inserted legacy audit record into ${auditSheet}`);
+          this.logger.log(`✅ Successfully inserted legacy audit record into ${auditSheet}`);
         }
       } else {
         this.logger.debug(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
@@ -577,7 +577,7 @@ export class GoogleSheetsDbClient extends BaseService {
 
       return processedRecord;
     } catch (error) {
-      console.error(`Error appending record to sheet ${sheetKey}:`, error);
+      this.logger.error(`Error appending record to sheet ${sheetKey}:`, error);
       throw error;
     }
   }
@@ -588,7 +588,7 @@ export class GoogleSheetsDbClient extends BaseService {
    */
   async appendRecordv2(sheetKey, record, createdBy) {
     try {
-      console.log(
+      this.logger.log(
         `📝 AppendRecordv2: Appending record to ${sheetKey} with createdBy: ${createdBy}`
       );
 
@@ -619,12 +619,12 @@ export class GoogleSheetsDbClient extends BaseService {
       // Add audit functionality (from existing appendRecord method)
       const { auditSheet } = sheetInfo;
       if (auditSheet) {
-        console.log(`📋 Creating audit record for ${sheetKey} in ${auditSheet}`);
+        this.logger.log(`📋 Creating audit record for ${sheetKey} in ${auditSheet}`);
         if (sheetKey === 'registrations') {
           // Special handling for registration audits
           const auditRecord = this.#createRegistrationAuditRecord(record, createdBy, false);
           await this.insertIntoSheet(auditSheet, auditRecord);
-          console.log(`✅ Successfully inserted registration audit record into ${auditSheet}`);
+          this.logger.log(`✅ Successfully inserted registration audit record into ${auditSheet}`);
         } else {
           // Legacy audit handling for other sheets
           const auditValues = this.#convertToAuditValues(Object.values(record));
@@ -632,7 +632,7 @@ export class GoogleSheetsDbClient extends BaseService {
             auditSheet,
             this.#convertAuditValuesToObject(auditValues, auditSheet)
           );
-          console.log(`✅ Successfully inserted legacy audit record into ${auditSheet}`);
+          this.logger.log(`✅ Successfully inserted legacy audit record into ${auditSheet}`);
         }
       } else {
         this.logger.debug(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
@@ -640,7 +640,7 @@ export class GoogleSheetsDbClient extends BaseService {
 
       return record; // Return the original record without mutation
     } catch (error) {
-      console.error(`Error in appendRecordv2 for sheet ${sheetKey}:`, error);
+      this.logger.error(`Error in appendRecordv2 for sheet ${sheetKey}:`, error);
       throw error;
     }
   }
@@ -674,7 +674,7 @@ export class GoogleSheetsDbClient extends BaseService {
 
       return response.data;
     } catch (error) {
-      console.error(`Error inserting data into sheet ${sheetKey}:`, error);
+      this.logger.error(`Error inserting data into sheet ${sheetKey}:`, error);
       throw error;
     }
   }
@@ -704,7 +704,7 @@ export class GoogleSheetsDbClient extends BaseService {
       // Clear cache for this sheet since we modified it
       this.clearCache(sheetKey);
     } catch (error) {
-      console.error(`Error updating record in sheet ${sheetKey}:`, error);
+      this.logger.error(`Error updating record in sheet ${sheetKey}:`, error);
       throw error;
     }
   }
@@ -738,7 +738,7 @@ export class GoogleSheetsDbClient extends BaseService {
 
       return response.data;
     } catch (error) {
-      console.error(`Error updating data in sheet ${sheetKey}:`, error);
+      this.logger.error(`Error updating data in sheet ${sheetKey}:`, error);
       throw error;
     }
   }
@@ -781,7 +781,7 @@ export class GoogleSheetsDbClient extends BaseService {
 
       this.logger.debug(`Record with ID ${recordId} deleted from ${sheetKey}.`);
     } catch (error) {
-      console.error(`Error deleting record from sheet ${sheetKey}:`, error);
+      this.logger.error(`Error deleting record from sheet ${sheetKey}:`, error);
       throw error;
     }
   }
@@ -833,7 +833,7 @@ export class GoogleSheetsDbClient extends BaseService {
 
       return response.data;
     } catch (error) {
-      console.error(`Error deleting row from sheet ${sheetKey}:`, error);
+      this.logger.error(`Error deleting row from sheet ${sheetKey}:`, error);
       throw error;
     }
   }
@@ -903,7 +903,7 @@ export class GoogleSheetsDbClient extends BaseService {
       const ids = allData.map(item => parseInt(item.id)).filter(id => !isNaN(id));
       return ids.length > 0 ? Math.max(...ids) : 0;
     } catch (error) {
-      console.error(`Error getting max ID from sheet ${sheetKey}:`, error);
+      this.logger.error(`Error getting max ID from sheet ${sheetKey}:`, error);
       return 0;
     }
   }
