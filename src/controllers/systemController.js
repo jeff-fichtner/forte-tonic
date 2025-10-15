@@ -3,7 +3,7 @@
  * Handles health checks, diagnostics, and testing endpoints
  */
 
-import { currentConfig, isProduction, isStaging } from '../config/environment.js';
+import { currentConfig, isProduction, isStaging, version } from '../config/environment.js';
 import { getLogger } from '../utils/logger.js';
 import { configService } from '../services/configurationService.js';
 
@@ -19,7 +19,12 @@ export class SystemController {
         status: 'healthy',
         environment: process.env.NODE_ENV || 'development',
         timestamp: new Date().toISOString(),
-        version: process.env.npm_package_version || '1.0.0',
+        version: version.number,
+        versionInfo: {
+          buildDate: version.buildDate,
+          gitCommit: version.gitCommit?.substring(0, 7),
+          environment: version.environment,
+        },
         baseUrl: currentConfig.baseUrl,
         features: {
           isProduction,

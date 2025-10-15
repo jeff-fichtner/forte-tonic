@@ -41,6 +41,8 @@ steps:
       '--region=${_DEPLOY_REGION}',
       '--platform=managed',
       '--set-env-vars=NODE_ENV=${_ENV_TYPE}',
+      '--set-env-vars=CLOUD_BUILD=true',
+      '--set-env-vars=BUILD_GIT_COMMIT=${COMMIT_SHA}',
       '--set-secrets=WORKING_SPREADSHEET_ID=working-spreadsheet-id:latest',
       '--set-secrets=GOOGLE_SERVICE_ACCOUNT_EMAIL=google-service-account-email:latest', 
       '--set-secrets=GOOGLE_PRIVATE_KEY=google-private-key:latest',

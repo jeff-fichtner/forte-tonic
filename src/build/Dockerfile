@@ -28,6 +28,9 @@ RUN apk update && apk upgrade && \
 
 WORKDIR /app
 
+# Set build environment variables
+ENV CLOUD_BUILD=true
+
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
