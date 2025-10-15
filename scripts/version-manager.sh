@@ -1,13 +1,23 @@
 #!/bin/bash
 
-# Consolidated Version Management Script
-# Combines functionality from auto-increment-version.sh, handle-version-overflow.sh, and version-bump.sh
+# Version Management Script
+# Handles version increments for the Tonic application
+#
+# This script manages semantic versioning (MAJOR.MINOR.PATCH) for the project.
+# It's used both for manual version bumps and automated version management.
 #
 # Usage:
-#   ./scripts/version-manager.sh auto              # Auto-increment for dev builds (original auto-increment-version.sh)
-#   ./scripts/version-manager.sh bump [type]       # Manual version bump (original version-bump.sh)
-#   ./scripts/version-manager.sh check-overflow    # Check/handle overflow (original handle-version-overflow.sh)
+#   ./scripts/version-manager.sh auto              # Auto-increment patch version for development builds
+#   ./scripts/version-manager.sh bump [type]       # Manual version bump with confirmation
+#   ./scripts/version-manager.sh check-overflow    # Check for version overflow (99.99.99) and handle
 #   ./scripts/version-manager.sh [patch|minor|major] # Direct version increment
+#
+# Examples:
+#   ./scripts/version-manager.sh patch             # 1.1.8 → 1.1.9
+#   ./scripts/version-manager.sh minor             # 1.1.8 → 1.2.0
+#   ./scripts/version-manager.sh major             # 1.1.8 → 2.0.0
+#
+# Note: This script updates package.json and is used by CI/CD for automated releases
 
 set -e
 

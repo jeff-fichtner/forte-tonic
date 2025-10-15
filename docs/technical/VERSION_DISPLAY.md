@@ -42,16 +42,22 @@ The system detects build server environments using:
 ./scripts/version-manager.sh bump major
 ```
 
-### Deploy to Staging with Version Increment
+### Version Management and Deployment
 ```bash
-# Deploy with patch increment (recommended)
-./scripts/deploy-staging.sh patch
+# Increment version (patch increment recommended)
+./scripts/version-manager.sh patch
 
-# Deploy with minor increment
-./scripts/deploy-staging.sh minor
+# Increment minor version
+./scripts/version-manager.sh minor
 
-# Deploy with major increment
-./scripts/deploy-staging.sh major
+# Increment major version
+./scripts/version-manager.sh major
+
+# After version increment, commit and deploy
+git add package.json
+git commit -m "Bump version to $(node -p 'require("./package.json").version')"
+git tag "v$(node -p 'require("./package.json").version')"
+git push origin dev --tags  # Triggers Cloud Build deployment
 ```
 
 ## Version Display Features
