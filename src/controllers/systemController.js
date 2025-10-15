@@ -5,10 +5,7 @@
 
 import { currentConfig, isProduction, isStaging } from '../config/environment.js';
 import { getLogger } from '../utils/logger.js';
-
-const logger = getLogger();
 import { configService } from '../services/configurationService.js';
-import { getLogger } from '../utils/logger.js';
 
 const logger = getLogger();
 

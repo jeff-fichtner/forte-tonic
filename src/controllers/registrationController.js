@@ -8,14 +8,8 @@
 
 import { getAuthenticatedUserEmail } from '../middleware/auth.js';
 import { getLogger } from '../utils/logger.js';
-
-const logger = getLogger();
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
-import { getLogger } from '../utils/logger.js';
-
-const logger = getLogger();
 import { _fetchData } from '../utils/helpers.js';
-import { getLogger } from '../utils/logger.js';
 
 const logger = getLogger();
 
