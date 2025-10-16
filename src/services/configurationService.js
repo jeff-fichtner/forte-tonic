@@ -16,7 +16,7 @@ export class ConfigurationService {
     this._config = {
       // Google Sheets Authentication
       googleServiceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      googlePrivateKey: process.env.GOOGLE_PRIVATE_KEY, //?.replace(/\\n/g, '\n'),
+      googlePrivateKey: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
       spreadsheetId: process.env.WORKING_SPREADSHEET_ID,
 
       // Server Configuration
@@ -190,7 +190,7 @@ export class ConfigurationService {
   getTestConfig() {
     return {
       googleServiceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      googlePrivateKey: process.env.GOOGLE_PRIVATE_KEY, //?.replace(/\\n/g, '\n'),
+      googlePrivateKey: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
       spreadsheetId: process.env.WORKING_SPREADSHEET_ID,
       port: process.env.PORT || 3000,
       nodeEnv: process.env.NODE_ENV || 'development',
