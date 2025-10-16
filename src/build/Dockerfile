@@ -66,5 +66,4 @@ CMD ["npm", "start"]
 
 # Metadata labels
 LABEL maintainer="ndemoss-mcds" \
-      description="Tonic - Student registration automation" \
-      version="1.0.0"
+      description="Tonic - Student registration automation"

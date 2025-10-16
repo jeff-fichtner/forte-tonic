@@ -1,5 +1,5 @@
 /**
- * Environment Configuration for Google Cloud Run Deployments
+ * Environment Configuration
  * Manages different settings for staging vs production environments
  */
 
