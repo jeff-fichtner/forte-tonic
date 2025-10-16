@@ -10,8 +10,7 @@
 #    - Publish a new version tag on the dev branch (e.g., v1.1.0)
 #    - Increment the version in package.json and commit the change back to the repository
 #
-# This ensures that only code passing all tests is versioned and tagged,
-# and that version management is handled in GitHub, not in Cloud Build.
+# This ensures that only code passing all tests is versioned and tagged.
 
 name: 'Dev Branch - Test and Version'
 
@@ -144,8 +143,8 @@ jobs:
           echo "=============================================="
           echo ""
           echo "🚀 Next Steps:"
-          echo "  • The tag '$TAG_NAME' will trigger the staging Cloud Build deployment"
-          echo "  • Monitor the Cloud Build trigger for staging deployment status"
+          echo "  • The tag '$TAG_NAME' will trigger the staging deployment"
+          echo "  • Monitor the deployment pipeline for staging deployment status"
           echo "  • The new version is now ready for staging testing"
       
       - name: 'Failure summary'
