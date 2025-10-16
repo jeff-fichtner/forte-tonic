@@ -1,30 +1,18 @@
-# Scripts Directory# Scripts Directory
+# Scripts Directory
 
+This directory contains utility scripts for managing the Tonic application deployment and versioning.
 
+## 📁 Available Scripts
 
-This directory contains utility scripts for managing the Tonic application deployment and versioning.This directory contains utility scripts for managing the Tonic application deployment and versioning.
+### Version Management
 
+- **`version-manager.sh`** - Semantic version management (patch/minor/major increments)
 
+## 🔧 Script Usage
 
-## 📁 Available Scripts## 📁 Available Scripts
+### Version Management
 
-
-
-### Version Management### Version Management
-
-- **`version-manager.sh`** - Semantic version management (patch/minor/major increments)- **`version-manager.sh`** - Semantic version management (patch/minor/major increments)
-
-- **`check-deployed-version.sh`** - Verify deployed versions on GCP Cloud Run- **`check-deployed-version.sh`** - Verify deployed versions on GCP Cloud Run
-
-
-
-## 🔧 Script Usage## 🔧 Script Usage
-
-
-
-### Version Management### Version Management
-
-The version manager handles semantic versioning for releases:The version manager handles semantic versioning for releases:
+The version manager handles semantic versioning for releases:
 
 
 
