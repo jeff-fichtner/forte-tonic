@@ -75,19 +75,21 @@ GOOGLE_SERVICE_ACCOUNT_EMAIL=your-dev-service-account@project.iam.gserviceaccoun
 GOOGLE_PRIVATE_KEY="your-dev-private-key"
 ```
 
-### Render Production
+### Production Environment
 ```bash
-# Set in Render dashboard
+# Set in your hosting platform
 NODE_ENV=production
+SERVICE_URL=https://your-domain.com
 WORKING_SPREADSHEET_ID=your-prod-spreadsheet-id
 GOOGLE_SERVICE_ACCOUNT_EMAIL=your-prod-service-account@project.iam.gserviceaccount.com
 GOOGLE_PRIVATE_KEY="your-prod-private-key"
 ```
 
-### Render Staging
+### Staging Environment
 ```bash
-# Set in Render dashboard  
+# Set in your hosting platform
 NODE_ENV=staging
+SERVICE_URL=https://staging.your-domain.com
 WORKING_SPREADSHEET_ID=your-staging-spreadsheet-id
 GOOGLE_SERVICE_ACCOUNT_EMAIL=your-staging-service-account@project.iam.gserviceaccount.com
 GOOGLE_PRIVATE_KEY="your-staging-private-key"
