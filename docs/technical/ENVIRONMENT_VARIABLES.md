@@ -51,15 +51,14 @@ This document serves as the single source of truth for all environment variables
 
 ## Variable Naming Conventions
 
-### ✅ Current Standard (Use These)
-- `GOOGLE_SERVICE_ACCOUNT_EMAIL` (not `GOOGLE_CLIENT_EMAIL`)
-- `WORKING_SPREADSHEET_ID` (not `SPREADSHEET_ID`)
-- `NODE_ENV` (standard)
-- `PORT` (standard)
+All variables follow consistent naming patterns for clarity and maintainability:
 
-### ⚠️ Legacy Variables (Being Phased Out)
-- `GOOGLE_CLIENT_EMAIL` → Use `GOOGLE_SERVICE_ACCOUNT_EMAIL`
-- `GOOGLE_APPS_SCRIPT_ID` → No longer needed for Node.js version
+- **`GOOGLE_SERVICE_ACCOUNT_EMAIL`** - Google Cloud service account email address
+- **`GOOGLE_PRIVATE_KEY`** - Google Cloud service account private key (with newlines)
+- **`WORKING_SPREADSHEET_ID`** - ID of the Google Sheets database
+- **`NODE_ENV`** - Application environment (development, staging, production, test)
+- **`PORT`** - Server port (defaults to 3000)
+- **`LOG_LEVEL`** - Logging verbosity (error, warn, info, debug)
 
 ## Environment Setup Examples
 
