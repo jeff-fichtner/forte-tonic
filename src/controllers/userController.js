@@ -212,22 +212,13 @@ export class UserController {
       const isPhoneNumber = accessCode.length === 10 && /^\d{10}$/.test(accessCode);
       const isAccessCode = accessCode.length === 6 && /^\d{6}$/.test(accessCode);
 
-      logger.info('🔍 UserController access code format detection:', {
-        accessCodeLength: accessCode.length,
-        isPhoneNumber,
-        isAccessCode,
-        requestedLoginType: loginType,
-      });
-
       // Handle parent login with phone number (primary attempt)
       if (isPhoneNumber || loginType === 'parent') {
-        logger.info('🔍 UserController attempting parent authentication with phone number');
         parent = await userRepository.getParentByPhone(accessCode);
       }
 
       // Handle employee login with 6-digit access code (primary attempt)
       if (!parent && (isAccessCode || loginType === 'employee')) {
-        logger.info('🔍 UserController attempting employee authentication with access code');
         // Check admin first
         admin = await userRepository.getAdminByAccessCode(accessCode);
 
@@ -240,12 +231,8 @@ export class UserController {
       // Fallback attempts if primary method failed
       if (!admin && !instructor && !parent) {
         if (isPhoneNumber && loginType !== 'parent') {
-          logger.info(
-            '🔍 UserController fallback: Trying parent authentication for phone-like access code'
-          );
           parent = await userRepository.getParentByPhone(accessCode);
         } else if (isAccessCode && loginType !== 'employee') {
-          logger.info('🔍 UserController fallback: Trying employee authentication');
           admin = await userRepository.getAdminByAccessCode(accessCode);
           if (!admin) {
             instructor = await userRepository.getInstructorByAccessCode(accessCode);

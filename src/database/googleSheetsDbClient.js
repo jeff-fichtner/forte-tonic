@@ -15,9 +15,7 @@ export class GoogleSheetsDbClient extends BaseService {
    * Initialize the Google Sheets client with caching capabilities
    */
   constructor(configurationService = configService) {
-    console.log('🔧 GoogleSheetsDbClient constructor starting...');
     super(configurationService); // Initialize logger via BaseService
-    console.log('🔧 Logger initialized');
 
     // Performance optimization: Add caching
     this.cache = new Map();
@@ -25,56 +23,12 @@ export class GoogleSheetsDbClient extends BaseService {
     this.CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
 
     // Get authentication configuration from config service
-    this.logger.log('🔧 Getting auth config...');
     const authConfig = this.configService.getGoogleSheetsAuth();
-    this.logger.log('🔧 Getting sheets config...');
     const sheetsConfig = this.configService.getGoogleSheetsConfig();
-    this.logger.log('🔧 Config retrieved successfully');
 
-    // Initialize Google API clients with service account only
-    this.logger.log('🔑', 'Using service account authentication...');
-    this.logger.log('📧', 'Service Account Email:', authConfig.clientEmail);
-    this.logger.log(
-      '🔐',
-      'Private Key Length:',
-      authConfig.privateKey ? authConfig.privateKey.length : 'NOT SET'
-    );
-
-    // Enhanced authentication debugging
-    if (authConfig.privateKey) {
-      const keyStartMatch = authConfig.privateKey.match(/^-----BEGIN PRIVATE KEY-----/);
-      const keyEndMatch = authConfig.privateKey.includes('-----END PRIVATE KEY-----');
-      const hasNewlines = authConfig.privateKey.includes('\n');
-      const keyLength = authConfig.privateKey.length;
-
-      const keyLines = authConfig.privateKey.split('\n');
-      this.logger.log('🔍', 'Private Key Format Analysis:', {
-        hasProperStart: !!keyStartMatch,
-        hasProperEnd: !!keyEndMatch,
-        hasNewlines: hasNewlines,
-        totalLength: keyLength,
-        firstLine: keyLines[0] || 'NO_FIRST_LINE',
-        lastLine: keyLines[keyLines.length - 1] || 'NO_LAST_LINE',
-        secondToLastLine: keyLines[keyLines.length - 2] || 'NO_SECOND_TO_LAST',
-        lineCount: keyLines.length,
-        lastFewLines: keyLines.slice(-3),
-      });
-
-      // Check for common key format issues
-      if (!keyStartMatch) {
-        this.logger.log('⚠️', 'WARNING: Private key does not start with proper BEGIN marker');
-      }
-      if (!keyEndMatch) {
-        this.logger.log('⚠️', 'WARNING: Private key does not end with proper END marker');
-      }
-      if (!hasNewlines) {
-        this.logger.log('⚠️', 'WARNING: Private key appears to be missing newline characters');
-      }
-      if (keyLength < 1600) {
-        this.logger.log('⚠️', 'WARNING: Private key seems too short (expected ~1700+ chars)');
-      }
-    } else {
-      this.logger.log('❌', 'CRITICAL: Private key is null or undefined');
+    // Validate authentication configuration
+    if (!authConfig.clientEmail || !authConfig.privateKey) {
+      throw new Error('Google Sheets authentication configuration is incomplete');
     }
 
     this.auth = new google.auth.GoogleAuth({
@@ -96,16 +50,7 @@ export class GoogleSheetsDbClient extends BaseService {
       );
     }
 
-    this.logger.log(
-      '📝',
-      'GoogleSheetsDbClient initialized with spreadsheet ID:',
-      this.spreadsheetId
-    );
-
-    // Diagnostic: List available sheets in the spreadsheet
-    this.listAvailableSheets().catch(err => {
-      this.logger.error('Failed to list available sheets:', err.message);
-    });
+    this.logger.log('GoogleSheetsDbClient initialized successfully');
 
     // Initialize sheet info structure
     this.workingSheetInfo = {
@@ -417,78 +362,16 @@ export class GoogleSheetsDbClient extends BaseService {
 
       const spreadsheetId = this.spreadsheetId;
 
-      // Test authentication before making the API call
-      this.logger.log('🔍', `Testing Google Sheets API authentication for sheet: ${sheetKey}`);
-      try {
-        // Get access token to verify authentication works
-        const authClient = await this.auth.getClient();
-        const accessToken = await authClient.getAccessToken();
-        this.logger.log('✅', 'Successfully obtained access token:', {
-          tokenExists: !!accessToken.token,
-          tokenLength: accessToken.token ? accessToken.token.length : 0,
-          tokenPrefix: accessToken.token ? accessToken.token.substring(0, 10) + '...' : 'NONE',
-        });
-      } catch (authError) {
-        this.logger.log('❌', 'Authentication failed when getting access token:', {
-          error: authError.message,
-          errorCode: authError.code,
-          errorDetails: authError.details || 'No additional details',
-        });
-        throw new Error(`Google Sheets authentication failed: ${authError.message}`);
-      }
-
       // Use a more reasonable range - expand to column AZ to capture access codes
-      this.logger.log(
-        '🔍',
-        `Making Google Sheets API call to: ${sheetInfo.sheet}!A${sheetInfo.startRow}:AZ1000`
-      );
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: spreadsheetId,
-        range: `${sheetInfo.sheet}!A${sheetInfo.startRow}:AZ1000`,
-      });
-
-      this.logger.log('✅', `Successfully retrieved data from ${sheetKey}:`, {
-        rowCount: response.data.values ? response.data.values.length : 0,
-        hasData: !!(response.data.values && response.data.values.length > 0),
         range: `${sheetInfo.sheet}!A${sheetInfo.startRow}:AZ1000`,
       });
 
       const rows = response.data.values || [];
       return rows.map(row => mapFunc(row)).filter(item => item !== null && item !== undefined);
     } catch (error) {
-      this.logger.log('❌', `Error getting data from sheet ${sheetKey}:`, {
-        errorMessage: error.message,
-        errorCode: error.code,
-        errorStatus: error.status,
-        errorDetails: error.details || 'No additional details',
-        isAuthError:
-          error.message &&
-          (error.message.includes('invalid_grant') ||
-            error.message.includes('account not found') ||
-            error.message.includes('unauthorized') ||
-            error.message.includes('permission denied') ||
-            error.message.includes('authentication')),
-        stackTrace: error.stack ? error.stack.split('\n').slice(0, 3).join('\n') : 'No stack trace',
-      });
-
-      // Enhanced error message for authentication issues
-      if (error.message && error.message.includes('invalid_grant')) {
-        this.logger.log(
-          '🔍',
-          'AUTHENTICATION DIAGNOSIS: invalid_grant error suggests service account key issues:',
-          {
-            possibleCauses: [
-              'Service account key is malformed or corrupted',
-              'Private key missing proper BEGIN/END markers',
-              'Private key missing newline characters (\\n)',
-              'Service account deleted or disabled in Google Cloud Console',
-              'System clock is significantly out of sync',
-            ],
-          }
-        );
-      }
-
-      this.logger.error(`Error getting data from sheet ${sheetKey}:`, error);
+      this.logger.error(`Error getting data from sheet ${sheetKey}:`, error.message);
       throw error;
     }
   }
@@ -547,11 +430,9 @@ export class GoogleSheetsDbClient extends BaseService {
         processedRecord = postProcess(processedRecord);
       }
 
-      this.logger.log(`📝 Appending record to ${sheetKey} with createdBy: ${createdBy}`);
       await this.insertIntoSheet(sheetKey, processedRecord);
 
       if (auditSheet) {
-        this.logger.log(`📋 Creating audit record for ${sheetKey} in ${auditSheet}`);
         if (sheetKey === Keys.REGISTRATIONS) {
           // Special handling for registration audits
           const auditRecord = this.#createRegistrationAuditRecord(
@@ -559,14 +440,7 @@ export class GoogleSheetsDbClient extends BaseService {
             createdBy,
             false
           );
-          this.logger.log(`🔍 Created registration audit record:`, {
-            id: auditRecord.id,
-            registrationId: auditRecord.registrationId,
-            createdBy: auditRecord.createdBy,
-            auditSheet,
-          });
           await this.insertIntoSheet(auditSheet, auditRecord);
-          this.logger.log(`✅ Successfully inserted registration audit record into ${auditSheet}`);
         } else {
           // Legacy audit handling for other sheets
           const auditValues = this.#convertToAuditValues(Object.values(processedRecord));
@@ -574,10 +448,7 @@ export class GoogleSheetsDbClient extends BaseService {
             auditSheet,
             this.#convertAuditValuesToObject(auditValues, auditSheet)
           );
-          this.logger.log(`✅ Successfully inserted legacy audit record into ${auditSheet}`);
         }
-      } else {
-        this.logger.debug(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
       }
 
       return processedRecord;
@@ -624,12 +495,10 @@ export class GoogleSheetsDbClient extends BaseService {
       // Add audit functionality (from existing appendRecord method)
       const { auditSheet } = sheetInfo;
       if (auditSheet) {
-        this.logger.log(`📋 Creating audit record for ${sheetKey} in ${auditSheet}`);
         if (sheetKey === 'registrations') {
           // Special handling for registration audits
           const auditRecord = this.#createRegistrationAuditRecord(record, createdBy, false);
           await this.insertIntoSheet(auditSheet, auditRecord);
-          this.logger.log(`✅ Successfully inserted registration audit record into ${auditSheet}`);
         } else {
           // Legacy audit handling for other sheets
           const auditValues = this.#convertToAuditValues(Object.values(record));
@@ -637,10 +506,7 @@ export class GoogleSheetsDbClient extends BaseService {
             auditSheet,
             this.#convertAuditValuesToObject(auditValues, auditSheet)
           );
-          this.logger.log(`✅ Successfully inserted legacy audit record into ${auditSheet}`);
         }
-      } else {
-        this.logger.debug(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
       }
 
       return record; // Return the original record without mutation
@@ -990,36 +856,5 @@ export class GoogleSheetsDbClient extends BaseService {
     }
 
     return values;
-  }
-
-  /**
-   * Diagnostic method to list all available sheets in the spreadsheet
-   * Helps debug "entity not found" errors
-   */
-  async listAvailableSheets() {
-    try {
-      this.logger.log('🔍', 'Attempting to access spreadsheet metadata...');
-
-      const response = await this.sheets.spreadsheets.get({
-        spreadsheetId: this.spreadsheetId,
-        fields: 'sheets.properties(title,sheetId)',
-      });
-
-      const sheets = response.data.sheets || [];
-      const sheetNames = sheets.map(sheet => sheet.properties.title);
-
-      this.logger.log('✅', 'Spreadsheet accessible! Found sheets:', sheetNames);
-      this.logger.log('📊', `Total sheets: ${sheets.length}`);
-
-      return sheetNames;
-    } catch (error) {
-      this.logger.error('❌', 'Failed to access spreadsheet:', {
-        spreadsheetId: this.spreadsheetId,
-        errorCode: error.code,
-        errorMessage: error.message,
-        errorStatus: error.status || error.statusCode,
-      });
-      throw error;
-    }
   }
 }
