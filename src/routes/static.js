@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,7 +18,7 @@ const developmentHeaders = isDevelopment ? {
   'Expires': '0'
 } : {};
 
-// Serve the main HTML file at root
+// Serve the main HTML file at root with environment variable injection
 router.get('/', (req, res) => {
   if (isDevelopment) {
     // Set headers to prevent caching in development
@@ -25,7 +26,32 @@ router.get('/', (req, res) => {
       res.set(key, value);
     });
   }
-  res.sendFile(path.join(__dirname, '..', 'web', 'index.html'));
+
+  // Read the HTML file
+  const htmlPath = path.join(__dirname, '..', 'web', 'index.html');
+  fs.readFile(htmlPath, 'utf8', (err, html) => {
+    if (err) {
+      console.error('Error reading index.html:', err);
+      return res.status(500).send('Error loading page');
+    }
+
+    // Check if migration mode is enabled
+    const migrationUrl = process.env.MIGRATION_URL;
+
+    // If migration URL is set, inject it and serve modified HTML
+    if (migrationUrl) {
+      console.log('[Migration Notice] Migration mode ENABLED. URL:', migrationUrl);
+
+      // Inject the migration URL as a script tag before the closing </head> tag
+      const injectionScript = `<script>window.MIGRATION_URL = '${migrationUrl.replace(/'/g, "\\'")}';</script>`;
+      const modifiedHtml = html.replace('</head>', `${injectionScript}\n</head>`);
+
+      return res.send(modifiedHtml);
+    }
+
+    // Migration mode not enabled - serve normal HTML
+    res.send(html);
+  });
 });
 
 // Use Express.js built-in static middleware for efficient file serving
