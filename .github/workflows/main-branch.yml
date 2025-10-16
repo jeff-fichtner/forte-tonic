@@ -15,8 +15,6 @@ name: 'Main Branch - Test and Validate'
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   test-and-validate:
