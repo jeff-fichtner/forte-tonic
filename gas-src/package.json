@@ -1,7 +1,8 @@
 {
   "name": "tonic-gas-migrations",
-  "version": "1.0.0",
-  "description": "Google Apps Script migrations for Tonic database",
+  "version": "0.0.0-dev",
+  "description": "Google Apps Script migrations for Tonic database - Development tooling only, not published",
+  "private": true,
   "scripts": {
     "setup": "node generate-clasp-config.cjs",
     "init": "./setup.sh",
