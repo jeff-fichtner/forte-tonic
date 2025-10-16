@@ -102,6 +102,11 @@ export class GoogleSheetsDbClient extends BaseService {
       this.spreadsheetId
     );
 
+    // Diagnostic: List available sheets in the spreadsheet
+    this.listAvailableSheets().catch(err => {
+      this.logger.error('Failed to list available sheets:', err.message);
+    });
+
     // Initialize sheet info structure
     this.workingSheetInfo = {
       [Keys.ROLES]: {
@@ -985,5 +990,36 @@ export class GoogleSheetsDbClient extends BaseService {
     }
 
     return values;
+  }
+
+  /**
+   * Diagnostic method to list all available sheets in the spreadsheet
+   * Helps debug "entity not found" errors
+   */
+  async listAvailableSheets() {
+    try {
+      this.logger.log('🔍', 'Attempting to access spreadsheet metadata...');
+
+      const response = await this.sheets.spreadsheets.get({
+        spreadsheetId: this.spreadsheetId,
+        fields: 'sheets.properties(title,sheetId)',
+      });
+
+      const sheets = response.data.sheets || [];
+      const sheetNames = sheets.map(sheet => sheet.properties.title);
+
+      this.logger.log('✅', 'Spreadsheet accessible! Found sheets:', sheetNames);
+      this.logger.log('📊', `Total sheets: ${sheets.length}`);
+
+      return sheetNames;
+    } catch (error) {
+      this.logger.error('❌', 'Failed to access spreadsheet:', {
+        spreadsheetId: this.spreadsheetId,
+        errorCode: error.code,
+        errorMessage: error.message,
+        errorStatus: error.status || error.statusCode,
+      });
+      throw error;
+    }
   }
 }
