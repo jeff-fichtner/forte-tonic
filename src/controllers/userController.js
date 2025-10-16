@@ -282,6 +282,8 @@ export class UserController {
       // This distinguishes from "no match found" (which returns null)
       return res.status(500).json({
         error: 'There was an issue logging in. Please try again.',
+        errorMessage: error.message || 'Unknown error',
+        errorType: error.name || 'Error',
         success: false,
         systemError: true,
       });
