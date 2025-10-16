@@ -115,7 +115,7 @@ auto_increment() {
     
     get_version_info
     
-    # Check if this is a dev branch build (set by Cloud Build environment)
+    # Check if this is a dev branch build
     if [ "$BRANCH_NAME" = "dev" ] || [ "$NODE_ENV" = "staging" ]; then
         log_info "Dev branch detected - auto-incrementing patch version..."
         
