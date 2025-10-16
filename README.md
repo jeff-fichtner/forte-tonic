@@ -58,6 +58,7 @@ See [docs/technical/ARCHITECTURE.md](docs/technical/ARCHITECTURE.md) for details
 ### Quick Start
 
 1. **Install**
+
    ```bash
    git clone <repository-url>
    cd tonic
@@ -65,12 +66,14 @@ See [docs/technical/ARCHITECTURE.md](docs/technical/ARCHITECTURE.md) for details
    ```
 
 2. **Configure**
+
    ```bash
    cp .env.example .env
    # Edit .env with your credentials
    ```
 
 3. **Run**
+
    ```bash
    npm start              # Production
    npm run dev            # Development with auto-reload
