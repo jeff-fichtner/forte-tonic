@@ -49,7 +49,7 @@ const config = {
       privateKey: process.env.GOOGLE_PRIVATE_KEY,
     },
     operatorEmail: process.env.OPERATOR_EMAIL,
-    baseUrl: process.env.CLOUD_RUN_SERVICE_URL || 'https://tonic-staging-staging.run.app',
+    baseUrl: process.env.SERVICE_URL,
     logLevel: process.env.LOG_LEVEL || LogLevel.INFO,
   },
 
@@ -61,7 +61,7 @@ const config = {
       privateKey: process.env.GOOGLE_PRIVATE_KEY,
     },
     operatorEmail: process.env.OPERATOR_EMAIL,
-    baseUrl: process.env.CLOUD_RUN_SERVICE_URL || 'https://tonic-production.run.app',
+    baseUrl: process.env.SERVICE_URL,
     logLevel: process.env.LOG_LEVEL || LogLevel.WARN,
   },
 };
@@ -113,8 +113,8 @@ export const version = {
  * Get version number - only use package.json version on build server
  */
 function getVersionNumber() {
-  // On Cloud Build server, use package.json version
-  if (process.env.CLOUD_BUILD || process.env.CI) {
+  // On CI/build server, use package.json version
+  if (process.env.CI) {
     return packageJson.version;
   }
 
@@ -126,8 +126,8 @@ function getVersionNumber() {
  * Get build date - only use current date on build server
  */
 function getBuildDate() {
-  // On Cloud Build server, use current timestamp
-  if (process.env.CLOUD_BUILD || process.env.CI) {
+  // On CI/build server, use current timestamp
+  if (process.env.CI) {
     return new Date().toISOString();
   }
 

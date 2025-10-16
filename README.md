@@ -32,9 +32,9 @@ Tonic is designed to streamline music program registration for schools by provid
 
 Originally built as a Google Apps Script application, Tonic has been migrated to Node.js for improved performance, scalability, and maintainability while preserving all original functionality.
 
-### 🚀 Platform Evolution
+### 🚀 Platform-Agnostic Design
 
-**Current Status**: The application is transitioning from Render.com to Google Cloud Platform for enhanced integration with Google Workspace and improved reliability. See the [Deployment](#deployment) section for platform-specific instructions.
+**Architecture**: The application is designed to be host-agnostic and can be deployed on any containerized platform. See the [Deployment](#deployment) section for setup instructions.
 
 ## Key Features
 
@@ -105,9 +105,8 @@ src/
 ### Prerequisites
 
 - Node.js 18+ and npm
-- Google Cloud Console account
 - Google Sheets with appropriate structure
-- Service account with Sheets API access
+- Google service account with Sheets API access
 
 ### Installation
 
@@ -124,9 +123,9 @@ src/
    npm install
    ```
 
-3. **Set up Google Cloud Console**
+3. **Set up Google API access**
    - Enable Google Sheets API
-   - Create a Service Account
+   - Create a service account
    - Download the JSON key file
    - Share your Google Sheets with the service account email
 
@@ -285,71 +284,43 @@ npm run format && npm run lint && npm run format:check && npm test
 
 ## Deployment
 
-### ⚠️ Platform Transition Notice
+The application is designed to be platform-agnostic and can be deployed on any containerized hosting platform that supports Docker and Node.js.
 
-**The Tonic application is currently transitioning from Render to Google Cloud Platform (GCP).**
+### Deployment Requirements
 
-- **Current Platform**: Render.com (legacy deployment)
-- **Target Platform**: Google Cloud Platform (recommended)
-- **Transition Status**: In progress
+1. **Environment Variables**: Configure required environment variables (see [ENVIRONMENT_VARIABLES.md](docs/technical/ENVIRONMENT_VARIABLES.md))
+   - `NODE_ENV`: Environment name (development, staging, production)
+   - `SERVICE_URL`: Base URL for the deployed service
+   - `WORKING_SPREADSHEET_ID`: Google Sheets spreadsheet ID
+   - `GOOGLE_SERVICE_ACCOUNT_EMAIL`: Service account email
+   - `GOOGLE_PRIVATE_KEY`: Service account private key
+   - `OPERATOR_EMAIL`: Admin operator email address
 
-### Production Deployment Options
+2. **Google Sheets Access**: Ensure the service account has access to your Google Sheets
 
-#### Option 1: Google Cloud Platform (RECOMMENDED) 🎯
+3. **Port Configuration**: The application runs on port 3000 by default (configurable via `PORT` environment variable)
 
-For new deployments and better integration with Google Workspace:
+### Container Deployment
 
-1. **Platform Benefits**
-   - Seamless Google Sheets integration
-   - Better performance and reliability
-   - Native Google Workspace authentication
-   - Cost-effective for educational institutions
+The application includes a production-ready Dockerfile:
 
-2. **Deployment Process**
+```bash
+# Build the Docker image
+docker build -f src/build/Dockerfile -t tonic:latest .
 
-   ```bash
-   # Option A: Manual deployment
-   gcloud app deploy
+# Run the container
+docker run -p 3000:3000 \
+  -e NODE_ENV=production \
+  -e SERVICE_URL=https://your-domain.com \
+  -e WORKING_SPREADSHEET_ID=your-sheet-id \
+  -e GOOGLE_SERVICE_ACCOUNT_EMAIL=your-sa@project.iam.gserviceaccount.com \
+  -e GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n..." \
+  tonic:latest
+```
 
-   # Option B: Automated CI/CD setup (recommended)
-   ./scripts/manage-gcp-cicd.sh setup-gcp --folder=YOUR_FOLDER_ID
-   ```
+### CI/CD Example (Google Cloud Build)
 
-3. **Environment Variables**
-   Configure in Google Cloud Console (see [ENVIRONMENT_VARIABLES.md](docs/technical/ENVIRONMENT_VARIABLES.md))
-
-#### Option 2: Render.com (LEGACY) 📦
-
-For existing deployments still using Render:
-
-1. **Two-Environment Setup**
-   - **Production**: `main` branch → `tonic-production` service
-   - **Staging**: `develop` branch → `tonic-staging` service
-
-2. **Deploy with Blueprint**
-
-   ```bash
-   # Deploy using config/render.yaml
-   # In Render Dashboard: New Blueprint → Select repository → Use config/render.yaml
-   ```
-
-3. **Environment Variables**
-   Set required variables in Render Dashboard
-
-### Migration Path
-
-If migrating from Render to GCP:
-
-1. **Prepare GCP Environment**: Follow [TECHNICAL_HOSTING_PROPOSAL.md](docs/business/TECHNICAL_HOSTING_PROPOSAL.md)
-2. **Test Deployment**: Deploy to GCP staging environment first
-3. **Data Migration**: Ensure Google Sheets access is configured
-4. **DNS Update**: Point domain to new GCP deployment
-5. **Monitoring**: Verify application functionality
-
-For detailed deployment instructions:
-
-- **GCP Setup**: [docs/business/TECHNICAL_HOSTING_PROPOSAL.md](docs/business/TECHNICAL_HOSTING_PROPOSAL.md)
-- **Render Legacy**: [docs/business/RENDER_DEPLOYMENT.md](docs/business/RENDER_DEPLOYMENT.md)
+An example CI/CD pipeline is included in [src/build/cloudbuild.yaml](src/build/cloudbuild.yaml) that demonstrates automated building, testing, and deployment.
 
 ### Local Development Scripts
 
@@ -362,10 +333,6 @@ npm run version:increment:major  # Major version bump
 # Deployment preparation
 npm run build                   # Run all checks and tests
 npm run deploy:check           # Pre-deployment verification
-
-# GCP Management (when transitioning to GCP)
-./scripts/manage-gcp-cicd.sh setup-gcp --folder=FOLDER_ID    # Setup GCP CI/CD
-./scripts/manage-gcp-cicd.sh status-gcp --folder=FOLDER_ID   # Check GCP status
 ```
 
 ## Project Structure
@@ -512,7 +479,7 @@ For questions, issues, or contributions:
 
 ---
 
-**Version**: 1.1.0  
-**Last Updated**: October 9, 2025  
-**Node.js**: 18+  
-**Platform Status**: Transitioning from Render to Google Cloud Platform
+**Version**: 1.1.13
+**Last Updated**: October 15, 2025
+**Node.js**: 18+
+**Platform**: Host-agnostic containerized application

@@ -1,5 +1,5 @@
 # Multi-stage Docker build for Node.js app
-# Optimized for Google Cloud Run deployment
+# Optimized for containerized deployment
 
 # Build stage
 FROM node:20-alpine AS builder
@@ -29,7 +29,7 @@ RUN apk update && apk upgrade && \
 WORKDIR /app
 
 # Set build environment variables
-ENV CLOUD_BUILD=true
+ENV CI=true
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
@@ -54,7 +54,7 @@ USER nodejs
 # Expose the port the app runs on
 EXPOSE 3000
 
-# Add health check for Cloud Run
+# Add health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:3000/api/health || exit 1
 

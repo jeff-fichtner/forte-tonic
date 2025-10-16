@@ -1,13 +1,13 @@
-# Google Cloud Build CI/CD Pipeline
+# CI/CD Pipeline for Google Cloud Build
 # Simplified build and deploy only - no testing or version management
-# 
+#
 # Triggers:
 # - Staging: on semver tags (^v[0-9]+\.[0-9]+\.[0-9]+$)
 # - Production: on main branch pushes
-# 
+#
 # This file should be placed at: src/build/cloudbuild.yaml
-# 
-# Setup required:
+#
+# Setup required for Google Cloud:
 # 1. Enable APIs: Cloud Build, Cloud Run, Container Registry, Secret Manager
 # 2. Create build trigger pointing to this file
 # 3. Set up secrets in Secret Manager
@@ -41,7 +41,7 @@ steps:
       '--region=${_DEPLOY_REGION}',
       '--platform=managed',
       '--set-env-vars=NODE_ENV=${_ENV_TYPE}',
-      '--set-env-vars=CLOUD_BUILD=true',
+      '--set-env-vars=CI=true',
       '--set-env-vars=BUILD_GIT_COMMIT=${COMMIT_SHA}',
       '--set-secrets=WORKING_SPREADSHEET_ID=working-spreadsheet-id:latest',
       '--set-secrets=GOOGLE_SERVICE_ACCOUNT_EMAIL=google-service-account-email:latest', 
