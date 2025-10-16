@@ -22,7 +22,7 @@ export class ConfigurationService {
       // Server Configuration
       port: process.env.PORT || 3000,
       nodeEnv: process.env.NODE_ENV || 'development',
-      cloudRunServiceUrl: process.env.CLOUD_RUN_SERVICE_URL,
+      serviceUrl: process.env.SERVICE_URL,
       logLevel: process.env.LOG_LEVEL || 'info',
 
       // Email Configuration
@@ -194,7 +194,7 @@ export class ConfigurationService {
       spreadsheetId: process.env.WORKING_SPREADSHEET_ID,
       port: process.env.PORT || 3000,
       nodeEnv: process.env.NODE_ENV || 'development',
-      cloudRunServiceUrl: process.env.CLOUD_RUN_SERVICE_URL,
+      serviceUrl: process.env.SERVICE_URL,
       smtpHost: process.env.SMTP_HOST || 'smtp.gmail.com',
       smtpPort: parseInt(process.env.SMTP_PORT) || 587,
       smtpSecure: process.env.SMTP_SECURE === 'true' || false,

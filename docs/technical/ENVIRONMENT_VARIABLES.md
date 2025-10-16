@@ -17,7 +17,8 @@ This document serves as the single source of truth for all environment variables
 
 | Variable | Description | Default | Used In |
 |----------|-------------|---------|---------|
-| `PORT` | Server port | `3000` | Development only (Render sets automatically) |
+| `PORT` | Server port | `3000` | Development only (set automatically in production) |
+| `SERVICE_URL` | Base URL for the deployed service | - | Staging and production |
 | `LOG_LEVEL` | Logging level | `info` | All environments |
 | `ROCK_BAND_CLASS_IDS` | Comma-separated Rock Band class IDs for waitlist handling | `G001,G002` | All environments |
 | `EMAIL_HOST` | SMTP host | `smtp.gmail.com` | If email features used |
@@ -32,11 +33,6 @@ This document serves as the single source of truth for all environment variables
 - Usage: Copy to `.env` and fill in actual values
 - Environment: `development`
 
-### `.env.render.template` (Production Deployment Template)  
-- Purpose: Template for Render dashboard configuration
-- Usage: Copy values to Render dashboard environment variables
-- Environment: `staging` and `production`
-
 ### `.env.test` (Testing Environment)
 - Purpose: Automated testing configuration
 - Usage: Used by Jest test runner
@@ -45,13 +41,12 @@ This document serves as the single source of truth for all environment variables
 ## Configuration Sources
 
 ### Primary Configuration
-- **`config/render.yaml`** - Deployment configuration (build commands, health checks, etc.)
 - **`src/config/environment.js`** - Runtime environment configuration
-- **`src/core/services/configurationService.js`** - Service configuration management
+- **`src/services/configurationService.js`** - Service configuration management
+- **`src/build/Dockerfile`** - Container build configuration
 
 ### Documentation
-- **`docs/RENDER_DEPLOYMENT.md`** - Deployment setup instructions
-- **`docs/NODE_SETUP.md`** - Local development setup
+- **`docs/technical/NODE_SETUP.md`** - Local development setup
 - **`scripts/README.md`** - Build and deployment scripts
 
 ## Variable Naming Conventions
