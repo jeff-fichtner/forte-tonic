@@ -1,15 +1,28 @@
 # CI/CD Pipeline for Google Cloud Build
 # Simplified build and deploy only - no testing or version management
 #
-# Triggers:
-# - Staging: on semver tags (^v[0-9]+\.[0-9]+\.[0-9]+$)
-# - Production: on main branch pushes
+# Trigger Configuration (set in GCP Console):
+# ============================================
+#
+# STAGING TRIGGER:
+# - Name: tonic-staging-deploy
+# - Event: Tag
+# - Tag pattern: ^v[0-9]+\.[0-9]+\.[0-9]+-dev$
+# - Example tags: v1.1.16-dev, v1.2.0-dev
+# - Substitution: _ENV_TYPE=staging
+#
+# PRODUCTION TRIGGER:
+# - Name: tonic-production-deploy
+# - Event: Tag
+# - Tag pattern: ^v[0-9]+\.[0-9]+\.[0-9]+$
+# - Example tags: v1.1.16, v1.2.0
+# - Substitution: _ENV_TYPE=production
 #
 # This file should be placed at: src/build/cloudbuild.yaml
 #
 # Setup required for Google Cloud:
 # 1. Enable APIs: Cloud Build, Cloud Run, Container Registry, Secret Manager
-# 2. Create build trigger pointing to this file
+# 2. Create TWO build triggers (staging and production) pointing to this file
 # 3. Set up secrets in Secret Manager
 # 4. Grant Cloud Build service account required permissions
 

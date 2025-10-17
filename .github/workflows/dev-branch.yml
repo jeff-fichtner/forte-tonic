@@ -107,10 +107,10 @@ jobs:
         if: success()
         run: |
           NEW_VERSION="${{ steps.new-version.outputs.new_version }}"
-          TAG_NAME="v$NEW_VERSION"
-          
+          TAG_NAME="v$NEW_VERSION-dev"
+
           # Create annotated tag
-          git tag -a "$TAG_NAME" -m "Auto-versioned release: $TAG_NAME
+          git tag -a "$TAG_NAME" -m "Auto-versioned pre-release for staging: $TAG_NAME
 
           GitHub Actions Build: ${{ github.run_id }}
           Commit: ${{ github.sha }}
@@ -130,8 +130,8 @@ jobs:
         run: |
           CURRENT_VERSION="${{ steps.current-version.outputs.version }}"
           NEW_VERSION="${{ steps.new-version.outputs.new_version }}"
-          TAG_NAME="v$NEW_VERSION"
-          
+          TAG_NAME="v$NEW_VERSION-dev"
+
           echo ""
           echo "🎉 DEV BRANCH WORKFLOW COMPLETED SUCCESSFULLY!"
           echo "=============================================="
@@ -143,8 +143,8 @@ jobs:
           echo "=============================================="
           echo ""
           echo "🚀 Next Steps:"
-          echo "  • The tag '$TAG_NAME' will trigger the staging deployment"
-          echo "  • Monitor the deployment pipeline for staging deployment status"
+          echo "  • The dev tag '$TAG_NAME' will trigger the staging deployment"
+          echo "  • Monitor Cloud Build for staging deployment status"
           echo "  • The new version is now ready for staging testing"
       
       - name: 'Failure summary'
