@@ -88,9 +88,9 @@ export class UserRepository {
    */
   async getInstructorById(id) {
     const instructors = await this.getInstructors();
-    const searchId = (typeof id === 'object' && id.value) ? id.value : id;
+    const searchId = typeof id === 'object' && id.value ? id.value : id;
     return instructors.find(x => {
-      const instructorId = (typeof x.id === 'object' && x.id.value) ? x.id.value : x.id;
+      const instructorId = typeof x.id === 'object' && x.id.value ? x.id.value : x.id;
       return instructorId === searchId;
     });
   }
@@ -103,7 +103,7 @@ export class UserRepository {
     return instructors.find(x => x.email === email);
   }
 
-    /**
+  /**
    * Get instructor by access code
    * @param {string} accessCode - The access code to search for
    * @returns {Promise<Instructor|undefined>} Instructor with matching access code
@@ -124,30 +124,30 @@ export class UserRepository {
         const students = await this.dbClient.getAllRecords(Keys.STUDENTS, x =>
           Student.fromDatabaseRow(x)
         );
-        
+
         // Then, enrich with parent emails
         const parents = await this.getParents();
-        
+
         return (this.students = students.map(student => {
           // Find parent emails for this student
           const parent1 = parents.find(p => p.id === student.parent1Id);
           const parent2 = parents.find(p => p.id === student.parent2Id);
-          
-          const parentEmails = [parent1?.email, parent2?.email]
-            .filter(Boolean)
-            .join(', ');
-          
+
+          const parentEmails = [parent1?.email, parent2?.email].filter(Boolean).join(', ');
+
           // Create a new student with parent emails populated
           const enrichedStudent = new Student({
             ...student.toDataObject(),
-            parentEmails
+            parentEmails,
           });
-          
+
           // Debug log for first few students to verify parent emails are populated
           if (students.indexOf(student) < 3) {
-            console.log(`Student ${student.firstName} ${student.lastName}: parentEmails = "${parentEmails}"`);
+            console.log(
+              `Student ${student.firstName} ${student.lastName}: parentEmails = "${parentEmails}"`
+            );
           }
-          
+
           return enrichedStudent;
         }));
       },
@@ -161,9 +161,9 @@ export class UserRepository {
    */
   async getStudentById(id) {
     const students = await this.getStudents();
-    const searchId = (typeof id === 'object' && id.value) ? id.value : id;
+    const searchId = typeof id === 'object' && id.value ? id.value : id;
     return students.find(x => {
-      const studentId = (typeof x.id === 'object' && x.id.value) ? x.id.value : x.id;
+      const studentId = typeof x.id === 'object' && x.id.value ? x.id.value : x.id;
       return studentId === searchId;
     });
   }

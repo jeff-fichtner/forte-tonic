@@ -94,15 +94,15 @@ export class RegistrationController {
   static async createRegistration(req, res) {
     try {
       const requestData = req.body;
-      
+
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
-      
+
       console.log('🎯 Registration creation request received:', {
         ...requestData,
         authenticatedUser: authenticatedUserEmail,
         currentUser: req.currentUser,
-        hasAccessCode: !!requestData.accessCode
+        hasAccessCode: !!requestData.accessCode,
       });
 
       // Basic validation
@@ -196,14 +196,14 @@ export class RegistrationController {
     try {
       const { registrationId } = req.params;
       const { reason } = req.body;
-      
+
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
-      
+
       console.log('🎯 Registration cancellation request received:', {
         registrationId,
         reason,
-        authenticatedUser: authenticatedUserEmail
+        authenticatedUser: authenticatedUserEmail,
       });
 
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
@@ -277,16 +277,16 @@ export class RegistrationController {
   static async register(req, res) {
     try {
       const { studentId, classId, instructorId, registrationType } = req.body;
-      
+
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
-      
+
       console.log('🎯 Legacy registration request received:', {
         studentId,
         classId,
         instructorId,
         registrationType,
-        authenticatedUser: authenticatedUserEmail
+        authenticatedUser: authenticatedUserEmail,
       });
 
       if (!studentId || !registrationType) {
@@ -321,7 +321,7 @@ export class RegistrationController {
   static async unregister(req, res) {
     try {
       console.log('Unregister endpoint called with body:', req.body);
-      
+
       // Handle HttpService payload format: [{ data: { registrationId, accessCode } }]
       let registrationId, accessCode;
       if (Array.isArray(req.body) && req.body[0]?.data) {
@@ -331,10 +331,10 @@ export class RegistrationController {
         registrationId = req.body.registrationId;
         accessCode = req.body.accessCode;
       }
-      
+
       // Get the authenticated user's email for audit purposes
       let authenticatedUserEmail = getAuthenticatedUserEmail(req);
-      
+
       // If access code is provided, validate it and use it for more specific audit trail
       if (accessCode) {
         try {
@@ -345,19 +345,22 @@ export class RegistrationController {
             authenticatedUserEmail = operatorUser.email || authenticatedUserEmail;
           }
         } catch (accessCodeError) {
-          console.warn('Could not validate access code for audit, using session user:', accessCodeError.message);
+          console.warn(
+            'Could not validate access code for audit, using session user:',
+            accessCodeError.message
+          );
           // Continue with session-based authentication as fallback
         }
       }
-      
+
       if (!authenticatedUserEmail) {
         return res.status(401).json({ error: 'Authentication required for registration deletion' });
       }
-      
+
       console.log('🎯 Legacy unregister request received:', {
         registrationId,
         authenticatedUser: authenticatedUserEmail,
-        hasAccessCode: !!accessCode
+        hasAccessCode: !!accessCode,
       });
 
       console.log('Extracted registrationId:', registrationId);

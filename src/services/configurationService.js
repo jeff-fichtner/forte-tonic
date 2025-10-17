@@ -33,7 +33,9 @@ export class ConfigurationService {
       defaultFromAddress: process.env.DEFAULT_FROM_EMAIL || process.env.SMTP_USER,
 
       // Application Configuration
-      rockBandClassIds: process.env.ROCK_BAND_CLASS_IDS ? process.env.ROCK_BAND_CLASS_IDS.split(',') : [],
+      rockBandClassIds: process.env.ROCK_BAND_CLASS_IDS
+        ? process.env.ROCK_BAND_CLASS_IDS.split(',')
+        : [],
     };
   }
 

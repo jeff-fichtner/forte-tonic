@@ -23,15 +23,9 @@ export class UserController {
     try {
       console.log('getOperatorUser - Temporarily bypassing operator user retrieval');
       // Even when bypassed, return basic configuration
-      const bypassedResponse = new OperatorUserResponse(
-        null,
-        null,
-        null,
-        null,
-        {
-          rockBandClassIds: ConfigurationService.getRockBandClassIds()
-        }
-      );
+      const bypassedResponse = new OperatorUserResponse(null, null, null, null, {
+        rockBandClassIds: ConfigurationService.getRockBandClassIds(),
+      });
       return res.json(bypassedResponse);
 
       // Get operator email from environment
@@ -76,15 +70,9 @@ export class UserController {
         }
       }
 
-      const operatorUser = new OperatorUserResponse(
-        operatorEmail,
-        admin,
-        instructor,
-        parent,
-        {
-          rockBandClassIds: ConfigurationService.getRockBandClassIds()
-        }
-      );
+      const operatorUser = new OperatorUserResponse(operatorEmail, admin, instructor, parent, {
+        rockBandClassIds: ConfigurationService.getRockBandClassIds(),
+      });
 
       res.json(operatorUser);
     } catch (error) {
@@ -305,7 +293,7 @@ export class UserController {
       if (!accessCode) {
         return res.status(400).json({
           error: 'Access code is required',
-          success: false
+          success: false,
         });
       }
 
@@ -318,12 +306,12 @@ export class UserController {
       // Auto-detect authentication type based on access code format
       const isPhoneNumber = accessCode.length === 10 && /^\d{10}$/.test(accessCode);
       const isAccessCode = accessCode.length === 6 && /^\d{6}$/.test(accessCode);
-      
-      console.log('🔍 UserController access code format detection:', { 
-        accessCodeLength: accessCode.length, 
-        isPhoneNumber, 
+
+      console.log('🔍 UserController access code format detection:', {
+        accessCodeLength: accessCode.length,
+        isPhoneNumber,
         isAccessCode,
-        requestedLoginType: loginType 
+        requestedLoginType: loginType,
       });
 
       // Handle parent login with phone number (primary attempt)
@@ -332,7 +320,7 @@ export class UserController {
         parent = await userRepository.getParentByPhone(accessCode);
       }
 
-      // Handle employee login with 6-digit access code (primary attempt)  
+      // Handle employee login with 6-digit access code (primary attempt)
       if (!parent && (isAccessCode || loginType === 'employee')) {
         console.log('🔍 UserController attempting employee authentication with access code');
         // Check admin first
@@ -347,7 +335,9 @@ export class UserController {
       // Fallback attempts if primary method failed
       if (!admin && !instructor && !parent) {
         if (isPhoneNumber && loginType !== 'parent') {
-          console.log('🔍 UserController fallback: Trying parent authentication for phone-like access code');
+          console.log(
+            '🔍 UserController fallback: Trying parent authentication for phone-like access code'
+          );
           parent = await userRepository.getParentByPhone(accessCode);
         } else if (isAccessCode && loginType !== 'employee') {
           console.log('🔍 UserController fallback: Trying employee authentication');
@@ -376,7 +366,7 @@ export class UserController {
       console.log(`Authentication successful for ${loginType} login:`, {
         admin: !!admin,
         instructor: !!instructor,
-        parent: !!parent
+        parent: !!parent,
       });
 
       res.json(authenticatedUser);

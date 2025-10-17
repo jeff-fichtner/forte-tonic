@@ -43,7 +43,7 @@ export class RegistrationValidationService {
     if (!registrationData.classId) {
       errors.push('Class ID is required for group registrations');
     }
-    // Note: Other fields like instructorId, day, startTime, length, instrument 
+    // Note: Other fields like instructorId, day, startTime, length, instrument
     // will be populated automatically from the class data, so we don't validate them here
   }
 
