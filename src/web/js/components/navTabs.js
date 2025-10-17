@@ -235,34 +235,6 @@ export class NavTabs {
   }
 
   /**
-   * Check if the current operator has access to the requested section
-   * @param {string} section - The section to check ('admin', 'instructor', 'parent')
-   * @returns {boolean} True if operator has access to this section
-   */
-  #checkOperatorAccess(section) {
-    // Get the operator user from global session
-    const operatorUser = window.UserSession?.getOperatorUser();
-
-    if (!operatorUser) {
-      console.log('No operator user found in session');
-      return false;
-    }
-
-    // Check if operator has the required user type
-    switch (section) {
-      case 'admin':
-        return operatorUser.isAdmin && operatorUser.isAdmin();
-      case 'instructor':
-        return operatorUser.isInstructor && operatorUser.isInstructor();
-      case 'parent':
-        return operatorUser.isParent && operatorUser.isParent();
-      default:
-        console.warn(`Unknown section: ${section}`);
-        return false;
-    }
-  }
-
-  /**
    * Show/hide tabs based on the selected section
    * @param {string} section - The section that was selected ('admin', 'instructor', 'parent')
    */
@@ -393,35 +365,6 @@ export class NavTabs {
     if (pageError) pageError.hidden = true; // Hide errors
 
     console.log('Main content shown');
-  }
-
-  /**
-   * Hide all content and show login state when access is denied
-   * @param {string} section - The section that was denied access
-   */
-  #hideContentShowLogin(section) {
-    // Hide all main content
-    const pageContent = document.getElementById('page-content');
-    const pageLoading = document.getElementById('page-loading-container');
-    const pageError = document.getElementById('page-error-content');
-
-    if (pageContent) pageContent.hidden = true;
-    if (pageLoading) pageLoading.hidden = true;
-    if (pageError) pageError.hidden = true;
-
-    // Show a message that login is required
-    const sectionName = section.charAt(0).toUpperCase() + section.slice(1);
-    M.toast({
-      html: `Please log in to access ${sectionName} section`,
-      classes: 'orange darken-2',
-      displayLength: 4000,
-    });
-
-    // Remove active state from all nav links
-    const links = document.querySelectorAll('.section-link');
-    links.forEach(link => link.classList.remove('active'));
-
-    console.log(`Content hidden due to unauthorized access to ${section} section`);
   }
 }
 

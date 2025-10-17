@@ -22,7 +22,8 @@ export class ConfigurationService {
       // Server Configuration
       port: process.env.PORT || 3000,
       nodeEnv: process.env.NODE_ENV || 'development',
-      renderExternalHostname: process.env.RENDER_EXTERNAL_HOSTNAME,
+      serviceUrl: process.env.SERVICE_URL,
+      logLevel: process.env.LOG_LEVEL || 'info',
 
       // Email Configuration
       smtpHost: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -65,7 +66,8 @@ export class ConfigurationService {
     return {
       port: this._config.port,
       nodeEnv: this._config.nodeEnv,
-      renderExternalHostname: this._config.renderExternalHostname,
+      cloudRunServiceUrl: this._config.cloudRunServiceUrl,
+      logLevel: this._config.logLevel,
       isDevelopment: this._config.nodeEnv !== 'production',
       isTest: this._config.nodeEnv === 'test',
       isProduction: this._config.nodeEnv === 'production',
@@ -79,7 +81,7 @@ export class ConfigurationService {
     const serverConfig = this.getServerConfig();
     return serverConfig.isDevelopment
       ? `http://localhost:${serverConfig.port}`
-      : `https://${serverConfig.renderExternalHostname || 'your-render-app-name.onrender.com'}`;
+      : serverConfig.cloudRunServiceUrl || 'https://your-cloud-run-service.run.app';
   }
 
   /**
@@ -192,7 +194,7 @@ export class ConfigurationService {
       spreadsheetId: process.env.WORKING_SPREADSHEET_ID,
       port: process.env.PORT || 3000,
       nodeEnv: process.env.NODE_ENV || 'development',
-      renderExternalHostname: process.env.RENDER_EXTERNAL_HOSTNAME,
+      serviceUrl: process.env.SERVICE_URL,
       smtpHost: process.env.SMTP_HOST || 'smtp.gmail.com',
       smtpPort: parseInt(process.env.SMTP_PORT) || 587,
       smtpSecure: process.env.SMTP_SECURE === 'true' || false,

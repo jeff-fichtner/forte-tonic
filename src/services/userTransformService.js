@@ -49,6 +49,7 @@ export class UserTransformService {
       phoneNumber: instructor.phone, // Map phone to phoneNumber for consistency
       phone: instructor.phone, // Keep both for compatibility
       fullName: `${instructor.firstName} ${instructor.lastName}`,
+      accessCode: instructor.accessCode, // Include access code for authentication
       specialties: instruments, // Use computed instruments
       instruments: instruments, // Provide both for compatibility
       isActive: !instructor.isDeactivated,
@@ -136,6 +137,23 @@ export class UserTransformService {
     });
 
     return availability;
+  }
+
+  /**
+   * Generic transform method that routes to specific transform methods
+   * @param {object} item - Core model to transform
+   * @param {string} type - Type of model ('admin', 'instructor', 'student', 'parent')
+   * @returns {object} API-compatible data
+   */
+  static transform(item, type) {
+    if (!item) return null;
+
+    const transformMethod = this[`transform${type.charAt(0).toUpperCase() + type.slice(1)}`];
+    if (!transformMethod) {
+      throw new Error(`Unknown transform type: ${type}`);
+    }
+
+    return transformMethod.call(this, item);
   }
 
   /**

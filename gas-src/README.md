@@ -2,6 +2,8 @@
 
 This directory contains the complete Google Apps Script (GAS) project for Tonic database migrations and utilities.
 
+> **Note:** This is a development-only tooling package. The version number in `package.json` is set to `0.0.0-dev` and does not track the main application version. This package is never published and is used solely for deploying migration scripts to Google Apps Script.
+
 ## 🚀 Quick Start
 
 ### Prerequisites

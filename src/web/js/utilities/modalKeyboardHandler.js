@@ -10,7 +10,7 @@ export class ModalKeyboardHandler {
   /**
    * Attach keyboard event handlers to a modal
    * @param {HTMLElement} modalElement - The modal DOM element
-   * @param {Object} options - Configuration options
+   * @param {object} options - Configuration options
    * @param {Function} [options.onConfirm] - Callback for Enter key (confirm action)
    * @param {Function} [options.onCancel] - Callback for ESC key (cancel action)
    * @param {boolean} [options.allowEscape=true] - Whether ESC key is allowed to close modal
@@ -132,7 +132,7 @@ export class ModalKeyboardHandler {
   /**
    * Attach keyboard handlers for time slot selection (non-modal interface)
    * @param {HTMLElement} containerElement - The container with time slots
-   * @param {Object} options - Configuration options
+   * @param {object} options - Configuration options
    * @param {Function} [options.onConfirm] - Callback for Enter key on selected slot
    * @param {Function} [options.onCancel] - Callback for ESC key (clear selection)
    */

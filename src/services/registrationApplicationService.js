@@ -6,13 +6,15 @@
  * processes including validation, conflict checking, and persistence.
  */
 
+import { BaseService } from '../infrastructure/base/baseService.js';
 import { RegistrationValidationService } from './registrationValidationService.js';
 import { RegistrationConflictService } from './registrationConflictService.js';
 import { ProgramManagementService } from './programManagementService.js';
 import { Registration } from '../models/shared/registration.js';
 
-export class RegistrationApplicationService {
-  constructor(dependencies) {
+export class RegistrationApplicationService extends BaseService {
+  constructor(dependencies, configService) {
+    super(configService); // Initialize logger via BaseService
     this.registrationRepository = dependencies.registrationRepository;
     this.userRepository = dependencies.userRepository;
     this.programRepository = dependencies.programRepository;
@@ -24,7 +26,7 @@ export class RegistrationApplicationService {
    */
   async processRegistration(registrationData, userId) {
     try {
-      console.log('🎵 Processing new registration');
+      this.logger.info('🎵 Processing new registration');
 
       // Step 1: Handle group registration data population
       if (registrationData.registrationType === 'group' && registrationData.classId) {
@@ -47,7 +49,7 @@ export class RegistrationApplicationService {
           registrationData.transportationType = 'pickup'; // Default for group classes
         }
 
-        console.log('🎓 Group registration data populated from class:', {
+        this.logger.info('🎓 Group registration data populated from class:', {
           classId: registrationData.classId,
           instructorId: registrationData.instructorId,
           day: registrationData.day,
@@ -111,15 +113,18 @@ export class RegistrationApplicationService {
         // Fallback: try direct property access on instructor object
         registrationData.roomId = instructor[roomIdKey];
       } else {
-        console.warn(`No room assignment found for instructor ${instructor.id} on ${dayName}`);
+        this.logger.warn(`No room assignment found for instructor ${instructor.id} on ${dayName}`);
         registrationData.roomId = 'ROOM-001'; // Default fallback
       }
 
-      console.log(`🏫 Room assignment for ${registrationData.registrationType} registration:`, {
-        day: dayName,
-        instructorId: instructor.id,
-        roomId: registrationData.roomId,
-      });
+      this.logger.info(
+        `🏫 Room assignment for ${registrationData.registrationType} registration:`,
+        {
+          day: dayName,
+          instructorId: instructor.id,
+          roomId: registrationData.roomId,
+        }
+      );
 
       // Step 4: Program-specific validation
       const programValidation = ProgramManagementService.validateRegistration(
@@ -162,7 +167,7 @@ export class RegistrationApplicationService {
       }
 
       // Step 6: Create registration model
-      console.log('📝 Registration data before creating model:', registrationData);
+      this.logger.info('📝 Registration data before creating model:', registrationData);
       const registrationEntity = Registration.createNew(
         registrationData.studentId,
         registrationData.instructorId,
@@ -185,7 +190,7 @@ export class RegistrationApplicationService {
 
       // Step 7: Persist the registration
       const registrationDataObject = registrationEntity.toDataObject();
-      console.log('📊 Registration data object before persistence:', registrationDataObject);
+      this.logger.info('📊 Registration data object before persistence:', registrationDataObject);
 
       const persistedRegistration =
         await this.registrationRepository.create(registrationDataObject);
@@ -195,7 +200,7 @@ export class RegistrationApplicationService {
         await this.auditService.logRegistrationCreated(persistedRegistration, userId);
       }
 
-      console.log('✅ Registration processed successfully:', persistedRegistration.id);
+      this.logger.info('✅ Registration processed successfully:', persistedRegistration.id);
 
       // Generate lesson schedule with complete registration data
       let lessonSchedule = null;
@@ -213,7 +218,7 @@ export class RegistrationApplicationService {
           lessonSchedule = ProgramManagementService.generateLessonSchedule(scheduleData);
         }
       } catch (scheduleError) {
-        console.warn('⚠️ Could not generate lesson schedule:', scheduleError.message);
+        this.logger.warn('⚠️ Could not generate lesson schedule:', scheduleError.message);
         lessonSchedule = [];
       }
 
@@ -223,7 +228,7 @@ export class RegistrationApplicationService {
         lessonSchedule: lessonSchedule,
       };
     } catch (error) {
-      console.error('❌ Registration processing failed:', error);
+      this.logger.error('❌ Registration processing failed:', error);
 
       // Audit failure
       if (this.auditService) {
@@ -239,7 +244,7 @@ export class RegistrationApplicationService {
    */
   async cancelRegistration(registrationId, reason, userId) {
     try {
-      console.log('🚫 Cancelling registration:', registrationId);
+      this.logger.info('🚫 Cancelling registration:', registrationId);
 
       // Get existing registration
       const existingData = await this.registrationRepository.findById(registrationId);
@@ -267,14 +272,14 @@ export class RegistrationApplicationService {
         await this.auditService.logRegistrationCancelled(registration, reason, userId);
       }
 
-      console.log('✅ Registration cancelled successfully');
+      this.logger.info('✅ Registration cancelled successfully');
 
       return {
         success: true,
         message: 'Registration cancelled successfully',
       };
     } catch (error) {
-      console.error('❌ Registration cancellation failed:', error);
+      this.logger.error('❌ Registration cancellation failed:', error);
       throw error;
     }
   }
@@ -313,7 +318,7 @@ export class RegistrationApplicationService {
         requiresTransportation: registration.requiresTransportation(),
       };
     } catch (error) {
-      console.error('❌ Failed to get registration details:', error);
+      this.logger.error('❌ Failed to get registration details:', error);
       throw error;
     }
   }
@@ -344,23 +349,9 @@ export class RegistrationApplicationService {
 
       return enrichedRegistrations;
     } catch (error) {
-      console.error('❌ Failed to get student registrations:', error);
+      this.logger.error('❌ Failed to get student registrations:', error);
       throw error;
     }
-  }
-
-  /**
-   * Private method: Request cancellation approval for special cases
-   */
-  async #requestCancellationApproval(registration, reason, userId) {
-    // This would typically create a workflow/approval request
-    // For now, return a pending status
-    return {
-      success: false,
-      status: 'pending_approval',
-      message: 'Cancellation requires managerial approval due to timing constraints',
-      approvalRequired: true,
-    };
   }
 
   /**
@@ -368,14 +359,14 @@ export class RegistrationApplicationService {
    */
   async getRegistrations(options = {}) {
     try {
-      console.log('📋 Getting registrations with options:', options);
+      this.logger.info('📋 Getting registrations with options:', options);
 
       // Get registrations from repository
       const registrations = await this.registrationRepository.getRegistrations(options);
 
       // Defensive check: if registrations is undefined or null, return empty array
       if (!registrations) {
-        console.warn('No registrations returned from repository, returning empty array');
+        this.logger.warn('No registrations returned from repository, returning empty array');
         return {
           registrations: [],
           totalCount: 0,
@@ -427,7 +418,7 @@ export class RegistrationApplicationService {
         })
       );
 
-      console.log(`📊 Found ${enrichedRegistrations.length} registrations`);
+      this.logger.info(`📊 Found ${enrichedRegistrations.length} registrations`);
 
       return {
         registrations: enrichedRegistrations,
@@ -436,7 +427,7 @@ export class RegistrationApplicationService {
         pageSize: options.pageSize || 1000,
       };
     } catch (error) {
-      console.error('❌ Error getting registrations:', error);
+      this.logger.error('❌ Error getting registrations:', error);
       throw error;
     }
   }
@@ -484,7 +475,7 @@ export class RegistrationApplicationService {
    * @returns {object} Validation result with isValid boolean and errorMessage
    */
   #validateBusTimeRestrictions(day, startTime, lengthMinutes) {
-    console.log('🚌 Validating bus time restrictions:', {
+    this.logger.info('🚌 Validating bus time restrictions:', {
       day,
       startTime,
       lengthMinutes,
@@ -494,7 +485,7 @@ export class RegistrationApplicationService {
     // Ensure lengthMinutes is a number
     const durationMinutes = parseInt(lengthMinutes) || 0;
     if (durationMinutes !== lengthMinutes) {
-      console.warn(
+      this.logger.warn(
         `⚠️  Length was not a number: "${lengthMinutes}" (${typeof lengthMinutes}), converted to: ${durationMinutes}`
       );
     }
@@ -517,7 +508,7 @@ export class RegistrationApplicationService {
 
     const deadlineTime = busDeadlines[day];
     if (!deadlineTime) {
-      console.log('🚌 Unknown day, allowing bus transportation');
+      this.logger.info('🚌 Unknown day, allowing bus transportation');
       return { isValid: true, errorMessage: null }; // Unknown day, allow
     }
 
@@ -526,11 +517,11 @@ export class RegistrationApplicationService {
 
     if (endMinutes > deadlineMinutes) {
       const errorMessage = `Late Bus is not available for lessons ending after ${deadlineDisplay} on ${day}. This lesson ends at ${endTimeDisplay}. Please select "Late Pick Up" instead or choose a different time slot.`;
-      console.log('🚌 Bus time restriction violated:', errorMessage);
+      this.logger.info('🚌 Bus time restriction violated:', errorMessage);
       return { isValid: false, errorMessage };
     }
 
-    console.log('🚌 Bus time validation passed');
+    this.logger.info('🚌 Bus time validation passed');
     return { isValid: true, errorMessage: null };
   }
 }

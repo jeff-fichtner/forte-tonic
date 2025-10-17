@@ -46,21 +46,26 @@ Render is configured to automatically deploy when:
 
 ### For Staging Deployment
 ```bash
-# Increment version and deploy to staging
-./scripts/deploy-staging.sh [patch|minor|major]
+# Increment version and create tag for deployment
+./scripts/version-manager.sh patch  # or minor/major
+
+# Commit and tag the version
+git add package.json
+git commit -m "Bump version to $(node -p 'require("./package.json").version')"
+git tag "v$(node -p 'require("./package.json").version')"
+git push origin dev --tags
 ```
 
-This script:
+This process:
 1. Increments version in `package.json`
-2. Runs tests
-3. Commits version bump
-4. Creates deployment tag
-5. Pushes to `dev` branch (triggers Render deployment)
+2. Commits the version bump
+3. Creates a version tag
+4. Pushes tag to trigger Google Cloud Build deployment
 
 ### Manual Version Increment
 ```bash
 # Just increment version without deployment
-./scripts/version-bump.sh [patch|minor|major]
+./scripts/version-manager.sh bump [patch|minor|major]
 ```
 
 ## Version Badge Behavior
@@ -82,8 +87,8 @@ This script:
 ## File Structure
 ```
 scripts/
-├── deploy-staging.sh      # Full deployment with version increment
-├── version-bump.sh        # Version increment only
+├── version-manager.sh     # Version increment and management
+├── version-manager.sh     # Consolidated version management (auto, bump, overflow)
 └── deploy-production.sh   # (Future: production deployment)
 
 src/config/environment.js  # Version detection logic

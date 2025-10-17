@@ -5,6 +5,7 @@
  * Repository for simplified registration model with UUID primary keys
  */
 
+import crypto from 'crypto';
 import { BaseRepository } from './baseRepository.js';
 import { Registration } from '../models/shared/registration.js';
 import { RegistrationId } from '../utils/values/registrationId.js';
@@ -50,7 +51,7 @@ export class RegistrationRepository extends BaseRepository {
 
       return registration || null;
     } catch (error) {
-      console.error('Error getting registration by ID:', error);
+      this.logger.error('Error getting registration by ID:', error);
       throw error;
     }
   }
@@ -70,7 +71,7 @@ export class RegistrationRepository extends BaseRepository {
         reg => reg.studentId && reg.studentId.getValue() === studentId
       );
     } catch (error) {
-      console.error('Error getting registrations by student ID:', error);
+      this.logger.error('Error getting registrations by student ID:', error);
       throw error;
     }
   }
@@ -90,7 +91,7 @@ export class RegistrationRepository extends BaseRepository {
         reg => reg.instructorId && reg.instructorId.getValue() === instructorId
       );
     } catch (error) {
-      console.error('Error getting registrations by instructor ID:', error);
+      this.logger.error('Error getting registrations by instructor ID:', error);
       throw error;
     }
   }
@@ -120,14 +121,14 @@ export class RegistrationRepository extends BaseRepository {
             ? Registration.fromDatabaseRow(row)
             : new Registration(row);
         } catch (error) {
-          console.warn(`Skipping invalid registration row:`, row[0], error.message);
+          this.logger.warn(`Skipping invalid registration row:`, row[0], error.message);
           return null; // Skip invalid rows
         }
       });
 
       // Handle case where allRegistrations is undefined/null
       if (!allRegistrations) {
-        console.warn('No registrations data returned from database client');
+        this.logger.warn('No registrations data returned from database client');
         return [];
       }
 
@@ -137,7 +138,7 @@ export class RegistrationRepository extends BaseRepository {
       // Since status field was removed, all registrations are considered active
       return validRegistrations;
     } catch (error) {
-      console.error('Error getting active registrations:', error);
+      this.logger.error('Error getting active registrations:', error);
       throw error;
     }
   }
@@ -214,7 +215,7 @@ export class RegistrationRepository extends BaseRepository {
 
       return registration;
     } catch (error) {
-      console.error('Error creating registration:', error);
+      this.logger.error('Error creating registration:', error);
       throw error;
     }
   }
@@ -245,7 +246,7 @@ export class RegistrationRepository extends BaseRepository {
 
       return true;
     } catch (error) {
-      console.error('Error deleting registration:', error);
+      this.logger.error('Error deleting registration:', error);
       throw error;
     }
   }
