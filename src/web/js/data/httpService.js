@@ -47,7 +47,7 @@ export class HttpService {
       // 1. Paginated format: { data: [...], total: 123 }
       // 2. Direct array format: [...]
       let responseData, responseTotal;
-      
+
       if (response.data) {
         // Paginated format
         responseData = response.data;
@@ -56,9 +56,14 @@ export class HttpService {
         // Direct array format
         responseData = response;
         responseTotal = response.length;
-        console.log(`🔍 HttpService.fetchPage: Using direct array format for ${serverFunctionName}, length: ${responseTotal}`);
+        console.log(
+          `🔍 HttpService.fetchPage: Using direct array format for ${serverFunctionName}, length: ${responseTotal}`
+        );
       } else {
-        console.warn(`⚠️ HttpService.fetchPage: Unexpected response format for ${serverFunctionName}. Response:`, response);
+        console.warn(
+          `⚠️ HttpService.fetchPage: Unexpected response format for ${serverFunctionName}. Response:`,
+          response
+        );
         return { data: [], total: 0 };
       }
 
@@ -78,7 +83,7 @@ export class HttpService {
    */
   static async fetchAllPages(serverFunctionName, mapper, pageSize = 1000, context = null, ...args) {
     console.log(`🔄 fetchAllPages starting for ${serverFunctionName} with pageSize=${pageSize}`);
-    
+
     let allResults = [];
     let currentPage = 0;
 
@@ -93,7 +98,9 @@ export class HttpService {
         ...args
       );
 
-      console.log(`📊 First page result for ${serverFunctionName}: ${data?.length || 0} records, total=${total}`);
+      console.log(
+        `📊 First page result for ${serverFunctionName}: ${data?.length || 0} records, total=${total}`
+      );
 
       if (!data || data.length === 0) {
         console.log(`✅ No data found for ${serverFunctionName}`);
@@ -105,18 +112,24 @@ export class HttpService {
       // Check if we got all data in the first request
       if (total !== undefined) {
         if (total <= pageSize) {
-          console.log(`✅ Single request optimization: Got all ${total} records in one call for ${serverFunctionName}`);
+          console.log(
+            `✅ Single request optimization: Got all ${total} records in one call for ${serverFunctionName}`
+          );
           return allResults;
         }
-        
+
         if (data.length < pageSize) {
-          console.log(`✅ Partial page optimization: Got ${data.length} records (less than pageSize) for ${serverFunctionName}`);
+          console.log(
+            `✅ Partial page optimization: Got ${data.length} records (less than pageSize) for ${serverFunctionName}`
+          );
           return allResults;
         }
       } else {
         // If no total provided, use data length as indicator
         if (data.length < pageSize) {
-          console.log(`✅ No total provided, but got ${data.length} records (less than pageSize) for ${serverFunctionName}`);
+          console.log(
+            `✅ No total provided, but got ${data.length} records (less than pageSize) for ${serverFunctionName}`
+          );
           return allResults;
         }
       }
@@ -124,7 +137,7 @@ export class HttpService {
       // Calculate remaining pages needed
       const totalPages = Math.ceil(total / pageSize);
       console.log(`📄 Need to fetch ${totalPages - 1} more pages for ${serverFunctionName}`);
-      
+
       currentPage++;
 
       // Continue fetching remaining pages only if needed
@@ -139,30 +152,28 @@ export class HttpService {
             context,
             ...args
           );
-          
+
           if (!nextPageData || nextPageData.length === 0) {
             console.log(`✅ No more data on page ${currentPage} for ${serverFunctionName}`);
             break;
           }
 
           allResults = allResults.concat(nextPageData);
-          console.log(`📊 Page ${currentPage} added ${nextPageData.length} records for ${serverFunctionName}`);
+          console.log(
+            `📊 Page ${currentPage} added ${nextPageData.length} records for ${serverFunctionName}`
+          );
           currentPage++;
         } catch (error) {
-          console.error(
-            `❌ Error fetching ${serverFunctionName} page ${currentPage}:`,
-            error
-          );
+          console.error(`❌ Error fetching ${serverFunctionName} page ${currentPage}:`, error);
           break;
         }
       }
-      
-      console.log(`✅ fetchAllPages completed for ${serverFunctionName}: ${allResults.length} total records`);
-    } catch (error) {
-      console.error(
-        `Error fetching ${serverFunctionName} all pages:`,
-        error
+
+      console.log(
+        `✅ fetchAllPages completed for ${serverFunctionName}: ${allResults.length} total records`
       );
+    } catch (error) {
+      console.error(`Error fetching ${serverFunctionName} all pages:`, error);
       return [];
     }
 
@@ -191,7 +202,7 @@ export class HttpService {
         const headers = {
           'Content-Type': 'application/json',
         };
-        
+
         // Include access code and login type in header if available
         if (window.AccessCodeManager) {
           const storedAuthData = window.AccessCodeManager.getStoredAuthData();

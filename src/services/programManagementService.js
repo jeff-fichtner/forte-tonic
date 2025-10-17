@@ -98,7 +98,7 @@ export class ProgramManagementService {
       // Waitlist classes (Rock Band) don't need specific scheduling validation
       const rockBandClassIds = ConfigurationService.getRockBandClassIds();
       const isWaitlistClass = rockBandClassIds.includes(groupClass.id);
-      
+
       if (!isWaitlistClass && (!groupClass.day || !groupClass.startTime || !groupClass.length)) {
         errors.push('Group class must have day, start time, and length');
       }

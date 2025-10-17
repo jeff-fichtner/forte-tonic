@@ -106,7 +106,7 @@ export const version = {
   gitCommit: process.env.RENDER_GIT_COMMIT || getLocalGitCommit(),
   environment,
   isStaging: environment === NodeEnv.STAGING,
-  displayVersion: environment !== NodeEnv.PRODUCTION // Show in all environments except production
+  displayVersion: environment !== NodeEnv.PRODUCTION, // Show in all environments except production
 };
 
 /**
@@ -117,7 +117,7 @@ function getVersionNumber() {
   if (process.env.RENDER || process.env.CI) {
     return packageJson.version;
   }
-  
+
   // For local development, use a static dev version
   return '0.0.0-dev';
 }
@@ -130,7 +130,7 @@ function getBuildDate() {
   if (process.env.RENDER || process.env.CI) {
     return new Date().toISOString();
   }
-  
+
   // For local development, use a static date
   return '2025-01-01T00:00:00.000Z';
 }

@@ -1,7 +1,11 @@
 /**
  * Tests for phone number formatting utilities
  */
-import { formatPhone, isValidUnformattedPhone, stripPhoneFormatting } from '../../src/web/js/utilities/phoneHelpers.js';
+import {
+  formatPhone,
+  isValidUnformattedPhone,
+  stripPhoneFormatting,
+} from '../../src/web/js/utilities/phoneHelpers.js';
 
 describe('Phone Number Formatting Utilities', () => {
   describe('formatPhone', () => {
@@ -71,7 +75,7 @@ describe('Phone Number Formatting Utilities', () => {
         { name: 'Jane Doe', phone: '6505551234' },
         { name: 'Bob Johnson', phone: '(650) 555-5678' },
         { name: 'Alice Brown', phone: '415-945-9999' },
-        { name: 'No Phone Person', phone: '' }
+        { name: 'No Phone Person', phone: '' },
       ];
 
       employees.forEach(employee => {
