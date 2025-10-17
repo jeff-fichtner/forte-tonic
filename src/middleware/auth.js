@@ -1,7 +1,3 @@
-import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
-import { OperatorUserResponse } from '../models/shared/responses/operatorUserResponse.js';
-import { Admin } from '../models/shared/admin.js';
-import { configService } from '../services/configurationService.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
 import { currentConfig } from '../config/environment.js';
 
@@ -11,14 +7,13 @@ export const initializeRepositories = async (req, res, next) => {
     // Service container handles all repository and service instances
     const userRepository = serviceContainer.get('userRepository');
     const programRepository = serviceContainer.get('programRepository');
-    
+
     // Attach repositories to request for API endpoints
     req.userRepository = userRepository;
     req.programRepository = programRepository;
-    
+
     // Try to extract authenticated user from request
     await extractAuthenticatedUser(req, userRepository);
-    
   } catch (error) {
     console.error('Error initializing repositories:', error);
     req.userRepository = null;
@@ -56,10 +51,12 @@ export function getAuthenticatedUserEmail(req) {
     currentUserEmail: req.currentUser?.email,
     operatorEmail: req.currentUser?.operatorEmail,
     hasUser: !!req.user,
-    userEmail: req.user?.email
+    userEmail: req.user?.email,
   });
-  
-  throw new Error('Authentication required: No authenticated user found for audit trail. Please provide a valid access code.');
+
+  throw new Error(
+    'Authentication required: No authenticated user found for audit trail. Please provide a valid access code.'
+  );
 }
 
 /**
@@ -78,20 +75,24 @@ async function extractAuthenticatedUser(req, userRepository) {
     } else if (req.body?.accessCode) {
       bodyAccessCodeDisplay = req.body.accessCode.substring(0, 3) + '***';
     }
-    
+
     console.log('🔍 Auth middleware - extracting user from request:', {
       hasBody: !!req.body,
       bodyKeys: req.body ? Object.keys(req.body) : [],
       bodyAccessCode: bodyAccessCodeDisplay,
       bodyHasAccessCode: req.body && 'accessCode' in req.body,
       hasHeaders: !!req.headers,
-      headerAccessCode: req.headers['x-access-code'] ? req.headers['x-access-code'].substring(0, 3) + '***' : 'none',
+      headerAccessCode: req.headers['x-access-code']
+        ? req.headers['x-access-code'].substring(0, 3) + '***'
+        : 'none',
       headerLoginType: req.headers['x-login-type'] || 'none',
-      queryAccessCode: req.query?.accessCode ? req.query.accessCode.substring(0, 3) + '***' : 'none',
-      userAgent: req.headers?.['user-agent']?.substring(0, 50) || 'unknown'
+      queryAccessCode: req.query?.accessCode
+        ? req.query.accessCode.substring(0, 3) + '***'
+        : 'none',
+      userAgent: req.headers?.['user-agent']?.substring(0, 50) || 'unknown',
     });
 
-        // Method 1: Check for operator user first
+    // Method 1: Check for operator user first
     const operatorEmail = currentConfig.operatorEmail;
     let operatorRole = null;
     if (operatorEmail) {
@@ -103,10 +104,10 @@ async function extractAuthenticatedUser(req, userRepository) {
 
     // Method 2: Check for access code to determine the acting user
     let accessCode = null;
-    
+
     // Check for access code in different locations, including HttpService array format
     let bodyAccessCode = null;
-    
+
     // Handle HttpService payload format: [{ data: { accessCode } }]
     if (Array.isArray(req.body) && req.body[0]?.data?.accessCode) {
       bodyAccessCode = req.body[0].data.accessCode;
@@ -114,16 +115,18 @@ async function extractAuthenticatedUser(req, userRepository) {
       // Handle direct body format: { accessCode, ... }
       bodyAccessCode = req.body.accessCode;
     }
-    
+
     // Debug: log the actual access code values
     console.log('🔍 Access code values:', {
       bodyAccessCode: bodyAccessCode,
       bodyAccessCodeType: typeof bodyAccessCode,
-      bodyAccessCodeValue: bodyAccessCode ? bodyAccessCode.substring(0, 2) + '***' : 'null/undefined',
+      bodyAccessCodeValue: bodyAccessCode
+        ? bodyAccessCode.substring(0, 2) + '***'
+        : 'null/undefined',
       headerAccessCode: req.headers['x-access-code'],
-      queryAccessCode: req.query?.accessCode
+      queryAccessCode: req.query?.accessCode,
     });
-    
+
     if (bodyAccessCode && bodyAccessCode !== null && bodyAccessCode !== '') {
       accessCode = bodyAccessCode;
       console.log('📝 Found accessCode in body:', accessCode.substring(0, 2) + '***');
@@ -138,25 +141,28 @@ async function extractAuthenticatedUser(req, userRepository) {
     }
 
     if (accessCode) {
-      console.log('🔍 Attempting to authenticate with access code:', accessCode.substring(0, 2) + '***');
-      
+      console.log(
+        '🔍 Attempting to authenticate with access code:',
+        accessCode.substring(0, 2) + '***'
+      );
+
       // Check for login type in headers to determine authentication method
       const loginType = req.headers['x-login-type'];
       console.log('🔍 Login type from headers:', loginType);
-      
+
       let userResult = null;
-      
+
       // Auto-detect login type based on access code format if needed
       const isPhoneNumber = accessCode.length === 10 && /^\d{10}$/.test(accessCode);
       const isAccessCode = accessCode.length === 6 && /^\d{6}$/.test(accessCode);
-      
-      console.log('🔍 Access code format detection:', { 
-        accessCodeLength: accessCode.length, 
-        isPhoneNumber, 
+
+      console.log('🔍 Access code format detection:', {
+        accessCodeLength: accessCode.length,
+        isPhoneNumber,
         isAccessCode,
-        storedLoginType: loginType 
+        storedLoginType: loginType,
       });
-      
+
       if (isPhoneNumber || loginType === 'parent') {
         // For parent login, accessCode is actually a phone number
         console.log('🔍 Attempting parent authentication with phone number');
@@ -164,14 +170,14 @@ async function extractAuthenticatedUser(req, userRepository) {
         if (parent) {
           userResult = { user: parent, userType: 'parent' };
         }
-      } 
-      
+      }
+
       if (!userResult && (isAccessCode || loginType === 'employee')) {
         // For employee login (admin/instructor), use the standard access code method
         console.log('🔍 Attempting employee authentication with access code');
         userResult = await userRepository.getUserByAccessCode(accessCode);
       }
-      
+
       // Fallback: if no match yet, try the opposite method
       if (!userResult) {
         if (isPhoneNumber && loginType !== 'parent') {
@@ -185,41 +191,49 @@ async function extractAuthenticatedUser(req, userRepository) {
           userResult = await userRepository.getUserByAccessCode(accessCode);
         }
       }
-      
-      console.log('🔍 Database lookup result:', userResult ? `Found ${userResult.userType}: ${userResult.user.email}` : 'Not found');
-      
+
+      console.log(
+        '🔍 Database lookup result:',
+        userResult ? `Found ${userResult.userType}: ${userResult.user.email}` : 'Not found'
+      );
+
       if (userResult) {
         const { user, userType } = userResult;
-        req.currentUser = { 
-          email: user.email, 
+        req.currentUser = {
+          email: user.email,
           accessCode: accessCode,
           userType: userType,
           isOperator: false,
-          operatorEmail: operatorRole ? operatorEmail : null // Store operator email if available
+          operatorEmail: operatorRole ? operatorEmail : null, // Store operator email if available
         };
         req.user = req.currentUser;
-        console.log(`✅ User authenticated: ${user.email} (${userType})` + 
-                   (operatorRole ? ` with operator: ${operatorEmail}` : ''));
+        console.log(
+          `✅ User authenticated: ${user.email} (${userType})` +
+            (operatorRole ? ` with operator: ${operatorEmail}` : '')
+        );
         return;
       } else {
-        console.warn(`⚠️ Access code ${accessCode.substring(0, 2)}*** not found in any user records`);
+        console.warn(
+          `⚠️ Access code ${accessCode.substring(0, 2)}*** not found in any user records`
+        );
       }
     }
 
     // Method 3: If no access code but operator is available, use operator
     if (operatorRole) {
-      req.currentUser = { 
-        email: operatorEmail, 
+      req.currentUser = {
+        email: operatorEmail,
         isOperator: true,
-        operatorEmail: operatorEmail
+        operatorEmail: operatorEmail,
       };
       req.user = req.currentUser;
       console.log('🔑 Operator user authenticated (no access code):', operatorEmail);
       return;
     }
 
-    console.log('⚠️ No authenticated user found - audit operations will require valid authentication');
-    
+    console.log(
+      '⚠️ No authenticated user found - audit operations will require valid authentication'
+    );
   } catch (error) {
     console.error('❌ Error extracting authenticated user:', error);
     req.currentUser = null;

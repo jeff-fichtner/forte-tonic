@@ -13,27 +13,27 @@ function extractStringValue(value) {
   if (value === null || value === undefined) {
     return value;
   }
-  
+
   if (typeof value === 'string') {
     return value;
   }
-  
+
   if (typeof value === 'object') {
     // If it's an object, it might have an id, value, or _value property
     if (value.value) return String(value.value);
     if (value.id) return String(value.id);
     if (value._value) return String(value._value);
     if (value.uuid) return String(value.uuid);
-    
+
     // If it's an array, take the first element
     if (Array.isArray(value) && value.length > 0) {
       return String(value[0]);
     }
-    
+
     console.warn('Unable to extract string from object:', value);
     return String(value); // This will produce "[object Object]"
   }
-  
+
   return String(value);
 }
 
@@ -262,7 +262,7 @@ export class Student {
       id: extractStringValue(data.id),
       studentId: extractStringValue(data.studentId),
       firstNickname: data.firstNickname || null,
-      lastNickname: data.lastNickname || null
+      lastNickname: data.lastNickname || null,
     };
     return new Student(processedData);
   }

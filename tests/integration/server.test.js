@@ -33,7 +33,14 @@ const mockConfigService = {
 // Mock the configuration service module
 jest.unstable_mockModule('../../src/services/configurationService.js', () => ({
   configService: mockConfigService,
-  ConfigurationService: jest.fn().mockImplementation(() => mockConfigService),
+  ConfigurationService: class MockConfigurationService {
+    constructor() {
+      return mockConfigService;
+    }
+    static getRockBandClassIds() {
+      return ['rock-band-1', 'rock-band-2'];
+    }
+  },
 }));
 
 // Mock the GoogleSheetsDbClient before importing anything else
@@ -116,6 +123,7 @@ const mockUserRepository = {
   }),
   getInstructorByEmail: jest.fn().mockResolvedValue(null),
   getParentByEmail: jest.fn().mockResolvedValue(null),
+  getParentByPhone: jest.fn().mockResolvedValue(null),
 };
 
 const mockProgramRepository = {
@@ -154,7 +162,7 @@ const mockDbClient = {
 
 // Mock the middleware to add repositories to req
 jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
-  initializeUserContext: (req, res, next) => {
+  initializeRepositories: (req, res, next) => {
     req.dbClient = mockDbClient;
     req.userRepository = mockUserRepository;
     req.programRepository = mockProgramRepository;
@@ -166,7 +174,8 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
       roles: [],
       primaryRole: 'admin',
       displayName: 'Test Admin',
-      toJSON: function() {
+      operatorEmail: process.env.OPERATOR_EMAIL || 'test-operator@example.com',
+      toJSON: function () {
         return {
           email: this.email,
           admin: this.admin,
@@ -174,13 +183,16 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
           parent: this.parent,
           roles: this.roles,
           primaryRole: this.primaryRole,
-          displayName: this.displayName
+          displayName: this.displayName,
         };
-      }
+      },
     };
     req.user = req.currentUser; // For compatibility
     next();
   },
+  getAuthenticatedUserEmail: jest.fn().mockImplementation(req => {
+    return req.currentUser?.operatorEmail || req.currentUser?.email || 'test-operator@example.com';
+  }),
   requireAuth: (req, res, next) => next(),
   requireOperator: (req, res, next) => next(),
 }));
@@ -306,9 +318,7 @@ describe('Server Integration Tests', () => {
 
     describe('POST /api/getStudents', () => {
       test('should return list of students', async () => {
-        const response = await request(app)
-          .post('/api/getStudents')
-          .expect(200);
+        const response = await request(app).post('/api/getStudents').expect(200);
 
         let result;
         try {
@@ -316,7 +326,7 @@ describe('Server Integration Tests', () => {
         } catch {
           result = JSON.parse(response.text);
         }
-        
+
         // Should return direct array like other user endpoints
         expect(Array.isArray(result)).toBe(true);
         expect(result.length).toBeGreaterThan(0);
@@ -403,16 +413,16 @@ describe('Server Integration Tests', () => {
           lastName: 'Admin',
           phone: '555-1234',
           accessCode: '123456',
-          toJSON: function() {
+          toJSON: function () {
             return {
               id: this.id,
               email: this.email,
               firstName: this.firstName,
               lastName: this.lastName,
               phone: this.phone,
-              accessCode: this.accessCode
+              accessCode: this.accessCode,
             };
-          }
+          },
         });
 
         const response = await request(app)
@@ -426,7 +436,7 @@ describe('Server Integration Tests', () => {
         } catch {
           user = JSON.parse(response.text);
         }
-        
+
         expect(user).toHaveProperty('email', 'admin@test.com');
         expect(user).toHaveProperty('admin');
         expect(user.admin).toHaveProperty('firstName', 'Test');
@@ -435,10 +445,11 @@ describe('Server Integration Tests', () => {
       });
 
       test('should return null for invalid access code', async () => {
-        // Mock all repository methods to return null/undefined
-        mockUserRepository.getAdminByAccessCode.mockResolvedValueOnce(null);
-        mockUserRepository.getInstructorByAccessCode.mockResolvedValueOnce(null);
-        mockUserRepository.getParentByAccessCode.mockResolvedValueOnce(null);
+        // Mock all repository methods to return null/undefined (using mockResolvedValue instead of mockResolvedValueOnce
+        // because the controller may call these methods multiple times in fallback logic)
+        mockUserRepository.getAdminByAccessCode.mockResolvedValue(null);
+        mockUserRepository.getInstructorByAccessCode.mockResolvedValue(null);
+        mockUserRepository.getParentByPhone.mockResolvedValue(null);
 
         const response = await request(app)
           .post('/api/authenticateByAccessCode')

@@ -1,100 +1,194 @@
-# Tonic
+# Tonic Music Registration System
 
-Designed to automate student registration for after school lessons and programs.
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Main Branch](https://github.com/jeff-fichtner/forte-tonic/actions/workflows/main-branch.yml/badge.svg)](https://github.com/jeff-fichtner/forte-tonic/actions/workflows/main-branch.yml)
+[![Dev Branch](https://github.com/jeff-fichtner/forte-tonic/actions/workflows/dev-branch.yml/badge.svg?branch=dev)](https://github.com/jeff-fichtner/forte-tonic/actions/workflows/dev-branch.yml)
 
-## Node.js Setup (Migrated from Google Apps Script)
+A Node.js web application for automated student registration in after-school music programs. Features role-based access control, Google Sheets integration, and a responsive single-page frontend.
 
-1. **Clone repository:**
+## Table of Contents
+
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [System Architecture](#system-architecture)
+- [Getting Started](#getting-started)
+- [User Roles](#user-roles)
+- [API Documentation](#api-documentation)
+- [Development](#development)
+- [Deployment](#deployment)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+
+## Overview
+
+- **AccessCode Authentication**: Secure login for parents (phone), instructors, and admins (6-digit codes)
+- **Role-Based Access**: Tailored functionality for parents, instructors, and administrators
+- **Google Sheets Backend**: All data persisted via Google Sheets API
+- **Modern Stack**: Express.js API + Vanilla JavaScript SPA with ViewModel pattern
+- **Platform-Agnostic**: Containerized deployment on any Docker-compatible host
+
+Originally a Google Apps Script application, migrated to Node.js for improved performance and maintainability.
+
+## Key Features
+
+**Parents**: Register students, view schedules, track attendance  
+**Instructors**: Manage rosters, mark attendance, view teaching schedule  
+**Admins**: Full system access, user management, reporting, cache control
+
+**Technical**: Intelligent caching, data validation, audit logging, mobile-responsive UI
+
+## System Architecture
+
+**Backend**: Controller → Service → Repository pattern with Express.js  
+**Frontend**: Vanilla JavaScript SPA with ViewModel pattern  
+**Database**: Google Sheets via API with service account authentication  
+**Auth**: Phone number (parents) or 6-digit AccessCode (staff)
+
+See [docs/technical/ARCHITECTURE.md](docs/technical/ARCHITECTURE.md) for details.
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- Google Sheets with service account access
+- Google service account credentials (email + private key)
+
+### Quick Start
+
+1. **Install**
 
    ```bash
    git clone <repository-url>
    cd tonic
-   ```
-
-2. **Install dependencies:**
-
-   ```bash
    npm install
    ```
 
-3. **Configure environment:**
+2. **Configure**
 
    ```bash
    cp .env.example .env
-   # Edit .env with your Google Cloud credentials and spreadsheet IDs
+   # Edit .env with your credentials
    ```
 
-4. **Set up Google Cloud Console:**
-   - Enable Google Sheets API
-   - Create a Service Account and download the JSON key file
-   - Share your Google Sheet with the service account email
-
-5. **Run the application:**
+3. **Run**
 
    ```bash
-   npm start
-   # or for development:
-   npm run dev
+   npm start              # Production
+   npm run dev            # Development with auto-reload
    ```
 
-6. **Access the application:**
-   - Open http://localhost:3000
-   - Authenticate with Google
-   - Use the application as before
+4. **Access**: http://localhost:3000
 
-## 🔒 Security
+See [docs/technical/ENVIRONMENT_VARIABLES.md](docs/technical/ENVIRONMENT_VARIABLES.md) for configuration details.
 
-**Important:** This repository does NOT contain any real credentials or sensitive data. All sensitive information is loaded from environment variables or gitignored credential files.
+## API Overview
 
-- See `docs/ENVIRONMENT_VARIABLES.md` for configuration
-- See `dev/credentials/README.md` for development setup
-- Never commit real API keys, private keys, or production data
+**Authentication**: `/api/authenticateByAccessCode`  
+**Users**: `/api/getStudents`, `/api/getInstructors`, `/api/getAdmins`  
+**Registration**: `/api/registrations`, `/api/unregister`, `/api/getClasses`  
+**Attendance**: `/api/attendance`, `/api/attendance/summary/:id`  
+**System**: `/api/health`, `/api/version`
 
-## Migration Notes
+Full API docs in `docs/generated/`.
 
-This project has been migrated from Google Apps Script to Node.js while preserving all original functionality:
+## Development
 
-- ✅ Same API endpoints and behavior
-- ✅ Same user interface
-- ✅ Service account authentication for Google Sheets access
-- ✅ Same data operations (now uses Google Sheets API)
-- ✅ Better performance and scalability
-
-For detailed setup instructions, see [docs/NODE_SETUP.md](docs/NODE_SETUP.md)
-
-## Google Apps Script Migrations
-
-This project includes Google Apps Script migrations for database management:
-
-### Quick Start
+### Scripts
 
 ```bash
-cd gas-src
-npm run init    # First time setup and validation
-npm run deploy  # Deploy migrations to Google Apps Script
+# Development
+npm run dev                 # Auto-reload development server
+npm start                   # Production server
+
+# Testing
+npm test                    # All tests
+npm run test:unit           # Unit tests only
+npm run test:coverage       # With coverage report
+
+# Code Quality
+npm run format              # Auto-format with Prettier
+npm run lint                # ESLint check
+npm run check:all           # Format + lint check
 ```
 
-### Environment Setup
-
-Add to your `.env` file:
+### Pre-Commit Checklist
 
 ```bash
-GOOGLE_APPS_SCRIPT_ID=your-google-apps-script-project-id
+npm run format && npm run lint && npm test
 ```
 
-For detailed instructions, see [gas-src/README.md](gas-src/README.md)
+All checks must pass for GitHub Actions to succeed.
+
+## Deployment
+
+Platform-agnostic containerized deployment. Works on any Docker-compatible host.
+
+### Requirements
+
+- Docker support
+- Environment variables configured (see [ENVIRONMENT_VARIABLES.md](docs/technical/ENVIRONMENT_VARIABLES.md))
+- Google Sheets API access
+
+### Docker Deployment
+
+```bash
+docker build -f src/build/Dockerfile -t tonic:latest .
+docker run -p 3000:3000 \
+  -e NODE_ENV=production \
+  -e WORKING_SPREADSHEET_ID=your-sheet-id \
+  -e GOOGLE_SERVICE_ACCOUNT_EMAIL=your-sa@project.iam.gserviceaccount.com \
+  -e GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n..." \
+  tonic:latest
+```
+
+### CI/CD
+
+Example pipeline in `src/build/cloudbuild.yaml` demonstrates automated Docker builds and deployment. Testing runs via GitHub Actions before versioning and tagging.
+
+## Project Structure
+
+```
+src/
+├── controllers/        # HTTP handlers
+├── repositories/       # Data access
+├── services/          # Business logic
+├── models/            # Domain models
+├── middleware/        # Auth, validation
+├── routes/            # API routes
+├── database/          # Google Sheets client
+├── utils/             # Helpers
+└── web/               # Frontend SPA
+
+gas-src/               # Google Apps Script migrations
+tests/                 # Unit & integration tests
+docs/                  # Documentation
+config/                # ESLint, Prettier, Jest
+```
+
+## Contributing
+
+1. Fork and create feature branch (`feature/amazing-feature`)
+2. Make changes following code standards
+3. Add tests for new functionality
+4. Run `npm run format && npm run lint && npm test`
+5. Commit with conventional commit format
+6. Create Pull Request
+
+**Branch Strategy**: `main` (production) ← `dev` (integration) ← `feature/*`
 
 ## Documentation
 
-- [Architecture](docs/ARCHITECTURE.md) - Application architecture and design
-- [Node.js Setup](docs/NODE_SETUP.md) - Detailed setup instructions
-- [Migration Summary](docs/MIGRATION_SUMMARY.md) - Migration from Google Apps Script
-- [Frontend ES Modules](docs/FRONTEND_ES_MODULES_MIGRATION.md) - Frontend modernization
-- [Environment Setup](docs/ENV_CONSOLIDATION.md) - Environment configuration
-- [Test Cleanup](docs/TEST_CLEANUP.md) - Testing setup and cleanup
-- [Formatting Setup](docs/FORMATTING_SETUP.md) - Code formatting configuration
-- [Render Deployment](docs/RENDER_DEPLOYMENT.md) - Deployment instructions
+**Business**: [Hosting Proposal](docs/business/TECHNICAL_HOSTING_PROPOSAL.md) | [Privacy Policy](docs/business/PRIVACY_POLICY.md)  
+**Technical**: [Architecture](docs/technical/ARCHITECTURE.md) | [Environment Setup](docs/technical/ENVIRONMENT_VARIABLES.md) | [Migration Guide](docs/technical/MIGRATION_SUMMARY.md)
 
-## Original Google Apps Script Version
+## License
 
-The original GAS version setup instructions have been preserved in [docs/MIGRATION_SUMMARY.md](docs/MIGRATION_SUMMARY.md) for reference.
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+**Version**: 1.1.15
+**Last Updated**: October 15, 2025  
+**Node.js**: 18+

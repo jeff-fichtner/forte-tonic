@@ -4,6 +4,9 @@
  */
 
 import { getAuthenticatedUserEmail } from '../middleware/auth.js';
+import { getLogger } from '../utils/logger.js';
+
+const logger = getLogger();
 
 export class AttendanceController {
   /**
@@ -15,11 +18,11 @@ export class AttendanceController {
 
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
-      
-      console.log('🎯 Mark attendance request received:', {
+
+      logger.info('🎯 Mark attendance request received:', {
         registrationId,
         week,
-        authenticatedUser: authenticatedUserEmail
+        authenticatedUser: authenticatedUserEmail,
       });
 
       // Validation
@@ -72,7 +75,7 @@ export class AttendanceController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error('Error recording attendance:', error);
+      logger.error('Error recording attendance:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to record attendance',
@@ -100,7 +103,7 @@ export class AttendanceController {
         data: summary,
       });
     } catch (error) {
-      console.error('Error getting attendance summary:', error);
+      logger.error('Error getting attendance summary:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to get attendance summary',
@@ -115,13 +118,13 @@ export class AttendanceController {
   static async recordAttendance(req, res) {
     try {
       const data = req.body;
-      
+
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
-      
-      console.log('🎯 Record attendance request received:', {
+
+      logger.info('🎯 Record attendance request received:', {
         registrationId: data.registrationId,
-        authenticatedUser: authenticatedUserEmail
+        authenticatedUser: authenticatedUserEmail,
       });
 
       const attendanceRecord = await req.programRepository.recordAttendance(
@@ -131,7 +134,7 @@ export class AttendanceController {
 
       res.json({ attendanceRecord });
     } catch (error) {
-      console.error('Error recording attendance:', error);
+      logger.error('Error recording attendance:', error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -142,13 +145,13 @@ export class AttendanceController {
   static async removeAttendance(req, res) {
     try {
       const data = req.body;
-      
+
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
-      
-      console.log('🎯 Remove attendance request received:', {
+
+      logger.info('🎯 Remove attendance request received:', {
         registrationId: data.registrationId,
-        authenticatedUser: authenticatedUserEmail
+        authenticatedUser: authenticatedUserEmail,
       });
 
       const success = await req.programRepository.removeAttendance(
@@ -158,7 +161,7 @@ export class AttendanceController {
 
       res.json({ success });
     } catch (error) {
-      console.error('Error removing attendance:', error);
+      logger.error('Error removing attendance:', error);
       res.status(500).json({ error: error.message });
     }
   }

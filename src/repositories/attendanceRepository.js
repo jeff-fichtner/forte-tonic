@@ -23,7 +23,7 @@ export class AttendanceRepository extends BaseRepository {
    */
   async create(attendanceData) {
     try {
-      console.log('📝 Recording attendance');
+      this.logger.info('📝 Recording attendance');
 
       // Check if attendance already exists
       const existingId = this.generateAttendanceId(attendanceData);
@@ -45,10 +45,10 @@ export class AttendanceRepository extends BaseRepository {
       // Save via parent
       const created = await super.create(attendanceData, attendanceData.recordedBy);
 
-      console.log('✅ Attendance recorded with ID:', created.id);
+      this.logger.info('✅ Attendance recorded with ID:', created.id);
       return created;
     } catch (error) {
-      console.error('❌ Error recording attendance:', error);
+      this.logger.error('❌ Error recording attendance:', error);
       throw new Error(`Failed to record attendance: ${error.message}`);
     }
   }

@@ -1,23 +1,21 @@
 import { google } from 'googleapis';
-import { ErrorHandling } from '../common/errorHandling.js';
 import { Keys } from '../utils/values/keys.js';
 import { RegistrationType } from '../utils/values/registrationType.js';
 import { CloneUtility } from '../utils/cloneUtility.js';
 import { UuidUtility } from '../utils/uuidUtility.js';
 import { configService } from '../services/configurationService.js';
-import { getLogger } from '../utils/logger.js';
+import { BaseService } from '../infrastructure/base/baseService.js';
 
 /**
  * Enhanced GoogleSheetsDbClient with caching and performance optimizations
  * Consolidated from multiple client versions for better maintainability
  */
-export class GoogleSheetsDbClient {
+export class GoogleSheetsDbClient extends BaseService {
   /**
    * Initialize the Google Sheets client with caching capabilities
    */
   constructor(configurationService = configService) {
-    this.configService = configurationService;
-    this.logger = getLogger();
+    super(configurationService); // Initialize logger via BaseService
 
     // Performance optimization: Add caching
     this.cache = new Map();
@@ -28,14 +26,10 @@ export class GoogleSheetsDbClient {
     const authConfig = this.configService.getGoogleSheetsAuth();
     const sheetsConfig = this.configService.getGoogleSheetsConfig();
 
-    // Initialize Google API clients with service account only
-    this.logger.log('🔑', 'Using service account authentication...');
-    this.logger.log('📧', 'Service Account Email:', authConfig.clientEmail);
-    this.logger.log(
-      '🔐',
-      'Private Key Length:',
-      authConfig.privateKey ? authConfig.privateKey.length : 'NOT SET'
-    );
+    // Validate authentication configuration
+    if (!authConfig.clientEmail || !authConfig.privateKey) {
+      throw new Error('Google Sheets authentication configuration is incomplete');
+    }
 
     this.auth = new google.auth.GoogleAuth({
       credentials: {
@@ -56,11 +50,7 @@ export class GoogleSheetsDbClient {
       );
     }
 
-    this.logger.log(
-      '📝',
-      'GoogleSheetsDbClient initialized with spreadsheet ID:',
-      this.spreadsheetId
-    );
+    this.logger.log('GoogleSheetsDbClient initialized successfully');
 
     // Initialize sheet info structure
     this.workingSheetInfo = {
@@ -302,7 +292,7 @@ export class GoogleSheetsDbClient {
 
       return dataMap;
     } catch (error) {
-      console.error('❌ Batch load failed:', error);
+      this.logger.error('❌ Batch load failed:', error);
       throw error;
     }
   }
@@ -381,7 +371,7 @@ export class GoogleSheetsDbClient {
       const rows = response.data.values || [];
       return rows.map(row => mapFunc(row)).filter(item => item !== null && item !== undefined);
     } catch (error) {
-      console.error(`Error getting data from sheet ${sheetKey}:`, error);
+      this.logger.error(`Error getting data from sheet ${sheetKey}:`, error.message);
       throw error;
     }
   }
@@ -406,7 +396,7 @@ export class GoogleSheetsDbClient {
       const rows = response.data.values || [];
       return this.#convertRowsToObjects(rows, sheetInfo.columnMap);
     } catch (error) {
-      console.error(`Error getting data from sheet ${sheetKey}:`, error);
+      this.logger.error(`Error getting data from sheet ${sheetKey}:`, error);
       throw error;
     }
   }
@@ -440,22 +430,17 @@ export class GoogleSheetsDbClient {
         processedRecord = postProcess(processedRecord);
       }
 
-      console.log(`📝 Appending record to ${sheetKey} with createdBy: ${createdBy}`);
       await this.insertIntoSheet(sheetKey, processedRecord);
 
       if (auditSheet) {
-        console.log(`📋 Creating audit record for ${sheetKey} in ${auditSheet}`);
         if (sheetKey === Keys.REGISTRATIONS) {
           // Special handling for registration audits
-          const auditRecord = this.#createRegistrationAuditRecord(processedRecord, createdBy, false);
-          console.log(`🔍 Created registration audit record:`, {
-            id: auditRecord.id,
-            registrationId: auditRecord.registrationId,
-            createdBy: auditRecord.createdBy,
-            auditSheet
-          });
+          const auditRecord = this.#createRegistrationAuditRecord(
+            processedRecord,
+            createdBy,
+            false
+          );
           await this.insertIntoSheet(auditSheet, auditRecord);
-          console.log(`✅ Successfully inserted registration audit record into ${auditSheet}`);
         } else {
           // Legacy audit handling for other sheets
           const auditValues = this.#convertToAuditValues(Object.values(processedRecord));
@@ -463,15 +448,12 @@ export class GoogleSheetsDbClient {
             auditSheet,
             this.#convertAuditValuesToObject(auditValues, auditSheet)
           );
-          console.log(`✅ Successfully inserted legacy audit record into ${auditSheet}`);
         }
-      } else {
-        this.logger.debug(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
       }
 
       return processedRecord;
     } catch (error) {
-      console.error(`Error appending record to sheet ${sheetKey}:`, error);
+      this.logger.error(`Error appending record to sheet ${sheetKey}:`, error);
       throw error;
     }
   }
@@ -482,8 +464,10 @@ export class GoogleSheetsDbClient {
    */
   async appendRecordv2(sheetKey, record, createdBy) {
     try {
-      console.log(`📝 AppendRecordv2: Appending record to ${sheetKey} with createdBy: ${createdBy}`);
-      
+      this.logger.log(
+        `📝 AppendRecordv2: Appending record to ${sheetKey} with createdBy: ${createdBy}`
+      );
+
       // Direct Google Sheets API call (migrated from RegistrationRepository)
       const sheetInfo = this.workingSheetInfo[sheetKey];
       if (!sheetInfo) {
@@ -491,7 +475,9 @@ export class GoogleSheetsDbClient {
       }
 
       // Convert record to database row format using the record's own method
-      const row = record.toDatabaseRow ? record.toDatabaseRow() : this.#convertObjectToRow(record, sheetInfo.columnMap);
+      const row = record.toDatabaseRow
+        ? record.toDatabaseRow()
+        : this.#convertObjectToRow(record, sheetInfo.columnMap);
 
       // Append directly to spreadsheet
       const response = await this.sheets.spreadsheets.values.append({
@@ -499,8 +485,8 @@ export class GoogleSheetsDbClient {
         range: `${sheetInfo.sheet}!A:P`,
         valueInputOption: 'RAW',
         resource: {
-          values: [row]
-        }
+          values: [row],
+        },
       });
 
       // Clear cache for this sheet since we modified it
@@ -509,12 +495,10 @@ export class GoogleSheetsDbClient {
       // Add audit functionality (from existing appendRecord method)
       const { auditSheet } = sheetInfo;
       if (auditSheet) {
-        console.log(`📋 Creating audit record for ${sheetKey} in ${auditSheet}`);
         if (sheetKey === 'registrations') {
           // Special handling for registration audits
           const auditRecord = this.#createRegistrationAuditRecord(record, createdBy, false);
           await this.insertIntoSheet(auditSheet, auditRecord);
-          console.log(`✅ Successfully inserted registration audit record into ${auditSheet}`);
         } else {
           // Legacy audit handling for other sheets
           const auditValues = this.#convertToAuditValues(Object.values(record));
@@ -522,15 +506,12 @@ export class GoogleSheetsDbClient {
             auditSheet,
             this.#convertAuditValuesToObject(auditValues, auditSheet)
           );
-          console.log(`✅ Successfully inserted legacy audit record into ${auditSheet}`);
         }
-      } else {
-        this.logger.debug(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
       }
 
       return record; // Return the original record without mutation
     } catch (error) {
-      console.error(`Error in appendRecordv2 for sheet ${sheetKey}:`, error);
+      this.logger.error(`Error in appendRecordv2 for sheet ${sheetKey}:`, error);
       throw error;
     }
   }
@@ -564,7 +545,7 @@ export class GoogleSheetsDbClient {
 
       return response.data;
     } catch (error) {
-      console.error(`Error inserting data into sheet ${sheetKey}:`, error);
+      this.logger.error(`Error inserting data into sheet ${sheetKey}:`, error);
       throw error;
     }
   }
@@ -594,7 +575,7 @@ export class GoogleSheetsDbClient {
       // Clear cache for this sheet since we modified it
       this.clearCache(sheetKey);
     } catch (error) {
-      console.error(`Error updating record in sheet ${sheetKey}:`, error);
+      this.logger.error(`Error updating record in sheet ${sheetKey}:`, error);
       throw error;
     }
   }
@@ -628,7 +609,7 @@ export class GoogleSheetsDbClient {
 
       return response.data;
     } catch (error) {
-      console.error(`Error updating data in sheet ${sheetKey}:`, error);
+      this.logger.error(`Error updating data in sheet ${sheetKey}:`, error);
       throw error;
     }
   }
@@ -671,7 +652,7 @@ export class GoogleSheetsDbClient {
 
       this.logger.debug(`Record with ID ${recordId} deleted from ${sheetKey}.`);
     } catch (error) {
-      console.error(`Error deleting record from sheet ${sheetKey}:`, error);
+      this.logger.error(`Error deleting record from sheet ${sheetKey}:`, error);
       throw error;
     }
   }
@@ -723,7 +704,7 @@ export class GoogleSheetsDbClient {
 
       return response.data;
     } catch (error) {
-      console.error(`Error deleting row from sheet ${sheetKey}:`, error);
+      this.logger.error(`Error deleting row from sheet ${sheetKey}:`, error);
       throw error;
     }
   }
@@ -793,32 +774,37 @@ export class GoogleSheetsDbClient {
       const ids = allData.map(item => parseInt(item.id)).filter(id => !isNaN(id));
       return ids.length > 0 ? Math.max(...ids) : 0;
     } catch (error) {
-      console.error(`Error getting max ID from sheet ${sheetKey}:`, error);
+      this.logger.error(`Error getting max ID from sheet ${sheetKey}:`, error);
       return 0;
     }
   }
 
   /**
    * Create a registration audit record with proper schema
-   * @param {Object} registrationRecord - The original registration record
+   * @param {object} registrationRecord - The original registration record
    * @param {string} performedBy - The user who performed the action
    * @param {boolean} isDeleted - Whether this is a delete operation
-   * @returns {Object} Audit record formatted for the registrations-audit sheet
+   * @returns {object} Audit record formatted for the registrations-audit sheet
    */
   #createRegistrationAuditRecord(registrationRecord, performedBy, isDeleted = false) {
     const now = new Date().toISOString();
-    
+
     // Helper function to extract value from value objects or return the value as-is
-    const extractValue = (field) => {
+    const extractValue = field => {
       if (field && typeof field === 'object' && field.value !== undefined) {
         return field.value;
       }
-      if (field && typeof field === 'object' && field.getValue && typeof field.getValue === 'function') {
+      if (
+        field &&
+        typeof field === 'object' &&
+        field.getValue &&
+        typeof field.getValue === 'function'
+      ) {
         return field.getValue();
       }
       return field;
     };
-    
+
     return {
       id: UuidUtility.generateUuid(), // New unique GUID for audit record
       registrationId: extractValue(registrationRecord.id), // ID from the original registration

@@ -77,15 +77,17 @@ app.use(express.urlencoded({ extended: true }));
 const isDevelopment = serverConfig.nodeEnv === 'development';
 
 // Development cache headers to prevent caching issues
-const developmentStaticOptions = isDevelopment ? {
-  setHeaders: (res, path) => {
-    res.set({
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
-    });
-  }
-} : {};
+const developmentStaticOptions = isDevelopment
+  ? {
+      setHeaders: (res, _path) => {
+        res.set({
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        });
+      },
+    }
+  : {};
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'web'), developmentStaticOptions));
@@ -110,7 +112,7 @@ app.use('*', (req, res) => {
 });
 
 // Error handling middleware
-app.use((error, req, res, next) => {
+app.use((error, req, res, _next) => {
   console.error('Unhandled error:', error);
   res.status(500).json({
     error: 'Internal server error',
@@ -126,3 +128,4 @@ export async function initializeApp() {
 }
 
 export { app, PORT };
+export default app;

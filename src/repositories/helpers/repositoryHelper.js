@@ -7,7 +7,13 @@ export class RepositoryHelper {
   /**
    *
    */
-  static async getAndSetData(getFieldFunc, setFieldFunc, name, forceRefresh = false) {
+  static async getAndSetData(
+    getFieldFunc,
+    setFieldFunc,
+    name,
+    forceRefresh = false,
+    logger = null
+  ) {
     // Check if data already exists and we're not forcing refresh
     if (!forceRefresh && getFieldFunc()) {
       return getFieldFunc();
@@ -22,12 +28,12 @@ export class RepositoryHelper {
     }
 
     // Set loading flag and start loading
-    console.log(`Loading ${name}`);
+    logger?.info(`Loading ${name}`);
     this[loadingKey] = setFieldFunc();
-    
+
     try {
       await this[loadingKey];
-      console.log(`${getFieldFunc().length} ${name} found`);
+      logger?.info(`${getFieldFunc().length} ${name} found`);
     } finally {
       // Clear the loading flag
       delete this[loadingKey];

@@ -1,0 +1,148 @@
+# GitHub Actions Workflow for Main Branch
+# ========================================
+#
+# Purpose: Production deployment validation and tagging
+#
+# Two-phase approach:
+# Phase 1 (PR): Validate code quality before allowing merge
+# Phase 2 (Push): Create production tag after successful merge
+#
+# This ensures:
+# - Only tested code can be merged to main
+# - Production tags are only created for validated code
+# - Version is already incremented by dev branch
+
+name: 'Main Branch - Validate and Tag'
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  # Phase 1: Validate code before merge (runs on PR)
+  validate:
+    name: 'Validate Code Quality'
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - name: 'Checkout code'
+      uses: actions/checkout@v4
+
+    - name: 'Setup Node.js'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: 'Install dependencies'
+      run: npm ci
+
+    - name: 'Run linting'
+      run: npm run lint
+
+    - name: 'Run formatting check'
+      run: npm run format:check
+
+    - name: 'Run tests'
+      run: npm test
+
+    - name: 'Validation summary'
+      if: success()
+      run: |
+        echo ""
+        echo "✅ PR VALIDATION PASSED!"
+        echo "======================="
+        echo "✅ Linting: PASSED"
+        echo "✅ Formatting: PASSED"
+        echo "✅ Tests: PASSED"
+        echo "🎯 Ready to merge to main"
+        echo "======================="
+
+    - name: 'Validation failure'
+      if: failure()
+      run: |
+        echo ""
+        echo "❌ PR VALIDATION FAILED!"
+        echo "======================="
+        echo "Cannot merge until all checks pass."
+        echo "======================="
+
+  # Phase 2: Create production tag after merge (runs on push)
+  tag-production:
+    name: 'Create Production Tag'
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    permissions:
+      contents: write  # Needed to push tags
+
+    steps:
+      - name: 'Checkout code'
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: 'Setup Node.js'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 'Get version from package.json'
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Current version: $VERSION"
+
+      - name: 'Configure Git'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: 'Create and push production tag'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG_NAME="v$VERSION"
+
+          # Check if tag already exists
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "⚠️  Tag $TAG_NAME already exists, skipping tag creation"
+            exit 0
+          fi
+
+          # Create annotated tag
+          git tag -a "$TAG_NAME" -m "Production release: $TAG_NAME
+
+          GitHub Actions Build: ${{ github.run_id }}
+          Commit: ${{ github.sha }}
+          Branch: main
+          Tagged: $(date -u)"
+
+          echo "🏷️  Created production tag: $TAG_NAME"
+
+          # Push tag
+          git push origin "$TAG_NAME"
+
+          echo "✅ Production tag pushed to repository"
+
+      - name: 'Summary'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG_NAME="v$VERSION"
+
+          echo ""
+          echo "🎉 PRODUCTION TAG CREATED SUCCESSFULLY!"
+          echo "======================================="
+          echo "🏷️  Tag: $TAG_NAME"
+          echo "📅 Time: $(date -u)"
+          echo "🔗 Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "======================================="
+          echo ""
+          echo "🚀 Next Steps:"
+          echo "  • The production tag '$TAG_NAME' will trigger production deployment"
+          echo "  • Monitor Cloud Build for deployment status"
+          echo "  • Verify deployment health after it completes"

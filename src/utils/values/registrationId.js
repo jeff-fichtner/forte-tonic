@@ -1,7 +1,7 @@
 /**
  * RegistrationId Value Object
  * ==========================
- * 
+ *
  * Handles UUID-based registration identifiers with validation
  */
 
@@ -9,7 +9,7 @@ import { UuidUtility } from '../uuidUtility.js';
 
 // Create compatible functions for the uuid package API
 const uuidv4 = () => UuidUtility.generateUuid();
-const uuidValidate = (uuid) => UuidUtility.isValidUuid(uuid);
+const uuidValidate = uuid => UuidUtility.isValidUuid(uuid);
 
 export class RegistrationId {
   constructor(value) {

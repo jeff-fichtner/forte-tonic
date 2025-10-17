@@ -1,5 +1,4 @@
 // Native Duration extensions for backward compatibility
-import { DurationHelpers } from '../utilities/durationHelpers.js';
 
 // Add methods to native Duration class for 12-hour format
 if (typeof window !== 'undefined' && window.Duration) {

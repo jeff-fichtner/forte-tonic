@@ -1,10 +1,11 @@
 /**
- * Registration Repository 
+ * Registration Repository
  * =======================
- * 
+ *
  * Repository for simplified registration model with UUID primary keys
  */
 
+import crypto from 'crypto';
 import { BaseRepository } from './baseRepository.js';
 import { Registration } from '../models/shared/registration.js';
 import { RegistrationId } from '../utils/values/registrationId.js';
@@ -20,7 +21,7 @@ export class RegistrationRepository extends BaseRepository {
   async getById(id) {
     try {
       const registrationId = typeof id === 'string' ? new RegistrationId(id) : id;
-      
+
       // Check cache first
       const cacheKey = `registrations:${registrationId.getValue()}`;
       if (this.cache.has(cacheKey)) {
@@ -31,24 +32,26 @@ export class RegistrationRepository extends BaseRepository {
       }
 
       // Use cached database client method instead of direct API call
-      const allRegistrations = await this.dbClient.getCachedData('registrations', row => 
+      const allRegistrations = await this.dbClient.getCachedData('registrations', row =>
         Registration.fromDatabaseRow ? Registration.fromDatabaseRow(row) : new Registration(row)
       );
 
       // Find registration by UUID
-      const registration = allRegistrations.find(reg => reg.id.getValue() === registrationId.getValue());
-      
+      const registration = allRegistrations.find(
+        reg => reg.id.getValue() === registrationId.getValue()
+      );
+
       if (registration) {
         // Cache the individual result
         this.cache.set(cacheKey, {
           data: registration,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
       }
-      
+
       return registration || null;
     } catch (error) {
-      console.error('Error getting registration by ID:', error);
+      this.logger.error('Error getting registration by ID:', error);
       throw error;
     }
   }
@@ -59,14 +62,16 @@ export class RegistrationRepository extends BaseRepository {
   async getByStudentId(studentId) {
     try {
       // Use cached database client method instead of direct API call
-      const allRegistrations = await this.dbClient.getCachedData('registrations', row => 
+      const allRegistrations = await this.dbClient.getCachedData('registrations', row =>
         Registration.fromDatabaseRow ? Registration.fromDatabaseRow(row) : new Registration(row)
       );
 
       // Filter registrations by student ID
-      return allRegistrations.filter(reg => reg.studentId && reg.studentId.getValue() === studentId);
+      return allRegistrations.filter(
+        reg => reg.studentId && reg.studentId.getValue() === studentId
+      );
     } catch (error) {
-      console.error('Error getting registrations by student ID:', error);
+      this.logger.error('Error getting registrations by student ID:', error);
       throw error;
     }
   }
@@ -77,14 +82,16 @@ export class RegistrationRepository extends BaseRepository {
   async getByInstructorId(instructorId) {
     try {
       // Use cached database client method instead of direct API call
-      const allRegistrations = await this.dbClient.getCachedData('registrations', row => 
+      const allRegistrations = await this.dbClient.getCachedData('registrations', row =>
         Registration.fromDatabaseRow ? Registration.fromDatabaseRow(row) : new Registration(row)
       );
 
       // Filter registrations by instructor ID
-      return allRegistrations.filter(reg => reg.instructorId && reg.instructorId.getValue() === instructorId);
+      return allRegistrations.filter(
+        reg => reg.instructorId && reg.instructorId.getValue() === instructorId
+      );
     } catch (error) {
-      console.error('Error getting registrations by instructor ID:', error);
+      this.logger.error('Error getting registrations by instructor ID:', error);
       throw error;
     }
   }
@@ -98,24 +105,30 @@ export class RegistrationRepository extends BaseRepository {
       // Use cached database client method instead of direct API call
       const allRegistrations = await this.dbClient.getCachedData('registrations', row => {
         // Skip header rows and invalid data
-        if (!row || !row[0] || 
-            row[0] === 'Id' || row[0] === 'id' || 
-            row[0].toLowerCase().includes('uuid') ||
-            row[0].toLowerCase().includes('registration')) {
+        if (
+          !row ||
+          !row[0] ||
+          row[0] === 'Id' ||
+          row[0] === 'id' ||
+          row[0].toLowerCase().includes('uuid') ||
+          row[0].toLowerCase().includes('registration')
+        ) {
           return null; // Skip this row
         }
-        
+
         try {
-          return Registration.fromDatabaseRow ? Registration.fromDatabaseRow(row) : new Registration(row);
+          return Registration.fromDatabaseRow
+            ? Registration.fromDatabaseRow(row)
+            : new Registration(row);
         } catch (error) {
-          console.warn(`Skipping invalid registration row:`, row[0], error.message);
+          this.logger.warn(`Skipping invalid registration row:`, row[0], error.message);
           return null; // Skip invalid rows
         }
       });
 
       // Handle case where allRegistrations is undefined/null
       if (!allRegistrations) {
-        console.warn('No registrations data returned from database client');
+        this.logger.warn('No registrations data returned from database client');
         return [];
       }
 
@@ -125,7 +138,7 @@ export class RegistrationRepository extends BaseRepository {
       // Since status field was removed, all registrations are considered active
       return validRegistrations;
     } catch (error) {
-      console.error('Error getting active registrations:', error);
+      this.logger.error('Error getting active registrations:', error);
       throw error;
     }
   }
@@ -165,7 +178,7 @@ export class RegistrationRepository extends BaseRepository {
     try {
       // Generate UUID if not provided
       const registrationId = registrationData.id || this.generateUUID();
-      
+
       // Create Registration instance with a data object
       const registration = new Registration({
         id: registrationId,
@@ -183,7 +196,11 @@ export class RegistrationRepository extends BaseRepository {
         classTitle: registrationData.classTitle,
         expectedStartDate: registrationData.expectedStartDate,
         createdAt: new Date().toISOString(),
-        createdBy: registrationData.createdBy || (() => { throw new Error('createdBy is required for audit trail'); })()
+        createdBy:
+          registrationData.createdBy ||
+          (() => {
+            throw new Error('createdBy is required for audit trail');
+          })(),
       });
 
       // Use the new appendRecordv2 method that handles direct Google Sheets append and audit
@@ -198,7 +215,7 @@ export class RegistrationRepository extends BaseRepository {
 
       return registration;
     } catch (error) {
-      console.error('Error creating registration:', error);
+      this.logger.error('Error creating registration:', error);
       throw error;
     }
   }
@@ -213,13 +230,13 @@ export class RegistrationRepository extends BaseRepository {
       }
 
       const registrationId = typeof id === 'string' ? new RegistrationId(id) : id;
-      
+
       // First verify the registration exists using cached data
       const registration = await this.getById(registrationId);
       if (!registration) {
         throw new Error(`Registration with ID ${registrationId.getValue()} not found`);
       }
-      
+
       // Use the database client's deleteRecord method which handles audit trails and proper deletion
       await this.dbClient.deleteRecord('registrations', registrationId.getValue(), userId);
 
@@ -229,7 +246,7 @@ export class RegistrationRepository extends BaseRepository {
 
       return true;
     } catch (error) {
-      console.error('Error deleting registration:', error);
+      this.logger.error('Error deleting registration:', error);
       throw error;
     }
   }
@@ -242,11 +259,11 @@ export class RegistrationRepository extends BaseRepository {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
       return crypto.randomUUID();
     }
-    
+
     // Fallback to Math.random() based UUID generation
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0;
-      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
       return v.toString(16);
     });
   }

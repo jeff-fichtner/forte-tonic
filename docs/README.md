@@ -1,6 +1,8 @@
 # Documentation Index
 
-This directory contains all documentation for the Tonic Music Program Registration System, organized into two main categories:
+This directory contains all documentation for the Tonic Music Program Registration System. For AI assistants working on this project, see the [Claude Codebase Cache](../CLAUDE_CODEBASE_CACHE.md) for quick reference and development commands.
+
+Documentation is organized into two main categories:
 
 ## 📋 Business Documentation (`business/`)
 *Documents for administrators, stakeholders, and decision-makers*
@@ -73,4 +75,28 @@ These documents are written for:
 
 ---
 
-*Last updated: August 4, 2025*
+## 🔧 Analysis & Development Tools
+- **[Development Tools](../dev/tools/README.md)** - Codebase analysis and development utilities
+- **[Analysis Results](../dev/tools/codebase-analysis/results/)** - Generated analysis reports and metrics
+
+## 📖 Quick Navigation
+
+### For New Developers
+1. Start with [README.md](../README.md) for project overview
+2. Review [Claude Codebase Cache](../CLAUDE_CODEBASE_CACHE.md) for development setup
+3. Check [Architecture](technical/ARCHITECTURE.md) for system design
+4. See [Environment Variables](technical/ENVIRONMENT_VARIABLES.md) for configuration
+
+### For Administrators  
+1. Review [Technical Hosting Proposal](business/TECHNICAL_HOSTING_PROPOSAL.md)
+2. Follow [Node Setup Guide](business/NODE_SETUP.md)
+3. Use [Deployment Checklist](business/DEPLOYMENT_CHECKLIST.md)
+
+### For AI Assistants
+1. Always refer to [Claude Codebase Cache](../CLAUDE_CODEBASE_CACHE.md) first
+2. Use development tools in [dev/tools/](../dev/tools/) for analysis
+3. Check recent analysis results for current codebase state
+
+---
+
+*Last updated: August 31, 2025*

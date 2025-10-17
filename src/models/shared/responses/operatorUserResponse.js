@@ -109,7 +109,7 @@ export class OperatorUserResponse {
       configuration: this.configuration,
       roles: this.roles,
       primaryRole: this.getPrimaryRole(),
-      displayName: this.getDisplayName()
+      displayName: this.getDisplayName(),
     };
   }
 

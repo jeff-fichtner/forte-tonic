@@ -23,12 +23,13 @@ export function formatClassNameForDropdown(cls) {
   if (cls.minimumGrade !== undefined && cls.maximumGrade !== undefined) {
     const minGradeFormatted = formatGrade(cls.minimumGrade);
     const maxGradeFormatted = formatGrade(cls.maximumGrade);
-    
+
     if (minGradeFormatted && maxGradeFormatted) {
-      const gradeRange = minGradeFormatted === maxGradeFormatted 
-        ? minGradeFormatted 
-        : `${minGradeFormatted}-${maxGradeFormatted}`;
-      
+      const gradeRange =
+        minGradeFormatted === maxGradeFormatted
+          ? minGradeFormatted
+          : `${minGradeFormatted}-${maxGradeFormatted}`;
+
       className = `${className} (${gradeRange})`;
     }
   }
@@ -51,12 +52,12 @@ export function formatClassNameWithGradeCorrection(cls) {
   // Build class name with grade range but WITHOUT time to avoid duplication
   // since ClassManager.formatClassNameWithTime() will add time appropriately
   let displayName;
-  
+
   if (cls.title && (cls.minimumGrade !== undefined || cls.maximumGrade !== undefined)) {
     // Format grade range using the same logic as Class model
     const minGrade = cls.formattedMinimumGrade || formatGrade(cls.minimumGrade) || '';
     const maxGrade = cls.formattedMaximumGrade || formatGrade(cls.maximumGrade) || '';
-    
+
     if (minGrade && maxGrade) {
       displayName = `${cls.title} (${minGrade}-${maxGrade})`;
     } else if (minGrade) {
@@ -70,16 +71,16 @@ export function formatClassNameWithGradeCorrection(cls) {
     // Fallback to basic class identification
     displayName = cls.title || cls.instrument || `Class ${cls.id}`;
   }
-  
+
   // Check if the display name contains "kindergarten" and replace it with "K"
   displayName = displayName.replace(/\bkindergarten\b/gi, 'K');
-  
+
   // Also handle the case where it might show "0" instead of "K" in grade ranges
   displayName = displayName.replace(/\b0-/g, 'K-');
   displayName = displayName.replace(/-0\b/g, '-K');
   displayName = displayName.replace(/\(0\)/g, '(K)');
   displayName = displayName.replace(/\(0-/g, '(K-');
   displayName = displayName.replace(/-0\)/g, '-K)');
-  
+
   return displayName;
 }

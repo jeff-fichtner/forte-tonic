@@ -1,17 +1,15 @@
 import express from 'express';
-import { RegistrationType } from '../utils/values/registrationType.js';
-import { _fetchData } from '../utils/helpers.js';
-import { configService } from '../services/configurationService.js';
-import { UserTransformService } from '../services/userTransformService.js';
-import { currentConfig, isProduction, isStaging, version } from '../config/environment.js';
+import { version } from '../config/environment.js';
 
 // Import application layer controllers
-import { Router } from 'express';
 import { UserController } from '../controllers/userController.js';
 import { RegistrationController } from '../controllers/registrationController.js';
 import { SystemController } from '../controllers/systemController.js';
 import { AttendanceController } from '../controllers/attendanceController.js';
-import { extractSingleRequestData, extractPaginatedRequestData } from '../middleware/requestDataNormalizer.js';
+import {
+  extractSingleRequestData,
+  extractPaginatedRequestData,
+} from '../middleware/requestDataNormalizer.js';
 import { initializeRepositories } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -28,7 +26,11 @@ router.get('/version', (req, res) => {
 router.post('/getOperatorUser', UserController.getOperatorUser);
 
 // Authenticate user by access code
-router.post('/authenticateByAccessCode', extractSingleRequestData, UserController.authenticateByAccessCode);
+router.post(
+  '/authenticateByAccessCode',
+  extractSingleRequestData,
+  UserController.authenticateByAccessCode
+);
 
 // Test endpoint to verify Google Sheets connectivity
 router.post('/testConnection', SystemController.testConnection);
@@ -48,13 +50,25 @@ router.post('/getStudents', extractPaginatedRequestData, UserController.getStude
 // Access code lookup endpoints
 router.post('/getAdminByAccessCode', extractSingleRequestData, UserController.getAdminByAccessCode);
 
-router.post('/getInstructorByAccessCode', extractSingleRequestData, UserController.getInstructorByAccessCode);
+router.post(
+  '/getInstructorByAccessCode',
+  extractSingleRequestData,
+  UserController.getInstructorByAccessCode
+);
 
-router.post('/getParentByAccessCode', extractSingleRequestData, UserController.getParentByAccessCode);
+router.post(
+  '/getParentByAccessCode',
+  extractSingleRequestData,
+  UserController.getParentByAccessCode
+);
 
 router.post('/getClasses', extractPaginatedRequestData, RegistrationController.getClasses);
 
-router.post('/getRegistrations', extractPaginatedRequestData, RegistrationController.getRegistrations);
+router.post(
+  '/getRegistrations',
+  extractPaginatedRequestData,
+  RegistrationController.getRegistrations
+);
 
 router.post('/getRooms', extractPaginatedRequestData, RegistrationController.getRooms);
 

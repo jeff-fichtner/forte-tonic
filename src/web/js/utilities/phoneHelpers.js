@@ -10,9 +10,12 @@
 export function formatPhone(phoneNumber) {
   if (!phoneNumber) return '';
 
+  // Strip all formatting first to get just digits
+  const cleaned = phoneNumber.replace(/\D/g, '');
+
   // Format as (XXX) XXX-XXXX for 10-digit numbers
-  if (phoneNumber.length === 10) {
-    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6)}`;
+  if (cleaned.length === 10) {
+    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
   }
 
   // Return original if not standard 10-digit format
@@ -26,7 +29,7 @@ export function formatPhone(phoneNumber) {
  */
 export function isValidUnformattedPhone(phoneNumber) {
   if (!phoneNumber) return false;
-  
+
   const cleaned = phoneNumber.replace(/\D/g, '');
   return cleaned.length === 10;
 }
@@ -48,13 +51,13 @@ export function stripPhoneFormatting(phoneNumber) {
  */
 export function formatPhoneAsTyped(value) {
   if (!value) return '';
-  
+
   // Remove all non-digit characters
   const digits = value.replace(/\D/g, '');
-  
+
   // Limit to 10 digits
   const limitedDigits = digits.substring(0, 10);
-  
+
   // Apply formatting based on length
   if (limitedDigits.length <= 3) {
     return limitedDigits;
@@ -72,17 +75,17 @@ export function formatPhoneAsTyped(value) {
  */
 export function isValidPhoneNumber(phoneNumber) {
   if (!phoneNumber) return false;
-  
+
   const digits = stripPhoneFormatting(phoneNumber);
-  
+
   // Must be exactly 10 digits
   if (digits.length !== 10) return false;
-  
+
   // For development/testing, be more permissive
   // In production, you might want stricter NANP validation
   // For now, just ensure it's 10 digits and not all zeros
   if (digits === '0000000000') return false;
-  
+
   return true;
 }
 

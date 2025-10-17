@@ -11,11 +11,13 @@ const router = express.Router();
 const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
 
 // Development cache headers to prevent caching issues
-const developmentHeaders = isDevelopment ? {
-  'Cache-Control': 'no-cache, no-store, must-revalidate',
-  'Pragma': 'no-cache',
-  'Expires': '0'
-} : {};
+const developmentHeaders = isDevelopment
+  ? {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
+    }
+  : {};
 
 // Serve the main HTML file at root
 router.get('/', (req, res) => {

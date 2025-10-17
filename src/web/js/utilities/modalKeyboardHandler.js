@@ -1,7 +1,7 @@
 /**
  * Modal Keyboard Handler Utility
  * ==============================
- * 
+ *
  * Provides centralized keyboard event handling for all application modals.
  * Supports ESC to close and Enter to confirm modal actions.
  */
@@ -10,7 +10,7 @@ export class ModalKeyboardHandler {
   /**
    * Attach keyboard event handlers to a modal
    * @param {HTMLElement} modalElement - The modal DOM element
-   * @param {Object} options - Configuration options
+   * @param {object} options - Configuration options
    * @param {Function} [options.onConfirm] - Callback for Enter key (confirm action)
    * @param {Function} [options.onCancel] - Callback for ESC key (cancel action)
    * @param {boolean} [options.allowEscape=true] - Whether ESC key is allowed to close modal
@@ -30,11 +30,11 @@ export class ModalKeyboardHandler {
       allowEscape = true,
       allowEnter = true,
       confirmSelector = '.modal-footer .btn:not(.btn-flat):not(.modal-close)',
-      cancelSelector = '.modal-footer .btn-flat, .modal-footer .modal-close'
+      cancelSelector = '.modal-footer .btn-flat, .modal-footer .modal-close',
     } = options;
 
     // Create keyboard event handler
-    const keyboardHandler = (event) => {
+    const keyboardHandler = event => {
       // Only handle keyboard events when this modal is open and visible
       const modalInstance = M.Modal.getInstance(modalElement);
       if (!modalInstance || !modalInstance.isOpen) {
@@ -132,7 +132,7 @@ export class ModalKeyboardHandler {
   /**
    * Attach keyboard handlers for time slot selection (non-modal interface)
    * @param {HTMLElement} containerElement - The container with time slots
-   * @param {Object} options - Configuration options
+   * @param {object} options - Configuration options
    * @param {Function} [options.onConfirm] - Callback for Enter key on selected slot
    * @param {Function} [options.onCancel] - Callback for ESC key (clear selection)
    */
@@ -144,7 +144,7 @@ export class ModalKeyboardHandler {
 
     const { onConfirm = null, onCancel = null } = options;
 
-    const keyboardHandler = (event) => {
+    const keyboardHandler = event => {
       // Only handle if container is visible and has focus or selected slots
       if (!containerElement.offsetParent) return; // Hidden element check
 
