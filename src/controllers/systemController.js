@@ -3,8 +3,11 @@
  * Handles health checks, diagnostics, and testing endpoints
  */
 
-import { currentConfig, isProduction, isStaging } from '../config/environment.js';
+import { currentConfig, isProduction, isStaging, version } from '../config/environment.js';
+import { getLogger } from '../utils/logger.js';
 import { configService } from '../services/configurationService.js';
+
+const logger = getLogger();
 
 export class SystemController {
   /**
@@ -16,7 +19,12 @@ export class SystemController {
         status: 'healthy',
         environment: process.env.NODE_ENV || 'development',
         timestamp: new Date().toISOString(),
-        version: process.env.npm_package_version || '1.0.0',
+        version: version.number,
+        versionInfo: {
+          buildDate: version.buildDate,
+          gitCommit: version.gitCommit?.substring(0, 7),
+          environment: version.environment,
+        },
         baseUrl: currentConfig.baseUrl,
         features: {
           isProduction,
@@ -25,7 +33,7 @@ export class SystemController {
         },
       });
     } catch (error) {
-      console.error('Error getting health status:', error);
+      logger.error('Error getting health status:', error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -35,17 +43,17 @@ export class SystemController {
    */
   static async testConnection(req, res) {
     try {
-      console.log('Testing Google Sheets connection...');
+      logger.info('Testing Google Sheets connection...');
 
       const authConfig = configService.getGoogleSheetsAuth();
       const sheetsConfig = configService.getGoogleSheetsConfig();
 
-      console.log('Service Account Email:', authConfig.clientEmail);
-      console.log('Spreadsheet ID:', sheetsConfig.spreadsheetId);
+      logger.info('Service Account Email:', authConfig.clientEmail);
+      logger.info('Spreadsheet ID:', sheetsConfig.spreadsheetId);
 
       // First, let's test basic authentication
       const auth = req.dbClient.auth;
-      console.log('Auth type:', auth.constructor.name);
+      logger.info('Auth type:', auth.constructor.name);
 
       // Try to get spreadsheet metadata (requires less permissions)
       const spreadsheetId = req.dbClient.spreadsheetId;
@@ -57,7 +65,7 @@ export class SystemController {
       });
 
       const availableSheets = response.data.sheets.map(sheet => sheet.properties.title);
-      console.log('Available sheets:', availableSheets);
+      logger.info('Available sheets:', availableSheets);
 
       const testResult = {
         success: true,
@@ -69,10 +77,10 @@ export class SystemController {
         serviceAccountEmail: authConfig.clientEmail,
       };
 
-      console.log('Connection test result:', testResult);
+      logger.info('Connection test result:', testResult);
       res.json(testResult);
     } catch (error) {
-      console.error('Error testing Google Sheets connection:', error);
+      logger.error('Error testing Google Sheets connection:', error);
       res.status(500).json({
         success: false,
         error: error.message,
@@ -88,7 +96,7 @@ export class SystemController {
     try {
       const { sheetName = 'Students', range = 'A1:Z1000' } = req.body;
 
-      console.log(`Testing data retrieval from sheet: ${sheetName}, range: ${sheetName}!${range}`);
+      logger.info(`Testing data retrieval from sheet: ${sheetName}, range: ${sheetName}!${range}`);
 
       const spreadsheetId = req.dbClient.spreadsheetId;
       const sheets = req.dbClient.sheets;
@@ -111,10 +119,10 @@ export class SystemController {
         sampleData: values.slice(0, 2), // First 2 rows as sample
       };
 
-      console.log('Sheet data test result:', testResult);
+      logger.info('Sheet data test result:', testResult);
       res.json(testResult);
     } catch (error) {
-      console.error('Error testing sheet data retrieval:', error);
+      logger.error('Error testing sheet data retrieval:', error);
       res.status(500).json({
         success: false,
         error: error.message,
@@ -145,25 +153,25 @@ export class SystemController {
       }
 
       // Clear ALL caches in the system
-      
+
       // 1. Clear database client cache (the main Google Sheets cache)
       const dbClient = userRepository.dbClient;
       dbClient.clearCache();
-      console.log('✅ Database client cache cleared');
+      logger.info('✅ Database client cache cleared');
 
       // 2. Clear ALL repository-level caches systematically
       const repositoryTypes = [
         'userRepository',
         'registrationRepository',
         'instructorRepository',
-        'studentRepository', 
+        'studentRepository',
         'adminRepository',
         'parentRepository',
         'attendanceRepository',
-        'programRepository'
+        'programRepository',
       ];
 
-      let clearedRepositories = [];
+      const clearedRepositories = [];
       for (const repoType of repositoryTypes) {
         try {
           const repository = serviceContainer.get(repoType);
@@ -173,20 +181,22 @@ export class SystemController {
           }
         } catch (e) {
           // Repository might not be registered or initialized yet
-          console.log(`⚠️ Could not clear cache for ${repoType}: ${e.message}`);
+          logger.info(`⚠️ Could not clear cache for ${repoType}: ${e.message}`);
         }
       }
-      
-      console.log(`✅ Repository caches cleared: ${clearedRepositories.join(', ')}`)
 
-      console.log(`🧹 All caches cleared by admin: ${validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName}`);
-      res.json({ 
-        success: true, 
+      logger.info(`✅ Repository caches cleared: ${clearedRepositories.join(', ')}`);
+
+      logger.info(
+        `🧹 All caches cleared by admin: ${validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName}`
+      );
+      res.json({
+        success: true,
         message: 'All caches cleared successfully',
-        clearedBy: validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName
+        clearedBy: validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName,
       });
     } catch (error) {
-      console.error('Error clearing cache:', error);
+      logger.error('Error clearing cache:', error);
       res.status(500).json({ error: error.message });
     }
   }
@@ -199,10 +209,10 @@ export class SystemController {
       const appConfig = configService.getApplicationConfig();
       res.json({
         success: true,
-        config: appConfig
+        config: appConfig,
       });
     } catch (error) {
-      console.error('Error getting application config:', error);
+      logger.error('Error getting application config:', error);
       res.status(500).json({ error: error.message });
     }
   }

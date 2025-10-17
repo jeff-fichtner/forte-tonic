@@ -1,5 +1,5 @@
 /**
- * Environment Configuration for Render Deployments
+ * Environment Configuration
  * Manages different settings for staging vs production environments
  */
 
@@ -49,8 +49,8 @@ const config = {
       privateKey: process.env.GOOGLE_PRIVATE_KEY,
     },
     operatorEmail: process.env.OPERATOR_EMAIL,
-    baseUrl: process.env.RENDER_EXTERNAL_URL || 'https://tonic-staging.onrender.com',
-    logLevel: LogLevel.INFO,
+    baseUrl: process.env.SERVICE_URL,
+    logLevel: process.env.LOG_LEVEL || LogLevel.INFO,
   },
 
   [NodeEnv.PRODUCTION]: {
@@ -61,8 +61,8 @@ const config = {
       privateKey: process.env.GOOGLE_PRIVATE_KEY,
     },
     operatorEmail: process.env.OPERATOR_EMAIL,
-    baseUrl: process.env.RENDER_EXTERNAL_URL || 'https://tonic.onrender.com',
-    logLevel: LogLevel.WARN,
+    baseUrl: process.env.SERVICE_URL,
+    logLevel: process.env.LOG_LEVEL || LogLevel.WARN,
   },
 };
 
@@ -103,21 +103,21 @@ export const currentFeatures = features[environment];
 export const version = {
   number: getVersionNumber(),
   buildDate: getBuildDate(),
-  gitCommit: process.env.RENDER_GIT_COMMIT || getLocalGitCommit(),
+  gitCommit: process.env.BUILD_GIT_COMMIT || getLocalGitCommit(),
   environment,
   isStaging: environment === NodeEnv.STAGING,
-  displayVersion: environment !== NodeEnv.PRODUCTION // Show in all environments except production
+  displayVersion: environment !== NodeEnv.PRODUCTION, // Show in all environments except production
 };
 
 /**
  * Get version number - only use package.json version on build server
  */
 function getVersionNumber() {
-  // On Render build server, use package.json version
-  if (process.env.RENDER || process.env.CI) {
+  // On CI/build server, use package.json version
+  if (process.env.CI) {
     return packageJson.version;
   }
-  
+
   // For local development, use a static dev version
   return '0.0.0-dev';
 }
@@ -126,11 +126,11 @@ function getVersionNumber() {
  * Get build date - only use current date on build server
  */
 function getBuildDate() {
-  // On Render build server, use current timestamp
-  if (process.env.RENDER || process.env.CI) {
+  // On CI/build server, use current timestamp
+  if (process.env.CI) {
     return new Date().toISOString();
   }
-  
+
   // For local development, use a static date
   return '2025-01-01T00:00:00.000Z';
 }
@@ -140,7 +140,7 @@ function getBuildDate() {
  */
 function getLocalGitCommit() {
   // For local development, just return a static identifier
-  // The actual git commit will be available on the build server via RENDER_GIT_COMMIT
+  // The actual git commit will be available on the build server via BUILD_GIT_COMMIT
   return 'local-dev';
 }
 

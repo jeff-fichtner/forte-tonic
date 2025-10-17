@@ -6,13 +6,15 @@
  * processes including validation, conflict checking, and persistence.
  */
 
+import { BaseService } from '../infrastructure/base/baseService.js';
 import { RegistrationValidationService } from './registrationValidationService.js';
 import { RegistrationConflictService } from './registrationConflictService.js';
 import { ProgramManagementService } from './programManagementService.js';
 import { Registration } from '../models/shared/registration.js';
 
-export class RegistrationApplicationService {
-  constructor(dependencies) {
+export class RegistrationApplicationService extends BaseService {
+  constructor(dependencies, configService) {
+    super(configService); // Initialize logger via BaseService
     this.registrationRepository = dependencies.registrationRepository;
     this.userRepository = dependencies.userRepository;
     this.programRepository = dependencies.programRepository;
@@ -24,7 +26,7 @@ export class RegistrationApplicationService {
    */
   async processRegistration(registrationData, userId) {
     try {
-      console.log('🎵 Processing new registration');
+      this.logger.info('🎵 Processing new registration');
 
       // Step 1: Handle group registration data population
       if (registrationData.registrationType === 'group' && registrationData.classId) {
@@ -47,12 +49,12 @@ export class RegistrationApplicationService {
           registrationData.transportationType = 'pickup'; // Default for group classes
         }
 
-        console.log('🎓 Group registration data populated from class:', {
+        this.logger.info('🎓 Group registration data populated from class:', {
           classId: registrationData.classId,
           instructorId: registrationData.instructorId,
           day: registrationData.day,
           startTime: registrationData.startTime,
-          instrument: registrationData.instrument
+          instrument: registrationData.instrument,
         });
       }
 
@@ -67,13 +69,13 @@ export class RegistrationApplicationService {
       if (registrationData.transportationType === 'bus') {
         // Ensure length is a number (convert from string if needed)
         const lengthMinutes = parseInt(registrationData.length) || 0;
-        
+
         const busValidation = this.#validateBusTimeRestrictions(
           registrationData.day,
           registrationData.startTime,
           lengthMinutes
         );
-        
+
         if (!busValidation.isValid) {
           throw new Error(busValidation.errorMessage);
         }
@@ -99,23 +101,30 @@ export class RegistrationApplicationService {
       // Step 3.5: Populate room assignment from instructor's schedule for both group and private registrations
       const dayName = registrationData.day.toLowerCase();
       const roomIdKey = `${dayName}RoomId`;
-      
+
       // Get room ID from instructor's availability for the specific day
-      if (instructor.availability && instructor.availability[dayName] && instructor.availability[dayName].roomId) {
+      if (
+        instructor.availability &&
+        instructor.availability[dayName] &&
+        instructor.availability[dayName].roomId
+      ) {
         registrationData.roomId = instructor.availability[dayName].roomId;
       } else if (instructor[roomIdKey]) {
         // Fallback: try direct property access on instructor object
         registrationData.roomId = instructor[roomIdKey];
       } else {
-        console.warn(`No room assignment found for instructor ${instructor.id} on ${dayName}`);
+        this.logger.warn(`No room assignment found for instructor ${instructor.id} on ${dayName}`);
         registrationData.roomId = 'ROOM-001'; // Default fallback
       }
 
-      console.log(`🏫 Room assignment for ${registrationData.registrationType} registration:`, {
-        day: dayName,
-        instructorId: instructor.id,
-        roomId: registrationData.roomId
-      });
+      this.logger.info(
+        `🏫 Room assignment for ${registrationData.registrationType} registration:`,
+        {
+          day: dayName,
+          instructorId: instructor.id,
+          roomId: registrationData.roomId,
+        }
+      );
 
       // Step 4: Program-specific validation
       const programValidation = ProgramManagementService.validateRegistration(
@@ -129,20 +138,23 @@ export class RegistrationApplicationService {
 
       // Step 5: Check for conflicts with existing registrations
       const existingRegistrations = await this.registrationRepository.findAll();
-      
+
       // Check for duplicate group registrations (student can only be enrolled in a class once)
       if (registrationData.registrationType === 'group' && registrationData.classId) {
-        const existingGroupRegistration = existingRegistrations.find(reg => 
-          reg.studentId === registrationData.studentId && 
-          reg.classId === registrationData.classId &&
-          reg.registrationType === 'group'
+        const existingGroupRegistration = existingRegistrations.find(
+          reg =>
+            reg.studentId === registrationData.studentId &&
+            reg.classId === registrationData.classId &&
+            reg.registrationType === 'group'
         );
-        
+
         if (existingGroupRegistration) {
-          throw new Error(`Student is already enrolled in this class. Students can only be enrolled in a class once.`);
+          throw new Error(
+            `Student is already enrolled in this class. Students can only be enrolled in a class once.`
+          );
         }
       }
-      
+
       const conflictCheck = await RegistrationConflictService.checkConflicts(
         registrationData,
         existingRegistrations
@@ -155,7 +167,7 @@ export class RegistrationApplicationService {
       }
 
       // Step 6: Create registration model
-      console.log('📝 Registration data before creating model:', registrationData);
+      this.logger.info('📝 Registration data before creating model:', registrationData);
       const registrationEntity = Registration.createNew(
         registrationData.studentId,
         registrationData.instructorId,
@@ -178,18 +190,17 @@ export class RegistrationApplicationService {
 
       // Step 7: Persist the registration
       const registrationDataObject = registrationEntity.toDataObject();
-      console.log('📊 Registration data object before persistence:', registrationDataObject);
-      
-      const persistedRegistration = await this.registrationRepository.create(
-        registrationDataObject
-      );
+      this.logger.info('📊 Registration data object before persistence:', registrationDataObject);
+
+      const persistedRegistration =
+        await this.registrationRepository.create(registrationDataObject);
 
       // Step 8: Audit logging
       if (this.auditService) {
         await this.auditService.logRegistrationCreated(persistedRegistration, userId);
       }
 
-      console.log('✅ Registration processed successfully:', persistedRegistration.id);
+      this.logger.info('✅ Registration processed successfully:', persistedRegistration.id);
 
       // Generate lesson schedule with complete registration data
       let lessonSchedule = null;
@@ -200,14 +211,14 @@ export class RegistrationApplicationService {
           expectedStartDate: persistedRegistration.expectedStartDate || new Date(),
           day: persistedRegistration.day,
           startTime: persistedRegistration.startTime,
-          length: persistedRegistration.length
+          length: persistedRegistration.length,
         };
 
         if (scheduleData.day && scheduleData.startTime && scheduleData.length) {
           lessonSchedule = ProgramManagementService.generateLessonSchedule(scheduleData);
         }
       } catch (scheduleError) {
-        console.warn('⚠️ Could not generate lesson schedule:', scheduleError.message);
+        this.logger.warn('⚠️ Could not generate lesson schedule:', scheduleError.message);
         lessonSchedule = [];
       }
 
@@ -217,7 +228,7 @@ export class RegistrationApplicationService {
         lessonSchedule: lessonSchedule,
       };
     } catch (error) {
-      console.error('❌ Registration processing failed:', error);
+      this.logger.error('❌ Registration processing failed:', error);
 
       // Audit failure
       if (this.auditService) {
@@ -233,7 +244,7 @@ export class RegistrationApplicationService {
    */
   async cancelRegistration(registrationId, reason, userId) {
     try {
-      console.log('🚫 Cancelling registration:', registrationId);
+      this.logger.info('🚫 Cancelling registration:', registrationId);
 
       // Get existing registration
       const existingData = await this.registrationRepository.findById(registrationId);
@@ -246,7 +257,7 @@ export class RegistrationApplicationService {
 
       // For admin/operator deletions, bypass complex business logic checks
       // and proceed with deletion (as requested - work with current schema)
-      
+
       // Perform cancellation
       await this.registrationRepository.delete(registrationId, userId);
 
@@ -261,14 +272,14 @@ export class RegistrationApplicationService {
         await this.auditService.logRegistrationCancelled(registration, reason, userId);
       }
 
-      console.log('✅ Registration cancelled successfully');
+      this.logger.info('✅ Registration cancelled successfully');
 
       return {
         success: true,
-        message: 'Registration cancelled successfully'
+        message: 'Registration cancelled successfully',
       };
     } catch (error) {
-      console.error('❌ Registration cancellation failed:', error);
+      this.logger.error('❌ Registration cancellation failed:', error);
       throw error;
     }
   }
@@ -297,7 +308,9 @@ export class RegistrationApplicationService {
         student,
         instructor,
         groupClass,
-        lessonSchedule: ProgramManagementService.generateLessonSchedule(registration.toDataObject()),
+        lessonSchedule: ProgramManagementService.generateLessonSchedule(
+          registration.toDataObject()
+        ),
         nextLessonDate: registration.getNextLessonDate(),
         canModify: registration.canBeModified(),
         cancellationInfo: registration.canBeCancelled(),
@@ -305,7 +318,7 @@ export class RegistrationApplicationService {
         requiresTransportation: registration.requiresTransportation(),
       };
     } catch (error) {
-      console.error('❌ Failed to get registration details:', error);
+      this.logger.error('❌ Failed to get registration details:', error);
       throw error;
     }
   }
@@ -336,23 +349,9 @@ export class RegistrationApplicationService {
 
       return enrichedRegistrations;
     } catch (error) {
-      console.error('❌ Failed to get student registrations:', error);
+      this.logger.error('❌ Failed to get student registrations:', error);
       throw error;
     }
-  }
-
-  /**
-   * Private method: Request cancellation approval for special cases
-   */
-  async #requestCancellationApproval(registration, reason, userId) {
-    // This would typically create a workflow/approval request
-    // For now, return a pending status
-    return {
-      success: false,
-      status: 'pending_approval',
-      message: 'Cancellation requires managerial approval due to timing constraints',
-      approvalRequired: true,
-    };
   }
 
   /**
@@ -360,19 +359,19 @@ export class RegistrationApplicationService {
    */
   async getRegistrations(options = {}) {
     try {
-      console.log('📋 Getting registrations with options:', options);
+      this.logger.info('📋 Getting registrations with options:', options);
 
       // Get registrations from repository
       const registrations = await this.registrationRepository.getRegistrations(options);
 
       // Defensive check: if registrations is undefined or null, return empty array
       if (!registrations) {
-        console.warn('No registrations returned from repository, returning empty array');
+        this.logger.warn('No registrations returned from repository, returning empty array');
         return {
           registrations: [],
           totalCount: 0,
           page: options.page || 1,
-          pageSize: options.pageSize || 1000
+          pageSize: options.pageSize || 1000,
         };
       }
 
@@ -419,7 +418,7 @@ export class RegistrationApplicationService {
         })
       );
 
-      console.log(`📊 Found ${enrichedRegistrations.length} registrations`);
+      this.logger.info(`📊 Found ${enrichedRegistrations.length} registrations`);
 
       return {
         registrations: enrichedRegistrations,
@@ -428,7 +427,7 @@ export class RegistrationApplicationService {
         pageSize: options.pageSize || 1000,
       };
     } catch (error) {
-      console.error('❌ Error getting registrations:', error);
+      this.logger.error('❌ Error getting registrations:', error);
       throw error;
     }
   }
@@ -444,13 +443,13 @@ export class RegistrationApplicationService {
       const [time, period] = timeStr.split(' ');
       const [hours, minutes] = time.split(':').map(Number);
       let hour24 = hours;
-      
+
       if (period === 'PM' && hours !== 12) {
         hour24 += 12;
       } else if (period === 'AM' && hours === 12) {
         hour24 = 0;
       }
-      
+
       return hour24 * 60 + (minutes || 0);
     }
 
@@ -476,12 +475,19 @@ export class RegistrationApplicationService {
    * @returns {object} Validation result with isValid boolean and errorMessage
    */
   #validateBusTimeRestrictions(day, startTime, lengthMinutes) {
-    console.log('🚌 Validating bus time restrictions:', { day, startTime, lengthMinutes, lengthType: typeof lengthMinutes });
+    this.logger.info('🚌 Validating bus time restrictions:', {
+      day,
+      startTime,
+      lengthMinutes,
+      lengthType: typeof lengthMinutes,
+    });
 
     // Ensure lengthMinutes is a number
     const durationMinutes = parseInt(lengthMinutes) || 0;
     if (durationMinutes !== lengthMinutes) {
-      console.warn(`⚠️  Length was not a number: "${lengthMinutes}" (${typeof lengthMinutes}), converted to: ${durationMinutes}`);
+      this.logger.warn(
+        `⚠️  Length was not a number: "${lengthMinutes}" (${typeof lengthMinutes}), converted to: ${durationMinutes}`
+      );
     }
 
     // Parse start time and calculate end time
@@ -493,16 +499,16 @@ export class RegistrationApplicationService {
 
     // Bus schedule restrictions
     const busDeadlines = {
-      'Monday': '16:45',    // 4:45 PM
-      'Tuesday': '16:45',   // 4:45 PM
-      'Wednesday': '16:15', // 4:15 PM
-      'Thursday': '16:45',  // 4:45 PM
-      'Friday': '16:45'     // 4:45 PM
+      Monday: '16:45', // 4:45 PM
+      Tuesday: '16:45', // 4:45 PM
+      Wednesday: '16:15', // 4:15 PM
+      Thursday: '16:45', // 4:45 PM
+      Friday: '16:45', // 4:45 PM
     };
 
     const deadlineTime = busDeadlines[day];
     if (!deadlineTime) {
-      console.log('🚌 Unknown day, allowing bus transportation');
+      this.logger.info('🚌 Unknown day, allowing bus transportation');
       return { isValid: true, errorMessage: null }; // Unknown day, allow
     }
 
@@ -511,11 +517,11 @@ export class RegistrationApplicationService {
 
     if (endMinutes > deadlineMinutes) {
       const errorMessage = `Late Bus is not available for lessons ending after ${deadlineDisplay} on ${day}. This lesson ends at ${endTimeDisplay}. Please select "Late Pick Up" instead or choose a different time slot.`;
-      console.log('🚌 Bus time restriction violated:', errorMessage);
+      this.logger.info('🚌 Bus time restriction violated:', errorMessage);
       return { isValid: false, errorMessage };
     }
 
-    console.log('🚌 Bus time validation passed');
+    this.logger.info('🚌 Bus time validation passed');
     return { isValid: true, errorMessage: null };
   }
 }

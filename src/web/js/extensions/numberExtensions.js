@@ -4,7 +4,7 @@
  */
 function formatGrade(grade) {
   // Handle both numeric 0 and string "0" for kindergarten
-  return (grade === 0 || grade === '0') ? 'K' : (grade?.toString() ?? '');
+  return grade === 0 || grade === '0' ? 'K' : (grade?.toString() ?? '');
 }
 
 // convert 24-hour time to 12-hour format with AM/PM
@@ -15,13 +15,13 @@ function formatGrade(grade) {
  */
 function formatTime(time24) {
   if (!time24 || typeof time24 !== 'string') return time24 || 'N/A';
-  
+
   const [hours, minutes] = time24.split(':').map(num => parseInt(num, 10));
   if (isNaN(hours) || isNaN(minutes)) return time24;
-  
+
   const period = hours >= 12 ? 'PM' : 'AM';
   const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-  
+
   return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
 }
 

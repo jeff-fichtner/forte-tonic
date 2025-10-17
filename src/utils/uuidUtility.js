@@ -1,6 +1,6 @@
 /**
  * UUID Utility for generating cryptographically secure UUIDs
- * 
+ *
  * Replaces the old GuidUtility with proper UUID v4 generation
  * following RFC 4122 specification for better uniqueness and security.
  */
@@ -13,7 +13,7 @@ export class UuidUtility {
     // Generate UUID v4 compatible string following RFC 4122
     const chars = '0123456789abcdef';
     const uuid = [];
-    
+
     for (let i = 0; i < 36; i++) {
       if (i === 8 || i === 13 || i === 18 || i === 23) {
         uuid[i] = '-';
@@ -25,7 +25,7 @@ export class UuidUtility {
         uuid[i] = chars[Math.floor(Math.random() * 16)];
       }
     }
-    
+
     return uuid.join('');
   }
 
@@ -58,7 +58,9 @@ export class UuidUtility {
    * @returns {string} A UUID v4 string
    */
   static generateGuid() {
-    console.warn('GuidUtility.generateGuid() is deprecated. Use UuidUtility.generateUuid() instead.');
+    console.warn(
+      'GuidUtility.generateGuid() is deprecated. Use UuidUtility.generateUuid() instead.'
+    );
     return this.generateUuid();
   }
 }

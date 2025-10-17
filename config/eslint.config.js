@@ -23,6 +23,27 @@ export default [
         fetch: 'readonly',
         FormData: 'readonly',
         URLSearchParams: 'readonly',
+        // Timer functions
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        // Browser APIs
+        performance: 'readonly',
+        crypto: 'readonly',
+        indexedDB: 'readonly',
+        btoa: 'readonly',
+        atob: 'readonly',
+        alert: 'readonly',
+        confirm: 'readonly',
+        Event: 'readonly',
+        Node: 'readonly',
+        // Materialize CSS
+        M: 'readonly',
+        // Application globals
+        ViewModel: 'readonly',
+        ModalKeyboardHandler: 'readonly',
+        // Test globals
         describe: 'readonly',
         it: 'readonly',
         test: 'readonly',

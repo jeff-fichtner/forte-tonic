@@ -1,10 +1,10 @@
 /**
  * Registration Repository Delete Functionality Tests
  * ==================================================
- * 
+ *
  * Tests for complete delete integrity including:
  * - Row deletion from Google Sheets
- * - Cache invalidation 
+ * - Cache invalidation
  * - Error handling
  * - Data consistency
  */
@@ -13,7 +13,6 @@
 import { jest } from '@jest/globals';
 import { RegistrationRepository } from '../../../src/repositories/registrationRepository.js';
 import { RegistrationId } from '../../../src/utils/values/registrationId.js';
-import { Registration } from '../../../src/models/shared/registration.js';
 
 describe('RegistrationRepository - Delete Functionality', () => {
   let repository;
@@ -25,10 +24,10 @@ describe('RegistrationRepository - Delete Functionality', () => {
     mockSheets = {
       spreadsheets: {
         values: {
-          get: jest.fn()
+          get: jest.fn(),
         },
-        batchUpdate: jest.fn()
-      }
+        batchUpdate: jest.fn(),
+      },
     };
 
     // Mock database client
@@ -36,10 +35,11 @@ describe('RegistrationRepository - Delete Functionality', () => {
       spreadsheetId: 'test-spreadsheet-id',
       sheets: mockSheets,
       cache: {
-        delete: jest.fn()
+        delete: jest.fn(),
       },
       getCachedData: jest.fn(),
-      clearCache: jest.fn()
+      clearCache: jest.fn(),
+      deleteRecord: jest.fn().mockResolvedValue(true),
     };
 
     repository = new RegistrationRepository(mockDbClient);
@@ -60,7 +60,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
       day: 'Monday',
       startTime: '10:00',
       length: 30,
-      registrationType: 'private'
+      registrationType: 'private',
     };
 
     test('should successfully delete a registration from Google Sheets', async () => {
@@ -74,16 +74,17 @@ describe('RegistrationRepository - Delete Functionality', () => {
             ['Id', 'StudentId', 'InstructorId', 'Day', 'StartTime'], // Header
             [testRegistrationId, 'student-1', 'instructor-1', 'Monday', '09:00'], // Row 1
             ['other-id', 'student-2', 'instructor-2', 'Tuesday', '10:00'], // Row 2
-            [testRegistrationId, 'student-3', 'instructor-3', 'Wednesday', '11:00'] // Row 3 - Target
-          ]
-        }
+            [testRegistrationId, 'student-3', 'instructor-3', 'Wednesday', '11:00'], // Row 3 - Target
+          ],
+        },
       };
 
-      mockSheets.spreadsheets.values.get.mockResolvedValue(mockSheetData);
-      mockSheets.spreadsheets.batchUpdate.mockResolvedValue({ data: {} });
+      // Setup mocks for new implementation
+      repository.getById = jest.fn().mockResolvedValue(mockRegistration);
+      repository.clearCache = jest.fn();
 
       // Execute delete
-      const result = await repository.delete(testRegistrationId);
+      const result = await repository.delete(testRegistrationId, 'test-user-id');
 
       // Verify success
       expect(result).toBe(true);
@@ -91,28 +92,12 @@ describe('RegistrationRepository - Delete Functionality', () => {
       // Verify getById was called to check existence
       expect(repository.getById).toHaveBeenCalledWith(expect.any(RegistrationId));
 
-      // Verify Google Sheets API calls
-      expect(mockSheets.spreadsheets.values.get).toHaveBeenCalledWith({
-        spreadsheetId: 'test-spreadsheet-id',
-        range: 'registrations!A:Z'
-      });
-
-      // Verify batchUpdate was called to delete the correct row (first occurrence)
-      expect(mockSheets.spreadsheets.batchUpdate).toHaveBeenCalledWith({
-        spreadsheetId: 'test-spreadsheet-id',
-        resource: {
-          requests: [{
-            deleteDimension: {
-              range: {
-                sheetId: 1484108306, // Correct sheetId for registrations sheet
-                dimension: 'ROWS',
-                startIndex: 1, // Row 2 in spreadsheet (0-based: header=0, first data row=1)
-                endIndex: 2
-              }
-            }
-          }]
-        }
-      });
+      // Verify deleteRecord was called with correct parameters
+      expect(mockDbClient.deleteRecord).toHaveBeenCalledWith(
+        'registrations',
+        testRegistrationId,
+        'test-user-id'
+      );
 
       // Verify cache clearing
       expect(repository.clearCache).toHaveBeenCalled();
@@ -121,12 +106,9 @@ describe('RegistrationRepository - Delete Functionality', () => {
 
     test('should handle string ID parameter', async () => {
       repository.getById = jest.fn().mockResolvedValue(mockRegistration);
-      mockSheets.spreadsheets.values.get.mockResolvedValue({
-        data: { values: [['Id'], [testRegistrationId]] }
-      });
-      mockSheets.spreadsheets.batchUpdate.mockResolvedValue({ data: {} });
+      repository.clearCache = jest.fn();
 
-      await repository.delete(testRegistrationId);
+      await repository.delete(testRegistrationId, 'test-user-id');
 
       expect(repository.getById).toHaveBeenCalledWith(expect.any(RegistrationId));
     });
@@ -134,12 +116,9 @@ describe('RegistrationRepository - Delete Functionality', () => {
     test('should handle RegistrationId object parameter', async () => {
       const registrationIdObj = new RegistrationId(testRegistrationId);
       repository.getById = jest.fn().mockResolvedValue(mockRegistration);
-      mockSheets.spreadsheets.values.get.mockResolvedValue({
-        data: { values: [['Id'], [testRegistrationId]] }
-      });
-      mockSheets.spreadsheets.batchUpdate.mockResolvedValue({ data: {} });
+      repository.clearCache = jest.fn();
 
-      await repository.delete(registrationIdObj);
+      await repository.delete(registrationIdObj, 'test-user-id');
 
       expect(repository.getById).toHaveBeenCalledWith(registrationIdObj);
     });
@@ -147,69 +126,62 @@ describe('RegistrationRepository - Delete Functionality', () => {
     test('should throw error if registration does not exist', async () => {
       repository.getById = jest.fn().mockResolvedValue(null);
 
-      await expect(repository.delete(testRegistrationId))
-        .rejects.toThrow(`Registration with ID ${testRegistrationId} not found`);
+      await expect(repository.delete(testRegistrationId, 'test-user-id')).rejects.toThrow(
+        `Registration with ID ${testRegistrationId} not found`
+      );
 
       expect(mockSheets.spreadsheets.values.get).not.toHaveBeenCalled();
       expect(mockSheets.spreadsheets.batchUpdate).not.toHaveBeenCalled();
     });
 
-    test('should throw error if registration not found in sheet data', async () => {
+    test('should handle deleteRecord failure gracefully', async () => {
       repository.getById = jest.fn().mockResolvedValue(mockRegistration);
-      mockSheets.spreadsheets.values.get.mockResolvedValue({
-        data: {
-          values: [
-            ['Id', 'StudentId'],
-            ['different-id', 'student-1']
-          ]
-        }
-      });
+      mockDbClient.deleteRecord.mockRejectedValue(new Error('Database delete failed'));
 
-      await expect(repository.delete(testRegistrationId))
-        .rejects.toThrow(`Registration with ID ${testRegistrationId} not found`);
+      await expect(repository.delete(testRegistrationId, 'test-user-id')).rejects.toThrow(
+        'Database delete failed'
+      );
 
-      expect(mockSheets.spreadsheets.batchUpdate).not.toHaveBeenCalled();
+      expect(mockDbClient.deleteRecord).toHaveBeenCalledWith(
+        'registrations',
+        testRegistrationId,
+        'test-user-id'
+      );
     });
 
-    test('should handle empty sheet data', async () => {
-      repository.getById = jest.fn().mockResolvedValue(mockRegistration);
-      mockSheets.spreadsheets.values.get.mockResolvedValue({
-        data: { values: [] }
-      });
+    test('should handle getById returning null', async () => {
+      repository.getById = jest.fn().mockResolvedValue(null);
 
-      await expect(repository.delete(testRegistrationId))
-        .rejects.toThrow(`Registration with ID ${testRegistrationId} not found`);
+      await expect(repository.delete(testRegistrationId, 'test-user-id')).rejects.toThrow(
+        `Registration with ID ${testRegistrationId} not found`
+      );
+
+      expect(mockDbClient.deleteRecord).not.toHaveBeenCalled();
     });
 
-    test('should handle Google Sheets API errors gracefully', async () => {
+    test('should handle deleteRecord API errors gracefully', async () => {
       repository.getById = jest.fn().mockResolvedValue(mockRegistration);
-      mockSheets.spreadsheets.values.get.mockRejectedValue(new Error('API Error'));
+      mockDbClient.deleteRecord.mockRejectedValue(new Error('API Error'));
 
-      await expect(repository.delete(testRegistrationId))
-        .rejects.toThrow('API Error');
-
-      expect(mockSheets.spreadsheets.batchUpdate).not.toHaveBeenCalled();
+      await expect(repository.delete(testRegistrationId, 'test-user-id')).rejects.toThrow(
+        'API Error'
+      );
     });
 
-    test('should handle batchUpdate errors gracefully', async () => {
+    test('should handle deleteRecord database errors gracefully', async () => {
       repository.getById = jest.fn().mockResolvedValue(mockRegistration);
-      mockSheets.spreadsheets.values.get.mockResolvedValue({
-        data: { values: [['Id'], [testRegistrationId]] }
-      });
-      mockSheets.spreadsheets.batchUpdate.mockRejectedValue(new Error('Delete failed'));
+      mockDbClient.deleteRecord.mockRejectedValue(new Error('Delete failed'));
 
-      await expect(repository.delete(testRegistrationId))
-        .rejects.toThrow('Delete failed');
+      await expect(repository.delete(testRegistrationId, 'test-user-id')).rejects.toThrow(
+        'Delete failed'
+      );
     });
 
     test('should clear both repository and database client caches', async () => {
       repository.getById = jest.fn().mockResolvedValue(mockRegistration);
-      mockSheets.spreadsheets.values.get.mockResolvedValue({
-        data: { values: [['Id'], [testRegistrationId]] }
-      });
-      mockSheets.spreadsheets.batchUpdate.mockResolvedValue({ data: {} });
+      repository.clearCache = jest.fn();
 
-      await repository.delete(testRegistrationId);
+      await repository.delete(testRegistrationId, 'test-user-id');
 
       expect(repository.clearCache).toHaveBeenCalled();
       expect(mockDbClient.clearCache).toHaveBeenCalledWith('registrations');
@@ -219,47 +191,30 @@ describe('RegistrationRepository - Delete Functionality', () => {
   describe('delete integration with service layer', () => {
     test('should properly integrate with registration service cancellation', async () => {
       const testId = 'da8ca6c8-7626-40c3-9173-319f15effaea'; // Valid UUID
-      
+
       // Mock a realistic scenario
       repository.getById = jest.fn().mockResolvedValue({
         id: new RegistrationId(testId),
         studentId: 'student-123',
-        instructorId: 'instructor-456'
+        instructorId: 'instructor-456',
       });
 
-      mockSheets.spreadsheets.values.get.mockResolvedValue({
-        data: {
-          values: [
-            ['Id', 'StudentId', 'InstructorId'],
-            ['other-id-1', 'student-1', 'instructor-1'],
-            [testId, 'student-123', 'instructor-456'],
-            ['other-id-2', 'student-2', 'instructor-2']
-          ]
-        }
-      });
-
-      mockSheets.spreadsheets.batchUpdate.mockResolvedValue({ data: {} });
+      repository.clearCache = jest.fn();
 
       const result = await repository.delete(testId, 'test-user@example.com');
 
       expect(result).toBe(true);
-      
-      // Verify correct row was targeted (row 3 in sheet, index 2 in data, so startIndex should be 2)
-      expect(mockSheets.spreadsheets.batchUpdate).toHaveBeenCalledWith({
-        spreadsheetId: 'test-spreadsheet-id',
-        resource: {
-          requests: [{
-            deleteDimension: {
-              range: {
-                sheetId: 1484108306, // Correct sheetId for registrations sheet
-                dimension: 'ROWS',
-                startIndex: 2, // 0-based: header=0, first row=1, target row=2
-                endIndex: 3
-              }
-            }
-          }]
-        }
-      });
+
+      // Verify deleteRecord was called correctly
+      expect(mockDbClient.deleteRecord).toHaveBeenCalledWith(
+        'registrations',
+        testId,
+        'test-user@example.com'
+      );
+
+      // Verify cache was cleared
+      expect(repository.clearCache).toHaveBeenCalled();
+      expect(mockDbClient.clearCache).toHaveBeenCalledWith('registrations');
     });
   });
 });

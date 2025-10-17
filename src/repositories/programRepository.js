@@ -27,7 +27,8 @@ export class ProgramRepository {
           Class.fromDatabaseRow(x)
         )),
       Keys.CLASSES,
-      forceRefresh
+      forceRefresh,
+      this.logger
     );
   }
 
@@ -52,7 +53,8 @@ export class ProgramRepository {
           return newRegistration;
         })),
       Keys.REGISTRATIONS,
-      forceRefresh
+      forceRefresh,
+      this.logger
     );
   }
 
@@ -75,7 +77,9 @@ export class ProgramRepository {
           Keys.ATTENDANCE,
           x => new AttendanceRecord(...x)
         )),
-      Keys.ATTENDANCE
+      Keys.ATTENDANCE,
+      false,
+      this.logger
     );
 
     return records.filter(x => registrationIds.includes(x.registrationId));
@@ -93,7 +97,7 @@ export class ProgramRepository {
       existingAttendance
     );
     if (!validation.canRecord) {
-      console.warn(`Cannot record attendance: ${validation.errors.join(', ')}`);
+      this.logger.warn(`Cannot record attendance: ${validation.errors.join(', ')}`);
       return validation.existingRecord;
     }
 
@@ -102,10 +106,10 @@ export class ProgramRepository {
       new AttendanceRecord(registrationId),
       createdBy
     );
-    
+
     // Clear cache after mutation
     this.cache.clear(); // Clear all caches since we recorded attendance
-    
+
     return result;
   }
 
@@ -121,15 +125,15 @@ export class ProgramRepository {
       existingAttendance
     );
     if (!validation.canRemove) {
-      console.warn(`Cannot remove attendance: ${validation.errors.join(', ')}`);
+      this.logger.warn(`Cannot remove attendance: ${validation.errors.join(', ')}`);
       return true; // Return true for consistency but log warning
     }
 
     await this.dbClient.deleteRecord(Keys.ATTENDANCE, registrationId, deletedBy);
-    
+
     // Clear cache after mutation
     this.cache.clear(); // Clear all caches since we removed attendance
-    
+
     return true;
   }
 
@@ -140,6 +144,6 @@ export class ProgramRepository {
     this.classes = null;
     this.registrations = null;
     this.attendanceRecords = null;
-    console.log('🧹 ProgramRepository cache cleared');
+    this.logger.info('🧹 ProgramRepository cache cleared');
   }
 }

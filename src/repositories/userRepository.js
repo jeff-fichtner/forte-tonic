@@ -26,7 +26,8 @@ export class UserRepository {
           Admin.fromDatabaseRow(x)
         )),
       Keys.ADMINS,
-      forceRefresh
+      forceRefresh,
+      this.logger
     );
   }
 
@@ -56,7 +57,8 @@ export class UserRepository {
       () => this.roles,
       async () => (this.roles = await this.dbClient.getAllRecords(Keys.ROLES, x => new Role(...x))),
       Keys.ROLES,
-      forceRefresh
+      forceRefresh,
+      this.logger
     );
   }
 
@@ -79,7 +81,8 @@ export class UserRepository {
           await this.dbClient.getAllRecords(Keys.INSTRUCTORS, x => Instructor.fromDatabaseRow(x))
         ).filter(x => x.isActive)),
       Keys.INSTRUCTORS,
-      forceRefresh
+      forceRefresh,
+      this.logger
     );
   }
 
@@ -88,9 +91,9 @@ export class UserRepository {
    */
   async getInstructorById(id) {
     const instructors = await this.getInstructors();
-    const searchId = (typeof id === 'object' && id.value) ? id.value : id;
+    const searchId = typeof id === 'object' && id.value ? id.value : id;
     return instructors.find(x => {
-      const instructorId = (typeof x.id === 'object' && x.id.value) ? x.id.value : x.id;
+      const instructorId = typeof x.id === 'object' && x.id.value ? x.id.value : x.id;
       return instructorId === searchId;
     });
   }
@@ -103,7 +106,7 @@ export class UserRepository {
     return instructors.find(x => x.email === email);
   }
 
-    /**
+  /**
    * Get instructor by access code
    * @param {string} accessCode - The access code to search for
    * @returns {Promise<Instructor|undefined>} Instructor with matching access code
@@ -124,35 +127,36 @@ export class UserRepository {
         const students = await this.dbClient.getAllRecords(Keys.STUDENTS, x =>
           Student.fromDatabaseRow(x)
         );
-        
+
         // Then, enrich with parent emails
         const parents = await this.getParents();
-        
+
         return (this.students = students.map(student => {
           // Find parent emails for this student
           const parent1 = parents.find(p => p.id === student.parent1Id);
           const parent2 = parents.find(p => p.id === student.parent2Id);
-          
-          const parentEmails = [parent1?.email, parent2?.email]
-            .filter(Boolean)
-            .join(', ');
-          
+
+          const parentEmails = [parent1?.email, parent2?.email].filter(Boolean).join(', ');
+
           // Create a new student with parent emails populated
           const enrichedStudent = new Student({
             ...student.toDataObject(),
-            parentEmails
+            parentEmails,
           });
-          
+
           // Debug log for first few students to verify parent emails are populated
           if (students.indexOf(student) < 3) {
-            console.log(`Student ${student.firstName} ${student.lastName}: parentEmails = "${parentEmails}"`);
+            this.logger?.info(
+              `Student ${student.firstName} ${student.lastName}: parentEmails = "${parentEmails}"`
+            );
           }
-          
+
           return enrichedStudent;
         }));
       },
       Keys.STUDENTS,
-      forceRefresh
+      forceRefresh,
+      this.logger
     );
   }
 
@@ -161,9 +165,9 @@ export class UserRepository {
    */
   async getStudentById(id) {
     const students = await this.getStudents();
-    const searchId = (typeof id === 'object' && id.value) ? id.value : id;
+    const searchId = typeof id === 'object' && id.value ? id.value : id;
     return students.find(x => {
-      const studentId = (typeof x.id === 'object' && x.id.value) ? x.id.value : x.id;
+      const studentId = typeof x.id === 'object' && x.id.value ? x.id.value : x.id;
       return studentId === searchId;
     });
   }
@@ -179,7 +183,8 @@ export class UserRepository {
           Parent.fromDatabaseRow(x)
         )),
       Keys.PARENTS,
-      forceRefresh
+      forceRefresh,
+      this.logger
     );
   }
 
@@ -220,7 +225,8 @@ export class UserRepository {
       async () =>
         (this.rooms = await this.dbClient.getAllRecords(Keys.ROOMS, x => Room.fromDatabaseRow(x))),
       Keys.ROOMS,
-      forceRefresh
+      forceRefresh,
+      this.logger
     );
   }
 
@@ -270,6 +276,6 @@ export class UserRepository {
     this.parents = null;
     this.rooms = null;
     this.roles = null;
-    console.log('🧹 UserRepository cache cleared');
+    this.logger.info('🧹 UserRepository cache cleared');
   }
 }

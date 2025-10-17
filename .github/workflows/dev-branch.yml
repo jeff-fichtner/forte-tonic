@@ -1,0 +1,159 @@
+# GitHub Actions Workflow for Dev Branch
+# ======================================
+#
+# Purpose: Build, test, and version management for the dev branch
+# 
+# Workflow:
+# 1. Build the application (install dependencies, lint, etc.)
+# 2. Run unit tests. If tests fail, the workflow fails and stops.
+# 3. If tests pass:
+#    - Publish a new version tag on the dev branch (e.g., v1.1.0)
+#    - Increment the version in package.json and commit the change back to the repository
+#
+# This ensures that only code passing all tests is versioned and tagged.
+
+name: 'Dev Branch - Test and Version'
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  test-and-version:
+    name: 'Build, Test, and Version'
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write  # Needed to push tags and commits
+      
+    steps:
+      - name: 'Checkout code'
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0  # Fetch full history for version management
+      
+      - name: 'Setup Node.js'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: 'Install dependencies'
+        run: npm ci
+      
+      - name: 'Run linting'
+        run: npm run lint
+        
+      - name: 'Run formatting check'
+        run: npm run format:check
+      
+      - name: 'Run unit tests'
+        run: npm test
+        
+      # Only proceed with versioning if all previous steps pass
+      - name: 'Configure Git'
+        if: success()
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      
+      - name: 'Get current version'
+        if: success()
+        id: current-version
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+      
+      - name: 'Increment patch version'
+        if: success()
+        id: new-version
+        run: |
+          # Extract version parts
+          CURRENT_VERSION="${{ steps.current-version.outputs.version }}"
+          MAJOR=$(echo $CURRENT_VERSION | cut -d. -f1)
+          MINOR=$(echo $CURRENT_VERSION | cut -d. -f2)
+          PATCH=$(echo $CURRENT_VERSION | cut -d. -f3)
+          
+          # Increment patch
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Incrementing version: $CURRENT_VERSION → $NEW_VERSION"
+          
+          # Update package.json
+          npm version $NEW_VERSION --no-git-tag-version
+          
+          # Verify the change
+          UPDATED_VERSION=$(node -p "require('./package.json').version")
+          echo "Version updated to: $UPDATED_VERSION"
+      
+      - name: 'Commit version bump'
+        if: success()
+        run: |
+          CURRENT_VERSION="${{ steps.current-version.outputs.version }}"
+          NEW_VERSION="${{ steps.new-version.outputs.new_version }}"
+          
+          # Add and commit the version change
+          git add package.json
+          git commit -m "chore: auto-increment version $CURRENT_VERSION → $NEW_VERSION"
+          
+          echo "✅ Version increment committed"
+      
+      - name: 'Create and push version tag'
+        if: success()
+        run: |
+          NEW_VERSION="${{ steps.new-version.outputs.new_version }}"
+          TAG_NAME="v$NEW_VERSION-dev"
+
+          # Create annotated tag
+          git tag -a "$TAG_NAME" -m "Auto-versioned pre-release for staging: $TAG_NAME
+
+          GitHub Actions Build: ${{ github.run_id }}
+          Commit: ${{ github.sha }}
+          Branch: dev
+          Tagged: $(date -u)"
+          
+          echo "🏷️  Created tag: $TAG_NAME"
+          
+          # Push commit and tag
+          git push origin dev
+          git push origin "$TAG_NAME"
+          
+          echo "✅ Version tag pushed to repository"
+      
+      - name: 'Summary'
+        if: success()
+        run: |
+          CURRENT_VERSION="${{ steps.current-version.outputs.version }}"
+          NEW_VERSION="${{ steps.new-version.outputs.new_version }}"
+          TAG_NAME="v$NEW_VERSION-dev"
+
+          echo ""
+          echo "🎉 DEV BRANCH WORKFLOW COMPLETED SUCCESSFULLY!"
+          echo "=============================================="
+          echo "✅ Tests: PASSED"
+          echo "✅ Version: $CURRENT_VERSION → $NEW_VERSION"
+          echo "🏷️ Tag: $TAG_NAME"
+          echo "📅 Time: $(date -u)"
+          echo "🔗 Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "=============================================="
+          echo ""
+          echo "🚀 Next Steps:"
+          echo "  • The dev tag '$TAG_NAME' will trigger the staging deployment"
+          echo "  • Monitor Cloud Build for staging deployment status"
+          echo "  • The new version is now ready for staging testing"
+      
+      - name: 'Failure summary'
+        if: failure()
+        run: |
+          echo ""
+          echo "❌ DEV BRANCH WORKFLOW FAILED!"
+          echo "=============================="
+          echo "Tests failed or another step encountered an error."
+          echo "No version increment or tag was created."
+          echo "Fix the issues and push again to retry."
+          echo "=============================="
