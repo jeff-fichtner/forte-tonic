@@ -17,7 +17,8 @@ This document serves as the single source of truth for all environment variables
 
 | Variable | Description | Default | Used In |
 |----------|-------------|---------|---------|
-| `PORT` | Server port | `3000` | Development only (Render sets automatically) |
+| `PORT` | Server port | `3000` | Development only (set automatically in production) |
+| `SERVICE_URL` | Base URL for the deployed service | - | Staging and production |
 | `LOG_LEVEL` | Logging level | `info` | All environments |
 | `ROCK_BAND_CLASS_IDS` | Comma-separated Rock Band class IDs for waitlist handling | `G001,G002` | All environments |
 | `EMAIL_HOST` | SMTP host | `smtp.gmail.com` | If email features used |
@@ -32,11 +33,6 @@ This document serves as the single source of truth for all environment variables
 - Usage: Copy to `.env` and fill in actual values
 - Environment: `development`
 
-### `.env.render.template` (Production Deployment Template)  
-- Purpose: Template for Render dashboard configuration
-- Usage: Copy values to Render dashboard environment variables
-- Environment: `staging` and `production`
-
 ### `.env.test` (Testing Environment)
 - Purpose: Automated testing configuration
 - Usage: Used by Jest test runner
@@ -45,26 +41,24 @@ This document serves as the single source of truth for all environment variables
 ## Configuration Sources
 
 ### Primary Configuration
-- **`config/render.yaml`** - Deployment configuration (build commands, health checks, etc.)
 - **`src/config/environment.js`** - Runtime environment configuration
-- **`src/core/services/configurationService.js`** - Service configuration management
+- **`src/services/configurationService.js`** - Service configuration management
+- **`src/build/Dockerfile`** - Container build configuration
 
 ### Documentation
-- **`docs/RENDER_DEPLOYMENT.md`** - Deployment setup instructions
-- **`docs/NODE_SETUP.md`** - Local development setup
+- **`docs/technical/NODE_SETUP.md`** - Local development setup
 - **`scripts/README.md`** - Build and deployment scripts
 
 ## Variable Naming Conventions
 
-### ✅ Current Standard (Use These)
-- `GOOGLE_SERVICE_ACCOUNT_EMAIL` (not `GOOGLE_CLIENT_EMAIL`)
-- `WORKING_SPREADSHEET_ID` (not `SPREADSHEET_ID`)
-- `NODE_ENV` (standard)
-- `PORT` (standard)
+All variables follow consistent naming patterns for clarity and maintainability:
 
-### ⚠️ Legacy Variables (Being Phased Out)
-- `GOOGLE_CLIENT_EMAIL` → Use `GOOGLE_SERVICE_ACCOUNT_EMAIL`
-- `GOOGLE_APPS_SCRIPT_ID` → No longer needed for Node.js version
+- **`GOOGLE_SERVICE_ACCOUNT_EMAIL`** - Google Cloud service account email address
+- **`GOOGLE_PRIVATE_KEY`** - Google Cloud service account private key (with newlines)
+- **`WORKING_SPREADSHEET_ID`** - ID of the Google Sheets database
+- **`NODE_ENV`** - Application environment (development, staging, production, test)
+- **`PORT`** - Server port (defaults to 3000)
+- **`LOG_LEVEL`** - Logging verbosity (error, warn, info, debug)
 
 ## Environment Setup Examples
 
@@ -80,19 +74,21 @@ GOOGLE_SERVICE_ACCOUNT_EMAIL=your-dev-service-account@project.iam.gserviceaccoun
 GOOGLE_PRIVATE_KEY="your-dev-private-key"
 ```
 
-### Render Production
+### Production Environment
 ```bash
-# Set in Render dashboard
+# Set in your hosting platform
 NODE_ENV=production
+SERVICE_URL=https://your-domain.com
 WORKING_SPREADSHEET_ID=your-prod-spreadsheet-id
 GOOGLE_SERVICE_ACCOUNT_EMAIL=your-prod-service-account@project.iam.gserviceaccount.com
 GOOGLE_PRIVATE_KEY="your-prod-private-key"
 ```
 
-### Render Staging
+### Staging Environment
 ```bash
-# Set in Render dashboard  
+# Set in your hosting platform
 NODE_ENV=staging
+SERVICE_URL=https://staging.your-domain.com
 WORKING_SPREADSHEET_ID=your-staging-spreadsheet-id
 GOOGLE_SERVICE_ACCOUNT_EMAIL=your-staging-service-account@project.iam.gserviceaccount.com
 GOOGLE_PRIVATE_KEY="your-staging-private-key"

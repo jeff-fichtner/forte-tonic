@@ -195,58 +195,55 @@ export class HttpService {
   /**
    *
    */
-  static #callServerFunction(serverFunctionName, payload, mapper = null, context = null) {
-    return new Promise(async (resolve, reject) => {
-      try {
-        // Get stored access code for authentication
-        const headers = {
-          'Content-Type': 'application/json',
-        };
+  static async #callServerFunction(serverFunctionName, payload, mapper = null, _context = null) {
+    try {
+      // Get stored access code for authentication
+      const headers = {
+        'Content-Type': 'application/json',
+      };
 
-        // Include access code and login type in header if available
-        if (window.AccessCodeManager) {
-          const storedAuthData = window.AccessCodeManager.getStoredAuthData();
-          if (storedAuthData) {
-            headers['x-access-code'] = storedAuthData.accessCode;
-            headers['x-login-type'] = storedAuthData.loginType;
-          }
+      // Include access code and login type in header if available
+      if (window.AccessCodeManager) {
+        const storedAuthData = window.AccessCodeManager.getStoredAuthData();
+        if (storedAuthData) {
+          headers['x-access-code'] = storedAuthData.accessCode;
+          headers['x-login-type'] = storedAuthData.loginType;
         }
+      }
 
-        const response = await fetch(`/api/${serverFunctionName}`, {
-          method: 'POST',
-          headers: headers,
-          body: JSON.stringify(payload),
-          credentials: 'same-origin', // Include session cookies
-        });
+      const response = await fetch(`/api/${serverFunctionName}`, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(payload),
+        credentials: 'same-origin', // Include session cookies
+      });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          if (response.status === 401) {
-            // Redirect to login if unauthorized
-            window.location.href = '/auth/google';
-            return;
-          }
-          throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
-
-        const responseText = await response.text();
-        if (!responseText) {
-          reject(new Error('Successful but empty response'));
+      if (!response.ok) {
+        const errorText = await response.text();
+        if (response.status === 401) {
+          // Redirect to login if unauthorized
+          window.location.href = '/auth/google';
           return;
         }
-
-        try {
-          // The Node.js server returns JSON.stringify'd responses to match the original behavior
-          const parsedResponse = JSON.parse(responseText);
-          resolve(mapper ? mapper(parsedResponse) : parsedResponse);
-        } catch (e) {
-          reject(new Error(`Error parsing response - ${e}: ${responseText}`));
-        }
-      } catch (error) {
-        console.error(`Error in server function call to ${serverFunctionName}:`, error);
-        reject(error);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
-    });
+
+      const responseText = await response.text();
+      if (!responseText) {
+        throw new Error('Successful but empty response');
+      }
+
+      try {
+        // The Node.js server returns JSON.stringify'd responses to match the original behavior
+        const parsedResponse = JSON.parse(responseText);
+        return mapper ? mapper(parsedResponse) : parsedResponse;
+      } catch (e) {
+        throw new Error(`Error parsing response - ${e}: ${responseText}`);
+      }
+    } catch (error) {
+      console.error(`Error in server function call to ${serverFunctionName}:`, error);
+      throw error;
+    }
   }
 }
 

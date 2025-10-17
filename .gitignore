@@ -138,10 +138,8 @@ dist
 # Generated documentation
 docs/generated/
 
-# Temporary credentials and dev files
-dev/credentials/
-dev/scripts/output/
-dev/scripts/temp/
+# Development directory (entire directory)
+dev/
 
 # Google Apps Script generated config
 gas-src/.clasp.json
@@ -158,6 +156,7 @@ render-build.log
 # Build output and cache
 dist/
 build/
+!src/build/
 .cache/
 
 *.DS_Store

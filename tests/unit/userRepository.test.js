@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 import { UserRepository } from '../../src/repositories/userRepository.js';
-import { Admin, Instructor, Student, Parent } from '../../src/models/shared/index.js';
+import { Admin, Parent } from '../../src/models/shared/index.js';
 
 describe('UserRepository', () => {
   let repository;
@@ -88,24 +88,27 @@ describe('UserRepository', () => {
 
   describe('getInstructors', () => {
     test('should return array of instructor models', async () => {
+      // Import Instructor to create proper instances
+      const { Instructor } = await import('../../src/models/shared/instructor.js');
+
       // Mock some simple instructors with minimal parameters
       const mockInstructors = [
-        {
+        new Instructor({
           id: 'inst-1',
           email: 'instructor1@test.com',
           lastName: 'Brown',
           firstName: 'Mike',
           phone: '555-9999',
           instrument1: 'Piano',
-        },
-        {
+        }),
+        new Instructor({
           id: 'inst-2',
           email: 'instructor2@test.com',
           lastName: 'Wilson',
           firstName: 'Sarah',
           phone: '555-8888',
           instrument1: 'Violin',
-        },
+        }),
       ];
 
       mockGoogleSheetsDbClient.getAllRecords.mockResolvedValue(mockInstructors);
@@ -117,13 +120,17 @@ describe('UserRepository', () => {
         expect.any(Function)
       );
       expect(result).toHaveLength(2);
+      expect(result[0]).toBeInstanceOf(Instructor);
       expect(result[0]).toEqual(
         expect.objectContaining({
           id: 'inst-1',
           email: 'instructor1@test.com',
           lastName: 'Brown',
           firstName: 'Mike',
-          phone: '555-9999',
+          fullName: 'Mike Brown',
+          displayName: 'Mike Brown (Instructor)',
+          role: 'instructor',
+          isActive: true,
         })
       );
     });
@@ -139,10 +146,12 @@ describe('UserRepository', () => {
 
   describe('getStudents', () => {
     test('should return array of student models', async () => {
+      // Import Student to create proper instances
+      const { Student } = await import('../../src/models/shared/student.js');
+
       const mockStudents = [
-        {
+        new Student({
           id: 'student-1',
-          studentId: 'student1@test.com',
           lastName: 'Johnson',
           firstName: 'Emma',
           lastNickname: '',
@@ -150,10 +159,9 @@ describe('UserRepository', () => {
           grade: '5',
           parent1Id: 'parent-1',
           parent2Id: null,
-        },
-        {
+        }),
+        new Student({
           id: 'student-2',
-          studentId: 'student2@test.com',
           lastName: 'Davis',
           firstName: 'Liam',
           lastNickname: '',
@@ -161,7 +169,7 @@ describe('UserRepository', () => {
           grade: '4',
           parent1Id: 'parent-2',
           parent2Id: null,
-        },
+        }),
       ];
 
       mockGoogleSheetsDbClient.getAllRecords.mockResolvedValue(mockStudents);
@@ -173,12 +181,14 @@ describe('UserRepository', () => {
         expect.any(Function)
       );
       expect(result).toHaveLength(2);
+      expect(result[0]).toBeInstanceOf(Student);
       expect(result[0]).toEqual(
         expect.objectContaining({
-          id: 'student-1',
-          studentId: 'student1@test.com',
-          lastName: 'Johnson',
           firstName: 'Emma',
+          lastName: 'Johnson',
+          grade: '5',
+          parent1Id: 'parent-1',
+          parent2Id: null,
         })
       );
     });

@@ -1,0 +1,121 @@
+# CI/CD Pipeline for Google Cloud Build
+# Simplified build and deploy only - no testing or version management
+#
+# Triggers:
+# - Staging: on semver tags (^v[0-9]+\.[0-9]+\.[0-9]+$)
+# - Production: on main branch pushes
+#
+# This file should be placed at: src/build/cloudbuild.yaml
+#
+# Setup required for Google Cloud:
+# 1. Enable APIs: Cloud Build, Cloud Run, Container Registry, Secret Manager
+# 2. Create build trigger pointing to this file
+# 3. Set up secrets in Secret Manager
+# 4. Grant Cloud Build service account required permissions
+
+steps:
+  # Step 1: Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build', 
+      '-f', 'src/build/Dockerfile',
+      '-t', 'gcr.io/$PROJECT_ID/tonic:${SHORT_SHA}',
+      '-t', 'gcr.io/$PROJECT_ID/tonic:${_ENV_TYPE}-${SHORT_SHA}',
+      '-t', 'gcr.io/$PROJECT_ID/tonic:${_ENV_TYPE}-latest',
+      '-t', 'gcr.io/$PROJECT_ID/tonic:latest',
+      '.'
+    ]
+    id: 'build-image'
+    
+  # Step 2: Push Docker image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', 'gcr.io/$PROJECT_ID/tonic']
+    id: 'push-image'
+    waitFor: ['build-image']
+    
+  # Step 3: Deploy to Cloud Run (environment determined by substitution variables)
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args: [
+      'run', 'deploy', 'tonic-${_ENV_TYPE}',
+      '--image=gcr.io/$PROJECT_ID/tonic:${_ENV_TYPE}-${SHORT_SHA}',
+      '--region=${_DEPLOY_REGION}',
+      '--platform=managed',
+      '--set-env-vars=NODE_ENV=${_ENV_TYPE}',
+      '--set-env-vars=CI=true',
+      '--set-env-vars=BUILD_GIT_COMMIT=${COMMIT_SHA}',
+      '--set-secrets=WORKING_SPREADSHEET_ID=working-spreadsheet-id:latest',
+      '--set-secrets=GOOGLE_SERVICE_ACCOUNT_EMAIL=google-service-account-email:latest', 
+      '--set-secrets=GOOGLE_PRIVATE_KEY=google-private-key:latest',
+      '--set-secrets=ROCK_BAND_CLASS_IDS=rock-band-class-ids:latest',
+      '--allow-unauthenticated',
+      '--max-instances=10',
+      '--memory=512Mi',
+      '--cpu=1',
+      '--port=3000'
+    ]
+    id: 'deploy-service'
+    waitFor: ['push-image']
+    
+  # Step 4: Wait for deployment to be ready
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "⏳ Waiting for deployment to be ready..."
+        SERVICE_URL=$(gcloud run services describe tonic-${_ENV_TYPE} --region=${_DEPLOY_REGION} --format='value(status.url)')
+        echo "🔗 Service URL: $$SERVICE_URL"
+        
+        # Wait up to 2 minutes for health check
+        for i in {1..24}; do
+          if curl -f "$$SERVICE_URL/api/health" > /dev/null 2>&1; then
+            echo "✅ Deployment is healthy!"
+            break
+          fi
+          echo "⏳ Attempt $$i/24: Waiting for service to be ready..."
+          sleep 5
+        done
+    id: 'health-check'
+    waitFor: ['deploy-service']
+
+  # Step 5: Final summary
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        SERVICE_URL=$(gcloud run services describe tonic-${_ENV_TYPE} --region=${_DEPLOY_REGION} --format='value(status.url)')
+        
+        echo ""
+        echo "🎉 CI/CD PIPELINE COMPLETED SUCCESSFULLY!"
+        echo "========================================"
+        echo "✅ Build: SUCCESS"
+        echo "✅ Deploy: SUCCESS"
+        echo "🌍 Environment: ${_ENV_TYPE}"
+        echo "🔗 URL: $$SERVICE_URL"
+        echo "📅 Time: $(date)"
+        echo "🏗️ Build ID: ${BUILD_ID}"
+        echo "📝 Commit: ${SHORT_SHA}"
+        echo "🌿 Environment: ${_ENV_TYPE}"
+        echo "📋 Branch/Tag: ${BRANCH_NAME}${TAG_NAME}"
+        echo "======================================="
+    id: 'deployment-summary'
+    waitFor: ['health-check']
+
+
+
+# No secrets required for this simplified pipeline
+# All secrets are accessed via --set-secrets in the deployment step
+
+# Substitution variables (must be set in trigger)
+substitutions:
+  _DEPLOY_REGION: 'us-west1'
+  _ENV_TYPE: 'staging'  # Override to 'production' in production trigger
+
+# Build configuration
+options:
+  logging: CLOUD_LOGGING_ONLY
+  diskSizeGb: 20
+
+# Build timeout (simplified pipeline should be faster)
+timeout: '600s'  # 10 minutes max

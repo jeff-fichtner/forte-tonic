@@ -113,7 +113,7 @@ const AccessCodeManager = {
 
   /**
    * Retrieve the securely stored access code and login type
-   * @returns {Object|null} Object with accessCode and loginType, or null if not found/expired
+   * @returns {object | null} Object with accessCode and loginType, or null if not found/expired
    */
   getStoredAuthData() {
     try {

@@ -58,20 +58,49 @@ export class ServiceContainer {
    * Initialize infrastructure services directly
    */
   async #initializeInfrastructure() {
+    let hasErrors = false;
+
+    // Initialize database client (Google Sheets)
     try {
-      // Initialize database client
+      console.log('🔧 Initializing Google Sheets database client...');
       this.dbClient = new GoogleSheetsDbClient(configService);
-
-      // Initialize email client
-      this.emailClient = new EmailClient(configService);
-
-      // Initialize cache service
-      this.cacheService = new CacheService();
-
-      console.log('✅ Infrastructure services initialized');
+      console.log('✅ Google Sheets database client initialized');
     } catch (error) {
-      console.error('❌ Failed to initialize infrastructure:', error);
-      throw error;
+      console.error('❌ Failed to initialize Google Sheets database client:', error.message);
+      console.error('📋 Stack trace:', error.stack);
+      hasErrors = true;
+      // Continue with null dbClient - app should still start but will fail on Google Sheets operations
+      this.dbClient = null;
+    }
+
+    // Initialize email client
+    try {
+      console.log('🔧 Initializing email client...');
+      this.emailClient = new EmailClient(configService);
+      console.log('✅ Email client initialized');
+    } catch (error) {
+      console.error('❌ Failed to initialize email client:', error.message);
+      hasErrors = true;
+      this.emailClient = null;
+    }
+
+    // Initialize cache service
+    try {
+      console.log('🔧 Initializing cache service...');
+      this.cacheService = new CacheService();
+      console.log('✅ Cache service initialized');
+    } catch (error) {
+      console.error('❌ Failed to initialize cache service:', error.message);
+      hasErrors = true;
+      this.cacheService = null;
+    }
+
+    if (hasErrors) {
+      console.log(
+        '⚠️ Infrastructure services initialized with some failures - app will continue but some features may not work'
+      );
+    } else {
+      console.log('✅ All infrastructure services initialized successfully');
     }
   }
 

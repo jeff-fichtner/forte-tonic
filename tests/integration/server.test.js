@@ -33,7 +33,14 @@ const mockConfigService = {
 // Mock the configuration service module
 jest.unstable_mockModule('../../src/services/configurationService.js', () => ({
   configService: mockConfigService,
-  ConfigurationService: jest.fn().mockImplementation(() => mockConfigService),
+  ConfigurationService: class MockConfigurationService {
+    constructor() {
+      return mockConfigService;
+    }
+    static getRockBandClassIds() {
+      return ['rock-band-1', 'rock-band-2'];
+    }
+  },
 }));
 
 // Mock the GoogleSheetsDbClient before importing anything else
@@ -116,6 +123,7 @@ const mockUserRepository = {
   }),
   getInstructorByEmail: jest.fn().mockResolvedValue(null),
   getParentByEmail: jest.fn().mockResolvedValue(null),
+  getParentByPhone: jest.fn().mockResolvedValue(null),
 };
 
 const mockProgramRepository = {
@@ -154,7 +162,7 @@ const mockDbClient = {
 
 // Mock the middleware to add repositories to req
 jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
-  initializeUserContext: (req, res, next) => {
+  initializeRepositories: (req, res, next) => {
     req.dbClient = mockDbClient;
     req.userRepository = mockUserRepository;
     req.programRepository = mockProgramRepository;
@@ -166,6 +174,7 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
       roles: [],
       primaryRole: 'admin',
       displayName: 'Test Admin',
+      operatorEmail: process.env.OPERATOR_EMAIL || 'test-operator@example.com',
       toJSON: function () {
         return {
           email: this.email,
@@ -181,6 +190,9 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
     req.user = req.currentUser; // For compatibility
     next();
   },
+  getAuthenticatedUserEmail: jest.fn().mockImplementation(req => {
+    return req.currentUser?.operatorEmail || req.currentUser?.email || 'test-operator@example.com';
+  }),
   requireAuth: (req, res, next) => next(),
   requireOperator: (req, res, next) => next(),
 }));
@@ -433,10 +445,11 @@ describe('Server Integration Tests', () => {
       });
 
       test('should return null for invalid access code', async () => {
-        // Mock all repository methods to return null/undefined
-        mockUserRepository.getAdminByAccessCode.mockResolvedValueOnce(null);
-        mockUserRepository.getInstructorByAccessCode.mockResolvedValueOnce(null);
-        mockUserRepository.getParentByAccessCode.mockResolvedValueOnce(null);
+        // Mock all repository methods to return null/undefined (using mockResolvedValue instead of mockResolvedValueOnce
+        // because the controller may call these methods multiple times in fallback logic)
+        mockUserRepository.getAdminByAccessCode.mockResolvedValue(null);
+        mockUserRepository.getInstructorByAccessCode.mockResolvedValue(null);
+        mockUserRepository.getParentByPhone.mockResolvedValue(null);
 
         const response = await request(app)
           .post('/api/authenticateByAccessCode')
