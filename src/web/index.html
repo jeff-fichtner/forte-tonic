@@ -643,11 +643,13 @@
                 return;
             }
 
+            const newUrl2 = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+
             const migrationLink = document.getElementById('migration-link');
             const countdownElement = document.getElementById('countdown');
 
             // Set the link href
-            migrationLink.href = newUrl;
+            migrationLink.href = newUrl2;
 
             // Countdown timer for auto-redirect
             let countdown = 10;
@@ -659,7 +661,7 @@
 
                 if (countdown <= 0) {
                     clearInterval(countdownInterval);
-                    window.location.href = newUrl;
+                    window.location.href = newUrl2;
                 }
             }, 1000);
 
