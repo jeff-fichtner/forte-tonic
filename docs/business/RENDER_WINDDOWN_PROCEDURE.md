@@ -1,5 +1,7 @@
 # Render Wind-Down Checklist
 
+`*` indicates current position
+
 ## 0 Finish GCP prod deployment
 - [x] Verify service account has `roles/secretmanager.secretAccessor`
 - [x] Make **Editor** `tonic-production-sa@tonic-production-16201.iam.gserviceaccount.com` on `forte_tonic_prod`
@@ -27,8 +29,8 @@
 ## 2.5 Pre-production
 - [x] Ensure GCP is configured correctly
 - [x] Add to Render tonic-production environment: `MIGRATION_URL = https://tonic-production-432276680561.us-west1.run.app`
-- [ ] Ensure GCP stays warm
-- [ ] Update finalsite to show GCP URL (which should be now live and tested)
+- [x] Ensure GCP stays warm
+- [ ] *Update finalsite to show GCP URL (which should be now live and tested)
 
 ## 3 Test production
 - [ ] `git push origin render/main`
