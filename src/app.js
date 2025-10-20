@@ -87,9 +87,6 @@ const developmentStaticOptions = isDevelopment ? {
   }
 } : {};
 
-// Serve static files
-app.use(express.static(path.join(__dirname, 'web'), developmentStaticOptions));
-
 // Serve shared models for frontend access
 app.use('/shared', express.static(path.join(__dirname, 'shared'), developmentStaticOptions));
 
@@ -100,9 +97,13 @@ app.use('/core', express.static(path.join(__dirname, 'core'), developmentStaticO
 // Apply repository initialization to all API routes (no authentication)
 app.use('/api', initializeRepositories);
 
-// Route handlers
+// Route handlers (custom routes first - they handle index.html with injection)
 app.use('/', staticRoutes);
 app.use('/api', apiRoutes);
+
+// Fallback static file serving for /web (after custom routes)
+// This serves remaining static files efficiently while allowing index.html injection
+app.use(express.static(path.join(__dirname, 'web'), developmentStaticOptions));
 
 // 404 handler
 app.use('*', (req, res) => {
