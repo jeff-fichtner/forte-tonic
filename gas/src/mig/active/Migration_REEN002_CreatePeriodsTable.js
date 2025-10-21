@@ -16,7 +16,7 @@
  * - Each run deletes previous working copy and recreates from scratch
  *
  * 🚀 TO USE:
- * 1. Set spreadsheet ID in Config_v2.js: const SPREADSHEET_ID = "your-id";
+ * 1. Set spreadsheet ID in Config.js: const SPREADSHEET_ID = "your-id";
  * 2. Deploy with clasp push
  * 3. Run migration: runCreatePeriodsTableMigration()
  *    - Check the MIGRATION_periods sheet to verify structure
@@ -30,7 +30,7 @@
  * Safe to run multiple times - deletes previous attempt and recreates
  */
 function runCreatePeriodsTableMigration() {
-  const migration = new CreatePeriodsTableMigration(getSpreadsheetIdV2());
+  const migration = new CreatePeriodsTableMigration(getSpreadsheetId());
   migration.run();
 }
 
@@ -39,7 +39,7 @@ function runCreatePeriodsTableMigration() {
  * WARNING: DESTRUCTIVE - Deletes original periods table (if exists) and renames working copy
  */
 function applyCreatePeriodsTableMigration() {
-  const migration = new CreatePeriodsTableMigration(getSpreadsheetIdV2());
+  const migration = new CreatePeriodsTableMigration(getSpreadsheetId());
   migration.apply();
 }
 
@@ -82,7 +82,7 @@ class CreatePeriodsTableMigration {
       Logger.log(`   ✅ Added headers: ${headers.join(', ')}`);
 
       // Seed data
-      const rowsCreated = this.#seedPeriodData(workingSheet);
+      const rowsCreated = this._seedPeriodData(workingSheet);
       Logger.log(`   ✅ Seeded ${rowsCreated} period records`);
 
       Logger.log('\n🎉 MIGRATION RUN COMPLETED!');
@@ -141,8 +141,9 @@ class CreatePeriodsTableMigration {
 
   /**
    * Seed period data for current year
+   * @private
    */
-  #seedPeriodData(sheet) {
+  _seedPeriodData(sheet) {
     const currentYear = new Date().getFullYear();
     const trimesters = ['Fall', 'Winter', 'Spring'];
     const periodTypes = ['intent', 'priorityEnrollment', 'openEnrollment', 'registration'];

@@ -1,9 +1,0 @@
-**/*.cjs
-**/*.sh
-**/package.json
-**/package-lock.json
-**/node_modules/**
-**/.clasp.json.template
-**/README.md
-**/DEPLOYMENT.md
-**/INDEX.md

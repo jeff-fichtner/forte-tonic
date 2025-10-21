@@ -21,16 +21,7 @@ if (!scriptId) {
 
 const claspConfig = {
   "scriptId": scriptId,
-  "filePushOrder": [
-    "appsscript.json",
-    "Code.js",
-    "gas-migrations/Config.js",
-    "gas-migrations/Migration001_StructuralImprovements.js",
-    "gas-migrations/archive/Migration002_AddClassNamesToRegistration_ARCHIVED.js", 
-    "gas-migrations/archive/Migration003_ProcessParents_PROCESSED.js",
-    "gas-migrations/dev/Migration_DEV001_RealisticFakeData.js",
-    "gas-migrations/TEMPLATE_Migration.js"
-  ]
+  "rootDir": "src"
 };
 
 const claspJsonPath = path.join(__dirname, '.clasp.json');

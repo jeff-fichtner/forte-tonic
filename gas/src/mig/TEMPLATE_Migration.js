@@ -23,7 +23,7 @@
  * Safe to run multiple times - deletes previous attempt and recreates
  */
 function runYourMigrationNameMigration() {
-  const migration = new YourMigrationNameMigration(getSpreadsheetIdV2());
+  const migration = new YourMigrationNameMigration(getSpreadsheetId());
   migration.run();
 }
 
@@ -32,7 +32,7 @@ function runYourMigrationNameMigration() {
  * WARNING: DESTRUCTIVE - Deletes original tables and renames working copies
  */
 function applyYourMigrationNameMigration() {
-  const migration = new YourMigrationNameMigration(getSpreadsheetIdV2());
+  const migration = new YourMigrationNameMigration(getSpreadsheetId());
   migration.apply();
 }
 
@@ -87,7 +87,7 @@ class YourMigrationNameMigration {
         workingCopy.setName(working);
 
         // Apply your changes to workingCopy
-        this.#applyChangesToSheet(workingCopy, original);
+        this._applyChangesToSheet(workingCopy, original);
         Logger.log(`   ✅ Applied changes to ${working}`);
       });
 
@@ -105,7 +105,7 @@ class YourMigrationNameMigration {
       const workingSheet = this.spreadsheet.insertSheet(this.workingSheetName);
 
       // Set up your new table
-      this.#createNewTable(workingSheet);
+      this._createNewTable(workingSheet);
       Logger.log(`   ✅ Created ${this.workingSheetName}`);
       */
 
@@ -196,7 +196,7 @@ class YourMigrationNameMigration {
    * Apply changes to a working sheet copy
    * REPLACE THIS with your actual migration logic
    */
-  #applyChangesToSheet(sheet, sheetName) {
+  _applyChangesToSheet(sheet, sheetName) {
     // Example: Add a column
     // const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     // const newColumnName = 'newColumn';
@@ -222,7 +222,7 @@ class YourMigrationNameMigration {
    * Create a new table structure
    * REPLACE THIS with your actual table creation logic
    */
-  #createNewTable(sheet) {
+  _createNewTable(sheet) {
     // Example: Create headers
     // const headers = ['column1', 'column2', 'column3'];
     // const headerRange = sheet.getRange(1, 1, 1, headers.length);

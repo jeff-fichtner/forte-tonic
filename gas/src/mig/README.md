@@ -1,4 +1,4 @@
-# GAS Migrations v2 - Simplified Pattern
+# GAS Migrations - Simplified Pattern
 
 ## Overview
 
@@ -29,7 +29,7 @@ Manual backups of your spreadsheet (File > Make a copy) are your safety net.
 
 ### 1. Configure Spreadsheet ID
 
-Edit `Config_v2.js`:
+Edit `Config.js`:
 ```javascript
 const SPREADSHEET_ID = "your-spreadsheet-id-here";
 ```
@@ -37,7 +37,7 @@ const SPREADSHEET_ID = "your-spreadsheet-id-here";
 ### 2. Deploy
 
 ```bash
-cd gas-src/
+cd gas/
 clasp push
 ```
 
@@ -86,7 +86,7 @@ applyAddIntentColumnsMigration()
 
 ### Use the Template
 
-1. Copy `TEMPLATE_Migration_v2.js`
+1. Copy `TEMPLATE_Migration.js`
 2. Rename to `Migration_REENXXX_Description.js`
 3. Update function names and class name
 4. Choose your pattern:
@@ -140,7 +140,7 @@ class YourMigration {
 }
 ```
 
-## Available Migrations (v2 Pattern)
+## Available Migrations (Standard Pattern)
 
 ### REEN001: Add Intent Columns
 - **Status:** Ready
@@ -186,7 +186,7 @@ Since this pattern has no automatic rollbacks:
 - Copy-modify-replace pattern
 - **Use for:** Large, complex migrations with lots of data transformation
 
-### v2 Pattern (REEN migrations)
+### Standard Pattern (REEN migrations)
 - Two functions: run() and apply()
 - No automatic backups
 - No rollback
@@ -196,10 +196,10 @@ Since this pattern has no automatic rollbacks:
 
 ## Files
 
-**v2 Pattern Files:**
-- `Config_v2.js` - Simple configuration (just spreadsheet ID)
-- `TEMPLATE_Migration_v2.js` - Template for new v2 migrations
-- `README_v2.md` - This file
+**Standard Pattern Files:**
+- `Config.js` - Simple configuration (just spreadsheet ID)
+- `TEMPLATE_Migration.js` - Template for new v2 migrations
+- `README.md` - This file
 - `active/Migration_REEN001_AddIntentColumns.js` - Example v2 migration
 - `active/Migration_REEN002_CreatePhasesTable.js` - Example v2 migration
 
@@ -212,7 +212,7 @@ Since this pattern has no automatic rollbacks:
 
 ## When to Use Which Pattern?
 
-**Use v2 Pattern (this one) when:**
+**Use Standard Pattern (this one) when:**
 - Adding/removing columns
 - Creating new tables
 - Simple data transformations
