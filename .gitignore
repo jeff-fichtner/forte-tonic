@@ -145,7 +145,7 @@ dev/
 credentials/
 
 # Google Apps Script generated config
-gas-src/.clasp.json
+gas/.clasp.json
 
 # Render build artifacts
 .render-build-*

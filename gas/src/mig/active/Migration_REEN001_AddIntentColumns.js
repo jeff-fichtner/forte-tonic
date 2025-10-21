@@ -15,7 +15,7 @@
  * - Each run deletes previous working copy and recreates from scratch
  *
  * 🚀 TO USE:
- * 1. Set spreadsheet ID in Config_v2.js: const SPREADSHEET_ID = "your-id";
+ * 1. Set spreadsheet ID in Config.js: const SPREADSHEET_ID = "your-id";
  * 2. Deploy with clasp push
  * 3. Run migration: runAddIntentColumnsMigration()
  *    - Check the MIGRATION_* sheets to verify changes look correct
@@ -28,7 +28,7 @@
  * Safe to run multiple times - deletes previous attempt and recreates
  */
 function runAddIntentColumnsMigration() {
-  const migration = new AddIntentColumnsMigration(getSpreadsheetIdV2());
+  const migration = new AddIntentColumnsMigration(getSpreadsheetId());
   migration.run();
 }
 
@@ -37,7 +37,7 @@ function runAddIntentColumnsMigration() {
  * WARNING: DESTRUCTIVE - Deletes original tables and renames working copies
  */
 function applyAddIntentColumnsMigration() {
-  const migration = new AddIntentColumnsMigration(getSpreadsheetIdV2());
+  const migration = new AddIntentColumnsMigration(getSpreadsheetId());
   migration.apply();
 }
 
@@ -86,10 +86,10 @@ class AddIntentColumnsMigration {
 
         // Add new columns
         if (original === 'registrations') {
-          this.#addColumnsToRegistrations(workingCopy);
+          this._addColumnsToRegistrations(workingCopy);
           Logger.log(`   ✅ Added 3 columns to ${working}`);
         } else if (original === 'registrations_audit') {
-          this.#addColumnsToAudit(workingCopy);
+          this._addColumnsToAudit(workingCopy);
           Logger.log(`   ✅ Added 5 columns to ${working}`);
         }
       });
@@ -158,33 +158,43 @@ class AddIntentColumnsMigration {
 
   /**
    * Add columns to registrations working copy
+   * @private
    */
-  #addColumnsToRegistrations(sheet) {
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  _addColumnsToRegistrations(sheet) {
     const columnsToAdd = ['reenrollmentIntent', 'intentSubmittedAt', 'intentSubmittedBy'];
 
-    columnsToAdd.forEach(columnName => {
-      if (!headers.includes(columnName)) {
-        sheet.insertColumnAfter(sheet.getLastColumn());
-        const newColIndex = sheet.getLastColumn();
-        sheet.getRange(1, newColIndex).setValue(columnName);
+    for (const columnName of columnsToAdd) {
+      // Get current last column number and headers
+      const lastCol = sheet.getLastColumn();
+      const currentHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+      if (!currentHeaders.includes(columnName)) {
+        // Insert a new column after the last column
+        sheet.insertColumnAfter(lastCol);
+        // Set the header in the newly inserted column (which is now lastCol + 1)
+        sheet.getRange(1, lastCol + 1).setValue(columnName);
       }
-    });
+    }
   }
 
   /**
    * Add columns to audit working copy
+   * @private
    */
-  #addColumnsToAudit(sheet) {
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  _addColumnsToAudit(sheet) {
     const columnsToAdd = ['reenrollmentIntent', 'intentSubmittedAt', 'intentSubmittedBy', 'updatedAt', 'updatedBy'];
 
-    columnsToAdd.forEach(columnName => {
-      if (!headers.includes(columnName)) {
-        sheet.insertColumnAfter(sheet.getLastColumn());
-        const newColIndex = sheet.getLastColumn();
-        sheet.getRange(1, newColIndex).setValue(columnName);
+    for (const columnName of columnsToAdd) {
+      // Get current last column number and headers
+      const lastCol = sheet.getLastColumn();
+      const currentHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+      if (!currentHeaders.includes(columnName)) {
+        // Insert a new column after the last column
+        sheet.insertColumnAfter(lastCol);
+        // Set the header in the newly inserted column (which is now lastCol + 1)
+        sheet.getRange(1, lastCol + 1).setValue(columnName);
       }
-    });
+    }
   }
 }

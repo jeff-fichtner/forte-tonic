@@ -161,7 +161,7 @@ src/
 ├── utils/             # Helpers
 └── web/               # Frontend SPA
 
-gas-src/               # Google Apps Script migrations
+gas/                   # Google Apps Script migrations
 tests/                 # Unit & integration tests
 docs/                  # Documentation
 config/                # ESLint, Prettier, Jest
