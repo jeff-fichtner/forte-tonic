@@ -10,6 +10,8 @@ import { getAuthenticatedUserEmail } from '../middleware/auth.js';
 import { getLogger } from '../utils/logger.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
 import { _fetchData } from '../utils/helpers.js';
+import { successResponse, errorResponse } from '../common/responseHelpers.js';
+import { ValidationError } from '../common/errors.js';
 
 const logger = getLogger();
 
@@ -18,13 +20,21 @@ export class RegistrationController {
    * Get all classes/programs
    */
   static async getClasses(req, res) {
+    const startTime = Date.now();
+
     try {
       const programRepository = serviceContainer.get('programRepository');
       const data = await programRepository.getClasses();
+
+      // Return raw data for backward compatibility
       res.json(data);
     } catch (error) {
       logger.error('Error getting classes:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'getClasses' },
+      });
     }
   }
 
@@ -32,6 +42,8 @@ export class RegistrationController {
    * Get registrations with filtering and pagination
    */
   static async getRegistrations(req, res) {
+    const startTime = Date.now();
+
     try {
       // Use the normalized request data from middleware
       const request = req.requestData || {};
@@ -69,10 +81,15 @@ export class RegistrationController {
         totalConflicts: result.registrations.filter(r => r.hasConflicts).length,
       };
 
+      // Return raw data for backward compatibility
       res.json(legacyResult);
     } catch (error) {
       logger.error('Error getting registrations:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'getRegistrations' },
+      });
     }
   }
 
@@ -80,13 +97,21 @@ export class RegistrationController {
    * Get all rooms
    */
   static async getRooms(req, res) {
+    const startTime = Date.now();
+
     try {
       const userRepository = serviceContainer.get('userRepository');
       const data = await userRepository.getRooms();
+
+      // Return raw data for backward compatibility
       res.json(data);
     } catch (error) {
       logger.error('Error getting rooms:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'getRooms' },
+      });
     }
   }
 
@@ -94,6 +119,8 @@ export class RegistrationController {
    * Create Registration using application service with comprehensive validation
    */
   static async createRegistration(req, res) {
+    const startTime = Date.now();
+
     try {
       const requestData = req.body;
 
@@ -109,10 +136,7 @@ export class RegistrationController {
 
       // Basic validation
       if (!requestData.studentId || !requestData.registrationType) {
-        return res.status(400).json({
-          success: false,
-          message: 'Missing required fields: studentId, registrationType',
-        });
+        throw new ValidationError('Missing required fields: studentId, registrationType');
       }
 
       // Use the registration application service for business logic
@@ -125,37 +149,40 @@ export class RegistrationController {
       );
 
       // Return enriched response with complete registration data
-      res.status(201).json({
-        success: true,
+      const registrationData = {
+        id: result.registration.id,
+        studentId: result.registration.studentId,
+        instructorId: result.registration.instructorId,
+        day: result.registration.day,
+        startTime: result.registration.startTime,
+        length: result.registration.length,
+        registrationType: result.registration.registrationType,
+        instrument: result.registration.instrument,
+        classId: result.registration.classId,
+        classTitle: result.registration.classTitle,
+        roomId: result.registration.roomId,
+        transportationType: result.registration.transportationType,
+        notes: result.registration.notes,
+        schoolYear: result.registration.schoolYear,
+        trimester: result.registration.trimester,
+        expectedStartDate: result.registration.expectedStartDate,
+        registeredAt: result.registration.registeredAt,
+        registeredBy: result.registration.registeredBy,
+      };
+
+      successResponse(res, registrationData, {
         message: 'Registration created successfully',
-        data: {
-          id: result.registration.id,
-          studentId: result.registration.studentId,
-          instructorId: result.registration.instructorId,
-          day: result.registration.day,
-          startTime: result.registration.startTime,
-          length: result.registration.length,
-          registrationType: result.registration.registrationType,
-          instrument: result.registration.instrument,
-          classId: result.registration.classId,
-          classTitle: result.registration.classTitle,
-          roomId: result.registration.roomId,
-          transportationType: result.registration.transportationType,
-          notes: result.registration.notes,
-          schoolYear: result.registration.schoolYear,
-          trimester: result.registration.trimester,
-          expectedStartDate: result.registration.expectedStartDate,
-          registeredAt: result.registration.registeredAt,
-          registeredBy: result.registration.registeredBy,
-        },
-        timestamp: new Date().toISOString(),
+        statusCode: 201,
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'createRegistration' },
       });
     } catch (error) {
       logger.error('Error creating registration:', error);
-      res.status(400).json({
-        success: false,
-        message: 'Failed to create registration',
-        error: error.message,
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'createRegistration' },
       });
     }
   }
@@ -164,6 +191,8 @@ export class RegistrationController {
    * Update registration using application service
    */
   static async updateRegistration(req, res) {
+    const startTime = Date.now();
+
     try {
       const { registrationId } = req.params;
       const updates = req.body;
@@ -177,16 +206,18 @@ export class RegistrationController {
         userId
       );
 
-      res.json({
-        success: true,
+      successResponse(res, result, {
         message: 'Registration updated successfully',
-        data: result,
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'updateRegistration' },
       });
     } catch (error) {
       logger.error('Error updating registration:', error);
-      res.status(400).json({
-        success: false,
-        error: error.message,
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'updateRegistration' },
       });
     }
   }
@@ -195,6 +226,8 @@ export class RegistrationController {
    * Cancel registration using application service
    */
   static async cancelRegistration(req, res) {
+    const startTime = Date.now();
+
     try {
       const { registrationId } = req.params;
       const { reason } = req.body;
@@ -216,16 +249,18 @@ export class RegistrationController {
         authenticatedUserEmail
       );
 
-      res.json({
-        success: true,
+      successResponse(res, result, {
         message: 'Registration cancelled successfully',
-        data: result,
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'cancelRegistration' },
       });
     } catch (error) {
       logger.error('Error cancelling registration:', error);
-      res.status(400).json({
-        success: false,
-        error: error.message,
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'cancelRegistration' },
       });
     }
   }
