@@ -31,7 +31,6 @@ function extractStringValue(value) {
       return String(value[0]);
     }
 
-    console.warn('Unable to extract string from object:', value);
     return String(value); // This will produce "[object Object]"
   }
 
@@ -91,7 +90,6 @@ export class Registration {
     // Validate registration type (normalize common variations)
     const normalizedType = this.#normalizeRegistrationType(data.registrationType);
     if (!['private', 'group'].includes(normalizedType)) {
-      console.warn(`Unknown registration type "${data.registrationType}", defaulting to "private"`);
       data.registrationType = 'private';
     } else {
       data.registrationType = normalizedType;
@@ -99,7 +97,6 @@ export class Registration {
 
     // Validate group lessons have classId
     if (data.registrationType === 'group' && !data.classId) {
-      console.warn('Group registration missing classId, treating as private lesson');
       data.registrationType = 'private';
     }
   }
@@ -198,7 +195,6 @@ export class Registration {
     // Skip rows where the ID doesn't look like a UUID (basic check)
     const idValue = String(row[0]).trim();
     if (idValue.length < 10 || idValue === 'Id' || !idValue.includes('-')) {
-      console.warn(`Skipping registration row with invalid ID: "${idValue}"`);
       return null;
     }
 
@@ -230,7 +226,6 @@ export class Registration {
         intentSubmittedBy: row[18], // intentSubmittedBy
       });
     } catch (error) {
-      console.warn(`Failed to create Registration from row [${row.join(', ')}]:`, error.message);
       return null;
     }
   }

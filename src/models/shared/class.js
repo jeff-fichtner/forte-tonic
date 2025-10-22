@@ -69,9 +69,6 @@ export class Class {
 
     // Log warning if length field contains invalid data
     if (isNaN(parseInt(length)) || length.toString().includes(':')) {
-      console.warn(
-        `⚠️  Class ${id} has invalid length field: "${length}". Expected duration in minutes, got: ${typeof length}. Using ${processedLength} minutes.`
-      );
     }
 
     return new Class(
