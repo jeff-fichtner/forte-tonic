@@ -248,46 +248,6 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
   });
 
   describe('Error Cases', () => {
-    test.skip('should return 400 when access code is missing - N/A for REST', async () => {
-      console.log('🎯 Testing missing access code');
-
-      // BREAKPOINT: Test validation error
-      // debugger;
-
-      const response = await request(app)
-        .get('/api/instructors/by-access-code/') // No accessCode provided
-        .expect(400);
-
-      console.log('📥 Error response for missing access code:', response.body);
-
-      // Updated to expect standardized error format
-      expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toHaveProperty('message', 'Access code is required');
-      expect(response.body.error).toHaveProperty('type', 'validation');
-      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
-
-      // Verify repository was NOT called
-      expect(mockUserRepository.getInstructorByAccessCode).not.toHaveBeenCalled();
-
-      console.log('✅ Missing access code validation test passed');
-    });
-
-    test.skip('should return 400 when access code is empty string - N/A for REST', async () => {
-      console.log('🎯 Testing empty access code');
-
-      const response = await request(app)
-        .get('/api/instructors/by-access-code/')
-        .expect(404);
-
-      // Updated to expect standardized error format
-      expect(response.body).toHaveProperty('success', false);
-      expect(response.body.error).toHaveProperty('message', 'Access code is required');
-      expect(mockUserRepository.getInstructorByAccessCode).not.toHaveBeenCalled();
-
-      console.log('✅ Empty access code validation test passed');
-    });
-
     test('should return 404 when instructor not found', async () => {
       console.log('🎯 Testing invalid access code: 999999');
 
@@ -317,20 +277,6 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
   });
 
   describe('Edge Cases', () => {
-    test.skip('should handle null access code - N/A for REST', async () => {
-      console.log('🎯 Testing null access code');
-
-      const response = await request(app)
-        .get('/api/instructors/by-access-code/null')
-        .expect(400);
-
-      // Updated to expect standardized error format
-      expect(response.body).toHaveProperty('success', false);
-      expect(response.body.error).toHaveProperty('message', 'Access code is required');
-
-      console.log('✅ Null access code test passed');
-    });
-
     test('should handle access code with whitespace', async () => {
       console.log('🎯 Testing access code with whitespace');
 
