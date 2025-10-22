@@ -14,7 +14,7 @@ import { AppConfigurationResponse } from '../models/shared/responses/appConfigur
 import { ConfigurationService } from '../services/configurationService.js';
 import { getLogger } from '../utils/logger.js';
 import { successResponse, errorResponse } from '../common/responseHelpers.js';
-import { ValidationError } from '../common/errors.js';
+import { ValidationError, NotFoundError } from '../common/errors.js';
 import { HTTP_STATUS } from '../common/errorConstants.js';
 
 const logger = getLogger();
@@ -57,14 +57,22 @@ export class UserController {
    * Get all admins
    */
   static async getAdmins(req, res) {
+    const startTime = Date.now();
+
     try {
       const userRepository = serviceContainer.get('userRepository');
       const data = await userRepository.getAdmins();
       const transformedData = UserTransformService.transformArray(data, 'admin');
+
+      // Return raw data for backward compatibility
       res.json(transformedData);
     } catch (error) {
       logger.error('Error getting admins:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getAdmins' },
+      });
     }
   }
 
@@ -72,6 +80,8 @@ export class UserController {
    * Get all instructors
    */
   static async getInstructors(req, res) {
+    const startTime = Date.now();
+
     try {
       const userRepository = serviceContainer.get('userRepository');
 
@@ -80,10 +90,15 @@ export class UserController {
 
       // The data is already transformed by Instructor.fromDatabaseRow
       // No need to transform again with UserTransformService
+      // Return raw data for backward compatibility
       res.json(data);
     } catch (error) {
       logger.error('Error in getInstructors:', error);
-      res.status(500).json({ error: 'Failed to retrieve instructors' });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getInstructors' },
+      });
     }
   }
 
@@ -91,14 +106,22 @@ export class UserController {
    * Get students - simplified to match instructor pattern
    */
   static async getStudents(req, res) {
+    const startTime = Date.now();
+
     try {
       const userRepository = serviceContainer.get('userRepository');
       const data = await userRepository.getStudents();
       const transformedData = UserTransformService.transformArray(data, 'student');
+
+      // Return raw data for backward compatibility
       res.json(transformedData);
     } catch (error) {
       logger.error('Error getting students:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getStudents' },
+      });
     }
   }
 
@@ -300,25 +323,33 @@ export class UserController {
    * Get admin by access code
    */
   static async getAdminByAccessCode(req, res) {
+    const startTime = Date.now();
+
     try {
       const { accessCode } = req.body;
 
       if (!accessCode) {
-        return res.status(400).json({ error: 'Access code is required' });
+        throw new ValidationError('Access code is required');
       }
 
       const userRepository = serviceContainer.get('userRepository');
       const admin = await userRepository.getAdminByAccessCode(accessCode);
 
       if (!admin) {
-        return res.status(404).json({ error: 'Admin not found with provided access code' });
+        throw new NotFoundError('Admin not found with provided access code');
       }
 
       const transformedData = UserTransformService.transform(admin, 'admin');
+
+      // Return raw data for backward compatibility
       res.json(transformedData);
     } catch (error) {
       logger.error('Error getting admin by access code:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getAdminByAccessCode' },
+      });
     }
   }
 
@@ -326,25 +357,33 @@ export class UserController {
    * Get instructor by access code
    */
   static async getInstructorByAccessCode(req, res) {
+    const startTime = Date.now();
+
     try {
       const { accessCode } = req.body;
 
       if (!accessCode) {
-        return res.status(400).json({ error: 'Access code is required' });
+        throw new ValidationError('Access code is required');
       }
 
       const userRepository = serviceContainer.get('userRepository');
       const instructor = await userRepository.getInstructorByAccessCode(accessCode);
 
       if (!instructor) {
-        return res.status(404).json({ error: 'Instructor not found with provided access code' });
+        throw new NotFoundError('Instructor not found with provided access code');
       }
 
       const transformedData = UserTransformService.transform(instructor, 'instructor');
+
+      // Return raw data for backward compatibility
       res.json(transformedData);
     } catch (error) {
-      logger.error('❌ ERROR in getInstructorByAccessCode:', error);
-      res.status(500).json({ error: error.message });
+      logger.error('Error in getInstructorByAccessCode:', error);
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getInstructorByAccessCode' },
+      });
     }
   }
 
@@ -352,25 +391,33 @@ export class UserController {
    * Get parent by access code
    */
   static async getParentByAccessCode(req, res) {
+    const startTime = Date.now();
+
     try {
       const { accessCode } = req.body;
 
       if (!accessCode) {
-        return res.status(400).json({ error: 'Access code is required' });
+        throw new ValidationError('Access code is required');
       }
 
       const userRepository = serviceContainer.get('userRepository');
       const parent = await userRepository.getParentByAccessCode(accessCode);
 
       if (!parent) {
-        return res.status(404).json({ error: 'Parent not found with provided access code' });
+        throw new NotFoundError('Parent not found with provided access code');
       }
 
       const transformedData = UserTransformService.transform(parent, 'parent');
+
+      // Return raw data for backward compatibility
       res.json(transformedData);
     } catch (error) {
       logger.error('Error getting parent by access code:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getParentByAccessCode' },
+      });
     }
   }
 }

@@ -8,6 +8,7 @@ import { getLogger } from '../utils/logger.js';
 import { configService } from '../services/configurationService.js';
 import { successResponse, errorResponse } from '../common/responseHelpers.js';
 import { HTTP_STATUS } from '../common/errorConstants.js';
+import { ValidationError, UnauthorizedError } from '../common/errors.js';
 
 const logger = getLogger();
 
@@ -126,6 +127,8 @@ export class SystemController {
    * Test sheet data retrieval endpoint
    */
   static async testSheetData(req, res) {
+    const startTime = Date.now();
+
     try {
       const { sheetName = 'Students', range = 'A1:Z1000' } = req.body;
 
@@ -153,13 +156,15 @@ export class SystemController {
       };
 
       logger.info('Sheet data test result:', testResult);
+
+      // Return raw data for backward compatibility
       res.json(testResult);
     } catch (error) {
       logger.error('Error testing sheet data retrieval:', error);
-      res.status(500).json({
-        success: false,
-        error: error.message,
-        stack: error.stack,
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'testSheetData' },
       });
     }
   }
@@ -168,11 +173,13 @@ export class SystemController {
    * Admin-only cache clearing endpoint
    */
   static async clearCache(req, res) {
+    const startTime = Date.now();
+
     try {
       const { adminCode } = req.body;
 
       if (!adminCode) {
-        return res.status(400).json({ error: 'Admin code is required' });
+        throw new ValidationError('Admin code is required');
       }
 
       // Use dependency injection to get the same repository instances used throughout the app
@@ -182,7 +189,7 @@ export class SystemController {
       // Validate admin access code using the repository
       const validAdmin = await userRepository.getAdminByAccessCode(adminCode);
       if (!validAdmin) {
-        return res.status(401).json({ error: 'Invalid admin code' });
+        throw new UnauthorizedError('Invalid admin code');
       }
 
       // Clear ALL caches in the system
@@ -220,17 +227,24 @@ export class SystemController {
 
       logger.info(`✅ Repository caches cleared: ${clearedRepositories.join(', ')}`);
 
-      logger.info(
-        `🧹 All caches cleared by admin: ${validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName}`
-      );
-      res.json({
+      const adminName = validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName;
+      logger.info(`🧹 All caches cleared by admin: ${adminName}`);
+
+      const cacheData = {
         success: true,
         message: 'All caches cleared successfully',
-        clearedBy: validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName,
-      });
+        clearedBy: adminName,
+      };
+
+      // Return raw data for backward compatibility
+      res.json(cacheData);
     } catch (error) {
       logger.error('Error clearing cache:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'clearCache' },
+      });
     }
   }
 
@@ -238,15 +252,25 @@ export class SystemController {
    * Get application configuration for frontend
    */
   static async getApplicationConfig(req, res) {
+    const startTime = Date.now();
+
     try {
       const appConfig = configService.getApplicationConfig();
-      res.json({
+
+      const configData = {
         success: true,
         config: appConfig,
-      });
+      };
+
+      // Return raw data for backward compatibility
+      res.json(configData);
     } catch (error) {
       logger.error('Error getting application config:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'getApplicationConfig' },
+      });
     }
   }
 }
