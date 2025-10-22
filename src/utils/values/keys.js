@@ -1,5 +1,4 @@
 export const Keys = {
-  ROLES: 'roles',
   ADMINS: 'admins',
   INSTRUCTORS: 'instructors',
   PARENTS: 'parents',

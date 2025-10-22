@@ -54,17 +54,6 @@ export class GoogleSheetsDbClient extends BaseService {
 
     // Initialize sheet info structure
     this.workingSheetInfo = {
-      [Keys.ROLES]: {
-        sheet: Keys.ROLES,
-        startRow: 2,
-        columnMap: {
-          id: 0,
-          email: 1,
-          admin: 2,
-          instructor: 3,
-          parent: 4,
-        },
-      },
       [Keys.ADMINS]: {
         sheet: Keys.ADMINS,
         startRow: 2,

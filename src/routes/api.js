@@ -22,8 +22,8 @@ router.get('/version', (req, res) => {
   res.json(version);
 });
 
-// Get current operator user
-router.post('/getOperatorUser', UserController.getOperatorUser);
+// Get application configuration
+router.post('/getAppConfiguration', UserController.getAppConfiguration);
 
 // Authenticate user by access code
 router.post(

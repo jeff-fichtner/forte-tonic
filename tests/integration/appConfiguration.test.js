@@ -76,10 +76,8 @@ const mockPeriodService = {
   isIntentPeriodActive: jest.fn().mockResolvedValue(true),
 };
 
-// Create mock user repository
-const mockUserRepository = {
-  getOperatorByEmail: jest.fn().mockResolvedValue(null),
-};
+// Create mock user repository (empty for this test)
+const mockUserRepository = {};
 
 // Mock the service container
 jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js', () => ({
@@ -98,13 +96,13 @@ jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js
 // Import app after all mocks are set up
 const { app } = await import('../../src/app.js');
 
-describe('Integration Test: POST /api/getOperatorUser - Current Period', () => {
+describe('Integration Test: POST /api/getAppConfiguration', () => {
   beforeEach(() => {
     // Reset all mocks before each test
     jest.clearAllMocks();
   });
 
-  test('should include currentPeriod in response when period is active', async () => {
+  test('should include currentPeriod and rockBandClassIds in response', async () => {
     // Mock period service to return an active intent period
     mockPeriodService.getCurrentPeriod.mockResolvedValue({
       trimester: 'Fall',
@@ -113,7 +111,7 @@ describe('Integration Test: POST /api/getOperatorUser - Current Period', () => {
       startDate: new Date('2025-01-15'),
     });
 
-    const response = await request(app).post('/api/getOperatorUser').send({}).expect(200);
+    const response = await request(app).post('/api/getAppConfiguration').send({}).expect(200);
 
     // Verify currentPeriod is included in response
     expect(response.body).toHaveProperty('currentPeriod');
@@ -121,6 +119,10 @@ describe('Integration Test: POST /api/getOperatorUser - Current Period', () => {
     expect(response.body.currentPeriod.trimester).toBe('Fall');
     expect(response.body.currentPeriod.periodType).toBe(PeriodType.INTENT);
     expect(response.body.currentPeriod.isCurrentPeriod).toBe(true);
+
+    // Verify rockBandClassIds is included
+    expect(response.body).toHaveProperty('rockBandClassIds');
+    expect(response.body.rockBandClassIds).toEqual(['G015']);
 
     // Verify periodService.getCurrentPeriod was called
     expect(mockPeriodService.getCurrentPeriod).toHaveBeenCalled();
@@ -130,11 +132,15 @@ describe('Integration Test: POST /api/getOperatorUser - Current Period', () => {
     // Mock period service to return null (no active period)
     mockPeriodService.getCurrentPeriod.mockResolvedValue(null);
 
-    const response = await request(app).post('/api/getOperatorUser').send({}).expect(200);
+    const response = await request(app).post('/api/getAppConfiguration').send({}).expect(200);
 
     // Verify currentPeriod is null in response
     expect(response.body).toHaveProperty('currentPeriod');
     expect(response.body.currentPeriod).toBeNull();
+
+    // Verify rockBandClassIds is still included
+    expect(response.body).toHaveProperty('rockBandClassIds');
+    expect(response.body.rockBandClassIds).toEqual(['G015']);
 
     // Verify periodService.getCurrentPeriod was called
     expect(mockPeriodService.getCurrentPeriod).toHaveBeenCalled();

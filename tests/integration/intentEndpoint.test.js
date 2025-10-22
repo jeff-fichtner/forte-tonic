@@ -113,7 +113,6 @@ const mockUserRepository = {
     return Promise.resolve(null);
   }),
   getUserByAccessCode: jest.fn().mockResolvedValue(null),
-  getOperatorByEmail: jest.fn().mockResolvedValue(null),
 };
 
 // Create mock period service

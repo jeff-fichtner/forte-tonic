@@ -341,10 +341,10 @@ export class RegistrationController {
       if (accessCode) {
         try {
           const userRepository = req.userRepository || serviceContainer.get('userRepository');
-          const operatorUser = await userRepository.getOperatorUserByAccessCode(accessCode);
-          if (operatorUser) {
+          const accessCodeUser = await userRepository.getUserByAccessCode(accessCode);
+          if (accessCodeUser) {
             // Use the access code user's email for more precise audit trail
-            authenticatedUserEmail = operatorUser.email || authenticatedUserEmail;
+            authenticatedUserEmail = accessCodeUser.email || authenticatedUserEmail;
           }
         } catch (accessCodeError) {
           logger.warn(

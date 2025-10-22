@@ -13,7 +13,6 @@ A Node.js web application for automated student registration in after-school mus
 - [Key Features](#key-features)
 - [System Architecture](#system-architecture)
 - [Getting Started](#getting-started)
-- [User Roles](#user-roles)
 - [API Documentation](#api-documentation)
 - [Development](#development)
 - [Deployment](#deployment)

@@ -1,8 +1,6 @@
 import { RepositoryHelper } from './helpers/repositoryHelper.js';
 import { Keys } from '../utils/values/keys.js';
-import { RoleType } from '../utils/values/roleType.js';
 import { Admin, Instructor, Student, Parent, Room } from '../models/shared/index.js';
-import { Role } from '../models/shared/role.js';
 
 /**
  *
@@ -47,27 +45,6 @@ export class UserRepository {
   async getAdminByAccessCode(accessCode) {
     const admins = await this.getAdmins();
     return admins.find(x => x.accessCode === accessCode);
-  }
-
-  /**
-   *
-   */
-  async #getRoles(forceRefresh = false) {
-    return await RepositoryHelper.getAndSetData(
-      () => this.roles,
-      async () => (this.roles = await this.dbClient.getAllRecords(Keys.ROLES, x => new Role(...x))),
-      Keys.ROLES,
-      forceRefresh,
-      this.logger
-    );
-  }
-
-  /**
-   *
-   */
-  async getOperatorByEmail(email) {
-    const roles = await this.#getRoles();
-    return roles.find(x => x.email === email && x.role === RoleType.OPERATOR);
   }
 
   /**
@@ -275,7 +252,6 @@ export class UserRepository {
     this.students = null;
     this.parents = null;
     this.rooms = null;
-    this.roles = null;
     this.logger.info('🧹 UserRepository cache cleared');
   }
 }

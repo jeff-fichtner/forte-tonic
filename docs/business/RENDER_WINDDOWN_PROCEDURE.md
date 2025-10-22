@@ -30,22 +30,22 @@
 - [x] Ensure GCP is configured correctly
 - [x] Add to Render tonic-production environment: `MIGRATION_URL = https://tonic-production-432276680561.us-west1.run.app`
 - [x] Ensure GCP stays warm
-- [ ] *Update finalsite to show GCP URL (which should be now live and tested)
+- [x] *Update finalsite to show GCP URL (which should be now live and tested)
 
 ## 3 Test production
-- [ ] `git push origin render/main`
-- [ ] Verify log: `[Migration Notice] Migration mode ENABLED`
-- [ ] Test [production](https://tonic-kxz5.onrender.com/)
-- [ ] Verify application loads without errors
-- [ ] Test Google Sheets integration (read/write)
-- [ ] Check browser console for errors
+- [x] `git push origin render/main`
+- [x] Verify log: `[Migration Notice] Migration mode ENABLED`
+- [x] Test [production](https://tonic-kxz5.onrender.com/)
+- [x] Verify application loads without errors
+- [x] Test Google Sheets integration (read/write)
+- [x] Check browser console for errors
  
 ### Rollback IF NEEDED
-- [ ] Check out previous commit
-- [ ] `git push origin render/main`
+- Check out previous commit
+- `git push origin render/main`
 
 ## 4 Staging Decommission Prep
-- [ ] Reset `dev`
+- [x] Reset `dev`
 - [ ] Confirm CI/CD no longer deploys to Render staging
 
 ## 5 Staging Decommission
@@ -79,3 +79,4 @@
 - [ ] Monitoring/alerting configured for GCP
 - [ ] All Render documentation removed/updated
 - [ ] Remove unnecessary security permissions for jeff
+- [ ] Make sure old tonic project and service account and all documents accessing service account are deleted
