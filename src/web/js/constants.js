@@ -14,15 +14,15 @@ export const Sections = {
   PARENT: 'parent',
 };
 
-// Server API function names
+// Server API endpoints - REST API
 export const ServerFunctions = {
-  getAppConfiguration: 'getAppConfiguration',
-  getAdmins: 'getAdmins',
-  getInstructors: 'getInstructors',
-  getStudents: 'getStudents',
-  getClasses: 'getClasses',
-  getRegistrations: 'getRegistrations',
-  getRooms: 'getRooms',
+  getAppConfiguration: 'configuration',
+  getAdmins: 'admins',
+  getInstructors: 'instructors',
+  getStudents: 'students',
+  getClasses: 'classes',
+  getRegistrations: 'registrations',
+  getRooms: 'rooms',
   register: 'registrations',
   unregister: 'unregister',
   authenticateByAccessCode: 'authenticateByAccessCode',

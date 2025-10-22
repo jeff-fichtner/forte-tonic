@@ -258,9 +258,9 @@ describe('Server Integration Tests', () => {
   });
 
   describe('API Routes', () => {
-    describe('POST /api/getAdmins', () => {
+    describe('GET /api/admins', () => {
       test('should return list of admins', async () => {
-        const response = await request(app).post('/api/getAdmins').expect(200);
+        const response = await request(app).get('/api/admins').expect(200);
 
         // Expect wrapped format
         expect(response.body).toHaveProperty('success', true);
@@ -271,9 +271,9 @@ describe('Server Integration Tests', () => {
       });
     });
 
-    describe('POST /api/getInstructors', () => {
+    describe('GET /api/instructors', () => {
       test('should return list of instructors', async () => {
-        const response = await request(app).post('/api/getInstructors').expect(200);
+        const response = await request(app).get('/api/instructors').expect(200);
 
         // Expect wrapped format
         expect(response.body).toHaveProperty('success', true);
@@ -284,9 +284,9 @@ describe('Server Integration Tests', () => {
       });
     });
 
-    describe('POST /api/getStudents', () => {
+    describe('GET /api/students', () => {
       test('should return list of students', async () => {
-        const response = await request(app).post('/api/getStudents').expect(200);
+        const response = await request(app).get('/api/students').expect(200);
 
         // Expect wrapped format
         expect(response.body).toHaveProperty('success', true);
@@ -299,9 +299,9 @@ describe('Server Integration Tests', () => {
       });
     });
 
-    describe('POST /api/getClasses', () => {
+    describe('GET /api/classes', () => {
       test('should return list of classes', async () => {
-        const response = await request(app).post('/api/getClasses').expect(200);
+        const response = await request(app).get('/api/classes').expect(200);
 
         // Expect wrapped format
         expect(response.body).toHaveProperty('success', true);
@@ -312,9 +312,9 @@ describe('Server Integration Tests', () => {
       });
     });
 
-    describe('POST /api/getRooms', () => {
+    describe('GET /api/rooms', () => {
       test('should return list of rooms', async () => {
-        const response = await request(app).post('/api/getRooms').expect(200);
+        const response = await request(app).get('/api/rooms').expect(200);
 
         // Expect wrapped format
         expect(response.body).toHaveProperty('success', true);

@@ -22,7 +22,7 @@ router.get('/version', (req, res) => {
   res.json(version);
 });
 
-// ===== MODERN REST API ENDPOINTS =====
+// ===== REST API ENDPOINTS =====
 
 // Configuration
 router.get('/configuration', UserController.getAppConfiguration);
@@ -41,19 +41,6 @@ router.get('/parents/by-access-code/:accessCode', UserController.getParentByAcce
 router.get('/classes', extractPaginatedRequestData, RegistrationController.getClasses);
 router.get('/rooms', extractPaginatedRequestData, RegistrationController.getRooms);
 router.get('/registrations', extractPaginatedRequestData, RegistrationController.getRegistrations);
-
-// ===== LEGACY ENDPOINTS (For backward compatibility - will be deprecated) =====
-
-router.post('/getAppConfiguration', UserController.getAppConfiguration);
-router.post('/getAdmins', UserController.getAdmins);
-router.post('/getInstructors', UserController.getInstructors);
-router.post('/getStudents', extractPaginatedRequestData, UserController.getStudents);
-router.post('/getAdminByAccessCode', extractSingleRequestData, UserController.getAdminByAccessCode);
-router.post('/getInstructorByAccessCode', extractSingleRequestData, UserController.getInstructorByAccessCode);
-router.post('/getParentByAccessCode', extractSingleRequestData, UserController.getParentByAccessCode);
-router.post('/getClasses', extractPaginatedRequestData, RegistrationController.getClasses);
-router.post('/getRooms', extractPaginatedRequestData, RegistrationController.getRooms);
-router.post('/getRegistrations', extractPaginatedRequestData, RegistrationController.getRegistrations);
 
 // ===== AUTHENTICATION & ADMIN TOOLS =====
 
