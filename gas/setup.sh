@@ -7,16 +7,16 @@ echo "🚀 TONIC GOOGLE APPS SCRIPT SETUP"
 echo "=================================="
 echo ""
 
-# Check if .env exists in parent directory
-if [ ! -f "../.env" ]; then
-    echo "❌ No .env file found in parent directory"
-    echo "Please create ../.env and add GOOGLE_APPS_SCRIPT_ID"
+# Check if .env exists in config directory
+if [ ! -f "../config/.env" ]; then
+    echo "❌ No .env file found in config directory"
+    echo "Please create ../config/.env and add GOOGLE_APPS_SCRIPT_ID"
     exit 1
 fi
 
 # Check if GOOGLE_APPS_SCRIPT_ID is set
-if ! grep -q "GOOGLE_APPS_SCRIPT_ID" "../.env"; then
-    echo "❌ GOOGLE_APPS_SCRIPT_ID not found in ../.env"
+if ! grep -q "GOOGLE_APPS_SCRIPT_ID" "../config/.env"; then
+    echo "❌ GOOGLE_APPS_SCRIPT_ID not found in ../config/.env"
     echo "Please add this line to your .env file:"
     echo "GOOGLE_APPS_SCRIPT_ID=your-google-apps-script-project-id"
     exit 1
