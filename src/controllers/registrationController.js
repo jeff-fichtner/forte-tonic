@@ -388,6 +388,53 @@ export class RegistrationController {
   }
 
   /**
+   * Update reenrollment intent for a registration
+   * PATCH /api/registrations/:id/intent
+   */
+  static async updateIntent(req, res) {
+    try {
+      const { id } = req.params;
+      const { intent } = req.body;
+      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
+
+      // Validate intent
+      const { INTENT_TYPES } = await import('../constants/intentTypes.js');
+      if (!Object.values(INTENT_TYPES).includes(intent)) {
+        return res.status(400).json({
+          error: 'Invalid intent. Must be: keep, drop, or change',
+        });
+      }
+
+      // Get repository and period service from container
+      const registrationRepository = serviceContainer.get('registrationRepository');
+      const periodService = serviceContainer.get('periodService');
+
+      // Check period is active
+      const isIntentActive = await periodService.isIntentPeriodActive();
+      if (!isIntentActive) {
+        return res.status(400).json({
+          error: 'Intent collection is not currently active',
+        });
+      }
+
+      // Use helper method (includes authorization check)
+      const registration = await registrationRepository.updateIntent(
+        id,
+        intent,
+        authenticatedUserEmail
+      );
+
+      res.json({ success: true, registration });
+    } catch (error) {
+      if (error.message === 'Registration not found') {
+        return res.status(404).json({ error: 'Registration not found or access denied' });
+      }
+      logger.error('Error updating intent:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
    * Private method: Group registrations by type
    */
   static #groupByRegistrationType(registrations) {

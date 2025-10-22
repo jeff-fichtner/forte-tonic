@@ -69,6 +69,11 @@ export class Registration {
     this.expectedStartDate = data.expectedStartDate ? new Date(data.expectedStartDate) : null;
     this.createdAt = data.createdAt ? new Date(data.createdAt) : new Date();
     this.createdBy = data.createdBy;
+
+    // Reenrollment intent fields
+    this.reenrollmentIntent = data.reenrollmentIntent || null;
+    this.intentSubmittedAt = data.intentSubmittedAt ? new Date(data.intentSubmittedAt) : null;
+    this.intentSubmittedBy = data.intentSubmittedBy || null;
   }
 
   #validateConstructorData(data) {
@@ -163,6 +168,19 @@ export class Registration {
   }
 
   /**
+   * Update reenrollment intent for this registration
+   * @param {string} intent - One of: 'keep', 'drop', 'change'
+   * @param {string} submittedBy - Email or identifier of who submitted
+   * @returns {Registration} This registration instance for chaining
+   */
+  updateIntent(intent, submittedBy) {
+    this.reenrollmentIntent = intent;
+    this.intentSubmittedAt = new Date();
+    this.intentSubmittedBy = submittedBy;
+    return this;
+  }
+
+  /**
    * Create Registration from database row data
    */
   static fromDatabaseRow(row) {
@@ -188,7 +206,7 @@ export class Registration {
       // Map array indices to field names based on registration schema
       // Order: Id, StudentId, InstructorId, Day, StartTime, Length, RegistrationType,
       //        RoomId, Instrument, TransportationType, Notes, ClassId, ClassTitle,
-      //        ExpectedStartDate, CreatedAt, CreatedBy
+      //        ExpectedStartDate, CreatedAt, CreatedBy, reenrollmentIntent, intentSubmittedAt, intentSubmittedBy
 
       return new Registration({
         id: row[0] ? String(row[0]) : row[0], // Id (UUID) - ensure string
@@ -207,6 +225,9 @@ export class Registration {
         expectedStartDate: row[13], // ExpectedStartDate
         createdAt: row[14], // CreatedAt
         createdBy: row[15], // CreatedBy
+        reenrollmentIntent: row[16], // reenrollmentIntent
+        intentSubmittedAt: row[17], // intentSubmittedAt
+        intentSubmittedBy: row[18], // intentSubmittedBy
       });
     } catch (error) {
       console.warn(`Failed to create Registration from row [${row.join(', ')}]:`, error.message);

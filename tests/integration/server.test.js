@@ -206,6 +206,10 @@ jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js
       const services = {
         userRepository: mockUserRepository,
         programRepository: mockProgramRepository,
+        periodService: {
+          getCurrentPeriod: jest.fn().mockResolvedValue(null),
+          isIntentPeriodActive: jest.fn().mockResolvedValue(false),
+        },
         studentApplicationService: {
           getStudents: jest.fn().mockResolvedValue({
             students: [

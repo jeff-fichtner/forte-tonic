@@ -6,8 +6,8 @@
  * This is a manually-managed table that admin updates to control which period is currently active.
  *
  * 📋 CHANGES MADE:
- * 1. Creates 'periods' table with 5 columns
- * 2. Seeds current year with 12 period records (3 trimesters × 4 period types)
+ * 1. Creates 'periods' table with 4 columns: trimester, periodType, isCurrentPeriod, startDate
+ * 2. Seeds with 12 period records (3 trimesters × 4 period types)
  * 3. Admin manually manages by setting isCurrentPeriod and filling in startDate
  *
  * 🔧 NEW SIMPLE PATTERN:
@@ -74,7 +74,7 @@ class CreatePeriodsTableMigration {
       const workingSheet = this.spreadsheet.insertSheet(this.workingSheetName);
 
       // Set up headers
-      const headers = ['trimester', 'year', 'periodType', 'isCurrentPeriod', 'startDate'];
+      const headers = ['trimester', 'periodType', 'isCurrentPeriod', 'startDate'];
       const headerRange = workingSheet.getRange(1, 1, 1, headers.length);
       headerRange.setValues([headers]);
       headerRange.setFontWeight('bold');
@@ -140,31 +140,32 @@ class CreatePeriodsTableMigration {
   }
 
   /**
-   * Seed period data for current year
+   * Seed period data
    * @private
    */
   _seedPeriodData(sheet) {
-    const currentYear = new Date().getFullYear();
-    const trimesters = ['Fall', 'Winter', 'Spring'];
-    const periodTypes = ['intent', 'priorityEnrollment', 'openEnrollment', 'registration'];
+    // Note: These values match PeriodType constants in src/utils/values/periodType.js
+    // Custom order: Fall has openEnrollment and registration only, Winter and Spring have all 4 phases
+    const rows = [
+      // Fall - only open enrollment and registration
+      ['Fall', 'openEnrollment', '', ''],
+      ['Fall', 'registration', '', ''],
 
-    const rows = [];
+      // Winter - all 4 phases
+      ['Winter', 'intent', '', ''],
+      ['Winter', 'priorityEnrollment', '', ''],
+      ['Winter', 'openEnrollment', '', ''],
+      ['Winter', 'registration', '', ''],
 
-    // Generate all combinations
-    for (const trimester of trimesters) {
-      for (const periodType of periodTypes) {
-        rows.push([
-          trimester,          // trimester
-          currentYear,        // year
-          periodType,          // periodType
-          '',                 // isCurrentPeriod (blank - admin fills in)
-          ''                  // startDate (blank - admin fills in)
-        ]);
-      }
-    }
+      // Spring - all 4 phases
+      ['Spring', 'intent', '', ''],
+      ['Spring', 'priorityEnrollment', '', ''],
+      ['Spring', 'openEnrollment', '', ''],
+      ['Spring', 'registration', '', '']
+    ];
 
     // Insert rows starting at row 2
-    const dataRange = sheet.getRange(2, 1, rows.length, 5);
+    const dataRange = sheet.getRange(2, 1, rows.length, 4);
     dataRange.setValues(rows);
 
     return rows.length;

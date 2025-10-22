@@ -269,6 +269,62 @@ export class RegistrationRepository extends BaseRepository {
   }
 
   /**
+   * Update reenrollment intent for a registration
+   * Includes authorization check - only allows updates to registrations the user has access to
+   * @param {string} registrationId - Registration ID
+   * @param {string} intent - One of: 'keep', 'drop', 'change'
+   * @param {string} submittedBy - Email/identifier of who submitted
+   * @returns {Promise<Registration>} Updated registration
+   * @throws {Error} If registration not found or access denied
+   */
+  async updateIntent(registrationId, intent, submittedBy) {
+    // Get all registrations (filtered by user's authorized access)
+    const registrations = await this.getRegistrations();
+
+    // Find the registration - if not found, user doesn't have access or it doesn't exist
+    const registration = registrations.find(r => (r.id.value || r.id) === registrationId);
+
+    if (!registration) {
+      throw new Error('Registration not found');
+    }
+
+    // Update the intent
+    registration.updateIntent(intent, submittedBy);
+
+    // Save to database
+    await this.dbClient.updateRecord(
+      this.entityName,
+      {
+        id: registration.id.value || registration.id,
+        studentId: registration.studentId.value || registration.studentId,
+        instructorId: registration.instructorId.value || registration.instructorId,
+        day: registration.day,
+        startTime: registration.startTime,
+        length: registration.length,
+        registrationType: registration.registrationType,
+        roomId: registration.roomId,
+        instrument: registration.instrument,
+        transportationType: registration.transportationType,
+        notes: registration.notes,
+        classId: registration.classId,
+        classTitle: registration.classTitle,
+        expectedStartDate: registration.expectedStartDate,
+        createdAt: registration.createdAt,
+        createdBy: registration.createdBy,
+        reenrollmentIntent: registration.reenrollmentIntent,
+        intentSubmittedAt: registration.intentSubmittedAt,
+        intentSubmittedBy: registration.intentSubmittedBy,
+      },
+      submittedBy
+    );
+
+    // Clear cache
+    this.clearCache();
+
+    return registration;
+  }
+
+  /**
    * Clear cache
    */
   clearCache() {

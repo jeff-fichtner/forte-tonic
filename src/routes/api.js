@@ -95,6 +95,15 @@ router.get('/attendance/summary/:registrationId', AttendanceController.getAttend
 router.post('/unregister', initializeRepositories, RegistrationController.unregister);
 
 /**
+ * Update reenrollment intent for a registration
+ */
+router.patch(
+  '/registrations/:id/intent',
+  initializeRepositories,
+  RegistrationController.updateIntent
+);
+
+/**
  * Attendance endpoints
  */
 router.post('/recordAttendance', AttendanceController.recordAttendance);
