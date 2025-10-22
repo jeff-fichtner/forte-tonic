@@ -23,10 +23,21 @@ export class UserController {
   static async getOperatorUser(req, res) {
     try {
       logger.info('getOperatorUser - Temporarily bypassing operator user retrieval');
+
+      // Get current period from period service
+      const periodService = serviceContainer.get('periodService');
+      const currentPeriod = await periodService.getCurrentPeriod();
+      logger.debug('Current period retrieved:', currentPeriod);
+
       // Even when bypassed, return basic configuration
       const bypassedResponse = new OperatorUserResponse(null, null, null, null, {
         rockBandClassIds: ConfigurationService.getRockBandClassIds(),
       });
+
+      // Add current period to response
+      bypassedResponse.currentPeriod = currentPeriod;
+      logger.debug('OperatorUserResponse with period:', JSON.stringify(bypassedResponse, null, 2));
+
       return res.json(bypassedResponse);
     } catch (error) {
       logger.error('Error getting operator user:', error);

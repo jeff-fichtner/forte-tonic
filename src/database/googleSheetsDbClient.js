@@ -165,6 +165,9 @@ export class GoogleSheetsDbClient extends BaseService {
           expectedStartDate: 13, // ExpectedStartDate
           createdAt: 14, // CreatedAt
           createdBy: 15, // CreatedBy
+          reenrollmentIntent: 16, // reenrollmentIntent
+          intentSubmittedAt: 17, // intentSubmittedAt
+          intentSubmittedBy: 18, // intentSubmittedBy
         },
         auditSheet: Keys.REGISTRATIONSAUDIT,
         postProcess: record => {
@@ -199,6 +202,11 @@ export class GoogleSheetsDbClient extends BaseService {
           isDeleted: 17, // IsDeleted
           deletedAt: 18, // DeletedAt
           deletedBy: 19, // DeletedBy
+          reenrollmentIntent: 20, // reenrollmentIntent
+          intentSubmittedAt: 21, // intentSubmittedAt
+          intentSubmittedBy: 22, // intentSubmittedBy
+          updatedAt: 23, // updatedAt
+          updatedBy: 24, // updatedBy
         },
       },
       [Keys.ATTENDANCE]: {
@@ -230,6 +238,16 @@ export class GoogleSheetsDbClient extends BaseService {
           trimester: 6,
           performedBy: 7,
           performedAt: 8,
+        },
+      },
+      [Keys.PERIODS]: {
+        sheet: Keys.PERIODS,
+        startRow: 2,
+        columnMap: {
+          trimester: 0,
+          periodType: 1,
+          isCurrentPeriod: 2,
+          startDate: 3,
         },
       },
     };
@@ -572,6 +590,13 @@ export class GoogleSheetsDbClient extends BaseService {
       await this.updateInSheet(sheetKey, rowIndex, record);
       this.logger.debug(`Record with ID ${record.id} updated in ${sheetKey}.`);
 
+      // Create audit record if this is a registration update
+      if (sheetKey === Keys.REGISTRATIONS && sheetInfo.auditSheet) {
+        const auditRecord = this.#createRegistrationAuditRecord(record, updatedBy, false);
+        await this.insertIntoSheet(sheetInfo.auditSheet, auditRecord);
+        this.logger.debug(`Audit record created for registration update: ${record.id}`);
+      }
+
       // Clear cache for this sheet since we modified it
       this.clearCache(sheetKey);
     } catch (error) {
@@ -826,6 +851,11 @@ export class GoogleSheetsDbClient extends BaseService {
       isDeleted: isDeleted,
       deletedAt: isDeleted ? now : '',
       deletedBy: isDeleted ? performedBy : '',
+      reenrollmentIntent: extractValue(registrationRecord.reenrollmentIntent),
+      intentSubmittedAt: extractValue(registrationRecord.intentSubmittedAt),
+      intentSubmittedBy: extractValue(registrationRecord.intentSubmittedBy),
+      updatedAt: now,
+      updatedBy: performedBy,
     };
   }
 

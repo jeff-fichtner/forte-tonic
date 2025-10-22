@@ -5,7 +5,7 @@
             "name": "Debug Node.js App",
             "type": "node",
             "request": "launch",
-            "program": "${workspaceFolder}/start.js",
+            "program": "${workspaceFolder}/src/server.js",
             "env": {
                 "NODE_ENV": "development"
             },

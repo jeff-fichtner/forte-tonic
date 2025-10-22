@@ -23,6 +23,7 @@ export class OperatorUserResponse {
         parent: parentData,
         configuration: configData,
         roles = [],
+        currentPeriod,
       } = data;
 
       this.email = email;
@@ -31,6 +32,7 @@ export class OperatorUserResponse {
       this.parent = parentData ? Parent.fromApiData(parentData) : null;
       this.configuration = configData || {};
       this.roles = Array.isArray(roles) ? roles : [];
+      this.currentPeriod = currentPeriod || null;
     } else {
       // Positional constructor (core pattern)
       this.email = data;
@@ -39,6 +41,7 @@ export class OperatorUserResponse {
       this.parent = parent;
       this.configuration = configuration || {};
       this.roles = [];
+      this.currentPeriod = null;
     }
   }
 
@@ -110,6 +113,7 @@ export class OperatorUserResponse {
       roles: this.roles,
       primaryRole: this.getPrimaryRole(),
       displayName: this.getDisplayName(),
+      currentPeriod: this.currentPeriod || null,
     };
   }
 

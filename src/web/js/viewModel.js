@@ -17,6 +17,8 @@ import { ParentRegistrationForm } from './workflows/parentRegistrationForm.js';
 import { formatPhone } from './utilities/phoneHelpers.js';
 import { formatGrade, formatTime } from './extensions/numberExtensions.js';
 import { ClassManager } from './utilities/classManager.js';
+import { INTENT_LABELS } from './constants/intentConstants.js';
+import { PeriodType } from './constants/periodTypeConstants.js';
 
 /**
  * Format a datetime value for display in tables
@@ -1056,6 +1058,189 @@ export class ViewModel {
     // Sort employees to ensure admins appear at the top
     const sortedEmployees = this.#sortEmployeesForDirectory(mappedEmployees);
     this.parentDirectoryTable = this.#buildDirectory('parent-directory-table', sortedEmployees);
+
+    // Update intent banner
+    this.#updateIntentBanner();
+
+    // Attach intent dropdown listeners
+    this.#attachIntentDropdownListeners();
+  }
+
+  /**
+   * Attach event listeners to intent dropdown selectors
+   */
+  #attachIntentDropdownListeners() {
+    const dropdowns = document.querySelectorAll('.intent-dropdown');
+
+    // Initialize Materialize select elements
+    M.FormSelect.init(dropdowns);
+
+    dropdowns.forEach(dropdown => {
+      // Store the previous value
+      let previousValue = dropdown.value;
+
+      // Add listener (listeners are idempotent when refreshing tables)
+      dropdown.addEventListener('change', async event => {
+        const registrationId = event.target.getAttribute('data-registration-id');
+        const intent = event.target.value;
+
+        if (!intent) {
+          M.toast({ html: 'Please select an intent option.' });
+          return;
+        }
+
+        // Show confirmation modal
+        const confirmed = await this.#showIntentConfirmationModal(intent, registrationId);
+
+        if (!confirmed) {
+          // User cancelled - reset to previous value
+          event.target.value = previousValue;
+          M.FormSelect.init(dropdown); // Reinitialize to show the reset value
+          return;
+        }
+
+        // Find the status indicator for this dropdown
+        const statusIndicator = document.querySelector(
+          `.intent-status-indicator[data-registration-id="${registrationId}"]`
+        );
+
+        try {
+          // Disable dropdown while submitting
+          event.target.disabled = true;
+
+          // Show loading spinner
+          if (statusIndicator) {
+            statusIndicator.style.display = 'flex';
+            statusIndicator.style.alignItems = 'center';
+            statusIndicator.style.justifyContent = 'center';
+            statusIndicator.innerHTML =
+              '<div class="preloader-wrapper tiny active" style="width: 20px; height: 20px; margin: 0;"><div class="spinner-layer spinner-blue-only"><div class="circle-clipper left"><div class="circle"></div></div><div class="gap-patch"><div class="circle"></div></div><div class="circle-clipper right"><div class="circle"></div></div></div></div>';
+          }
+
+          await this.submitIntent(registrationId, intent);
+
+          // Update previous value on success
+          previousValue = intent;
+
+          // Show success checkmark
+          if (statusIndicator) {
+            statusIndicator.style.display = 'flex';
+            statusIndicator.style.alignItems = 'center';
+            statusIndicator.style.justifyContent = 'center';
+            statusIndicator.innerHTML =
+              '<i class="material-icons green-text" style="font-size: 20px;">check_circle</i>';
+            // Hide after 2 seconds
+            setTimeout(() => {
+              if (statusIndicator) {
+                statusIndicator.style.display = 'none';
+              }
+            }, 2000);
+          }
+        } catch (error) {
+          // Show error X
+          if (statusIndicator) {
+            statusIndicator.style.display = 'flex';
+            statusIndicator.style.alignItems = 'center';
+            statusIndicator.style.justifyContent = 'center';
+            statusIndicator.innerHTML =
+              '<i class="material-icons red-text" style="font-size: 20px;">cancel</i>';
+            // Hide after 3 seconds
+            setTimeout(() => {
+              if (statusIndicator) {
+                statusIndicator.style.display = 'none';
+              }
+            }, 3000);
+          }
+          // Reset to previous value on error
+          event.target.value = previousValue;
+          M.FormSelect.init(dropdown);
+          console.error('Intent submission error:', error);
+        } finally {
+          // Re-enable dropdown if it still exists in the DOM
+          if (event.target && document.body.contains(event.target)) {
+            event.target.disabled = false;
+            // Reinitialize Materialize select after re-enabling
+            M.FormSelect.init(dropdown);
+          }
+        }
+      });
+    });
+  }
+
+  /**
+   * Show intent confirmation modal and return promise that resolves to true/false
+   */
+  async #showIntentConfirmationModal(intent, registrationId) {
+    return new Promise(resolve => {
+      const modal = document.getElementById('intent-confirmation-modal');
+      const messageEl = document.getElementById('intent-confirmation-message');
+      const confirmBtn = document.getElementById('intent-confirmation-confirm');
+      const cancelBtn = document.getElementById('intent-confirmation-cancel');
+
+      if (!modal || !messageEl || !confirmBtn || !cancelBtn) {
+        console.error('Intent confirmation modal elements not found');
+        resolve(false);
+        return;
+      }
+
+      // Find the registration to get lesson details
+      const registration = this.registrations.find(r => (r.id?.value || r.id) === registrationId);
+
+      let lessonDetails = 'this lesson';
+      if (registration) {
+        const instructor = this.instructors.find(
+          i =>
+            (i.id?.value || i.id) ===
+            (registration.instructorId?.value || registration.instructorId)
+        );
+        const instructorName = instructor
+          ? `${instructor.firstName} ${instructor.lastName}`
+          : 'Unknown';
+        const instrument = registration.instrument || registration.classTitle || 'Unknown';
+        lessonDetails = `<strong>${instrument}</strong> with <strong>${instructorName}</strong> on <strong>${registration.day}</strong>`;
+      }
+
+      // Set the message based on intent
+      const intentMessages = {
+        keep: `Are you sure you want to <strong>keep</strong> ${lessonDetails}?<br><br>This confirms your intention to continue with this lesson.`,
+        drop: `Are you sure you want to <strong>drop</strong> ${lessonDetails}?<br><br>This indicates you do not wish to continue with this lesson.`,
+        change: `Are you sure you want to <strong>change</strong> ${lessonDetails}?<br><br>This indicates you wish to make changes to this lesson (time, instructor, etc.).`,
+      };
+
+      messageEl.innerHTML =
+        intentMessages[intent] || 'Are you sure you want to update your intent?';
+
+      // Initialize modal
+      const modalInstance = M.Modal.init(modal, {
+        dismissible: true,
+        onCloseEnd: () => {
+          // If modal is closed without clicking a button, treat as cancel
+          resolve(false);
+        },
+      });
+
+      // Handle confirm button
+      const confirmHandler = () => {
+        modalInstance.close();
+        confirmBtn.removeEventListener('click', confirmHandler);
+        cancelBtn.removeEventListener('click', cancelHandler);
+        resolve(true);
+      };
+
+      // Handle cancel button
+      const cancelHandler = () => {
+        modalInstance.close();
+        confirmBtn.removeEventListener('click', confirmHandler);
+        cancelBtn.removeEventListener('click', cancelHandler);
+        resolve(false);
+      };
+
+      confirmBtn.addEventListener('click', confirmHandler);
+      cancelBtn.addEventListener('click', cancelHandler);
+
+      // Open modal
+      modalInstance.open();
+    });
   }
 
   /**
@@ -1213,6 +1398,58 @@ export class ViewModel {
     this.#refreshTablesAfterRegistration();
 
     return newRegistration;
+  }
+
+  /**
+   * Update the intent banner to show how many registrations need intent submission
+   */
+  #updateIntentBanner() {
+    const banner = document.getElementById('intent-banner');
+    const countElement = document.getElementById('intent-incomplete-count');
+
+    if (!banner) return;
+
+    // Check if we're in the intent period
+    const operatorUser = window.UserSession?.getOperatorUser();
+    const isIntentPeriod = operatorUser?.currentPeriod?.periodType === PeriodType.INTENT;
+
+    if (!isIntentPeriod) {
+      banner.style.display = 'none';
+      return;
+    }
+
+    // Count registrations without intent (for current parent only)
+    const incompleteRegistrations = this.registrations.filter(r => {
+      // Check if this registration belongs to current parent's children
+      const student = this.students.find(s => {
+        const studentId = s.id?.value || s.id;
+        const regStudentId = r.studentId?.value || r.studentId;
+        return studentId === regStudentId;
+      });
+
+      if (!student) return false;
+
+      // Check if student belongs to current parent
+      const currentParentId = this.currentUser?.parent?.id;
+      if (!currentParentId) return false;
+
+      const isParentsChild =
+        student.parent1Id === currentParentId || student.parent2Id === currentParentId;
+
+      // Count if it's parent's child AND no intent submitted
+      return isParentsChild && !r.reenrollmentIntent;
+    });
+
+    const count = incompleteRegistrations.length;
+
+    if (count === 0) {
+      banner.style.display = 'none';
+    } else {
+      banner.style.display = 'block';
+      if (countElement) {
+        countElement.textContent = `${count} registration${count !== 1 ? 's' : ''} need${count === 1 ? 's' : ''} your response.`;
+      }
+    }
   }
 
   /**
@@ -1400,19 +1637,38 @@ export class ViewModel {
    *
    */
   #buildRegistrationTable(registrations) {
+    // Check if we're in the intent period to show the Intent column
+    const operatorUser = window.UserSession?.getOperatorUser();
+    const isIntentPeriod = operatorUser?.currentPeriod?.periodType === PeriodType.INTENT;
+
+    console.log('🔍 Admin Master Schedule - Period Check:', {
+      operatorUser: operatorUser ? 'exists' : 'null',
+      currentPeriod: operatorUser?.currentPeriod,
+      periodType: operatorUser?.currentPeriod?.periodType,
+      PeriodType_INTENT: PeriodType.INTENT,
+      isIntentPeriod,
+      willShowColumn: isIntentPeriod,
+    });
+
+    const headers = [
+      'Weekday',
+      'Start Time',
+      'Length',
+      'Student',
+      'Grade',
+      'Instructor',
+      'Instrument/Class',
+    ];
+
+    if (isIntentPeriod) {
+      headers.push('Intent');
+    }
+
+    headers.push('Contact', 'Remove');
+
     return new Table(
       'master-schedule-table',
-      [
-        'Weekday',
-        'Start Time',
-        'Length',
-        'Student',
-        'Grade',
-        'Instructor',
-        'Instrument/Class',
-        'Contact',
-        'Remove',
-      ],
+      headers,
       // row
       registration => {
         // Extract primitive values for comparison
@@ -1438,6 +1694,16 @@ export class ViewModel {
           );
           return '';
         }
+
+        // Build intent cell (non-editable, nullable) - only during intent period
+        let intentCell = '';
+        if (isIntentPeriod) {
+          const intentValue = registration.reenrollmentIntent;
+          const intentLabel = intentValue ? INTENT_LABELS[intentValue] || intentValue : '—';
+          const intentClass = intentValue ? 'green-text' : 'grey-text';
+          intentCell = `<td class="${intentClass}">${intentLabel}</td>`;
+        }
+
         return `
                         <td>${registration.day}</td>
                         <td>${formatTime(registration.startTime) || 'N/A'}</td>
@@ -1446,6 +1712,7 @@ export class ViewModel {
                         <td>${formatGrade(student.grade) || 'N/A'}</td>
                         <td>${instructor.firstName} ${instructor.lastName}</td>
                         <td>${registration.registrationType === RegistrationType.GROUP ? registration.classTitle || 'N/A' : registration.instrument || 'N/A'}</td>
+                        ${intentCell}
                         <td>
                             <a href="#" data-registration-id="${registration.id?.value || registration.id}">
                                 <i class="material-icons copy-parent-emails-table-icon gray-text text-darken-4">email</i>
@@ -1774,18 +2041,39 @@ export class ViewModel {
     let matchingSuccesses = 0;
     let matchingFailures = 0;
 
+    // Add Intent column for parent view during intent period
+    const headers = [
+      'Weekday',
+      'Start Time',
+      'Length',
+      'Student',
+      'Grade',
+      'Instructor',
+      'Instrument/Class',
+      'Contact',
+    ];
+
+    // Check if we're in the intent period to show the Intent column
+    const operatorUser = window.UserSession?.getOperatorUser();
+    const isIntentPeriod = operatorUser?.currentPeriod?.periodType === PeriodType.INTENT;
+
+    console.log('🔍 Parent Weekly Schedule - Period Check:', {
+      viewContext,
+      operatorUser: operatorUser ? 'exists' : 'null',
+      currentPeriod: operatorUser?.currentPeriod,
+      periodType: operatorUser?.currentPeriod?.periodType,
+      PeriodType_INTENT: PeriodType.INTENT,
+      isIntentPeriod,
+      willShowColumn: viewContext === 'parent' && isIntentPeriod,
+    });
+
+    if (viewContext === 'parent' && isIntentPeriod) {
+      headers.splice(7, 0, 'Intent'); // Insert before 'Contact'
+    }
+
     const table = new Table(
       tableId,
-      [
-        'Weekday',
-        'Start Time',
-        'Length',
-        'Student',
-        'Grade',
-        'Instructor',
-        'Instrument/Class',
-        'Contact',
-      ],
+      headers,
       // row
       enrollment => {
         // More flexible instructor matching
@@ -1837,6 +2125,31 @@ export class ViewModel {
           matchingSuccesses++;
         }
 
+        // Build intent cell for parent view during intent period only
+        let intentCell = '';
+        if (viewContext === 'parent' && isIntentPeriod) {
+          const enrollmentId = enrollment.id?.value || enrollment.id;
+          const intentValue = enrollment.reenrollmentIntent;
+
+          // Show dropdown for selecting intent
+          const selectedKeep = intentValue === 'keep' ? 'selected' : '';
+          const selectedDrop = intentValue === 'drop' ? 'selected' : '';
+          const selectedChange = intentValue === 'change' ? 'selected' : '';
+          const selectedNone = !intentValue ? 'selected' : '';
+
+          intentCell = `<td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <select class="intent-dropdown" data-registration-id="${enrollmentId}">
+                <option value="" ${selectedNone}>Select intent...</option>
+                <option value="keep" ${selectedKeep}>${INTENT_LABELS.keep}</option>
+                <option value="drop" ${selectedDrop}>${INTENT_LABELS.drop}</option>
+                <option value="change" ${selectedChange}>${INTENT_LABELS.change}</option>
+              </select>
+              <span class="intent-status-indicator" data-registration-id="${enrollmentId}" style="display: none;"></span>
+            </div>
+          </td>`;
+        }
+
         return `
                         <td>${enrollment.day}</td>
                         <td>${formatTime(enrollment.startTime) || 'N/A'}</td>
@@ -1845,6 +2158,7 @@ export class ViewModel {
                         <td>${formatGrade(student.grade) || 'N/A'}</td>
                         <td>${instructor.firstName} ${instructor.lastName}</td>
                         <td>${enrollment.registrationType === RegistrationType.GROUP ? enrollment.classTitle || enrollment.className || 'N/A' : enrollment.instrument || 'N/A'}</td>
+                        ${intentCell}
                         <td>
                             <a href="#" data-registration-id="${enrollment.id?.value || enrollment.id}" data-view-context="${viewContext}">
                                 <i class="material-icons copy-emails-table-icon gray-text text-darken-4">email</i>
@@ -2063,6 +2377,78 @@ export class ViewModel {
       M.toast({ html: 'Error deleting registration.' });
     } finally {
       this.#setAdminRegistrationLoading(false);
+    }
+  }
+
+  /**
+   * Submit intent for a registration
+   * @param {string} registrationId - Registration ID
+   * @param {string} intent - One of: 'keep', 'drop', 'change'
+   * @returns {Promise<object>} Updated registration
+   * @throws {Error} If submission fails
+   */
+  async submitIntent(registrationId, intent) {
+    // Build headers with authentication
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+
+    if (window.AccessCodeManager) {
+      const storedAuthData = window.AccessCodeManager.getStoredAuthData();
+      if (storedAuthData) {
+        headers['x-access-code'] = storedAuthData.accessCode;
+        headers['x-login-type'] = storedAuthData.loginType;
+      }
+    }
+
+    try {
+      const response = await fetch(`/api/registrations/${registrationId}/intent`, {
+        method: 'PATCH',
+        headers: headers,
+        body: JSON.stringify({ intent }),
+        credentials: 'same-origin',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to submit intent`);
+      }
+
+      const result = await response.json();
+
+      // Update local registration data
+      const registration = this.registrations.find(r => (r.id?.value || r.id) === registrationId);
+      if (registration && result.registration) {
+        registration.reenrollmentIntent = result.registration.reenrollmentIntent;
+        registration.intentSubmittedAt = result.registration.intentSubmittedAt;
+        registration.intentSubmittedBy = result.registration.intentSubmittedBy;
+      }
+
+      // Just refresh the weekly schedule tables to show updated intent
+      // Don't rebuild the entire parent form as that causes errors
+      if (this.parentWeeklyScheduleTables && Array.isArray(this.parentWeeklyScheduleTables)) {
+        this.parentWeeklyScheduleTables.forEach(table => {
+          if (table && table.replaceRange) {
+            const studentRegistrations = this.registrations.filter(r => {
+              const student = this.students.find(
+                s => (s.id?.value || s.id) === (r.studentId?.value || r.studentId)
+              );
+              return student && table.tableId.includes(student.id?.value || student.id);
+            });
+            table.replaceRange(studentRegistrations);
+          }
+        });
+      }
+
+      // Update intent banner
+      this.#updateIntentBanner();
+
+      M.toast({ html: 'Intent submitted successfully.' });
+      return result;
+    } catch (error) {
+      console.error('Error submitting intent:', error);
+      M.toast({ html: error.message || 'Error submitting intent.' });
+      throw error;
     }
   }
   /**

@@ -10,4 +10,5 @@ export const Keys = {
   REGISTRATIONSAUDIT: 'registrations_audit',
   ATTENDANCE: 'attendance',
   ATTENDANCEAUDIT: 'attendance_audit',
+  PERIODS: 'periods',
 };
