@@ -162,8 +162,8 @@ describe('Integration Test: PATCH /api/registrations/:id/intent', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.registration).toBeDefined();
-      expect(response.body.registration.reenrollmentIntent).toBe('keep');
+      expect(response.body.data.registration).toBeDefined();
+      expect(response.body.data.registration.reenrollmentIntent).toBe('keep');
       expect(mockRegistrationRepository.updateIntent).toHaveBeenCalledWith(
         '123e4567-e89b-42d3-8456-426614174000',
         'keep',
@@ -183,7 +183,7 @@ describe('Integration Test: PATCH /api/registrations/:id/intent', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.registration.reenrollmentIntent).toBe('drop');
+      expect(response.body.data.registration.reenrollmentIntent).toBe('drop');
     });
 
     test('should successfully submit intent "change"', async () => {
@@ -198,7 +198,7 @@ describe('Integration Test: PATCH /api/registrations/:id/intent', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.registration.reenrollmentIntent).toBe('change');
+      expect(response.body.data.registration.reenrollmentIntent).toBe('change');
     });
   });
 
@@ -211,7 +211,7 @@ describe('Integration Test: PATCH /api/registrations/:id/intent', () => {
         .send({ intent: 'invalid' })
         .expect(400);
 
-      expect(response.body.error).toContain('Invalid intent');
+      expect(response.body.error.message).toContain('Invalid intent');
       expect(mockRegistrationRepository.updateIntent).not.toHaveBeenCalled();
     });
 
@@ -225,7 +225,7 @@ describe('Integration Test: PATCH /api/registrations/:id/intent', () => {
         .send({ intent: 'keep' })
         .expect(400);
 
-      expect(response.body.error).toContain('Intent collection is not currently active');
+      expect(response.body.error.message).toContain('Intent collection is not currently active');
       expect(mockRegistrationRepository.updateIntent).not.toHaveBeenCalled();
     });
 
@@ -241,7 +241,7 @@ describe('Integration Test: PATCH /api/registrations/:id/intent', () => {
         .send({ intent: 'keep' })
         .expect(404);
 
-      expect(response.body.error).toContain('Registration not found or access denied');
+      expect(response.body.error.message).toContain('Registration not found or access denied');
     });
   });
 });

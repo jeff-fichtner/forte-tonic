@@ -143,19 +143,26 @@ export class UserController {
    * Get detailed student information using application service
    */
   static async getStudentDetails(req, res) {
+    const startTime = Date.now();
+
     try {
       const { studentId } = req.params;
       const studentApplicationService = serviceContainer.get('studentApplicationService');
 
       const details = await studentApplicationService.getStudentDetails(studentId);
 
-      res.json({
-        success: true,
-        data: details,
+      successResponse(res, details, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getStudentDetails', studentId: req.params.studentId },
       });
     } catch (error) {
       logger.error('Error getting student details:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getStudentDetails' },
+      });
     }
   }
 
@@ -163,6 +170,8 @@ export class UserController {
    * Update student profile using application service
    */
   static async updateStudent(req, res) {
+    const startTime = Date.now();
+
     try {
       const { studentId } = req.params;
       const updates = req.body;
@@ -176,16 +185,18 @@ export class UserController {
         userId
       );
 
-      res.json({
-        success: true,
-        data: result,
+      successResponse(res, result, {
         message: 'Student profile updated successfully',
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'updateStudent', studentId: req.params.studentId },
       });
     } catch (error) {
       logger.error('Error updating student:', error);
-      res.status(400).json({
-        success: false,
-        error: error.message,
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'updateStudent' },
       });
     }
   }
@@ -194,6 +205,8 @@ export class UserController {
    * Enroll a new student using application service
    */
   static async enrollStudent(req, res) {
+    const startTime = Date.now();
+
     try {
       const studentData = req.body;
       const userId = getAuthenticatedUserEmail(req);
@@ -202,16 +215,19 @@ export class UserController {
 
       const result = await studentApplicationService.enrollStudent(studentData, userId);
 
-      res.status(201).json({
-        success: true,
-        data: result,
+      successResponse(res, result, {
         message: 'Student enrolled successfully',
+        statusCode: 201,
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'enrollStudent' },
       });
     } catch (error) {
       logger.error('Error enrolling student:', error);
-      res.status(400).json({
-        success: false,
-        error: error.message,
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'enrollStudent' },
       });
     }
   }
@@ -220,6 +236,8 @@ export class UserController {
    * Generate student progress report
    */
   static async getStudentProgressReport(req, res) {
+    const startTime = Date.now();
+
     try {
       const { studentId } = req.params;
 
@@ -227,13 +245,18 @@ export class UserController {
 
       const report = await studentApplicationService.generateProgressReport(studentId);
 
-      res.json({
-        success: true,
-        data: report,
+      successResponse(res, report, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getStudentProgressReport', studentId: req.params.studentId },
       });
     } catch (error) {
       logger.error('Error generating progress report:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getStudentProgressReport' },
+      });
     }
   }
 
