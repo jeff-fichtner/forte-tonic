@@ -113,16 +113,21 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
 
     const response = await request(app).post('/api/getAppConfiguration').send({}).expect(200);
 
-    // Verify currentPeriod is included in response
-    expect(response.body).toHaveProperty('currentPeriod');
-    expect(response.body.currentPeriod).toBeDefined();
-    expect(response.body.currentPeriod.trimester).toBe('Fall');
-    expect(response.body.currentPeriod.periodType).toBe(PeriodType.INTENT);
-    expect(response.body.currentPeriod.isCurrentPeriod).toBe(true);
+    // Verify standardized response format
+    expect(response.body).toHaveProperty('success', true);
+    expect(response.body).toHaveProperty('data');
+    expect(response.body).toHaveProperty('message', 'Application configuration retrieved successfully');
 
-    // Verify rockBandClassIds is included
-    expect(response.body).toHaveProperty('rockBandClassIds');
-    expect(response.body.rockBandClassIds).toEqual(['G015']);
+    // Verify currentPeriod is included in data
+    expect(response.body.data).toHaveProperty('currentPeriod');
+    expect(response.body.data.currentPeriod).toBeDefined();
+    expect(response.body.data.currentPeriod.trimester).toBe('Fall');
+    expect(response.body.data.currentPeriod.periodType).toBe(PeriodType.INTENT);
+    expect(response.body.data.currentPeriod.isCurrentPeriod).toBe(true);
+
+    // Verify rockBandClassIds is included in data
+    expect(response.body.data).toHaveProperty('rockBandClassIds');
+    expect(response.body.data.rockBandClassIds).toEqual(['G015']);
 
     // Verify periodService.getCurrentPeriod was called
     expect(mockPeriodService.getCurrentPeriod).toHaveBeenCalled();
@@ -134,13 +139,18 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
 
     const response = await request(app).post('/api/getAppConfiguration').send({}).expect(200);
 
-    // Verify currentPeriod is null in response
-    expect(response.body).toHaveProperty('currentPeriod');
-    expect(response.body.currentPeriod).toBeNull();
+    // Verify standardized response format
+    expect(response.body).toHaveProperty('success', true);
+    expect(response.body).toHaveProperty('data');
+    expect(response.body).toHaveProperty('message', 'Application configuration retrieved successfully');
 
-    // Verify rockBandClassIds is still included
-    expect(response.body).toHaveProperty('rockBandClassIds');
-    expect(response.body.rockBandClassIds).toEqual(['G015']);
+    // Verify currentPeriod is null in data
+    expect(response.body.data).toHaveProperty('currentPeriod');
+    expect(response.body.data.currentPeriod).toBeNull();
+
+    // Verify rockBandClassIds is still included in data
+    expect(response.body.data).toHaveProperty('rockBandClassIds');
+    expect(response.body.data.rockBandClassIds).toEqual(['G015']);
 
     // Verify periodService.getCurrentPeriod was called
     expect(mockPeriodService.getCurrentPeriod).toHaveBeenCalled();
