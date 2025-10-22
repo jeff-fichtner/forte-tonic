@@ -116,7 +116,6 @@ export class SheetCacheManager {
       this.addDependency(key, options.dependsOn);
     }
 
-    console.log(`📦 Cached ${key} (${entry.size} bytes, TTL: ${ttl}ms)`);
   }
 
   /**
@@ -127,7 +126,6 @@ export class SheetCacheManager {
     if (entry) {
       this.cache.delete(key);
       this.invalidateDependents(key);
-      console.log(`🗑️ Invalidated cache: ${key}`);
     }
   }
 
@@ -144,7 +142,6 @@ export class SheetCacheManager {
     }
 
     keysToInvalidate.forEach(key => this.invalidate(key));
-    console.log(`🗑️ Invalidated ${keysToInvalidate.length} entries with tag: ${tag}`);
   }
 
   /**
@@ -198,7 +195,6 @@ export class SheetCacheManager {
       this.cache.delete(entries[i][0]);
     }
 
-    console.log(`🧹 Evicted ${toRemove} least used cache entries`);
   }
 
   /**
@@ -219,7 +215,6 @@ export class SheetCacheManager {
       }
     }
 
-    console.log(`🧹 Evicted entries to free ${freedSize} bytes`);
   }
 
   /**
@@ -257,7 +252,6 @@ export class SheetCacheManager {
     this.cache.clear();
     this.dependencies.clear();
     this.hitRate = { hits: 0, misses: 0 };
-    console.log('🗑️ Cache cleared');
   }
 
   /**
@@ -270,12 +264,10 @@ export class SheetCacheManager {
     }
 
     try {
-      console.log(`🔄 Preloading ${key}...`);
       const data = await loader();
       this.set(key, data, options);
       return data;
     } catch (error) {
-      console.error(`❌ Failed to preload ${key}:`, error);
       throw error;
     }
   }
@@ -303,7 +295,6 @@ export class SheetCacheManager {
    */
   async refreshInBackground(key, loader, options = {}) {
     try {
-      console.log(`🔄 Background refreshing ${key}...`);
       const newData = await loader();
 
       // Check if data actually changed
@@ -311,14 +302,11 @@ export class SheetCacheManager {
       if (existing && !existing.hasChanged(newData)) {
         // Data unchanged, just update timestamp
         existing.timestamp = Date.now();
-        console.log(`✅ ${key} unchanged, extended TTL`);
       } else {
         // Data changed, update cache
         this.set(key, newData, options);
-        console.log(`✅ ${key} refreshed with new data`);
       }
     } catch (error) {
-      console.error(`❌ Background refresh failed for ${key}:`, error);
     }
   }
 }

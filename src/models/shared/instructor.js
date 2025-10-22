@@ -25,7 +25,6 @@ function extractStringValue(value) {
       return String(value[0]);
     }
 
-    console.warn('Unable to extract string from object:', value);
     return String(value); // This will produce "[object Object]"
   }
 

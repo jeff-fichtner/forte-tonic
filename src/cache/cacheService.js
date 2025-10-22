@@ -5,8 +5,12 @@
  * with TTL support and cache statistics.
  */
 
+import { createLogger } from '../utils/logger.js';
+import { configService } from '../services/configurationService.js';
+
 export class CacheService {
   constructor() {
+    this.logger = createLogger(configService);
     this.cache = new Map();
     this.timers = new Map();
     this.stats = {
@@ -58,7 +62,6 @@ export class CacheService {
 
       return true;
     } catch (error) {
-      console.error('Cache set error:', error);
       return false;
     }
   }
@@ -89,7 +92,6 @@ export class CacheService {
 
       return entry.value;
     } catch (error) {
-      console.error('Cache get error:', error);
       this.stats.misses++;
       return null;
     }
@@ -113,7 +115,6 @@ export class CacheService {
 
       return deleted;
     } catch (error) {
-      console.error('Cache delete error:', error);
       return false;
     }
   }
@@ -249,7 +250,6 @@ export class CacheService {
     this.timers.clear();
     this.cache.clear();
 
-    console.log('💾 Cache service shutdown complete');
   }
 
   /**
