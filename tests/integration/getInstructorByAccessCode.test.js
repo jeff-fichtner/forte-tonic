@@ -207,12 +207,14 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
       // BREAKPOINT: Examine response data
       // debugger;
 
-      // Verify the response structure
-      expect(response.body).toHaveProperty('id', expectedInstructor.id);
-      expect(response.body).toHaveProperty('email', expectedInstructor.email);
-      expect(response.body).toHaveProperty('firstName', expectedInstructor.firstName);
-      expect(response.body).toHaveProperty('lastName', expectedInstructor.lastName);
-      expect(response.body).toHaveProperty('accessCode', expectedInstructor.accessCode);
+      // Verify the wrapped response structure
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('id', expectedInstructor.id);
+      expect(response.body.data).toHaveProperty('email', expectedInstructor.email);
+      expect(response.body.data).toHaveProperty('firstName', expectedInstructor.firstName);
+      expect(response.body.data).toHaveProperty('lastName', expectedInstructor.lastName);
+      expect(response.body.data).toHaveProperty('accessCode', expectedInstructor.accessCode);
 
       // Verify repository was called correctly
       expect(mockUserRepository.getInstructorByAccessCode).toHaveBeenCalledWith(accessCode);
@@ -236,10 +238,12 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
 
       console.log('📥 Response for second instructor:', response.body);
 
-      expect(response.body).toHaveProperty('id', 'INSTRUCTOR2@TEST.COM');
-      expect(response.body).toHaveProperty('firstName', 'Jane');
-      expect(response.body).toHaveProperty('lastName', 'Teacher');
-      expect(response.body).toHaveProperty('accessCode', '789012');
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('id', 'INSTRUCTOR2@TEST.COM');
+      expect(response.body.data).toHaveProperty('firstName', 'Jane');
+      expect(response.body.data).toHaveProperty('lastName', 'Teacher');
+      expect(response.body.data).toHaveProperty('accessCode', '789012');
 
       console.log('✅ Second instructor test passed');
     });
@@ -361,7 +365,9 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
         .send({ accessCode: '  654321  ' })
         .expect(200);
 
-      expect(response.body).toHaveProperty('firstName', 'John');
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('firstName', 'John');
 
       console.log('✅ Whitespace handling test passed');
     });
@@ -379,11 +385,13 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
         .send({ accessCode: '654321' })
         .expect(200);
 
-      // Verify transformed data structure
-      expect(response.body).toHaveProperty('id');
-      expect(response.body).toHaveProperty('email');
-      expect(response.body).toHaveProperty('firstName');
-      expect(response.body).toHaveProperty('lastName');
+      // Verify wrapped response with transformed data structure
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('id');
+      expect(response.body.data).toHaveProperty('email');
+      expect(response.body.data).toHaveProperty('firstName');
+      expect(response.body.data).toHaveProperty('lastName');
 
       // Check that transformation occurred (UserTransformService.transform was called)
       console.log('📊 Transformed response structure verified');

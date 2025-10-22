@@ -22,8 +22,40 @@ router.get('/version', (req, res) => {
   res.json(version);
 });
 
-// Get application configuration
+// ===== MODERN REST API ENDPOINTS =====
+
+// Configuration
+router.get('/configuration', UserController.getAppConfiguration);
+
+// User resources
+router.get('/admins', UserController.getAdmins);
+router.get('/instructors', UserController.getInstructors);
+router.get('/students', extractPaginatedRequestData, UserController.getStudents);
+
+// Lookup by access code
+router.get('/admins/by-access-code/:accessCode', UserController.getAdminByAccessCode);
+router.get('/instructors/by-access-code/:accessCode', UserController.getInstructorByAccessCode);
+router.get('/parents/by-access-code/:accessCode', UserController.getParentByAccessCode);
+
+// Program resources
+router.get('/classes', extractPaginatedRequestData, RegistrationController.getClasses);
+router.get('/rooms', extractPaginatedRequestData, RegistrationController.getRooms);
+router.get('/registrations', extractPaginatedRequestData, RegistrationController.getRegistrations);
+
+// ===== LEGACY ENDPOINTS (For backward compatibility - will be deprecated) =====
+
 router.post('/getAppConfiguration', UserController.getAppConfiguration);
+router.post('/getAdmins', UserController.getAdmins);
+router.post('/getInstructors', UserController.getInstructors);
+router.post('/getStudents', extractPaginatedRequestData, UserController.getStudents);
+router.post('/getAdminByAccessCode', extractSingleRequestData, UserController.getAdminByAccessCode);
+router.post('/getInstructorByAccessCode', extractSingleRequestData, UserController.getInstructorByAccessCode);
+router.post('/getParentByAccessCode', extractSingleRequestData, UserController.getParentByAccessCode);
+router.post('/getClasses', extractPaginatedRequestData, RegistrationController.getClasses);
+router.post('/getRooms', extractPaginatedRequestData, RegistrationController.getRooms);
+router.post('/getRegistrations', extractPaginatedRequestData, RegistrationController.getRegistrations);
+
+// ===== AUTHENTICATION & ADMIN TOOLS =====
 
 // Authenticate user by access code
 router.post(
@@ -40,37 +72,6 @@ router.post('/testSheetData', SystemController.testSheetData);
 
 // Admin-only cache clear endpoint
 router.post('/admin/clearCache', SystemController.clearCache);
-
-router.post('/getAdmins', UserController.getAdmins);
-
-router.post('/getInstructors', UserController.getInstructors);
-
-router.post('/getStudents', extractPaginatedRequestData, UserController.getStudents);
-
-// Access code lookup endpoints
-router.post('/getAdminByAccessCode', extractSingleRequestData, UserController.getAdminByAccessCode);
-
-router.post(
-  '/getInstructorByAccessCode',
-  extractSingleRequestData,
-  UserController.getInstructorByAccessCode
-);
-
-router.post(
-  '/getParentByAccessCode',
-  extractSingleRequestData,
-  UserController.getParentByAccessCode
-);
-
-router.post('/getClasses', extractPaginatedRequestData, RegistrationController.getClasses);
-
-router.post(
-  '/getRegistrations',
-  extractPaginatedRequestData,
-  RegistrationController.getRegistrations
-);
-
-router.post('/getRooms', extractPaginatedRequestData, RegistrationController.getRooms);
 
 // ===== NEW REPOSITORY-BASED ENDPOINTS =====
 
