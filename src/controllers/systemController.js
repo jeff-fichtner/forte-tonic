@@ -71,6 +71,8 @@ export class SystemController {
    * Test endpoint to verify Google Sheets connectivity
    */
   static async testConnection(req, res) {
+    const startTime = Date.now();
+
     try {
       logger.info('Testing Google Sheets connection...');
 
@@ -107,13 +109,15 @@ export class SystemController {
       };
 
       logger.info('Connection test result:', testResult);
+
+      // Return raw data for backward compatibility
       res.json(testResult);
     } catch (error) {
       logger.error('Error testing Google Sheets connection:', error);
-      res.status(500).json({
-        success: false,
-        error: error.message,
-        stack: error.stack,
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'testConnection' },
       });
     }
   }
