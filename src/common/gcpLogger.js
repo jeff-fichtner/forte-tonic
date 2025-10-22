@@ -80,7 +80,7 @@ export function getCloudLogger() {
      * Log informational message (INFO severity)
      * Use for successful operations, request completion
      */
-    info: (data) => {
+    info: data => {
       const formatted = formatForCloudLogging(data, LOG_SEVERITY.INFO);
       // When the data is an object, stringify it for GCP to parse
       if (typeof formatted === 'object') {
@@ -94,7 +94,7 @@ export function getCloudLogger() {
      * Log warning message (WARNING severity)
      * Use for 4xx client errors, recoverable issues
      */
-    warning: (data) => {
+    warning: data => {
       const formatted = formatForCloudLogging(data, LOG_SEVERITY.WARNING);
       if (typeof formatted === 'object') {
         logger.warn(JSON.stringify(formatted));
@@ -107,7 +107,7 @@ export function getCloudLogger() {
      * Log error message (ERROR severity)
      * Use for 5xx server errors, critical issues
      */
-    error: (data) => {
+    error: data => {
       const formatted = formatForCloudLogging(data, LOG_SEVERITY.ERROR);
       if (typeof formatted === 'object') {
         logger.error(JSON.stringify(formatted));

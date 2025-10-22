@@ -149,10 +149,7 @@ function getClientMessage(error, statusCode) {
  * @returns {string} Error type
  */
 function getErrorType(statusCode) {
-  if (
-    statusCode === HTTP_STATUS.BAD_REQUEST ||
-    statusCode === HTTP_STATUS.UNPROCESSABLE_ENTITY
-  ) {
+  if (statusCode === HTTP_STATUS.BAD_REQUEST || statusCode === HTTP_STATUS.UNPROCESSABLE_ENTITY) {
     return ERROR_TYPE.VALIDATION;
   }
 

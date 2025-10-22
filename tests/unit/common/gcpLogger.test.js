@@ -11,9 +11,7 @@ jest.unstable_mockModule('../../../src/utils/logger.js', () => ({
   getLogger: jest.fn(() => mockLogger),
 }));
 
-const { buildHttpRequestLog, getCloudLogger } = await import(
-  '../../../src/common/gcpLogger.js'
-);
+const { buildHttpRequestLog, getCloudLogger } = await import('../../../src/common/gcpLogger.js');
 
 describe('gcpLogger', () => {
   beforeEach(() => {
