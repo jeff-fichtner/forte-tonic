@@ -100,6 +100,7 @@ export const version = {
   number: getVersionNumber(),
   buildDate: getBuildDate(),
   gitCommit: process.env.BUILD_GIT_COMMIT || getLocalGitCommit(),
+  gitTag: process.env.BUILD_GIT_TAG || null,
   environment,
   isStaging: environment === NodeEnv.STAGING,
   displayVersion: environment !== NodeEnv.PRODUCTION, // Show in all environments except production
