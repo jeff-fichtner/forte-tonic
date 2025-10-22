@@ -90,8 +90,6 @@ const mockUserRepository = {
   getInstructorById: jest.fn().mockResolvedValue(null),
   getInstructorByEmail: jest.fn().mockResolvedValue(null),
   getInstructorByAccessCode: jest.fn().mockImplementation(accessCode => {
-    console.log(`🔍 DEBUG: getInstructorByAccessCode called with: "${accessCode}"`);
-
     const instructors = [
       {
         id: 'INSTRUCTOR1@TEST.COM',
@@ -121,11 +119,6 @@ const mockUserRepository = {
     ];
 
     const found = instructors.find(i => i.accessCode === accessCode);
-    console.log(
-      `🔍 DEBUG: Found instructor:`,
-      found ? `${found.firstName} ${found.lastName} (${found.email})` : 'null'
-    );
-
     return Promise.resolve(found || null);
   }),
   getStudents: jest.fn().mockResolvedValue([]),
@@ -142,8 +135,6 @@ const mockUserRepository = {
 jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js', () => ({
   serviceContainer: {
     get: jest.fn().mockImplementation(serviceName => {
-      console.log(`🔍 DEBUG: Service container requested: "${serviceName}"`);
-
       if (serviceName === 'userRepository') {
         return mockUserRepository;
       }
@@ -169,17 +160,13 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
     jest.clearAllMocks();
 
     // Enable detailed console logging for debugging
-    console.log('\n🧪 Starting new test...');
   });
 
   afterEach(() => {
-    console.log('✅ Test completed\n');
   });
 
   describe('Success Cases', () => {
     test('should return instructor data for valid access code', async () => {
-      console.log('🎯 Testing valid access code: 654321');
-
       // BREAKPOINT: Add debugger statement for debugging
       // debugger;
 
@@ -194,15 +181,9 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
         isActive: true,
         phoneNumber: '555-0001',
       };
-
-      console.log('📤 Sending request to /api/getInstructorByAccessCode');
-
       const response = await request(app)
         .get(`/api/instructors/by-access-code/${accessCode}`)
         .expect(200);
-
-      console.log('📥 Response received:', response.body);
-
       // BREAKPOINT: Examine response data
       // debugger;
 
@@ -218,13 +199,9 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
       // Verify repository was called correctly
       expect(mockUserRepository.getInstructorByAccessCode).toHaveBeenCalledWith(accessCode);
       expect(mockUserRepository.getInstructorByAccessCode).toHaveBeenCalledTimes(1);
-
-      console.log('✅ All assertions passed for valid access code test');
     });
 
     test('should return second instructor for different valid access code', async () => {
-      console.log('🎯 Testing second valid access code: 789012');
-
       // BREAKPOINT: Test with different instructor
       // debugger;
 
@@ -233,24 +210,17 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
       const response = await request(app)
         .get(`/api/instructors/by-access-code/${accessCode}`)
         .expect(200);
-
-      console.log('📥 Response for second instructor:', response.body);
-
       expect(response.body).toHaveProperty('success', true);
       expect(response.body).toHaveProperty('data');
       expect(response.body.data).toHaveProperty('id', 'INSTRUCTOR2@TEST.COM');
       expect(response.body.data).toHaveProperty('firstName', 'Jane');
       expect(response.body.data).toHaveProperty('lastName', 'Teacher');
       expect(response.body.data).toHaveProperty('accessCode', '789012');
-
-      console.log('✅ Second instructor test passed');
     });
   });
 
   describe('Error Cases', () => {
     test('should return 404 when instructor not found', async () => {
-      console.log('🎯 Testing invalid access code: 999999');
-
       // BREAKPOINT: Test not found scenario
       // debugger;
 
@@ -259,9 +229,6 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
       const response = await request(app)
         .get(`/api/instructors/by-access-code/${accessCode}`)
         .expect(404);
-
-      console.log('📥 Error response for invalid access code:', response.body);
-
       // Updated to expect standardized error format
       expect(response.body).toHaveProperty('success', false);
       expect(response.body.error).toHaveProperty('message', 'Instructor not found with provided access code');
@@ -271,19 +238,13 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
       // Verify repository was called but found nothing
       expect(mockUserRepository.getInstructorByAccessCode).toHaveBeenCalledWith(accessCode);
       expect(mockUserRepository.getInstructorByAccessCode).toHaveBeenCalledTimes(1);
-
-      console.log('✅ Instructor not found test passed');
     });
   });
 
   describe('Edge Cases', () => {
     test('should handle access code with whitespace', async () => {
-      console.log('🎯 Testing access code with whitespace');
-
       // Override mock to handle trimmed input
       mockUserRepository.getInstructorByAccessCode.mockImplementationOnce(accessCode => {
-        console.log(`🔍 DEBUG: Received access code with potential whitespace: "${accessCode}"`);
-
         // In real implementation, this might be trimmed
         const trimmedCode = accessCode?.trim();
 
@@ -307,15 +268,11 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
       expect(response.body).toHaveProperty('success', true);
       expect(response.body).toHaveProperty('data');
       expect(response.body.data).toHaveProperty('firstName', 'John');
-
-      console.log('✅ Whitespace handling test passed');
     });
   });
 
   describe('Service Integration', () => {
     test('should verify UserTransformService integration', async () => {
-      console.log('🎯 Testing UserTransformService integration');
-
       // BREAKPOINT: Check service transformation
       // debugger;
 
@@ -332,9 +289,6 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
       expect(response.body.data).toHaveProperty('lastName');
 
       // Check that transformation occurred (UserTransformService.transform was called)
-      console.log('📊 Transformed response structure verified');
-
-      console.log('✅ Service integration test passed');
     });
   });
 });
