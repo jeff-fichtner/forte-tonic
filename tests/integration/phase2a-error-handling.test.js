@@ -137,7 +137,11 @@ describe('Phase 2A: Critical Controllers Error Handling', () => {
 
   describe('UserController.getAppConfiguration', () => {
     test('should return raw app configuration (not wrapped for backward compatibility)', async () => {
-      const response = await request(app).get('/api/getAppConfiguration').expect(200);
+      // Note: This is a POST endpoint in the legacy API format
+      const response = await request(app)
+        .post('/api/getAppConfiguration')
+        .send([]) // Legacy format expects empty array
+        .expect(200);
 
       // This endpoint returns RAW data (not wrapped) for backward compatibility
       expect(response.body).toHaveProperty('currentPeriod');
@@ -145,7 +149,9 @@ describe('Phase 2A: Critical Controllers Error Handling', () => {
     });
 
     test('should include period information', async () => {
-      const response = await request(app).get('/api/getAppConfiguration');
+      const response = await request(app)
+        .post('/api/getAppConfiguration')
+        .send([]);
 
       const { currentPeriod } = response.body;
       expect(currentPeriod).toBeDefined();
@@ -159,7 +165,9 @@ describe('Phase 2A: Critical Controllers Error Handling', () => {
     });
 
     test('should include rock band class IDs', async () => {
-      const response = await request(app).get('/api/getAppConfiguration');
+      const response = await request(app)
+        .post('/api/getAppConfiguration')
+        .send([]);
 
       expect(response.body.rockBandClassIds).toBeDefined();
       expect(Array.isArray(response.body.rockBandClassIds)).toBe(true);

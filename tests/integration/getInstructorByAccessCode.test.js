@@ -259,7 +259,12 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
 
       console.log('📥 Error response for missing access code:', response.body);
 
-      expect(response.body).toHaveProperty('error', 'Access code is required');
+      // Updated to expect standardized error format
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toHaveProperty('message', 'Access code is required');
+      expect(response.body.error).toHaveProperty('type', 'validation');
+      expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
 
       // Verify repository was NOT called
       expect(mockUserRepository.getInstructorByAccessCode).not.toHaveBeenCalled();
@@ -275,7 +280,9 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
         .send({ accessCode: '' })
         .expect(400);
 
-      expect(response.body).toHaveProperty('error', 'Access code is required');
+      // Updated to expect standardized error format
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('message', 'Access code is required');
       expect(mockUserRepository.getInstructorByAccessCode).not.toHaveBeenCalled();
 
       console.log('✅ Empty access code validation test passed');
@@ -296,10 +303,11 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
 
       console.log('📥 Error response for invalid access code:', response.body);
 
-      expect(response.body).toHaveProperty(
-        'error',
-        'Instructor not found with provided access code'
-      );
+      // Updated to expect standardized error format
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('message', 'Instructor not found with provided access code');
+      expect(response.body.error).toHaveProperty('type', 'not_found');
+      expect(response.body.error).toHaveProperty('code', 'NOT_FOUND');
 
       // Verify repository was called but found nothing
       expect(mockUserRepository.getInstructorByAccessCode).toHaveBeenCalledWith(accessCode);
@@ -318,7 +326,9 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
         .send({ accessCode: null })
         .expect(400);
 
-      expect(response.body).toHaveProperty('error', 'Access code is required');
+      // Updated to expect standardized error format
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('message', 'Access code is required');
 
       console.log('✅ Null access code test passed');
     });
