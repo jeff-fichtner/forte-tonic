@@ -22,7 +22,7 @@ const logger = getLogger();
 export class UserController {
   /**
    * Get application configuration including current period and settings
-   * CRITICAL: Used by frontend initialization - must return raw data for compatibility
+   * Used by frontend initialization
    * @param {object} req - Express request object
    * @param {object} res - Express response object
    */
@@ -40,9 +40,14 @@ export class UserController {
 
       const configuration = new AppConfigurationResponse(configurationData);
 
-      // Return raw data (not wrapped) for backward compatibility
-      // Frontend expects: AppConfigurationResponse.fromApiData(data)
-      return res.json(configuration.toJSON());
+      // Use standardized response format
+      // HttpService will auto-unwrap { success: true, data: {...} } to just the data
+      successResponse(res, configuration.toJSON(), {
+        req,
+        startTime,
+        message: 'Application configuration retrieved successfully',
+        context: { controller: 'UserController', method: 'getAppConfiguration' },
+      });
     } catch (error) {
       logger.error('Error getting app configuration:', error);
       errorResponse(res, error, {
