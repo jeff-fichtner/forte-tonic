@@ -236,6 +236,16 @@ export class HttpService {
       try {
         // The Node.js server returns JSON.stringify'd responses to match the original behavior
         const parsedResponse = JSON.parse(responseText);
+
+        // Auto-unwrap standardized response format for backward compatibility
+        // New format: { success: true, data: {...} }
+        // Old format: {...} (raw data)
+        // This allows backend to use standardized responses without breaking frontend
+        if (parsedResponse && typeof parsedResponse === 'object' &&
+            'success' in parsedResponse && 'data' in parsedResponse) {
+          return mapper ? mapper(parsedResponse.data) : parsedResponse.data;
+        }
+
         return mapper ? mapper(parsedResponse) : parsedResponse;
       } catch (e) {
         throw new Error(`Error parsing response - ${e}: ${responseText}`);
