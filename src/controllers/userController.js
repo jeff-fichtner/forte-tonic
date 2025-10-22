@@ -335,14 +335,13 @@ export class UserController {
 
   /**
    * Get admin by access code
-   * Supports both REST (GET /admins/by-access-code/:accessCode) and legacy (POST /getAdminByAccessCode)
+   * REST: GET /admins/by-access-code/:accessCode
    */
   static async getAdminByAccessCode(req, res) {
     const startTime = Date.now();
 
     try {
-      // Support both URL params (REST) and body params (legacy)
-      const accessCode = req.params.accessCode || req.body?.accessCode;
+      const { accessCode } = req.params;
 
       if (!accessCode) {
         throw new ValidationError('Access code is required');
@@ -374,14 +373,13 @@ export class UserController {
 
   /**
    * Get instructor by access code
-   * Supports both REST (GET /instructors/by-access-code/:accessCode) and legacy (POST /getInstructorByAccessCode)
+   * REST: GET /instructors/by-access-code/:accessCode
    */
   static async getInstructorByAccessCode(req, res) {
     const startTime = Date.now();
 
     try {
-      // Support both URL params (REST) and body params (legacy)
-      const accessCode = req.params.accessCode || req.body?.accessCode;
+      const { accessCode } = req.params;
 
       if (!accessCode) {
         throw new ValidationError('Access code is required');
@@ -413,14 +411,13 @@ export class UserController {
 
   /**
    * Get parent by access code
-   * Supports both REST (GET /parents/by-access-code/:accessCode) and legacy (POST /getParentByAccessCode)
+   * REST: GET /parents/by-access-code/:accessCode
    */
   static async getParentByAccessCode(req, res) {
     const startTime = Date.now();
 
     try {
-      // Support both URL params (REST) and body params (legacy)
-      const accessCode = req.params.accessCode || req.body?.accessCode;
+      const { accessCode } = req.params;
 
       if (!accessCode) {
         throw new ValidationError('Access code is required');

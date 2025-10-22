@@ -111,7 +111,7 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
       startDate: new Date('2025-01-15'),
     });
 
-    const response = await request(app).post('/api/getAppConfiguration').send({}).expect(200);
+    const response = await request(app).get('/api/configuration').expect(200);
 
     // Verify standardized response format
     expect(response.body).toHaveProperty('success', true);
@@ -137,7 +137,7 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
     // Mock period service to return null (no active period)
     mockPeriodService.getCurrentPeriod.mockResolvedValue(null);
 
-    const response = await request(app).post('/api/getAppConfiguration').send({}).expect(200);
+    const response = await request(app).get('/api/configuration').expect(200);
 
     // Verify standardized response format
     expect(response.body).toHaveProperty('success', true);
