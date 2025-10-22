@@ -211,12 +211,22 @@ export class HttpService {
         }
       }
 
-      const response = await fetch(`/api/${serverFunctionName}`, {
-        method: 'POST',
+      // Determine HTTP method - use GET for read operations
+      const readOnlyEndpoints = ['configuration', 'admins', 'instructors', 'students', 'classes', 'registrations', 'rooms'];
+      const isReadOperation = readOnlyEndpoints.includes(serverFunctionName);
+
+      const fetchOptions = {
+        method: isReadOperation ? 'GET' : 'POST',
         headers: headers,
-        body: JSON.stringify(payload),
         credentials: 'same-origin', // Include session cookies
-      });
+      };
+
+      // Only include body for POST requests
+      if (!isReadOperation) {
+        fetchOptions.body = JSON.stringify(payload);
+      }
+
+      const response = await fetch(`/api/${serverFunctionName}`, fetchOptions);
 
       if (!response.ok) {
         const errorText = await response.text();
