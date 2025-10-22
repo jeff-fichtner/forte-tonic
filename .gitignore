@@ -142,7 +142,7 @@ docs/generated/
 dev/
 
 # Credentials directory (service account keys, etc.)
-credentials/
+config/credentials/
 
 # Google Apps Script generated config
 gas/.clasp.json

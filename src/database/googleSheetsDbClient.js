@@ -245,10 +245,9 @@ export class GoogleSheetsDbClient extends BaseService {
         startRow: 2,
         columnMap: {
           trimester: 0,
-          year: 1,
-          periodType: 2,
-          isCurrentPeriod: 3,
-          startDate: 4,
+          periodType: 1,
+          isCurrentPeriod: 2,
+          startDate: 3,
         },
       },
     };
@@ -594,7 +593,7 @@ export class GoogleSheetsDbClient extends BaseService {
       // Create audit record if this is a registration update
       if (sheetKey === Keys.REGISTRATIONS && sheetInfo.auditSheet) {
         const auditRecord = this.#createRegistrationAuditRecord(record, updatedBy, false);
-        await this.insertRecord(sheetInfo.auditSheet, auditRecord);
+        await this.insertIntoSheet(sheetInfo.auditSheet, auditRecord);
         this.logger.debug(`Audit record created for registration update: ${record.id}`);
       }
 
