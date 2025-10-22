@@ -617,6 +617,20 @@
         </div>
 
         <div hidden id="page-content" style="padding-bottom: 40px;">
+
+            <!-- Intent Banner (shown during intent period) -->
+            <div id="intent-banner" class="card-panel orange lighten-4" style="display: none; margin-bottom: 25px;">
+                <div class="row valign-wrapper" style="margin-bottom: 0;">
+                    <div class="col s12">
+                        <h6 style="margin: 0 0 10px 0;"><b>Reenrollment Intent Required</b></h6>
+                        <p style="margin: 0;">
+                            Please indicate your intent for each of your current lessons below.
+                            <span id="intent-incomplete-count" style="font-weight: bold;"></span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <ul hidden class="tabs">
 
                 <li hidden class="tab col s3 admin-tab"><a href="#admin-master-schedule"
@@ -1236,6 +1250,29 @@
                 style="background-color: #2b68a4;">
                 <i class="material-icons left">check</i>
                 Confirm Registration
+            </button>
+        </div>
+    </div>
+
+    <!-- Intent Confirmation Modal -->
+    <div id="intent-confirmation-modal" class="modal">
+        <div class="modal-content">
+            <h4 style="color: #2b68a4; margin-bottom: 20px;">
+                <i class="material-icons" style="vertical-align: middle;">info</i>
+                Confirm Reenrollment Intent
+            </h4>
+            <p id="intent-confirmation-message" style="font-size: 16px; line-height: 1.5; margin-bottom: 30px;">
+                <!-- Dynamic message will be inserted here -->
+            </p>
+        </div>
+        <div class="modal-footer">
+            <button id="intent-confirmation-cancel" class="btn-flat waves-effect" style="margin-right: 10px;">
+                Cancel
+            </button>
+            <button id="intent-confirmation-confirm" class="btn waves-effect waves-light"
+                style="background-color: #2b68a4;">
+                <i class="material-icons left">check</i>
+                Confirm Intent
             </button>
         </div>
     </div>

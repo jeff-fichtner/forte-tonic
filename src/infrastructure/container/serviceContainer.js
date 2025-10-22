@@ -20,6 +20,7 @@ import { ParentRepository } from '../../repositories/parentRepository.js';
 
 // Import services
 import { RegistrationApplicationService } from '../../services/registrationApplicationService.js';
+import { PeriodService } from '../../services/periodService.js';
 
 export class ServiceContainer {
   constructor() {
@@ -308,6 +309,10 @@ export class ServiceContainer {
         programRepository: this.get('programRepository'),
         emailClient: this.emailClient,
       });
+    });
+
+    this.register('periodService', () => {
+      return new PeriodService(this.dbClient, configService);
     });
   }
 
