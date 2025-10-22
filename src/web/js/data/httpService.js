@@ -12,7 +12,7 @@ export class HttpService {
    */
   static fetch(serverFunctionName, mapper = null, paginationOptions = {}, context = null, ...args) {
     const payload = paginationOptions ? [paginationOptions, ...args] : args;
-    return this.#callServerFunction(serverFunctionName, payload, mapper, context);
+    return this.#callServerFunction(serverFunctionName, payload, mapper, context, 'GET');
   }
 
   /**
@@ -188,14 +188,14 @@ export class HttpService {
     // For legacy endpoints, wrap in the old format
     const isNewEndpoint = ['registrations'].includes(serverFunctionName);
     const payload = isNewEndpoint ? data : [{ data }, ...args];
-    return this.#callServerFunction(serverFunctionName, payload, mapper, context);
+    return this.#callServerFunction(serverFunctionName, payload, mapper, context, 'POST');
   }
 
   // Updated method for calling Node.js server functions via HTTP
   /**
    *
    */
-  static async #callServerFunction(serverFunctionName, payload, mapper = null, _context = null) {
+  static async #callServerFunction(serverFunctionName, payload, mapper = null, _context = null, httpMethod = 'POST') {
     try {
       // Get stored access code for authentication
       const headers = {
@@ -211,18 +211,14 @@ export class HttpService {
         }
       }
 
-      // Determine HTTP method - use GET for read operations
-      const readOnlyEndpoints = ['configuration', 'admins', 'instructors', 'students', 'classes', 'registrations', 'rooms'];
-      const isReadOperation = readOnlyEndpoints.includes(serverFunctionName);
-
       const fetchOptions = {
-        method: isReadOperation ? 'GET' : 'POST',
+        method: httpMethod,
         headers: headers,
         credentials: 'same-origin', // Include session cookies
       };
 
-      // Only include body for POST requests
-      if (!isReadOperation) {
+      // Only include body for POST/PATCH/PUT requests
+      if (httpMethod !== 'GET') {
         fetchOptions.body = JSON.stringify(payload);
       }
 
