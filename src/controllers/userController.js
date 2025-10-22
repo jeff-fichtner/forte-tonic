@@ -335,12 +335,14 @@ export class UserController {
 
   /**
    * Get admin by access code
+   * Supports both REST (GET /admins/by-access-code/:accessCode) and legacy (POST /getAdminByAccessCode)
    */
   static async getAdminByAccessCode(req, res) {
     const startTime = Date.now();
 
     try {
-      const { accessCode } = req.body;
+      // Support both URL params (REST) and body params (legacy)
+      const accessCode = req.params.accessCode || req.body?.accessCode;
 
       if (!accessCode) {
         throw new ValidationError('Access code is required');
@@ -372,12 +374,14 @@ export class UserController {
 
   /**
    * Get instructor by access code
+   * Supports both REST (GET /instructors/by-access-code/:accessCode) and legacy (POST /getInstructorByAccessCode)
    */
   static async getInstructorByAccessCode(req, res) {
     const startTime = Date.now();
 
     try {
-      const { accessCode } = req.body;
+      // Support both URL params (REST) and body params (legacy)
+      const accessCode = req.params.accessCode || req.body?.accessCode;
 
       if (!accessCode) {
         throw new ValidationError('Access code is required');
@@ -392,8 +396,11 @@ export class UserController {
 
       const transformedData = UserTransformService.transform(instructor, 'instructor');
 
-      // Return raw data for backward compatibility
-      res.json(transformedData);
+      successResponse(res, transformedData, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getInstructorByAccessCode' },
+      });
     } catch (error) {
       logger.error('Error in getInstructorByAccessCode:', error);
       errorResponse(res, error, {
@@ -406,12 +413,14 @@ export class UserController {
 
   /**
    * Get parent by access code
+   * Supports both REST (GET /parents/by-access-code/:accessCode) and legacy (POST /getParentByAccessCode)
    */
   static async getParentByAccessCode(req, res) {
     const startTime = Date.now();
 
     try {
-      const { accessCode } = req.body;
+      // Support both URL params (REST) and body params (legacy)
+      const accessCode = req.params.accessCode || req.body?.accessCode;
 
       if (!accessCode) {
         throw new ValidationError('Access code is required');
