@@ -241,8 +241,12 @@ export class HttpService {
         // New format: { success: true, data: {...} }
         // Old format: {...} (raw data)
         // This allows backend to use standardized responses without breaking frontend
-        if (parsedResponse && typeof parsedResponse === 'object' &&
-            'success' in parsedResponse && 'data' in parsedResponse) {
+        if (
+          parsedResponse &&
+          typeof parsedResponse === 'object' &&
+          'success' in parsedResponse &&
+          'data' in parsedResponse
+        ) {
           return mapper ? mapper(parsedResponse.data) : parsedResponse.data;
         }
 
