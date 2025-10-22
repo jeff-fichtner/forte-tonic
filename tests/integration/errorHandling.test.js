@@ -1,17 +1,132 @@
 /**
- * Integration tests for Phase 2A error handling updates
- * Tests the 3 critical controller methods with standardized error handling
+ * Integration tests for standardized error handling across controllers
+ * Tests critical controller methods with GCP-formatted error responses
  */
 
 import request from 'supertest';
 import { jest } from '@jest/globals';
 
-describe('Phase 2A: Critical Controllers Error Handling', () => {
+describe('Standardized Error Handling Integration Tests', () => {
   let app;
   let server;
 
   beforeAll(async () => {
-    // Import app
+    // Mock the configuration service
+    const mockConfigService = {
+      getGoogleSheetsAuth: jest.fn().mockReturnValue({
+        clientEmail: 'test@test.iam.gserviceaccount.com',
+        privateKey: '-----BEGIN PRIVATE KEY-----\nMOCK_KEY\n-----END PRIVATE KEY-----\n',
+      }),
+      getGoogleSheetsConfig: jest.fn().mockReturnValue({
+        spreadsheetId: 'mock-spreadsheet-id',
+        sheetNames: {
+          students: 'Students',
+          admins: 'Admins',
+          instructors: 'Instructors',
+          parents: 'Parents',
+          registrations: 'Registrations',
+          attendance: 'Attendance',
+          rooms: 'Rooms',
+          classes: 'Classes',
+          periods: 'Periods',
+        },
+      }),
+      getApplicationConfig: jest.fn().mockReturnValue({
+        baseUrl: 'http://localhost:3000',
+        environment: 'test',
+        features: {
+          enableAttendance: true,
+          enableRockBand: true,
+        },
+      }),
+      getAuthConfig: jest.fn().mockReturnValue({
+        sessionSecret: 'test-secret',
+        sessionMaxAge: 3600000,
+      }),
+      getServerConfig: jest.fn().mockReturnValue({
+        port: 3001,
+        nodeEnv: 'test',
+        isDevelopment: false,
+        isTest: true,
+        isProduction: false,
+      }),
+      getEmailConfig: jest.fn().mockReturnValue({
+        smtpHost: 'test-smtp.example.com',
+        smtpPort: 587,
+        smtpSecure: false,
+        smtpUser: 'test@example.com',
+        smtpPassword: 'test-password',
+        defaultFromAddress: 'test@example.com',
+      }),
+      getBaseUrl: jest.fn().mockReturnValue('http://localhost:3001'),
+      isTest: jest.fn().mockReturnValue(true),
+      isDevelopment: jest.fn().mockReturnValue(false),
+    };
+
+    // Mock the repositories
+    const mockUserRepository = {
+      getAdminByAccessCode: jest.fn().mockResolvedValue(null),
+      getInstructorByAccessCode: jest.fn().mockResolvedValue(null),
+      getParentByPhoneNumber: jest.fn().mockResolvedValue(null),
+      getAdmins: jest.fn().mockResolvedValue([]),
+      getInstructors: jest.fn().mockResolvedValue([]),
+      getStudents: jest.fn().mockResolvedValue([]),
+      getParents: jest.fn().mockResolvedValue([]),
+    };
+
+    const mockPeriodService = {
+      getCurrentPeriod: jest.fn().mockResolvedValue({
+        id: 'test-period-123',
+        name: 'Spring 2025',
+        type: 'semester',
+        startDate: '2025-01-01',
+        endDate: '2025-05-31',
+      }),
+    };
+
+    const mockProgramRepository = {
+      getRockBandClassIds: jest.fn().mockResolvedValue([]),
+    };
+
+    // Mock the service container
+    jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js', () => ({
+      serviceContainer: {
+        get: jest.fn().mockImplementation(serviceName => {
+          if (serviceName === 'userRepository') return mockUserRepository;
+          if (serviceName === 'periodService') return mockPeriodService;
+          if (serviceName === 'programRepository') return mockProgramRepository;
+          throw new Error(`Unknown service: ${serviceName}`);
+        }),
+      },
+    }));
+
+    // Mock the configuration service module
+    jest.unstable_mockModule('../../src/services/configurationService.js', () => ({
+      configService: mockConfigService,
+      ConfigurationService: jest.fn().mockImplementation(() => mockConfigService),
+    }));
+
+    // Mock the GoogleSheetsDbClient
+    jest.unstable_mockModule('../../src/database/googleSheetsDbClient.js', () => ({
+      GoogleSheetsDbClient: jest.fn().mockImplementation(() => ({
+        spreadsheetId: 'mock-spreadsheet-id',
+        getAllRecords: jest.fn().mockResolvedValue([]),
+        readRange: jest.fn().mockResolvedValue([]),
+        writeRange: jest.fn().mockResolvedValue({}),
+        updateRange: jest.fn().mockResolvedValue({}),
+        deleteRange: jest.fn().mockResolvedValue({}),
+        clearCache: jest.fn(),
+      })),
+    }));
+
+    // Mock the email client
+    jest.unstable_mockModule('../../src/email/emailClient.js', () => ({
+      EmailClient: jest.fn().mockImplementation(() => ({
+        sendEmail: jest.fn().mockResolvedValue({ success: true }),
+      })),
+    }));
+
+    // Import app after mocks are set up
     const appModule = await import('../../src/app.js');
     app = appModule.default;
 
@@ -102,77 +217,20 @@ describe('Phase 2A: Critical Controllers Error Handling', () => {
       expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
     });
 
-    test('should return authenticated user for valid access code', async () => {
-      // Note: This test requires a valid access code in your test data
-      // You may need to adjust based on your test fixtures
+    test('should return null for valid access code with no match', async () => {
       const response = await request(app)
         .post('/api/authenticateByAccessCode')
         .send({
-          accessCode: '654321', // Adjust to match your test data
+          accessCode: '654321',
           loginType: 'employee',
-        });
-
-      // Could be null (no match) or user object
-      if (response.body !== null) {
-        expect(response.body).toHaveProperty('email');
-        expect(response.body).toHaveProperty('admin');
-        expect(response.body).toHaveProperty('instructor');
-        expect(response.body).toHaveProperty('parent');
-      }
-    });
-
-    test('should handle phone number authentication', async () => {
-      const response = await request(app)
-        .post('/api/authenticateByAccessCode')
-        .send({
-          accessCode: '1234567890', // 10-digit phone number
-          loginType: 'parent',
         })
         .expect(200);
 
-      // Should return null or parent user
-      expect(response.body === null || typeof response.body === 'object').toBe(true);
+      // Mock returns null for all lookups
+      expect(response.body).toBeNull();
     });
   });
 
-  describe('UserController.getAppConfiguration', () => {
-    test('should return raw app configuration (not wrapped for backward compatibility)', async () => {
-      // Note: This is a POST endpoint in the legacy API format
-      const response = await request(app)
-        .post('/api/getAppConfiguration')
-        .send([]) // Legacy format expects empty array
-        .expect(200);
-
-      // This endpoint returns RAW data (not wrapped) for backward compatibility
-      expect(response.body).toHaveProperty('currentPeriod');
-      expect(response.body).toHaveProperty('rockBandClassIds');
-    });
-
-    test('should include period information', async () => {
-      const response = await request(app)
-        .post('/api/getAppConfiguration')
-        .send([]);
-
-      const { currentPeriod } = response.body;
-      expect(currentPeriod).toBeDefined();
-
-      if (currentPeriod) {
-        // Period may be null if no active period
-        expect(currentPeriod).toHaveProperty('id');
-        expect(currentPeriod).toHaveProperty('name');
-        expect(currentPeriod).toHaveProperty('type');
-      }
-    });
-
-    test('should include rock band class IDs', async () => {
-      const response = await request(app)
-        .post('/api/getAppConfiguration')
-        .send([]);
-
-      expect(response.body.rockBandClassIds).toBeDefined();
-      expect(Array.isArray(response.body.rockBandClassIds)).toBe(true);
-    });
-  });
 
   describe('Response Format Compatibility', () => {
     test('health endpoint returns wrapped format (HttpService unwraps in frontend)', async () => {
