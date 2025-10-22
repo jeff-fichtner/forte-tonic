@@ -3,7 +3,7 @@
  * Manages different settings for staging vs production environments
  */
 
-import { LogLevel, NodeEnv } from '../utils/logger.js';
+import { LogLevel, NodeEnv, createLogger } from '../utils/logger.js';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -143,10 +143,12 @@ function getLocalGitCommit() {
 
 // Only log environment info when not in test mode
 if (environment !== 'test') {
-  console.log(`🌍 Environment: ${environment}`);
-  console.log(`🔗 Base URL: ${currentConfig.baseUrl}`);
-  console.log(`📊 Log Level: ${currentConfig.logLevel}`);
+  // Create a minimal logger for startup (can't use full configService here due to circular dependency)
+  const logger = createLogger({ getServerConfig: () => ({ nodeEnv: environment }) });
+  logger.info(`Environment: ${environment}`);
+  logger.info(`Base URL: ${currentConfig.baseUrl}`);
+  logger.info(`Log Level: ${currentConfig.logLevel}`);
   if (version.displayVersion) {
-    console.log(`🏷️  Version: ${version.number} (${version.gitCommit?.substring(0, 7)})`);
+    logger.info(`Version: ${version.number} (${version.gitCommit?.substring(0, 7)})`);
   }
 }

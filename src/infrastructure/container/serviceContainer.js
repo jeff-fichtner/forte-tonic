@@ -10,6 +10,7 @@ import { GoogleSheetsDbClient } from '../../database/googleSheetsDbClient.js';
 import { EmailClient } from '../../email/emailClient.js';
 import { CacheService } from '../../cache/cacheService.js';
 import { configService } from '../../services/configurationService.js';
+import { createLogger } from '../../utils/logger.js';
 
 // Import repositories
 import { RegistrationRepository } from '../../repositories/registrationRepository.js';
@@ -27,6 +28,7 @@ export class ServiceContainer {
     this.services = new Map();
     this.singletons = new Map();
     this.initialized = false;
+    this.logger = createLogger(configService);
 
     // Initialize infrastructure services directly
     this.dbClient = null;
@@ -40,7 +42,7 @@ export class ServiceContainer {
   async initialize() {
     if (this.initialized) return;
 
-    console.log('🏗️  Initializing Service Container (MVC)');
+    this.logger.info('🏗️  Initializing Service Container (MVC)');
 
     // Initialize infrastructure services directly
     await this.#initializeInfrastructure();
@@ -52,7 +54,7 @@ export class ServiceContainer {
     this.#registerServices();
 
     this.initialized = true;
-    console.log('✅ Service Container initialized');
+    this.logger.info('✅ Service Container initialized');
   }
 
   /**
@@ -63,12 +65,12 @@ export class ServiceContainer {
 
     // Initialize database client (Google Sheets)
     try {
-      console.log('🔧 Initializing Google Sheets database client...');
+      this.logger.info('🔧 Initializing Google Sheets database client...');
       this.dbClient = new GoogleSheetsDbClient(configService);
-      console.log('✅ Google Sheets database client initialized');
+      this.logger.info('✅ Google Sheets database client initialized');
     } catch (error) {
-      console.error('❌ Failed to initialize Google Sheets database client:', error.message);
-      console.error('📋 Stack trace:', error.stack);
+      this.logger.error('❌ Failed to initialize Google Sheets database client:', error.message);
+      this.logger.error('📋 Stack trace:', error.stack);
       hasErrors = true;
       // Continue with null dbClient - app should still start but will fail on Google Sheets operations
       this.dbClient = null;
@@ -76,32 +78,32 @@ export class ServiceContainer {
 
     // Initialize email client
     try {
-      console.log('🔧 Initializing email client...');
+      this.logger.info('🔧 Initializing email client...');
       this.emailClient = new EmailClient(configService);
-      console.log('✅ Email client initialized');
+      this.logger.info('✅ Email client initialized');
     } catch (error) {
-      console.error('❌ Failed to initialize email client:', error.message);
+      this.logger.error('❌ Failed to initialize email client:', error.message);
       hasErrors = true;
       this.emailClient = null;
     }
 
     // Initialize cache service
     try {
-      console.log('🔧 Initializing cache service...');
+      this.logger.info('🔧 Initializing cache service...');
       this.cacheService = new CacheService();
-      console.log('✅ Cache service initialized');
+      this.logger.info('✅ Cache service initialized');
     } catch (error) {
-      console.error('❌ Failed to initialize cache service:', error.message);
+      this.logger.error('❌ Failed to initialize cache service:', error.message);
       hasErrors = true;
       this.cacheService = null;
     }
 
     if (hasErrors) {
-      console.log(
+      this.logger.info(
         '⚠️ Infrastructure services initialized with some failures - app will continue but some features may not work'
       );
     } else {
-      console.log('✅ All infrastructure services initialized successfully');
+      this.logger.info('✅ All infrastructure services initialized successfully');
     }
   }
 
@@ -251,7 +253,7 @@ export class ServiceContainer {
    * Graceful shutdown - simplified for MVC
    */
   async shutdown() {
-    console.log('🛑 Shutting down Service Container');
+    this.logger.info('🛑 Shutting down Service Container');
 
     // Shutdown infrastructure services directly
     if (this.emailClient && typeof this.emailClient.shutdown === 'function') {
@@ -270,7 +272,7 @@ export class ServiceContainer {
     this.cacheService = null;
     this.initialized = false;
 
-    console.log('✅ Service Container shutdown complete');
+    this.logger.info('✅ Service Container shutdown complete');
   }
 
   /**
