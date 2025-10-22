@@ -13,14 +13,22 @@ import { AuthenticatedUserResponse } from '../models/shared/responses/authentica
 import { AppConfigurationResponse } from '../models/shared/responses/appConfigurationResponse.js';
 import { ConfigurationService } from '../services/configurationService.js';
 import { getLogger } from '../utils/logger.js';
+import { successResponse, errorResponse } from '../common/responseHelpers.js';
+import { ValidationError } from '../common/errors.js';
+import { HTTP_STATUS } from '../common/errorConstants.js';
 
 const logger = getLogger();
 
 export class UserController {
   /**
    * Get application configuration including current period and settings
+   * CRITICAL: Used by frontend initialization - must return raw data for compatibility
+   * @param {object} req - Express request object
+   * @param {object} res - Express response object
    */
   static async getAppConfiguration(req, res) {
+    const startTime = Date.now();
+
     try {
       const periodService = serviceContainer.get('periodService');
       const currentPeriod = await periodService.getCurrentPeriod();
@@ -32,10 +40,16 @@ export class UserController {
 
       const configuration = new AppConfigurationResponse(configurationData);
 
+      // Return raw data (not wrapped) for backward compatibility
+      // Frontend expects: AppConfigurationResponse.fromApiData(data)
       return res.json(configuration.toJSON());
     } catch (error) {
       logger.error('Error getting app configuration:', error);
-      res.status(500).json({ error: 'Failed to load application configuration' });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getAppConfiguration' },
+      });
     }
   }
 
@@ -192,18 +206,18 @@ export class UserController {
 
   /**
    * Authenticate user by access code
+   * NOTE: Returns null for failed authentication (required for frontend compatibility)
    * @param {object} req - Express request object
    * @param {object} res - Express response object
    */
   static async authenticateByAccessCode(req, res) {
+    const startTime = Date.now();
+
     try {
       const { accessCode, loginType } = req.body;
 
       if (!accessCode) {
-        return res.status(400).json({
-          error: 'Access code is required',
-          success: false,
-        });
+        throw new ValidationError('Access code is required');
       }
 
       const userRepository = serviceContainer.get('userRepository');
@@ -244,9 +258,12 @@ export class UserController {
         }
       }
 
-      // If no match found, return null
+      // If no match found, return null (frontend expects this)
       if (!admin && !instructor && !parent) {
         logger.info(`Authentication failed for ${loginType} login with value: ${accessCode}`);
+
+        // IMPORTANT: Return raw null (not wrapped) for backward compatibility
+        // Frontend checks: authenticatedUser !== null
         return res.json(null);
       }
 
@@ -264,18 +281,17 @@ export class UserController {
         parent: !!parent,
       });
 
+      // Return raw authenticated user (not wrapped) for backward compatibility
       res.json(authenticatedUser);
     } catch (error) {
       logger.error('Error authenticating by access code:', error);
 
-      // Return a server error message for infrastructure/system issues
+      // Use standardized error response for server errors
       // This distinguishes from "no match found" (which returns null)
-      return res.status(500).json({
-        error: 'There was an issue logging in. Please try again.',
-        errorMessage: error.message || 'Unknown error',
-        errorType: error.name || 'Error',
-        success: false,
-        systemError: true,
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'authenticateByAccessCode' },
       });
     }
   }

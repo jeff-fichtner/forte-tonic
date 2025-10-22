@@ -6,16 +6,23 @@
 import { currentConfig, isProduction, isStaging, version } from '../config/environment.js';
 import { getLogger } from '../utils/logger.js';
 import { configService } from '../services/configurationService.js';
+import { successResponse, errorResponse } from '../common/responseHelpers.js';
+import { HTTP_STATUS } from '../common/errorConstants.js';
 
 const logger = getLogger();
 
 export class SystemController {
   /**
-   * Health check endpoint for monitoring
+   * Health check endpoint for GCP Cloud Run monitoring
+   * Always returns 200 with status details (GCP best practice)
+   * @param {object} req - Express request object
+   * @param {object} res - Express response object
    */
   static async getHealth(req, res) {
+    const startTime = Date.now();
+
     try {
-      res.json({
+      const healthData = {
         status: 'healthy',
         environment: process.env.NODE_ENV || 'development',
         timestamp: new Date().toISOString(),
@@ -31,10 +38,32 @@ export class SystemController {
           isStaging,
           spreadsheetConfigured: !!currentConfig.spreadsheetId,
         },
+      };
+
+      successResponse(res, healthData, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'getHealth' },
       });
     } catch (error) {
       logger.error('Error getting health status:', error);
-      res.status(500).json({ error: error.message });
+
+      // Always return 200 for health checks (GCP best practice)
+      // Service can respond = healthy, even if some features fail
+      successResponse(
+        res,
+        {
+          status: 'degraded',
+          error: error.message,
+          timestamp: new Date().toISOString(),
+        },
+        {
+          statusCode: HTTP_STATUS.OK,
+          req,
+          startTime,
+          context: { controller: 'SystemController', method: 'getHealth', error: error.message },
+        }
+      );
     }
   }
 
