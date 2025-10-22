@@ -26,8 +26,11 @@ export class RegistrationController {
       const programRepository = serviceContainer.get('programRepository');
       const data = await programRepository.getClasses();
 
-      // Return raw data for backward compatibility
-      res.json(data);
+      successResponse(res, data, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'getClasses' },
+      });
     } catch (error) {
       logger.error('Error getting classes:', error);
       errorResponse(res, error, {
@@ -81,8 +84,11 @@ export class RegistrationController {
         totalConflicts: result.registrations.filter(r => r.hasConflicts).length,
       };
 
-      // Return raw data for backward compatibility
-      res.json(legacyResult);
+      successResponse(res, legacyResult, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'getRegistrations' },
+      });
     } catch (error) {
       logger.error('Error getting registrations:', error);
       errorResponse(res, error, {
@@ -103,8 +109,11 @@ export class RegistrationController {
       const userRepository = serviceContainer.get('userRepository');
       const data = await userRepository.getRooms();
 
-      // Return raw data for backward compatibility
-      res.json(data);
+      successResponse(res, data, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'getRooms' },
+      });
     } catch (error) {
       logger.error('Error getting rooms:', error);
       errorResponse(res, error, {

@@ -69,8 +69,11 @@ export class UserController {
       const data = await userRepository.getAdmins();
       const transformedData = UserTransformService.transformArray(data, 'admin');
 
-      // Return raw data for backward compatibility
-      res.json(transformedData);
+      successResponse(res, transformedData, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getAdmins' },
+      });
     } catch (error) {
       logger.error('Error getting admins:', error);
       errorResponse(res, error, {
@@ -95,8 +98,11 @@ export class UserController {
 
       // The data is already transformed by Instructor.fromDatabaseRow
       // No need to transform again with UserTransformService
-      // Return raw data for backward compatibility
-      res.json(data);
+      successResponse(res, data, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getInstructors' },
+      });
     } catch (error) {
       logger.error('Error in getInstructors:', error);
       errorResponse(res, error, {
@@ -118,8 +124,11 @@ export class UserController {
       const data = await userRepository.getStudents();
       const transformedData = UserTransformService.transformArray(data, 'student');
 
-      // Return raw data for backward compatibility
-      res.json(transformedData);
+      successResponse(res, transformedData, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getStudents' },
+      });
     } catch (error) {
       logger.error('Error getting students:', error);
       errorResponse(res, error, {
@@ -346,8 +355,11 @@ export class UserController {
 
       const transformedData = UserTransformService.transform(admin, 'admin');
 
-      // Return raw data for backward compatibility
-      res.json(transformedData);
+      successResponse(res, transformedData, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getAdminByAccessCode' },
+      });
     } catch (error) {
       logger.error('Error getting admin by access code:', error);
       errorResponse(res, error, {
@@ -414,8 +426,11 @@ export class UserController {
 
       const transformedData = UserTransformService.transform(parent, 'parent');
 
-      // Return raw data for backward compatibility
-      res.json(transformedData);
+      successResponse(res, transformedData, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getParentByAccessCode' },
+      });
     } catch (error) {
       logger.error('Error getting parent by access code:', error);
       errorResponse(res, error, {

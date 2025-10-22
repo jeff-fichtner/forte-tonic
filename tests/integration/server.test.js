@@ -262,15 +262,12 @@ describe('Server Integration Tests', () => {
       test('should return list of admins', async () => {
         const response = await request(app).post('/api/getAdmins').expect(200);
 
-        let admins;
-        try {
-          admins = JSON.parse(JSON.parse(response.text));
-        } catch {
-          admins = JSON.parse(response.text);
-        }
-        expect(Array.isArray(admins)).toBe(true);
-        expect(admins).toHaveLength(1);
-        expect(admins[0]).toHaveProperty('email', 'admin@test.com');
+        // Expect wrapped format
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('data');
+        expect(Array.isArray(response.body.data)).toBe(true);
+        expect(response.body.data).toHaveLength(1);
+        expect(response.body.data[0]).toHaveProperty('email', 'admin@test.com');
       });
     });
 
@@ -278,15 +275,12 @@ describe('Server Integration Tests', () => {
       test('should return list of instructors', async () => {
         const response = await request(app).post('/api/getInstructors').expect(200);
 
-        let instructors;
-        try {
-          instructors = JSON.parse(JSON.parse(response.text));
-        } catch {
-          instructors = JSON.parse(response.text);
-        }
-        expect(Array.isArray(instructors)).toBe(true);
-        expect(instructors).toHaveLength(1);
-        expect(instructors[0]).toHaveProperty('email', 'instructor@test.com');
+        // Expect wrapped format
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('data');
+        expect(Array.isArray(response.body.data)).toBe(true);
+        expect(response.body.data).toHaveLength(1);
+        expect(response.body.data[0]).toHaveProperty('email', 'instructor@test.com');
       });
     });
 
@@ -294,19 +288,14 @@ describe('Server Integration Tests', () => {
       test('should return list of students', async () => {
         const response = await request(app).post('/api/getStudents').expect(200);
 
-        let result;
-        try {
-          result = JSON.parse(JSON.parse(response.text));
-        } catch {
-          result = JSON.parse(response.text);
-        }
-
-        // Should return direct array like other user endpoints
-        expect(Array.isArray(result)).toBe(true);
-        expect(result.length).toBeGreaterThan(0);
-        expect(result[0]).toHaveProperty('id');
-        expect(result[0]).toHaveProperty('firstName');
-        expect(result[0]).toHaveProperty('lastName');
+        // Expect wrapped format
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('data');
+        expect(Array.isArray(response.body.data)).toBe(true);
+        expect(response.body.data.length).toBeGreaterThan(0);
+        expect(response.body.data[0]).toHaveProperty('id');
+        expect(response.body.data[0]).toHaveProperty('firstName');
+        expect(response.body.data[0]).toHaveProperty('lastName');
       });
     });
 
@@ -314,15 +303,12 @@ describe('Server Integration Tests', () => {
       test('should return list of classes', async () => {
         const response = await request(app).post('/api/getClasses').expect(200);
 
-        let classes;
-        try {
-          classes = JSON.parse(JSON.parse(response.text));
-        } catch {
-          classes = JSON.parse(response.text);
-        }
-        expect(Array.isArray(classes)).toBe(true);
-        expect(classes).toHaveLength(1);
-        expect(classes[0]).toHaveProperty('name', 'Beginner Piano');
+        // Expect wrapped format
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('data');
+        expect(Array.isArray(response.body.data)).toBe(true);
+        expect(response.body.data).toHaveLength(1);
+        expect(response.body.data[0]).toHaveProperty('name', 'Beginner Piano');
       });
     });
 
@@ -330,15 +316,12 @@ describe('Server Integration Tests', () => {
       test('should return list of rooms', async () => {
         const response = await request(app).post('/api/getRooms').expect(200);
 
-        let rooms;
-        try {
-          rooms = JSON.parse(JSON.parse(response.text));
-        } catch {
-          rooms = JSON.parse(response.text);
-        }
-        expect(Array.isArray(rooms)).toBe(true);
-        expect(rooms).toHaveLength(1);
-        expect(rooms[0]).toHaveProperty('name', 'Piano Room');
+        // Expect wrapped format
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('data');
+        expect(Array.isArray(response.body.data)).toBe(true);
+        expect(response.body.data).toHaveLength(1);
+        expect(response.body.data[0]).toHaveProperty('name', 'Piano Room');
       });
     });
 
