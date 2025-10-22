@@ -8,8 +8,8 @@
 const fs = require('fs');
 const path = require('path');
 
-// Load environment variables from the parent directory
-require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+// Load environment variables from the config directory
+require('dotenv').config({ path: path.join(__dirname, '..', 'config', '.env') });
 
 const scriptId = process.env.GOOGLE_APPS_SCRIPT_ID;
 
