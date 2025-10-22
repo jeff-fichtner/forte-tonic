@@ -5,6 +5,8 @@
 
 import { getAuthenticatedUserEmail } from '../middleware/auth.js';
 import { getLogger } from '../utils/logger.js';
+import { successResponse, errorResponse } from '../common/responseHelpers.js';
+import { ValidationError, ConflictError } from '../common/errors.js';
 
 const logger = getLogger();
 
@@ -13,24 +15,17 @@ export class AttendanceController {
    * Mark Attendance - New Repository Pattern
    */
   static async markAttendance(req, res) {
+    const startTime = Date.now();
+
     try {
       const { registrationId, week, schoolYear, trimester } = req.body;
 
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
 
-      logger.info('🎯 Mark attendance request received:', {
-        registrationId,
-        week,
-        authenticatedUser: authenticatedUserEmail,
-      });
-
       // Validation
       if (!registrationId || !week) {
-        return res.status(400).json({
-          success: false,
-          message: 'Missing required fields: registrationId, week',
-        });
+        throw new ValidationError('Missing required fields: registrationId, week');
       }
 
       // Check if attendance already exists
@@ -42,10 +37,7 @@ export class AttendanceController {
       );
 
       if (existingAttendance) {
-        return res.status(409).json({
-          success: false,
-          message: 'Attendance already recorded for this registration and week',
-        });
+        throw new ConflictError('Attendance already recorded for this registration and week');
       }
 
       // Create attendance record
@@ -60,26 +52,25 @@ export class AttendanceController {
 
       const savedAttendance = await req.attendanceRepository.create(attendanceData);
 
-      // Return confirmation
-      res.json({
-        success: true,
+      successResponse(res, {
+        id: savedAttendance.id,
+        registrationId: savedAttendance.registrationId,
+        week: savedAttendance.week,
+        schoolYear: savedAttendance.schoolYear,
+        trimester: savedAttendance.trimester,
+        recordedAt: savedAttendance.recordedAt,
+      }, {
         message: 'Attendance recorded successfully',
-        data: {
-          id: savedAttendance.id,
-          registrationId: savedAttendance.registrationId,
-          week: savedAttendance.week,
-          schoolYear: savedAttendance.schoolYear,
-          trimester: savedAttendance.trimester,
-          recordedAt: savedAttendance.recordedAt,
-        },
-        timestamp: new Date().toISOString(),
+        req,
+        startTime,
+        context: { controller: 'AttendanceController', method: 'markAttendance', registrationId, week },
       });
     } catch (error) {
       logger.error('Error recording attendance:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to record attendance',
-        error: error.message,
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'AttendanceController', method: 'markAttendance' },
       });
     }
   }
@@ -88,6 +79,8 @@ export class AttendanceController {
    * Get Attendance Summary
    */
   static async getAttendanceSummary(req, res) {
+    const startTime = Date.now();
+
     try {
       const { registrationId } = req.params;
       const { schoolYear = '2025-2026', trimester = 'Fall' } = req.query;
@@ -98,16 +91,17 @@ export class AttendanceController {
         trimester
       );
 
-      res.json({
-        success: true,
-        data: summary,
+      successResponse(res, summary, {
+        req,
+        startTime,
+        context: { controller: 'AttendanceController', method: 'getAttendanceSummary', registrationId },
       });
     } catch (error) {
       logger.error('Error getting attendance summary:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to get attendance summary',
-        error: error.message,
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'AttendanceController', method: 'getAttendanceSummary' },
       });
     }
   }
@@ -116,26 +110,31 @@ export class AttendanceController {
    * Record attendance (legacy endpoint)
    */
   static async recordAttendance(req, res) {
+    const startTime = Date.now();
+
     try {
       const data = req.body;
 
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
 
-      logger.info('🎯 Record attendance request received:', {
-        registrationId: data.registrationId,
-        authenticatedUser: authenticatedUserEmail,
-      });
-
       const attendanceRecord = await req.programRepository.recordAttendance(
         data.registrationId,
         authenticatedUserEmail
       );
 
-      res.json({ attendanceRecord });
+      successResponse(res, { attendanceRecord }, {
+        req,
+        startTime,
+        context: { controller: 'AttendanceController', method: 'recordAttendance (legacy)', registrationId: data.registrationId },
+      });
     } catch (error) {
       logger.error('Error recording attendance:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'AttendanceController', method: 'recordAttendance (legacy)' },
+      });
     }
   }
 
@@ -143,26 +142,31 @@ export class AttendanceController {
    * Remove attendance (legacy endpoint)
    */
   static async removeAttendance(req, res) {
+    const startTime = Date.now();
+
     try {
       const data = req.body;
 
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
 
-      logger.info('🎯 Remove attendance request received:', {
-        registrationId: data.registrationId,
-        authenticatedUser: authenticatedUserEmail,
-      });
-
       const success = await req.programRepository.removeAttendance(
         data.registrationId,
         authenticatedUserEmail
       );
 
-      res.json({ success });
+      successResponse(res, { success }, {
+        req,
+        startTime,
+        context: { controller: 'AttendanceController', method: 'removeAttendance (legacy)', registrationId: data.registrationId },
+      });
     } catch (error) {
       logger.error('Error removing attendance:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'AttendanceController', method: 'removeAttendance (legacy)' },
+      });
     }
   }
 }

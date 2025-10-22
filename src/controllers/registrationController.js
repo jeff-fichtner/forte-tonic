@@ -11,7 +11,7 @@ import { getLogger } from '../utils/logger.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
 import { _fetchData } from '../utils/helpers.js';
 import { successResponse, errorResponse } from '../common/responseHelpers.js';
-import { ValidationError } from '../common/errors.js';
+import { ValidationError, UnauthorizedError, NotFoundError } from '../common/errors.js';
 
 const logger = getLogger();
 
@@ -278,6 +278,8 @@ export class RegistrationController {
    * Validate registration for conflicts and eligibility
    */
   static async validateRegistration(req, res) {
+    const startTime = Date.now();
+
     try {
       const registrationData = req.body;
 
@@ -286,13 +288,18 @@ export class RegistrationController {
       const validation =
         await registrationApplicationService.validateRegistration(registrationData);
 
-      res.json({
-        success: true,
-        data: validation,
+      successResponse(res, validation, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'validateRegistration' },
       });
     } catch (error) {
       logger.error('Error validating registration:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'validateRegistration' },
+      });
     }
   }
 
@@ -300,6 +307,8 @@ export class RegistrationController {
    * Get registration conflicts for a student
    */
   static async getRegistrationConflicts(req, res) {
+    const startTime = Date.now();
+
     try {
       const { studentId } = req.params;
 
@@ -307,13 +316,18 @@ export class RegistrationController {
 
       const conflicts = await registrationApplicationService.getStudentConflicts(studentId);
 
-      res.json({
-        success: true,
-        data: conflicts,
+      successResponse(res, conflicts, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'getRegistrationConflicts', studentId: req.params.studentId },
       });
     } catch (error) {
       logger.error('Error getting registration conflicts:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'getRegistrationConflicts' },
+      });
     }
   }
 
@@ -321,22 +335,16 @@ export class RegistrationController {
    * Register student (legacy endpoint for backward compatibility)
    */
   static async register(req, res) {
+    const startTime = Date.now();
+
     try {
       const { studentId, classId, instructorId, registrationType } = req.body;
 
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
 
-      logger.info('🎯 Legacy registration request received:', {
-        studentId,
-        classId,
-        instructorId,
-        registrationType,
-        authenticatedUser: authenticatedUserEmail,
-      });
-
       if (!studentId || !registrationType) {
-        return res.status(400).json({ error: 'Missing required fields' });
+        throw new ValidationError('Missing required fields');
       }
 
       const registrationData = {
@@ -354,10 +362,18 @@ export class RegistrationController {
         authenticatedUserEmail
       );
 
-      res.json({ success: true, registration: result });
+      successResponse(res, { registration: result }, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'register (legacy)', studentId },
+      });
     } catch (error) {
       logger.error('Error registering student:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'register (legacy)' },
+      });
     }
   }
 
@@ -365,9 +381,9 @@ export class RegistrationController {
    * Unregister student (legacy endpoint for backward compatibility)
    */
   static async unregister(req, res) {
-    try {
-      logger.info('Unregister endpoint called with body:', req.body);
+    const startTime = Date.now();
 
+    try {
       // Handle HttpService payload format: [{ data: { registrationId, accessCode } }]
       let registrationId, accessCode;
       if (Array.isArray(req.body) && req.body[0]?.data) {
@@ -400,21 +416,11 @@ export class RegistrationController {
       }
 
       if (!authenticatedUserEmail) {
-        return res.status(401).json({ error: 'Authentication required for registration deletion' });
+        throw new UnauthorizedError('Authentication required for registration deletion');
       }
 
-      logger.info('🎯 Legacy unregister request received:', {
-        registrationId,
-        authenticatedUser: authenticatedUserEmail,
-        hasAccessCode: !!accessCode,
-      });
-
-      logger.info('Extracted registrationId:', registrationId);
-      logger.info('registrationId type:', typeof registrationId);
-
       if (!registrationId) {
-        logger.error('Missing registrationId in request body');
-        return res.status(400).json({ error: 'Missing registrationId' });
+        throw new ValidationError('Missing registrationId');
       }
 
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
@@ -424,10 +430,19 @@ export class RegistrationController {
         authenticatedUserEmail
       );
 
-      res.json({ success: true, message: 'Registration removed' });
+      successResponse(res, {}, {
+        message: 'Registration removed',
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'unregister (legacy)', registrationId },
+      });
     } catch (error) {
       logger.error('Error unregistering student:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'unregister (legacy)' },
+      });
     }
   }
 
@@ -436,6 +451,8 @@ export class RegistrationController {
    * PATCH /api/registrations/:id/intent
    */
   static async updateIntent(req, res) {
+    const startTime = Date.now();
+
     try {
       const { id } = req.params;
       const { intent } = req.body;
@@ -444,9 +461,7 @@ export class RegistrationController {
       // Validate intent
       const { INTENT_TYPES } = await import('../constants/intentTypes.js');
       if (!Object.values(INTENT_TYPES).includes(intent)) {
-        return res.status(400).json({
-          error: 'Invalid intent. Must be: keep, drop, or change',
-        });
+        throw new ValidationError('Invalid intent. Must be: keep, drop, or change');
       }
 
       // Get repository and period service from container
@@ -456,9 +471,7 @@ export class RegistrationController {
       // Check period is active
       const isIntentActive = await periodService.isIntentPeriodActive();
       if (!isIntentActive) {
-        return res.status(400).json({
-          error: 'Intent collection is not currently active',
-        });
+        throw new ValidationError('Intent collection is not currently active');
       }
 
       // Use helper method (includes authorization check)
@@ -468,13 +481,27 @@ export class RegistrationController {
         authenticatedUserEmail
       );
 
-      res.json({ success: true, registration });
+      successResponse(res, { registration }, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'updateIntent', registrationId: id, intent },
+      });
     } catch (error) {
       if (error.message === 'Registration not found') {
-        return res.status(404).json({ error: 'Registration not found or access denied' });
+        logger.error('Error updating intent:', error);
+        errorResponse(res, new NotFoundError('Registration not found or access denied'), {
+          req,
+          startTime,
+          context: { controller: 'RegistrationController', method: 'updateIntent' },
+        });
+        return;
       }
       logger.error('Error updating intent:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'updateIntent' },
+      });
     }
   }
 
