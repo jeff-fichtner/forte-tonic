@@ -62,7 +62,7 @@ npm run docs:serve     # Serve docs with watch
 - **Backend:** Express.js with Controller-Repository-Service pattern
 - **Database:** Google Sheets API integration with caching layer
 - **Frontend:** Vanilla JavaScript SPA with ViewModel pattern
-- **Authentication:** Role-based access control (Parent/Instructor/Admin/Operator)
+- **Authentication:** Role-based access control (Parent/Instructor/Admin)
 - **Deployment:** Docker + Google Cloud Run with CI/CD pipeline
 
 ## Key Features
@@ -85,13 +85,12 @@ npm run docs:serve     # Serve docs with watch
 
 ## Authentication & User Management
 
-- **Operator**: System operator (configured via environment)
 - **Admin**: School administrators
 - **Instructor**: Music instructors
 - **Parent**: Student parents/guardians (phone number authentication)
 - **Student**: Enrolled students
 
-Authentication uses access codes stored in Google Sheets, with operator email override capability. Phone number authentication for parents uses 10-digit validation.
+Authentication uses access codes stored in Google Sheets. Phone number authentication for parents uses 10-digit validation.
 
 ## File Structure
 
@@ -137,7 +136,7 @@ src/
 ## API Endpoints (Key)
 
 - `POST /api/authenticateByAccessCode` - User authentication
-- `POST /api/getOperatorUser` - Operator user retrieval
+- `POST /api/getAppConfiguration` - Application configuration retrieval (current period, settings)
 - `POST /api/registrations` - Student registration management
 - `POST /api/getClasses` - Class availability checking
 - `POST /api/attendance` - Attendance tracking
@@ -177,7 +176,6 @@ Required environment variables (see `.env.example`):
 
 - Google Cloud credentials and spreadsheet IDs
 - Email configuration (optional)
-- Operator settings
 - Port and environment configs
 
 ## Common Development Tasks

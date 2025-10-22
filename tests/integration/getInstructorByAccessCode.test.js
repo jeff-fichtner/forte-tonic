@@ -60,14 +60,6 @@ const mockUserRepository = {
   getAdmins: jest.fn().mockResolvedValue([]),
   getAdminByEmail: jest.fn().mockResolvedValue(null),
   getAdminByAccessCode: jest.fn().mockResolvedValue(null),
-  getOperatorByEmail: jest.fn().mockResolvedValue({
-    id: '1',
-    email: 'operator@test.com',
-    role: 'OPERATOR',
-    admin: '123456',
-    instructor: '654321',
-    parent: null,
-  }),
   getInstructors: jest.fn().mockResolvedValue([
     {
       id: 'INSTRUCTOR1@TEST.COM',

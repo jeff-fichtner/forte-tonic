@@ -7,7 +7,6 @@ describe('Parent Weekly Schedule Logic', () => {
     // Create mock parent user
     mockParentUser = {
       parent: { id: 'parent123' },
-      shouldShowAsOperator: false,
     };
 
     // Create mock students
@@ -122,7 +121,6 @@ describe('Parent Weekly Schedule Logic', () => {
     // Arrange - Create parent user without parent ID
     const parentUserWithoutId = {
       parent: null,
-      shouldShowAsOperator: false,
     };
 
     const currentParentId = parentUserWithoutId.parent?.id;

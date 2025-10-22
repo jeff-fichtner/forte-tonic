@@ -10,7 +10,7 @@ import { UserTransformService } from '../services/userTransformService.js';
 import { getAuthenticatedUserEmail } from '../middleware/auth.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
 import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
-import { OperatorUserResponse } from '../models/shared/responses/operatorUserResponse.js';
+import { AppConfigurationResponse } from '../models/shared/responses/appConfigurationResponse.js';
 import { ConfigurationService } from '../services/configurationService.js';
 import { getLogger } from '../utils/logger.js';
 
@@ -18,31 +18,24 @@ const logger = getLogger();
 
 export class UserController {
   /**
-   * Get current operator user
+   * Get application configuration including current period and settings
    */
-  static async getOperatorUser(req, res) {
+  static async getAppConfiguration(req, res) {
     try {
-      logger.info('getOperatorUser - Temporarily bypassing operator user retrieval');
-
-      // Get current period from period service
       const periodService = serviceContainer.get('periodService');
       const currentPeriod = await periodService.getCurrentPeriod();
-      logger.debug('Current period retrieved:', currentPeriod);
 
-      // Even when bypassed, return basic configuration
-      const bypassedResponse = new OperatorUserResponse(null, null, null, null, {
+      const configurationData = {
+        currentPeriod,
         rockBandClassIds: ConfigurationService.getRockBandClassIds(),
-      });
+      };
 
-      // Add current period to response
-      bypassedResponse.currentPeriod = currentPeriod;
-      logger.debug('OperatorUserResponse with period:', JSON.stringify(bypassedResponse, null, 2));
+      const configuration = new AppConfigurationResponse(configurationData);
 
-      return res.json(bypassedResponse);
+      return res.json(configuration.toJSON());
     } catch (error) {
-      logger.error('Error getting operator user:', error);
-      // Return null instead of error to allow app to continue
-      res.json(null);
+      logger.error('Error getting app configuration:', error);
+      res.status(500).json({ error: 'Failed to load application configuration' });
     }
   }
 
@@ -260,7 +253,6 @@ export class UserController {
       // Create AuthenticatedUserResponse with the matched user
       const authenticatedUser = new AuthenticatedUserResponse(
         admin?.email || instructor?.email || parent?.email,
-        false, // isOperator is false for access code login
         admin,
         instructor,
         parent

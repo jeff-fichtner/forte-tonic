@@ -97,13 +97,6 @@ const mockUserRepository = {
   getRooms: jest
     .fn()
     .mockResolvedValue([{ id: '1', name: 'Piano Room', location: 'Main Building' }]),
-  getOperatorByEmail: jest.fn().mockResolvedValue({
-    email: process.env.OPERATOR_EMAIL || 'test-operator@example.com',
-    role: 'operator',
-    admin: '123456', // Access code instead of email
-    instructor: null,
-    parent: null,
-  }),
   getAdminByAccessCode: jest.fn().mockResolvedValue({
     id: '1',
     email: 'admin@test.com',
@@ -167,22 +160,17 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
     req.userRepository = mockUserRepository;
     req.programRepository = mockProgramRepository;
     req.currentUser = {
-      email: process.env.OPERATOR_EMAIL || 'test-operator@example.com',
+      email: 'test-user@example.com',
       admin: { id: '1', email: 'admin@test.com', firstName: 'Test', lastName: 'Admin' },
       instructor: null,
       parent: null,
-      roles: [],
-      primaryRole: 'admin',
       displayName: 'Test Admin',
-      operatorEmail: process.env.OPERATOR_EMAIL || 'test-operator@example.com',
       toJSON: function () {
         return {
           email: this.email,
           admin: this.admin,
           instructor: this.instructor,
           parent: this.parent,
-          roles: this.roles,
-          primaryRole: this.primaryRole,
           displayName: this.displayName,
         };
       },
@@ -191,10 +179,9 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
     next();
   },
   getAuthenticatedUserEmail: jest.fn().mockImplementation(req => {
-    return req.currentUser?.operatorEmail || req.currentUser?.email || 'test-operator@example.com';
+    return req.currentUser?.email || 'test-user@example.com';
   }),
   requireAuth: (req, res, next) => next(),
-  requireOperator: (req, res, next) => next(),
 }));
 
 // Mock the service container
@@ -271,23 +258,6 @@ describe('Server Integration Tests', () => {
   });
 
   describe('API Routes', () => {
-    describe('POST /api/getOperatorUser', () => {
-      test('should return current user', async () => {
-        const response = await request(app).post('/api/getOperatorUser').expect(200);
-
-        // Handle double-stringified JSON from server
-        let user;
-        try {
-          user = JSON.parse(JSON.parse(response.text));
-        } catch {
-          user = JSON.parse(response.text);
-        }
-        expect(user).toHaveProperty('email');
-        expect(user).toHaveProperty('primaryRole');
-        expect(user).toHaveProperty('displayName');
-      });
-    });
-
     describe('POST /api/getAdmins', () => {
       test('should return list of admins', async () => {
         const response = await request(app).post('/api/getAdmins').expect(200);

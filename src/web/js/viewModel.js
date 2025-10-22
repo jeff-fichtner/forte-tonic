@@ -1,6 +1,6 @@
 import { HttpService } from './data/httpService.js';
 import { ServerFunctions, Sections, RegistrationType } from './constants.js';
-import { OperatorUserResponse } from '../../models/shared/responses/operatorUserResponse.js';
+import { AppConfigurationResponse } from '../../models/shared/responses/appConfigurationResponse.js';
 import {
   Admin,
   Instructor,
@@ -104,78 +104,18 @@ export class ViewModel {
   }
 
   async initializeAsync() {
-    // Get operator user when page first loads
-    const operatorUser = await HttpService.fetch(ServerFunctions.getOperatorUser, x =>
-      OperatorUserResponse.fromApiData(x)
+    // Get application configuration when page first loads
+    const appConfig = await HttpService.fetch(ServerFunctions.getAppConfiguration, data =>
+      AppConfigurationResponse.fromApiData(data)
     );
 
-    console.log('Operator user loaded:', operatorUser);
+    console.log('App configuration loaded:', appConfig);
 
-    // Save user in user session
-    window.UserSession.saveOperatorUser(operatorUser);
-
-    // Update ClassManager with Rock Band class IDs from server configuration
-    if (operatorUser && operatorUser.configuration && operatorUser.configuration.rockBandClassIds) {
-      ClassManager.updateRockBandClassIds(operatorUser.configuration.rockBandClassIds);
-      console.log(
-        'Updated ClassManager with Rock Band class IDs:',
-        operatorUser.configuration.rockBandClassIds
-      );
+    // Save entire app configuration in user session
+    // ClassManager will read rockBandClassIds from here directly
+    if (appConfig) {
+      window.UserSession.saveAppConfig(appConfig);
     }
-
-    // Show nav links only if operator user returned successfully
-    // const nav = document.getElementById('nav-mobile');
-
-    // TEMPORARILY COMMENTED OUT - Always keep nav section links hidden
-    /*
-    if (nav && (operatorUser || window.location.hostname === 'localhost')) {
-      nav.hidden = false;
-      console.log('✅ Nav links shown - operator user authenticated or localhost debug mode');
-      console.log('Operator user:', operatorUser);
-      
-      // Temporary debug alert
-      if (!operatorUser && window.location.hostname === 'localhost') {
-        nav.style.border = '2px solid red'; // Visual indicator
-        console.log('🔧 DEBUG: Navigation forced visible for localhost testing');
-      }
-    }
-    */
-
-    // If operator has seeded users (admin/instructor/parent), load the default user (admin first)
-    // if (operatorUser && (operatorUser.admin || operatorUser.instructor || operatorUser.parent)) {
-    //   console.log('Operator user has seeded users - loading user data');
-
-    //   // Determine default role to click (admin -> instructor -> parent)
-    //   let roleToClick = null;
-    //   if (operatorUser.admin) {
-    //     roleToClick = 'admin';
-    //   } else if (operatorUser.instructor) {
-    //     roleToClick = 'instructor';
-    //   } else if (operatorUser.parent) {
-    //     roleToClick = 'parent';
-    //   }
-
-    //   // Load user data with the operator user
-    //   await this.loadUserData(operatorUser, roleToClick);
-    // } else if (!operatorUser && window.location.hostname === 'localhost') {
-    //   // Debug mode for localhost - create a mock operator user for testing
-    //   console.log('🔧 Debug mode: Creating mock operator user for localhost testing');
-    //   const mockOperatorUser = {
-    //     email: 'debug@localhost',
-    //     admin: { id: 'debug-admin', email: 'debug@localhost', isAdmin: () => true },
-    //     instructor: { id: 'debug-instructor', email: 'debug@localhost', isInstructor: () => true },
-    //     parent: { id: 'debug-parent', email: 'debug@localhost', isParent: () => true },
-    //     isOperator: () => true,
-    //     isAdmin: () => true,
-    //     isInstructor: () => true,
-    //     isParent: () => true
-    //   };
-
-    //   window.UserSession.saveOperatorUser(mockOperatorUser);
-    //   await this.loadUserData(mockOperatorUser, 'admin');
-    // } else {
-    //   console.log('Operator user has no seeded users - page will do nothing');
-    // }
 
     // Initialize all modals
     this.#initializeAllModals();
@@ -449,11 +389,8 @@ export class ViewModel {
       defaultSection = Sections.PARENT;
     }
 
-    // For operator users, show all sections available; for authenticated users, use default section
-    const isOperatorUser =
-      user instanceof OperatorUserResponse || (user.isOperator && user.isOperator());
-    const defaultSectionToUse = isOperatorUser ? null : defaultSection;
-    this.navTabs = new NavTabs(defaultSectionToUse);
+    // Use the default section based on user's role
+    this.navTabs = new NavTabs(defaultSection);
     this.#setPageLoading(false);
 
     // Auto-click the specified role tab if provided
@@ -528,12 +465,18 @@ export class ViewModel {
     // Sort employees to ensure admins appear at the top
     const sortedEmployees = this.#sortEmployeesForDirectory(mappedEmployees);
     this.employeeDirectoryTable = this.#buildDirectory('employee-directory-table', sortedEmployees);
+
+    // Update intent banner (will hide for non-parent users)
+    this.#updateIntentBanner();
   }
   /**
    *
    */
   #initInstructorContent() {
     console.log('👩‍🏫 Initializing instructor content...');
+
+    // Update intent banner (will hide for non-parent users)
+    this.#updateIntentBanner();
 
     // Get the current instructor's ID
     const currentInstructorId = this.currentUser.instructor?.id;
@@ -670,7 +613,7 @@ export class ViewModel {
     );
     // Sort employees to ensure admins appear at the top
     const sortedEmployees = this.#sortEmployeesForDirectory(mappedEmployees);
-    // this may be set in admin section if user is operator
+    // this may be set in admin section
     this.employeeDirectoryTable ??= this.#buildDirectory(
       'employee-directory-table',
       sortedEmployees
@@ -1409,9 +1352,15 @@ export class ViewModel {
 
     if (!banner) return;
 
+    // Only show banner for parent users
+    if (!this.currentUser?.parent) {
+      banner.style.display = 'none';
+      return;
+    }
+
     // Check if we're in the intent period
-    const operatorUser = window.UserSession?.getOperatorUser();
-    const isIntentPeriod = operatorUser?.currentPeriod?.periodType === PeriodType.INTENT;
+    const currentPeriod = window.UserSession?.getCurrentPeriod();
+    const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
 
     if (!isIntentPeriod) {
       banner.style.display = 'none';
@@ -1638,13 +1587,12 @@ export class ViewModel {
    */
   #buildRegistrationTable(registrations) {
     // Check if we're in the intent period to show the Intent column
-    const operatorUser = window.UserSession?.getOperatorUser();
-    const isIntentPeriod = operatorUser?.currentPeriod?.periodType === PeriodType.INTENT;
+    const currentPeriod = window.UserSession?.getCurrentPeriod();
+    const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
 
     console.log('🔍 Admin Master Schedule - Period Check:', {
-      operatorUser: operatorUser ? 'exists' : 'null',
-      currentPeriod: operatorUser?.currentPeriod,
-      periodType: operatorUser?.currentPeriod?.periodType,
+      currentPeriod: currentPeriod || null,
+      periodType: currentPeriod?.periodType,
       PeriodType_INTENT: PeriodType.INTENT,
       isIntentPeriod,
       willShowColumn: isIntentPeriod,
@@ -2054,14 +2002,13 @@ export class ViewModel {
     ];
 
     // Check if we're in the intent period to show the Intent column
-    const operatorUser = window.UserSession?.getOperatorUser();
-    const isIntentPeriod = operatorUser?.currentPeriod?.periodType === PeriodType.INTENT;
+    const currentPeriod = window.UserSession?.getCurrentPeriod();
+    const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
 
     console.log('🔍 Parent Weekly Schedule - Period Check:', {
       viewContext,
-      operatorUser: operatorUser ? 'exists' : 'null',
-      currentPeriod: operatorUser?.currentPeriod,
-      periodType: operatorUser?.currentPeriod?.periodType,
+      currentPeriod: currentPeriod || null,
+      periodType: currentPeriod?.periodType,
       PeriodType_INTENT: PeriodType.INTENT,
       isIntentPeriod,
       willShowColumn: viewContext === 'parent' && isIntentPeriod,
@@ -3138,29 +3085,23 @@ export class ViewModel {
       return;
     }
 
-    // Check if there's a stored access code or if we have an operator user
+    // Check if there's a stored access code
     const storedCode = window.AccessCodeManager.getStoredAccessCode();
-    const operatorUser = window.UserSession?.getOperatorUser();
 
-    if (
-      storedCode ||
-      (operatorUser && (operatorUser.admin || operatorUser.instructor || operatorUser.parent))
-    ) {
-      // Change button text to "Change User" if access code exists or operator is available
+    if (storedCode) {
+      // Change button text to "Change User" if access code exists
       const buttonTextNode = loginButton.childNodes[loginButton.childNodes.length - 1];
       if (buttonTextNode && buttonTextNode.nodeType === Node.TEXT_NODE) {
         buttonTextNode.textContent = 'Change User';
       }
-      console.log(
-        'Login button updated to "Change User" - stored access code or operator user found'
-      );
+      console.log('Login button updated to "Change User" - stored access code found');
     } else {
-      // Ensure button text is "Login" if no stored code and no operator
+      // Ensure button text is "Login" if no stored code
       const buttonTextNode = loginButton.childNodes[loginButton.childNodes.length - 1];
       if (buttonTextNode && buttonTextNode.nodeType === Node.TEXT_NODE) {
         buttonTextNode.textContent = 'Login';
       }
-      console.log('Login button set to "Login" - no stored access code or operator user');
+      console.log('Login button set to "Login" - no stored access code');
     }
   }
 
@@ -3454,7 +3395,7 @@ export class ViewModel {
   }
 
   /**
-   * Show the login button after operator request completes
+   * Show the login button after app configuration loads
    */
   #showLoginButton() {
     console.log('🔍 Showing login button');

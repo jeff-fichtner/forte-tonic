@@ -25,20 +25,11 @@ export const initializeRepositories = async (req, res, next) => {
 };
 
 /**
- * Get authenticated user email with proper priority:
- * 1. Operator email (if present)
- * 2. Access code owner email
+ * Get authenticated user email from access code
  * Throws error if no authenticated user is found
  */
 export function getAuthenticatedUserEmail(req) {
-  // Priority 1: Operator email
-  const operatorEmail = req.currentUser?.operatorEmail || req.user?.operatorEmail;
-  if (operatorEmail) {
-    console.log('🔑 Using operator email for audit:', operatorEmail);
-    return operatorEmail;
-  }
-
-  // Priority 2: Access code owner email
+  // Get access code owner email
   const userEmail = req.currentUser?.email || req.user?.email;
   if (userEmail) {
     console.log('👤 Using access code owner email for audit:', userEmail);
@@ -49,7 +40,6 @@ export function getAuthenticatedUserEmail(req) {
   console.error('❌ Authentication failed for audit trail:', {
     hasCurrentUser: !!req.currentUser,
     currentUserEmail: req.currentUser?.email,
-    operatorEmail: req.currentUser?.operatorEmail,
     hasUser: !!req.user,
     userEmail: req.user?.email,
   });
@@ -92,17 +82,7 @@ async function extractAuthenticatedUser(req, userRepository) {
       userAgent: req.headers?.['user-agent']?.substring(0, 50) || 'unknown',
     });
 
-    // Method 1: Check for operator user first
-    const operatorEmail = currentConfig.operatorEmail;
-    let operatorRole = null;
-    if (operatorEmail) {
-      operatorRole = await userRepository.getOperatorByEmail(operatorEmail);
-      if (operatorRole) {
-        console.log('🔑 Operator available:', operatorEmail);
-      }
-    }
-
-    // Method 2: Check for access code to determine the acting user
+    // Check for access code to determine the acting user
     let accessCode = null;
 
     // Check for access code in different locations, including HttpService array format
@@ -203,32 +183,15 @@ async function extractAuthenticatedUser(req, userRepository) {
           email: user.email,
           accessCode: accessCode,
           userType: userType,
-          isOperator: false,
-          operatorEmail: operatorRole ? operatorEmail : null, // Store operator email if available
         };
         req.user = req.currentUser;
-        console.log(
-          `✅ User authenticated: ${user.email} (${userType})` +
-            (operatorRole ? ` with operator: ${operatorEmail}` : '')
-        );
+        console.log(`✅ User authenticated: ${user.email} (${userType})`);
         return;
       } else {
         console.warn(
           `⚠️ Access code ${accessCode.substring(0, 2)}*** not found in any user records`
         );
       }
-    }
-
-    // Method 3: If no access code but operator is available, use operator
-    if (operatorRole) {
-      req.currentUser = {
-        email: operatorEmail,
-        isOperator: true,
-        operatorEmail: operatorEmail,
-      };
-      req.user = req.currentUser;
-      console.log('🔑 Operator user authenticated (no access code):', operatorEmail);
-      return;
     }
 
     console.log(

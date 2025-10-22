@@ -47,7 +47,7 @@ System hosted on secure cloud infrastructure (Render.com)
 Regular backups and data redundancy measures in place
 
 5.2 Security Measures
-Authentication: Secure login systems with operator-level access controls
+Authentication: Secure login systems with role-based access controls
 Encryption: Data transmission protected by industry-standard encryption
 Access Controls: Role-based permissions limiting data access to authorized personnel only
 
@@ -122,7 +122,6 @@ Institutional data governance policies
 14. Definitions
 
 Personal Information: Any information that identifies or can be used to identify an individual
-Operator: Authorized system administrator with elevated access privileges
 Student Record: Educational information directly related to student participation
 System: The Tonic Music Program Registration System and associated infrastructure
 
