@@ -285,13 +285,23 @@ async function initializeVersionDisplay() {
 
         versionDisplay.style.display = 'block';
 
-        // Add click handler to show detailed version info
-        versionDisplay.addEventListener('click', () => {
+        // Add click handler to copy commit ID and show detailed version info
+        versionDisplay.addEventListener('click', async () => {
+          // Copy commit ID to clipboard
+          try {
+            await navigator.clipboard.writeText(versionInfo.gitCommit);
+            console.log('✓ Commit ID copied to clipboard:', versionInfo.gitCommit);
+          } catch (error) {
+            console.warn('Failed to copy commit ID:', error);
+          }
+
           const details = `
 Version: ${versionInfo.number}
-Environment: ${versionInfo.environment}
+${versionInfo.gitTag ? `Git Tag: ${versionInfo.gitTag}\n` : ''}Environment: ${versionInfo.environment}
 Build Date: ${new Date(versionInfo.buildDate).toLocaleString()}
 Git Commit: ${versionInfo.gitCommit}
+
+✓ Commit ID copied to clipboard!
           `.trim();
 
           alert(details);
