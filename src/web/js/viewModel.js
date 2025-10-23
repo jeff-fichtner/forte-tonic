@@ -1652,6 +1652,16 @@ export class ViewModel {
             ? 'registration-row-group'
             : 'registration-row-private';
         },
+        onCountChange: (filteredCount, totalCount) => {
+          const countEl = document.getElementById('master-schedule-count');
+          if (countEl) {
+            if (filteredCount === totalCount) {
+              countEl.textContent = `Showing ${totalCount} registration${totalCount !== 1 ? 's' : ''}`;
+            } else {
+              countEl.textContent = `Showing ${filteredCount} of ${totalCount} registration${totalCount !== 1 ? 's' : ''}`;
+            }
+          }
+        },
       }
     );
   }
