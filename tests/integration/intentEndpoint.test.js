@@ -162,8 +162,8 @@ describe('Integration Test: PATCH /api/registrations/:id/intent', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.registration).toBeDefined();
-      expect(response.body.data.registration.reenrollmentIntent).toBe('keep');
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.reenrollmentIntent).toBe('keep');
       expect(mockRegistrationRepository.updateIntent).toHaveBeenCalledWith(
         '123e4567-e89b-42d3-8456-426614174000',
         'keep',
@@ -183,7 +183,7 @@ describe('Integration Test: PATCH /api/registrations/:id/intent', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.registration.reenrollmentIntent).toBe('drop');
+      expect(response.body.data.reenrollmentIntent).toBe('drop');
     });
 
     test('should successfully submit intent "change"', async () => {
@@ -198,7 +198,7 @@ describe('Integration Test: PATCH /api/registrations/:id/intent', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.registration.reenrollmentIntent).toBe('change');
+      expect(response.body.data.reenrollmentIntent).toBe('change');
     });
   });
 

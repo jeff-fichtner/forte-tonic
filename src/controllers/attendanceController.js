@@ -123,7 +123,7 @@ export class AttendanceController {
         authenticatedUserEmail
       );
 
-      successResponse(res, { attendanceRecord }, {
+      successResponse(res, attendanceRecord, {
         req,
         startTime,
         context: { controller: 'AttendanceController', method: 'recordAttendance (legacy)', registrationId: data.registrationId },
@@ -155,7 +155,7 @@ export class AttendanceController {
         authenticatedUserEmail
       );
 
-      successResponse(res, { success }, {
+      successResponse(res, success, {
         req,
         startTime,
         context: { controller: 'AttendanceController', method: 'removeAttendance (legacy)', registrationId: data.registrationId },

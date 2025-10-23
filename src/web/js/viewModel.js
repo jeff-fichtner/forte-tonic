@@ -109,8 +109,6 @@ export class ViewModel {
       AppConfigurationResponse.fromApiData(data)
     );
 
-    console.log('App configuration loaded:', appConfig);
-
     // Save entire app configuration in user session
     // ClassManager will read rockBandClassIds from here directly
     if (appConfig) {
@@ -148,19 +146,13 @@ export class ViewModel {
   }
 
   async loadUserData(user, roleToClick = null) {
-    console.log('Loading user data for user:', user);
-
     // Only proceed if we have a valid user with backing data
     if (!user || (!user.admin && !user.instructor && !user.parent)) {
-      console.log('No valid user with backing data - skipping data load');
       return;
     }
 
     // Show content area
     document.getElementById('page-content').hidden = false;
-
-    console.log('📊 Starting data loading process...');
-    const loadingStartTime = performance.now();
 
     const [_, admins, instructors, students, registrations, classes, rooms] = await Promise.all([
       DomHelpers.waitForDocumentReadyAsync(),
@@ -172,64 +164,13 @@ export class ViewModel {
       HttpService.fetch(ServerFunctions.getRooms, x => x.map(y => Room.fromApiData(y))),
     ]);
 
-    const loadingEndTime = performance.now();
-    console.log(`📊 Data loading completed in ${(loadingEndTime - loadingStartTime).toFixed(2)}ms`);
-
-    // Log data counts
-    console.log('📊 Data summary:');
-    console.log(`  - Admins: ${admins.length}`);
-    console.log(`  - Instructors: ${instructors.length}`);
-    console.log(`  - Students: ${students.length}`);
-    console.log(`  - Registrations: ${registrations.length}`);
-    console.log(`  - Classes: ${classes.length}`);
-    console.log(`  - Rooms: ${rooms.length}`);
-
-    // Log instructor details
-    console.log('👩‍🏫 Instructor IDs and details:');
-    instructors.forEach((instructor, index) => {
-      const id = instructor.id?.value || instructor.id;
-      console.log(
-        `  ${index + 1}. ID: "${id}" (${typeof id}) - ${instructor.firstName} ${instructor.lastName} (${instructor.email})`
-      );
-    });
-
-    // Log student details (first 10 for brevity)
-    console.log(`👩‍🎓 Student IDs and details (showing first 10 of ${students.length}):`);
-    students.slice(0, 10).forEach((student, index) => {
-      const id = student.id?.value || student.id;
-      console.log(
-        `  ${index + 1}. ID: "${id}" (${typeof id}) - ${student.firstName} ${student.lastName}`
-      );
-    });
-
     M.AutoInit();
 
     this.admins = admins;
     this.instructors = instructors;
     this.students = students;
 
-    console.log('🔗 Starting registration matching process...');
-    const matchingStartTime = performance.now();
-
-    // Track matching statistics
-    let studentsMatched = 0;
-    let studentsNotMatched = 0;
-    let instructorsMatched = 0;
-    let instructorsNotMatched = 0;
-    const unmatchedStudentIds = [];
-    const unmatchedInstructorIds = [];
-
-    this.registrations = registrations.map((registration, index) => {
-      if (index < 5) {
-        console.log(`🔍 Processing registration ${index + 1}/${registrations.length}:`, {
-          id: registration.id?.value || registration.id,
-          studentId: registration.studentId?.value || registration.studentId,
-          instructorId: registration.instructorId?.value || registration.instructorId,
-          day: registration.day,
-          startTime: registration.startTime,
-        });
-      }
-
+    this.registrations = registrations.map((registration) => {
       // ensure student is populated
       if (!registration.student) {
         registration.student = this.students.find(x => {
@@ -237,32 +178,6 @@ export class ViewModel {
           const registrationStudentId = registration.studentId?.value || registration.studentId;
           return studentId === registrationStudentId;
         });
-
-        // Log detailed matching info for students
-        if (!registration.student) {
-          studentsNotMatched++;
-          const regStudentId = registration.studentId?.value || registration.studentId;
-          unmatchedStudentIds.push(regStudentId);
-
-          if (index < 5) {
-            console.warn(
-              `❌ Student not found for registration ${registration.id} with studentId "${regStudentId}" (${typeof regStudentId})`
-            );
-            console.warn(
-              `   Available student IDs:`,
-              students
-                .map(s => `"${s.id?.value || s.id}" (${typeof (s.id?.value || s.id)})`)
-                .slice(0, 5)
-            );
-          }
-        } else {
-          studentsMatched++;
-          if (index < 5) {
-            console.log(
-              `✅ Student matched: ${registration.student.firstName} ${registration.student.lastName}`
-            );
-          }
-        }
       }
 
       // ensure instructor is populated
@@ -273,94 +188,9 @@ export class ViewModel {
             registration.instructorId?.value || registration.instructorId;
           return instructorId === registrationInstructorId;
         });
-
-        // Log detailed matching info for instructors
-        if (!registration.instructor) {
-          instructorsNotMatched++;
-          const regInstructorId = registration.instructorId?.value || registration.instructorId;
-          unmatchedInstructorIds.push(regInstructorId);
-
-          if (index < 5) {
-            console.warn(
-              `❌ Instructor not found for registration ${registration.id} with instructorId "${regInstructorId}" (${typeof regInstructorId})`
-            );
-            console.warn(
-              `   Available instructor IDs:`,
-              instructors.map(i => `"${i.id?.value || i.id}" (${typeof (i.id?.value || i.id)})`)
-            );
-          }
-        } else {
-          instructorsMatched++;
-          if (index < 5) {
-            console.log(
-              `✅ Instructor matched: ${registration.instructor.firstName} ${registration.instructor.lastName}`
-            );
-          }
-        }
       }
       return registration;
     });
-
-    const matchingEndTime = performance.now();
-    console.log(
-      `🔗 Registration matching completed in ${(matchingEndTime - matchingStartTime).toFixed(2)}ms`
-    );
-
-    // Log matching statistics
-    console.log('📈 Matching statistics:');
-    console.log(`  Students: ${studentsMatched} matched, ${studentsNotMatched} not matched`);
-    console.log(
-      `  Instructors: ${instructorsMatched} matched, ${instructorsNotMatched} not matched`
-    );
-
-    if (unmatchedStudentIds.length > 0) {
-      console.log(`⚠️ Unmatched student IDs (first 10):`, unmatchedStudentIds.slice(0, 10));
-    }
-
-    if (unmatchedInstructorIds.length > 0) {
-      console.log(`⚠️ Unmatched instructor IDs (first 10):`, unmatchedInstructorIds.slice(0, 10));
-    }
-
-    // Log registration counts per student
-    const studentRegistrationCounts = {};
-    this.registrations.forEach(reg => {
-      if (reg.student) {
-        const studentId = reg.student.id?.value || reg.student.id;
-        studentRegistrationCounts[studentId] = (studentRegistrationCounts[studentId] || 0) + 1;
-      }
-    });
-
-    console.log('📊 Registration counts per student (top 10):');
-    const sortedStudentCounts = Object.entries(studentRegistrationCounts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 10);
-
-    sortedStudentCounts.forEach(([studentId, count]) => {
-      const student = this.students.find(s => (s.id?.value || s.id) === studentId);
-      const studentName = student ? `${student.firstName} ${student.lastName}` : 'Unknown';
-      console.log(`  ${studentName}: ${count} registrations`);
-    });
-
-    // Log registration counts per instructor
-    const instructorRegistrationCounts = {};
-    this.registrations.forEach(reg => {
-      if (reg.instructor) {
-        const instructorId = reg.instructor.id?.value || reg.instructor.id;
-        instructorRegistrationCounts[instructorId] =
-          (instructorRegistrationCounts[instructorId] || 0) + 1;
-      }
-    });
-
-    console.log('📊 Registration counts per instructor:');
-    Object.entries(instructorRegistrationCounts)
-      .sort(([, a], [, b]) => b - a)
-      .forEach(([instructorId, count]) => {
-        const instructor = this.instructors.find(i => (i.id?.value || i.id) === instructorId);
-        const instructorName = instructor
-          ? `${instructor.firstName} ${instructor.lastName}`
-          : 'Unknown';
-        console.log(`  ${instructorName}: ${count} registrations`);
-      });
 
     this.classes = classes;
     this.rooms = rooms;
@@ -370,20 +200,16 @@ export class ViewModel {
 
     let defaultSection;
     if (user.admin && !this.adminContentInitialized) {
-      console.log('🔧 Initializing admin content...');
       this.#initAdminContent();
       this.adminContentInitialized = true;
       defaultSection = Sections.ADMIN;
     }
     if (user.instructor && !this.instructorContentInitialized) {
-      console.log('🔧 Initializing instructor content...');
       this.#initInstructorContent();
       this.instructorContentInitialized = true;
       defaultSection = Sections.INSTRUCTOR;
     }
     if (user.parent && !this.parentContentInitialized) {
-      console.log('🔧 Initializing parent content...');
-      console.log('  - Parent user:', user.parent);
       this.#initParentContent();
       this.parentContentInitialized = true;
       defaultSection = Sections.PARENT;
@@ -397,10 +223,7 @@ export class ViewModel {
     if (roleToClick) {
       const navLink = document.querySelector(`a[data-section="${roleToClick}"]`);
       if (navLink) {
-        console.log(`🎯 Auto-clicking ${roleToClick} nav link for user`);
         navLink.click();
-      } else {
-        console.warn(`❌ Nav link not found for section: ${roleToClick}`);
       }
     }
 
@@ -413,12 +236,6 @@ export class ViewModel {
    *
    */
   #initAdminContent() {
-    console.log('Initializing admin content...');
-
-    // Show admin tabs
-    const adminTabs = document.querySelectorAll('.tabs .tab.admin-tab');
-    console.log(`Found ${adminTabs.length} admin tabs to show`);
-
     // First make sure the tabs container is visible
     const tabsContainer = document.querySelector('.tabs');
     if (tabsContainer) {
@@ -430,22 +247,14 @@ export class ViewModel {
       return !ClassManager.isRockBandClass(registration.classId);
     });
     const sortedRegistrations = this.#sortRegistrations(nonWaitlistRegistrations);
-    console.log(
-      `Building master schedule table with ${sortedRegistrations.length} registrations (excluding wait list classes)`
-    );
     this.masterScheduleTable = this.#buildRegistrationTable(sortedRegistrations);
-    console.log('Master schedule table built successfully');
     this.#populateFilterDropdowns();
 
     // wait list tab - filter registrations with Rock Band class IDs (configured via environment)
     const waitListRegistrations = this.registrations.filter(registration => {
       return ClassManager.isRockBandClass(registration.classId);
     });
-    console.log(
-      `Building wait list table with ${waitListRegistrations.length} registrations (Rock Band classes)`
-    );
     this.adminWaitListTable = this.#buildWaitListTable(waitListRegistrations);
-    console.log('Wait list table built successfully');
 
     // registration form
     this.adminRegistrationForm = new AdminRegistrationForm(
@@ -473,8 +282,6 @@ export class ViewModel {
    *
    */
   #initInstructorContent() {
-    console.log('👩‍🏫 Initializing instructor content...');
-
     // Update intent banner (will hide for non-parent users)
     this.#updateIntentBanner();
 
@@ -482,48 +289,16 @@ export class ViewModel {
     const currentInstructorId = this.currentUser.instructor?.id;
 
     if (!currentInstructorId) {
-      console.warn('❌ No instructor ID found for current user');
-      console.warn('Current user structure:', this.currentUser);
+      console.warn('No instructor ID found for current user');
       return;
     }
 
-    console.log(
-      `🔍 Current instructor ID: "${currentInstructorId}" (${typeof currentInstructorId})`
-    );
-
     // Filter registrations to only show those for the current instructor
-    console.log('🔍 Filtering registrations for instructor...');
-    const filteringStartTime = performance.now();
-
     const instructorRegistrations = this.registrations.filter(registration => {
       const registrationInstructorId =
         registration.instructorId?.value || registration.instructorId;
-      const isMatch = registrationInstructorId === currentInstructorId;
-
-      return isMatch;
+      return registrationInstructorId === currentInstructorId;
     });
-
-    const filteringEndTime = performance.now();
-    console.log(
-      `🔍 Instructor filtering completed in ${(filteringEndTime - filteringStartTime).toFixed(2)}ms`
-    );
-
-    console.log(
-      `📊 Instructor ${currentInstructorId} has ${instructorRegistrations.length} registrations out of ${this.registrations.length} total`
-    );
-
-    // Log some sample instructor registrations
-    if (instructorRegistrations.length > 0) {
-      console.log('📝 Sample instructor registrations:');
-      instructorRegistrations.slice(0, 5).forEach((registration, index) => {
-        console.log(
-          `  ${index + 1}. ${registration.student?.firstName || 'Unknown'} ${registration.student?.lastName || 'Student'} - ${registration.day} ${registration.startTime} (${registration.instrument || registration.classTitle || 'Unknown'})`
-        );
-      });
-      if (instructorRegistrations.length > 5) {
-        console.log(`  ... and ${instructorRegistrations.length - 5} more registrations`);
-      }
-    }
 
     // weekly schedule
     // unique days with registrations for this instructor, sorted by day of week
@@ -623,69 +398,19 @@ export class ViewModel {
    *
    */
   #initParentContent() {
-    console.log('🔧 Initializing parent content...');
-    console.log('🔍 Current user structure:', this.currentUser);
-
-    // weekly schedule
     // Get the current parent's ID
     const currentParentId = this.currentUser.parent?.id;
 
     if (!currentParentId) {
       console.warn('No parent ID found for current user');
-      console.log('Available parent data:', this.currentUser.parent);
       return;
     }
 
-    console.log('🔍 Debug parent filtering:');
-    console.log('  - currentParentId:', currentParentId);
-    console.log('  - currentParentId type:', typeof currentParentId);
-    console.log('  - Total registrations:', this.registrations.length);
-
-    // Log the first few registrations and their student data
-    console.log('📋 Sample registrations and student data:');
-    this.registrations.slice(0, 5).forEach((registration, index) => {
-      console.log(`  Registration ${index + 1}/${this.registrations.length}:`, {
-        id: registration.id,
-        studentId: registration.studentId,
-        hasStudent: !!registration.student,
-        studentData: registration.student
-          ? {
-              id: registration.student.id,
-              name: `${registration.student.firstName} ${registration.student.lastName}`,
-              parent1Id: registration.student.parent1Id,
-              parent2Id: registration.student.parent2Id,
-              parent1IdType: typeof registration.student.parent1Id,
-              parent2IdType: typeof registration.student.parent2Id,
-            }
-          : 'No student attached',
-      });
-    });
-
-    // Track parent matching statistics
-    const parentMatchingStartTime = performance.now();
-    let exactMatches = 0;
-    let stringMatches = 0;
-    let noMatches = 0;
-    let missingStudents = 0;
-
+    // Filter registrations for this parent's children, excluding wait list classes
     const parentChildRegistrations = this.registrations.filter(registration => {
       const student = registration.student;
       if (!student) {
-        missingStudents++;
-        console.log('  ❌ Registration missing student:', registration.id);
         return false;
-      }
-
-      if (noMatches + exactMatches + stringMatches < 10) {
-        // Log first 10 for brevity
-        console.log(`  🔍 Checking student: ${student.firstName} ${student.lastName}`);
-        console.log(
-          `    - student.parent1Id: "${student.parent1Id}" (${typeof student.parent1Id})`
-        );
-        console.log(
-          `    - student.parent2Id: "${student.parent2Id}" (${typeof student.parent2Id})`
-        );
-        console.log(`    - currentParentId: "${currentParentId}" (${typeof currentParentId})`);
       }
 
       // Check if the current parent is either parent1 or parent2 of the student
@@ -703,51 +428,8 @@ export class ViewModel {
       // Exclude Rock Band classes (wait list classes) from parent weekly schedule
       const isWaitlistClass = ClassManager.isRockBandClass(registration.classId);
 
-      if (noMatches + exactMatches + stringMatches < 10) {
-        // Log first 10 for brevity
-        console.log(`    - Exact match result: ${exactMatch}`);
-        console.log(`    - String match result: ${stringMatch}`);
-        console.log(`    - Is waitlist class: ${isWaitlistClass}`);
-        console.log(`    - Final match: ${isMatch && !isWaitlistClass}`);
-      }
-
-      if (exactMatch) {
-        exactMatches++;
-      } else if (stringMatch) {
-        stringMatches++;
-      } else {
-        noMatches++;
-      }
-
       return isMatch && !isWaitlistClass;
     });
-
-    const parentMatchingEndTime = performance.now();
-
-    console.log(
-      `🔍 Parent filtering completed in ${(parentMatchingEndTime - parentMatchingStartTime).toFixed(2)}ms`
-    );
-    console.log('📊 Parent matching statistics:');
-    console.log(`  - Exact matches: ${exactMatches}`);
-    console.log(`  - String matches: ${stringMatches}`);
-    console.log(`  - No matches: ${noMatches}`);
-    console.log(`  - Missing students: ${missingStudents}`);
-    console.log(
-      `  - Total parent-child registrations found (excluding wait list classes): ${parentChildRegistrations.length}`
-    );
-
-    // Log details about the matched registrations
-    if (parentChildRegistrations.length > 0) {
-      console.log('📝 Parent-child registrations details:');
-      parentChildRegistrations.slice(0, 5).forEach((registration, index) => {
-        console.log(
-          `  ${index + 1}. ${registration.student.firstName} ${registration.student.lastName} - ${registration.day} ${registration.startTime} (${registration.instrument || registration.classTitle})`
-        );
-      });
-      if (parentChildRegistrations.length > 5) {
-        console.log(`  ... and ${parentChildRegistrations.length - 5} more registrations`);
-      }
-    }
 
     // Get unique students with registrations (their own children only)
     const studentsWithRegistrations = parentChildRegistrations
@@ -756,28 +438,16 @@ export class ViewModel {
       .filter((student, index, self) => self.findIndex(s => s.id === student.id) === index);
 
     // Get ALL children of this parent (not just those with registrations) for the registration form
-    console.log('🔍 Finding ALL children for parent registration form...');
     const allParentChildren = this.students.filter(student => {
       if (!student) return false;
 
-      const isChild =
+      return (
         student.parent1Id === currentParentId ||
         student.parent2Id === currentParentId ||
         String(student.parent1Id) === String(currentParentId) ||
-        String(student.parent2Id) === String(currentParentId);
-
-      if (isChild) {
-        console.log(
-          `  ✅ Found child: ${student.firstName} ${student.lastName} (ID: ${student.id})`
-        );
-      }
-
-      return isChild;
+        String(student.parent2Id) === String(currentParentId)
+      );
     });
-
-    console.log(
-      `📊 Parent has ${allParentChildren.length} total children, ${studentsWithRegistrations.length} with registrations`
-    );
 
     const parentWeeklyScheduleTables = document.getElementById('parent-weekly-schedule-tables');
 
@@ -820,38 +490,16 @@ export class ViewModel {
         parentWeeklyScheduleTables.appendChild(studentContainer);
 
         // Filter registrations for this student and sort by day, then start time
-        console.log(`📅 Processing schedule for ${student.firstName} ${student.lastName}:`);
         const studentRegistrations = parentChildRegistrations.filter(
           x => x.studentId.value === student.id.value
         );
-        console.log(`  - Found ${studentRegistrations.length} registrations for this student`);
-
-        if (studentRegistrations.length > 0) {
-          console.log('  - Sample registrations before sorting:');
-          studentRegistrations.slice(0, 3).forEach((reg, index) => {
-            console.log(
-              `    ${index + 1}. ${reg.day} ${reg.startTime} - ${reg.instrument || reg.classTitle}`
-            );
-          });
-        }
-
         const sortedStudentRegistrations = this.#sortRegistrations(studentRegistrations);
-
-        if (sortedStudentRegistrations.length > 0) {
-          console.log('  - Sample registrations after sorting:');
-          sortedStudentRegistrations.slice(0, 3).forEach((reg, index) => {
-            console.log(
-              `    ${index + 1}. ${reg.day} ${reg.startTime} - ${reg.instrument || reg.classTitle}`
-            );
-          });
-        }
 
         this.#buildWeeklySchedule(tableId, sortedStudentRegistrations, 'parent');
       });
     }
 
     // Parent wait list table - Show wait list registrations for this parent's children
-    console.log('🔍 Building parent wait list table...');
 
     // Filter for wait list registrations belonging to this parent's children
     const parentWaitListRegistrations = this.registrations.filter(registration => {
@@ -915,8 +563,6 @@ export class ViewModel {
       if (parentWaitListTable) {
         parentWaitListTable.removeAttribute('hidden');
       }
-
-      console.log('✅ Parent wait list table built and made visible');
     } else {
       // Hide the wait list table if no wait list registrations
       if (parentWaitListTable) {
@@ -931,8 +577,6 @@ export class ViewModel {
           }
         }
       }
-
-      console.log('⚠️ No wait list registrations found - hiding parent wait list table');
     }
 
     // registration
@@ -1051,13 +695,13 @@ export class ViewModel {
           // Disable dropdown while submitting
           event.target.disabled = true;
 
-          // Show loading spinner
+          // Show loading spinner using animated Material Icon
           if (statusIndicator) {
             statusIndicator.style.display = 'flex';
             statusIndicator.style.alignItems = 'center';
             statusIndicator.style.justifyContent = 'center';
             statusIndicator.innerHTML =
-              '<div class="preloader-wrapper tiny active" style="width: 20px; height: 20px; margin: 0;"><div class="spinner-layer spinner-blue-only"><div class="circle-clipper left"><div class="circle"></div></div><div class="gap-patch"><div class="circle"></div></div><div class="circle-clipper right"><div class="circle"></div></div></div></div>';
+              '<i class="material-icons blue-text" style="font-size: 20px; animation: spin 1s linear infinite;">sync</i>';
           }
 
           await this.submitIntent(registrationId, intent);
@@ -1072,12 +716,12 @@ export class ViewModel {
             statusIndicator.style.justifyContent = 'center';
             statusIndicator.innerHTML =
               '<i class="material-icons green-text" style="font-size: 20px;">check_circle</i>';
-            // Hide after 2 seconds
+            // Hide after 3 seconds (increased from 2)
             setTimeout(() => {
               if (statusIndicator) {
                 statusIndicator.style.display = 'none';
               }
-            }, 2000);
+            }, 3000);
           }
         } catch (error) {
           // Show error X
@@ -1153,29 +797,53 @@ export class ViewModel {
       messageEl.innerHTML =
         intentMessages[intent] || 'Are you sure you want to update your intent?';
 
+      // Track if promise has been resolved to prevent double resolution
+      let isResolved = false;
+
+      // Cleanup function to destroy modal and restore scroll
+      const cleanup = () => {
+        if (modalInstance) {
+          modalInstance.destroy();
+        }
+        // Remove any lingering overlays
+        document.querySelectorAll('.modal-overlay').forEach(overlay => overlay.remove());
+        // Ensure body scroll is restored
+        document.body.style.overflow = '';
+      };
+
       // Initialize modal
       const modalInstance = M.Modal.init(modal, {
         dismissible: true,
         onCloseEnd: () => {
-          // If modal is closed without clicking a button, treat as cancel
-          resolve(false);
+          cleanup();
+          // Only resolve if not already resolved (handles dismissal via escape or backdrop click)
+          if (!isResolved) {
+            isResolved = true;
+            resolve(false);
+          }
         },
       });
 
       // Handle confirm button
       const confirmHandler = () => {
-        modalInstance.close();
-        confirmBtn.removeEventListener('click', confirmHandler);
-        cancelBtn.removeEventListener('click', cancelHandler);
-        resolve(true);
+        if (!isResolved) {
+          isResolved = true;
+          confirmBtn.removeEventListener('click', confirmHandler);
+          cancelBtn.removeEventListener('click', cancelHandler);
+          modalInstance.close();
+          resolve(true);
+        }
       };
 
       // Handle cancel button
       const cancelHandler = () => {
-        modalInstance.close();
-        confirmBtn.removeEventListener('click', confirmHandler);
-        cancelBtn.removeEventListener('click', cancelHandler);
-        resolve(false);
+        if (!isResolved) {
+          isResolved = true;
+          confirmBtn.removeEventListener('click', confirmHandler);
+          cancelBtn.removeEventListener('click', cancelHandler);
+          modalInstance.close();
+          resolve(false);
+        }
       };
 
       confirmBtn.addEventListener('click', confirmHandler);
@@ -1193,7 +861,6 @@ export class ViewModel {
   #refreshTablesAfterRegistration() {
     // Always update the master schedule table if it exists (for admin view)
     if (this.masterScheduleTable) {
-      console.log('Refreshing master schedule table with updated registrations');
       const nonWaitlistRegistrations = this.registrations.filter(registration => {
         return !ClassManager.isRockBandClass(registration.classId);
       });
@@ -1203,7 +870,6 @@ export class ViewModel {
 
     // Always update the wait list table if it exists (for admin view)
     if (this.adminWaitListTable) {
-      console.log('Refreshing wait list table with updated registrations');
       const waitListRegistrations = this.registrations.filter(registration => {
         return ClassManager.isRockBandClass(registration.classId);
       });
@@ -1212,7 +878,6 @@ export class ViewModel {
 
     // Update parent wait list table if it exists (for parent view)
     if (this.parentWaitListTable && this.currentUser?.parent) {
-      console.log('Refreshing parent wait list table with updated registrations');
       const currentParentId = this.currentUser.parent?.id;
 
       if (currentParentId) {
@@ -1279,13 +944,11 @@ export class ViewModel {
 
     // Update instructor weekly schedules if current user is an instructor
     if (this.currentUser?.instructor && this.instructorContentInitialized) {
-      console.log('Refreshing instructor weekly schedule');
       this.#initInstructorContent();
     }
 
     // Update parent weekly schedules if current user is a parent
     if (this.currentUser?.parent && this.parentContentInitialized) {
-      console.log('Refreshing parent weekly schedule');
       this.#initParentContent();
     }
   }
@@ -1296,7 +959,8 @@ export class ViewModel {
    */
   async #createRegistrationWithEnrichment(data) {
     const response = await HttpService.post(ServerFunctions.register, data);
-    const newRegistration = Registration.fromApiData(response.data);
+    // HttpService auto-unwraps { success, data } responses, so response is already the registration data
+    const newRegistration = Registration.fromApiData(response);
 
     // Enrich the registration with instructor and student objects (same logic as initial data loading)
     if (!newRegistration.student) {
@@ -1369,6 +1033,10 @@ export class ViewModel {
 
     // Count registrations without intent (for current parent only)
     const incompleteRegistrations = this.registrations.filter(r => {
+      // Exclude wait list items (Rock Band classes)
+      const isWaitlistClass = ClassManager.isRockBandClass(r.classId);
+      if (isWaitlistClass) return false;
+
       // Check if this registration belongs to current parent's children
       const student = this.students.find(s => {
         const studentId = s.id?.value || s.id;
@@ -1390,6 +1058,16 @@ export class ViewModel {
     });
 
     const count = incompleteRegistrations.length;
+
+    console.log('Intent banner update:', {
+      totalRegistrations: this.registrations.length,
+      incompleteCount: count,
+      incompleteRegistrations: incompleteRegistrations.map(r => ({
+        id: r.id?.value || r.id,
+        classId: r.classId,
+        reenrollmentIntent: r.reenrollmentIntent
+      }))
+    });
 
     if (count === 0) {
       banner.style.display = 'none';
@@ -1590,13 +1268,6 @@ export class ViewModel {
     const currentPeriod = window.UserSession?.getCurrentPeriod();
     const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
 
-    console.log('🔍 Admin Master Schedule - Period Check:', {
-      currentPeriod: currentPeriod || null,
-      periodType: currentPeriod?.periodType,
-      PeriodType_INTENT: PeriodType.INTENT,
-      isIntentPeriod,
-      willShowColumn: isIntentPeriod,
-    });
 
     const headers = [
       'Weekday',
@@ -2005,14 +1676,6 @@ export class ViewModel {
     const currentPeriod = window.UserSession?.getCurrentPeriod();
     const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
 
-    console.log('🔍 Parent Weekly Schedule - Period Check:', {
-      viewContext,
-      currentPeriod: currentPeriod || null,
-      periodType: currentPeriod?.periodType,
-      PeriodType_INTENT: PeriodType.INTENT,
-      isIntentPeriod,
-      willShowColumn: viewContext === 'parent' && isIntentPeriod,
-    });
 
     if (viewContext === 'parent' && isIntentPeriod) {
       headers.splice(7, 0, 'Intent'); // Insert before 'Contact'
@@ -2293,8 +1956,6 @@ export class ViewModel {
       return;
     }
 
-    console.log('Delete registration called with ID:', registrationToDeleteId);
-    console.log('ID type:', typeof registrationToDeleteId);
 
     if (!registrationToDeleteId) {
       console.error('No registration ID provided for deletion');
@@ -2363,12 +2024,19 @@ export class ViewModel {
 
       const result = await response.json();
 
+      console.log('Intent submission response:', result);
+
       // Update local registration data
       const registration = this.registrations.find(r => (r.id?.value || r.id) === registrationId);
-      if (registration && result.registration) {
-        registration.reenrollmentIntent = result.registration.reenrollmentIntent;
-        registration.intentSubmittedAt = result.registration.intentSubmittedAt;
-        registration.intentSubmittedBy = result.registration.intentSubmittedBy;
+      console.log('Found registration to update:', registration);
+
+      if (registration && result.data) {
+        console.log('Updating registration with intent:', result.data.reenrollmentIntent);
+        registration.reenrollmentIntent = result.data.reenrollmentIntent;
+        registration.intentSubmittedAt = result.data.intentSubmittedAt;
+        registration.intentSubmittedBy = result.data.intentSubmittedBy;
+      } else {
+        console.warn('Could not update registration:', { hasRegistration: !!registration, hasResultData: !!result.data });
       }
 
       // Just refresh the weekly schedule tables to show updated intent
@@ -2481,53 +2149,9 @@ export class ViewModel {
    */
   async #getStudents(forceRefresh = false) {
     // BYPASS INDEXEDDB: Always load students fresh from server
-    console.log('👩‍🎓 Loading students fresh from server (IndexedDB bypassed)...');
-    const studentsStartTime = performance.now();
-
     const students = await HttpService.fetchAllPages(ServerFunctions.getStudents, x =>
       Student.fromApiData(x)
     );
-
-    const studentsEndTime = performance.now();
-    console.log(
-      `👩‍🎓 Fetched ${students.length} students from server in ${(studentsEndTime - studentsStartTime).toFixed(2)}ms`
-    );
-
-    // Log sample student data structure
-    if (students.length > 0) {
-      console.log('👩‍🎓 Sample student data structure:');
-      const sampleStudent = students[0];
-      console.log('  Sample student:', {
-        id: sampleStudent.id,
-        idType: typeof sampleStudent.id,
-        name: `${sampleStudent.firstName} ${sampleStudent.lastName}`,
-        grade: sampleStudent.grade,
-        parent1Id: sampleStudent.parent1Id,
-        parent1IdType: typeof sampleStudent.parent1Id,
-        parent2Id: sampleStudent.parent2Id,
-        parent2IdType: typeof sampleStudent.parent2Id,
-        parentEmails: sampleStudent.parentEmails,
-      });
-
-      // Log ID distribution analysis
-      const idTypes = {};
-      const parent1IdTypes = {};
-      const parent2IdTypes = {};
-
-      students.forEach(student => {
-        const idType = typeof (student.id?.value || student.id);
-        const parent1IdType = typeof student.parent1Id;
-        const parent2IdType = typeof student.parent2Id;
-
-        idTypes[idType] = (idTypes[idType] || 0) + 1;
-        parent1IdTypes[parent1IdType] = (parent1IdTypes[parent1IdType] || 0) + 1;
-        parent2IdTypes[parent2IdType] = (parent2IdTypes[parent2IdType] || 0) + 1;
-      });
-
-      console.log('👩‍🎓 Student ID type distribution:', idTypes);
-      console.log('👩‍🎓 Parent1 ID type distribution:', parent1IdTypes);
-      console.log('👩‍🎓 Parent2 ID type distribution:', parent2IdTypes);
-    }
 
     // Note: IndexedDB saving is bypassed to ensure fresh data on every load
     if (students.length === 0) {
@@ -2601,7 +2225,6 @@ export class ViewModel {
 
     // Clear inputs when modal opens - use proper Materialize events
     modalElement.addEventListener('modal:opened', () => {
-      console.log('Modal opened - resetting login modal');
       this.#resetLoginModal(parentPhoneInput, employeeCodeInput, loginButton);
       setTimeout(() => {
         this.#focusCurrentInput();
@@ -2612,7 +2235,6 @@ export class ViewModel {
 
     // Reset state when modal closes
     modalElement.addEventListener('modal:closed', () => {
-      console.log('Modal closed - resetting login modal');
       this.#resetLoginModal(parentPhoneInput, employeeCodeInput, loginButton);
     });
 
@@ -2621,18 +2243,15 @@ export class ViewModel {
       allowEscape: true,
       allowEnter: true,
       onConfirm: event => {
-        console.log('Login modal: Enter key pressed');
         if (!loginButton.disabled) {
           this.#handleLogin();
         }
       },
       onCancel: event => {
-        console.log('Login modal: ESC key pressed');
         this.loginModal.close();
       },
     });
 
-    console.log('Login modal initialized successfully');
   }
 
   /**
@@ -2720,7 +2339,6 @@ export class ViewModel {
 
     // Handle focus events to ensure validation runs
     phoneInput.addEventListener('focus', e => {
-      console.log('Phone input focused');
       if (this.currentLoginType === 'parent') {
         setTimeout(() => {
           this.#validateCurrentInput();
@@ -2758,7 +2376,6 @@ export class ViewModel {
 
     // Handle focus events to ensure validation runs
     codeInput.addEventListener('focus', e => {
-      console.log('Code input focused');
       if (this.currentLoginType === 'employee') {
         setTimeout(() => {
           this.#validateCurrentInput();
@@ -2781,7 +2398,6 @@ export class ViewModel {
       // Check if phone validation function is available
       if (typeof window.isValidPhoneNumber === 'function') {
         isValid = window.isValidPhoneNumber(phoneValue);
-        console.log('Phone validation:', phoneValue, '->', isValid);
       } else {
         // Fallback validation - just check for 10 digits
         const digits = phoneValue.replace(/\D/g, '');
@@ -2832,14 +2448,12 @@ export class ViewModel {
       loginButton.style.opacity = '1';
       loginButton.style.pointerEvents = 'auto';
       loginButton.style.cursor = 'pointer';
-      console.log('Login button ENABLED');
     } else {
       loginButton.setAttribute('disabled', 'disabled');
       loginButton.classList.add('disabled');
       loginButton.style.opacity = '0.6';
       loginButton.style.pointerEvents = 'none';
       loginButton.style.cursor = 'not-allowed';
-      console.log('Login button DISABLED');
     }
   }
 
@@ -2901,7 +2515,6 @@ export class ViewModel {
    * Initialize all application modals (Terms, Privacy, and Login)
    */
   #initializeAllModals() {
-    console.log('🔧 Initializing all application modals in ViewModel...');
 
     // Initialize Terms of Service modal (non-dismissible)
     this.#initTermsModal();
@@ -2911,8 +2524,6 @@ export class ViewModel {
 
     // Initialize Login modal (dismissible)
     this.#initLoginModal();
-
-    console.log('✅ All application modals initialized successfully in ViewModel');
   }
 
   /**
@@ -2975,13 +2586,11 @@ export class ViewModel {
             allowEscape: true,
             allowEnter: true,
             onConfirm: event => {
-              console.log('Terms modal: Enter key pressed (reattached)');
               if (newTermsBtn) {
                 newTermsBtn.click();
               }
             },
             onCancel: event => {
-              console.log('Terms modal: ESC key pressed (reattached)');
               this.termsModal.close();
             },
           });
@@ -3004,20 +2613,17 @@ export class ViewModel {
       allowEnter: true,
       onConfirm: event => {
         // Handle Enter key press for Terms of Service
-        console.log('Terms modal: Enter key pressed');
         if (termsBtn) {
           termsBtn.click();
         }
       },
       onCancel: event => {
         // Handle ESC key press for Terms of Service
-        console.log('Terms modal: ESC key pressed');
 
         // Check if this is non-dismissible mode
         const hasAcceptedTerms = window.UserSession.hasAcceptedTermsOfService();
         if (!hasAcceptedTerms && window.termsOnConfirmationCallback) {
           // In non-dismissible mode, prevent ESC
-          console.log('Terms modal: ESC blocked in non-dismissible mode');
           return;
         }
 
@@ -3026,7 +2632,6 @@ export class ViewModel {
       },
     });
 
-    console.log('✅ Terms of Service modal initialized');
   }
 
   /**
@@ -3058,7 +2663,6 @@ export class ViewModel {
       allowEnter: true,
       onConfirm: event => {
         // Handle Enter key press for Privacy Policy - trigger button click
-        console.log('Privacy modal: Enter key pressed');
         if (privacyBtn) {
           privacyBtn.click();
         } else {
@@ -3067,12 +2671,10 @@ export class ViewModel {
       },
       onCancel: event => {
         // Handle ESC key press for Privacy Policy
-        console.log('Privacy modal: ESC key pressed');
         this.privacyModal.close();
       },
     });
 
-    console.log('✅ Privacy Policy modal initialized (dismissible)');
   }
 
   /**
@@ -3094,14 +2696,12 @@ export class ViewModel {
       if (buttonTextNode && buttonTextNode.nodeType === Node.TEXT_NODE) {
         buttonTextNode.textContent = 'Change User';
       }
-      console.log('Login button updated to "Change User" - stored access code found');
     } else {
       // Ensure button text is "Login" if no stored code
       const buttonTextNode = loginButton.childNodes[loginButton.childNodes.length - 1];
       if (buttonTextNode && buttonTextNode.nodeType === Node.TEXT_NODE) {
         buttonTextNode.textContent = 'Login';
       }
-      console.log('Login button set to "Login" - no stored access code');
     }
   }
 
@@ -3209,12 +2809,10 @@ export class ViewModel {
         // Update login button state to show "Change User"
         this.#updateLoginButtonState();
 
-        console.log('Login successful, access code saved securely');
 
         onSuccessfulLogin?.();
 
         // Clear cached data and reset initialization flags for new user
-        console.log('Clearing cached data and resetting initialization flags for new user');
         this.#resetInitializationFlags();
 
         // Clear cached data properties
@@ -3227,7 +2825,6 @@ export class ViewModel {
         this.currentUser = null;
 
         // Load user data with the authenticated user
-        console.log('Loading user data for authenticated user:', authenticatedUser);
 
         // Determine default role to click (admin -> instructor -> parent)
         let roleToClick = null;
@@ -3235,7 +2832,6 @@ export class ViewModel {
           roleToClick = 'admin';
 
           // For admin users, we'll explicitly show admin tabs and click the first one
-          console.log('Authenticated user is an admin - will show admin tabs');
         } else if (authenticatedUser.instructor) {
           roleToClick = 'instructor';
         } else if (authenticatedUser.parent) {
@@ -3388,7 +2984,6 @@ export class ViewModel {
       const overlays = document.querySelectorAll('.modal-overlay');
       overlays.forEach(overlay => overlay.remove());
 
-      console.log('✅ UI state reset completed');
     } catch (error) {
       console.error('❌ Error resetting UI state:', error);
     }
@@ -3398,15 +2993,11 @@ export class ViewModel {
    * Show the login button after app configuration loads
    */
   #showLoginButton() {
-    console.log('🔍 Showing login button');
 
     try {
       const loginButtonContainer = document.getElementById('login-button-container');
       if (loginButtonContainer) {
         loginButtonContainer.hidden = false;
-        console.log('✅ Login button shown successfully');
-      } else {
-        console.log('⚠️ Login button container element not found');
       }
     } catch (error) {
       console.error('❌ Error showing login button:', error);
@@ -3418,7 +3009,6 @@ export class ViewModel {
    * @param {Function} onConfirmation - Callback to execute when user accepts terms
    */
   #showTermsOfService(onConfirmation) {
-    console.log('Showing Terms of Service modal');
 
     const termsModal = document.getElementById('terms-modal');
     const hasAcceptedTerms = window.UserSession.hasAcceptedTermsOfService();
@@ -3444,7 +3034,6 @@ export class ViewModel {
         if (e.key === 'Escape') {
           e.preventDefault();
           e.stopPropagation();
-          console.log('Terms modal: ESC blocked in non-dismissible mode');
         }
         // Allow Enter key to work for button activation
       };
@@ -3471,14 +3060,12 @@ export class ViewModel {
         allowEscape: false, // Block ESC in non-dismissible mode
         allowEnter: true, // Allow Enter for button activation
         onConfirm: event => {
-          console.log('Terms modal: Enter key pressed (non-dismissible mode)');
           if (termsBtn) {
             termsBtn.click();
           }
         },
         onCancel: event => {
           // Should not be called since allowEscape is false
-          console.log('Terms modal: ESC blocked in non-dismissible mode');
         },
       });
     }

@@ -362,7 +362,7 @@ export class RegistrationController {
         authenticatedUserEmail
       );
 
-      successResponse(res, { registration: result }, {
+      successResponse(res, result, {
         req,
         startTime,
         context: { controller: 'RegistrationController', method: 'register (legacy)', studentId },
@@ -424,13 +424,13 @@ export class RegistrationController {
       }
 
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
-      await registrationApplicationService.cancelRegistration(
+      const result = await registrationApplicationService.cancelRegistration(
         registrationId,
         'Unregistered via legacy endpoint',
         authenticatedUserEmail
       );
 
-      successResponse(res, {}, {
+      successResponse(res, result, {
         message: 'Registration removed',
         req,
         startTime,
@@ -481,7 +481,7 @@ export class RegistrationController {
         authenticatedUserEmail
       );
 
-      successResponse(res, { registration }, {
+      successResponse(res, registration, {
         req,
         startTime,
         context: { controller: 'RegistrationController', method: 'updateIntent', registrationId: id, intent },
