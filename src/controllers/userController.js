@@ -32,9 +32,11 @@ export class UserController {
     try {
       const periodService = serviceContainer.get('periodService');
       const currentPeriod = await periodService.getCurrentPeriod();
+      const nextPeriod = await periodService.getNextPeriod();
 
       const configurationData = {
         currentPeriod,
+        nextPeriod,
         rockBandClassIds: ConfigurationService.getRockBandClassIds(),
       };
 

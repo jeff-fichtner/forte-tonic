@@ -73,6 +73,11 @@ const mockPeriodService = {
     isCurrentPeriod: true,
     startDate: new Date('2025-01-15'),
   }),
+  getNextPeriod: jest.fn().mockResolvedValue({
+    trimester: 'Winter',
+    periodType: PeriodType.PRIORITY,
+    startDate: new Date('2025-02-01'),
+  }),
   isIntentPeriodActive: jest.fn().mockResolvedValue(true),
 };
 
@@ -110,6 +115,11 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
       isCurrentPeriod: true,
       startDate: new Date('2025-01-15'),
     });
+    mockPeriodService.getNextPeriod.mockResolvedValue({
+      trimester: 'Winter',
+      periodType: PeriodType.PRIORITY,
+      startDate: new Date('2025-02-01'),
+    });
 
     const response = await request(app).get('/api/configuration').expect(200);
 
@@ -128,17 +138,25 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
     expect(response.body.data.currentPeriod.periodType).toBe(PeriodType.INTENT);
     expect(response.body.data.currentPeriod.isCurrentPeriod).toBe(true);
 
+    // Verify nextPeriod is included in data
+    expect(response.body.data).toHaveProperty('nextPeriod');
+    expect(response.body.data.nextPeriod).toBeDefined();
+    expect(response.body.data.nextPeriod.trimester).toBe('Winter');
+    expect(response.body.data.nextPeriod.periodType).toBe(PeriodType.PRIORITY);
+
     // Verify rockBandClassIds is included in data
     expect(response.body.data).toHaveProperty('rockBandClassIds');
     expect(response.body.data.rockBandClassIds).toEqual(['G015']);
 
-    // Verify periodService.getCurrentPeriod was called
+    // Verify periodService methods were called
     expect(mockPeriodService.getCurrentPeriod).toHaveBeenCalled();
+    expect(mockPeriodService.getNextPeriod).toHaveBeenCalled();
   });
 
   test('should return null currentPeriod when no period is active', async () => {
     // Mock period service to return null (no active period)
     mockPeriodService.getCurrentPeriod.mockResolvedValue(null);
+    mockPeriodService.getNextPeriod.mockResolvedValue(null);
 
     const response = await request(app).get('/api/configuration').expect(200);
 
@@ -154,11 +172,16 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
     expect(response.body.data).toHaveProperty('currentPeriod');
     expect(response.body.data.currentPeriod).toBeNull();
 
+    // Verify nextPeriod is null in data
+    expect(response.body.data).toHaveProperty('nextPeriod');
+    expect(response.body.data.nextPeriod).toBeNull();
+
     // Verify rockBandClassIds is still included in data
     expect(response.body.data).toHaveProperty('rockBandClassIds');
     expect(response.body.data.rockBandClassIds).toEqual(['G015']);
 
-    // Verify periodService.getCurrentPeriod was called
+    // Verify periodService methods were called
     expect(mockPeriodService.getCurrentPeriod).toHaveBeenCalled();
+    expect(mockPeriodService.getNextPeriod).toHaveBeenCalled();
   });
 });

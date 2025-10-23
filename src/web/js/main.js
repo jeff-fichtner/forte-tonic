@@ -187,6 +187,10 @@ const UserSession = {
     return this.appConfig?.currentPeriod;
   },
 
+  getNextPeriod() {
+    return this.appConfig?.nextPeriod;
+  },
+
   clearAppConfig() {
     this.appConfig = null;
     console.log('App configuration cleared from user session');
