@@ -67,10 +67,6 @@ export class Class {
     // Ensure length is parsed as a number (duration in minutes)
     const processedLength = parseInt(length) || 0;
 
-    // Log warning if length field contains invalid data
-    if (isNaN(parseInt(length)) || length.toString().includes(':')) {
-    }
-
     return new Class(
       id,
       instructorId,

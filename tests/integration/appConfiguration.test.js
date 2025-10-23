@@ -116,7 +116,10 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
     // Verify standardized response format
     expect(response.body).toHaveProperty('success', true);
     expect(response.body).toHaveProperty('data');
-    expect(response.body).toHaveProperty('message', 'Application configuration retrieved successfully');
+    expect(response.body).toHaveProperty(
+      'message',
+      'Application configuration retrieved successfully'
+    );
 
     // Verify currentPeriod is included in data
     expect(response.body.data).toHaveProperty('currentPeriod');
@@ -142,7 +145,10 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
     // Verify standardized response format
     expect(response.body).toHaveProperty('success', true);
     expect(response.body).toHaveProperty('data');
-    expect(response.body).toHaveProperty('message', 'Application configuration retrieved successfully');
+    expect(response.body).toHaveProperty(
+      'message',
+      'Application configuration retrieved successfully'
+    );
 
     // Verify currentPeriod is null in data
     expect(response.body.data).toHaveProperty('currentPeriod');

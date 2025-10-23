@@ -170,7 +170,7 @@ export class ViewModel {
     this.instructors = instructors;
     this.students = students;
 
-    this.registrations = registrations.map((registration) => {
+    this.registrations = registrations.map(registration => {
       // ensure student is populated
       if (!registration.student) {
         registration.student = this.students.find(x => {
@@ -1068,8 +1068,8 @@ export class ViewModel {
       incompleteRegistrations: incompleteRegistrations.map(r => ({
         id: r.id?.value || r.id,
         classId: r.classId,
-        reenrollmentIntent: r.reenrollmentIntent
-      }))
+        reenrollmentIntent: r.reenrollmentIntent,
+      })),
     });
 
     if (count === 0) {
@@ -1122,9 +1122,11 @@ export class ViewModel {
    */
   #populateFilterDropdowns(registrations = null) {
     // Use provided registrations or fall back to non-waitlist registrations
-    const regsToUse = registrations || this.registrations.filter(registration => {
-      return !ClassManager.isRockBandClass(registration.classId);
-    });
+    const regsToUse =
+      registrations ||
+      this.registrations.filter(registration => {
+        return !ClassManager.isRockBandClass(registration.classId);
+      });
 
     // Populate instructor dropdown
     const instructorSelect = document.getElementById('master-schedule-instructor-filter-select');
@@ -1141,9 +1143,9 @@ export class ViewModel {
       }
 
       // Get unique instructor IDs from registrations
-      const registeredInstructorIds = [...new Set(
-        regsToUse.map(reg => reg.instructorId?.value || reg.instructorId)
-      )];
+      const registeredInstructorIds = [
+        ...new Set(regsToUse.map(reg => reg.instructorId?.value || reg.instructorId)),
+      ];
 
       // Only show instructors who have active registrations
       this.instructors
@@ -1171,11 +1173,9 @@ export class ViewModel {
       }
 
       // Get unique days from registrations, filtering out null/undefined/empty values
-      const uniqueDays = [...new Set(
-        regsToUse
-          .map(reg => reg.day)
-          .filter(day => day && day.trim() !== '')
-      )];
+      const uniqueDays = [
+        ...new Set(regsToUse.map(reg => reg.day).filter(day => day && day.trim() !== '')),
+      ];
 
       // Sort days in logical weekday order
       const dayOrder = [
@@ -1212,9 +1212,7 @@ export class ViewModel {
       }
 
       // Get unique grades from students who have registrations
-      const registeredStudentIds = regsToUse.map(
-        reg => reg.studentId?.value || reg.studentId
-      );
+      const registeredStudentIds = regsToUse.map(reg => reg.studentId?.value || reg.studentId);
       const registeredStudents = this.students.filter(student =>
         registeredStudentIds.includes(student.id?.value || student.id)
       );
@@ -1240,14 +1238,19 @@ export class ViewModel {
     const currentPeriod = window.UserSession?.getCurrentPeriod();
     const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
 
-    const intentFilterContainer = document.getElementById('master-schedule-intent-filter-container');
+    const intentFilterContainer = document.getElementById(
+      'master-schedule-intent-filter-container'
+    );
     const intentSelect = document.getElementById('master-schedule-intent-filter-select');
 
     // Adjust column widths based on whether intent filter is shown
     // Need to go up TWO levels: select -> select-wrapper (Materialize) -> input-field (has col classes)
-    const instructorFilter = document.getElementById('master-schedule-instructor-filter-select')?.parentElement?.parentElement;
-    const dayFilter = document.getElementById('master-schedule-day-filter-select')?.parentElement?.parentElement;
-    const gradeFilter = document.getElementById('master-schedule-grade-filter-select')?.parentElement?.parentElement;
+    const instructorFilter = document.getElementById('master-schedule-instructor-filter-select')
+      ?.parentElement?.parentElement;
+    const dayFilter = document.getElementById('master-schedule-day-filter-select')?.parentElement
+      ?.parentElement;
+    const gradeFilter = document.getElementById('master-schedule-grade-filter-select')
+      ?.parentElement?.parentElement;
 
     if (isIntentPeriod && intentSelect) {
       // Show the intent filter and use 4-column layout
@@ -1283,7 +1286,7 @@ export class ViewModel {
         { value: 'none', label: 'None' },
         { value: 'keep', label: INTENT_LABELS.keep },
         { value: 'drop', label: INTENT_LABELS.drop },
-        { value: 'change', label: INTENT_LABELS.change }
+        { value: 'change', label: INTENT_LABELS.change },
       ];
 
       // Only add options that exist in the current registrations data
@@ -1360,7 +1363,6 @@ export class ViewModel {
     // Check if we're in the intent period to show the Intent column
     const currentPeriod = window.UserSession?.getCurrentPeriod();
     const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
-
 
     const headers = [
       'Weekday',
@@ -1443,27 +1445,27 @@ export class ViewModel {
                 bgClass: 'teal lighten-5',
                 textClass: 'teal-text text-darken-2',
                 icon: 'check_circle',
-                label: INTENT_LABELS[intentValue]
+                label: INTENT_LABELS[intentValue],
               },
               drop: {
                 bgClass: 'red lighten-5',
                 textClass: 'red-text text-darken-2',
                 icon: 'cancel',
-                label: INTENT_LABELS[intentValue]
+                label: INTENT_LABELS[intentValue],
               },
               change: {
                 bgClass: 'amber lighten-5',
                 textClass: 'amber-text text-darken-3',
                 icon: 'swap_horiz',
-                label: INTENT_LABELS[intentValue]
-              }
+                label: INTENT_LABELS[intentValue],
+              },
             };
 
             const style = intentStyles[intentValue] || {
               bgClass: 'grey lighten-4',
               textClass: 'grey-text text-darken-1',
               icon: 'help_outline',
-              label: intentValue
+              label: intentValue,
             };
 
             intentCell = `<td>
@@ -1567,9 +1569,11 @@ export class ViewModel {
         const selectedGrades = Array.from(gradeSelect.selectedOptions)
           .map(option => option.value)
           .filter(value => value !== ''); // Exclude empty placeholder values
-        const selectedIntents = intentSelect ? Array.from(intentSelect.selectedOptions)
-          .map(option => option.value)
-          .filter(value => value !== '') : []; // Exclude empty placeholder values
+        const selectedIntents = intentSelect
+          ? Array.from(intentSelect.selectedOptions)
+              .map(option => option.value)
+              .filter(value => value !== '')
+          : []; // Exclude empty placeholder values
 
         // Extract primitive values for comparison
         const instructorIdToFind = registration.instructorId?.value || registration.instructorId;
@@ -1831,7 +1835,6 @@ export class ViewModel {
     // Check if we're in the intent period to show the Intent column
     const currentPeriod = window.UserSession?.getCurrentPeriod();
     const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
-
 
     if (viewContext === 'parent' && isIntentPeriod) {
       headers.splice(7, 0, 'Intent'); // Insert before 'Contact'
@@ -2112,7 +2115,6 @@ export class ViewModel {
       return;
     }
 
-
     if (!registrationToDeleteId) {
       console.error('No registration ID provided for deletion');
       M.toast({ html: 'Error: No registration ID provided for deletion.' });
@@ -2192,7 +2194,10 @@ export class ViewModel {
         registration.intentSubmittedAt = result.data.intentSubmittedAt;
         registration.intentSubmittedBy = result.data.intentSubmittedBy;
       } else {
-        console.warn('Could not update registration:', { hasRegistration: !!registration, hasResultData: !!result.data });
+        console.warn('Could not update registration:', {
+          hasRegistration: !!registration,
+          hasResultData: !!result.data,
+        });
       }
 
       // Just refresh the weekly schedule tables to show updated intent
@@ -2407,7 +2412,6 @@ export class ViewModel {
         this.loginModal.close();
       },
     });
-
   }
 
   /**
@@ -2671,7 +2675,6 @@ export class ViewModel {
    * Initialize all application modals (Terms, Privacy, and Login)
    */
   #initializeAllModals() {
-
     // Initialize Terms of Service modal (non-dismissible)
     this.#initTermsModal();
 
@@ -2787,7 +2790,6 @@ export class ViewModel {
         this.termsModal.close();
       },
     });
-
   }
 
   /**
@@ -2830,7 +2832,6 @@ export class ViewModel {
         this.privacyModal.close();
       },
     });
-
   }
 
   /**
@@ -2964,7 +2965,6 @@ export class ViewModel {
 
         // Update login button state to show "Change User"
         this.#updateLoginButtonState();
-
 
         onSuccessfulLogin?.();
 
@@ -3139,7 +3139,6 @@ export class ViewModel {
       // Remove any potential overlay elements
       const overlays = document.querySelectorAll('.modal-overlay');
       overlays.forEach(overlay => overlay.remove());
-
     } catch (error) {
       console.error('❌ Error resetting UI state:', error);
     }
@@ -3149,7 +3148,6 @@ export class ViewModel {
    * Show the login button after app configuration loads
    */
   #showLoginButton() {
-
     try {
       const loginButtonContainer = document.getElementById('login-button-container');
       if (loginButtonContainer) {
@@ -3165,7 +3163,6 @@ export class ViewModel {
    * @param {Function} onConfirmation - Callback to execute when user accepts terms
    */
   #showTermsOfService(onConfirmation) {
-
     const termsModal = document.getElementById('terms-modal');
     const hasAcceptedTerms = window.UserSession.hasAcceptedTermsOfService();
 

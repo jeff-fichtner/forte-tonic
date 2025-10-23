@@ -231,7 +231,6 @@ describe('Standardized Error Handling Integration Tests', () => {
     });
   });
 
-
   describe('Response Format Compatibility', () => {
     test('health endpoint returns wrapped format (HttpService unwraps in frontend)', async () => {
       const response = await request(app).get('/api/health');
@@ -246,12 +245,10 @@ describe('Standardized Error Handling Integration Tests', () => {
     });
 
     test('authentication endpoint returns raw response (not wrapped for compatibility)', async () => {
-      const response = await request(app)
-        .post('/api/authenticateByAccessCode')
-        .send({
-          accessCode: '999999',
-          loginType: 'employee',
-        });
+      const response = await request(app).post('/api/authenticateByAccessCode').send({
+        accessCode: '999999',
+        loginType: 'employee',
+      });
 
       // Should be null (raw response), NOT { success: true, data: null }
       // This is for backward compatibility with frontend null check
