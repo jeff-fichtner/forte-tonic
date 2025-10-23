@@ -307,7 +307,19 @@ export class Registration {
       expectedStartDate: this.expectedStartDate,
       createdAt: this.createdAt,
       createdBy: this.createdBy,
+      reenrollmentIntent: this.reenrollmentIntent,
+      intentSubmittedAt: this.intentSubmittedAt,
+      intentSubmittedBy: this.intentSubmittedBy,
     };
+  }
+
+  /**
+   * Converts the registration to a plain object for API responses
+   * This method is automatically called by JSON.stringify() and Express res.json()
+   * @returns {object} Plain object representation
+   */
+  toJSON() {
+    return this.toDataObject();
   }
 
   /**
