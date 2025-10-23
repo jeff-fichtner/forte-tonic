@@ -248,7 +248,7 @@ export class ViewModel {
     });
     const sortedRegistrations = this.#sortRegistrations(nonWaitlistRegistrations);
     this.masterScheduleTable = this.#buildRegistrationTable(sortedRegistrations);
-    this.#populateFilterDropdowns();
+    this.#populateFilterDropdowns(nonWaitlistRegistrations);
 
     // wait list tab - filter registrations with Rock Band class IDs (configured via environment)
     const waitListRegistrations = this.registrations.filter(registration => {
@@ -866,6 +866,9 @@ export class ViewModel {
       });
       const sortedRegistrations = this.#sortRegistrations(nonWaitlistRegistrations);
       this.masterScheduleTable.replaceRange(sortedRegistrations);
+
+      // Repopulate filter dropdowns based on the actual registrations shown in the table
+      this.#populateFilterDropdowns(nonWaitlistRegistrations);
     }
 
     // Always update the wait list table if it exists (for admin view)
@@ -1115,8 +1118,14 @@ export class ViewModel {
   }
   /**
    * Populate the filter dropdowns with actual data
+   * @param {Array} registrations - The registrations to use for populating filters (defaults to non-waitlist registrations)
    */
-  #populateFilterDropdowns() {
+  #populateFilterDropdowns(registrations = null) {
+    // Use provided registrations or fall back to non-waitlist registrations
+    const regsToUse = registrations || this.registrations.filter(registration => {
+      return !ClassManager.isRockBandClass(registration.classId);
+    });
+
     // Populate instructor dropdown
     const instructorSelect = document.getElementById('master-schedule-instructor-filter-select');
     if (instructorSelect) {
@@ -1131,13 +1140,20 @@ export class ViewModel {
         instructorSelect.firstElementChild.selected = false;
       }
 
-      // Add instructor options
-      this.instructors.forEach(instructor => {
-        const option = document.createElement('option');
-        option.value = instructor.id;
-        option.textContent = `${instructor.firstName} ${instructor.lastName}`;
-        instructorSelect.appendChild(option);
-      });
+      // Get unique instructor IDs from registrations
+      const registeredInstructorIds = [...new Set(
+        regsToUse.map(reg => reg.instructorId?.value || reg.instructorId)
+      )];
+
+      // Only show instructors who have active registrations
+      this.instructors
+        .filter(instructor => registeredInstructorIds.includes(instructor.id))
+        .forEach(instructor => {
+          const option = document.createElement('option');
+          option.value = instructor.id;
+          option.textContent = `${instructor.firstName} ${instructor.lastName}`;
+          instructorSelect.appendChild(option);
+        });
     }
 
     // Populate day dropdown
@@ -1154,8 +1170,13 @@ export class ViewModel {
         daySelect.firstElementChild.selected = false;
       }
 
-      // Get unique days from registrations
-      const uniqueDays = [...new Set(this.registrations.map(reg => reg.day))];
+      // Get unique days from registrations, filtering out null/undefined/empty values
+      const uniqueDays = [...new Set(
+        regsToUse
+          .map(reg => reg.day)
+          .filter(day => day && day.trim() !== '')
+      )];
+
       // Sort days in logical weekday order
       const dayOrder = [
         'Monday',
@@ -1191,7 +1212,7 @@ export class ViewModel {
       }
 
       // Get unique grades from students who have registrations
-      const registeredStudentIds = this.registrations.map(
+      const registeredStudentIds = regsToUse.map(
         reg => reg.studentId?.value || reg.studentId
       );
       const registeredStudents = this.students.filter(student =>
@@ -1215,7 +1236,79 @@ export class ViewModel {
         });
     }
 
-    // Reinitialize Materialize select elements
+    // Populate intent dropdown (only during intent period)
+    const currentPeriod = window.UserSession?.getCurrentPeriod();
+    const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
+
+    const intentFilterContainer = document.getElementById('master-schedule-intent-filter-container');
+    const intentSelect = document.getElementById('master-schedule-intent-filter-select');
+
+    // Adjust column widths based on whether intent filter is shown
+    // Need to go up TWO levels: select -> select-wrapper (Materialize) -> input-field (has col classes)
+    const instructorFilter = document.getElementById('master-schedule-instructor-filter-select')?.parentElement?.parentElement;
+    const dayFilter = document.getElementById('master-schedule-day-filter-select')?.parentElement?.parentElement;
+    const gradeFilter = document.getElementById('master-schedule-grade-filter-select')?.parentElement?.parentElement;
+
+    if (isIntentPeriod && intentSelect) {
+      // Show the intent filter and use 4-column layout
+      if (intentFilterContainer) {
+        intentFilterContainer.hidden = false;
+      }
+
+      // Set all filters to s3 (25% width for 4 columns)
+      [instructorFilter, dayFilter, gradeFilter].forEach(filter => {
+        if (filter) {
+          filter.classList.remove('s4');
+          filter.classList.add('s3');
+        }
+      });
+
+      // Clear existing options except the first (placeholder)
+      while (intentSelect.children.length > 1) {
+        intentSelect.removeChild(intentSelect.lastChild);
+      }
+
+      // Ensure first option is disabled and not selected
+      if (intentSelect.firstElementChild) {
+        intentSelect.firstElementChild.disabled = true;
+        intentSelect.firstElementChild.selected = false;
+      }
+
+      // Get unique intent values from registrations (including null/undefined as 'none')
+      const intentValues = regsToUse.map(reg => reg.reenrollmentIntent || 'none');
+      const uniqueIntents = [...new Set(intentValues)];
+
+      // Define all possible intent options with their display properties
+      const allIntentOptions = [
+        { value: 'none', label: 'None' },
+        { value: 'keep', label: INTENT_LABELS.keep },
+        { value: 'drop', label: INTENT_LABELS.drop },
+        { value: 'change', label: INTENT_LABELS.change }
+      ];
+
+      // Only add options that exist in the current registrations data
+      allIntentOptions
+        .filter(option => uniqueIntents.includes(option.value))
+        .forEach(({ value, label }) => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = label;
+          intentSelect.appendChild(option);
+        });
+    } else if (intentFilterContainer) {
+      // Hide the intent filter and use 3-column layout
+      intentFilterContainer.hidden = true;
+
+      // Set remaining filters to s4 (33% width for 3 columns)
+      [instructorFilter, dayFilter, gradeFilter].forEach(filter => {
+        if (filter) {
+          filter.classList.remove('s3');
+          filter.classList.add('s4');
+        }
+      });
+    }
+
+    // Reinitialize Materialize select elements after all DOM changes
     const selects = document.querySelectorAll('select');
     M.FormSelect.init(selects);
   }
@@ -1285,6 +1378,30 @@ export class ViewModel {
 
     headers.push('Contact', 'Remove');
 
+    // Build onFilterChanges array conditionally
+    const onFilterChanges = [
+      {
+        filterId: 'master-schedule-instructor-filter-select',
+        type: 'select-multiple',
+      },
+      {
+        filterId: 'master-schedule-day-filter-select',
+        type: 'select-multiple',
+      },
+      {
+        filterId: 'master-schedule-grade-filter-select',
+        type: 'select-multiple',
+      },
+    ];
+
+    // Add intent filter only during intent period
+    if (isIntentPeriod) {
+      onFilterChanges.push({
+        filterId: 'master-schedule-intent-filter-select',
+        type: 'select-multiple',
+      });
+    }
+
     return new Table(
       'master-schedule-table',
       headers,
@@ -1318,9 +1435,47 @@ export class ViewModel {
         let intentCell = '';
         if (isIntentPeriod) {
           const intentValue = registration.reenrollmentIntent;
-          const intentLabel = intentValue ? INTENT_LABELS[intentValue] || intentValue : '—';
-          const intentClass = intentValue ? 'green-text' : 'grey-text';
-          intentCell = `<td class="${intentClass}">${intentLabel}</td>`;
+
+          if (intentValue) {
+            // Map intent values to badge styles and icons
+            const intentStyles = {
+              keep: {
+                bgClass: 'teal lighten-5',
+                textClass: 'teal-text text-darken-2',
+                icon: 'check_circle',
+                label: INTENT_LABELS[intentValue]
+              },
+              drop: {
+                bgClass: 'red lighten-5',
+                textClass: 'red-text text-darken-2',
+                icon: 'cancel',
+                label: INTENT_LABELS[intentValue]
+              },
+              change: {
+                bgClass: 'amber lighten-5',
+                textClass: 'amber-text text-darken-3',
+                icon: 'swap_horiz',
+                label: INTENT_LABELS[intentValue]
+              }
+            };
+
+            const style = intentStyles[intentValue] || {
+              bgClass: 'grey lighten-4',
+              textClass: 'grey-text text-darken-1',
+              icon: 'help_outline',
+              label: intentValue
+            };
+
+            intentCell = `<td>
+              <span class="chip ${style.bgClass} ${style.textClass}" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.9em; padding: 6px 12px; border-radius: 16px;">
+                <i class="material-icons" style="font-size: 16px;">${style.icon}</i>
+                ${style.label}
+              </span>
+            </td>`;
+          } else {
+            // No intent set
+            intentCell = `<td class="grey-text text-lighten-1" style="text-align: center;">—</td>`;
+          }
         }
 
         return `
@@ -1396,6 +1551,7 @@ export class ViewModel {
         );
         const daySelect = document.getElementById('master-schedule-day-filter-select');
         const gradeSelect = document.getElementById('master-schedule-grade-filter-select');
+        const intentSelect = document.getElementById('master-schedule-intent-filter-select');
 
         // If any dropdown doesn't exist yet, show all registrations (during initial load)
         if (!instructorSelect || !daySelect || !gradeSelect) {
@@ -1411,6 +1567,9 @@ export class ViewModel {
         const selectedGrades = Array.from(gradeSelect.selectedOptions)
           .map(option => option.value)
           .filter(value => value !== ''); // Exclude empty placeholder values
+        const selectedIntents = intentSelect ? Array.from(intentSelect.selectedOptions)
+          .map(option => option.value)
+          .filter(value => value !== '') : []; // Exclude empty placeholder values
 
         // Extract primitive values for comparison
         const instructorIdToFind = registration.instructorId?.value || registration.instructorId;
@@ -1439,22 +1598,19 @@ export class ViewModel {
           return false;
         }
 
+        // Filter by selected intents (if any selected, otherwise show all)
+        if (selectedIntents.length > 0) {
+          const intentValue = registration.reenrollmentIntent;
+          const actualIntentValue = intentValue || 'none';
+
+          if (!selectedIntents.includes(actualIntentValue)) {
+            return false;
+          }
+        }
+
         return true;
       },
-      [
-        {
-          filterId: 'master-schedule-instructor-filter-select',
-          type: 'select-multiple',
-        },
-        {
-          filterId: 'master-schedule-day-filter-select',
-          type: 'select-multiple',
-        },
-        {
-          filterId: 'master-schedule-grade-filter-select',
-          type: 'select-multiple',
-        },
-      ],
+      onFilterChanges,
       {
         pagination: true,
         itemsPerPage: 100,
