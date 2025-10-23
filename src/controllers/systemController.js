@@ -6,16 +6,24 @@
 import { currentConfig, isProduction, isStaging, version } from '../config/environment.js';
 import { getLogger } from '../utils/logger.js';
 import { configService } from '../services/configurationService.js';
+import { successResponse, errorResponse } from '../common/responseHelpers.js';
+import { HTTP_STATUS } from '../common/errorConstants.js';
+import { ValidationError, UnauthorizedError } from '../common/errors.js';
 
 const logger = getLogger();
 
 export class SystemController {
   /**
-   * Health check endpoint for monitoring
+   * Health check endpoint for GCP Cloud Run monitoring
+   * Always returns 200 with status details (GCP best practice)
+   * @param {object} req - Express request object
+   * @param {object} res - Express response object
    */
   static async getHealth(req, res) {
+    const startTime = Date.now();
+
     try {
-      res.json({
+      const healthData = {
         status: 'healthy',
         environment: process.env.NODE_ENV || 'development',
         timestamp: new Date().toISOString(),
@@ -31,10 +39,32 @@ export class SystemController {
           isStaging,
           spreadsheetConfigured: !!currentConfig.spreadsheetId,
         },
+      };
+
+      successResponse(res, healthData, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'getHealth' },
       });
     } catch (error) {
       logger.error('Error getting health status:', error);
-      res.status(500).json({ error: error.message });
+
+      // Always return 200 for health checks (GCP best practice)
+      // Service can respond = healthy, even if some features fail
+      successResponse(
+        res,
+        {
+          status: 'degraded',
+          error: error.message,
+          timestamp: new Date().toISOString(),
+        },
+        {
+          statusCode: HTTP_STATUS.OK,
+          req,
+          startTime,
+          context: { controller: 'SystemController', method: 'getHealth', error: error.message },
+        }
+      );
     }
   }
 
@@ -42,6 +72,8 @@ export class SystemController {
    * Test endpoint to verify Google Sheets connectivity
    */
   static async testConnection(req, res) {
+    const startTime = Date.now();
+
     try {
       logger.info('Testing Google Sheets connection...');
 
@@ -78,13 +110,15 @@ export class SystemController {
       };
 
       logger.info('Connection test result:', testResult);
+
+      // Return raw data for backward compatibility
       res.json(testResult);
     } catch (error) {
       logger.error('Error testing Google Sheets connection:', error);
-      res.status(500).json({
-        success: false,
-        error: error.message,
-        stack: error.stack,
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'testConnection' },
       });
     }
   }
@@ -93,6 +127,8 @@ export class SystemController {
    * Test sheet data retrieval endpoint
    */
   static async testSheetData(req, res) {
+    const startTime = Date.now();
+
     try {
       const { sheetName = 'Students', range = 'A1:Z1000' } = req.body;
 
@@ -120,13 +156,15 @@ export class SystemController {
       };
 
       logger.info('Sheet data test result:', testResult);
+
+      // Return raw data for backward compatibility
       res.json(testResult);
     } catch (error) {
       logger.error('Error testing sheet data retrieval:', error);
-      res.status(500).json({
-        success: false,
-        error: error.message,
-        stack: error.stack,
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'testSheetData' },
       });
     }
   }
@@ -135,11 +173,13 @@ export class SystemController {
    * Admin-only cache clearing endpoint
    */
   static async clearCache(req, res) {
+    const startTime = Date.now();
+
     try {
       const { adminCode } = req.body;
 
       if (!adminCode) {
-        return res.status(400).json({ error: 'Admin code is required' });
+        throw new ValidationError('Admin code is required');
       }
 
       // Use dependency injection to get the same repository instances used throughout the app
@@ -149,7 +189,7 @@ export class SystemController {
       // Validate admin access code using the repository
       const validAdmin = await userRepository.getAdminByAccessCode(adminCode);
       if (!validAdmin) {
-        return res.status(401).json({ error: 'Invalid admin code' });
+        throw new UnauthorizedError('Invalid admin code');
       }
 
       // Clear ALL caches in the system
@@ -187,17 +227,24 @@ export class SystemController {
 
       logger.info(`✅ Repository caches cleared: ${clearedRepositories.join(', ')}`);
 
-      logger.info(
-        `🧹 All caches cleared by admin: ${validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName}`
-      );
-      res.json({
+      const adminName = validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName;
+      logger.info(`🧹 All caches cleared by admin: ${adminName}`);
+
+      const cacheData = {
         success: true,
         message: 'All caches cleared successfully',
-        clearedBy: validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName,
-      });
+        clearedBy: adminName,
+      };
+
+      // Return raw data for backward compatibility
+      res.json(cacheData);
     } catch (error) {
       logger.error('Error clearing cache:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'clearCache' },
+      });
     }
   }
 
@@ -205,15 +252,25 @@ export class SystemController {
    * Get application configuration for frontend
    */
   static async getApplicationConfig(req, res) {
+    const startTime = Date.now();
+
     try {
       const appConfig = configService.getApplicationConfig();
-      res.json({
+
+      const configData = {
         success: true,
         config: appConfig,
-      });
+      };
+
+      // Return raw data for backward compatibility
+      res.json(configData);
     } catch (error) {
       logger.error('Error getting application config:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'getApplicationConfig' },
+      });
     }
   }
 }

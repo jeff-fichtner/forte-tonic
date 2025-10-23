@@ -444,6 +444,16 @@
             text-align: center;
             border-radius: 4px 4px 0 0;
         }
+
+        /* Spin animation for loading indicators */
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 
     <title>Forte - Marin Country Day School</title>
@@ -617,6 +627,20 @@
         </div>
 
         <div hidden id="page-content" style="padding-bottom: 40px;">
+
+            <!-- Intent Banner (shown during intent period) -->
+            <div id="intent-banner" class="card-panel orange lighten-4" style="display: none; margin-bottom: 25px;">
+                <div class="row valign-wrapper" style="margin-bottom: 0;">
+                    <div class="col s12">
+                        <h6 style="margin: 0 0 10px 0;"><b>Reenrollment Intent Required</b></h6>
+                        <p style="margin: 0;">
+                            Please indicate your intent for each of your current lessons below.
+                            <span id="intent-incomplete-count" style="font-weight: bold;"></span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <ul hidden class="tabs">
 
                 <li hidden class="tab col s3 admin-tab"><a href="#admin-master-schedule"
@@ -673,9 +697,17 @@
                                 </select>
                                 <label>Grade Level</label>
                             </div>
+
+                            <div class="input-field col s3" id="master-schedule-intent-filter-container" hidden>
+                                <select multiple id="master-schedule-intent-filter-select">
+                                    <option value="" disabled> Choose intent filter</option>
+                                </select>
+                                <label>Intent</label>
+                            </div>
                         </div>
 
                         <!-- <p hidden id="master-schedule-no-lessons-message">Not enrolled in any lessons.</p> -->
+                        <div id="master-schedule-count" style="margin: 16px 0; font-size: 14px; color: #666;"></div>
                         <table hidden id="master-schedule-table">
                         </table>
                     </div>
@@ -1240,6 +1272,29 @@
         </div>
     </div>
 
+    <!-- Intent Confirmation Modal -->
+    <div id="intent-confirmation-modal" class="modal">
+        <div class="modal-content">
+            <h4 style="color: #2b68a4; margin-bottom: 20px;">
+                <i class="material-icons" style="vertical-align: middle;">info</i>
+                Confirm Reenrollment Intent
+            </h4>
+            <p id="intent-confirmation-message" style="font-size: 16px; line-height: 1.5; margin-bottom: 30px;">
+                <!-- Dynamic message will be inserted here -->
+            </p>
+        </div>
+        <div class="modal-footer">
+            <button id="intent-confirmation-cancel" class="btn-flat waves-effect" style="margin-right: 10px;">
+                Cancel
+            </button>
+            <button id="intent-confirmation-confirm" class="btn waves-effect waves-light"
+                style="background-color: #2b68a4;">
+                <i class="material-icons left">check</i>
+                Confirm Intent
+            </button>
+        </div>
+    </div>
+
     <!-- Terms of Service Modal -->
     <div id="terms-modal" class="modal">
         <div class="modal-content">
@@ -1424,7 +1479,6 @@
                 <h6 style="color: #2b68a4; margin-top: 20px;">14. Definitions</h6>
                 <ul>
                     <li><strong>Personal Information:</strong> Info that identifies an individual</li>
-                    <li><strong>Operator:</strong> Authorized system admin</li>
                     <li><strong>Student Record:</strong> Educational info related to participation</li>
                     <li><strong>System:</strong> Tonic Music Program Registration System</li>
                 </ul>

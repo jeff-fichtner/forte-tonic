@@ -1,6 +1,6 @@
 import { HttpService } from './data/httpService.js';
 import { ServerFunctions, Sections, RegistrationType } from './constants.js';
-import { OperatorUserResponse } from '../../models/shared/responses/operatorUserResponse.js';
+import { AppConfigurationResponse } from '../../models/shared/responses/appConfigurationResponse.js';
 import {
   Admin,
   Instructor,
@@ -17,6 +17,8 @@ import { ParentRegistrationForm } from './workflows/parentRegistrationForm.js';
 import { formatPhone } from './utilities/phoneHelpers.js';
 import { formatGrade, formatTime } from './extensions/numberExtensions.js';
 import { ClassManager } from './utilities/classManager.js';
+import { INTENT_LABELS } from './constants/intentConstants.js';
+import { PeriodType } from './constants/periodTypeConstants.js';
 
 /**
  * Format a datetime value for display in tables
@@ -102,78 +104,16 @@ export class ViewModel {
   }
 
   async initializeAsync() {
-    // Get operator user when page first loads
-    const operatorUser = await HttpService.fetch(ServerFunctions.getOperatorUser, x =>
-      OperatorUserResponse.fromApiData(x)
+    // Get application configuration when page first loads
+    const appConfig = await HttpService.fetch(ServerFunctions.getAppConfiguration, data =>
+      AppConfigurationResponse.fromApiData(data)
     );
 
-    console.log('Operator user loaded:', operatorUser);
-
-    // Save user in user session
-    window.UserSession.saveOperatorUser(operatorUser);
-
-    // Update ClassManager with Rock Band class IDs from server configuration
-    if (operatorUser && operatorUser.configuration && operatorUser.configuration.rockBandClassIds) {
-      ClassManager.updateRockBandClassIds(operatorUser.configuration.rockBandClassIds);
-      console.log(
-        'Updated ClassManager with Rock Band class IDs:',
-        operatorUser.configuration.rockBandClassIds
-      );
+    // Save entire app configuration in user session
+    // ClassManager will read rockBandClassIds from here directly
+    if (appConfig) {
+      window.UserSession.saveAppConfig(appConfig);
     }
-
-    // Show nav links only if operator user returned successfully
-    // const nav = document.getElementById('nav-mobile');
-
-    // TEMPORARILY COMMENTED OUT - Always keep nav section links hidden
-    /*
-    if (nav && (operatorUser || window.location.hostname === 'localhost')) {
-      nav.hidden = false;
-      console.log('✅ Nav links shown - operator user authenticated or localhost debug mode');
-      console.log('Operator user:', operatorUser);
-      
-      // Temporary debug alert
-      if (!operatorUser && window.location.hostname === 'localhost') {
-        nav.style.border = '2px solid red'; // Visual indicator
-        console.log('🔧 DEBUG: Navigation forced visible for localhost testing');
-      }
-    }
-    */
-
-    // If operator has seeded users (admin/instructor/parent), load the default user (admin first)
-    // if (operatorUser && (operatorUser.admin || operatorUser.instructor || operatorUser.parent)) {
-    //   console.log('Operator user has seeded users - loading user data');
-
-    //   // Determine default role to click (admin -> instructor -> parent)
-    //   let roleToClick = null;
-    //   if (operatorUser.admin) {
-    //     roleToClick = 'admin';
-    //   } else if (operatorUser.instructor) {
-    //     roleToClick = 'instructor';
-    //   } else if (operatorUser.parent) {
-    //     roleToClick = 'parent';
-    //   }
-
-    //   // Load user data with the operator user
-    //   await this.loadUserData(operatorUser, roleToClick);
-    // } else if (!operatorUser && window.location.hostname === 'localhost') {
-    //   // Debug mode for localhost - create a mock operator user for testing
-    //   console.log('🔧 Debug mode: Creating mock operator user for localhost testing');
-    //   const mockOperatorUser = {
-    //     email: 'debug@localhost',
-    //     admin: { id: 'debug-admin', email: 'debug@localhost', isAdmin: () => true },
-    //     instructor: { id: 'debug-instructor', email: 'debug@localhost', isInstructor: () => true },
-    //     parent: { id: 'debug-parent', email: 'debug@localhost', isParent: () => true },
-    //     isOperator: () => true,
-    //     isAdmin: () => true,
-    //     isInstructor: () => true,
-    //     isParent: () => true
-    //   };
-
-    //   window.UserSession.saveOperatorUser(mockOperatorUser);
-    //   await this.loadUserData(mockOperatorUser, 'admin');
-    // } else {
-    //   console.log('Operator user has no seeded users - page will do nothing');
-    // }
 
     // Initialize all modals
     this.#initializeAllModals();
@@ -206,19 +146,13 @@ export class ViewModel {
   }
 
   async loadUserData(user, roleToClick = null) {
-    console.log('Loading user data for user:', user);
-
     // Only proceed if we have a valid user with backing data
     if (!user || (!user.admin && !user.instructor && !user.parent)) {
-      console.log('No valid user with backing data - skipping data load');
       return;
     }
 
     // Show content area
     document.getElementById('page-content').hidden = false;
-
-    console.log('📊 Starting data loading process...');
-    const loadingStartTime = performance.now();
 
     const [_, admins, instructors, students, registrations, classes, rooms] = await Promise.all([
       DomHelpers.waitForDocumentReadyAsync(),
@@ -230,64 +164,13 @@ export class ViewModel {
       HttpService.fetch(ServerFunctions.getRooms, x => x.map(y => Room.fromApiData(y))),
     ]);
 
-    const loadingEndTime = performance.now();
-    console.log(`📊 Data loading completed in ${(loadingEndTime - loadingStartTime).toFixed(2)}ms`);
-
-    // Log data counts
-    console.log('📊 Data summary:');
-    console.log(`  - Admins: ${admins.length}`);
-    console.log(`  - Instructors: ${instructors.length}`);
-    console.log(`  - Students: ${students.length}`);
-    console.log(`  - Registrations: ${registrations.length}`);
-    console.log(`  - Classes: ${classes.length}`);
-    console.log(`  - Rooms: ${rooms.length}`);
-
-    // Log instructor details
-    console.log('👩‍🏫 Instructor IDs and details:');
-    instructors.forEach((instructor, index) => {
-      const id = instructor.id?.value || instructor.id;
-      console.log(
-        `  ${index + 1}. ID: "${id}" (${typeof id}) - ${instructor.firstName} ${instructor.lastName} (${instructor.email})`
-      );
-    });
-
-    // Log student details (first 10 for brevity)
-    console.log(`👩‍🎓 Student IDs and details (showing first 10 of ${students.length}):`);
-    students.slice(0, 10).forEach((student, index) => {
-      const id = student.id?.value || student.id;
-      console.log(
-        `  ${index + 1}. ID: "${id}" (${typeof id}) - ${student.firstName} ${student.lastName}`
-      );
-    });
-
     M.AutoInit();
 
     this.admins = admins;
     this.instructors = instructors;
     this.students = students;
 
-    console.log('🔗 Starting registration matching process...');
-    const matchingStartTime = performance.now();
-
-    // Track matching statistics
-    let studentsMatched = 0;
-    let studentsNotMatched = 0;
-    let instructorsMatched = 0;
-    let instructorsNotMatched = 0;
-    const unmatchedStudentIds = [];
-    const unmatchedInstructorIds = [];
-
-    this.registrations = registrations.map((registration, index) => {
-      if (index < 5) {
-        console.log(`🔍 Processing registration ${index + 1}/${registrations.length}:`, {
-          id: registration.id?.value || registration.id,
-          studentId: registration.studentId?.value || registration.studentId,
-          instructorId: registration.instructorId?.value || registration.instructorId,
-          day: registration.day,
-          startTime: registration.startTime,
-        });
-      }
-
+    this.registrations = registrations.map(registration => {
       // ensure student is populated
       if (!registration.student) {
         registration.student = this.students.find(x => {
@@ -295,32 +178,6 @@ export class ViewModel {
           const registrationStudentId = registration.studentId?.value || registration.studentId;
           return studentId === registrationStudentId;
         });
-
-        // Log detailed matching info for students
-        if (!registration.student) {
-          studentsNotMatched++;
-          const regStudentId = registration.studentId?.value || registration.studentId;
-          unmatchedStudentIds.push(regStudentId);
-
-          if (index < 5) {
-            console.warn(
-              `❌ Student not found for registration ${registration.id} with studentId "${regStudentId}" (${typeof regStudentId})`
-            );
-            console.warn(
-              `   Available student IDs:`,
-              students
-                .map(s => `"${s.id?.value || s.id}" (${typeof (s.id?.value || s.id)})`)
-                .slice(0, 5)
-            );
-          }
-        } else {
-          studentsMatched++;
-          if (index < 5) {
-            console.log(
-              `✅ Student matched: ${registration.student.firstName} ${registration.student.lastName}`
-            );
-          }
-        }
       }
 
       // ensure instructor is populated
@@ -331,94 +188,9 @@ export class ViewModel {
             registration.instructorId?.value || registration.instructorId;
           return instructorId === registrationInstructorId;
         });
-
-        // Log detailed matching info for instructors
-        if (!registration.instructor) {
-          instructorsNotMatched++;
-          const regInstructorId = registration.instructorId?.value || registration.instructorId;
-          unmatchedInstructorIds.push(regInstructorId);
-
-          if (index < 5) {
-            console.warn(
-              `❌ Instructor not found for registration ${registration.id} with instructorId "${regInstructorId}" (${typeof regInstructorId})`
-            );
-            console.warn(
-              `   Available instructor IDs:`,
-              instructors.map(i => `"${i.id?.value || i.id}" (${typeof (i.id?.value || i.id)})`)
-            );
-          }
-        } else {
-          instructorsMatched++;
-          if (index < 5) {
-            console.log(
-              `✅ Instructor matched: ${registration.instructor.firstName} ${registration.instructor.lastName}`
-            );
-          }
-        }
       }
       return registration;
     });
-
-    const matchingEndTime = performance.now();
-    console.log(
-      `🔗 Registration matching completed in ${(matchingEndTime - matchingStartTime).toFixed(2)}ms`
-    );
-
-    // Log matching statistics
-    console.log('📈 Matching statistics:');
-    console.log(`  Students: ${studentsMatched} matched, ${studentsNotMatched} not matched`);
-    console.log(
-      `  Instructors: ${instructorsMatched} matched, ${instructorsNotMatched} not matched`
-    );
-
-    if (unmatchedStudentIds.length > 0) {
-      console.log(`⚠️ Unmatched student IDs (first 10):`, unmatchedStudentIds.slice(0, 10));
-    }
-
-    if (unmatchedInstructorIds.length > 0) {
-      console.log(`⚠️ Unmatched instructor IDs (first 10):`, unmatchedInstructorIds.slice(0, 10));
-    }
-
-    // Log registration counts per student
-    const studentRegistrationCounts = {};
-    this.registrations.forEach(reg => {
-      if (reg.student) {
-        const studentId = reg.student.id?.value || reg.student.id;
-        studentRegistrationCounts[studentId] = (studentRegistrationCounts[studentId] || 0) + 1;
-      }
-    });
-
-    console.log('📊 Registration counts per student (top 10):');
-    const sortedStudentCounts = Object.entries(studentRegistrationCounts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 10);
-
-    sortedStudentCounts.forEach(([studentId, count]) => {
-      const student = this.students.find(s => (s.id?.value || s.id) === studentId);
-      const studentName = student ? `${student.firstName} ${student.lastName}` : 'Unknown';
-      console.log(`  ${studentName}: ${count} registrations`);
-    });
-
-    // Log registration counts per instructor
-    const instructorRegistrationCounts = {};
-    this.registrations.forEach(reg => {
-      if (reg.instructor) {
-        const instructorId = reg.instructor.id?.value || reg.instructor.id;
-        instructorRegistrationCounts[instructorId] =
-          (instructorRegistrationCounts[instructorId] || 0) + 1;
-      }
-    });
-
-    console.log('📊 Registration counts per instructor:');
-    Object.entries(instructorRegistrationCounts)
-      .sort(([, a], [, b]) => b - a)
-      .forEach(([instructorId, count]) => {
-        const instructor = this.instructors.find(i => (i.id?.value || i.id) === instructorId);
-        const instructorName = instructor
-          ? `${instructor.firstName} ${instructor.lastName}`
-          : 'Unknown';
-        console.log(`  ${instructorName}: ${count} registrations`);
-      });
 
     this.classes = classes;
     this.rooms = rooms;
@@ -428,40 +200,30 @@ export class ViewModel {
 
     let defaultSection;
     if (user.admin && !this.adminContentInitialized) {
-      console.log('🔧 Initializing admin content...');
       this.#initAdminContent();
       this.adminContentInitialized = true;
       defaultSection = Sections.ADMIN;
     }
     if (user.instructor && !this.instructorContentInitialized) {
-      console.log('🔧 Initializing instructor content...');
       this.#initInstructorContent();
       this.instructorContentInitialized = true;
       defaultSection = Sections.INSTRUCTOR;
     }
     if (user.parent && !this.parentContentInitialized) {
-      console.log('🔧 Initializing parent content...');
-      console.log('  - Parent user:', user.parent);
       this.#initParentContent();
       this.parentContentInitialized = true;
       defaultSection = Sections.PARENT;
     }
 
-    // For operator users, show all sections available; for authenticated users, use default section
-    const isOperatorUser =
-      user instanceof OperatorUserResponse || (user.isOperator && user.isOperator());
-    const defaultSectionToUse = isOperatorUser ? null : defaultSection;
-    this.navTabs = new NavTabs(defaultSectionToUse);
+    // Use the default section based on user's role
+    this.navTabs = new NavTabs(defaultSection);
     this.#setPageLoading(false);
 
     // Auto-click the specified role tab if provided
     if (roleToClick) {
       const navLink = document.querySelector(`a[data-section="${roleToClick}"]`);
       if (navLink) {
-        console.log(`🎯 Auto-clicking ${roleToClick} nav link for user`);
         navLink.click();
-      } else {
-        console.warn(`❌ Nav link not found for section: ${roleToClick}`);
       }
     }
 
@@ -474,12 +236,6 @@ export class ViewModel {
    *
    */
   #initAdminContent() {
-    console.log('Initializing admin content...');
-
-    // Show admin tabs
-    const adminTabs = document.querySelectorAll('.tabs .tab.admin-tab');
-    console.log(`Found ${adminTabs.length} admin tabs to show`);
-
     // First make sure the tabs container is visible
     const tabsContainer = document.querySelector('.tabs');
     if (tabsContainer) {
@@ -491,22 +247,14 @@ export class ViewModel {
       return !ClassManager.isRockBandClass(registration.classId);
     });
     const sortedRegistrations = this.#sortRegistrations(nonWaitlistRegistrations);
-    console.log(
-      `Building master schedule table with ${sortedRegistrations.length} registrations (excluding wait list classes)`
-    );
     this.masterScheduleTable = this.#buildRegistrationTable(sortedRegistrations);
-    console.log('Master schedule table built successfully');
-    this.#populateFilterDropdowns();
+    this.#populateFilterDropdowns(nonWaitlistRegistrations);
 
     // wait list tab - filter registrations with Rock Band class IDs (configured via environment)
     const waitListRegistrations = this.registrations.filter(registration => {
       return ClassManager.isRockBandClass(registration.classId);
     });
-    console.log(
-      `Building wait list table with ${waitListRegistrations.length} registrations (Rock Band classes)`
-    );
     this.adminWaitListTable = this.#buildWaitListTable(waitListRegistrations);
-    console.log('Wait list table built successfully');
 
     // registration form
     this.adminRegistrationForm = new AdminRegistrationForm(
@@ -526,59 +274,31 @@ export class ViewModel {
     // Sort employees to ensure admins appear at the top
     const sortedEmployees = this.#sortEmployeesForDirectory(mappedEmployees);
     this.employeeDirectoryTable = this.#buildDirectory('employee-directory-table', sortedEmployees);
+
+    // Update intent banner (will hide for non-parent users)
+    this.#updateIntentBanner();
   }
   /**
    *
    */
   #initInstructorContent() {
-    console.log('👩‍🏫 Initializing instructor content...');
+    // Update intent banner (will hide for non-parent users)
+    this.#updateIntentBanner();
 
     // Get the current instructor's ID
     const currentInstructorId = this.currentUser.instructor?.id;
 
     if (!currentInstructorId) {
-      console.warn('❌ No instructor ID found for current user');
-      console.warn('Current user structure:', this.currentUser);
+      console.warn('No instructor ID found for current user');
       return;
     }
 
-    console.log(
-      `🔍 Current instructor ID: "${currentInstructorId}" (${typeof currentInstructorId})`
-    );
-
     // Filter registrations to only show those for the current instructor
-    console.log('🔍 Filtering registrations for instructor...');
-    const filteringStartTime = performance.now();
-
     const instructorRegistrations = this.registrations.filter(registration => {
       const registrationInstructorId =
         registration.instructorId?.value || registration.instructorId;
-      const isMatch = registrationInstructorId === currentInstructorId;
-
-      return isMatch;
+      return registrationInstructorId === currentInstructorId;
     });
-
-    const filteringEndTime = performance.now();
-    console.log(
-      `🔍 Instructor filtering completed in ${(filteringEndTime - filteringStartTime).toFixed(2)}ms`
-    );
-
-    console.log(
-      `📊 Instructor ${currentInstructorId} has ${instructorRegistrations.length} registrations out of ${this.registrations.length} total`
-    );
-
-    // Log some sample instructor registrations
-    if (instructorRegistrations.length > 0) {
-      console.log('📝 Sample instructor registrations:');
-      instructorRegistrations.slice(0, 5).forEach((registration, index) => {
-        console.log(
-          `  ${index + 1}. ${registration.student?.firstName || 'Unknown'} ${registration.student?.lastName || 'Student'} - ${registration.day} ${registration.startTime} (${registration.instrument || registration.classTitle || 'Unknown'})`
-        );
-      });
-      if (instructorRegistrations.length > 5) {
-        console.log(`  ... and ${instructorRegistrations.length - 5} more registrations`);
-      }
-    }
 
     // weekly schedule
     // unique days with registrations for this instructor, sorted by day of week
@@ -668,7 +388,7 @@ export class ViewModel {
     );
     // Sort employees to ensure admins appear at the top
     const sortedEmployees = this.#sortEmployeesForDirectory(mappedEmployees);
-    // this may be set in admin section if user is operator
+    // this may be set in admin section
     this.employeeDirectoryTable ??= this.#buildDirectory(
       'employee-directory-table',
       sortedEmployees
@@ -678,69 +398,19 @@ export class ViewModel {
    *
    */
   #initParentContent() {
-    console.log('🔧 Initializing parent content...');
-    console.log('🔍 Current user structure:', this.currentUser);
-
-    // weekly schedule
     // Get the current parent's ID
     const currentParentId = this.currentUser.parent?.id;
 
     if (!currentParentId) {
       console.warn('No parent ID found for current user');
-      console.log('Available parent data:', this.currentUser.parent);
       return;
     }
 
-    console.log('🔍 Debug parent filtering:');
-    console.log('  - currentParentId:', currentParentId);
-    console.log('  - currentParentId type:', typeof currentParentId);
-    console.log('  - Total registrations:', this.registrations.length);
-
-    // Log the first few registrations and their student data
-    console.log('📋 Sample registrations and student data:');
-    this.registrations.slice(0, 5).forEach((registration, index) => {
-      console.log(`  Registration ${index + 1}/${this.registrations.length}:`, {
-        id: registration.id,
-        studentId: registration.studentId,
-        hasStudent: !!registration.student,
-        studentData: registration.student
-          ? {
-              id: registration.student.id,
-              name: `${registration.student.firstName} ${registration.student.lastName}`,
-              parent1Id: registration.student.parent1Id,
-              parent2Id: registration.student.parent2Id,
-              parent1IdType: typeof registration.student.parent1Id,
-              parent2IdType: typeof registration.student.parent2Id,
-            }
-          : 'No student attached',
-      });
-    });
-
-    // Track parent matching statistics
-    const parentMatchingStartTime = performance.now();
-    let exactMatches = 0;
-    let stringMatches = 0;
-    let noMatches = 0;
-    let missingStudents = 0;
-
+    // Filter registrations for this parent's children, excluding wait list classes
     const parentChildRegistrations = this.registrations.filter(registration => {
       const student = registration.student;
       if (!student) {
-        missingStudents++;
-        console.log('  ❌ Registration missing student:', registration.id);
         return false;
-      }
-
-      if (noMatches + exactMatches + stringMatches < 10) {
-        // Log first 10 for brevity
-        console.log(`  🔍 Checking student: ${student.firstName} ${student.lastName}`);
-        console.log(
-          `    - student.parent1Id: "${student.parent1Id}" (${typeof student.parent1Id})`
-        );
-        console.log(
-          `    - student.parent2Id: "${student.parent2Id}" (${typeof student.parent2Id})`
-        );
-        console.log(`    - currentParentId: "${currentParentId}" (${typeof currentParentId})`);
       }
 
       // Check if the current parent is either parent1 or parent2 of the student
@@ -758,51 +428,8 @@ export class ViewModel {
       // Exclude Rock Band classes (wait list classes) from parent weekly schedule
       const isWaitlistClass = ClassManager.isRockBandClass(registration.classId);
 
-      if (noMatches + exactMatches + stringMatches < 10) {
-        // Log first 10 for brevity
-        console.log(`    - Exact match result: ${exactMatch}`);
-        console.log(`    - String match result: ${stringMatch}`);
-        console.log(`    - Is waitlist class: ${isWaitlistClass}`);
-        console.log(`    - Final match: ${isMatch && !isWaitlistClass}`);
-      }
-
-      if (exactMatch) {
-        exactMatches++;
-      } else if (stringMatch) {
-        stringMatches++;
-      } else {
-        noMatches++;
-      }
-
       return isMatch && !isWaitlistClass;
     });
-
-    const parentMatchingEndTime = performance.now();
-
-    console.log(
-      `🔍 Parent filtering completed in ${(parentMatchingEndTime - parentMatchingStartTime).toFixed(2)}ms`
-    );
-    console.log('📊 Parent matching statistics:');
-    console.log(`  - Exact matches: ${exactMatches}`);
-    console.log(`  - String matches: ${stringMatches}`);
-    console.log(`  - No matches: ${noMatches}`);
-    console.log(`  - Missing students: ${missingStudents}`);
-    console.log(
-      `  - Total parent-child registrations found (excluding wait list classes): ${parentChildRegistrations.length}`
-    );
-
-    // Log details about the matched registrations
-    if (parentChildRegistrations.length > 0) {
-      console.log('📝 Parent-child registrations details:');
-      parentChildRegistrations.slice(0, 5).forEach((registration, index) => {
-        console.log(
-          `  ${index + 1}. ${registration.student.firstName} ${registration.student.lastName} - ${registration.day} ${registration.startTime} (${registration.instrument || registration.classTitle})`
-        );
-      });
-      if (parentChildRegistrations.length > 5) {
-        console.log(`  ... and ${parentChildRegistrations.length - 5} more registrations`);
-      }
-    }
 
     // Get unique students with registrations (their own children only)
     const studentsWithRegistrations = parentChildRegistrations
@@ -811,28 +438,16 @@ export class ViewModel {
       .filter((student, index, self) => self.findIndex(s => s.id === student.id) === index);
 
     // Get ALL children of this parent (not just those with registrations) for the registration form
-    console.log('🔍 Finding ALL children for parent registration form...');
     const allParentChildren = this.students.filter(student => {
       if (!student) return false;
 
-      const isChild =
+      return (
         student.parent1Id === currentParentId ||
         student.parent2Id === currentParentId ||
         String(student.parent1Id) === String(currentParentId) ||
-        String(student.parent2Id) === String(currentParentId);
-
-      if (isChild) {
-        console.log(
-          `  ✅ Found child: ${student.firstName} ${student.lastName} (ID: ${student.id})`
-        );
-      }
-
-      return isChild;
+        String(student.parent2Id) === String(currentParentId)
+      );
     });
-
-    console.log(
-      `📊 Parent has ${allParentChildren.length} total children, ${studentsWithRegistrations.length} with registrations`
-    );
 
     const parentWeeklyScheduleTables = document.getElementById('parent-weekly-schedule-tables');
 
@@ -875,38 +490,16 @@ export class ViewModel {
         parentWeeklyScheduleTables.appendChild(studentContainer);
 
         // Filter registrations for this student and sort by day, then start time
-        console.log(`📅 Processing schedule for ${student.firstName} ${student.lastName}:`);
         const studentRegistrations = parentChildRegistrations.filter(
           x => x.studentId.value === student.id.value
         );
-        console.log(`  - Found ${studentRegistrations.length} registrations for this student`);
-
-        if (studentRegistrations.length > 0) {
-          console.log('  - Sample registrations before sorting:');
-          studentRegistrations.slice(0, 3).forEach((reg, index) => {
-            console.log(
-              `    ${index + 1}. ${reg.day} ${reg.startTime} - ${reg.instrument || reg.classTitle}`
-            );
-          });
-        }
-
         const sortedStudentRegistrations = this.#sortRegistrations(studentRegistrations);
-
-        if (sortedStudentRegistrations.length > 0) {
-          console.log('  - Sample registrations after sorting:');
-          sortedStudentRegistrations.slice(0, 3).forEach((reg, index) => {
-            console.log(
-              `    ${index + 1}. ${reg.day} ${reg.startTime} - ${reg.instrument || reg.classTitle}`
-            );
-          });
-        }
 
         this.#buildWeeklySchedule(tableId, sortedStudentRegistrations, 'parent');
       });
     }
 
     // Parent wait list table - Show wait list registrations for this parent's children
-    console.log('🔍 Building parent wait list table...');
 
     // Filter for wait list registrations belonging to this parent's children
     const parentWaitListRegistrations = this.registrations.filter(registration => {
@@ -970,8 +563,6 @@ export class ViewModel {
       if (parentWaitListTable) {
         parentWaitListTable.removeAttribute('hidden');
       }
-
-      console.log('✅ Parent wait list table built and made visible');
     } else {
       // Hide the wait list table if no wait list registrations
       if (parentWaitListTable) {
@@ -986,8 +577,6 @@ export class ViewModel {
           }
         }
       }
-
-      console.log('⚠️ No wait list registrations found - hiding parent wait list table');
     }
 
     // registration
@@ -1056,6 +645,240 @@ export class ViewModel {
     // Sort employees to ensure admins appear at the top
     const sortedEmployees = this.#sortEmployeesForDirectory(mappedEmployees);
     this.parentDirectoryTable = this.#buildDirectory('parent-directory-table', sortedEmployees);
+
+    // Update intent banner
+    this.#updateIntentBanner();
+
+    // Attach intent dropdown listeners
+    this.#attachIntentDropdownListeners();
+  }
+
+  /**
+   * Attach event listeners to intent dropdown selectors
+   */
+  #attachIntentDropdownListeners() {
+    const dropdowns = document.querySelectorAll('.intent-dropdown');
+
+    // Initialize Materialize select elements
+    M.FormSelect.init(dropdowns);
+
+    dropdowns.forEach(dropdown => {
+      // Store the previous value
+      let previousValue = dropdown.value;
+
+      // Add listener (listeners are idempotent when refreshing tables)
+      dropdown.addEventListener('change', async event => {
+        const registrationId = event.target.getAttribute('data-registration-id');
+        const intent = event.target.value;
+
+        if (!intent) {
+          M.toast({ html: 'Please select an intent option.' });
+          return;
+        }
+
+        // Show confirmation modal
+        const confirmed = await this.#showIntentConfirmationModal(intent, registrationId);
+
+        if (!confirmed) {
+          // User cancelled - reset to previous value
+          event.target.value = previousValue;
+          M.FormSelect.init(dropdown); // Reinitialize to show the reset value
+          return;
+        }
+
+        // Find the status indicator for this dropdown
+        const statusIndicator = document.querySelector(
+          `.intent-status-indicator[data-registration-id="${registrationId}"]`
+        );
+
+        try {
+          // Disable dropdown while submitting
+          event.target.disabled = true;
+
+          // Show loading spinner using animated Material Icon
+          if (statusIndicator) {
+            statusIndicator.style.display = 'flex';
+            statusIndicator.style.alignItems = 'center';
+            statusIndicator.style.justifyContent = 'center';
+            statusIndicator.innerHTML =
+              '<i class="material-icons blue-text" style="font-size: 20px; animation: spin 1s linear infinite;">sync</i>';
+          }
+
+          await this.submitIntent(registrationId, intent);
+
+          // Update previous value on success
+          previousValue = intent;
+
+          // Show success checkmark
+          if (statusIndicator) {
+            statusIndicator.style.display = 'flex';
+            statusIndicator.style.alignItems = 'center';
+            statusIndicator.style.justifyContent = 'center';
+            statusIndicator.innerHTML =
+              '<i class="material-icons green-text" style="font-size: 20px;">check_circle</i>';
+            // Hide after 3 seconds (increased from 2)
+            setTimeout(() => {
+              if (statusIndicator) {
+                statusIndicator.style.display = 'none';
+              }
+            }, 3000);
+          }
+        } catch (error) {
+          // Show error X
+          if (statusIndicator) {
+            statusIndicator.style.display = 'flex';
+            statusIndicator.style.alignItems = 'center';
+            statusIndicator.style.justifyContent = 'center';
+            statusIndicator.innerHTML =
+              '<i class="material-icons red-text" style="font-size: 20px;">cancel</i>';
+            // Hide after 3 seconds
+            setTimeout(() => {
+              if (statusIndicator) {
+                statusIndicator.style.display = 'none';
+              }
+            }, 3000);
+          }
+          // Reset to previous value on error
+          event.target.value = previousValue;
+          M.FormSelect.init(dropdown);
+          console.error('Intent submission error:', error);
+        } finally {
+          // Re-enable dropdown if it still exists in the DOM
+          if (event.target && document.body.contains(event.target)) {
+            event.target.disabled = false;
+            // Reinitialize Materialize select after re-enabling
+            M.FormSelect.init(dropdown);
+          }
+        }
+      });
+    });
+  }
+
+  /**
+   * Show intent confirmation modal and return promise that resolves to true/false
+   */
+  async #showIntentConfirmationModal(intent, registrationId) {
+    return new Promise(resolve => {
+      const modal = document.getElementById('intent-confirmation-modal');
+      const messageEl = document.getElementById('intent-confirmation-message');
+      const confirmBtn = document.getElementById('intent-confirmation-confirm');
+      const cancelBtn = document.getElementById('intent-confirmation-cancel');
+
+      if (!modal || !messageEl || !confirmBtn || !cancelBtn) {
+        console.error('Intent confirmation modal elements not found');
+        resolve(false);
+        return;
+      }
+
+      // Find the registration to get lesson details
+      const registration = this.registrations.find(r => (r.id?.value || r.id) === registrationId);
+
+      let lessonDetails = 'this lesson';
+      if (registration) {
+        const instructor = this.instructors.find(
+          i =>
+            (i.id?.value || i.id) ===
+            (registration.instructorId?.value || registration.instructorId)
+        );
+        const instructorName = instructor
+          ? `${instructor.firstName} ${instructor.lastName}`
+          : 'Unknown';
+
+        // For group registrations, show the class title; for private lessons, show the instrument
+        const isGroupClass = registration.registrationType === 'group';
+        const lessonName = isGroupClass
+          ? registration.classTitle || 'Unknown Class'
+          : registration.instrument || 'Unknown';
+
+        lessonDetails = `<strong>${lessonName}</strong> with <strong>${instructorName}</strong> on <strong>${registration.day}</strong>`;
+      }
+
+      // Set the message based on intent
+      let intentMessages;
+      if (intent === 'drop') {
+        // For drop, include next priority enrollment period info
+        const nextPeriod = window.UserSession?.getNextPeriod();
+        let periodInfo = '';
+        if (nextPeriod?.periodType === PeriodType.PRIORITY_ENROLLMENT && nextPeriod?.startDate) {
+          const startDate = new Date(nextPeriod.startDate);
+          const formattedDate = startDate.toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+          });
+          periodInfo = `<br><br>You can change your response until the next priority enrollment period begins on <strong>${formattedDate}</strong>.`;
+        }
+        intentMessages = {
+          keep: `Are you sure you want to <strong>keep</strong> ${lessonDetails}?<br><br>This confirms your intention to continue with this lesson.`,
+          drop: `Are you sure you want to <strong>drop</strong> ${lessonDetails}?<br><br>This indicates you do not wish to continue with this lesson.${periodInfo}`,
+          change: `Are you sure you want to <strong>change</strong> ${lessonDetails}?<br><br>You won't lose this lesson until you select a different lesson.`,
+        };
+      } else {
+        intentMessages = {
+          keep: `Are you sure you want to <strong>keep</strong> ${lessonDetails}?<br><br>This confirms your intention to continue with this lesson.`,
+          drop: `Are you sure you want to <strong>drop</strong> ${lessonDetails}?<br><br>This indicates you do not wish to continue with this lesson.`,
+          change: `Are you sure you want to <strong>change</strong> ${lessonDetails}?<br><br>You won't lose this lesson until you select a different lesson.`,
+        };
+      }
+
+      messageEl.innerHTML =
+        intentMessages[intent] || 'Are you sure you want to update your intent?';
+
+      // Track if promise has been resolved to prevent double resolution
+      let isResolved = false;
+
+      // Cleanup function to destroy modal and restore scroll
+      const cleanup = () => {
+        if (modalInstance) {
+          modalInstance.destroy();
+        }
+        // Remove any lingering overlays
+        document.querySelectorAll('.modal-overlay').forEach(overlay => overlay.remove());
+        // Ensure body scroll is restored
+        document.body.style.overflow = '';
+      };
+
+      // Initialize modal
+      const modalInstance = M.Modal.init(modal, {
+        dismissible: true,
+        onCloseEnd: () => {
+          cleanup();
+          // Only resolve if not already resolved (handles dismissal via escape or backdrop click)
+          if (!isResolved) {
+            isResolved = true;
+            resolve(false);
+          }
+        },
+      });
+
+      // Handle confirm button
+      const confirmHandler = () => {
+        if (!isResolved) {
+          isResolved = true;
+          confirmBtn.removeEventListener('click', confirmHandler);
+          cancelBtn.removeEventListener('click', cancelHandler);
+          modalInstance.close();
+          resolve(true);
+        }
+      };
+
+      // Handle cancel button
+      const cancelHandler = () => {
+        if (!isResolved) {
+          isResolved = true;
+          confirmBtn.removeEventListener('click', confirmHandler);
+          cancelBtn.removeEventListener('click', cancelHandler);
+          modalInstance.close();
+          resolve(false);
+        }
+      };
+
+      confirmBtn.addEventListener('click', confirmHandler);
+      cancelBtn.addEventListener('click', cancelHandler);
+
+      // Open modal
+      modalInstance.open();
+    });
   }
 
   /**
@@ -1065,17 +888,18 @@ export class ViewModel {
   #refreshTablesAfterRegistration() {
     // Always update the master schedule table if it exists (for admin view)
     if (this.masterScheduleTable) {
-      console.log('Refreshing master schedule table with updated registrations');
       const nonWaitlistRegistrations = this.registrations.filter(registration => {
         return !ClassManager.isRockBandClass(registration.classId);
       });
       const sortedRegistrations = this.#sortRegistrations(nonWaitlistRegistrations);
       this.masterScheduleTable.replaceRange(sortedRegistrations);
+
+      // Repopulate filter dropdowns based on the actual registrations shown in the table
+      this.#populateFilterDropdowns(nonWaitlistRegistrations);
     }
 
     // Always update the wait list table if it exists (for admin view)
     if (this.adminWaitListTable) {
-      console.log('Refreshing wait list table with updated registrations');
       const waitListRegistrations = this.registrations.filter(registration => {
         return ClassManager.isRockBandClass(registration.classId);
       });
@@ -1084,7 +908,6 @@ export class ViewModel {
 
     // Update parent wait list table if it exists (for parent view)
     if (this.parentWaitListTable && this.currentUser?.parent) {
-      console.log('Refreshing parent wait list table with updated registrations');
       const currentParentId = this.currentUser.parent?.id;
 
       if (currentParentId) {
@@ -1151,13 +974,11 @@ export class ViewModel {
 
     // Update instructor weekly schedules if current user is an instructor
     if (this.currentUser?.instructor && this.instructorContentInitialized) {
-      console.log('Refreshing instructor weekly schedule');
       this.#initInstructorContent();
     }
 
     // Update parent weekly schedules if current user is a parent
     if (this.currentUser?.parent && this.parentContentInitialized) {
-      console.log('Refreshing parent weekly schedule');
       this.#initParentContent();
     }
   }
@@ -1168,7 +989,8 @@ export class ViewModel {
    */
   async #createRegistrationWithEnrichment(data) {
     const response = await HttpService.post(ServerFunctions.register, data);
-    const newRegistration = Registration.fromApiData(response.data);
+    // HttpService auto-unwraps { success, data } responses, so response is already the registration data
+    const newRegistration = Registration.fromApiData(response);
 
     // Enrich the registration with instructor and student objects (same logic as initial data loading)
     if (!newRegistration.student) {
@@ -1216,6 +1038,78 @@ export class ViewModel {
   }
 
   /**
+   * Update the intent banner to show how many registrations need intent submission
+   */
+  #updateIntentBanner() {
+    const banner = document.getElementById('intent-banner');
+    const countElement = document.getElementById('intent-incomplete-count');
+
+    if (!banner) return;
+
+    // Only show banner for parent users
+    if (!this.currentUser?.parent) {
+      banner.style.display = 'none';
+      return;
+    }
+
+    // Check if we're in the intent period
+    const currentPeriod = window.UserSession?.getCurrentPeriod();
+    const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
+
+    if (!isIntentPeriod) {
+      banner.style.display = 'none';
+      return;
+    }
+
+    // Count registrations without intent (for current parent only)
+    const incompleteRegistrations = this.registrations.filter(r => {
+      // Exclude wait list items (Rock Band classes)
+      const isWaitlistClass = ClassManager.isRockBandClass(r.classId);
+      if (isWaitlistClass) return false;
+
+      // Check if this registration belongs to current parent's children
+      const student = this.students.find(s => {
+        const studentId = s.id?.value || s.id;
+        const regStudentId = r.studentId?.value || r.studentId;
+        return studentId === regStudentId;
+      });
+
+      if (!student) return false;
+
+      // Check if student belongs to current parent
+      const currentParentId = this.currentUser?.parent?.id;
+      if (!currentParentId) return false;
+
+      const isParentsChild =
+        student.parent1Id === currentParentId || student.parent2Id === currentParentId;
+
+      // Count if it's parent's child AND no intent submitted
+      return isParentsChild && !r.reenrollmentIntent;
+    });
+
+    const count = incompleteRegistrations.length;
+
+    console.log('Intent banner update:', {
+      totalRegistrations: this.registrations.length,
+      incompleteCount: count,
+      incompleteRegistrations: incompleteRegistrations.map(r => ({
+        id: r.id?.value || r.id,
+        classId: r.classId,
+        reenrollmentIntent: r.reenrollmentIntent,
+      })),
+    });
+
+    if (count === 0) {
+      banner.style.display = 'none';
+    } else {
+      banner.style.display = 'block';
+      if (countElement) {
+        countElement.textContent = `${count} registration${count !== 1 ? 's' : ''} need${count === 1 ? 's' : ''} your response.`;
+      }
+    }
+  }
+
+  /**
    *
    */
   #setPageLoading(isLoading, errorMessage = '') {
@@ -1251,8 +1145,16 @@ export class ViewModel {
   }
   /**
    * Populate the filter dropdowns with actual data
+   * @param {Array} registrations - The registrations to use for populating filters (defaults to non-waitlist registrations)
    */
-  #populateFilterDropdowns() {
+  #populateFilterDropdowns(registrations = null) {
+    // Use provided registrations or fall back to non-waitlist registrations
+    const regsToUse =
+      registrations ||
+      this.registrations.filter(registration => {
+        return !ClassManager.isRockBandClass(registration.classId);
+      });
+
     // Populate instructor dropdown
     const instructorSelect = document.getElementById('master-schedule-instructor-filter-select');
     if (instructorSelect) {
@@ -1267,13 +1169,20 @@ export class ViewModel {
         instructorSelect.firstElementChild.selected = false;
       }
 
-      // Add instructor options
-      this.instructors.forEach(instructor => {
-        const option = document.createElement('option');
-        option.value = instructor.id;
-        option.textContent = `${instructor.firstName} ${instructor.lastName}`;
-        instructorSelect.appendChild(option);
-      });
+      // Get unique instructor IDs from registrations
+      const registeredInstructorIds = [
+        ...new Set(regsToUse.map(reg => reg.instructorId?.value || reg.instructorId)),
+      ];
+
+      // Only show instructors who have active registrations
+      this.instructors
+        .filter(instructor => registeredInstructorIds.includes(instructor.id))
+        .forEach(instructor => {
+          const option = document.createElement('option');
+          option.value = instructor.id;
+          option.textContent = `${instructor.firstName} ${instructor.lastName}`;
+          instructorSelect.appendChild(option);
+        });
     }
 
     // Populate day dropdown
@@ -1290,8 +1199,11 @@ export class ViewModel {
         daySelect.firstElementChild.selected = false;
       }
 
-      // Get unique days from registrations
-      const uniqueDays = [...new Set(this.registrations.map(reg => reg.day))];
+      // Get unique days from registrations, filtering out null/undefined/empty values
+      const uniqueDays = [
+        ...new Set(regsToUse.map(reg => reg.day).filter(day => day && day.trim() !== '')),
+      ];
+
       // Sort days in logical weekday order
       const dayOrder = [
         'Monday',
@@ -1327,9 +1239,7 @@ export class ViewModel {
       }
 
       // Get unique grades from students who have registrations
-      const registeredStudentIds = this.registrations.map(
-        reg => reg.studentId?.value || reg.studentId
-      );
+      const registeredStudentIds = regsToUse.map(reg => reg.studentId?.value || reg.studentId);
       const registeredStudents = this.students.filter(student =>
         registeredStudentIds.includes(student.id?.value || student.id)
       );
@@ -1351,7 +1261,84 @@ export class ViewModel {
         });
     }
 
-    // Reinitialize Materialize select elements
+    // Populate intent dropdown (only during intent period)
+    const currentPeriod = window.UserSession?.getCurrentPeriod();
+    const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
+
+    const intentFilterContainer = document.getElementById(
+      'master-schedule-intent-filter-container'
+    );
+    const intentSelect = document.getElementById('master-schedule-intent-filter-select');
+
+    // Adjust column widths based on whether intent filter is shown
+    // Need to go up TWO levels: select -> select-wrapper (Materialize) -> input-field (has col classes)
+    const instructorFilter = document.getElementById('master-schedule-instructor-filter-select')
+      ?.parentElement?.parentElement;
+    const dayFilter = document.getElementById('master-schedule-day-filter-select')?.parentElement
+      ?.parentElement;
+    const gradeFilter = document.getElementById('master-schedule-grade-filter-select')
+      ?.parentElement?.parentElement;
+
+    if (isIntentPeriod && intentSelect) {
+      // Show the intent filter and use 4-column layout
+      if (intentFilterContainer) {
+        intentFilterContainer.hidden = false;
+      }
+
+      // Set all filters to s3 (25% width for 4 columns)
+      [instructorFilter, dayFilter, gradeFilter].forEach(filter => {
+        if (filter) {
+          filter.classList.remove('s4');
+          filter.classList.add('s3');
+        }
+      });
+
+      // Clear existing options except the first (placeholder)
+      while (intentSelect.children.length > 1) {
+        intentSelect.removeChild(intentSelect.lastChild);
+      }
+
+      // Ensure first option is disabled and not selected
+      if (intentSelect.firstElementChild) {
+        intentSelect.firstElementChild.disabled = true;
+        intentSelect.firstElementChild.selected = false;
+      }
+
+      // Get unique intent values from registrations (including null/undefined as 'none')
+      const intentValues = regsToUse.map(reg => reg.reenrollmentIntent || 'none');
+      const uniqueIntents = [...new Set(intentValues)];
+
+      // Define all possible intent options with their display properties
+      const allIntentOptions = [
+        { value: 'none', label: 'None' },
+        { value: 'keep', label: INTENT_LABELS.keep },
+        { value: 'drop', label: INTENT_LABELS.drop },
+        { value: 'change', label: INTENT_LABELS.change },
+      ];
+
+      // Only add options that exist in the current registrations data
+      allIntentOptions
+        .filter(option => uniqueIntents.includes(option.value))
+        .forEach(({ value, label }) => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = label;
+          intentSelect.appendChild(option);
+        });
+    } else if (intentFilterContainer) {
+      // Hide the intent filter and use 3-column layout
+      intentFilterContainer.hidden = true;
+
+      // Set remaining filters to s4 (33% width for 3 columns)
+      [instructorFilter, dayFilter, gradeFilter].forEach(filter => {
+        if (filter) {
+          filter.classList.remove('s3');
+          filter.classList.add('s4');
+        }
+      });
+    }
+
+    // Reinitialize Materialize select elements after all DOM changes
     const selects = document.querySelectorAll('select');
     M.FormSelect.init(selects);
   }
@@ -1400,19 +1387,53 @@ export class ViewModel {
    *
    */
   #buildRegistrationTable(registrations) {
+    // Check if we're in the intent period to show the Intent column
+    const currentPeriod = window.UserSession?.getCurrentPeriod();
+    const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
+
+    const headers = [
+      'Weekday',
+      'Start Time',
+      'Length',
+      'Student',
+      'Grade',
+      'Instructor',
+      'Instrument/Class',
+    ];
+
+    if (isIntentPeriod) {
+      headers.push('Intent');
+    }
+
+    headers.push('Contact', 'Remove');
+
+    // Build onFilterChanges array conditionally
+    const onFilterChanges = [
+      {
+        filterId: 'master-schedule-instructor-filter-select',
+        type: 'select-multiple',
+      },
+      {
+        filterId: 'master-schedule-day-filter-select',
+        type: 'select-multiple',
+      },
+      {
+        filterId: 'master-schedule-grade-filter-select',
+        type: 'select-multiple',
+      },
+    ];
+
+    // Add intent filter only during intent period
+    if (isIntentPeriod) {
+      onFilterChanges.push({
+        filterId: 'master-schedule-intent-filter-select',
+        type: 'select-multiple',
+      });
+    }
+
     return new Table(
       'master-schedule-table',
-      [
-        'Weekday',
-        'Start Time',
-        'Length',
-        'Student',
-        'Grade',
-        'Instructor',
-        'Instrument/Class',
-        'Contact',
-        'Remove',
-      ],
+      headers,
       // row
       registration => {
         // Extract primitive values for comparison
@@ -1438,6 +1459,54 @@ export class ViewModel {
           );
           return '';
         }
+
+        // Build intent cell (non-editable, nullable) - only during intent period
+        let intentCell = '';
+        if (isIntentPeriod) {
+          const intentValue = registration.reenrollmentIntent;
+
+          if (intentValue) {
+            // Map intent values to badge styles and icons
+            const intentStyles = {
+              keep: {
+                bgClass: 'teal lighten-5',
+                textClass: 'teal-text text-darken-2',
+                icon: 'check_circle',
+                label: INTENT_LABELS[intentValue],
+              },
+              drop: {
+                bgClass: 'red lighten-5',
+                textClass: 'red-text text-darken-2',
+                icon: 'cancel',
+                label: INTENT_LABELS[intentValue],
+              },
+              change: {
+                bgClass: 'amber lighten-5',
+                textClass: 'amber-text text-darken-3',
+                icon: 'swap_horiz',
+                label: INTENT_LABELS[intentValue],
+              },
+            };
+
+            const style = intentStyles[intentValue] || {
+              bgClass: 'grey lighten-4',
+              textClass: 'grey-text text-darken-1',
+              icon: 'help_outline',
+              label: intentValue,
+            };
+
+            intentCell = `<td>
+              <span class="chip ${style.bgClass} ${style.textClass}" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.9em; padding: 6px 12px; border-radius: 16px;">
+                <i class="material-icons" style="font-size: 16px;">${style.icon}</i>
+                ${style.label}
+              </span>
+            </td>`;
+          } else {
+            // No intent set
+            intentCell = `<td class="grey-text text-lighten-1" style="text-align: center;">—</td>`;
+          }
+        }
+
         return `
                         <td>${registration.day}</td>
                         <td>${formatTime(registration.startTime) || 'N/A'}</td>
@@ -1446,6 +1515,7 @@ export class ViewModel {
                         <td>${formatGrade(student.grade) || 'N/A'}</td>
                         <td>${instructor.firstName} ${instructor.lastName}</td>
                         <td>${registration.registrationType === RegistrationType.GROUP ? registration.classTitle || 'N/A' : registration.instrument || 'N/A'}</td>
+                        ${intentCell}
                         <td>
                             <a href="#" data-registration-id="${registration.id?.value || registration.id}">
                                 <i class="material-icons copy-parent-emails-table-icon gray-text text-darken-4">email</i>
@@ -1510,6 +1580,7 @@ export class ViewModel {
         );
         const daySelect = document.getElementById('master-schedule-day-filter-select');
         const gradeSelect = document.getElementById('master-schedule-grade-filter-select');
+        const intentSelect = document.getElementById('master-schedule-intent-filter-select');
 
         // If any dropdown doesn't exist yet, show all registrations (during initial load)
         if (!instructorSelect || !daySelect || !gradeSelect) {
@@ -1525,6 +1596,11 @@ export class ViewModel {
         const selectedGrades = Array.from(gradeSelect.selectedOptions)
           .map(option => option.value)
           .filter(value => value !== ''); // Exclude empty placeholder values
+        const selectedIntents = intentSelect
+          ? Array.from(intentSelect.selectedOptions)
+              .map(option => option.value)
+              .filter(value => value !== '')
+          : []; // Exclude empty placeholder values
 
         // Extract primitive values for comparison
         const instructorIdToFind = registration.instructorId?.value || registration.instructorId;
@@ -1553,22 +1629,19 @@ export class ViewModel {
           return false;
         }
 
+        // Filter by selected intents (if any selected, otherwise show all)
+        if (selectedIntents.length > 0) {
+          const intentValue = registration.reenrollmentIntent;
+          const actualIntentValue = intentValue || 'none';
+
+          if (!selectedIntents.includes(actualIntentValue)) {
+            return false;
+          }
+        }
+
         return true;
       },
-      [
-        {
-          filterId: 'master-schedule-instructor-filter-select',
-          type: 'select-multiple',
-        },
-        {
-          filterId: 'master-schedule-day-filter-select',
-          type: 'select-multiple',
-        },
-        {
-          filterId: 'master-schedule-grade-filter-select',
-          type: 'select-multiple',
-        },
-      ],
+      onFilterChanges,
       {
         pagination: true,
         itemsPerPage: 100,
@@ -1578,6 +1651,16 @@ export class ViewModel {
           return registration.registrationType === RegistrationType.GROUP
             ? 'registration-row-group'
             : 'registration-row-private';
+        },
+        onCountChange: (filteredCount, totalCount) => {
+          const countEl = document.getElementById('master-schedule-count');
+          if (countEl) {
+            if (filteredCount === totalCount) {
+              countEl.textContent = `Showing ${totalCount} registration${totalCount !== 1 ? 's' : ''}`;
+            } else {
+              countEl.textContent = `Showing ${filteredCount} of ${totalCount} registration${totalCount !== 1 ? 's' : ''}`;
+            }
+          }
         },
       }
     );
@@ -1774,18 +1857,29 @@ export class ViewModel {
     let matchingSuccesses = 0;
     let matchingFailures = 0;
 
+    // Add Intent column for parent view during intent period
+    const headers = [
+      'Weekday',
+      'Start Time',
+      'Length',
+      'Student',
+      'Grade',
+      'Instructor',
+      'Instrument/Class',
+      'Contact',
+    ];
+
+    // Check if we're in the intent period to show the Intent column
+    const currentPeriod = window.UserSession?.getCurrentPeriod();
+    const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
+
+    if (viewContext === 'parent' && isIntentPeriod) {
+      headers.splice(7, 0, 'Intent'); // Insert before 'Contact'
+    }
+
     const table = new Table(
       tableId,
-      [
-        'Weekday',
-        'Start Time',
-        'Length',
-        'Student',
-        'Grade',
-        'Instructor',
-        'Instrument/Class',
-        'Contact',
-      ],
+      headers,
       // row
       enrollment => {
         // More flexible instructor matching
@@ -1837,6 +1931,31 @@ export class ViewModel {
           matchingSuccesses++;
         }
 
+        // Build intent cell for parent view during intent period only
+        let intentCell = '';
+        if (viewContext === 'parent' && isIntentPeriod) {
+          const enrollmentId = enrollment.id?.value || enrollment.id;
+          const intentValue = enrollment.reenrollmentIntent;
+
+          // Show dropdown for selecting intent
+          const selectedKeep = intentValue === 'keep' ? 'selected' : '';
+          const selectedDrop = intentValue === 'drop' ? 'selected' : '';
+          const selectedChange = intentValue === 'change' ? 'selected' : '';
+          const selectedNone = !intentValue ? 'selected' : '';
+
+          intentCell = `<td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <select class="intent-dropdown" data-registration-id="${enrollmentId}">
+                <option value="" ${selectedNone}>Select intent...</option>
+                <option value="keep" ${selectedKeep}>${INTENT_LABELS.keep}</option>
+                <option value="drop" ${selectedDrop}>${INTENT_LABELS.drop}</option>
+                <option value="change" ${selectedChange}>${INTENT_LABELS.change}</option>
+              </select>
+              <span class="intent-status-indicator" data-registration-id="${enrollmentId}" style="display: none;"></span>
+            </div>
+          </td>`;
+        }
+
         return `
                         <td>${enrollment.day}</td>
                         <td>${formatTime(enrollment.startTime) || 'N/A'}</td>
@@ -1845,6 +1964,7 @@ export class ViewModel {
                         <td>${formatGrade(student.grade) || 'N/A'}</td>
                         <td>${instructor.firstName} ${instructor.lastName}</td>
                         <td>${enrollment.registrationType === RegistrationType.GROUP ? enrollment.classTitle || enrollment.className || 'N/A' : enrollment.instrument || 'N/A'}</td>
+                        ${intentCell}
                         <td>
                             <a href="#" data-registration-id="${enrollment.id?.value || enrollment.id}" data-view-context="${viewContext}">
                                 <i class="material-icons copy-emails-table-icon gray-text text-darken-4">email</i>
@@ -2032,9 +2152,6 @@ export class ViewModel {
       return;
     }
 
-    console.log('Delete registration called with ID:', registrationToDeleteId);
-    console.log('ID type:', typeof registrationToDeleteId);
-
     if (!registrationToDeleteId) {
       console.error('No registration ID provided for deletion');
       M.toast({ html: 'Error: No registration ID provided for deletion.' });
@@ -2063,6 +2180,88 @@ export class ViewModel {
       M.toast({ html: 'Error deleting registration.' });
     } finally {
       this.#setAdminRegistrationLoading(false);
+    }
+  }
+
+  /**
+   * Submit intent for a registration
+   * @param {string} registrationId - Registration ID
+   * @param {string} intent - One of: 'keep', 'drop', 'change'
+   * @returns {Promise<object>} Updated registration
+   * @throws {Error} If submission fails
+   */
+  async submitIntent(registrationId, intent) {
+    // Build headers with authentication
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+
+    if (window.AccessCodeManager) {
+      const storedAuthData = window.AccessCodeManager.getStoredAuthData();
+      if (storedAuthData) {
+        headers['x-access-code'] = storedAuthData.accessCode;
+        headers['x-login-type'] = storedAuthData.loginType;
+      }
+    }
+
+    try {
+      const response = await fetch(`/api/registrations/${registrationId}/intent`, {
+        method: 'PATCH',
+        headers: headers,
+        body: JSON.stringify({ intent }),
+        credentials: 'same-origin',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to submit intent`);
+      }
+
+      const result = await response.json();
+
+      console.log('Intent submission response:', result);
+
+      // Update local registration data
+      const registration = this.registrations.find(r => (r.id?.value || r.id) === registrationId);
+      console.log('Found registration to update:', registration);
+
+      if (registration && result.data) {
+        console.log('Updating registration with intent:', result.data.reenrollmentIntent);
+        registration.reenrollmentIntent = result.data.reenrollmentIntent;
+        registration.intentSubmittedAt = result.data.intentSubmittedAt;
+        registration.intentSubmittedBy = result.data.intentSubmittedBy;
+      } else {
+        console.warn('Could not update registration:', {
+          hasRegistration: !!registration,
+          hasResultData: !!result.data,
+        });
+      }
+
+      // Just refresh the weekly schedule tables to show updated intent
+      // Don't rebuild the entire parent form as that causes errors
+      if (this.parentWeeklyScheduleTables && Array.isArray(this.parentWeeklyScheduleTables)) {
+        this.parentWeeklyScheduleTables.forEach(table => {
+          if (table && table.replaceRange) {
+            const studentRegistrations = this.registrations.filter(r => {
+              const student = this.students.find(
+                s => (s.id?.value || s.id) === (r.studentId?.value || r.studentId)
+              );
+              return student && table.tableId.includes(student.id?.value || student.id);
+            });
+            table.replaceRange(studentRegistrations);
+          }
+        });
+      }
+
+      // Update intent banner
+      this.#updateIntentBanner();
+
+      M.toast({ html: 'Intent submitted successfully.' });
+      return result;
+    } catch (error) {
+      console.error('Error submitting intent:', error);
+      M.toast({ html: error.message || 'Error submitting intent.' });
+      throw error;
     }
   }
   /**
@@ -2148,53 +2347,9 @@ export class ViewModel {
    */
   async #getStudents(forceRefresh = false) {
     // BYPASS INDEXEDDB: Always load students fresh from server
-    console.log('👩‍🎓 Loading students fresh from server (IndexedDB bypassed)...');
-    const studentsStartTime = performance.now();
-
     const students = await HttpService.fetchAllPages(ServerFunctions.getStudents, x =>
       Student.fromApiData(x)
     );
-
-    const studentsEndTime = performance.now();
-    console.log(
-      `👩‍🎓 Fetched ${students.length} students from server in ${(studentsEndTime - studentsStartTime).toFixed(2)}ms`
-    );
-
-    // Log sample student data structure
-    if (students.length > 0) {
-      console.log('👩‍🎓 Sample student data structure:');
-      const sampleStudent = students[0];
-      console.log('  Sample student:', {
-        id: sampleStudent.id,
-        idType: typeof sampleStudent.id,
-        name: `${sampleStudent.firstName} ${sampleStudent.lastName}`,
-        grade: sampleStudent.grade,
-        parent1Id: sampleStudent.parent1Id,
-        parent1IdType: typeof sampleStudent.parent1Id,
-        parent2Id: sampleStudent.parent2Id,
-        parent2IdType: typeof sampleStudent.parent2Id,
-        parentEmails: sampleStudent.parentEmails,
-      });
-
-      // Log ID distribution analysis
-      const idTypes = {};
-      const parent1IdTypes = {};
-      const parent2IdTypes = {};
-
-      students.forEach(student => {
-        const idType = typeof (student.id?.value || student.id);
-        const parent1IdType = typeof student.parent1Id;
-        const parent2IdType = typeof student.parent2Id;
-
-        idTypes[idType] = (idTypes[idType] || 0) + 1;
-        parent1IdTypes[parent1IdType] = (parent1IdTypes[parent1IdType] || 0) + 1;
-        parent2IdTypes[parent2IdType] = (parent2IdTypes[parent2IdType] || 0) + 1;
-      });
-
-      console.log('👩‍🎓 Student ID type distribution:', idTypes);
-      console.log('👩‍🎓 Parent1 ID type distribution:', parent1IdTypes);
-      console.log('👩‍🎓 Parent2 ID type distribution:', parent2IdTypes);
-    }
 
     // Note: IndexedDB saving is bypassed to ensure fresh data on every load
     if (students.length === 0) {
@@ -2268,7 +2423,6 @@ export class ViewModel {
 
     // Clear inputs when modal opens - use proper Materialize events
     modalElement.addEventListener('modal:opened', () => {
-      console.log('Modal opened - resetting login modal');
       this.#resetLoginModal(parentPhoneInput, employeeCodeInput, loginButton);
       setTimeout(() => {
         this.#focusCurrentInput();
@@ -2279,7 +2433,6 @@ export class ViewModel {
 
     // Reset state when modal closes
     modalElement.addEventListener('modal:closed', () => {
-      console.log('Modal closed - resetting login modal');
       this.#resetLoginModal(parentPhoneInput, employeeCodeInput, loginButton);
     });
 
@@ -2288,18 +2441,14 @@ export class ViewModel {
       allowEscape: true,
       allowEnter: true,
       onConfirm: event => {
-        console.log('Login modal: Enter key pressed');
         if (!loginButton.disabled) {
           this.#handleLogin();
         }
       },
       onCancel: event => {
-        console.log('Login modal: ESC key pressed');
         this.loginModal.close();
       },
     });
-
-    console.log('Login modal initialized successfully');
   }
 
   /**
@@ -2387,7 +2536,6 @@ export class ViewModel {
 
     // Handle focus events to ensure validation runs
     phoneInput.addEventListener('focus', e => {
-      console.log('Phone input focused');
       if (this.currentLoginType === 'parent') {
         setTimeout(() => {
           this.#validateCurrentInput();
@@ -2425,7 +2573,6 @@ export class ViewModel {
 
     // Handle focus events to ensure validation runs
     codeInput.addEventListener('focus', e => {
-      console.log('Code input focused');
       if (this.currentLoginType === 'employee') {
         setTimeout(() => {
           this.#validateCurrentInput();
@@ -2448,7 +2595,6 @@ export class ViewModel {
       // Check if phone validation function is available
       if (typeof window.isValidPhoneNumber === 'function') {
         isValid = window.isValidPhoneNumber(phoneValue);
-        console.log('Phone validation:', phoneValue, '->', isValid);
       } else {
         // Fallback validation - just check for 10 digits
         const digits = phoneValue.replace(/\D/g, '');
@@ -2499,14 +2645,12 @@ export class ViewModel {
       loginButton.style.opacity = '1';
       loginButton.style.pointerEvents = 'auto';
       loginButton.style.cursor = 'pointer';
-      console.log('Login button ENABLED');
     } else {
       loginButton.setAttribute('disabled', 'disabled');
       loginButton.classList.add('disabled');
       loginButton.style.opacity = '0.6';
       loginButton.style.pointerEvents = 'none';
       loginButton.style.cursor = 'not-allowed';
-      console.log('Login button DISABLED');
     }
   }
 
@@ -2568,8 +2712,6 @@ export class ViewModel {
    * Initialize all application modals (Terms, Privacy, and Login)
    */
   #initializeAllModals() {
-    console.log('🔧 Initializing all application modals in ViewModel...');
-
     // Initialize Terms of Service modal (non-dismissible)
     this.#initTermsModal();
 
@@ -2578,8 +2720,6 @@ export class ViewModel {
 
     // Initialize Login modal (dismissible)
     this.#initLoginModal();
-
-    console.log('✅ All application modals initialized successfully in ViewModel');
   }
 
   /**
@@ -2642,13 +2782,11 @@ export class ViewModel {
             allowEscape: true,
             allowEnter: true,
             onConfirm: event => {
-              console.log('Terms modal: Enter key pressed (reattached)');
               if (newTermsBtn) {
                 newTermsBtn.click();
               }
             },
             onCancel: event => {
-              console.log('Terms modal: ESC key pressed (reattached)');
               this.termsModal.close();
             },
           });
@@ -2671,20 +2809,17 @@ export class ViewModel {
       allowEnter: true,
       onConfirm: event => {
         // Handle Enter key press for Terms of Service
-        console.log('Terms modal: Enter key pressed');
         if (termsBtn) {
           termsBtn.click();
         }
       },
       onCancel: event => {
         // Handle ESC key press for Terms of Service
-        console.log('Terms modal: ESC key pressed');
 
         // Check if this is non-dismissible mode
         const hasAcceptedTerms = window.UserSession.hasAcceptedTermsOfService();
         if (!hasAcceptedTerms && window.termsOnConfirmationCallback) {
           // In non-dismissible mode, prevent ESC
-          console.log('Terms modal: ESC blocked in non-dismissible mode');
           return;
         }
 
@@ -2692,8 +2827,6 @@ export class ViewModel {
         this.termsModal.close();
       },
     });
-
-    console.log('✅ Terms of Service modal initialized');
   }
 
   /**
@@ -2725,7 +2858,6 @@ export class ViewModel {
       allowEnter: true,
       onConfirm: event => {
         // Handle Enter key press for Privacy Policy - trigger button click
-        console.log('Privacy modal: Enter key pressed');
         if (privacyBtn) {
           privacyBtn.click();
         } else {
@@ -2734,12 +2866,9 @@ export class ViewModel {
       },
       onCancel: event => {
         // Handle ESC key press for Privacy Policy
-        console.log('Privacy modal: ESC key pressed');
         this.privacyModal.close();
       },
     });
-
-    console.log('✅ Privacy Policy modal initialized (dismissible)');
   }
 
   /**
@@ -2752,29 +2881,21 @@ export class ViewModel {
       return;
     }
 
-    // Check if there's a stored access code or if we have an operator user
+    // Check if there's a stored access code
     const storedCode = window.AccessCodeManager.getStoredAccessCode();
-    const operatorUser = window.UserSession?.getOperatorUser();
 
-    if (
-      storedCode ||
-      (operatorUser && (operatorUser.admin || operatorUser.instructor || operatorUser.parent))
-    ) {
-      // Change button text to "Change User" if access code exists or operator is available
+    if (storedCode) {
+      // Change button text to "Change User" if access code exists
       const buttonTextNode = loginButton.childNodes[loginButton.childNodes.length - 1];
       if (buttonTextNode && buttonTextNode.nodeType === Node.TEXT_NODE) {
         buttonTextNode.textContent = 'Change User';
       }
-      console.log(
-        'Login button updated to "Change User" - stored access code or operator user found'
-      );
     } else {
-      // Ensure button text is "Login" if no stored code and no operator
+      // Ensure button text is "Login" if no stored code
       const buttonTextNode = loginButton.childNodes[loginButton.childNodes.length - 1];
       if (buttonTextNode && buttonTextNode.nodeType === Node.TEXT_NODE) {
         buttonTextNode.textContent = 'Login';
       }
-      console.log('Login button set to "Login" - no stored access code or operator user');
     }
   }
 
@@ -2882,12 +3003,9 @@ export class ViewModel {
         // Update login button state to show "Change User"
         this.#updateLoginButtonState();
 
-        console.log('Login successful, access code saved securely');
-
         onSuccessfulLogin?.();
 
         // Clear cached data and reset initialization flags for new user
-        console.log('Clearing cached data and resetting initialization flags for new user');
         this.#resetInitializationFlags();
 
         // Clear cached data properties
@@ -2900,7 +3018,6 @@ export class ViewModel {
         this.currentUser = null;
 
         // Load user data with the authenticated user
-        console.log('Loading user data for authenticated user:', authenticatedUser);
 
         // Determine default role to click (admin -> instructor -> parent)
         let roleToClick = null;
@@ -2908,7 +3025,6 @@ export class ViewModel {
           roleToClick = 'admin';
 
           // For admin users, we'll explicitly show admin tabs and click the first one
-          console.log('Authenticated user is an admin - will show admin tabs');
         } else if (authenticatedUser.instructor) {
           roleToClick = 'instructor';
         } else if (authenticatedUser.parent) {
@@ -3060,26 +3176,19 @@ export class ViewModel {
       // Remove any potential overlay elements
       const overlays = document.querySelectorAll('.modal-overlay');
       overlays.forEach(overlay => overlay.remove());
-
-      console.log('✅ UI state reset completed');
     } catch (error) {
       console.error('❌ Error resetting UI state:', error);
     }
   }
 
   /**
-   * Show the login button after operator request completes
+   * Show the login button after app configuration loads
    */
   #showLoginButton() {
-    console.log('🔍 Showing login button');
-
     try {
       const loginButtonContainer = document.getElementById('login-button-container');
       if (loginButtonContainer) {
         loginButtonContainer.hidden = false;
-        console.log('✅ Login button shown successfully');
-      } else {
-        console.log('⚠️ Login button container element not found');
       }
     } catch (error) {
       console.error('❌ Error showing login button:', error);
@@ -3091,8 +3200,6 @@ export class ViewModel {
    * @param {Function} onConfirmation - Callback to execute when user accepts terms
    */
   #showTermsOfService(onConfirmation) {
-    console.log('Showing Terms of Service modal');
-
     const termsModal = document.getElementById('terms-modal');
     const hasAcceptedTerms = window.UserSession.hasAcceptedTermsOfService();
 
@@ -3117,7 +3224,6 @@ export class ViewModel {
         if (e.key === 'Escape') {
           e.preventDefault();
           e.stopPropagation();
-          console.log('Terms modal: ESC blocked in non-dismissible mode');
         }
         // Allow Enter key to work for button activation
       };
@@ -3144,14 +3250,12 @@ export class ViewModel {
         allowEscape: false, // Block ESC in non-dismissible mode
         allowEnter: true, // Allow Enter for button activation
         onConfirm: event => {
-          console.log('Terms modal: Enter key pressed (non-dismissible mode)');
           if (termsBtn) {
             termsBtn.click();
           }
         },
         onCancel: event => {
           // Should not be called since allowEscape is false
-          console.log('Terms modal: ESC blocked in non-dismissible mode');
         },
       });
     }

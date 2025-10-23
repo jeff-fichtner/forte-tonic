@@ -1,7 +1,5 @@
 // Express.js helper functions for data fetching and pagination
 export const _fetchData = (dataFunction, page, pageSize) => {
-  console.log(`page ${page}, pageSize ${pageSize}`);
-
   const data = dataFunction(); // Execute the data-fetching logic
 
   if (page == null || !pageSize) {
@@ -13,7 +11,6 @@ export const _fetchData = (dataFunction, page, pageSize) => {
 };
 
 export const _respond = response => {
-  console.log(`Response:`, response);
   return response;
 };
 

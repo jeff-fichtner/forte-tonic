@@ -38,7 +38,7 @@ src/
 - User context initialization
 - Authentication checks
 - Authorization middleware
-- **Exports**: `{ initializeUserContext, requireAuth, requireOperator }`
+- **Exports**: `{ initializeUserContext, requireAuth }`
 
 ### 4. **routes/api.js** - API Routes
 

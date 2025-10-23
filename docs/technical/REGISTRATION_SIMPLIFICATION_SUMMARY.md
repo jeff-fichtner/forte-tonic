@@ -6,7 +6,7 @@ Successfully simplified the registration model by removing audit fields and cons
 ## Changes Made
 
 ### 1. Migration Updates (DEV002)
-**File**: `gas-src/gas-migrations/dev/Migration_DEV002_FillAndResetRegistrations.js`
+**File**: `gas/src/mig/dev/Migration_DEV002_FillAndResetRegistrations.js`
 
 - **Reduced column count**: From 20 columns to 16 columns
 - **Removed audit fields**: `status`, `modifiedAt`, `modifiedBy`, `version`

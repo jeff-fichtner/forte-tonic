@@ -31,7 +31,6 @@ function extractStringValue(value) {
       return String(value[0]);
     }
 
-    console.warn('Unable to extract string from object:', value);
     return String(value); // This will produce "[object Object]"
   }
 
@@ -69,6 +68,11 @@ export class Registration {
     this.expectedStartDate = data.expectedStartDate ? new Date(data.expectedStartDate) : null;
     this.createdAt = data.createdAt ? new Date(data.createdAt) : new Date();
     this.createdBy = data.createdBy;
+
+    // Reenrollment intent fields
+    this.reenrollmentIntent = data.reenrollmentIntent || null;
+    this.intentSubmittedAt = data.intentSubmittedAt ? new Date(data.intentSubmittedAt) : null;
+    this.intentSubmittedBy = data.intentSubmittedBy || null;
   }
 
   #validateConstructorData(data) {
@@ -86,7 +90,6 @@ export class Registration {
     // Validate registration type (normalize common variations)
     const normalizedType = this.#normalizeRegistrationType(data.registrationType);
     if (!['private', 'group'].includes(normalizedType)) {
-      console.warn(`Unknown registration type "${data.registrationType}", defaulting to "private"`);
       data.registrationType = 'private';
     } else {
       data.registrationType = normalizedType;
@@ -94,7 +97,6 @@ export class Registration {
 
     // Validate group lessons have classId
     if (data.registrationType === 'group' && !data.classId) {
-      console.warn('Group registration missing classId, treating as private lesson');
       data.registrationType = 'private';
     }
   }
@@ -163,6 +165,19 @@ export class Registration {
   }
 
   /**
+   * Update reenrollment intent for this registration
+   * @param {string} intent - One of: 'keep', 'drop', 'change'
+   * @param {string} submittedBy - Email or identifier of who submitted
+   * @returns {Registration} This registration instance for chaining
+   */
+  updateIntent(intent, submittedBy) {
+    this.reenrollmentIntent = intent;
+    this.intentSubmittedAt = new Date();
+    this.intentSubmittedBy = submittedBy;
+    return this;
+  }
+
+  /**
    * Create Registration from database row data
    */
   static fromDatabaseRow(row) {
@@ -180,7 +195,6 @@ export class Registration {
     // Skip rows where the ID doesn't look like a UUID (basic check)
     const idValue = String(row[0]).trim();
     if (idValue.length < 10 || idValue === 'Id' || !idValue.includes('-')) {
-      console.warn(`Skipping registration row with invalid ID: "${idValue}"`);
       return null;
     }
 
@@ -188,7 +202,7 @@ export class Registration {
       // Map array indices to field names based on registration schema
       // Order: Id, StudentId, InstructorId, Day, StartTime, Length, RegistrationType,
       //        RoomId, Instrument, TransportationType, Notes, ClassId, ClassTitle,
-      //        ExpectedStartDate, CreatedAt, CreatedBy
+      //        ExpectedStartDate, CreatedAt, CreatedBy, reenrollmentIntent, intentSubmittedAt, intentSubmittedBy
 
       return new Registration({
         id: row[0] ? String(row[0]) : row[0], // Id (UUID) - ensure string
@@ -207,9 +221,11 @@ export class Registration {
         expectedStartDate: row[13], // ExpectedStartDate
         createdAt: row[14], // CreatedAt
         createdBy: row[15], // CreatedBy
+        reenrollmentIntent: row[16], // reenrollmentIntent
+        intentSubmittedAt: row[17], // intentSubmittedAt
+        intentSubmittedBy: row[18], // intentSubmittedBy
       });
     } catch (error) {
-      console.warn(`Failed to create Registration from row [${row.join(', ')}]:`, error.message);
       return null;
     }
   }
@@ -291,7 +307,19 @@ export class Registration {
       expectedStartDate: this.expectedStartDate,
       createdAt: this.createdAt,
       createdBy: this.createdBy,
+      reenrollmentIntent: this.reenrollmentIntent,
+      intentSubmittedAt: this.intentSubmittedAt,
+      intentSubmittedBy: this.intentSubmittedBy,
     };
+  }
+
+  /**
+   * Converts the registration to a plain object for API responses
+   * This method is automatically called by JSON.stringify() and Express res.json()
+   * @returns {object} Plain object representation
+   */
+  toJSON() {
+    return this.toDataObject();
   }
 
   /**

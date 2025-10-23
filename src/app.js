@@ -113,7 +113,7 @@ app.use('*', (req, res) => {
 
 // Error handling middleware
 app.use((error, req, res, _next) => {
-  console.error('Unhandled error:', error);
+  logger.error('Unhandled error:', error);
   res.status(500).json({
     error: 'Internal server error',
     message: configService.isDevelopment() ? error.message : 'Something went wrong',

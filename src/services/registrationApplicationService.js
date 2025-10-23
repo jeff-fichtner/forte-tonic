@@ -255,7 +255,7 @@ export class RegistrationApplicationService extends BaseService {
       // existingData is already a Registration instance from the repository
       const registration = existingData;
 
-      // For admin/operator deletions, bypass complex business logic checks
+      // For admin/instructor deletions, bypass complex business logic checks
       // and proceed with deletion (as requested - work with current schema)
 
       // Perform cancellation

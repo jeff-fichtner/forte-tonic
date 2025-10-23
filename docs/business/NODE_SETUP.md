@@ -48,7 +48,7 @@
 
 ### Frontend Compatibility
 
-- ✅ **Same API function names** - `getOperatorUser()`, `getStudents()`, etc.
+- ✅ **Same API function names** - `getStudents()`, `getAdmins()`, `getInstructors()`, etc.
 - ✅ **Same response format** - JSON strings matching original behavior
 - ✅ **Same pagination** - page/pageSize parameters work identically
 - ✅ **Same error handling** - Error messages preserved

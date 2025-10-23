@@ -1,5 +1,4 @@
 export const Keys = {
-  ROLES: 'roles',
   ADMINS: 'admins',
   INSTRUCTORS: 'instructors',
   PARENTS: 'parents',
@@ -10,4 +9,5 @@ export const Keys = {
   REGISTRATIONSAUDIT: 'registrations_audit',
   ATTENDANCE: 'attendance',
   ATTENDANCEAUDIT: 'attendance_audit',
+  PERIODS: 'periods',
 };

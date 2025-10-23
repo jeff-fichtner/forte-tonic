@@ -1,24 +1,16 @@
 /**
  * ClassManager - Centralized utility for class-related operations
  * Provides methods to check class types and properties
+ * Reads configuration from UserSession.appConfig (single source of truth)
  */
 
 class ClassManager {
   /**
-   * Rock Band class IDs that are treated as waitlist classes
-   * This will be updated from server configuration
+   * Get Rock Band class IDs from app configuration
+   * @returns {string[]} Array of Rock Band class IDs
    */
-  static ROCK_BAND_CLASS_IDS = []; // Default fallback
-
-  /**
-   * Update Rock Band class IDs from server configuration
-   * @param {string[]} classIds - Array of Rock Band class IDs from server
-   */
-  static updateRockBandClassIds(classIds) {
-    if (Array.isArray(classIds) && classIds.length > 0) {
-      this.ROCK_BAND_CLASS_IDS = classIds;
-      console.log('Updated Rock Band class IDs from server configuration:', classIds);
-    }
+  static getRockBandClassIds() {
+    return window.UserSession?.getAppConfig()?.rockBandClassIds || [];
   }
 
   /**
@@ -29,7 +21,17 @@ class ClassManager {
   static isRockBandClass(classId) {
     // Handle both direct string values and objects with .value property
     const id = classId?.value || classId;
-    return this.ROCK_BAND_CLASS_IDS.includes(id);
+
+    // If no classId provided, it's not a Rock Band class
+    if (!id) {
+      return false;
+    }
+
+    // Trim and normalize for comparison
+    const normalizedId = String(id).trim();
+    const rockBandIds = this.getRockBandClassIds();
+
+    return rockBandIds.some(rockBandId => String(rockBandId).trim() === normalizedId);
   }
 
   /**
@@ -39,14 +41,6 @@ class ClassManager {
    */
   static isWaitlistClass(classId) {
     return this.isRockBandClass(classId);
-  }
-
-  /**
-   * Get all Rock Band class IDs
-   * @returns {string[]} Array of Rock Band class IDs
-   */
-  static getRockBandClassIds() {
-    return [...this.ROCK_BAND_CLASS_IDS];
   }
 
   /**

@@ -141,8 +141,11 @@ docs/generated/
 # Development directory (entire directory)
 dev/
 
+# Credentials directory (service account keys, etc.)
+config/credentials/
+
 # Google Apps Script generated config
-gas-src/.clasp.json
+gas/.clasp.json
 
 # Render build artifacts
 .render-build-*

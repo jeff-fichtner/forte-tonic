@@ -10,28 +10,53 @@ import { UserTransformService } from '../services/userTransformService.js';
 import { getAuthenticatedUserEmail } from '../middleware/auth.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
 import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
-import { OperatorUserResponse } from '../models/shared/responses/operatorUserResponse.js';
+import { AppConfigurationResponse } from '../models/shared/responses/appConfigurationResponse.js';
 import { ConfigurationService } from '../services/configurationService.js';
 import { getLogger } from '../utils/logger.js';
+import { successResponse, errorResponse } from '../common/responseHelpers.js';
+import { ValidationError, NotFoundError } from '../common/errors.js';
+import { HTTP_STATUS } from '../common/errorConstants.js';
 
 const logger = getLogger();
 
 export class UserController {
   /**
-   * Get current operator user
+   * Get application configuration including current period and settings
+   * Used by frontend initialization
+   * @param {object} req - Express request object
+   * @param {object} res - Express response object
    */
-  static async getOperatorUser(req, res) {
+  static async getAppConfiguration(req, res) {
+    const startTime = Date.now();
+
     try {
-      logger.info('getOperatorUser - Temporarily bypassing operator user retrieval');
-      // Even when bypassed, return basic configuration
-      const bypassedResponse = new OperatorUserResponse(null, null, null, null, {
+      const periodService = serviceContainer.get('periodService');
+      const currentPeriod = await periodService.getCurrentPeriod();
+      const nextPeriod = await periodService.getNextPeriod();
+
+      const configurationData = {
+        currentPeriod,
+        nextPeriod,
         rockBandClassIds: ConfigurationService.getRockBandClassIds(),
+      };
+
+      const configuration = new AppConfigurationResponse(configurationData);
+
+      // Use standardized response format
+      // HttpService will auto-unwrap { success: true, data: {...} } to just the data
+      successResponse(res, configuration.toJSON(), {
+        req,
+        startTime,
+        message: 'Application configuration retrieved successfully',
+        context: { controller: 'UserController', method: 'getAppConfiguration' },
       });
-      return res.json(bypassedResponse);
     } catch (error) {
-      logger.error('Error getting operator user:', error);
-      // Return null instead of error to allow app to continue
-      res.json(null);
+      logger.error('Error getting app configuration:', error);
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getAppConfiguration' },
+      });
     }
   }
 
@@ -39,14 +64,25 @@ export class UserController {
    * Get all admins
    */
   static async getAdmins(req, res) {
+    const startTime = Date.now();
+
     try {
       const userRepository = serviceContainer.get('userRepository');
       const data = await userRepository.getAdmins();
       const transformedData = UserTransformService.transformArray(data, 'admin');
-      res.json(transformedData);
+
+      successResponse(res, transformedData, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getAdmins' },
+      });
     } catch (error) {
       logger.error('Error getting admins:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getAdmins' },
+      });
     }
   }
 
@@ -54,6 +90,8 @@ export class UserController {
    * Get all instructors
    */
   static async getInstructors(req, res) {
+    const startTime = Date.now();
+
     try {
       const userRepository = serviceContainer.get('userRepository');
 
@@ -62,10 +100,18 @@ export class UserController {
 
       // The data is already transformed by Instructor.fromDatabaseRow
       // No need to transform again with UserTransformService
-      res.json(data);
+      successResponse(res, data, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getInstructors' },
+      });
     } catch (error) {
       logger.error('Error in getInstructors:', error);
-      res.status(500).json({ error: 'Failed to retrieve instructors' });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getInstructors' },
+      });
     }
   }
 
@@ -73,14 +119,25 @@ export class UserController {
    * Get students - simplified to match instructor pattern
    */
   static async getStudents(req, res) {
+    const startTime = Date.now();
+
     try {
       const userRepository = serviceContainer.get('userRepository');
       const data = await userRepository.getStudents();
       const transformedData = UserTransformService.transformArray(data, 'student');
-      res.json(transformedData);
+
+      successResponse(res, transformedData, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getStudents' },
+      });
     } catch (error) {
       logger.error('Error getting students:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getStudents' },
+      });
     }
   }
 
@@ -88,19 +145,30 @@ export class UserController {
    * Get detailed student information using application service
    */
   static async getStudentDetails(req, res) {
+    const startTime = Date.now();
+
     try {
       const { studentId } = req.params;
       const studentApplicationService = serviceContainer.get('studentApplicationService');
 
       const details = await studentApplicationService.getStudentDetails(studentId);
 
-      res.json({
-        success: true,
-        data: details,
+      successResponse(res, details, {
+        req,
+        startTime,
+        context: {
+          controller: 'UserController',
+          method: 'getStudentDetails',
+          studentId: req.params.studentId,
+        },
       });
     } catch (error) {
       logger.error('Error getting student details:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getStudentDetails' },
+      });
     }
   }
 
@@ -108,6 +176,8 @@ export class UserController {
    * Update student profile using application service
    */
   static async updateStudent(req, res) {
+    const startTime = Date.now();
+
     try {
       const { studentId } = req.params;
       const updates = req.body;
@@ -121,16 +191,22 @@ export class UserController {
         userId
       );
 
-      res.json({
-        success: true,
-        data: result,
+      successResponse(res, result, {
         message: 'Student profile updated successfully',
+        req,
+        startTime,
+        context: {
+          controller: 'UserController',
+          method: 'updateStudent',
+          studentId: req.params.studentId,
+        },
       });
     } catch (error) {
       logger.error('Error updating student:', error);
-      res.status(400).json({
-        success: false,
-        error: error.message,
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'updateStudent' },
       });
     }
   }
@@ -139,6 +215,8 @@ export class UserController {
    * Enroll a new student using application service
    */
   static async enrollStudent(req, res) {
+    const startTime = Date.now();
+
     try {
       const studentData = req.body;
       const userId = getAuthenticatedUserEmail(req);
@@ -147,16 +225,19 @@ export class UserController {
 
       const result = await studentApplicationService.enrollStudent(studentData, userId);
 
-      res.status(201).json({
-        success: true,
-        data: result,
+      successResponse(res, result, {
         message: 'Student enrolled successfully',
+        statusCode: 201,
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'enrollStudent' },
       });
     } catch (error) {
       logger.error('Error enrolling student:', error);
-      res.status(400).json({
-        success: false,
-        error: error.message,
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'enrollStudent' },
       });
     }
   }
@@ -165,6 +246,8 @@ export class UserController {
    * Generate student progress report
    */
   static async getStudentProgressReport(req, res) {
+    const startTime = Date.now();
+
     try {
       const { studentId } = req.params;
 
@@ -172,13 +255,22 @@ export class UserController {
 
       const report = await studentApplicationService.generateProgressReport(studentId);
 
-      res.json({
-        success: true,
-        data: report,
+      successResponse(res, report, {
+        req,
+        startTime,
+        context: {
+          controller: 'UserController',
+          method: 'getStudentProgressReport',
+          studentId: req.params.studentId,
+        },
       });
     } catch (error) {
       logger.error('Error generating progress report:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getStudentProgressReport' },
+      });
     }
   }
 
@@ -188,18 +280,18 @@ export class UserController {
 
   /**
    * Authenticate user by access code
+   * NOTE: Returns null for failed authentication (required for frontend compatibility)
    * @param {object} req - Express request object
    * @param {object} res - Express response object
    */
   static async authenticateByAccessCode(req, res) {
+    const startTime = Date.now();
+
     try {
       const { accessCode, loginType } = req.body;
 
       if (!accessCode) {
-        return res.status(400).json({
-          error: 'Access code is required',
-          success: false,
-        });
+        throw new ValidationError('Access code is required');
       }
 
       const userRepository = serviceContainer.get('userRepository');
@@ -240,16 +332,18 @@ export class UserController {
         }
       }
 
-      // If no match found, return null
+      // If no match found, return null (frontend expects this)
       if (!admin && !instructor && !parent) {
         logger.info(`Authentication failed for ${loginType} login with value: ${accessCode}`);
+
+        // IMPORTANT: Return raw null (not wrapped) for backward compatibility
+        // Frontend checks: authenticatedUser !== null
         return res.json(null);
       }
 
       // Create AuthenticatedUserResponse with the matched user
       const authenticatedUser = new AuthenticatedUserResponse(
         admin?.email || instructor?.email || parent?.email,
-        false, // isOperator is false for access code login
         admin,
         instructor,
         parent
@@ -261,97 +355,132 @@ export class UserController {
         parent: !!parent,
       });
 
+      // Return raw authenticated user (not wrapped) for backward compatibility
       res.json(authenticatedUser);
     } catch (error) {
       logger.error('Error authenticating by access code:', error);
 
-      // Return a server error message for infrastructure/system issues
+      // Use standardized error response for server errors
       // This distinguishes from "no match found" (which returns null)
-      return res.status(500).json({
-        error: 'There was an issue logging in. Please try again.',
-        errorMessage: error.message || 'Unknown error',
-        errorType: error.name || 'Error',
-        success: false,
-        systemError: true,
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'authenticateByAccessCode' },
       });
     }
   }
 
   /**
    * Get admin by access code
+   * REST: GET /admins/by-access-code/:accessCode
    */
   static async getAdminByAccessCode(req, res) {
+    const startTime = Date.now();
+
     try {
-      const { accessCode } = req.body;
+      const { accessCode } = req.params;
 
       if (!accessCode) {
-        return res.status(400).json({ error: 'Access code is required' });
+        throw new ValidationError('Access code is required');
       }
 
       const userRepository = serviceContainer.get('userRepository');
       const admin = await userRepository.getAdminByAccessCode(accessCode);
 
       if (!admin) {
-        return res.status(404).json({ error: 'Admin not found with provided access code' });
+        throw new NotFoundError('Admin not found with provided access code');
       }
 
       const transformedData = UserTransformService.transform(admin, 'admin');
-      res.json(transformedData);
+
+      successResponse(res, transformedData, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getAdminByAccessCode' },
+      });
     } catch (error) {
       logger.error('Error getting admin by access code:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getAdminByAccessCode' },
+      });
     }
   }
 
   /**
    * Get instructor by access code
+   * REST: GET /instructors/by-access-code/:accessCode
    */
   static async getInstructorByAccessCode(req, res) {
+    const startTime = Date.now();
+
     try {
-      const { accessCode } = req.body;
+      const { accessCode } = req.params;
 
       if (!accessCode) {
-        return res.status(400).json({ error: 'Access code is required' });
+        throw new ValidationError('Access code is required');
       }
 
       const userRepository = serviceContainer.get('userRepository');
       const instructor = await userRepository.getInstructorByAccessCode(accessCode);
 
       if (!instructor) {
-        return res.status(404).json({ error: 'Instructor not found with provided access code' });
+        throw new NotFoundError('Instructor not found with provided access code');
       }
 
       const transformedData = UserTransformService.transform(instructor, 'instructor');
-      res.json(transformedData);
+
+      successResponse(res, transformedData, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getInstructorByAccessCode' },
+      });
     } catch (error) {
-      logger.error('❌ ERROR in getInstructorByAccessCode:', error);
-      res.status(500).json({ error: error.message });
+      logger.error('Error in getInstructorByAccessCode:', error);
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getInstructorByAccessCode' },
+      });
     }
   }
 
   /**
    * Get parent by access code
+   * REST: GET /parents/by-access-code/:accessCode
    */
   static async getParentByAccessCode(req, res) {
+    const startTime = Date.now();
+
     try {
-      const { accessCode } = req.body;
+      const { accessCode } = req.params;
 
       if (!accessCode) {
-        return res.status(400).json({ error: 'Access code is required' });
+        throw new ValidationError('Access code is required');
       }
 
       const userRepository = serviceContainer.get('userRepository');
       const parent = await userRepository.getParentByAccessCode(accessCode);
 
       if (!parent) {
-        return res.status(404).json({ error: 'Parent not found with provided access code' });
+        throw new NotFoundError('Parent not found with provided access code');
       }
 
       const transformedData = UserTransformService.transform(parent, 'parent');
-      res.json(transformedData);
+
+      successResponse(res, transformedData, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getParentByAccessCode' },
+      });
     } catch (error) {
       logger.error('Error getting parent by access code:', error);
-      res.status(500).json({ error: error.message });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getParentByAccessCode' },
+      });
     }
   }
 }

@@ -97,13 +97,6 @@ const mockUserRepository = {
   getRooms: jest
     .fn()
     .mockResolvedValue([{ id: '1', name: 'Piano Room', location: 'Main Building' }]),
-  getOperatorByEmail: jest.fn().mockResolvedValue({
-    email: process.env.OPERATOR_EMAIL || 'test-operator@example.com',
-    role: 'operator',
-    admin: '123456', // Access code instead of email
-    instructor: null,
-    parent: null,
-  }),
   getAdminByAccessCode: jest.fn().mockResolvedValue({
     id: '1',
     email: 'admin@test.com',
@@ -167,22 +160,17 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
     req.userRepository = mockUserRepository;
     req.programRepository = mockProgramRepository;
     req.currentUser = {
-      email: process.env.OPERATOR_EMAIL || 'test-operator@example.com',
+      email: 'test-user@example.com',
       admin: { id: '1', email: 'admin@test.com', firstName: 'Test', lastName: 'Admin' },
       instructor: null,
       parent: null,
-      roles: [],
-      primaryRole: 'admin',
       displayName: 'Test Admin',
-      operatorEmail: process.env.OPERATOR_EMAIL || 'test-operator@example.com',
       toJSON: function () {
         return {
           email: this.email,
           admin: this.admin,
           instructor: this.instructor,
           parent: this.parent,
-          roles: this.roles,
-          primaryRole: this.primaryRole,
           displayName: this.displayName,
         };
       },
@@ -191,10 +179,9 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
     next();
   },
   getAuthenticatedUserEmail: jest.fn().mockImplementation(req => {
-    return req.currentUser?.operatorEmail || req.currentUser?.email || 'test-operator@example.com';
+    return req.currentUser?.email || 'test-user@example.com';
   }),
   requireAuth: (req, res, next) => next(),
-  requireOperator: (req, res, next) => next(),
 }));
 
 // Mock the service container
@@ -206,6 +193,10 @@ jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js
       const services = {
         userRepository: mockUserRepository,
         programRepository: mockProgramRepository,
+        periodService: {
+          getCurrentPeriod: jest.fn().mockResolvedValue(null),
+          isIntentPeriodActive: jest.fn().mockResolvedValue(false),
+        },
         studentApplicationService: {
           getStudents: jest.fn().mockResolvedValue({
             students: [
@@ -267,104 +258,70 @@ describe('Server Integration Tests', () => {
   });
 
   describe('API Routes', () => {
-    describe('POST /api/getOperatorUser', () => {
-      test('should return current user', async () => {
-        const response = await request(app).post('/api/getOperatorUser').expect(200);
-
-        // Handle double-stringified JSON from server
-        let user;
-        try {
-          user = JSON.parse(JSON.parse(response.text));
-        } catch {
-          user = JSON.parse(response.text);
-        }
-        expect(user).toHaveProperty('email');
-        expect(user).toHaveProperty('primaryRole');
-        expect(user).toHaveProperty('displayName');
-      });
-    });
-
-    describe('POST /api/getAdmins', () => {
+    describe('GET /api/admins', () => {
       test('should return list of admins', async () => {
-        const response = await request(app).post('/api/getAdmins').expect(200);
+        const response = await request(app).get('/api/admins').expect(200);
 
-        let admins;
-        try {
-          admins = JSON.parse(JSON.parse(response.text));
-        } catch {
-          admins = JSON.parse(response.text);
-        }
-        expect(Array.isArray(admins)).toBe(true);
-        expect(admins).toHaveLength(1);
-        expect(admins[0]).toHaveProperty('email', 'admin@test.com');
+        // Expect wrapped format
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('data');
+        expect(Array.isArray(response.body.data)).toBe(true);
+        expect(response.body.data).toHaveLength(1);
+        expect(response.body.data[0]).toHaveProperty('email', 'admin@test.com');
       });
     });
 
-    describe('POST /api/getInstructors', () => {
+    describe('GET /api/instructors', () => {
       test('should return list of instructors', async () => {
-        const response = await request(app).post('/api/getInstructors').expect(200);
+        const response = await request(app).get('/api/instructors').expect(200);
 
-        let instructors;
-        try {
-          instructors = JSON.parse(JSON.parse(response.text));
-        } catch {
-          instructors = JSON.parse(response.text);
-        }
-        expect(Array.isArray(instructors)).toBe(true);
-        expect(instructors).toHaveLength(1);
-        expect(instructors[0]).toHaveProperty('email', 'instructor@test.com');
+        // Expect wrapped format
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('data');
+        expect(Array.isArray(response.body.data)).toBe(true);
+        expect(response.body.data).toHaveLength(1);
+        expect(response.body.data[0]).toHaveProperty('email', 'instructor@test.com');
       });
     });
 
-    describe('POST /api/getStudents', () => {
+    describe('GET /api/students', () => {
       test('should return list of students', async () => {
-        const response = await request(app).post('/api/getStudents').expect(200);
+        const response = await request(app).get('/api/students').expect(200);
 
-        let result;
-        try {
-          result = JSON.parse(JSON.parse(response.text));
-        } catch {
-          result = JSON.parse(response.text);
-        }
-
-        // Should return direct array like other user endpoints
-        expect(Array.isArray(result)).toBe(true);
-        expect(result.length).toBeGreaterThan(0);
-        expect(result[0]).toHaveProperty('id');
-        expect(result[0]).toHaveProperty('firstName');
-        expect(result[0]).toHaveProperty('lastName');
+        // Expect wrapped format
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('data');
+        expect(Array.isArray(response.body.data)).toBe(true);
+        expect(response.body.data.length).toBeGreaterThan(0);
+        expect(response.body.data[0]).toHaveProperty('id');
+        expect(response.body.data[0]).toHaveProperty('firstName');
+        expect(response.body.data[0]).toHaveProperty('lastName');
       });
     });
 
-    describe('POST /api/getClasses', () => {
+    describe('GET /api/classes', () => {
       test('should return list of classes', async () => {
-        const response = await request(app).post('/api/getClasses').expect(200);
+        const response = await request(app).get('/api/classes').expect(200);
 
-        let classes;
-        try {
-          classes = JSON.parse(JSON.parse(response.text));
-        } catch {
-          classes = JSON.parse(response.text);
-        }
-        expect(Array.isArray(classes)).toBe(true);
-        expect(classes).toHaveLength(1);
-        expect(classes[0]).toHaveProperty('name', 'Beginner Piano');
+        // Expect wrapped format
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('data');
+        expect(Array.isArray(response.body.data)).toBe(true);
+        expect(response.body.data).toHaveLength(1);
+        expect(response.body.data[0]).toHaveProperty('name', 'Beginner Piano');
       });
     });
 
-    describe('POST /api/getRooms', () => {
+    describe('GET /api/rooms', () => {
       test('should return list of rooms', async () => {
-        const response = await request(app).post('/api/getRooms').expect(200);
+        const response = await request(app).get('/api/rooms').expect(200);
 
-        let rooms;
-        try {
-          rooms = JSON.parse(JSON.parse(response.text));
-        } catch {
-          rooms = JSON.parse(response.text);
-        }
-        expect(Array.isArray(rooms)).toBe(true);
-        expect(rooms).toHaveLength(1);
-        expect(rooms[0]).toHaveProperty('name', 'Piano Room');
+        // Expect wrapped format
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('data');
+        expect(Array.isArray(response.body.data)).toBe(true);
+        expect(response.body.data).toHaveLength(1);
+        expect(response.body.data[0]).toHaveProperty('name', 'Piano Room');
       });
     });
 

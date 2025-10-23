@@ -1,7 +1,13 @@
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-// Load environment variables once
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load environment variables from config/.env (or .env in project root as fallback)
+dotenv.config({ path: join(__dirname, '../../config/.env') });
+dotenv.config(); // Fallback to root .env if config/.env doesn't exist
 
 /**
  * Centralized configuration service that abstracts environment variable access

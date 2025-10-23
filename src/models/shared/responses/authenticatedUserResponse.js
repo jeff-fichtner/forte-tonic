@@ -7,37 +7,25 @@ export class AuthenticatedUserResponse {
   /**
    * Creates an AuthenticatedUserResponse instance
    * @param {object | string} data - Object with properties OR email as first positional parameter
-   * @param {boolean} [isOperator] - Operator status (if using positional parameters)
    * @param {object} [admin] - Admin data (if using positional parameters)
    * @param {object} [instructor] - Instructor data (if using positional parameters)
    * @param {object} [parent] - Parent data (if using positional parameters)
    */
-  constructor(data, isOperator, admin, instructor, parent) {
+  constructor(data, admin, instructor, parent) {
     if (typeof data === 'object' && data !== null) {
       // Object destructuring constructor (web pattern)
-      const {
-        email,
-        isOperator: isOp,
-        admin: adminData,
-        instructor: instructorData,
-        parent: parentData,
-        roles = [],
-      } = data;
+      const { email, admin: adminData, instructor: instructorData, parent: parentData } = data;
 
       this.email = email;
-      this.isOperator = isOp;
       this.admin = adminData ? Admin.fromApiData(adminData) : null;
       this.instructor = instructorData ? Instructor.fromApiData(instructorData) : null;
       this.parent = parentData ? Parent.fromApiData(parentData) : null;
-      this.roles = Array.isArray(roles) ? roles : [];
     } else {
       // Positional constructor (core pattern)
       this.email = data;
-      this.isOperator = isOperator;
       this.admin = admin;
       this.instructor = instructor;
       this.parent = parent;
-      this.roles = [];
     }
   }
 
@@ -63,39 +51,6 @@ export class AuthenticatedUserResponse {
    */
   isParent() {
     return !!this.parent;
-  }
-
-  /**
-   * Checks if user should be shown as operator
-   * @returns {boolean} True if should show as operator
-   */
-  get shouldShowAsOperator() {
-    return this.isOperator && !this.admin && !this.instructor && !this.parent;
-  }
-
-  /**
-   * Gets the primary role of the user
-   * @returns {string} Primary role
-   */
-  get primaryRole() {
-    if (this.isAdmin()) return 'admin';
-    if (this.isInstructor()) return 'instructor';
-    if (this.isParent()) return 'parent';
-    if (this.isOperator) return 'operator';
-    return 'user';
-  }
-
-  /**
-   * Gets all user roles
-   * @returns {Array<string>} Array of user roles
-   */
-  get allRoles() {
-    const roles = [];
-    if (this.isAdmin()) roles.push('admin');
-    if (this.isInstructor()) roles.push('instructor');
-    if (this.isParent()) roles.push('parent');
-    if (this.isOperator) roles.push('operator');
-    return roles;
   }
 
   /**
@@ -151,7 +106,7 @@ export class AuthenticatedUserResponse {
     }
 
     // At least one role should be active
-    if (!this.isAdmin() && !this.isInstructor() && !this.isParent() && !this.isOperator) {
+    if (!this.isAdmin() && !this.isInstructor() && !this.isParent()) {
       errors.push('User must have at least one role');
     }
 
@@ -168,15 +123,10 @@ export class AuthenticatedUserResponse {
   toJSON() {
     return {
       email: this.email,
-      isOperator: this.isOperator,
       admin: this.admin ? this.admin.toJSON() : null,
       instructor: this.instructor ? this.instructor.toJSON() : null,
       parent: this.parent ? this.parent.toJSON() : null,
-      roles: this.roles,
-      primaryRole: this.primaryRole,
-      allRoles: this.allRoles,
       displayName: this.displayName,
-      shouldShowAsOperator: this.shouldShowAsOperator,
     };
   }
 }

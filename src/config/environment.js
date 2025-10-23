@@ -3,7 +3,7 @@
  * Manages different settings for staging vs production environments
  */
 
-import { LogLevel, NodeEnv } from '../utils/logger.js';
+import { LogLevel, NodeEnv, createLogger } from '../utils/logger.js';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -22,7 +22,6 @@ const config = {
       email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       privateKey: process.env.GOOGLE_PRIVATE_KEY,
     },
-    operatorEmail: process.env.OPERATOR_EMAIL,
     baseUrl: 'http://localhost:3000',
     logLevel: LogLevel.DEBUG,
   },
@@ -36,7 +35,6 @@ const config = {
         'test-service-account@test-project.iam.gserviceaccount.com',
       privateKey: process.env.GOOGLE_PRIVATE_KEY || 'test-private-key',
     },
-    operatorEmail: process.env.OPERATOR_EMAIL || 'your-operator-email@domain.com',
     baseUrl: 'http://localhost:3001',
     logLevel: LogLevel.ERROR, // Minimal logging for tests
   },
@@ -48,7 +46,6 @@ const config = {
       email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       privateKey: process.env.GOOGLE_PRIVATE_KEY,
     },
-    operatorEmail: process.env.OPERATOR_EMAIL,
     baseUrl: process.env.SERVICE_URL,
     logLevel: process.env.LOG_LEVEL || LogLevel.INFO,
   },
@@ -60,7 +57,6 @@ const config = {
       email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       privateKey: process.env.GOOGLE_PRIVATE_KEY,
     },
-    operatorEmail: process.env.OPERATOR_EMAIL,
     baseUrl: process.env.SERVICE_URL,
     logLevel: process.env.LOG_LEVEL || LogLevel.WARN,
   },
@@ -104,6 +100,7 @@ export const version = {
   number: getVersionNumber(),
   buildDate: getBuildDate(),
   gitCommit: process.env.BUILD_GIT_COMMIT || getLocalGitCommit(),
+  gitTag: process.env.BUILD_GIT_TAG || null,
   environment,
   isStaging: environment === NodeEnv.STAGING,
   displayVersion: environment !== NodeEnv.PRODUCTION, // Show in all environments except production
@@ -141,15 +138,17 @@ function getBuildDate() {
 function getLocalGitCommit() {
   // For local development, just return a static identifier
   // The actual git commit will be available on the build server via BUILD_GIT_COMMIT
-  return 'local-dev';
+  return 'uncommitted-dev';
 }
 
 // Only log environment info when not in test mode
 if (environment !== 'test') {
-  console.log(`🌍 Environment: ${environment}`);
-  console.log(`🔗 Base URL: ${currentConfig.baseUrl}`);
-  console.log(`📊 Log Level: ${currentConfig.logLevel}`);
+  // Create a minimal logger for startup (can't use full configService here due to circular dependency)
+  const logger = createLogger({ getServerConfig: () => ({ nodeEnv: environment }) });
+  logger.info(`Environment: ${environment}`);
+  logger.info(`Base URL: ${currentConfig.baseUrl}`);
+  logger.info(`Log Level: ${currentConfig.logLevel}`);
   if (version.displayVersion) {
-    console.log(`🏷️  Version: ${version.number} (${version.gitCommit?.substring(0, 7)})`);
+    logger.info(`Version: ${version.number} (${version.gitCommit?.substring(0, 7)})`);
   }
 }

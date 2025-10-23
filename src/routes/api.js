@@ -22,8 +22,27 @@ router.get('/version', (req, res) => {
   res.json(version);
 });
 
-// Get current operator user
-router.post('/getOperatorUser', UserController.getOperatorUser);
+// ===== REST API ENDPOINTS =====
+
+// Configuration
+router.get('/configuration', UserController.getAppConfiguration);
+
+// User resources
+router.get('/admins', UserController.getAdmins);
+router.get('/instructors', UserController.getInstructors);
+router.get('/students', extractPaginatedRequestData, UserController.getStudents);
+
+// Lookup by access code
+router.get('/admins/by-access-code/:accessCode', UserController.getAdminByAccessCode);
+router.get('/instructors/by-access-code/:accessCode', UserController.getInstructorByAccessCode);
+router.get('/parents/by-access-code/:accessCode', UserController.getParentByAccessCode);
+
+// Program resources
+router.get('/classes', extractPaginatedRequestData, RegistrationController.getClasses);
+router.get('/rooms', extractPaginatedRequestData, RegistrationController.getRooms);
+router.get('/registrations', extractPaginatedRequestData, RegistrationController.getRegistrations);
+
+// ===== AUTHENTICATION & ADMIN TOOLS =====
 
 // Authenticate user by access code
 router.post(
@@ -40,37 +59,6 @@ router.post('/testSheetData', SystemController.testSheetData);
 
 // Admin-only cache clear endpoint
 router.post('/admin/clearCache', SystemController.clearCache);
-
-router.post('/getAdmins', UserController.getAdmins);
-
-router.post('/getInstructors', UserController.getInstructors);
-
-router.post('/getStudents', extractPaginatedRequestData, UserController.getStudents);
-
-// Access code lookup endpoints
-router.post('/getAdminByAccessCode', extractSingleRequestData, UserController.getAdminByAccessCode);
-
-router.post(
-  '/getInstructorByAccessCode',
-  extractSingleRequestData,
-  UserController.getInstructorByAccessCode
-);
-
-router.post(
-  '/getParentByAccessCode',
-  extractSingleRequestData,
-  UserController.getParentByAccessCode
-);
-
-router.post('/getClasses', extractPaginatedRequestData, RegistrationController.getClasses);
-
-router.post(
-  '/getRegistrations',
-  extractPaginatedRequestData,
-  RegistrationController.getRegistrations
-);
-
-router.post('/getRooms', extractPaginatedRequestData, RegistrationController.getRooms);
 
 // ===== NEW REPOSITORY-BASED ENDPOINTS =====
 
@@ -93,6 +81,15 @@ router.get('/attendance/summary/:registrationId', AttendanceController.getAttend
  * Registration endpoints - Unified patterns
  */
 router.post('/unregister', initializeRepositories, RegistrationController.unregister);
+
+/**
+ * Update reenrollment intent for a registration
+ */
+router.patch(
+  '/registrations/:id/intent',
+  initializeRepositories,
+  RegistrationController.updateIntent
+);
 
 /**
  * Attendance endpoints
