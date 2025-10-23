@@ -243,9 +243,23 @@ export class ViewModel {
     }
 
     // master schedule tab - exclude wait list classes from master schedule
+    const rockBandClassIds = ClassManager.getRockBandClassIds();
+    console.log('🎸 Rock Band class IDs configured:', rockBandClassIds);
+
     const nonWaitlistRegistrations = this.registrations.filter(registration => {
-      return !ClassManager.isRockBandClass(registration.classId);
+      const isRockBand = ClassManager.isRockBandClass(registration.classId);
+      if (isRockBand) {
+        console.log(
+          `🎸 Filtering out Rock Band registration: classId=${registration.classId}, student=${registration.studentId}`
+        );
+      }
+      return !isRockBand;
     });
+
+    console.log(
+      `📊 Master Schedule: ${nonWaitlistRegistrations.length} registrations (filtered from ${this.registrations.length} total)`
+    );
+
     const sortedRegistrations = this.#sortRegistrations(nonWaitlistRegistrations);
     this.masterScheduleTable = this.#buildRegistrationTable(sortedRegistrations);
     this.#populateFilterDropdowns(nonWaitlistRegistrations);
