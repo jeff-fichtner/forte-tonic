@@ -5,16 +5,18 @@
 export class AppConfigurationResponse {
   /**
    * Creates an AppConfigurationResponse instance
-   * @param {object} data - Object with currentPeriod and rockBandClassIds properties
+   * @param {object} data - Object with currentPeriod, nextPeriod, and rockBandClassIds properties
    */
   constructor(data) {
     if (typeof data === 'object' && data !== null) {
-      const { currentPeriod, rockBandClassIds } = data;
+      const { currentPeriod, nextPeriod, rockBandClassIds } = data;
 
       this.currentPeriod = currentPeriod || null;
+      this.nextPeriod = nextPeriod || null;
       this.rockBandClassIds = Array.isArray(rockBandClassIds) ? rockBandClassIds : [];
     } else {
       this.currentPeriod = null;
+      this.nextPeriod = null;
       this.rockBandClassIds = [];
     }
   }
@@ -50,6 +52,7 @@ export class AppConfigurationResponse {
   toJSON() {
     return {
       currentPeriod: this.currentPeriod,
+      nextPeriod: this.nextPeriod,
       rockBandClassIds: this.rockBandClassIds,
     };
   }
@@ -68,7 +71,11 @@ export class AppConfigurationResponse {
    * @returns {AppConfigurationResponse} Empty instance
    */
   static empty() {
-    return new AppConfigurationResponse({ currentPeriod: null, rockBandClassIds: [] });
+    return new AppConfigurationResponse({
+      currentPeriod: null,
+      nextPeriod: null,
+      rockBandClassIds: [],
+    });
   }
 }
 

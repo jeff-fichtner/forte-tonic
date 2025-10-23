@@ -783,16 +783,43 @@ export class ViewModel {
         const instructorName = instructor
           ? `${instructor.firstName} ${instructor.lastName}`
           : 'Unknown';
-        const instrument = registration.instrument || registration.classTitle || 'Unknown';
-        lessonDetails = `<strong>${instrument}</strong> with <strong>${instructorName}</strong> on <strong>${registration.day}</strong>`;
+
+        // For group registrations, show the class title; for private lessons, show the instrument
+        const isGroupClass = registration.registrationType === 'group';
+        const lessonName = isGroupClass
+          ? registration.classTitle || 'Unknown Class'
+          : registration.instrument || 'Unknown';
+
+        lessonDetails = `<strong>${lessonName}</strong> with <strong>${instructorName}</strong> on <strong>${registration.day}</strong>`;
       }
 
       // Set the message based on intent
-      const intentMessages = {
-        keep: `Are you sure you want to <strong>keep</strong> ${lessonDetails}?<br><br>This confirms your intention to continue with this lesson.`,
-        drop: `Are you sure you want to <strong>drop</strong> ${lessonDetails}?<br><br>This indicates you do not wish to continue with this lesson.`,
-        change: `Are you sure you want to <strong>change</strong> ${lessonDetails}?<br><br>This indicates you wish to make changes to this lesson (time, instructor, etc.).`,
-      };
+      let intentMessages;
+      if (intent === 'drop') {
+        // For drop, include next priority enrollment period info
+        const nextPeriod = window.UserSession?.getNextPeriod();
+        let periodInfo = '';
+        if (nextPeriod?.periodType === PeriodType.PRIORITY_ENROLLMENT && nextPeriod?.startDate) {
+          const startDate = new Date(nextPeriod.startDate);
+          const formattedDate = startDate.toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+          });
+          periodInfo = `<br><br>You can change your response until the next priority enrollment period begins on <strong>${formattedDate}</strong>.`;
+        }
+        intentMessages = {
+          keep: `Are you sure you want to <strong>keep</strong> ${lessonDetails}?<br><br>This confirms your intention to continue with this lesson.`,
+          drop: `Are you sure you want to <strong>drop</strong> ${lessonDetails}?<br><br>This indicates you do not wish to continue with this lesson.${periodInfo}`,
+          change: `Are you sure you want to <strong>change</strong> ${lessonDetails}?<br><br>You won't lose this lesson until you select a different lesson.`,
+        };
+      } else {
+        intentMessages = {
+          keep: `Are you sure you want to <strong>keep</strong> ${lessonDetails}?<br><br>This confirms your intention to continue with this lesson.`,
+          drop: `Are you sure you want to <strong>drop</strong> ${lessonDetails}?<br><br>This indicates you do not wish to continue with this lesson.`,
+          change: `Are you sure you want to <strong>change</strong> ${lessonDetails}?<br><br>You won't lose this lesson until you select a different lesson.`,
+        };
+      }
 
       messageEl.innerHTML =
         intentMessages[intent] || 'Are you sure you want to update your intent?';

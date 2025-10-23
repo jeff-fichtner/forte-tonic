@@ -72,4 +72,53 @@ export class PeriodService extends BaseService {
     const currentPeriod = await this.getCurrentPeriod();
     return !!(currentPeriod && currentPeriod.periodType === PeriodType.INTENT);
   }
+
+  /**
+   * Get the next upcoming period
+   * @returns {Promise<object|null>} Next period object {trimester, periodType, startDate} or null if no future periods
+   * @throws {Error} If database read fails
+   */
+  async getNextPeriod() {
+    try {
+      const allPeriods = await this.dbClient.getAllRecords('periods', row => {
+        if (!row || !row[0]) return null;
+
+        // Skip header row
+        const firstCell = String(row[0]).trim().toLowerCase();
+        if (firstCell === 'trimester') return null;
+
+        return {
+          trimester: row[0],
+          periodType: row[1],
+          startDate: row[2] ? new Date(row[2]) : null,
+        };
+      });
+
+      // Get current date/time
+      const now = new Date();
+
+      // Find the period with the earliest startDate that hasn't started yet (single pass)
+      const nextPeriod = allPeriods.reduce((earliest, current) => {
+        // Skip periods without valid startDate or that have already started
+        if (!current || !current.startDate || current.startDate <= now) {
+          return earliest;
+        }
+        // Return current if no earliest yet, or if current starts sooner
+        if (!earliest || current.startDate < earliest.startDate) {
+          return current;
+        }
+        return earliest;
+      }, null);
+
+      if (!nextPeriod) {
+        this.logger.warn('No next period found (no future periods scheduled)');
+        return null;
+      }
+
+      return nextPeriod;
+    } catch (error) {
+      this.logger.error('Error getting next period:', error);
+      throw error;
+    }
+  }
 }
