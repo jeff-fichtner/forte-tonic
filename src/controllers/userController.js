@@ -154,7 +154,11 @@ export class UserController {
       successResponse(res, details, {
         req,
         startTime,
-        context: { controller: 'UserController', method: 'getStudentDetails', studentId: req.params.studentId },
+        context: {
+          controller: 'UserController',
+          method: 'getStudentDetails',
+          studentId: req.params.studentId,
+        },
       });
     } catch (error) {
       logger.error('Error getting student details:', error);
@@ -189,7 +193,11 @@ export class UserController {
         message: 'Student profile updated successfully',
         req,
         startTime,
-        context: { controller: 'UserController', method: 'updateStudent', studentId: req.params.studentId },
+        context: {
+          controller: 'UserController',
+          method: 'updateStudent',
+          studentId: req.params.studentId,
+        },
       });
     } catch (error) {
       logger.error('Error updating student:', error);
@@ -248,7 +256,11 @@ export class UserController {
       successResponse(res, report, {
         req,
         startTime,
-        context: { controller: 'UserController', method: 'getStudentProgressReport', studentId: req.params.studentId },
+        context: {
+          controller: 'UserController',
+          method: 'getStudentProgressReport',
+          studentId: req.params.studentId,
+        },
       });
     } catch (error) {
       logger.error('Error generating progress report:', error);

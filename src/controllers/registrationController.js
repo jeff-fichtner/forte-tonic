@@ -297,7 +297,11 @@ export class RegistrationController {
       successResponse(res, conflicts, {
         req,
         startTime,
-        context: { controller: 'RegistrationController', method: 'getRegistrationConflicts', studentId: req.params.studentId },
+        context: {
+          controller: 'RegistrationController',
+          method: 'getRegistrationConflicts',
+          studentId: req.params.studentId,
+        },
       });
     } catch (error) {
       logger.error('Error getting registration conflicts:', error);
@@ -414,7 +418,11 @@ export class RegistrationController {
         message: 'Registration removed',
         req,
         startTime,
-        context: { controller: 'RegistrationController', method: 'unregister (legacy)', registrationId },
+        context: {
+          controller: 'RegistrationController',
+          method: 'unregister (legacy)',
+          registrationId,
+        },
       });
     } catch (error) {
       logger.error('Error unregistering student:', error);
@@ -464,7 +472,12 @@ export class RegistrationController {
       successResponse(res, registration, {
         req,
         startTime,
-        context: { controller: 'RegistrationController', method: 'updateIntent', registrationId: id, intent },
+        context: {
+          controller: 'RegistrationController',
+          method: 'updateIntent',
+          registrationId: id,
+          intent,
+        },
       });
     } catch (error) {
       if (error.message === 'Registration not found') {

@@ -91,7 +91,9 @@ export class EmailClient {
         attachments: attachments, // Array of attachment objects
       };
 
-      this.logger.info(`📧 Sending email with ${attachments.length} attachment(s) to ${mailOptions.to}`);
+      this.logger.info(
+        `📧 Sending email with ${attachments.length} attachment(s) to ${mailOptions.to}`
+      );
 
       const info = await this.transporter.sendMail(mailOptions);
 
@@ -139,7 +141,9 @@ export class EmailClient {
     }
 
     const successful = results.filter(r => r.success).length;
-    this.logger.info(`📊 Bulk email complete: ${successful}/${recipients.length} sent successfully`);
+    this.logger.info(
+      `📊 Bulk email complete: ${successful}/${recipients.length} sent successfully`
+    );
 
     return {
       totalSent: successful,
@@ -168,7 +172,10 @@ export class EmailClient {
       };
     } catch (error) {
       // Note: This error may be expected during testing when simulating connection failures
-      this.logger.error('❌ Email server connection failed (may be expected during testing):', error);
+      this.logger.error(
+        '❌ Email server connection failed (may be expected during testing):',
+        error
+      );
       return {
         success: false,
         error: error.message,

@@ -162,8 +162,7 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
     // Enable detailed console logging for debugging
   });
 
-  afterEach(() => {
-  });
+  afterEach(() => {});
 
   describe('Success Cases', () => {
     test('should return instructor data for valid access code', async () => {
@@ -231,7 +230,10 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
         .expect(404);
       // Updated to expect standardized error format
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body.error).toHaveProperty('message', 'Instructor not found with provided access code');
+      expect(response.body.error).toHaveProperty(
+        'message',
+        'Instructor not found with provided access code'
+      );
       expect(response.body.error).toHaveProperty('type', 'not_found');
       expect(response.body.error).toHaveProperty('code', 'NOT_FOUND');
 
@@ -276,9 +278,7 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
       // BREAKPOINT: Check service transformation
       // debugger;
 
-      const response = await request(app)
-        .get('/api/instructors/by-access-code/654321')
-        .expect(200);
+      const response = await request(app).get('/api/instructors/by-access-code/654321').expect(200);
 
       // Verify wrapped response with transformed data structure
       expect(response.body).toHaveProperty('success', true);

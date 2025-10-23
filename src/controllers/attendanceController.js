@@ -52,19 +52,28 @@ export class AttendanceController {
 
       const savedAttendance = await req.attendanceRepository.create(attendanceData);
 
-      successResponse(res, {
-        id: savedAttendance.id,
-        registrationId: savedAttendance.registrationId,
-        week: savedAttendance.week,
-        schoolYear: savedAttendance.schoolYear,
-        trimester: savedAttendance.trimester,
-        recordedAt: savedAttendance.recordedAt,
-      }, {
-        message: 'Attendance recorded successfully',
-        req,
-        startTime,
-        context: { controller: 'AttendanceController', method: 'markAttendance', registrationId, week },
-      });
+      successResponse(
+        res,
+        {
+          id: savedAttendance.id,
+          registrationId: savedAttendance.registrationId,
+          week: savedAttendance.week,
+          schoolYear: savedAttendance.schoolYear,
+          trimester: savedAttendance.trimester,
+          recordedAt: savedAttendance.recordedAt,
+        },
+        {
+          message: 'Attendance recorded successfully',
+          req,
+          startTime,
+          context: {
+            controller: 'AttendanceController',
+            method: 'markAttendance',
+            registrationId,
+            week,
+          },
+        }
+      );
     } catch (error) {
       logger.error('Error recording attendance:', error);
       errorResponse(res, error, {
@@ -94,7 +103,11 @@ export class AttendanceController {
       successResponse(res, summary, {
         req,
         startTime,
-        context: { controller: 'AttendanceController', method: 'getAttendanceSummary', registrationId },
+        context: {
+          controller: 'AttendanceController',
+          method: 'getAttendanceSummary',
+          registrationId,
+        },
       });
     } catch (error) {
       logger.error('Error getting attendance summary:', error);
@@ -126,7 +139,11 @@ export class AttendanceController {
       successResponse(res, attendanceRecord, {
         req,
         startTime,
-        context: { controller: 'AttendanceController', method: 'recordAttendance (legacy)', registrationId: data.registrationId },
+        context: {
+          controller: 'AttendanceController',
+          method: 'recordAttendance (legacy)',
+          registrationId: data.registrationId,
+        },
       });
     } catch (error) {
       logger.error('Error recording attendance:', error);
@@ -158,7 +175,11 @@ export class AttendanceController {
       successResponse(res, success, {
         req,
         startTime,
-        context: { controller: 'AttendanceController', method: 'removeAttendance (legacy)', registrationId: data.registrationId },
+        context: {
+          controller: 'AttendanceController',
+          method: 'removeAttendance (legacy)',
+          registrationId: data.registrationId,
+        },
       });
     } catch (error) {
       logger.error('Error removing attendance:', error);

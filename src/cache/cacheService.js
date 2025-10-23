@@ -249,7 +249,6 @@ export class CacheService {
 
     this.timers.clear();
     this.cache.clear();
-
   }
 
   /**

@@ -135,7 +135,9 @@ async function extractAuthenticatedUser(req, userRepository) {
       }
     }
 
-    logger.debug('No authenticated user found - audit operations will require valid authentication');
+    logger.debug(
+      'No authenticated user found - audit operations will require valid authentication'
+    );
   } catch (error) {
     logger.error('Error extracting authenticated user:', error);
     req.currentUser = null;

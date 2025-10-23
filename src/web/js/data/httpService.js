@@ -75,7 +75,6 @@ export class HttpService {
    *
    */
   static async fetchAllPages(serverFunctionName, mapper, pageSize = 1000, context = null, ...args) {
-
     let allResults = [];
     let currentPage = 0;
 
@@ -163,7 +162,13 @@ export class HttpService {
   /**
    *
    */
-  static async #callServerFunction(serverFunctionName, payload, mapper = null, _context = null, httpMethod = 'POST') {
+  static async #callServerFunction(
+    serverFunctionName,
+    payload,
+    mapper = null,
+    _context = null,
+    httpMethod = 'POST'
+  ) {
     try {
       // Get stored access code for authentication
       const headers = {

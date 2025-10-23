@@ -115,7 +115,6 @@ export class SheetCacheManager {
     if (options.dependsOn) {
       this.addDependency(key, options.dependsOn);
     }
-
   }
 
   /**
@@ -194,7 +193,6 @@ export class SheetCacheManager {
     for (let i = 0; i < toRemove; i++) {
       this.cache.delete(entries[i][0]);
     }
-
   }
 
   /**
@@ -214,7 +212,6 @@ export class SheetCacheManager {
         break;
       }
     }
-
   }
 
   /**
@@ -263,13 +260,9 @@ export class SheetCacheManager {
       return existing;
     }
 
-    try {
-      const data = await loader();
-      this.set(key, data, options);
-      return data;
-    } catch (error) {
-      throw error;
-    }
+    const data = await loader();
+    this.set(key, data, options);
+    return data;
   }
 
   /**
@@ -307,6 +300,7 @@ export class SheetCacheManager {
         this.set(key, newData, options);
       }
     } catch (error) {
+      // Silently fail background refresh - stale data is still usable
     }
   }
 }
