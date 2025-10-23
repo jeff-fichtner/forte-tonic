@@ -157,29 +157,7 @@ export class RegistrationController {
         authenticatedUserEmail
       );
 
-      // Return enriched response with complete registration data
-      const registrationData = {
-        id: result.registration.id,
-        studentId: result.registration.studentId,
-        instructorId: result.registration.instructorId,
-        day: result.registration.day,
-        startTime: result.registration.startTime,
-        length: result.registration.length,
-        registrationType: result.registration.registrationType,
-        instrument: result.registration.instrument,
-        classId: result.registration.classId,
-        classTitle: result.registration.classTitle,
-        roomId: result.registration.roomId,
-        transportationType: result.registration.transportationType,
-        notes: result.registration.notes,
-        schoolYear: result.registration.schoolYear,
-        trimester: result.registration.trimester,
-        expectedStartDate: result.registration.expectedStartDate,
-        registeredAt: result.registration.registeredAt,
-        registeredBy: result.registration.registeredBy,
-      };
-
-      successResponse(res, registrationData, {
+      successResponse(res, result.registration, {
         message: 'Registration created successfully',
         statusCode: 201,
         req,
@@ -362,7 +340,9 @@ export class RegistrationController {
         authenticatedUserEmail
       );
 
-      successResponse(res, result, {
+      successResponse(res, result.registration, {
+        message: 'Registration created successfully',
+        statusCode: 201,
         req,
         startTime,
         context: { controller: 'RegistrationController', method: 'register (legacy)', studentId },
