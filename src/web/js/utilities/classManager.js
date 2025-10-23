@@ -21,7 +21,17 @@ class ClassManager {
   static isRockBandClass(classId) {
     // Handle both direct string values and objects with .value property
     const id = classId?.value || classId;
-    return this.getRockBandClassIds().includes(id);
+
+    // If no classId provided, it's not a Rock Band class
+    if (!id) {
+      return false;
+    }
+
+    // Trim and normalize for comparison
+    const normalizedId = String(id).trim();
+    const rockBandIds = this.getRockBandClassIds();
+
+    return rockBandIds.some(rockBandId => String(rockBandId).trim() === normalizedId);
   }
 
   /**
