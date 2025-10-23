@@ -81,7 +81,7 @@ constructor(data, instructorId, day, startTime, length, endTime, instrument,
 #### 5. **AuthenticatedUserResponse** (`src/shared/models/responses/authenticatedUserResponse.js`)
 ```javascript
 // This is a RESPONSE DTO - different purpose
-constructor(data, isOperator, admin, instructor, parent) {
+constructor(data, admin, instructor, parent) {
   if (typeof data === 'object' && data !== null) {
     // Hydrating from API response
   } else {

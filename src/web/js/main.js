@@ -7,7 +7,6 @@
 import './constants.js';
 import './data/httpService.js';
 import '/models/shared/responses/authenticatedUserResponse.js';
-import '/models/shared/responses/operatorUserResponse.js';
 import '/models/shared/admin.js';
 import '/models/shared/class.js';
 import '/models/shared/instructor.js';
@@ -173,20 +172,28 @@ const AccessCodeManager = {
  * User session storage for current user data
  */
 const UserSession = {
-  operatorUser: null,
+  appConfig: null,
 
-  saveOperatorUser(user) {
-    this.operatorUser = user;
-    console.log('Operator user saved to user session');
+  saveAppConfig(config) {
+    this.appConfig = config;
+    console.log('App configuration saved to user session');
   },
 
-  getOperatorUser() {
-    return this.operatorUser;
+  getAppConfig() {
+    return this.appConfig;
   },
 
-  clearOperatorUser() {
-    this.operatorUser = null;
-    console.log('Operator user cleared from user session');
+  getCurrentPeriod() {
+    return this.appConfig?.currentPeriod;
+  },
+
+  getNextPeriod() {
+    return this.appConfig?.nextPeriod;
+  },
+
+  clearAppConfig() {
+    this.appConfig = null;
+    console.log('App configuration cleared from user session');
   },
 
   /**
@@ -282,13 +289,23 @@ async function initializeVersionDisplay() {
 
         versionDisplay.style.display = 'block';
 
-        // Add click handler to show detailed version info
-        versionDisplay.addEventListener('click', () => {
+        // Add click handler to copy commit ID and show detailed version info
+        versionDisplay.addEventListener('click', async () => {
+          // Copy commit ID to clipboard
+          try {
+            await navigator.clipboard.writeText(versionInfo.gitCommit);
+            console.log('✓ Commit ID copied to clipboard:', versionInfo.gitCommit);
+          } catch (error) {
+            console.warn('Failed to copy commit ID:', error);
+          }
+
           const details = `
 Version: ${versionInfo.number}
-Environment: ${versionInfo.environment}
+${versionInfo.gitTag ? `Git Tag: ${versionInfo.gitTag}\n` : ''}Environment: ${versionInfo.environment}
 Build Date: ${new Date(versionInfo.buildDate).toLocaleString()}
 Git Commit: ${versionInfo.gitCommit}
+
+✓ Commit ID copied to clipboard!
           `.trim();
 
           alert(details);

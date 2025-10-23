@@ -3094,6 +3094,12 @@ export class ParentRegistrationForm {
           // Clear message when modal closes and restore scrolling
           messageElement.innerHTML = '';
           this.#restorePageScrolling();
+          // Destroy modal instance to prevent memory leaks and scroll issues
+          if (modalInstance) {
+            modalInstance.destroy();
+          }
+          // Remove any lingering overlays
+          document.querySelectorAll('.modal-overlay').forEach(overlay => overlay.remove());
         },
       });
 
@@ -3131,11 +3137,8 @@ export class ParentRegistrationForm {
     // Remove any fixed positioning that might interfere
     document.body.style.position = '';
 
-    // Ensure no modal overlay is blocking interactions
-    const modalOverlay = document.querySelector('.modal-overlay');
-    if (modalOverlay && modalOverlay.style.display !== 'none') {
-      modalOverlay.style.display = 'none';
-    }
+    // Remove all modal overlays instead of just hiding them
+    document.querySelectorAll('.modal-overlay').forEach(overlay => overlay.remove());
   }
 
   /**

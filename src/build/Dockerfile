@@ -46,7 +46,6 @@ COPY --from=builder --chown=nodejs:nodejs /app/src ./src
 COPY --from=builder --chown=nodejs:nodejs /app/config ./config
 COPY --from=builder --chown=nodejs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nodejs:nodejs /app/start.js ./
-COPY --from=builder --chown=nodejs:nodejs /app/.env* ./
 
 # Switch to non-root user
 USER nodejs

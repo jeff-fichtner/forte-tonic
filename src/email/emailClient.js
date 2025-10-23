@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { configService } from '../services/configurationService.js';
+import { createLogger } from '../utils/logger.js';
 
 /**
  *
@@ -10,6 +11,7 @@ export class EmailClient {
    */
   constructor(configurationService = configService) {
     this.configService = configurationService;
+    this.logger = createLogger(configurationService);
     this.transporter = null;
     this.#initializeTransporter();
   }
@@ -23,9 +25,9 @@ export class EmailClient {
 
       // Create reusable transporter object using SMTP transport
       this.transporter = nodemailer.createTransport(emailConfig);
-      console.log('📧 Email client initialized successfully');
+      this.logger.info('📧 Email client initialized successfully');
     } catch (error) {
-      console.error('❌ Failed to initialize email client:', error);
+      this.logger.error('❌ Failed to initialize email client:', error);
       this.transporter = null;
     }
   }
@@ -49,11 +51,11 @@ export class EmailClient {
         html: html || text, // Use HTML if provided, otherwise fallback to text
       };
 
-      console.log(`📧 Sending email to ${mailOptions.to} with subject: ${subject}`);
+      this.logger.info(`📧 Sending email to ${mailOptions.to} with subject: ${subject}`);
 
       const info = await this.transporter.sendMail(mailOptions);
 
-      console.log('✅ Email sent successfully:', info.messageId);
+      this.logger.info('✅ Email sent successfully:', info.messageId);
       return {
         success: true,
         messageId: info.messageId,
@@ -61,7 +63,7 @@ export class EmailClient {
       };
     } catch (error) {
       // Note: This error may be expected during testing when simulating email sending failures
-      console.error('❌ Failed to send email (may be expected during testing):', error);
+      this.logger.error('❌ Failed to send email (may be expected during testing):', error);
       return {
         success: false,
         error: error.message,
@@ -89,18 +91,20 @@ export class EmailClient {
         attachments: attachments, // Array of attachment objects
       };
 
-      console.log(`📧 Sending email with ${attachments.length} attachment(s) to ${mailOptions.to}`);
+      this.logger.info(
+        `📧 Sending email with ${attachments.length} attachment(s) to ${mailOptions.to}`
+      );
 
       const info = await this.transporter.sendMail(mailOptions);
 
-      console.log('✅ Email with attachments sent successfully:', info.messageId);
+      this.logger.info('✅ Email with attachments sent successfully:', info.messageId);
       return {
         success: true,
         messageId: info.messageId,
         response: info.response,
       };
     } catch (error) {
-      console.error(
+      this.logger.error(
         '❌ Failed to send email with attachments (may be expected during testing):',
         error
       );
@@ -137,7 +141,9 @@ export class EmailClient {
     }
 
     const successful = results.filter(r => r.success).length;
-    console.log(`📊 Bulk email complete: ${successful}/${recipients.length} sent successfully`);
+    this.logger.info(
+      `📊 Bulk email complete: ${successful}/${recipients.length} sent successfully`
+    );
 
     return {
       totalSent: successful,
@@ -159,14 +165,17 @@ export class EmailClient {
 
     try {
       await this.transporter.verify();
-      console.log('✅ Email server connection verified');
+      this.logger.info('✅ Email server connection verified');
       return {
         success: true,
         message: 'Email server connection verified',
       };
     } catch (error) {
       // Note: This error may be expected during testing when simulating connection failures
-      console.error('❌ Email server connection failed (may be expected during testing):', error);
+      this.logger.error(
+        '❌ Email server connection failed (may be expected during testing):',
+        error
+      );
       return {
         success: false,
         error: error.message,

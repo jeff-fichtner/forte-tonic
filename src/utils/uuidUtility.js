@@ -58,9 +58,6 @@ export class UuidUtility {
    * @returns {string} A UUID v4 string
    */
   static generateGuid() {
-    console.warn(
-      'GuidUtility.generateGuid() is deprecated. Use UuidUtility.generateUuid() instead.'
-    );
     return this.generateUuid();
   }
 }

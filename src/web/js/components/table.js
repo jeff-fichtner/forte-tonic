@@ -22,6 +22,7 @@ export class Table {
     this.pageSizeOptions = options.pageSizeOptions || null;
     this.currentPage = 1;
     this.rowClassFunction = options.rowClassFunction || null; // New parameter for row CSS classes
+    this.onCountChange = options.onCountChange || null; // Callback for when filtered count changes
 
     const head = document.createElement('thead'); // Create a new table header if not found
 
@@ -39,6 +40,12 @@ export class Table {
 
     // Create pagination container if pagination is enabled
     if (this.pagination) {
+      // Clean up any existing pagination containers to prevent duplicates
+      const existingPagination = this.table.parentNode.querySelector('.pagination-container');
+      if (existingPagination) {
+        existingPagination.remove();
+      }
+
       this.paginationContainer = document.createElement('div');
       this.paginationContainer.className = 'pagination-container center-align';
       this.paginationContainer.style.marginTop = '20px';
@@ -189,6 +196,10 @@ export class Table {
 
     try {
       if (!rows || rows.length === 0) {
+        // Call count callback with zero
+        if (this.onCountChange) {
+          this.onCountChange(0, 0);
+        }
         // no rows message
         if (this.pagination) {
           this.createPaginationControls(0);
@@ -203,6 +214,11 @@ export class Table {
         }
         return true;
       });
+
+      // Call count callback if provided
+      if (this.onCountChange) {
+        this.onCountChange(filteredRows.length, rows.length);
+      }
 
       // Calculate pagination
       let displayRows = filteredRows;

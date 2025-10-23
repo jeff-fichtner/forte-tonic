@@ -97,8 +97,8 @@ jobs:
           CURRENT_VERSION="${{ steps.current-version.outputs.version }}"
           NEW_VERSION="${{ steps.new-version.outputs.new_version }}"
           
-          # Add and commit the version change
-          git add package.json
+          # Add and commit the version change (both package.json and package-lock.json)
+          git add package.json package-lock.json
           git commit -m "chore: auto-increment version $CURRENT_VERSION → $NEW_VERSION"
           
           echo "✅ Version increment committed"
