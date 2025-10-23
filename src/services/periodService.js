@@ -28,20 +28,36 @@ export class PeriodService extends BaseService {
         return {
           trimester: row[0],
           periodType: row[1],
-          isCurrentPeriod: row[2] === true || row[2] === 'TRUE' || row[2] === 'true',
-          startDate: row[3] ? new Date(row[3]) : null,
+          startDate: row[2] ? new Date(row[2]) : null,
         };
       });
 
-      // Find the one marked as current
-      const currentPeriod = allPeriods.find(p => p && p.isCurrentPeriod === true);
+      // Get current date/time
+      const now = new Date();
+
+      // Find the period with the latest startDate that has already started (single pass)
+      const currentPeriod = allPeriods.reduce((latest, current) => {
+        // Skip periods without valid startDate or that haven't started yet
+        if (!current || !current.startDate || current.startDate > now) {
+          return latest;
+        }
+        // Return current if no latest yet, or if current started more recently
+        if (!latest || current.startDate > latest.startDate) {
+          return current;
+        }
+        return latest;
+      }, null);
 
       if (!currentPeriod) {
-        this.logger.warn('No current period set in periods table');
+        this.logger.warn('No current period found (no period has started yet)');
         return null;
       }
 
-      return currentPeriod;
+      // Add isCurrentPeriod flag for backward compatibility
+      return {
+        ...currentPeriod,
+        isCurrentPeriod: true,
+      };
     } catch (error) {
       this.logger.error('Error getting current period:', error);
       throw error;

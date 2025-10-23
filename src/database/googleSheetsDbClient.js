@@ -235,8 +235,7 @@ export class GoogleSheetsDbClient extends BaseService {
         columnMap: {
           trimester: 0,
           periodType: 1,
-          isCurrentPeriod: 2,
-          startDate: 3,
+          startDate: 2,
         },
       },
     };

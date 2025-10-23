@@ -3,12 +3,13 @@
  *
  * 🎯 PURPOSE:
  * Create a periods table for tracking reenrollment periods (intent, priority, open, registration).
- * This is a manually-managed table that admin updates to control which period is currently active.
+ * The system automatically determines the current period based on startDate values.
  *
  * 📋 CHANGES MADE:
- * 1. Creates 'periods' table with 4 columns: trimester, periodType, isCurrentPeriod, startDate
- * 2. Seeds with 12 period records (3 trimesters × 4 period types)
- * 3. Admin manually manages by setting isCurrentPeriod and filling in startDate
+ * 1. Creates 'periods' table with 3 columns: trimester, periodType, startDate
+ * 2. Seeds with 10 period records (Fall: 2 periods, Winter/Spring: 4 periods each)
+ * 3. Admin manually fills in startDate values (datetime format)
+ * 4. Current period is automatically determined as the period with the latest startDate <= now
  *
  * 🔧 NEW SIMPLE PATTERN:
  * - runMigration(): Creates MIGRATION_periods sheet with data
@@ -22,7 +23,7 @@
  *    - Check the MIGRATION_periods sheet to verify structure
  * 4. Apply migration: applyCreatePeriodsTableMigration()
  *    - WARNING: This is DESTRUCTIVE and cannot be undone
- * 5. Manually configure: Set isCurrentPeriod=TRUE for active period, fill in startDate values
+ * 5. Manually configure: Fill in startDate values (format: MM/DD/YYYY HH:MM:SS)
  */
 
 /**
@@ -74,7 +75,7 @@ class CreatePeriodsTableMigration {
       const workingSheet = this.spreadsheet.insertSheet(this.workingSheetName);
 
       // Set up headers
-      const headers = ['trimester', 'periodType', 'isCurrentPeriod', 'startDate'];
+      const headers = ['trimester', 'periodType', 'startDate'];
       const headerRange = workingSheet.getRange(1, 1, 1, headers.length);
       headerRange.setValues([headers]);
       headerRange.setFontWeight('bold');
@@ -125,12 +126,12 @@ class CreatePeriodsTableMigration {
       workingSheet.setName(this.finalSheetName);
 
       Logger.log('\n🎉 MIGRATION APPLIED SUCCESSFULLY!');
-      Logger.log(`   ${this.finalSheetName} table created with 12 period records`);
+      Logger.log(`   ${this.finalSheetName} table created with 10 period records`);
       Logger.log('\n📋 Next steps:');
       Logger.log(`   1. Open the ${this.finalSheetName} sheet`);
-      Logger.log('   2. Fill in startDate for each period');
-      Logger.log('   3. Set isCurrentPeriod to TRUE for the currently active period');
-      Logger.log('   4. Remember: Only ONE period should have isCurrentPeriod = TRUE');
+      Logger.log('   2. Fill in startDate for each period (format: MM/DD/YYYY HH:MM:SS)');
+      Logger.log('   3. System will automatically determine current period based on startDate');
+      Logger.log('   4. Current period = period with latest startDate <= now');
 
     } catch (error) {
       Logger.log(`\n❌ MIGRATION APPLY FAILED: ${error.message}`);
@@ -148,24 +149,24 @@ class CreatePeriodsTableMigration {
     // Custom order: Fall has openEnrollment and registration only, Winter and Spring have all 4 phases
     const rows = [
       // Fall - only open enrollment and registration
-      ['Fall', 'openEnrollment', '', ''],
-      ['Fall', 'registration', '', ''],
+      ['Fall', 'openEnrollment', ''],
+      ['Fall', 'registration', ''],
 
       // Winter - all 4 phases
-      ['Winter', 'intent', '', ''],
-      ['Winter', 'priorityEnrollment', '', ''],
-      ['Winter', 'openEnrollment', '', ''],
-      ['Winter', 'registration', '', ''],
+      ['Winter', 'intent', ''],
+      ['Winter', 'priorityEnrollment', ''],
+      ['Winter', 'openEnrollment', ''],
+      ['Winter', 'registration', ''],
 
       // Spring - all 4 phases
-      ['Spring', 'intent', '', ''],
-      ['Spring', 'priorityEnrollment', '', ''],
-      ['Spring', 'openEnrollment', '', ''],
-      ['Spring', 'registration', '', '']
+      ['Spring', 'intent', ''],
+      ['Spring', 'priorityEnrollment', ''],
+      ['Spring', 'openEnrollment', ''],
+      ['Spring', 'registration', '']
     ];
 
     // Insert rows starting at row 2
-    const dataRange = sheet.getRange(2, 1, rows.length, 4);
+    const dataRange = sheet.getRange(2, 1, rows.length, 3);
     dataRange.setValues(rows);
 
     return rows.length;
