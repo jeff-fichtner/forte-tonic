@@ -39,6 +39,12 @@ export class Table {
 
     // Create pagination container if pagination is enabled
     if (this.pagination) {
+      // Clean up any existing pagination containers to prevent duplicates
+      const existingPagination = this.table.parentNode.querySelector('.pagination-container');
+      if (existingPagination) {
+        existingPagination.remove();
+      }
+
       this.paginationContainer = document.createElement('div');
       this.paginationContainer.className = 'pagination-container center-align';
       this.paginationContainer.style.marginTop = '20px';
