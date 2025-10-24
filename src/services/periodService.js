@@ -1,6 +1,10 @@
 import { BaseService } from '../infrastructure/base/baseService.js';
 import { PeriodType } from '../utils/values/periodType.js';
 
+// TEMPORARY: Force intent period to be active (only in non-test environments)
+// To disable: set to false and redeploy
+const FORCE_INTENT_PERIOD = true;
+
 /**
  * Service for reading period information from database
  */
@@ -16,6 +20,16 @@ export class PeriodService extends BaseService {
    * @throws {Error} If database read fails
    */
   async getCurrentPeriod() {
+    // TEMPORARY: Override to return intent period (skip in test environment)
+    const isTestEnv = process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined;
+    if (FORCE_INTENT_PERIOD && !isTestEnv) {
+      return {
+        trimester: 'Fall',
+        periodType: PeriodType.INTENT,
+        startDate: null,
+        isCurrentPeriod: true,
+      };
+    }
     try {
       // Use getAllRecords (no caching) so period changes are reflected immediately
       const allPeriods = await this.dbClient.getAllRecords('periods', row => {
