@@ -1,3 +1,5 @@
+import { PeriodType } from '../constants/periodTypeConstants.js';
+
 /**
  *
  */
@@ -261,6 +263,22 @@ export class NavTabs {
       tab.style.display = '';
       console.log(`Showing tab:`, tab);
     });
+
+    // Hide registration tab for parents during intent period
+    if (section === 'parent') {
+      const currentPeriod = window.UserSession?.getCurrentPeriod();
+      const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
+
+      if (isIntentPeriod) {
+        const registrationTab = document
+          .querySelector('a[href="#parent-registration"]')
+          ?.closest('.tab');
+        if (registrationTab) {
+          registrationTab.style.display = 'none';
+          console.log('🚫 Hiding parent registration tab during intent period');
+        }
+      }
+    }
 
     console.log(`✅ Showing ${sectionTabs.length} tabs for ${section} section`);
 
