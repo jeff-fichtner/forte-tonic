@@ -53,14 +53,27 @@ jobs:
         run: npm test
         
       # Only proceed with versioning if all previous steps pass
+      - name: 'Check if merge from main'
+        id: check-merge
+        run: |
+          # Check if this is a merge commit from main
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          if echo "$COMMIT_MSG" | grep -q "Merge.*main.*into.*dev"; then
+            echo "skip_version=true" >> $GITHUB_OUTPUT
+            echo "⏭️ Skipping version increment - this is a merge from main to dev"
+          else
+            echo "skip_version=false" >> $GITHUB_OUTPUT
+            echo "✅ Proceeding with version increment"
+          fi
+
       - name: 'Configure Git'
-        if: success()
+        if: success() && steps.check-merge.outputs.skip_version == 'false'
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      
+
       - name: 'Get current version'
-        if: success()
+        if: success() && steps.check-merge.outputs.skip_version == 'false'
         id: current-version
         run: |
           CURRENT_VERSION=$(node -p "require('./package.json').version")
@@ -68,7 +81,7 @@ jobs:
           echo "Current version: $CURRENT_VERSION"
       
       - name: 'Increment patch version'
-        if: success()
+        if: success() && steps.check-merge.outputs.skip_version == 'false'
         id: new-version
         run: |
           # Extract version parts
@@ -92,7 +105,7 @@ jobs:
           echo "Version updated to: $UPDATED_VERSION"
       
       - name: 'Commit version bump'
-        if: success()
+        if: success() && steps.check-merge.outputs.skip_version == 'false'
         run: |
           CURRENT_VERSION="${{ steps.current-version.outputs.version }}"
           NEW_VERSION="${{ steps.new-version.outputs.new_version }}"
@@ -104,7 +117,7 @@ jobs:
           echo "✅ Version increment committed"
       
       - name: 'Create and push version tag'
-        if: success()
+        if: success() && steps.check-merge.outputs.skip_version == 'false'
         run: |
           NEW_VERSION="${{ steps.new-version.outputs.new_version }}"
           TAG_NAME="v$NEW_VERSION-dev"
@@ -128,24 +141,35 @@ jobs:
       - name: 'Summary'
         if: success()
         run: |
-          CURRENT_VERSION="${{ steps.current-version.outputs.version }}"
-          NEW_VERSION="${{ steps.new-version.outputs.new_version }}"
-          TAG_NAME="v$NEW_VERSION-dev"
+          if [ "${{ steps.check-merge.outputs.skip_version }}" == "true" ]; then
+            echo ""
+            echo "✅ DEV BRANCH WORKFLOW COMPLETED!"
+            echo "================================="
+            echo "✅ Tests: PASSED"
+            echo "⏭️ Version: SKIPPED (merge from main)"
+            echo "📅 Time: $(date -u)"
+            echo "🔗 Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "================================="
+          else
+            CURRENT_VERSION="${{ steps.current-version.outputs.version }}"
+            NEW_VERSION="${{ steps.new-version.outputs.new_version }}"
+            TAG_NAME="v$NEW_VERSION-dev"
 
-          echo ""
-          echo "🎉 DEV BRANCH WORKFLOW COMPLETED SUCCESSFULLY!"
-          echo "=============================================="
-          echo "✅ Tests: PASSED"
-          echo "✅ Version: $CURRENT_VERSION → $NEW_VERSION"
-          echo "🏷️ Tag: $TAG_NAME"
-          echo "📅 Time: $(date -u)"
-          echo "🔗 Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          echo "=============================================="
-          echo ""
-          echo "🚀 Next Steps:"
-          echo "  • The dev tag '$TAG_NAME' will trigger the staging deployment"
-          echo "  • Monitor Cloud Build for staging deployment status"
-          echo "  • The new version is now ready for staging testing"
+            echo ""
+            echo "🎉 DEV BRANCH WORKFLOW COMPLETED SUCCESSFULLY!"
+            echo "=============================================="
+            echo "✅ Tests: PASSED"
+            echo "✅ Version: $CURRENT_VERSION → $NEW_VERSION"
+            echo "🏷️ Tag: $TAG_NAME"
+            echo "📅 Time: $(date -u)"
+            echo "🔗 Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "=============================================="
+            echo ""
+            echo "🚀 Next Steps:"
+            echo "  • The dev tag '$TAG_NAME' will trigger the staging deployment"
+            echo "  • Monitor Cloud Build for staging deployment status"
+            echo "  • The new version is now ready for staging testing"
+          fi
       
       - name: 'Failure summary'
         if: failure()
