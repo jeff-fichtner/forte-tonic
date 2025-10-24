@@ -25,10 +25,21 @@ export class PeriodService extends BaseService {
         const firstCell = String(row[0]).trim().toLowerCase();
         if (firstCell === 'trimester') return null;
 
+        // Parse startDate - handle both date objects and text strings
+        let startDate = null;
+        if (row[2]) {
+          // Try to parse as date - works for both Date objects and date strings
+          const parsedDate = new Date(row[2]);
+          // Check if valid date
+          if (!isNaN(parsedDate.getTime())) {
+            startDate = parsedDate;
+          }
+        }
+
         return {
           trimester: row[0],
           periodType: row[1],
-          startDate: row[2] ? new Date(row[2]) : null,
+          startDate: startDate,
         };
       });
 
@@ -87,10 +98,21 @@ export class PeriodService extends BaseService {
         const firstCell = String(row[0]).trim().toLowerCase();
         if (firstCell === 'trimester') return null;
 
+        // Parse startDate - handle both date objects and text strings
+        let startDate = null;
+        if (row[2]) {
+          // Try to parse as date - works for both Date objects and date strings
+          const parsedDate = new Date(row[2]);
+          // Check if valid date
+          if (!isNaN(parsedDate.getTime())) {
+            startDate = parsedDate;
+          }
+        }
+
         return {
           trimester: row[0],
           periodType: row[1],
-          startDate: row[2] ? new Date(row[2]) : null,
+          startDate: startDate,
         };
       });
 
