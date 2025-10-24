@@ -41,7 +41,7 @@ export class ConfigurationService {
 
       // Application Configuration
       rockBandClassIds: process.env.ROCK_BAND_CLASS_IDS
-        ? process.env.ROCK_BAND_CLASS_IDS.split(',')
+        ? process.env.ROCK_BAND_CLASS_IDS.split(',').map(id => id.trim())
         : [],
     };
   }
@@ -127,7 +127,9 @@ export class ConfigurationService {
    */
   static getRockBandClassIds() {
     // Return the env variable directly for static access
-    return process.env.ROCK_BAND_CLASS_IDS ? process.env.ROCK_BAND_CLASS_IDS.split(',') : [];
+    return process.env.ROCK_BAND_CLASS_IDS
+      ? process.env.ROCK_BAND_CLASS_IDS.split(',').map(id => id.trim())
+      : [];
   }
 
   /**
