@@ -58,7 +58,7 @@ steps:
       '--set-env-vars=BUILD_GIT_COMMIT=${COMMIT_SHA}',
       '--set-env-vars=BUILD_GIT_TAG=${TAG_NAME}',
       '--set-secrets=WORKING_SPREADSHEET_ID=working-spreadsheet-id:latest',
-      '--set-secrets=GOOGLE_SERVICE_ACCOUNT_EMAIL=google-service-account-email:latest', 
+      '--set-secrets=GOOGLE_SERVICE_ACCOUNT_EMAIL=google-service-account-email:latest',
       '--set-secrets=GOOGLE_PRIVATE_KEY=google-private-key:latest',
       '--set-secrets=ROCK_BAND_CLASS_IDS=rock-band-class-ids:latest',
       '--allow-unauthenticated',
