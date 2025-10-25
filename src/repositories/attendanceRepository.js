@@ -96,4 +96,62 @@ export class AttendanceRepository extends BaseRepository {
     const record = await this.findById(id);
     return record !== null;
   }
+
+  /**
+   * Get attendance for multiple registrations
+   */
+  async getAttendanceForRegistrations(registrationIds) {
+    const all = await this.findAll();
+    return all.filter(x => registrationIds.includes(x.registrationId));
+  }
+
+  /**
+   * Record attendance
+   */
+  async recordAttendance(registrationId, createdBy) {
+    if (!registrationId) {
+      throw new Error('Registration ID is required for attendance');
+    }
+
+    // Check for duplicate
+    const existingAttendance = await this.getAttendanceForRegistrations([registrationId]);
+    if (existingAttendance && existingAttendance.length > 0) {
+      this.logger.warn(`Attendance already recorded for registration ${registrationId}`);
+      return existingAttendance[0];
+    }
+
+    const result = await this.dbClient.appendRecord(
+      Keys.ATTENDANCE,
+      new AttendanceRecord(registrationId),
+      createdBy
+    );
+
+    // Clear cache after mutation
+    this.clearCache();
+
+    return result;
+  }
+
+  /**
+   * Remove attendance
+   */
+  async removeAttendance(registrationId, deletedBy) {
+    if (!registrationId) {
+      throw new Error('Registration ID is required');
+    }
+
+    // Check if attendance exists
+    const existingAttendance = await this.getAttendanceForRegistrations([registrationId]);
+    if (!existingAttendance || existingAttendance.length === 0) {
+      this.logger.warn(`No attendance record found for registration ${registrationId}`);
+      return true; // Return true for idempotency
+    }
+
+    await this.dbClient.deleteRecord(Keys.ATTENDANCE, registrationId, deletedBy);
+
+    // Clear cache after mutation
+    this.clearCache();
+
+    return true;
+  }
 }

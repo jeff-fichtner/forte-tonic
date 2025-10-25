@@ -9,7 +9,7 @@
 import { BaseService } from '../infrastructure/base/baseService.js';
 import { RegistrationValidationService } from './registrationValidationService.js';
 import { RegistrationConflictService } from './registrationConflictService.js';
-import { ProgramManagementService } from './programManagementService.js';
+import { ProgramValidationService } from './programValidationService.js';
 import { Registration } from '../models/shared/registration.js';
 
 export class RegistrationApplicationService extends BaseService {
@@ -126,11 +126,10 @@ export class RegistrationApplicationService extends BaseService {
         }
       );
 
-      // Step 4: Program-specific validation
-      const programValidation = ProgramManagementService.validateRegistration(
+      // Step 4: Program-specific validation (catalog/class rules)
+      const programValidation = ProgramValidationService.validateRegistration(
         registrationData,
-        groupClass,
-        instructor
+        groupClass
       );
       if (!programValidation.isValid) {
         throw new Error(`Program validation failed: ${programValidation.errors.join(', ')}`);
@@ -215,7 +214,7 @@ export class RegistrationApplicationService extends BaseService {
         };
 
         if (scheduleData.day && scheduleData.startTime && scheduleData.length) {
-          lessonSchedule = ProgramManagementService.generateLessonSchedule(scheduleData);
+          lessonSchedule = persistedRegistration.generateSchedule();
         }
       } catch (scheduleError) {
         this.logger.warn('⚠️ Could not generate lesson schedule:', scheduleError.message);
@@ -308,9 +307,7 @@ export class RegistrationApplicationService extends BaseService {
         student,
         instructor,
         groupClass,
-        lessonSchedule: ProgramManagementService.generateLessonSchedule(
-          registration.toDataObject()
-        ),
+        lessonSchedule: registration.generateSchedule(),
         nextLessonDate: registration.getNextLessonDate(),
         canModify: registration.canBeModified(),
         cancellationInfo: registration.canBeCancelled(),

@@ -203,10 +203,6 @@ export class SystemController {
       const repositoryTypes = [
         'userRepository',
         'registrationRepository',
-        'instructorRepository',
-        'studentRepository',
-        'adminRepository',
-        'parentRepository',
         'attendanceRepository',
         'programRepository',
       ];

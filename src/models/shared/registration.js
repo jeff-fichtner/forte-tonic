@@ -8,6 +8,7 @@
 import { RegistrationId } from '../../utils/values/registrationId.js';
 import { StudentId } from '../../utils/values/studentId.js';
 import { InstructorId } from '../../utils/values/instructorId.js';
+import { LessonTime } from '../../utils/values/lessonTime.js';
 
 // Helper function to extract string values from various data types
 function extractStringValue(value) {
@@ -343,5 +344,45 @@ export class Registration {
       createdAt: new Date().toISOString(),
       createdBy: options.createdBy,
     });
+  }
+
+  /**
+   * Generate lesson schedule for this registration
+   * Returns array of lesson dates with timing information
+   */
+  generateSchedule(numberOfLessons = 12) {
+    const lessons = [];
+    const startDate = new Date(this.expectedStartDate);
+    const dayOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].indexOf(this.day);
+
+    if (dayOfWeek === -1) {
+      throw new Error(`Invalid day: ${this.day}`);
+    }
+
+    // Find the first occurrence of the day
+    const currentDate = new Date(startDate);
+    while (currentDate.getDay() !== (dayOfWeek + 1) % 7) {
+      // Adjust for JavaScript's Sunday=0
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Create LessonTime value object for this registration
+    const lessonTime = new LessonTime(this.startTime, this.length);
+
+    // Generate lesson dates
+    for (let i = 0; i < numberOfLessons; i++) {
+      lessons.push({
+        lessonNumber: i + 1,
+        date: new Date(currentDate),
+        startTime: lessonTime.startTime,
+        length: lessonTime.durationMinutes,
+        expectedEndTime: lessonTime.endTime,
+      });
+
+      // Move to next week
+      currentDate.setDate(currentDate.getDate() + 7);
+    }
+
+    return lessons;
   }
 }
