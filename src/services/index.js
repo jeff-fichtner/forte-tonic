@@ -5,4 +5,3 @@
  */
 
 export { RegistrationApplicationService } from './registrationApplicationService.js';
-export { StudentApplicationService } from './studentApplicationService.js';

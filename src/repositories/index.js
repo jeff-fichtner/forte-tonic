@@ -5,13 +5,8 @@
 // Base classes and patterns
 export { IRepository, BaseRepository } from './baseRepository.js';
 
-// Specific repositories
-export { StudentRepository } from './studentRepository.js';
-export { AdminRepository } from './adminRepository.js';
-export { InstructorRepository } from './instructorRepository.js';
-export { ParentRepository } from './parentRepository.js';
+// Domain repositories (used via service container)
 export { AttendanceRepository } from './attendanceRepository.js';
-
-// Legacy - for backwards compatibility (to be deprecated)
-export { UserRepository } from './userRepository.js';
 export { ProgramRepository } from './programRepository.js';
+export { RegistrationRepository } from './registrationRepository.js';
+export { UserRepository } from './userRepository.js';

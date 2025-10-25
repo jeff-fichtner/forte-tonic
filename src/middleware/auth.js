@@ -11,10 +11,12 @@ export const initializeRepositories = async (req, res, next) => {
     // Service container handles all repository and service instances
     const userRepository = serviceContainer.get('userRepository');
     const programRepository = serviceContainer.get('programRepository');
+    const attendanceRepository = serviceContainer.get('attendanceRepository');
 
     // Attach repositories to request for API endpoints
     req.userRepository = userRepository;
     req.programRepository = programRepository;
+    req.attendanceRepository = attendanceRepository;
 
     // Try to extract authenticated user from request
     await extractAuthenticatedUser(req, userRepository);
@@ -22,6 +24,7 @@ export const initializeRepositories = async (req, res, next) => {
     logger.error('Error initializing repositories:', error);
     req.userRepository = null;
     req.programRepository = null;
+    req.attendanceRepository = null;
     req.currentUser = null;
     req.user = null;
   }

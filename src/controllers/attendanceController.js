@@ -120,7 +120,7 @@ export class AttendanceController {
   }
 
   /**
-   * Record attendance (legacy endpoint)
+   * Record attendance
    */
   static async recordAttendance(req, res) {
     const startTime = Date.now();
@@ -131,7 +131,7 @@ export class AttendanceController {
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
 
-      const attendanceRecord = await req.programRepository.recordAttendance(
+      const attendanceRecord = await req.attendanceRepository.recordAttendance(
         data.registrationId,
         authenticatedUserEmail
       );
@@ -141,7 +141,7 @@ export class AttendanceController {
         startTime,
         context: {
           controller: 'AttendanceController',
-          method: 'recordAttendance (legacy)',
+          method: 'recordAttendance',
           registrationId: data.registrationId,
         },
       });
@@ -150,13 +150,13 @@ export class AttendanceController {
       errorResponse(res, error, {
         req,
         startTime,
-        context: { controller: 'AttendanceController', method: 'recordAttendance (legacy)' },
+        context: { controller: 'AttendanceController', method: 'recordAttendance' },
       });
     }
   }
 
   /**
-   * Remove attendance (legacy endpoint)
+   * Remove attendance
    */
   static async removeAttendance(req, res) {
     const startTime = Date.now();
@@ -167,7 +167,7 @@ export class AttendanceController {
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
 
-      const success = await req.programRepository.removeAttendance(
+      const success = await req.attendanceRepository.removeAttendance(
         data.registrationId,
         authenticatedUserEmail
       );
@@ -177,7 +177,7 @@ export class AttendanceController {
         startTime,
         context: {
           controller: 'AttendanceController',
-          method: 'removeAttendance (legacy)',
+          method: 'removeAttendance',
           registrationId: data.registrationId,
         },
       });
@@ -186,7 +186,7 @@ export class AttendanceController {
       errorResponse(res, error, {
         req,
         startTime,
-        context: { controller: 'AttendanceController', method: 'removeAttendance (legacy)' },
+        context: { controller: 'AttendanceController', method: 'removeAttendance' },
       });
     }
   }

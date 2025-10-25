@@ -16,8 +16,7 @@ import { createLogger } from '../../utils/logger.js';
 import { RegistrationRepository } from '../../repositories/registrationRepository.js';
 import { UserRepository } from '../../repositories/userRepository.js';
 import { ProgramRepository } from '../../repositories/programRepository.js';
-import { StudentRepository } from '../../repositories/studentRepository.js';
-import { ParentRepository } from '../../repositories/parentRepository.js';
+import { AttendanceRepository } from '../../repositories/attendanceRepository.js';
 
 // Import services
 import { RegistrationApplicationService } from '../../services/registrationApplicationService.js';
@@ -291,12 +290,8 @@ export class ServiceContainer {
       return new ProgramRepository(this.dbClient);
     });
 
-    this.register('studentRepository', () => {
-      return new StudentRepository(this.dbClient);
-    });
-
-    this.register('parentRepository', () => {
-      return new ParentRepository(this.dbClient);
+    this.register('attendanceRepository', () => {
+      return new AttendanceRepository(this.dbClient);
     });
   }
 
