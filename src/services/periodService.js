@@ -1,5 +1,6 @@
 import { BaseService } from '../infrastructure/base/baseService.js';
 import { PeriodType } from '../utils/values/periodType.js';
+import { TRIMESTER_SEQUENCE } from '../utils/values/trimester.js';
 
 /**
  * Service for reading period information from database
@@ -11,37 +12,49 @@ export class PeriodService extends BaseService {
   }
 
   /**
+   * Parse a period row from the database into a period object
+   * @private
+   * @param {Array} row - Database row [trimester, periodType, startDate]
+   * @returns {object|null} Period object or null if invalid
+   */
+  _parsePeriodRow(row) {
+    if (!row || !row[0]) return null;
+
+    // Parse startDate - handle both date objects and text strings
+    let startDate = null;
+    if (row[2]) {
+      // Try to parse as date - works for both Date objects and date strings
+      const parsedDate = new Date(row[2]);
+      // Check if valid date
+      if (!isNaN(parsedDate.getTime())) {
+        startDate = parsedDate;
+      }
+    }
+
+    return {
+      trimester: row[0] ? row[0].toLowerCase() : null,
+      periodType: row[1],
+      startDate: startDate,
+    };
+  }
+
+  /**
+   * Get all periods from database
+   * @private
+   * @returns {Promise<Array>} Array of period objects
+   */
+  async _getAllPeriods() {
+    return await this.dbClient.getAllRecords('periods', row => this._parsePeriodRow(row));
+  }
+
+  /**
    * Get the currently active period
    * @returns {Promise<object|null>} Period object {trimester, periodType, isCurrentPeriod, startDate} or null if none active
    * @throws {Error} If database read fails
    */
   async getCurrentPeriod() {
     try {
-      // Use getAllRecords (no caching) so period changes are reflected immediately
-      const allPeriods = await this.dbClient.getAllRecords('periods', row => {
-        if (!row || !row[0]) return null;
-
-        // Skip header row
-        const firstCell = String(row[0]).trim().toLowerCase();
-        if (firstCell === 'trimester') return null;
-
-        // Parse startDate - handle both date objects and text strings
-        let startDate = null;
-        if (row[2]) {
-          // Try to parse as date - works for both Date objects and date strings
-          const parsedDate = new Date(row[2]);
-          // Check if valid date
-          if (!isNaN(parsedDate.getTime())) {
-            startDate = parsedDate;
-          }
-        }
-
-        return {
-          trimester: row[0],
-          periodType: row[1],
-          startDate: startDate,
-        };
-      });
+      const allPeriods = await this._getAllPeriods();
 
       // Get current date/time
       const now = new Date();
@@ -91,30 +104,7 @@ export class PeriodService extends BaseService {
    */
   async getNextPeriod() {
     try {
-      const allPeriods = await this.dbClient.getAllRecords('periods', row => {
-        if (!row || !row[0]) return null;
-
-        // Skip header row
-        const firstCell = String(row[0]).trim().toLowerCase();
-        if (firstCell === 'trimester') return null;
-
-        // Parse startDate - handle both date objects and text strings
-        let startDate = null;
-        if (row[2]) {
-          // Try to parse as date - works for both Date objects and date strings
-          const parsedDate = new Date(row[2]);
-          // Check if valid date
-          if (!isNaN(parsedDate.getTime())) {
-            startDate = parsedDate;
-          }
-        }
-
-        return {
-          trimester: row[0],
-          periodType: row[1],
-          startDate: startDate,
-        };
-      });
+      const allPeriods = await this._getAllPeriods();
 
       // Get current date/time
       const now = new Date();
@@ -142,5 +132,90 @@ export class PeriodService extends BaseService {
       this.logger.error('Error getting next period:', error);
       throw error;
     }
+  }
+
+  /**
+   * Get the current trimester's registration table name based on active period
+   * Table names are derived from period.trimester, not stored in the periods table
+   * @returns {Promise<string>} Table name like "registrations_fall"
+   * @throws {Error} If no active period found
+   */
+  async getCurrentTrimesterTable() {
+    const period = await this.getCurrentPeriod();
+    if (!period || !period.trimester) {
+      throw new Error('No active period found');
+    }
+    return `registrations_${period.trimester}`;
+  }
+
+  /**
+   * Get the next trimester's registration table name (only during enrollment periods)
+   * Returns null if not in an enrollment period
+   * @returns {Promise<string|null>} Table name like "registrations_winter" or null
+   */
+  async getNextTrimesterTable() {
+    const period = await this.getCurrentPeriod();
+    if (!period) {
+      return null;
+    }
+
+    // Only available during enrollment periods
+    if (
+      period.periodType !== PeriodType.PRIORITY_ENROLLMENT &&
+      period.periodType !== PeriodType.OPEN_ENROLLMENT
+    ) {
+      return null;
+    }
+
+    const nextTrimester = this._getNextTrimester(period.trimester);
+    return `registrations_${nextTrimester}`;
+  }
+
+  /**
+   * Get the next trimester in the annual sequence
+   * fall → winter → spring → fall (cycles)
+   * @private
+   * @param {string} currentTrimester - "fall", "winter", or "spring" (case-insensitive)
+   * @returns {string} Next trimester name in lowercase
+   * @throws {Error} If invalid trimester name
+   */
+  _getNextTrimester(currentTrimester) {
+    if (!currentTrimester || typeof currentTrimester !== 'string') {
+      throw new Error(`Invalid trimester: ${currentTrimester}`);
+    }
+    const index = TRIMESTER_SEQUENCE.findIndex(t => t.toLowerCase() === currentTrimester.toLowerCase());
+    if (index === -1) {
+      throw new Error(`Invalid trimester: ${currentTrimester}`);
+    }
+    return TRIMESTER_SEQUENCE[(index + 1) % TRIMESTER_SEQUENCE.length];
+  }
+
+  /**
+   * Check if a user can access next trimester enrollment based on current period and registration status
+   * Rules:
+   * - Open Enrollment: ALL families can access (returning + new)
+   * - Priority Enrollment: Only returning families (those with active registrations)
+   * - Other periods: No one can access next trimester
+   * @param {boolean} hasActiveRegistrations - Does user have registrations in current trimester?
+   * @returns {Promise<boolean>} True if user can access next trimester enrollment
+   */
+  async canAccessNextTrimester(hasActiveRegistrations) {
+    const period = await this.getCurrentPeriod();
+    if (!period) {
+      return false;
+    }
+
+    // During open enrollment, ALL families can access
+    if (period.periodType === PeriodType.OPEN_ENROLLMENT) {
+      return true;
+    }
+
+    // During priority enrollment, only returning families
+    if (period.periodType === PeriodType.PRIORITY_ENROLLMENT) {
+      return hasActiveRegistrations;
+    }
+
+    // Not an enrollment period
+    return false;
   }
 }

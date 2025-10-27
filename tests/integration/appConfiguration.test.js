@@ -68,13 +68,13 @@ jest.unstable_mockModule('../../src/email/emailClient.js', () => ({
 // Create mock period service with different scenarios
 const mockPeriodService = {
   getCurrentPeriod: jest.fn().mockResolvedValue({
-    trimester: 'Fall',
+    trimester: 'fall',
     periodType: PeriodType.INTENT,
     isCurrentPeriod: true,
     startDate: new Date('2025-01-15'),
   }),
   getNextPeriod: jest.fn().mockResolvedValue({
-    trimester: 'Winter',
+    trimester: 'winter',
     periodType: PeriodType.PRIORITY,
     startDate: new Date('2025-02-01'),
   }),
@@ -110,13 +110,13 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
   test('should include currentPeriod and rockBandClassIds in response', async () => {
     // Mock period service to return an active intent period
     mockPeriodService.getCurrentPeriod.mockResolvedValue({
-      trimester: 'Fall',
+      trimester: 'fall',
       periodType: PeriodType.INTENT,
       isCurrentPeriod: true,
       startDate: new Date('2025-01-15'),
     });
     mockPeriodService.getNextPeriod.mockResolvedValue({
-      trimester: 'Winter',
+      trimester: 'winter',
       periodType: PeriodType.PRIORITY,
       startDate: new Date('2025-02-01'),
     });
@@ -134,14 +134,14 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
     // Verify currentPeriod is included in data
     expect(response.body.data).toHaveProperty('currentPeriod');
     expect(response.body.data.currentPeriod).toBeDefined();
-    expect(response.body.data.currentPeriod.trimester).toBe('Fall');
+    expect(response.body.data.currentPeriod.trimester).toBe('fall');
     expect(response.body.data.currentPeriod.periodType).toBe(PeriodType.INTENT);
     expect(response.body.data.currentPeriod.isCurrentPeriod).toBe(true);
 
     // Verify nextPeriod is included in data
     expect(response.body.data).toHaveProperty('nextPeriod');
     expect(response.body.data.nextPeriod).toBeDefined();
-    expect(response.body.data.nextPeriod.trimester).toBe('Winter');
+    expect(response.body.data.nextPeriod.trimester).toBe('winter');
     expect(response.body.data.nextPeriod.periodType).toBe(PeriodType.PRIORITY);
 
     // Verify rockBandClassIds is included in data

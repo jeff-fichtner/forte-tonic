@@ -1,3 +1,5 @@
+import { TRIMESTER_SEQUENCE } from '../../../utils/values/trimester.js';
+
 /**
  * AppConfigurationResponse model - represents application configuration data
  * Returned by /api/getAppConfiguration endpoint
@@ -5,19 +7,37 @@
 export class AppConfigurationResponse {
   /**
    * Creates an AppConfigurationResponse instance
-   * @param {object} data - Object with currentPeriod, nextPeriod, and rockBandClassIds properties
+   * @param {object} data - Object with currentPeriod, nextPeriod, rockBandClassIds, and trimester properties
    */
   constructor(data) {
     if (typeof data === 'object' && data !== null) {
-      const { currentPeriod, nextPeriod, rockBandClassIds } = data;
+      const {
+        currentPeriod,
+        nextPeriod,
+        rockBandClassIds,
+        currentTrimester,
+        nextTrimester,
+        availableTrimesters,
+        defaultTrimester,
+      } = data;
 
       this.currentPeriod = currentPeriod || null;
       this.nextPeriod = nextPeriod || null;
       this.rockBandClassIds = Array.isArray(rockBandClassIds) ? rockBandClassIds : [];
+      this.currentTrimester = currentTrimester || null;
+      this.nextTrimester = nextTrimester || null;
+      this.availableTrimesters = Array.isArray(availableTrimesters)
+        ? availableTrimesters
+        : TRIMESTER_SEQUENCE;
+      this.defaultTrimester = defaultTrimester || null;
     } else {
       this.currentPeriod = null;
       this.nextPeriod = null;
       this.rockBandClassIds = [];
+      this.currentTrimester = null;
+      this.nextTrimester = null;
+      this.availableTrimesters = TRIMESTER_SEQUENCE;
+      this.defaultTrimester = null;
     }
   }
 
@@ -54,6 +74,10 @@ export class AppConfigurationResponse {
       currentPeriod: this.currentPeriod,
       nextPeriod: this.nextPeriod,
       rockBandClassIds: this.rockBandClassIds,
+      currentTrimester: this.currentTrimester,
+      nextTrimester: this.nextTrimester,
+      availableTrimesters: this.availableTrimesters,
+      defaultTrimester: this.defaultTrimester,
     };
   }
 
@@ -75,6 +99,10 @@ export class AppConfigurationResponse {
       currentPeriod: null,
       nextPeriod: null,
       rockBandClassIds: [],
+      currentTrimester: null,
+      nextTrimester: null,
+      availableTrimesters: TRIMESTER_SEQUENCE,
+      defaultTrimester: null,
     });
   }
 }

@@ -4,6 +4,7 @@
  */
 
 import { RegistrationType } from '../utils/values/registrationType.js';
+import { isValidTrimester as validateTrimester } from '../utils/values/trimester.js';
 
 export class RegistrationValidationService {
   /**
@@ -86,7 +87,7 @@ export class RegistrationValidationService {
 
     // Trimester validation
     if (registrationData.trimester && !this.isValidTrimester(registrationData.trimester)) {
-      errors.push('Invalid trimester. Must be Fall, Winter, or Spring');
+      errors.push('Invalid trimester. Must be fall, winter, or spring');
     }
 
     // Start time validation for private lessons
@@ -124,8 +125,7 @@ export class RegistrationValidationService {
    * @returns {boolean} True if valid
    */
   static isValidTrimester(trimester) {
-    const validTrimesters = ['Fall', 'Winter', 'Spring'];
-    return validTrimesters.includes(trimester);
+    return validateTrimester(trimester);
   }
 
   /**

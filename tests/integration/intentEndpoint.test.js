@@ -118,7 +118,7 @@ const mockUserRepository = {
 // Create mock period service
 const mockPeriodService = {
   getCurrentPeriod: jest.fn().mockResolvedValue({
-    trimester: 'Fall',
+    trimester: 'fall',
     periodType: PeriodType.INTENT,
     isCurrentPeriod: true,
     startDate: new Date('2025-01-15'),
