@@ -38,8 +38,8 @@ export class UserController {
       // Determine default trimester for admin/parent UI
       const defaultTrimester = UserController._getDefaultTrimester(currentPeriod, nextPeriod);
 
-      // Get maintenance mode configuration
-      const configService = new ConfigurationService();
+      // Get maintenance mode configuration from singleton configService
+      const { configService } = await import('../services/configurationService.js');
       const appConfig = configService.getApplicationConfig();
 
       const configurationData = {
