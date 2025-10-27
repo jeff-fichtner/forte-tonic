@@ -74,9 +74,11 @@ class CreateTrimesterTablesMigration {
         throw new Error('Original registrations_audit sheet not found');
       }
 
-      // Get schema from registrations
-      const headers = registrationsSheet.getRange(1, 1, 1, registrationsSheet.getLastColumn()).getValues()[0];
-      Logger.log(`📋 Schema has ${headers.length} columns`);
+      // Get schema from registrations and audit
+      const registrationHeaders = registrationsSheet.getRange(1, 1, 1, registrationsSheet.getLastColumn()).getValues()[0];
+      const auditHeaders = auditSheet.getRange(1, 1, 1, auditSheet.getLastColumn()).getValues()[0];
+      Logger.log(`📋 Registration schema has ${registrationHeaders.length} columns`);
+      Logger.log(`📋 Audit schema has ${auditHeaders.length} columns`);
 
       // Delete any previous working copies
       this._deleteWorkingCopies();
@@ -93,13 +95,13 @@ class CreateTrimesterTablesMigration {
 
       // Create empty working copies for Winter
       Logger.log('\n📊 Creating Winter trimester working copies...');
-      this._createEmptyTrimesterTable('MIGRATION_registrations_winter', headers);
-      this._createEmptyTrimesterTable('MIGRATION_registrations_winter_audit', headers);
+      this._createEmptyTrimesterTable('MIGRATION_registrations_winter', registrationHeaders);
+      this._createEmptyTrimesterTable('MIGRATION_registrations_winter_audit', auditHeaders);
 
       // Create empty working copies for Spring
       Logger.log('\n📊 Creating Spring trimester working copies...');
-      this._createEmptyTrimesterTable('MIGRATION_registrations_spring', headers);
-      this._createEmptyTrimesterTable('MIGRATION_registrations_spring_audit', headers);
+      this._createEmptyTrimesterTable('MIGRATION_registrations_spring', registrationHeaders);
+      this._createEmptyTrimesterTable('MIGRATION_registrations_spring_audit', auditHeaders);
 
       Logger.log('\n🎉 MIGRATION RUN COMPLETED!');
       Logger.log('\n📋 Next steps:');
