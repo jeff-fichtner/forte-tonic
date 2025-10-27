@@ -486,4 +486,69 @@ export class RegistrationRepository extends BaseRepository {
       throw error;
     }
   }
+
+  /**
+   * Find a registration by ID in a specific table
+   * @param {string} tableName - Table name to search in
+   * @param {string} id - Registration ID
+   * @returns {Promise<Registration|null>} Registration or null if not found
+   */
+  async findByIdInTable(tableName, id) {
+    try {
+      const registrationId = typeof id === 'string' ? new RegistrationId(id) : id;
+
+      // Get all registrations from the specified table
+      const registrations = await this.getFromTable(tableName);
+
+      // Find the registration with matching ID
+      const registration = registrations.find(reg => {
+        const regId = reg.id?.value || reg.id;
+        return regId === registrationId.getValue();
+      });
+
+      return registration || null;
+    } catch (error) {
+      this.logger.error(`Error finding registration in table ${tableName}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a registration from a specific table
+   * @param {string} tableName - Table name to delete from
+   * @param {string} id - Registration ID
+   * @param {string} userId - User performing the deletion (for audit)
+   * @returns {Promise<boolean>} True if deleted successfully
+   */
+  async deleteFromTable(tableName, id, userId) {
+    try {
+      if (!userId) {
+        throw new Error('userId is required for audit trail');
+      }
+
+      const registrationId = typeof id === 'string' ? new RegistrationId(id) : id;
+
+      // First verify the registration exists
+      const registration = await this.findByIdInTable(tableName, registrationId);
+      if (!registration) {
+        throw new Error(
+          `Registration with ID ${registrationId.getValue()} not found in table ${tableName}`
+        );
+      }
+
+      this.logger.info(`🗑️ Deleting registration from table: ${tableName}`);
+
+      // Use the database client's deleteRecord method which handles audit trails and proper deletion
+      await this.dbClient.deleteRecord(tableName, registrationId.getValue(), userId);
+
+      // Clear cache after mutation
+      this.clearCache();
+      this.dbClient.clearCache(tableName);
+
+      return true;
+    } catch (error) {
+      this.logger.error(`Error deleting registration from table ${tableName}:`, error);
+      throw error;
+    }
+  }
 }

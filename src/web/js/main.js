@@ -236,6 +236,17 @@ async function initializeApplication() {
     // Store globally for debugging and other scripts
     window.viewModel = viewModel;
 
+    // Expose maintenance mode override function globally
+    // Usage: window.overrideMaintenanceMode() in browser console
+    window.overrideMaintenanceMode = function () {
+      if (viewModel && typeof viewModel.overrideMaintenanceMode === 'function') {
+        return viewModel.overrideMaintenanceMode();
+      } else {
+        console.error('✗ Override function not available. Please refresh and try again.');
+        return false;
+      }
+    };
+
     console.log('✓ Application initialized successfully');
   } catch (error) {
     console.error('✗ Error initializing application:', error);

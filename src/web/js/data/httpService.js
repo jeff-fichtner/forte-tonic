@@ -197,8 +197,8 @@ export class HttpService {
         credentials: 'same-origin', // Include session cookies
       };
 
-      // Only include body for POST/PATCH/PUT requests
-      if (httpMethod !== 'GET') {
+      // Only include body for POST/PATCH/PUT requests (not GET or DELETE)
+      if (httpMethod !== 'GET' && httpMethod !== 'DELETE') {
         fetchOptions.body = JSON.stringify(payload);
       }
 
