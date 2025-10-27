@@ -46,31 +46,67 @@ steps:
     id: 'push-image'
     waitFor: ['build-image']
     
-  # Step 3: Deploy to Cloud Run (environment determined by substitution variables)
+  # Step 3: Get current maintenance mode settings
   - name: 'gcr.io/cloud-builders/gcloud'
-    args: [
-      'run', 'deploy', 'tonic-${_ENV_TYPE}',
-      '--image=gcr.io/$PROJECT_ID/tonic:${_ENV_TYPE}-${SHORT_SHA}',
-      '--region=${_DEPLOY_REGION}',
-      '--platform=managed',
-      '--set-env-vars=NODE_ENV=${_ENV_TYPE}',
-      '--set-env-vars=CI=true',
-      '--set-env-vars=BUILD_GIT_COMMIT=${COMMIT_SHA}',
-      '--set-env-vars=BUILD_GIT_TAG=${TAG_NAME}',
-      '--set-secrets=WORKING_SPREADSHEET_ID=working-spreadsheet-id:latest',
-      '--set-secrets=GOOGLE_SERVICE_ACCOUNT_EMAIL=google-service-account-email:latest',
-      '--set-secrets=GOOGLE_PRIVATE_KEY=google-private-key:latest',
-      '--set-secrets=ROCK_BAND_CLASS_IDS=rock-band-class-ids:latest',
-      '--allow-unauthenticated',
-      '--max-instances=10',
-      '--memory=512Mi',
-      '--cpu=1',
-      '--port=3000'
-    ]
-    id: 'deploy-service'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Get current maintenance mode settings from the running service
+        MAINTENANCE_MODE=$(gcloud run services describe tonic-${_ENV_TYPE} \
+          --region=${_DEPLOY_REGION} \
+          --format="value(spec.template.spec.containers[0].env.filter(name:MAINTENANCE_MODE).value)" \
+          2>/dev/null || echo "false")
+
+        MAINTENANCE_MESSAGE=$(gcloud run services describe tonic-${_ENV_TYPE} \
+          --region=${_DEPLOY_REGION} \
+          --format="value(spec.template.spec.containers[0].env.filter(name:MAINTENANCE_MESSAGE).value)" \
+          2>/dev/null || echo "The Forte registration system is currently undergoing updates. We will be back shortly. Thank you for your patience!")
+
+        # Save to file for next step
+        echo "$MAINTENANCE_MODE" > /workspace/maintenance_mode.txt
+        echo "$MAINTENANCE_MESSAGE" > /workspace/maintenance_message.txt
+
+        echo "📋 Current maintenance mode: $MAINTENANCE_MODE"
+        echo "📋 Current maintenance message: $MAINTENANCE_MESSAGE"
+    id: 'get-maintenance-settings'
     waitFor: ['push-image']
+
+  # Step 4: Deploy to Cloud Run (environment determined by substitution variables)
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Read maintenance settings from previous step
+        MAINTENANCE_MODE=$(cat /workspace/maintenance_mode.txt)
+        MAINTENANCE_MESSAGE=$(cat /workspace/maintenance_message.txt)
+
+        echo "🚀 Deploying with maintenance mode: $MAINTENANCE_MODE"
+
+        gcloud run deploy tonic-${_ENV_TYPE} \
+          --image=gcr.io/$PROJECT_ID/tonic:${_ENV_TYPE}-${SHORT_SHA} \
+          --region=${_DEPLOY_REGION} \
+          --platform=managed \
+          --set-env-vars=NODE_ENV=${_ENV_TYPE} \
+          --set-env-vars=CI=true \
+          --set-env-vars=BUILD_GIT_COMMIT=${COMMIT_SHA} \
+          --set-env-vars=BUILD_GIT_TAG=${TAG_NAME} \
+          --set-env-vars=MAINTENANCE_MODE=$MAINTENANCE_MODE \
+          --set-env-vars=MAINTENANCE_MESSAGE="$MAINTENANCE_MESSAGE" \
+          --set-secrets=WORKING_SPREADSHEET_ID=working-spreadsheet-id:latest \
+          --set-secrets=GOOGLE_SERVICE_ACCOUNT_EMAIL=google-service-account-email:latest \
+          --set-secrets=GOOGLE_PRIVATE_KEY=google-private-key:latest \
+          --set-secrets=ROCK_BAND_CLASS_IDS=rock-band-class-ids:latest \
+          --allow-unauthenticated \
+          --max-instances=10 \
+          --memory=512Mi \
+          --cpu=1 \
+          --port=3000
+    id: 'deploy-service'
+    waitFor: ['get-maintenance-settings']
     
-  # Step 4: Wait for deployment to be ready
+  # Step 5: Wait for deployment to be ready
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
@@ -79,7 +115,7 @@ steps:
         echo "⏳ Waiting for deployment to be ready..."
         SERVICE_URL=$(gcloud run services describe tonic-${_ENV_TYPE} --region=${_DEPLOY_REGION} --format='value(status.url)')
         echo "🔗 Service URL: $$SERVICE_URL"
-        
+
         # Wait up to 2 minutes for health check
         for i in {1..24}; do
           if curl -f "$$SERVICE_URL/api/health" > /dev/null 2>&1; then
@@ -92,7 +128,7 @@ steps:
     id: 'health-check'
     waitFor: ['deploy-service']
 
-  # Step 5: Final summary
+  # Step 6: Final summary
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
