@@ -135,8 +135,9 @@ export class RegistrationApplicationService extends BaseService {
         throw new Error(`Program validation failed: ${programValidation.errors.join(', ')}`);
       }
 
-      // Step 5: Check for conflicts with existing registrations
-      const existingRegistrations = await this.registrationRepository.findAll();
+      // Step 5: Check for conflicts with existing registrations in the enrollment trimester
+      // (During enrollment periods, this checks against the NEXT trimester where the registration will be saved)
+      const existingRegistrations = await this.registrationRepository.getEnrollmentRegistrations();
 
       // Check for duplicate group registrations (student can only be enrolled in a class once)
       if (registrationData.registrationType === 'group' && registrationData.classId) {

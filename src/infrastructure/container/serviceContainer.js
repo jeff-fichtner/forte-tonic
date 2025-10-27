@@ -279,7 +279,7 @@ export class ServiceContainer {
    */
   #registerRepositories() {
     this.register('registrationRepository', () => {
-      return new RegistrationRepository(this.dbClient, configService);
+      return new RegistrationRepository(this.dbClient, configService, this.get('periodService'));
     });
 
     this.register('userRepository', () => {

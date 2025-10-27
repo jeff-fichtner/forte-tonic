@@ -63,6 +63,7 @@ export class GoogleSheetsDbClient extends BaseService {
           lastName: 2,
           firstName: 3,
           phone: 4,
+          accessCode: 5,
         },
       },
       [Keys.INSTRUCTORS]: {
@@ -81,6 +82,27 @@ export class GoogleSheetsDbClient extends BaseService {
           instrument2: 9,
           instrument3: 10,
           instrument4: 11,
+          isAvailableMonday: 12,
+          mondayStartTime: 13,
+          mondayEndTime: 14,
+          mondayRoomId: 15,
+          isAvailableTuesday: 16,
+          tuesdayStartTime: 17,
+          tuesdayEndTime: 18,
+          tuesdayRoomId: 19,
+          isAvailableWednesday: 20,
+          wednesdayStartTime: 21,
+          wednesdayEndTime: 22,
+          wednesdayRoomId: 23,
+          isAvailableThursday: 24,
+          thursdayStartTime: 25,
+          thursdayEndTime: 26,
+          thursdayRoomId: 27,
+          isAvailableFriday: 28,
+          fridayStartTime: 29,
+          fridayEndTime: 30,
+          fridayRoomId: 31,
+          accessCode: 32,
         },
       },
       [Keys.PARENTS]: {
@@ -92,7 +114,7 @@ export class GoogleSheetsDbClient extends BaseService {
           lastName: 2, // LastName
           firstName: 3, // FirstName
           phone: 4, // Phone
-          cellPhone: 5, // CellPhone
+          accessCode: 5, // AccessCode
         },
       },
       [Keys.STUDENTS]: {
@@ -134,9 +156,11 @@ export class GoogleSheetsDbClient extends BaseService {
           name: 1,
         },
       },
-      [Keys.REGISTRATIONS]: {
-        sheet: Keys.REGISTRATIONS,
+      // Fall trimester registrations
+      registrations_fall: {
+        sheet: 'registrations_fall',
         startRow: 2,
+        auditSheet: 'registrations_fall_audit',
         columnMap: {
           id: 0, // Id
           studentId: 1, // StudentId
@@ -157,14 +181,162 @@ export class GoogleSheetsDbClient extends BaseService {
           reenrollmentIntent: 16, // reenrollmentIntent
           intentSubmittedAt: 17, // intentSubmittedAt
           intentSubmittedBy: 18, // intentSubmittedBy
+          linkedPreviousRegistrationId: 19, // linkedPreviousRegistrationId
         },
-        auditSheet: Keys.REGISTRATIONSAUDIT,
-        postProcess: record => {
-          record.id =
-            record.registrationType === RegistrationType.GROUP
-              ? `${record.studentId}_${record.classId}`
-              : `${record.studentId}_${record.instructorId}_${record.day}_${record.startTime}`;
-          return record;
+      },
+      // Winter trimester registrations
+      registrations_winter: {
+        sheet: 'registrations_winter',
+        startRow: 2,
+        auditSheet: 'registrations_winter_audit',
+        columnMap: {
+          id: 0,
+          studentId: 1,
+          instructorId: 2,
+          day: 3,
+          startTime: 4,
+          length: 5,
+          registrationType: 6,
+          roomId: 7,
+          instrument: 8,
+          transportationType: 9,
+          notes: 10,
+          classId: 11,
+          classTitle: 12,
+          expectedStartDate: 13,
+          createdAt: 14,
+          createdBy: 15,
+          reenrollmentIntent: 16,
+          intentSubmittedAt: 17,
+          intentSubmittedBy: 18,
+          linkedPreviousRegistrationId: 19,
+        },
+      },
+      // Spring trimester registrations
+      registrations_spring: {
+        sheet: 'registrations_spring',
+        startRow: 2,
+        auditSheet: 'registrations_spring_audit',
+        columnMap: {
+          id: 0,
+          studentId: 1,
+          instructorId: 2,
+          day: 3,
+          startTime: 4,
+          length: 5,
+          registrationType: 6,
+          roomId: 7,
+          instrument: 8,
+          transportationType: 9,
+          notes: 10,
+          classId: 11,
+          classTitle: 12,
+          expectedStartDate: 13,
+          createdAt: 14,
+          createdBy: 15,
+          reenrollmentIntent: 16,
+          intentSubmittedAt: 17,
+          intentSubmittedBy: 18,
+          linkedPreviousRegistrationId: 19,
+        },
+      },
+      // Fall trimester audit
+      registrations_fall_audit: {
+        sheet: 'registrations_fall_audit',
+        startRow: 2,
+        columnMap: {
+          id: 0, // Id (unique GUID for audit record)
+          registrationId: 1, // RegistrationId (ID from the original registration record)
+          studentId: 2, // StudentId
+          instructorId: 3, // InstructorId
+          day: 4, // Day
+          startTime: 5, // StartTime
+          length: 6, // Length
+          registrationType: 7, // RegistrationType
+          roomId: 8, // RoomId
+          instrument: 9, // Instrument
+          transportationType: 10, // TransportationType
+          notes: 11, // Notes
+          classId: 12, // ClassId
+          classTitle: 13, // ClassTitle
+          expectedStartDate: 14, // ExpectedStartDate
+          createdAt: 15, // CreatedAt
+          createdBy: 16, // CreatedBy
+          isDeleted: 17, // IsDeleted
+          deletedAt: 18, // DeletedAt
+          deletedBy: 19, // DeletedBy
+          reenrollmentIntent: 20, // reenrollmentIntent
+          intentSubmittedAt: 21, // intentSubmittedAt
+          intentSubmittedBy: 22, // intentSubmittedBy
+          updatedAt: 23, // updatedAt
+          updatedBy: 24, // updatedBy
+          linkedPreviousRegistrationId: 25, // linkedPreviousRegistrationId
+        },
+      },
+      // Winter trimester audit
+      registrations_winter_audit: {
+        sheet: 'registrations_winter_audit',
+        startRow: 2,
+        columnMap: {
+          id: 0, // Id (unique GUID for audit record)
+          registrationId: 1, // RegistrationId (ID from the original registration record)
+          studentId: 2, // StudentId
+          instructorId: 3, // InstructorId
+          day: 4, // Day
+          startTime: 5, // StartTime
+          length: 6, // Length
+          registrationType: 7, // RegistrationType
+          roomId: 8, // RoomId
+          instrument: 9, // Instrument
+          transportationType: 10, // TransportationType
+          notes: 11, // Notes
+          classId: 12, // ClassId
+          classTitle: 13, // ClassTitle
+          expectedStartDate: 14, // ExpectedStartDate
+          createdAt: 15, // CreatedAt
+          createdBy: 16, // CreatedBy
+          isDeleted: 17, // IsDeleted
+          deletedAt: 18, // DeletedAt
+          deletedBy: 19, // DeletedBy
+          reenrollmentIntent: 20, // reenrollmentIntent
+          intentSubmittedAt: 21, // intentSubmittedAt
+          intentSubmittedBy: 22, // intentSubmittedBy
+          updatedAt: 23, // updatedAt
+          updatedBy: 24, // updatedBy
+          linkedPreviousRegistrationId: 25, // linkedPreviousRegistrationId
+        },
+      },
+      // Spring trimester audit
+      registrations_spring_audit: {
+        sheet: 'registrations_spring_audit',
+        startRow: 2,
+        columnMap: {
+          id: 0, // Id (unique GUID for audit record)
+          registrationId: 1, // RegistrationId (ID from the original registration record)
+          studentId: 2, // StudentId
+          instructorId: 3, // InstructorId
+          day: 4, // Day
+          startTime: 5, // StartTime
+          length: 6, // Length
+          registrationType: 7, // RegistrationType
+          roomId: 8, // RoomId
+          instrument: 9, // Instrument
+          transportationType: 10, // TransportationType
+          notes: 11, // Notes
+          classId: 12, // ClassId
+          classTitle: 13, // ClassTitle
+          expectedStartDate: 14, // ExpectedStartDate
+          createdAt: 15, // CreatedAt
+          createdBy: 16, // CreatedBy
+          isDeleted: 17, // IsDeleted
+          deletedAt: 18, // DeletedAt
+          deletedBy: 19, // DeletedBy
+          reenrollmentIntent: 20, // reenrollmentIntent
+          intentSubmittedAt: 21, // intentSubmittedAt
+          intentSubmittedBy: 22, // intentSubmittedBy
+          updatedAt: 23, // updatedAt
+          updatedBy: 24, // updatedBy
+          linkedPreviousRegistrationId: 25, // linkedPreviousRegistrationId
         },
       },
       [Keys.REGISTRATIONSAUDIT]: {
@@ -363,6 +535,7 @@ export class GoogleSheetsDbClient extends BaseService {
   async getAllRecords(sheetKey, mapFunc) {
     try {
       const sheetInfo = this.workingSheetInfo[sheetKey];
+
       if (!sheetInfo) {
         throw new Error(`Sheet info not found for key: ${sheetKey}`);
       }
@@ -371,7 +544,19 @@ export class GoogleSheetsDbClient extends BaseService {
 
       // Calculate the last column needed based on columnMap
       const maxColumnIndex = Math.max(...Object.values(sheetInfo.columnMap));
-      const lastColumn = String.fromCharCode(65 + maxColumnIndex); // A=65, B=66, etc.
+
+      // Convert column index to Excel-style column letter (A, B, ..., Z, AA, AB, ...)
+      const getColumnLetter = (index) => {
+        let letter = '';
+        let num = index;
+        while (num >= 0) {
+          letter = String.fromCharCode((num % 26) + 65) + letter;
+          num = Math.floor(num / 26) - 1;
+        }
+        return letter;
+      };
+
+      const lastColumn = getColumnLetter(maxColumnIndex);
 
       // Use open-ended range - Google Sheets returns only populated rows
       const response = await this.sheets.spreadsheets.values.get({
@@ -452,6 +637,7 @@ export class GoogleSheetsDbClient extends BaseService {
 
       // Direct Google Sheets API call (migrated from RegistrationRepository)
       const sheetInfo = this.workingSheetInfo[sheetKey];
+
       if (!sheetInfo) {
         throw new Error(`Sheet info not found for key: ${sheetKey}`);
       }
@@ -476,9 +662,10 @@ export class GoogleSheetsDbClient extends BaseService {
 
       // Add audit functionality (from existing appendRecord method)
       const { auditSheet } = sheetInfo;
+
       if (auditSheet) {
         let auditRecord;
-        if (sheetKey === 'registrations') {
+        if (sheetKey.startsWith('registrations_')) {
           auditRecord = this.#createRegistrationAuditRecord(record, createdBy, false);
         } else if (sheetKey === 'attendance') {
           auditRecord = this.#createAttendanceAuditRecord(record, createdBy, false);
@@ -626,7 +813,7 @@ export class GoogleSheetsDbClient extends BaseService {
 
       if (auditSheet) {
         let auditRecord;
-        if (sheetKey === Keys.REGISTRATIONS) {
+        if (sheetKey.startsWith('registrations_')) {
           auditRecord = this.#createRegistrationAuditRecord(recordData, deletedBy, true);
         } else if (sheetKey === Keys.ATTENDANCE) {
           auditRecord = this.#createAttendanceAuditRecord(recordData, deletedBy, true);

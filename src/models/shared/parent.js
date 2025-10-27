@@ -33,13 +33,13 @@ export class Parent {
    * @returns {Parent} Parent instance
    */
   static fromDatabaseRow(row) {
-    const [id, email, lastName, firstName, phone, accessCode, address, isEmergencyContact] = row;
+    const [id, email, lastName, firstName, phone, accessCode] = row;
 
     return new Parent(id, email, lastName, firstName, {
       phone,
       accessCode,
-      address,
-      isEmergencyContact,
+      address: null,
+      isEmergencyContact: false,
       alternatePhone: null,
       relationship: 'parent',
       isActive: true,

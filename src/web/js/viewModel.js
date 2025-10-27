@@ -132,6 +132,12 @@ export class ViewModel {
     // ClassManager will read rockBandClassIds from here directly
     if (appConfig) {
       window.UserSession.saveAppConfig(appConfig);
+
+      // Check if maintenance mode is enabled
+      if (appConfig.maintenanceMode) {
+        this.#showMaintenanceMode(appConfig.maintenanceMessage);
+        return; // Block further initialization
+      }
     }
 
     // Initialize all modals
@@ -218,19 +224,31 @@ export class ViewModel {
     this.currentUser = user;
 
     let defaultSection;
-    if (user.admin && !this.adminContentInitialized) {
-      this.#initAdminContent();
-      this.adminContentInitialized = true;
+    if (user.admin) {
+      if (!this.adminContentInitialized) {
+        this.#initAdminContent();
+        this.adminContentInitialized = true;
+      } else {
+        // Reinitialize trimester selector on user switch
+        this.#initTrimesterSelector('admin');
+      }
       defaultSection = Sections.ADMIN;
     }
-    if (user.instructor && !this.instructorContentInitialized) {
-      this.#initInstructorContent();
-      this.instructorContentInitialized = true;
+    if (user.instructor) {
+      if (!this.instructorContentInitialized) {
+        this.#initInstructorContent();
+        this.instructorContentInitialized = true;
+      }
       defaultSection = Sections.INSTRUCTOR;
     }
-    if (user.parent && !this.parentContentInitialized) {
-      this.#initParentContent();
-      this.parentContentInitialized = true;
+    if (user.parent) {
+      if (!this.parentContentInitialized) {
+        this.#initParentContent();
+        this.parentContentInitialized = true;
+      } else {
+        // Reinitialize trimester selector on user switch
+        this.#initTrimesterSelector('parent');
+      }
       defaultSection = Sections.PARENT;
     }
 
@@ -285,9 +303,8 @@ export class ViewModel {
       banner.className = 'enrollment-banner open';
       bannerText.textContent = 'Open Enrollment is now available for all families';
     } else if (currentPeriod.periodType === 'intent') {
-      banner.style.display = 'block';
-      banner.className = 'enrollment-banner intent';
-      bannerText.textContent = 'Please indicate your intent (keep/drop/change) for current lessons';
+      // Don't show this banner during intent period - the intent-banner with count is shown instead
+      banner.style.display = 'none';
     } else {
       banner.style.display = 'none';
     }
@@ -547,11 +564,12 @@ export class ViewModel {
         studentContainer.className = 'student-schedule-container';
         studentContainer.style.cssText = 'margin-bottom: 30px;';
 
-        // Add student name header
+        // Add student name header with trimester
         const studentHeader = document.createElement('h5');
         studentHeader.style.cssText =
           'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px;';
-        studentHeader.textContent = `${student.firstName} ${student.lastName}'s Schedule`;
+        const trimesterName = capitalize(this.selectedTrimester || 'Fall');
+        studentHeader.textContent = `${student.firstName} ${student.lastName}'s ${trimesterName} Schedule`;
         studentContainer.appendChild(studentHeader);
 
         // Create table for this student
@@ -1059,9 +1077,21 @@ export class ViewModel {
   /**
    * Shared method to create registration with proper enrichment
    * This method handles the API call and enriches the response with instructor and student objects
+   * Routes to next trimester endpoint during enrollment periods
    */
   async #createRegistrationWithEnrichment(data) {
-    const response = await HttpService.post(ServerFunctions.register, data);
+    // Determine which endpoint to use based on enrollment period
+    const currentPeriod = window.UserSession?.getCurrentPeriod?.();
+    const isEnrollmentPeriod =
+      currentPeriod &&
+      (currentPeriod.periodType === 'priorityEnrollment' ||
+        currentPeriod.periodType === 'openEnrollment');
+
+    const endpoint = isEnrollmentPeriod
+      ? ServerFunctions.createNextTrimesterRegistration
+      : ServerFunctions.register;
+
+    const response = await HttpService.post(endpoint, data);
     // HttpService auto-unwraps { success, data } responses, so response is already the registration data
     const newRegistration = Registration.fromApiData(response);
 
@@ -1188,33 +1218,63 @@ export class ViewModel {
    * @param {string} userType - 'admin' or 'parent'
    */
   #initTrimesterSelector(userType) {
+    console.log(`🔧 initTrimesterSelector called for ${userType}`);
+    console.trace('Call stack:');
+
     const containerId = `${userType}-trimester-selector-container`;
     const selectId = `${userType}-trimester-select`;
 
     const container = document.getElementById(containerId);
-    const select = document.getElementById(selectId);
 
-    if (!container || !select) {
-      console.error(`Trimester selector elements not found for ${userType}`);
+    if (!container) {
+      console.error(`Trimester selector container not found for ${userType}`);
       return;
     }
 
-    // Show the selector container
-    container.hidden = false;
-
     // Get configuration from UserSession
-    const config = window.UserSession?.getAppConfiguration();
+    const config = window.UserSession?.getAppConfig();
     if (!config) {
       console.error('App configuration not available');
       return;
     }
 
+    // For parents: only show trimester dropdown during enrollment periods (priority/open) and ONLY for winter or later
+    if (userType === 'parent') {
+      const currentPeriod = window.UserSession?.getCurrentPeriod();
+      const isEnrollmentPeriod =
+        currentPeriod &&
+        (currentPeriod.periodType === 'priorityEnrollment' ||
+          currentPeriod.periodType === 'openEnrollment');
+      const isWinterOrLater =
+        currentPeriod &&
+        (currentPeriod.trimester === 'winter' || currentPeriod.trimester === 'spring');
+
+      if (!isEnrollmentPeriod || !isWinterOrLater) {
+        container.hidden = true;
+        return;
+      }
+    }
+
+    // Show the selector container (for admins always, for parents only during enrollment and winter+)
+    container.hidden = false;
+
     this.defaultTrimester = config.defaultTrimester || 'Fall';
     this.selectedTrimester = this.defaultTrimester;
 
-    // Populate dropdown options
+    // Get the select element (might exist from previous initialization)
+    let select = document.getElementById(selectId);
+
+    // Destroy existing Materialize instance if it exists
+    if (select) {
+      const existingInstance = M.FormSelect.getInstance(select);
+      if (existingInstance) {
+        existingInstance.destroy();
+      }
+    }
+
+    // Clear and rebuild the entire container to ensure clean state
     const trimesters = config.availableTrimesters || ['fall', 'winter', 'spring'];
-    select.innerHTML = trimesters
+    const optionsHtml = trimesters
       .map(
         trimester =>
           `<option value="${trimester}" ${trimester === this.defaultTrimester ? 'selected' : ''}>
@@ -1223,14 +1283,33 @@ export class ViewModel {
       )
       .join('');
 
-    // Initialize Materialize select
-    M.FormSelect.init(select);
+    container.innerHTML = `
+      <div class="row" style="margin-bottom: 0">
+        <div class="input-field col s12 m6 l4">
+          <select id="${selectId}">
+            ${optionsHtml}
+          </select>
+          <label>Trimester</label>
+        </div>
+      </div>
+    `;
+
+    // Get the fresh select element
+    select = document.getElementById(selectId);
+
+    if (!select) {
+      console.error(`Failed to create trimester select for ${userType}`);
+      return;
+    }
 
     // Add change event listener
     select.addEventListener('change', e => {
       const newTrimester = e.target.value;
       this.#handleTrimesterChange(newTrimester, userType);
     });
+
+    // Initialize Materialize select
+    M.FormSelect.init(select);
   }
 
   /**
@@ -1427,11 +1506,12 @@ export class ViewModel {
         studentContainer.className = 'student-schedule-container';
         studentContainer.style.cssText = 'margin-bottom: 30px;';
 
-        // Add student name header
+        // Add student name header with trimester
         const studentHeader = document.createElement('h5');
         studentHeader.style.cssText =
           'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px;';
-        studentHeader.textContent = `${student.firstName} ${student.lastName}'s Schedule`;
+        const trimesterName = capitalize(this.selectedTrimester || 'Fall');
+        studentHeader.textContent = `${student.firstName} ${student.lastName}'s ${trimesterName} Schedule`;
         studentContainer.appendChild(studentHeader);
 
         // Create table for this student
@@ -1487,6 +1567,33 @@ export class ViewModel {
     const selector = document.getElementById(selectId);
     if (selector) {
       selector.disabled = isLoading;
+      // Reinitialize Materialize select to reflect disabled state change
+      M.FormSelect.init(selector);
+    }
+  }
+
+  /**
+   * Show maintenance mode overlay
+   * @param {string} message - Custom maintenance message
+   */
+  #showMaintenanceMode(message) {
+    const overlay = document.getElementById('maintenance-mode-overlay');
+    const messageText = document.getElementById('maintenance-message-text');
+
+    if (overlay) {
+      // Update message if provided
+      if (message && messageText) {
+        messageText.textContent = message;
+      }
+
+      // Show the overlay
+      overlay.classList.add('active');
+
+      // Hide loading spinner and page content
+      const loadingContainer = document.getElementById('page-loading-container');
+      const pageContent = document.getElementById('page-content');
+      if (loadingContainer) loadingContainer.style.display = 'none';
+      if (pageContent) pageContent.hidden = true;
     }
   }
 

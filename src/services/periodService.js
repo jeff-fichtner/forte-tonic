@@ -172,6 +172,32 @@ export class PeriodService extends BaseService {
   }
 
   /**
+   * Get the appropriate table for enrollment operations (read/write)
+   * During enrollment periods: uses next trimester (e.g., fall enrollment → winter table)
+   * During active instruction: uses current trimester
+   * @returns {Promise<string>} Table name like "registrations_fall"
+   * @throws {Error} If no active period found
+   */
+  async getEnrollmentTrimesterTable() {
+    const period = await this.getCurrentPeriod();
+    if (!period || !period.trimester) {
+      throw new Error('No active period found');
+    }
+
+    // During enrollment periods, target the next trimester
+    if (
+      period.periodType === PeriodType.PRIORITY_ENROLLMENT ||
+      period.periodType === PeriodType.OPEN_ENROLLMENT
+    ) {
+      const nextTrimester = this._getNextTrimester(period.trimester);
+      return `registrations_${nextTrimester}`;
+    }
+
+    // During instruction period, use current trimester
+    return `registrations_${period.trimester}`;
+  }
+
+  /**
    * Get the next trimester in the annual sequence
    * fall → winter → spring → fall (cycles)
    * @private

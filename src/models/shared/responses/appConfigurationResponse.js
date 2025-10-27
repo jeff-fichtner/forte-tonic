@@ -19,6 +19,8 @@ export class AppConfigurationResponse {
         nextTrimester,
         availableTrimesters,
         defaultTrimester,
+        maintenanceMode,
+        maintenanceMessage,
       } = data;
 
       this.currentPeriod = currentPeriod || null;
@@ -30,6 +32,8 @@ export class AppConfigurationResponse {
         ? availableTrimesters
         : TRIMESTER_SEQUENCE;
       this.defaultTrimester = defaultTrimester || null;
+      this.maintenanceMode = maintenanceMode || false;
+      this.maintenanceMessage = maintenanceMessage || null;
     } else {
       this.currentPeriod = null;
       this.nextPeriod = null;
@@ -38,6 +42,8 @@ export class AppConfigurationResponse {
       this.nextTrimester = null;
       this.availableTrimesters = TRIMESTER_SEQUENCE;
       this.defaultTrimester = null;
+      this.maintenanceMode = false;
+      this.maintenanceMessage = null;
     }
   }
 
@@ -66,6 +72,14 @@ export class AppConfigurationResponse {
   }
 
   /**
+   * Checks if maintenance mode is enabled
+   * @returns {boolean} True if maintenance mode is enabled
+   */
+  isMaintenanceModeEnabled() {
+    return this.maintenanceMode === true;
+  }
+
+  /**
    * Serializes the app configuration for API responses
    * @returns {object} Serialized configuration data
    */
@@ -78,6 +92,8 @@ export class AppConfigurationResponse {
       nextTrimester: this.nextTrimester,
       availableTrimesters: this.availableTrimesters,
       defaultTrimester: this.defaultTrimester,
+      maintenanceMode: this.maintenanceMode,
+      maintenanceMessage: this.maintenanceMessage,
     };
   }
 
@@ -103,6 +119,8 @@ export class AppConfigurationResponse {
       nextTrimester: null,
       availableTrimesters: TRIMESTER_SEQUENCE,
       defaultTrimester: null,
+      maintenanceMode: false,
+      maintenanceMessage: null,
     });
   }
 }

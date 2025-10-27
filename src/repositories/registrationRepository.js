@@ -15,9 +15,11 @@ export class RegistrationRepository extends BaseRepository {
   /**
    * @param {Object} dbClient - Database client instance
    * @param {Object} configService - Configuration service for logger initialization
+   * @param {Object} periodService - Period service for trimester management
    */
-  constructor(dbClient, configService) {
+  constructor(dbClient, configService, periodService) {
     super('registrations', Registration, dbClient, configService);
+    this.periodService = periodService;
   }
 
   /**
@@ -102,13 +104,18 @@ export class RegistrationRepository extends BaseRepository {
   }
 
   /**
-   * Get all active registrations
+   * Get all active registrations from the current trimester table
    * Note: Since status field was removed, all registrations are considered active
    */
   async getActiveRegistrations() {
     try {
+      // Get current trimester table name from period service
+      const currentTable = await this.periodService.getCurrentTrimesterTable();
+
+      this.logger.info(`📋 Getting active registrations from table: ${currentTable}`);
+
       // Use cached database client method instead of direct API call
-      const allRegistrations = await this.dbClient.getCachedData('registrations', row => {
+      const allRegistrations = await this.dbClient.getCachedData(currentTable, row => {
         // Skip empty rows
         if (!row || !row[0]) {
           return null;
@@ -133,6 +140,8 @@ export class RegistrationRepository extends BaseRepository {
       // Filter out null entries from skipped rows
       const validRegistrations = allRegistrations.filter(reg => reg !== null);
 
+      this.logger.info(`✅ Found ${validRegistrations.length} active registrations`);
+
       // Since status field was removed, all registrations are considered active
       return validRegistrations;
     } catch (error) {
@@ -146,6 +155,42 @@ export class RegistrationRepository extends BaseRepository {
    */
   async findAll() {
     return this.getActiveRegistrations();
+  }
+
+  /**
+   * Get registrations from the enrollment trimester table
+   * (During enrollment periods, this returns registrations from the NEXT trimester)
+   */
+  async getEnrollmentRegistrations() {
+    try {
+      // Get enrollment trimester table name from period service
+      const enrollmentTable = await this.periodService.getEnrollmentTrimesterTable();
+
+      this.logger.info(`📋 Getting enrollment registrations from table: ${enrollmentTable}`);
+
+      // Use cached database client method
+      const allRegistrations = await this.dbClient.getCachedData(enrollmentTable, row => {
+        // Skip empty rows
+        if (!row || !row[0]) {
+          return null;
+        }
+
+        try {
+          return Registration.fromDatabaseRow
+            ? Registration.fromDatabaseRow(row)
+            : new Registration(row);
+        } catch (error) {
+          this.logger.error(`Error parsing registration row: ${JSON.stringify(row)}`, error);
+          return null;
+        }
+      });
+
+      // Filter out null values from parsing errors
+      return allRegistrations.filter(reg => reg !== null);
+    } catch (error) {
+      this.logger.error('Error getting enrollment registrations:', error);
+      throw error;
+    }
   }
 
   /**
@@ -174,6 +219,11 @@ export class RegistrationRepository extends BaseRepository {
    */
   async create(registrationData) {
     try {
+      // Get enrollment trimester table (next trimester during enrollment periods)
+      const enrollmentTable = await this.periodService.getEnrollmentTrimesterTable();
+
+      this.logger.info(`📝 Creating registration in table: ${enrollmentTable}`);
+
       // Generate UUID if not provided
       const registrationId = registrationData.id || this.generateUUID();
 
@@ -202,11 +252,11 @@ export class RegistrationRepository extends BaseRepository {
       });
 
       // Use the new appendRecordv2 method that handles direct Google Sheets append and audit
-      await this.dbClient.appendRecordv2('registrations', registration, registrationData.createdBy);
+      await this.dbClient.appendRecordv2(enrollmentTable, registration, registrationData.createdBy);
 
       // Clear cache after mutation to ensure data consistency
       this.clearCache();
-      this.dbClient.clearCache('registrations');
+      this.dbClient.clearCache(enrollmentTable);
 
       // Cache the new registration
       this.cache.set(registrationId, registration);
@@ -227,6 +277,9 @@ export class RegistrationRepository extends BaseRepository {
         throw new Error('userId is required for audit trail');
       }
 
+      // Get current trimester table name from period service
+      const currentTable = await this.periodService.getCurrentTrimesterTable();
+
       const registrationId = typeof id === 'string' ? new RegistrationId(id) : id;
 
       // First verify the registration exists using cached data
@@ -235,12 +288,14 @@ export class RegistrationRepository extends BaseRepository {
         throw new Error(`Registration with ID ${registrationId.getValue()} not found`);
       }
 
+      this.logger.info(`🗑️ Deleting registration from table: ${currentTable}`);
+
       // Use the database client's deleteRecord method which handles audit trails and proper deletion
-      await this.dbClient.deleteRecord('registrations', registrationId.getValue(), userId);
+      await this.dbClient.deleteRecord(currentTable, registrationId.getValue(), userId);
 
       // Clear cache after mutation
       this.clearCache();
-      this.dbClient.clearCache('registrations');
+      this.dbClient.clearCache(currentTable);
 
       return true;
     } catch (error) {

@@ -282,38 +282,146 @@ class ChangeTrimesterMigration {
   }
 
   /**
+   * Create audit records for all transformed registrations
+   * @private
+   */
+  _createAuditRecords(transformedRows, registrationHeaders) {
+    // Get target audit sheet to determine structure
+    const auditSheet = this.spreadsheet.getSheetByName(this.targetAuditTable);
+    if (!auditSheet) {
+      Logger.log(`   ⚠️  Audit table '${this.targetAuditTable}' not found, skipping audit records`);
+      return;
+    }
+
+    // Delete previous working copy if exists
+    const existingWorkingAudit = this.spreadsheet.getSheetByName(this.workingAuditTable);
+    if (existingWorkingAudit) {
+      Logger.log(`   🗑️  Deleting previous ${this.workingAuditTable}`);
+      this.spreadsheet.deleteSheet(existingWorkingAudit);
+    }
+
+    // Get audit table structure
+    const auditData = auditSheet.getDataRange().getValues();
+    const auditHeaders = auditData[0];
+
+    // Create working audit sheet
+    Logger.log(`   📊 Creating ${this.workingAuditTable}...`);
+    const workingAuditSheet = this.spreadsheet.insertSheet(this.workingAuditTable);
+
+    // Copy headers
+    const auditHeaderRange = workingAuditSheet.getRange(1, 1, 1, auditHeaders.length);
+    auditHeaderRange.setValues([auditHeaders]);
+    auditHeaderRange.setFontWeight('bold');
+    auditHeaderRange.setBackground('#e8eaf6');
+
+    // Find column indices in audit table
+    const auditIdIndex = auditHeaders.indexOf('Id');
+    const registrationIdIndex = auditHeaders.indexOf('RegistrationId');
+    const updatedAtIndex = auditHeaders.indexOf('updatedAt');
+    const updatedByIndex = auditHeaders.indexOf('updatedBy');
+
+    // Find ID column in registration headers
+    const regIdIndex = registrationHeaders.indexOf('Id');
+
+    if (auditIdIndex === -1 || registrationIdIndex === -1 || regIdIndex === -1) {
+      Logger.log(`   ⚠️  Required columns not found in audit table structure`);
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const auditRecords = [];
+
+    // Create audit record for each transformed registration
+    for (const row of transformedRows) {
+      // Create audit record matching the registration structure
+      const auditRecord = new Array(auditHeaders.length).fill('');
+
+      // Copy all fields from registration to audit (they have similar structure)
+      // Audit has: Id (audit ID), RegistrationId (reg ID), then all reg fields
+      for (let i = 0; i < registrationHeaders.length; i++) {
+        const regHeader = registrationHeaders[i];
+        const auditIdx = auditHeaders.indexOf(regHeader);
+        if (auditIdx !== -1 && auditIdx > registrationIdIndex) {
+          // Copy value from registration row to audit record
+          auditRecord[auditIdx] = row[i];
+        }
+      }
+
+      // Set audit-specific fields
+      auditRecord[auditIdIndex] = this._generateUuid(); // Unique audit record ID
+      auditRecord[registrationIdIndex] = row[regIdIndex]; // Reference to registration ID
+
+      if (updatedAtIndex !== -1) {
+        auditRecord[updatedAtIndex] = now;
+      }
+      if (updatedByIndex !== -1) {
+        auditRecord[updatedByIndex] = 'Migration_REEN006';
+      }
+
+      auditRecords.push(auditRecord);
+    }
+
+    // Write audit records
+    if (auditRecords.length > 0) {
+      const auditDataRange = workingAuditSheet.getRange(2, 1, auditRecords.length, auditHeaders.length);
+      auditDataRange.setValues(auditRecords);
+      Logger.log(`   ✅ Created ${auditRecords.length} audit records in ${this.workingAuditTable}`);
+    }
+  }
+
+  /**
    * Apply migration - Make changes permanent
-   * DESTRUCTIVE: Replaces target trimester table
+   * DESTRUCTIVE: Replaces target trimester table and audit table
    */
   apply() {
     Logger.log(`⚠️  APPLYING MIGRATION: ${this.migrationName}`);
     Logger.log('='.repeat(42 + this.migrationName.length));
-    Logger.log(`⚠️  WARNING: This will REPLACE ${this.targetTable}!`);
+    Logger.log(`⚠️  WARNING: This will REPLACE ${this.targetTable} and ${this.targetAuditTable}!`);
 
     try {
-      // Verify working copy exists
+      // Verify working copies exist
       const workingSheet = this.spreadsheet.getSheetByName(this.workingTable);
       if (!workingSheet) {
         throw new Error(`Working copy '${this.workingTable}' not found. Run runChangeTrimesterMigration() first.`);
       }
 
-      // Get row count for confirmation
+      const workingAuditSheet = this.spreadsheet.getSheetByName(this.workingAuditTable);
+      if (!workingAuditSheet) {
+        throw new Error(`Working audit copy '${this.workingAuditTable}' not found. Run runChangeTrimesterMigration() first.`);
+      }
+
+      // Get row counts for confirmation
       const workingRowCount = workingSheet.getLastRow() - 1; // Exclude header
-      Logger.log(`\n📊 Working copy has ${workingRowCount} rows ready to apply`);
+      const workingAuditRowCount = workingAuditSheet.getLastRow() - 1; // Exclude header
+      Logger.log(`\n📊 Working copies ready to apply:`);
+      Logger.log(`   ${this.workingTable}: ${workingRowCount} rows`);
+      Logger.log(`   ${this.workingAuditTable}: ${workingAuditRowCount} rows`);
 
       // Delete target if exists
       const targetSheet = this.spreadsheet.getSheetByName(this.targetTable);
       if (targetSheet) {
-        Logger.log(`🗑️  Deleting original ${this.targetTable}`);
+        Logger.log(`\n🗑️  Deleting original ${this.targetTable}`);
         this.spreadsheet.deleteSheet(targetSheet);
       }
 
-      // Rename working copy to target
-      Logger.log(`✏️  Renaming ${this.workingTable} → ${this.targetTable}`);
+      // Delete target audit if exists
+      const targetAuditSheet = this.spreadsheet.getSheetByName(this.targetAuditTable);
+      if (targetAuditSheet) {
+        Logger.log(`🗑️  Deleting original ${this.targetAuditTable}`);
+        this.spreadsheet.deleteSheet(targetAuditSheet);
+      }
+
+      // Rename working copies to targets
+      Logger.log(`\n✏️  Renaming working copies to production:`);
+      Logger.log(`   ${this.workingTable} → ${this.targetTable}`);
       workingSheet.setName(this.targetTable);
+
+      Logger.log(`   ${this.workingAuditTable} → ${this.targetAuditTable}`);
+      workingAuditSheet.setName(this.targetAuditTable);
 
       Logger.log('\n🎉 MIGRATION APPLIED SUCCESSFULLY!');
       Logger.log(`   ${this.targetTable} now contains ${workingRowCount} registrations`);
+      Logger.log(`   ${this.targetAuditTable} now contains ${workingAuditRowCount} audit records`);
       Logger.log(`   Source (${this.sourceTable}) remains unchanged`);
       Logger.log(`   Students can now be scheduled in ${this.TARGET_TRIMESTER} trimester`);
 
