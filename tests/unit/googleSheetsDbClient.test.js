@@ -73,7 +73,10 @@ describe('GoogleSheetsDbClient', () => {
       expect(client.workingSheetInfo).toBeDefined();
       expect(client.workingSheetInfo.admins).toBeDefined();
       expect(client.workingSheetInfo.students).toBeDefined();
-      expect(client.workingSheetInfo.registrations).toBeDefined();
+      // Registrations are now split by trimester
+      expect(client.workingSheetInfo.registrations_fall).toBeDefined();
+      expect(client.workingSheetInfo.registrations_winter).toBeDefined();
+      expect(client.workingSheetInfo.registrations_spring).toBeDefined();
     });
   });
 
@@ -101,10 +104,10 @@ describe('GoogleSheetsDbClient', () => {
       const result = await client.getAllRecords('admins', mapFunc);
 
       // Verify optimized range calculation
-      // admins columnMap has max index 4 (phone), so column = E (65+4=69='E')
+      // admins columnMap has max index 5 (accessCode), so column = F (65+5=70='F')
       expect(mockSheetsApi.spreadsheets.values.get).toHaveBeenCalledWith({
         spreadsheetId: 'test-spreadsheet-id',
-        range: 'admins!A2:E',
+        range: 'admins!A2:F',
       });
 
       expect(result).toEqual([
@@ -193,13 +196,14 @@ describe('GoogleSheetsDbClient', () => {
         data: { values: [] },
       });
 
-      await client.getAllRecords('registrations', row => ({ id: row[0] }));
+      // Use registrations_fall instead of registrations
+      await client.getAllRecords('registrations_fall', row => ({ id: row[0] }));
 
-      // registrations has max column index 18 (intentSubmittedBy)
-      // 65 + 18 = 83 = 'S'
+      // registrations_fall has max column index 19 (linkedPreviousRegistrationId)
+      // 65 + 19 = 84 = 'T'
       expect(mockSheetsApi.spreadsheets.values.get).toHaveBeenCalledWith({
         spreadsheetId: 'test-spreadsheet-id',
-        range: 'registrations!A2:S',
+        range: 'registrations_fall!A2:T',
       });
     });
   });
@@ -382,6 +386,7 @@ describe('GoogleSheetsDbClient', () => {
         lastName: 'Doe',
         firstName: 'John',
         phone: '555-1234',
+        accessCode: '',
       };
 
       await client.insertIntoSheet('admins', data);
@@ -391,7 +396,7 @@ describe('GoogleSheetsDbClient', () => {
         range: 'admins!A:A',
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: [['admin-1', 'test@test.com', 'Doe', 'John', '555-1234']],
+          values: [['admin-1', 'test@test.com', 'Doe', 'John', '555-1234', '']],
         },
       });
 
@@ -410,13 +415,21 @@ describe('GoogleSheetsDbClient', () => {
         email: 'test@test.com',
         // lastName and firstName omitted
         phone: '555-1234',
+        // accessCode omitted
       };
 
       await client.insertIntoSheet('admins', data);
 
-      // Verify row has empty strings for missing columns
+      // Verify row has empty strings for missing columns (including accessCode at index 5)
       const call = mockSheetsApi.spreadsheets.values.append.mock.calls[0][0];
-      expect(call.requestBody.values[0]).toEqual(['admin-1', 'test@test.com', '', '', '555-1234']);
+      expect(call.requestBody.values[0]).toEqual([
+        'admin-1',
+        'test@test.com',
+        '',
+        '',
+        '555-1234',
+        '',
+      ]);
     });
   });
 
@@ -442,6 +455,7 @@ describe('GoogleSheetsDbClient', () => {
         lastName: 'Smith',
         firstName: 'Jane',
         phone: '555-9999',
+        accessCode: '',
       };
 
       await client.updateRecord('admins', updatedRecord, 'test-user');
@@ -452,7 +466,7 @@ describe('GoogleSheetsDbClient', () => {
         range: 'admins!A3:Z3',
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: [['admin-2', 'updated@test.com', 'Smith', 'Jane', '555-9999']],
+          values: [['admin-2', 'updated@test.com', 'Smith', 'Jane', '555-9999', '']],
         },
       });
     });

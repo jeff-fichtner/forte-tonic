@@ -19,6 +19,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
   let mockDbClient;
   let mockSheets;
   let mockConfigService;
+  let mockPeriodService;
 
   beforeEach(() => {
     // Mock Google Sheets API
@@ -51,7 +52,16 @@ describe('RegistrationRepository - Delete Functionality', () => {
       })),
     };
 
-    repository = new RegistrationRepository(mockDbClient, mockConfigService);
+    // Create mock period service
+    mockPeriodService = {
+      getCurrentTrimesterTable: jest.fn().mockResolvedValue('registrations_fall'),
+      getCurrentPeriod: jest.fn().mockResolvedValue({
+        trimester: 'fall',
+        periodType: 'active',
+      }),
+    };
+
+    repository = new RegistrationRepository(mockDbClient, mockConfigService, mockPeriodService);
     repository.clearCache = jest.fn();
     repository.cache = new Map(); // Add cache to repository for testing
   });
@@ -103,14 +113,14 @@ describe('RegistrationRepository - Delete Functionality', () => {
 
       // Verify deleteRecord was called with correct parameters
       expect(mockDbClient.deleteRecord).toHaveBeenCalledWith(
-        'registrations',
+        'registrations_fall',
         testRegistrationId,
         'test-user-id'
       );
 
       // Verify cache clearing
       expect(repository.clearCache).toHaveBeenCalled();
-      expect(mockDbClient.clearCache).toHaveBeenCalledWith('registrations');
+      expect(mockDbClient.clearCache).toHaveBeenCalledWith('registrations_fall');
     });
 
     test('should handle string ID parameter', async () => {
@@ -160,7 +170,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
       );
 
       expect(mockDbClient.deleteRecord).toHaveBeenCalledWith(
-        'registrations',
+        'registrations_fall',
         testRegistrationId,
         'test-user-id'
       );
@@ -201,7 +211,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
       await repository.delete(testRegistrationId, 'test-user-id');
 
       expect(repository.clearCache).toHaveBeenCalled();
-      expect(mockDbClient.clearCache).toHaveBeenCalledWith('registrations');
+      expect(mockDbClient.clearCache).toHaveBeenCalledWith('registrations_fall');
     });
   });
 
@@ -224,14 +234,14 @@ describe('RegistrationRepository - Delete Functionality', () => {
 
       // Verify deleteRecord was called correctly
       expect(mockDbClient.deleteRecord).toHaveBeenCalledWith(
-        'registrations',
+        'registrations_fall',
         testId,
         'test-user@example.com'
       );
 
       // Verify cache was cleared
       expect(repository.clearCache).toHaveBeenCalled();
-      expect(mockDbClient.clearCache).toHaveBeenCalledWith('registrations');
+      expect(mockDbClient.clearCache).toHaveBeenCalledWith('registrations_fall');
     });
   });
 

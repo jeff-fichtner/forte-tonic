@@ -34,6 +34,12 @@ const mockConfigService = {
   isTest: jest.fn().mockReturnValue(true),
   isDevelopment: jest.fn().mockReturnValue(false),
   getRockBandClassIds: jest.fn().mockReturnValue([]),
+  getApplicationConfig: jest.fn().mockReturnValue({
+    rockBandClassIds: ['G015'],
+    maintenanceMode: false,
+    maintenanceMessage:
+      'The Forte registration system is currently undergoing updates. We will be back shortly. Thank you for your patience!',
+  }),
 };
 
 // Create ConfigurationService class mock
@@ -148,6 +154,11 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
     expect(response.body.data).toHaveProperty('rockBandClassIds');
     expect(response.body.data.rockBandClassIds).toEqual(['G015']);
 
+    // Verify maintenance mode fields are included
+    expect(response.body.data).toHaveProperty('maintenanceMode');
+    expect(response.body.data.maintenanceMode).toBe(false);
+    expect(response.body.data).toHaveProperty('maintenanceMessage');
+
     // Verify periodService methods were called
     expect(mockPeriodService.getCurrentPeriod).toHaveBeenCalled();
     expect(mockPeriodService.getNextPeriod).toHaveBeenCalled();
@@ -179,6 +190,10 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
     // Verify rockBandClassIds is still included in data
     expect(response.body.data).toHaveProperty('rockBandClassIds');
     expect(response.body.data.rockBandClassIds).toEqual(['G015']);
+
+    // Verify maintenance mode fields are included
+    expect(response.body.data).toHaveProperty('maintenanceMode');
+    expect(response.body.data.maintenanceMode).toBe(false);
 
     // Verify periodService methods were called
     expect(mockPeriodService.getCurrentPeriod).toHaveBeenCalled();
