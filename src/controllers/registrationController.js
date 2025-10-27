@@ -616,6 +616,74 @@ export class RegistrationController {
   }
 
   /**
+   * Delete a next trimester registration (enrollment periods only)
+   * DELETE /api/registrations/next-trimester/:id
+   */
+  static async deleteNextTrimesterRegistration(req, res) {
+    const startTime = Date.now();
+
+    try {
+      const registrationId = req.params.id;
+
+      // Get the authenticated user's email for audit purposes
+      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
+
+      if (!authenticatedUserEmail) {
+        throw new UnauthorizedError('Authentication required for registration deletion');
+      }
+
+      if (!registrationId) {
+        throw new ValidationError('Missing registrationId');
+      }
+
+      const periodService = serviceContainer.get('periodService');
+      const registrationApplicationService = serviceContainer.get('registrationApplicationService');
+
+      // Get next trimester table
+      const nextTable = await periodService.getNextTrimesterTable();
+      if (!nextTable) {
+        throw new ValidationError('Next trimester registration is not currently available');
+      }
+
+      logger.info('🎯 Deleting next trimester registration:', {
+        registrationId,
+        table: nextTable,
+        authenticatedUser: authenticatedUserEmail,
+      });
+
+      // Delete the registration from next trimester table
+      const result = await registrationApplicationService.cancelRegistration(
+        registrationId,
+        'Next trimester registration cancelled by user',
+        authenticatedUserEmail,
+        nextTable
+      );
+
+      successResponse(res, result, {
+        message: 'Next trimester registration removed',
+        req,
+        startTime,
+        context: {
+          controller: 'RegistrationController',
+          method: 'deleteNextTrimesterRegistration',
+          registrationId,
+          table: nextTable,
+        },
+      });
+    } catch (error) {
+      logger.error('Error deleting next trimester registration:', error);
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: {
+          controller: 'RegistrationController',
+          method: 'deleteNextTrimesterRegistration',
+        },
+      });
+    }
+  }
+
+  /**
    * Get all registrations for a specific trimester (admin only)
    * GET /api/admin/registrations/:trimester
    */

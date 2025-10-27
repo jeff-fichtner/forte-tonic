@@ -40,7 +40,8 @@ export class ParentRegistrationForm {
     classes,
     registrations,
     sendDataFunction,
-    parentChildren = []
+    parentChildren = [],
+    nextTrimesterRegistrations = []
   ) {
     this.instructors = instructors;
     this.students = students;
@@ -48,6 +49,7 @@ export class ParentRegistrationForm {
     this.registrations = registrations || [];
     this.sendDataFunction = sendDataFunction;
     this.parentChildren = parentChildren || [];
+    this.nextTrimesterRegistrations = nextTrimesterRegistrations || [];
 
     // Initialize basic properties
     this.selectedLesson = null;
@@ -62,12 +64,20 @@ export class ParentRegistrationForm {
   /**
    * Update the form data without recreating the instance
    */
-  updateData(instructors, students, classes, registrations, parentChildren) {
+  updateData(
+    instructors,
+    students,
+    classes,
+    registrations,
+    parentChildren,
+    nextTrimesterRegistrations = []
+  ) {
     this.instructors = instructors;
     this.students = students;
     this.classes = classes;
     this.registrations = registrations || [];
     this.parentChildren = parentChildren || [];
+    this.nextTrimesterRegistrations = nextTrimesterRegistrations || [];
 
     // Refresh the interface with new data by re-running initialization
     this.#refreshInterface();
@@ -1036,6 +1046,23 @@ export class ParentRegistrationForm {
   }
 
   /**
+   * Filter registrations, excluding the one being modified (if any)
+   * @param {Array} registrations - Array of registrations to filter
+   * @returns {Array} Filtered registrations
+   * @private
+   */
+  #getFilteredRegistrationsForConflictCheck(registrations) {
+    if (!this._selectedPreviousRegistrationId) {
+      return registrations;
+    }
+
+    return registrations.filter(reg => {
+      const regId = typeof reg.id === 'object' ? reg.id.value : reg.id;
+      return regId !== this._selectedPreviousRegistrationId;
+    });
+  }
+
+  /**
    * Check if a time slot conflicts with existing registrations
    * @param {number} slotStartMinutes - Start time in minutes since midnight
    * @param {number} slotLengthMinutes - Length of the slot in minutes
@@ -1045,7 +1072,11 @@ export class ParentRegistrationForm {
   #checkTimeSlotConflict(slotStartMinutes, slotLengthMinutes, existingRegistrations) {
     const slotEndMinutes = slotStartMinutes + slotLengthMinutes;
 
-    return existingRegistrations.some(reg => {
+    // Filter out the registration being modified
+    const filteredRegistrations =
+      this.#getFilteredRegistrationsForConflictCheck(existingRegistrations);
+
+    return filteredRegistrations.some(reg => {
       const regStartMinutes = parseTime(reg.startTime);
       if (regStartMinutes === null) return false;
 
@@ -2302,9 +2333,23 @@ export class ParentRegistrationForm {
       `Checking time conflicts for student ${studentId} on ${day} from ${startTime} (${startMinutes}min) for ${lengthMinutes}min`
     );
 
-    // Check against all existing registrations for this student
-    const studentRegistrations = this.registrations.filter(reg => {
+    // Check against registrations being created/modified
+    // During enrollment periods, check ONLY next trimester (exclude the one being modified)
+    // Outside enrollment periods, check current trimester
+    const registrationsToCheck = this._isEnrollmentPeriodActive()
+      ? this.nextTrimesterRegistrations || []
+      : this.registrations;
+
+    const studentRegistrations = registrationsToCheck.filter(reg => {
       const regStudentId = typeof reg.studentId === 'object' ? reg.studentId.value : reg.studentId;
+      const regId = typeof reg.id === 'object' ? reg.id.value : reg.id;
+
+      // Exclude the registration being modified
+      if (this._selectedPreviousRegistrationId && regId === this._selectedPreviousRegistrationId) {
+        console.log(`⏭️  Skipping registration being modified: ${regId}`);
+        return false;
+      }
+
       return regStudentId === studentId;
     });
 
@@ -2745,9 +2790,10 @@ export class ParentRegistrationForm {
       length: this.selectedLesson.length,
     };
 
-    // Add backward link if modifying existing registration during enrollment
+    // If modifying an existing registration during enrollment, include the ID to trigger deletion
+    // But do NOT add linkedPreviousRegistrationId to the new registration - that's only for migrations
     if (this._isEnrollmentPeriodActive() && this._selectedPreviousRegistrationId) {
-      registrationData.linkedPreviousRegistrationId = this._selectedPreviousRegistrationId;
+      registrationData.replaceRegistrationId = this._selectedPreviousRegistrationId;
     }
 
     return registrationData;
@@ -2803,9 +2849,10 @@ export class ParentRegistrationForm {
       instrument: selectedClass.instrument,
     };
 
-    // Add backward link if modifying existing registration during enrollment
+    // If modifying an existing registration during enrollment, include the ID to trigger deletion
+    // But do NOT add linkedPreviousRegistrationId to the new registration - that's only for migrations
     if (this._isEnrollmentPeriodActive() && this._selectedPreviousRegistrationId) {
-      registrationData.linkedPreviousRegistrationId = this._selectedPreviousRegistrationId;
+      registrationData.replaceRegistrationId = this._selectedPreviousRegistrationId;
     }
 
     return registrationData;
@@ -3397,14 +3444,25 @@ export class ParentRegistrationForm {
       selectorDropdown.remove(1);
     }
 
-    // Filter registrations for selected student
+    // Filter next trimester registrations for selected student that have linkedPreviousRegistrationId
+    // These are registrations that were created from intent (keep/change) and can be modified once
     const studentRegistrations = selectedStudentId
-      ? this.registrations.filter(
-          reg => (reg.studentId?.value || reg.studentId) === selectedStudentId
-        )
+      ? this.nextTrimesterRegistrations.filter(reg => {
+          const matchesStudent = (reg.studentId?.value || reg.studentId) === selectedStudentId;
+          const hasLinkedPrevious = !!(
+            reg.linkedPreviousRegistrationId?.value || reg.linkedPreviousRegistrationId
+          );
+          return matchesStudent && hasLinkedPrevious;
+        })
       : [];
 
-    // Populate dropdown with existing registrations
+    // If no registrations with linkedPreviousRegistrationId, hide the section entirely
+    if (studentRegistrations.length === 0) {
+      selectorSection.style.display = 'none';
+      return;
+    }
+
+    // Populate dropdown with existing next trimester registrations that can be modified
     studentRegistrations.forEach(registration => {
       const option = document.createElement('option');
       option.value = registration.id?.value || registration.id;

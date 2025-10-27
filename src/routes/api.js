@@ -104,6 +104,12 @@ router.post(
   RegistrationController.createNextTrimesterRegistration
 );
 
+router.delete(
+  '/registrations/next-trimester/:id',
+  initializeRepositories,
+  RegistrationController.deleteNextTrimesterRegistration
+);
+
 /**
  * Attendance endpoints
  */

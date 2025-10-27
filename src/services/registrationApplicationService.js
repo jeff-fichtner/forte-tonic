@@ -242,12 +242,15 @@ export class RegistrationApplicationService extends BaseService {
   /**
    * Cancel a registration with workflow
    */
-  async cancelRegistration(registrationId, reason, userId) {
+  async cancelRegistration(registrationId, reason, userId, tableName = null) {
     try {
-      this.logger.info('🚫 Cancelling registration:', registrationId);
+      this.logger.info('🚫 Cancelling registration:', { registrationId, tableName });
 
-      // Get existing registration
-      const existingData = await this.registrationRepository.findById(registrationId);
+      // Get existing registration from the specified table (or default table)
+      const existingData = tableName
+        ? await this.registrationRepository.findByIdInTable(tableName, registrationId)
+        : await this.registrationRepository.findById(registrationId);
+
       if (!existingData) {
         throw new Error(`Registration not found: ${registrationId}`);
       }
@@ -258,8 +261,12 @@ export class RegistrationApplicationService extends BaseService {
       // For admin/instructor deletions, bypass complex business logic checks
       // and proceed with deletion (as requested - work with current schema)
 
-      // Perform cancellation
-      await this.registrationRepository.delete(registrationId, userId);
+      // Perform cancellation from the specified table
+      if (tableName) {
+        await this.registrationRepository.deleteFromTable(tableName, registrationId, userId);
+      } else {
+        await this.registrationRepository.delete(registrationId, userId);
+      }
 
       // Get student and instructor for audit logging
       const [student, instructor] = await Promise.all([

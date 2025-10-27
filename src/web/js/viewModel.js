@@ -19,6 +19,7 @@ import { formatGrade, formatTime } from './extensions/numberExtensions.js';
 import { ClassManager } from './utilities/classManager.js';
 import { INTENT_LABELS } from './constants/intentConstants.js';
 import { PeriodType } from './constants/periodTypeConstants.js';
+import { Trimester, TRIMESTER_SEQUENCE } from './constants/trimesterConstants.js';
 
 /**
  * Capitalize the first letter of a string (for display purposes)
@@ -28,6 +29,26 @@ import { PeriodType } from './constants/periodTypeConstants.js';
 function capitalize(str) {
   if (!str) return '';
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/**
+ * Get the next trimester in the annual sequence
+ * fall → winter → spring → fall (cycles)
+ * @param {string} currentTrimester - "fall", "winter", or "spring"
+ * @returns {string} Next trimester name in lowercase
+ * @throws {Error} If invalid trimester name
+ */
+function getNextTrimester(currentTrimester) {
+  if (!currentTrimester || typeof currentTrimester !== 'string') {
+    throw new Error(`Invalid trimester: ${currentTrimester}`);
+  }
+  const index = TRIMESTER_SEQUENCE.findIndex(
+    t => t.toLowerCase() === currentTrimester.toLowerCase()
+  );
+  if (index === -1) {
+    throw new Error(`Invalid trimester: ${currentTrimester}`);
+  }
+  return TRIMESTER_SEQUENCE[(index + 1) % TRIMESTER_SEQUENCE.length];
 }
 
 /**
@@ -134,9 +155,13 @@ export class ViewModel {
       window.UserSession.saveAppConfig(appConfig);
 
       // Check if maintenance mode is enabled
-      if (appConfig.maintenanceMode) {
+      // Allow override via session storage for debugging/admin purposes
+      const hasOverride = sessionStorage.getItem('maintenance_mode_override') === 'true';
+      if (appConfig.maintenanceMode && !hasOverride) {
         this.#showMaintenanceMode(appConfig.maintenanceMessage);
         return; // Block further initialization
+      } else if (appConfig.maintenanceMode && hasOverride) {
+        console.log('⚠️  Maintenance mode is active but bypassed via override');
       }
     }
 
@@ -243,6 +268,52 @@ export class ViewModel {
     }
     if (user.parent) {
       if (!this.parentContentInitialized) {
+        // Check if we're in enrollment period and fetch next trimester data
+        const currentPeriod = window.UserSession?.getCurrentPeriod?.();
+        const isEnrollmentPeriod =
+          currentPeriod &&
+          (currentPeriod.periodType === PeriodType.PRIORITY_ENROLLMENT ||
+            currentPeriod.periodType === PeriodType.OPEN_ENROLLMENT);
+
+        if (isEnrollmentPeriod) {
+          // Fetch next trimester registrations
+          try {
+            const nextTrimesterRegs = await HttpService.fetchAllPages(
+              ServerFunctions.getNextTrimesterRegistrations,
+              x => Registration.fromApiData(x)
+            );
+
+            // Enrich next trimester registrations with student and instructor objects
+            this.nextTrimesterRegistrations = nextTrimesterRegs.map(registration => {
+              if (!registration.student) {
+                registration.student = this.students.find(x => {
+                  const studentId = x.id?.value || x.id;
+                  const registrationStudentId =
+                    registration.studentId?.value || registration.studentId;
+                  return studentId === registrationStudentId;
+                });
+              }
+
+              if (!registration.instructor) {
+                registration.instructor = this.instructors.find(x => {
+                  const instructorId = x.id?.value || x.id;
+                  const registrationInstructorId =
+                    registration.instructorId?.value || registration.instructorId;
+                  return instructorId === registrationInstructorId;
+                });
+              }
+              return registration;
+            });
+
+            console.log(
+              `📅 Loaded ${this.nextTrimesterRegistrations.length} next trimester registrations for parent view`
+            );
+          } catch (error) {
+            console.error('Error loading next trimester registrations:', error);
+            this.nextTrimesterRegistrations = [];
+          }
+        }
+
         this.#initParentContent();
         this.parentContentInitialized = true;
       } else {
@@ -294,11 +365,11 @@ export class ViewModel {
     }
 
     // Show appropriate message based on period type
-    if (currentPeriod.periodType === 'priorityEnrollment') {
+    if (currentPeriod.periodType === PeriodType.PRIORITY_ENROLLMENT) {
       banner.style.display = 'block';
       banner.className = 'enrollment-banner priority';
       bannerText.textContent = 'Priority Enrollment is now open for returning families';
-    } else if (currentPeriod.periodType === 'openEnrollment') {
+    } else if (currentPeriod.periodType === PeriodType.OPEN_ENROLLMENT) {
       banner.style.display = 'block';
       banner.className = 'enrollment-banner open';
       bannerText.textContent = 'Open Enrollment is now available for all families';
@@ -496,37 +567,6 @@ export class ViewModel {
     // Store initial registrations in currentTrimesterData
     this.currentTrimesterData.registrations = this.registrations;
 
-    // Filter registrations for this parent's children, excluding wait list classes
-    const parentChildRegistrations = this.registrations.filter(registration => {
-      const student = registration.student;
-      if (!student) {
-        return false;
-      }
-
-      // Check if the current parent is either parent1 or parent2 of the student
-      const exactMatch =
-        student.parent1Id === currentParentId || student.parent2Id === currentParentId;
-
-      // Also try string comparison in case of type mismatches
-      const stringMatch =
-        !exactMatch &&
-        (String(student.parent1Id) === String(currentParentId) ||
-          String(student.parent2Id) === String(currentParentId));
-
-      const isMatch = exactMatch || stringMatch;
-
-      // Exclude Rock Band classes (wait list classes) from parent weekly schedule
-      const isWaitlistClass = ClassManager.isRockBandClass(registration.classId);
-
-      return isMatch && !isWaitlistClass;
-    });
-
-    // Get unique students with registrations (their own children only)
-    const studentsWithRegistrations = parentChildRegistrations
-      .map(registration => registration.student)
-      .filter(student => student && student.id) // Filter out undefined students and students without IDs
-      .filter((student, index, self) => self.findIndex(s => s.id === student.id) === index);
-
     // Get ALL children of this parent (not just those with registrations) for the registration form
     const allParentChildren = this.students.filter(student => {
       if (!student) return false;
@@ -544,130 +584,67 @@ export class ViewModel {
     // Clear existing content
     parentWeeklyScheduleTables.innerHTML = '';
 
-    // Show 'no matching registrations' message if no children have registrations
-    if (studentsWithRegistrations.length === 0) {
-      const noRegistrationsMessage = document.createElement('div');
-      noRegistrationsMessage.className = 'card-panel orange lighten-4';
-      noRegistrationsMessage.style.cssText = 'text-align: center; padding: 30px; margin: 20px 0;';
-      noRegistrationsMessage.innerHTML = `
-        <h5 style="color: #e65100; margin-bottom: 10px;">No Matching Registrations</h5>
-        <p style="color: #bf360c; font-size: 16px; margin: 0;">
-          Your children currently have no active lesson registrations.
-        </p>
-      `;
-      parentWeeklyScheduleTables.appendChild(noRegistrationsMessage);
-    } else {
-      // Create a separate table for each child
-      studentsWithRegistrations.forEach(student => {
-        // Create a container for each child's schedule
-        const studentContainer = document.createElement('div');
-        studentContainer.className = 'student-schedule-container';
-        studentContainer.style.cssText = 'margin-bottom: 30px;';
+    // Check if we're in an enrollment period
+    const currentPeriod = window.UserSession?.getCurrentPeriod?.();
+    const isEnrollmentPeriod =
+      currentPeriod &&
+      (currentPeriod.periodType === PeriodType.PRIORITY_ENROLLMENT ||
+        currentPeriod.periodType === PeriodType.OPEN_ENROLLMENT);
 
-        // Add student name header with trimester
-        const studentHeader = document.createElement('h5');
-        studentHeader.style.cssText =
-          'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px;';
-        const trimesterName = capitalize(this.selectedTrimester || 'Fall');
-        studentHeader.textContent = `${student.firstName} ${student.lastName}'s ${trimesterName} Schedule`;
-        studentContainer.appendChild(studentHeader);
+    if (isEnrollmentPeriod) {
+      // During enrollment: Show upcoming trimester wait list + schedule, then current trimester wait list + schedule
+      console.log('📅 Enrollment period detected - showing both trimesters');
 
-        // Create table for this student
-        const tableId = `parent-weekly-schedule-table-${student.id}`;
-        const newTable = document.createElement('table');
-        newTable.id = tableId;
-        studentContainer.appendChild(newTable);
-
-        parentWeeklyScheduleTables.appendChild(studentContainer);
-
-        // Filter registrations for this student and sort by day, then start time
-        const studentRegistrations = parentChildRegistrations.filter(
-          x => x.studentId.value === student.id.value
+      // 1. Upcoming trimester (next trimester) schedules
+      if (this.nextTrimesterRegistrations && this.nextTrimesterRegistrations.length > 0) {
+        // Render wait list for next trimester
+        this.#renderParentWaitListSection(
+          this.nextTrimesterRegistrations,
+          currentParentId,
+          parentWeeklyScheduleTables,
+          'next'
         );
-        const sortedStudentRegistrations = this.#sortRegistrations(studentRegistrations);
 
-        this.#buildWeeklySchedule(tableId, sortedStudentRegistrations, 'parent');
-      });
-    }
-
-    // Parent wait list table - Show wait list registrations for this parent's children
-
-    // Filter for wait list registrations belonging to this parent's children
-    const parentWaitListRegistrations = this.registrations.filter(registration => {
-      const student = registration.student;
-      if (!student) {
-        return false;
+        // Render schedules for next trimester
+        this.#renderParentScheduleSection(
+          this.nextTrimesterRegistrations,
+          currentParentId,
+          parentWeeklyScheduleTables,
+          'next'
+        );
       }
 
-      // Check if the current parent is either parent1 or parent2 of the student
-      const exactMatch =
-        student.parent1Id === currentParentId || student.parent2Id === currentParentId;
-
-      // Also try string comparison in case of type mismatches
-      const stringMatch =
-        !exactMatch &&
-        (String(student.parent1Id) === String(currentParentId) ||
-          String(student.parent2Id) === String(currentParentId));
-
-      const isMatch = exactMatch || stringMatch;
-
-      // Include only Rock Band classes (wait list classes)
-      const isWaitlistClass = ClassManager.isRockBandClass(registration.classId);
-
-      return isMatch && isWaitlistClass;
-    });
-
-    console.log(
-      `📊 Found ${parentWaitListRegistrations.length} wait list registrations for parent's children`
-    );
-
-    // Show/hide the parent wait list table based on whether there are wait list registrations
-    const parentWaitListTable = document.getElementById('parent-wait-list-table');
-    if (parentWaitListRegistrations.length > 0) {
-      // Create a title container for the wait list table
-      const waitListContainer = parentWaitListTable.parentElement;
-      if (waitListContainer) {
-        // Remove any existing wait list title
-        const existingTitle = waitListContainer.querySelector('.parent-wait-list-title');
-        if (existingTitle) {
-          existingTitle.remove();
-        }
-
-        // Create and add the wait list title
-        const waitListTitle = document.createElement('h5');
-        waitListTitle.className = 'parent-wait-list-title';
-        waitListTitle.style.cssText =
-          'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px; margin-top: 20px;';
-        waitListTitle.textContent = 'Rock Band Wait List';
-
-        // Insert the title before the table
-        waitListContainer.insertBefore(waitListTitle, parentWaitListTable);
-      }
-
-      // Build and show the wait list table
-      this.parentWaitListTable = this.#buildParentWaitListTable(
-        parentWaitListRegistrations,
-        currentParentId
+      // 2. Current trimester schedules (no wait list during enrollment)
+      // Render schedules for current trimester only (skip wait list)
+      this.#renderParentScheduleSection(
+        this.registrations,
+        currentParentId,
+        parentWeeklyScheduleTables,
+        'current'
+      );
+    } else {
+      // During registration or intent period: Show only current trimester
+      // Render wait list for current trimester
+      this.#renderParentWaitListSection(
+        this.registrations,
+        currentParentId,
+        parentWeeklyScheduleTables,
+        'current'
       );
 
-      // Make the table visible
-      if (parentWaitListTable) {
-        parentWaitListTable.removeAttribute('hidden');
-      }
-    } else {
-      // Hide the wait list table if no wait list registrations
-      if (parentWaitListTable) {
-        parentWaitListTable.setAttribute('hidden', '');
+      // Render schedules for current trimester
+      this.#renderParentScheduleSection(
+        this.registrations,
+        currentParentId,
+        parentWeeklyScheduleTables,
+        'current'
+      );
+    }
 
-        // Also remove the title if it exists
-        const waitListContainer = parentWaitListTable.parentElement;
-        if (waitListContainer) {
-          const existingTitle = waitListContainer.querySelector('.parent-wait-list-title');
-          if (existingTitle) {
-            existingTitle.remove();
-          }
-        }
-      }
+    // Show/hide the legacy wait list table (keep for backwards compatibility)
+    const parentWaitListTable = document.getElementById('parent-wait-list-table');
+    if (parentWaitListTable) {
+      parentWaitListTable.setAttribute('hidden', '');
     }
 
     // registration
@@ -683,7 +660,8 @@ export class ViewModel {
           // Use shared method for registration creation with enrichment
           await this.#createRegistrationWithEnrichment(data);
         },
-        allParentChildren // Pass ALL parent's children, not just those with registrations
+        allParentChildren, // Pass ALL parent's children, not just those with registrations
+        this.nextTrimesterRegistrations || [] // Pass next trimester registrations for enrollment options
       );
     } else {
       // Update existing form with latest data instead of recreating it
@@ -692,7 +670,8 @@ export class ViewModel {
         this.students,
         this.classes,
         this.registrations,
-        allParentChildren
+        allParentChildren,
+        this.nextTrimesterRegistrations || []
       );
     }
 
@@ -742,6 +721,174 @@ export class ViewModel {
 
     // Attach intent dropdown listeners
     this.#attachIntentDropdownListeners();
+  }
+
+  /**
+   * Render parent wait list section for a given set of registrations
+   * @param {Array} registrations - Registrations to filter for wait list
+   * @param {string} currentParentId - Current parent's ID
+   * @param {HTMLElement} container - Container element to append to
+   * @param {string} trimesterType - 'current' or 'next'
+   * @private
+   */
+  #renderParentWaitListSection(registrations, currentParentId, container, trimesterType) {
+    // Filter for wait list registrations belonging to this parent's children
+    const parentWaitListRegistrations = registrations.filter(registration => {
+      const student = registration.student;
+      if (!student) {
+        return false;
+      }
+
+      // Check if the current parent is either parent1 or parent2 of the student
+      const exactMatch =
+        student.parent1Id === currentParentId || student.parent2Id === currentParentId;
+
+      // Also try string comparison in case of type mismatches
+      const stringMatch =
+        !exactMatch &&
+        (String(student.parent1Id) === String(currentParentId) ||
+          String(student.parent2Id) === String(currentParentId));
+
+      const isMatch = exactMatch || stringMatch;
+
+      // Include only Rock Band classes (wait list classes)
+      const isWaitlistClass = ClassManager.isRockBandClass(registration.classId);
+
+      return isMatch && isWaitlistClass;
+    });
+
+    if (parentWaitListRegistrations.length > 0) {
+      // Create wait list section
+      const waitListSection = document.createElement('div');
+      waitListSection.className = 'wait-list-section';
+      waitListSection.style.cssText = 'margin-bottom: 30px;';
+
+      // Create wait list title with trimester name
+      const waitListTitle = document.createElement('h5');
+      waitListTitle.style.cssText =
+        'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px;';
+
+      // Determine trimester name for title
+      let trimesterName;
+      if (trimesterType === 'next') {
+        const currentTrimester = this.selectedTrimester || 'fall';
+        const nextTrimester = getNextTrimester(currentTrimester);
+        trimesterName = capitalize(nextTrimester);
+      } else {
+        trimesterName = capitalize(this.selectedTrimester || 'fall');
+      }
+
+      waitListTitle.textContent = `${trimesterName} Rock Band Wait List`;
+      waitListSection.appendChild(waitListTitle);
+
+      // Create wait list table
+      const waitListTable = document.createElement('table');
+      const tableId = `parent-wait-list-${trimesterType}`;
+      waitListTable.id = tableId;
+      waitListSection.appendChild(waitListTable);
+
+      container.appendChild(waitListSection);
+
+      // Build the wait list table
+      this.#buildParentWaitListTable(parentWaitListRegistrations, currentParentId, tableId);
+    }
+  }
+
+  /**
+   * Render parent schedule section for a given set of registrations
+   * @param {Array} registrations - Registrations to render
+   * @param {string} currentParentId - Current parent's ID
+   * @param {HTMLElement} container - Container element to append to
+   * @param {string} trimesterType - 'current' or 'next'
+   * @private
+   */
+  #renderParentScheduleSection(registrations, currentParentId, container, trimesterType) {
+    // Filter registrations for this parent's children, excluding wait list classes
+    const parentChildRegistrations = registrations.filter(registration => {
+      const student = registration.student;
+      if (!student) {
+        return false;
+      }
+
+      // Check if the current parent is either parent1 or parent2 of the student
+      const exactMatch =
+        student.parent1Id === currentParentId || student.parent2Id === currentParentId;
+
+      // Also try string comparison in case of type mismatches
+      const stringMatch =
+        !exactMatch &&
+        (String(student.parent1Id) === String(currentParentId) ||
+          String(student.parent2Id) === String(currentParentId));
+
+      const isMatch = exactMatch || stringMatch;
+
+      // Exclude Rock Band classes (wait list classes) from parent weekly schedule
+      const isWaitlistClass = ClassManager.isRockBandClass(registration.classId);
+
+      return isMatch && !isWaitlistClass;
+    });
+
+    // Get unique students with registrations (their own children only)
+    const studentsWithRegistrations = parentChildRegistrations
+      .map(registration => registration.student)
+      .filter(student => student && student.id)
+      .filter((student, index, self) => self.findIndex(s => s.id === student.id) === index);
+
+    // Show 'no matching registrations' message if no children have registrations
+    if (studentsWithRegistrations.length === 0) {
+      const noRegistrationsMessage = document.createElement('div');
+      noRegistrationsMessage.className = 'card-panel orange lighten-4';
+      noRegistrationsMessage.style.cssText = 'text-align: center; padding: 30px; margin: 20px 0;';
+      noRegistrationsMessage.innerHTML = `
+        <h5 style="color: #e65100; margin-bottom: 10px;">No Matching Registrations</h5>
+        <p style="color: #bf360c; font-size: 16px; margin: 0;">
+          Your children have no active lesson registrations for this trimester.
+        </p>
+      `;
+      container.appendChild(noRegistrationsMessage);
+    } else {
+      // Create a separate table for each child
+      studentsWithRegistrations.forEach(student => {
+        // Create a container for each child's schedule
+        const studentContainer = document.createElement('div');
+        studentContainer.className = 'student-schedule-container';
+        studentContainer.style.cssText = 'margin-bottom: 30px;';
+
+        // Add student name header with trimester
+        const studentHeader = document.createElement('h5');
+        studentHeader.style.cssText =
+          'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px;';
+
+        // Determine trimester name for header
+        let trimesterName;
+        if (trimesterType === 'next') {
+          const currentTrimester = this.selectedTrimester || 'fall';
+          const nextTrimester = getNextTrimester(currentTrimester);
+          trimesterName = capitalize(nextTrimester);
+        } else {
+          trimesterName = capitalize(this.selectedTrimester || 'fall');
+        }
+
+        studentHeader.textContent = `${student.firstName} ${student.lastName}'s ${trimesterName} Schedule`;
+        studentContainer.appendChild(studentHeader);
+
+        // Create table for this student
+        const tableId = `parent-weekly-schedule-${trimesterType}-${student.id}`;
+        const newTable = document.createElement('table');
+        newTable.id = tableId;
+        studentContainer.appendChild(newTable);
+
+        container.appendChild(studentContainer);
+
+        // Filter registrations for this student and sort by day, then start time
+        const studentRegistrations = parentChildRegistrations.filter(
+          x => x.studentId.value === student.id.value
+        );
+        const sortedStudentRegistrations = this.#sortRegistrations(studentRegistrations);
+
+        this.#buildWeeklySchedule(tableId, sortedStudentRegistrations, 'parent');
+      });
+    }
   }
 
   /**
@@ -1084,12 +1231,61 @@ export class ViewModel {
     const currentPeriod = window.UserSession?.getCurrentPeriod?.();
     const isEnrollmentPeriod =
       currentPeriod &&
-      (currentPeriod.periodType === 'priorityEnrollment' ||
-        currentPeriod.periodType === 'openEnrollment');
+      (currentPeriod.periodType === PeriodType.PRIORITY_ENROLLMENT ||
+        currentPeriod.periodType === PeriodType.OPEN_ENROLLMENT);
 
     const endpoint = isEnrollmentPeriod
       ? ServerFunctions.createNextTrimesterRegistration
       : ServerFunctions.register;
+
+    // If replacing an existing registration (has replaceRegistrationId),
+    // delete the old registration first (this creates an audit record for the deletion)
+    // The old registration being deleted may have linkedPreviousRegistrationId, which will be in the audit record
+    if (data.replaceRegistrationId) {
+      console.log(
+        `🔄 Replacing registration - deleting old registration: ${data.replaceRegistrationId}`
+      );
+      try {
+        // Use the appropriate delete endpoint based on enrollment period
+        // For next trimester during enrollment: registrations/next-trimester/{id}
+        // For current trimester: registrations/{id}
+        const deleteEndpoint = isEnrollmentPeriod
+          ? `registrations/next-trimester/${data.replaceRegistrationId}`
+          : `registrations/${data.replaceRegistrationId}`;
+
+        await HttpService.delete(deleteEndpoint);
+
+        // Remove the old registration from local state (from the appropriate array)
+        if (isEnrollmentPeriod && this.nextTrimesterRegistrations) {
+          const oldRegIndex = this.nextTrimesterRegistrations.findIndex(reg => {
+            const regId = reg.id?.value || reg.id;
+            return regId === data.replaceRegistrationId;
+          });
+
+          if (oldRegIndex !== -1) {
+            this.nextTrimesterRegistrations.splice(oldRegIndex, 1);
+            console.log(`✅ Old registration removed from next trimester registrations`);
+          }
+        } else {
+          const oldRegIndex = this.registrations.findIndex(reg => {
+            const regId = reg.id?.value || reg.id;
+            return regId === data.replaceRegistrationId;
+          });
+
+          if (oldRegIndex !== -1) {
+            this.registrations.splice(oldRegIndex, 1);
+            console.log(`✅ Old registration removed from current trimester registrations`);
+          }
+        }
+
+        // Remove the replaceRegistrationId from the data object before creating the new registration
+        // The new registration should NOT have linkedPreviousRegistrationId - that's only for migrations
+        delete data.replaceRegistrationId;
+      } catch (error) {
+        console.error('Error deleting old registration:', error);
+        throw new Error(`Failed to delete old registration: ${error.message}`);
+      }
+    }
 
     const response = await HttpService.post(endpoint, data);
     // HttpService auto-unwraps { success, data } responses, so response is already the registration data
@@ -1133,8 +1329,24 @@ export class ViewModel {
       }
     }
 
-    // Add to registrations and refresh tables
-    this.registrations.push(newRegistration);
+    // Add to appropriate registrations array based on enrollment period
+    if (isEnrollmentPeriod) {
+      // Next trimester registration - add to nextTrimesterRegistrations
+      if (!this.nextTrimesterRegistrations) {
+        this.nextTrimesterRegistrations = [];
+      }
+      this.nextTrimesterRegistrations.push(newRegistration);
+      console.log(
+        `✅ Added registration to next trimester (total: ${this.nextTrimesterRegistrations.length})`
+      );
+    } else {
+      // Current trimester registration - add to registrations
+      this.registrations.push(newRegistration);
+      console.log(
+        `✅ Added registration to current trimester (total: ${this.registrations.length})`
+      );
+    }
+
     this.#refreshTablesAfterRegistration();
 
     return newRegistration;
@@ -1594,6 +1806,69 @@ export class ViewModel {
       const pageContent = document.getElementById('page-content');
       if (loadingContainer) loadingContainer.style.display = 'none';
       if (pageContent) pageContent.hidden = true;
+    }
+  }
+
+  /**
+   * Hide maintenance mode overlay and reinitialize the application
+   * Used for debugging or emergency admin override
+   */
+  #hideMaintenanceMode() {
+    const overlay = document.getElementById('maintenance-mode-overlay');
+    const pageContent = document.getElementById('page-content');
+
+    if (overlay) {
+      // Hide the overlay
+      overlay.classList.remove('active');
+
+      // Show page content
+      if (pageContent) pageContent.hidden = false;
+
+      console.log('✓ Maintenance mode override activated');
+    }
+  }
+
+  /**
+   * Override maintenance mode for this session
+   * Accessible via console: window.overrideMaintenanceMode()
+   */
+  overrideMaintenanceMode() {
+    try {
+      // Set session storage flag to persist override for this session
+      sessionStorage.setItem('maintenance_mode_override', 'true');
+      console.log('✓ Maintenance mode override flag set');
+
+      // Hide maintenance overlay and continue initialization
+      this.#hideMaintenanceMode();
+
+      // Reinitialize the application
+      this.#initializeAllModals();
+      this.#updateLoginButtonState();
+      this.#showLoginButton();
+      this.#setPageLoading(false);
+
+      // Check if user has accepted terms
+      const hasAcceptedTermsOfService = window.UserSession.hasAcceptedTermsOfService();
+      if (!hasAcceptedTermsOfService) {
+        this.#showTermsOfService(() => {
+          this.loginModal.open();
+        });
+      } else {
+        // Try auto-login if credentials exist
+        const storedAuthData = window.AccessCodeManager.getStoredAuthData();
+        if (storedAuthData) {
+          this.#attemptLoginWithCode(storedAuthData.accessCode, storedAuthData.loginType);
+        } else {
+          // Open login modal
+          this.loginModal.open();
+        }
+      }
+
+      console.log('✓ Application reinitialized with maintenance mode bypassed');
+      return true;
+    } catch (error) {
+      console.error('✗ Failed to override maintenance mode:', error);
+      return false;
     }
   }
 
@@ -2258,9 +2533,9 @@ export class ViewModel {
   /**
    * Build parent wait list table for the current parent's children
    */
-  #buildParentWaitListTable(registrations, currentParentId) {
+  #buildParentWaitListTable(registrations, currentParentId, tableId = 'parent-wait-list-table') {
     return new Table(
-      'parent-wait-list-table',
+      tableId,
       ['Student', 'Grade', 'Class Title'],
       // row
       registration => {

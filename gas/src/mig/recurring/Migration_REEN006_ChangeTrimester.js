@@ -11,8 +11,12 @@
  * 3. Generates new UUID for each copied registration
  * 4. Links to previous registration via linkedPreviousRegistrationId
  * 5. Sets createdAt to current timestamp and createdBy to "system"
- * 6. Clears reenrollment intent columns (reenrollmentIntent, intentSubmittedAt, intentSubmittedBy set to blank)
- * 7. Creates audit record in target trimester audit table for each copied registration
+ * 6. Formats StartTime to HH:mm format (fixes Google Sheets date serialization issue)
+ * 7. Clears reenrollment intent columns (reenrollmentIntent, intentSubmittedAt, intentSubmittedBy set to blank)
+ * 8. Creates audit records with TRANSFORMED data (new IDs, formatted times, cleared intents)
+ *    - Audit records mirror exactly what the app would create when saving new registrations
+ *    - Each audit record references the NEW registration ID, not the old one
+ *    - updatedAt and updatedBy are left BLANK (they track updates, not creation)
  *
  * 🔧 WORKING COPY PATTERN:
  * - run(): Creates MIGRATION_* working copy of target with changes
@@ -187,16 +191,21 @@ class ChangeTrimesterMigration {
   }
 
   /**
-   * Get column indices for required fields
+   * Get column indices for required fields (case-insensitive)
    * @private
    */
   _getColumnIndices(headers) {
+    const findColumn = (columnName) => {
+      return headers.findIndex(h => h && h.toLowerCase() === columnName.toLowerCase());
+    };
+
     return {
-      id: headers.indexOf('Id'),
-      reenrollmentIntent: headers.indexOf('reenrollmentIntent'),
-      createdAt: headers.indexOf('CreatedAt'),
-      createdBy: headers.indexOf('CreatedBy'),
-      linkedPreviousRegistrationId: headers.indexOf('linkedPreviousRegistrationId')
+      id: findColumn('Id'),
+      reenrollmentIntent: findColumn('reenrollmentIntent'),
+      createdAt: findColumn('CreatedAt'),
+      createdBy: findColumn('CreatedBy'),
+      linkedPreviousRegistrationId: findColumn('linkedPreviousRegistrationId'),
+      startTime: findColumn('StartTime')
     };
   }
 
@@ -229,8 +238,10 @@ class ChangeTrimesterMigration {
     const transformedRows = [];
     const now = new Date().toISOString();
 
-    // Find indices of columns to clear
-    const clearIndices = this.COLUMNS_TO_CLEAR.map(col => headers.indexOf(col)).filter(idx => idx !== -1);
+    // Find indices of columns to clear (case-insensitive)
+    const clearIndices = this.COLUMNS_TO_CLEAR.map(col => {
+      return headers.findIndex(h => h && h.toLowerCase() === col.toLowerCase());
+    }).filter(idx => idx !== -1);
 
     // Read data in batches for efficiency (skip header row)
     if (lastRow > 1) {
@@ -255,6 +266,11 @@ class ChangeTrimesterMigration {
           newRow[columnIndices.createdAt] = now;
           newRow[columnIndices.createdBy] = 'system';
           newRow[columnIndices.linkedPreviousRegistrationId] = oldId;
+
+          // Format StartTime to HH:mm if it exists
+          if (columnIndices.startTime !== -1) {
+            newRow[columnIndices.startTime] = this._formatTimeValue(sourceRow[columnIndices.startTime]);
+          }
 
           // Clear intent columns
           for (const clearIdx of clearIndices) {
@@ -282,17 +298,42 @@ class ChangeTrimesterMigration {
   }
 
   /**
+   * Convert Google Sheets time value (Date object or serial number) to HH:mm format
+   * @private
+   */
+  _formatTimeValue(value) {
+    if (!value) return value;
+
+    // If already a string in HH:mm format, return as-is
+    if (typeof value === 'string' && /^\d{1,2}:\d{2}$/.test(value)) {
+      return value;
+    }
+
+    // If it's a Date object or looks like a date
+    if (value instanceof Date || (typeof value === 'object' && value.getHours)) {
+      const hours = value.getHours();
+      const minutes = value.getMinutes();
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    }
+
+    // If it's a number (serial time value: fraction of day)
+    if (typeof value === 'number' && value > 0 && value < 1) {
+      const totalMinutes = Math.round(value * 24 * 60);
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    }
+
+    // Return as-is if we can't convert it
+    return value;
+  }
+
+  /**
    * Create audit records for all transformed registrations
+   * These audit records should mirror exactly what the app would create when saving a new registration
    * @private
    */
   _createAuditRecords(transformedRows, registrationHeaders) {
-    // Get target audit sheet to determine structure
-    const auditSheet = this.spreadsheet.getSheetByName(this.targetAuditTable);
-    if (!auditSheet) {
-      Logger.log(`   ⚠️  Audit table '${this.targetAuditTable}' not found, skipping audit records`);
-      return;
-    }
-
     // Delete previous working copy if exists
     const existingWorkingAudit = this.spreadsheet.getSheetByName(this.workingAuditTable);
     if (existingWorkingAudit) {
@@ -300,9 +341,43 @@ class ChangeTrimesterMigration {
       this.spreadsheet.deleteSheet(existingWorkingAudit);
     }
 
-    // Get audit table structure
-    const auditData = auditSheet.getDataRange().getValues();
-    const auditHeaders = auditData[0];
+    // Build audit headers to match googleSheetsDbClient.js structure
+    // This duplicates the logic from googleSheetsDbClient.js so migration is self-contained
+    // Audit table structure (26 columns):
+    // Id, RegistrationId, StudentId, InstructorId, Day, StartTime, Length, RegistrationType,
+    // RoomId, Instrument, TransportationType, Notes, ClassId, ClassTitle, ExpectedStartDate,
+    // CreatedAt, CreatedBy, IsDeleted, DeletedAt, DeletedBy, reenrollmentIntent,
+    // intentSubmittedAt, intentSubmittedBy, updatedAt, updatedBy, linkedPreviousRegistrationId
+
+    const auditHeaders = [];
+    auditHeaders.push('Id');  // Column 0: Audit record ID
+    auditHeaders.push('RegistrationId');  // Column 1: Reference to registration
+
+    // Add registration fields (except Id) with audit-specific fields inserted at correct positions
+    for (let i = 0; i < registrationHeaders.length; i++) {
+      const header = registrationHeaders[i];
+      const headerLower = header ? header.toLowerCase() : '';
+
+      // Skip the registration's Id (it goes into RegistrationId)
+      if (headerLower === 'id') continue;
+
+      // Add the registration field
+      auditHeaders.push(header);
+
+      // After CreatedBy, insert deletion tracking fields (IsDeleted, DeletedAt, DeletedBy)
+      if (headerLower === 'createdby') {
+        auditHeaders.push('IsDeleted', 'DeletedAt', 'DeletedBy');
+      }
+
+      // After intentSubmittedBy, insert update tracking fields (updatedAt, updatedBy)
+      if (headerLower === 'intentsubmittedby') {
+        auditHeaders.push('updatedAt', 'updatedBy');
+      }
+    }
+
+    Logger.log(`   📋 Constructed audit headers: ${auditHeaders.length} columns (expected: 26)`);
+    Logger.log(`   📋 First 5: ${auditHeaders.slice(0, 5).join(', ')}`);
+    Logger.log(`   📋 Last 5: ${auditHeaders.slice(-5).join(', ')}`);
 
     // Create working audit sheet
     Logger.log(`   📊 Creating ${this.workingAuditTable}...`);
@@ -314,48 +389,88 @@ class ChangeTrimesterMigration {
     auditHeaderRange.setFontWeight('bold');
     auditHeaderRange.setBackground('#e8eaf6');
 
-    // Find column indices in audit table
-    const auditIdIndex = auditHeaders.indexOf('Id');
-    const registrationIdIndex = auditHeaders.indexOf('RegistrationId');
-    const updatedAtIndex = auditHeaders.indexOf('updatedAt');
-    const updatedByIndex = auditHeaders.indexOf('updatedBy');
+    // Helper function for case-insensitive column lookup
+    const findColumnIndex = (headers, columnName) => {
+      return headers.findIndex(h => h && h.toLowerCase() === columnName.toLowerCase());
+    };
 
-    // Find ID column in registration headers
-    const regIdIndex = registrationHeaders.indexOf('Id');
+    // Find column indices in audit table (case-insensitive)
+    const auditIdIndex = findColumnIndex(auditHeaders, 'Id');
+    const registrationIdIndex = findColumnIndex(auditHeaders, 'RegistrationId');
+
+    // Find ID column in registration headers (case-insensitive)
+    const regIdIndex = findColumnIndex(registrationHeaders, 'Id');
+
+    // Debug: Show what we found
+    Logger.log(`   🔍 Looking for required columns...`);
+    Logger.log(`      Audit 'Id': ${auditIdIndex === -1 ? '❌ NOT FOUND' : '✅ found at index ' + auditIdIndex}`);
+    Logger.log(`      Audit 'RegistrationId': ${registrationIdIndex === -1 ? '❌ NOT FOUND' : '✅ found at index ' + registrationIdIndex}`);
+    Logger.log(`      Registration 'Id': ${regIdIndex === -1 ? '❌ NOT FOUND' : '✅ found at index ' + regIdIndex}`);
 
     if (auditIdIndex === -1 || registrationIdIndex === -1 || regIdIndex === -1) {
-      Logger.log(`   ⚠️  Required columns not found in audit table structure`);
+      Logger.log(`   ❌ STOPPING: Required columns missing in audit or registration table`);
+      Logger.log(`   💡 Audit table first 10 columns: ${auditHeaders.slice(0, 10).join(', ')}`);
+      Logger.log(`   💡 Registration table first 10 columns: ${registrationHeaders.slice(0, 10).join(', ')}`);
       return;
     }
 
-    const now = new Date().toISOString();
     const auditRecords = [];
 
+    Logger.log(`   📊 Processing ${transformedRows.length} transformed rows for audit records...`);
+    Logger.log(`   📋 Audit table has ${auditHeaders.length} columns`);
+    Logger.log(`   📋 Registration table has ${registrationHeaders.length} columns`);
+    Logger.log(`   📋 Audit column indices: Id=${auditIdIndex}, RegistrationId=${registrationIdIndex}`);
+
+    // Log first few audit and registration headers for debugging
+    if (auditHeaders.length > 0) {
+      Logger.log(`   📋 First 5 audit headers: ${auditHeaders.slice(0, 5).join(', ')}`);
+      Logger.log(`   📋 First 5 reg headers: ${registrationHeaders.slice(0, 5).join(', ')}`);
+    }
+
     // Create audit record for each transformed registration
-    for (const row of transformedRows) {
+    // IMPORTANT: Use the TRANSFORMED row data (with new ID, formatted times, etc.)
+    let copiedFieldsCount = 0;
+    for (const transformedRow of transformedRows) {
       // Create audit record matching the registration structure
       const auditRecord = new Array(auditHeaders.length).fill('');
 
-      // Copy all fields from registration to audit (they have similar structure)
-      // Audit has: Id (audit ID), RegistrationId (reg ID), then all reg fields
+      // Copy all fields from the TRANSFORMED registration row to audit
+      // Audit table structure: Id (audit ID), RegistrationId (reg ID), then all registration fields
+      let fieldsCopiedThisRow = 0;
       for (let i = 0; i < registrationHeaders.length; i++) {
         const regHeader = registrationHeaders[i];
-        const auditIdx = auditHeaders.indexOf(regHeader);
-        if (auditIdx !== -1 && auditIdx > registrationIdIndex) {
-          // Copy value from registration row to audit record
-          auditRecord[auditIdx] = row[i];
+        // Use case-insensitive lookup
+        const auditIdx = findColumnIndex(auditHeaders, regHeader);
+
+        // Copy the transformed value to audit table
+        // Skip the Id field (it's used differently in audit: auditIdIndex vs regIdIndex)
+        // Skip RegistrationId (we set it separately below)
+        if (auditIdx !== -1 && auditIdx !== auditIdIndex && auditIdx !== registrationIdIndex) {
+          auditRecord[auditIdx] = transformedRow[i];
+          fieldsCopiedThisRow++;
         }
       }
+      copiedFieldsCount = fieldsCopiedThisRow; // Track how many fields we're copying
 
       // Set audit-specific fields
-      auditRecord[auditIdIndex] = this._generateUuid(); // Unique audit record ID
-      auditRecord[registrationIdIndex] = row[regIdIndex]; // Reference to registration ID
+      const newAuditId = this._generateUuid();
+      const registrationId = transformedRow[regIdIndex];
 
-      if (updatedAtIndex !== -1) {
-        auditRecord[updatedAtIndex] = now;
-      }
-      if (updatedByIndex !== -1) {
-        auditRecord[updatedByIndex] = 'Migration_REEN006';
+      auditRecord[auditIdIndex] = newAuditId; // Unique audit record ID (NEW, not from registration)
+      auditRecord[registrationIdIndex] = registrationId; // Reference to registration's ID
+
+      // Note: updatedAt and updatedBy are left BLANK - these track updates, not creation
+      // The audit record represents the state at creation time (via CreatedAt/CreatedBy from registration)
+
+      // Debug first record
+      if (auditRecords.length === 0) {
+        Logger.log(`   🔍 Sample audit record (first one):`);
+        Logger.log(`      Audit Id: ${newAuditId.substring(0, 8)}...`);
+        Logger.log(`      RegistrationId: ${registrationId ? registrationId.substring(0, 8) + '...' : 'NULL'}`);
+        Logger.log(`      StudentId: ${auditRecord[findColumnIndex(auditHeaders, 'StudentId')] || 'not found'}`);
+        Logger.log(`      StartTime: ${auditRecord[findColumnIndex(auditHeaders, 'StartTime')] || 'not found'}`);
+        Logger.log(`      CreatedAt: ${auditRecord[findColumnIndex(auditHeaders, 'CreatedAt')] || 'not found'}`);
+        Logger.log(`      CreatedBy: ${auditRecord[findColumnIndex(auditHeaders, 'CreatedBy')] || 'not found'}`);
       }
 
       auditRecords.push(auditRecord);
@@ -363,9 +478,13 @@ class ChangeTrimesterMigration {
 
     // Write audit records
     if (auditRecords.length > 0) {
+      Logger.log(`   📊 Writing ${auditRecords.length} audit records (${copiedFieldsCount} fields per record)...`);
       const auditDataRange = workingAuditSheet.getRange(2, 1, auditRecords.length, auditHeaders.length);
       auditDataRange.setValues(auditRecords);
       Logger.log(`   ✅ Created ${auditRecords.length} audit records in ${this.workingAuditTable}`);
+      Logger.log(`   📋 Audit records contain TRANSFORMED data (new IDs, formatted times, cleared intents)`);
+    } else {
+      Logger.log(`   ⚠️  No audit records created - auditRecords array is empty!`);
     }
   }
 
