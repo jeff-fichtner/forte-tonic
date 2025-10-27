@@ -76,8 +76,10 @@ class ChangeTrimesterMigration {
     this.targetAuditTable = `registrations_${this.TARGET_TRIMESTER}_audit`;
     this.workingAuditTable = `MIGRATION_${this.targetAuditTable}`;
 
-    // Intent values to copy
-    this.INTENTS_TO_COPY = ['keep', 'change'];
+    // Intent values to copy: 'keep', 'change', or BLANK (null/empty string)
+    // Students marked 'drop' will NOT be copied (they are dropping the class)
+    this.INTENTS_TO_COPY = ['keep', 'change', ''];
+    this.INTENTS_TO_SKIP = ['drop'];  // Students marked 'drop' are not copied
 
     // Columns to clear when copying (intent tracking columns - keep in schema but blank the values)
     this.COLUMNS_TO_CLEAR = ['reenrollmentIntent', 'intentSubmittedAt', 'intentSubmittedBy'];
@@ -252,8 +254,10 @@ class ChangeTrimesterMigration {
         const sourceRow = data[i];
         const intent = sourceRow[columnIndices.reenrollmentIntent];
 
-        // Check if intent matches our criteria
-        if (intent && this.INTENTS_TO_COPY.includes(intent.toLowerCase())) {
+        // Check if intent matches our criteria (blank/empty, 'keep', or 'change')
+        // Skip if intent is 'drop'
+        const intentValue = intent ? intent.toLowerCase() : '';
+        if (this.INTENTS_TO_COPY.includes(intentValue)) {
           // Copy all columns from source row
           const newRow = [...sourceRow];
 
