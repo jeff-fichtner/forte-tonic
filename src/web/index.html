@@ -1,1578 +1,2027 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-
-<head>
+  <head>
     <!-- CSS Libraries -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" />
     <!-- Material Icons for proper icon display -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
 
     <!-- External Styles -->
-    <link rel="stylesheet" href="css/externalStyles.css">
+    <link rel="stylesheet" href="css/externalStyles.css" />
 
     <!-- JavaScript Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <link rel="icon" href="images/forte-favicon.png" type="image/png">
+    <link rel="icon" href="images/forte-favicon.png" type="image/png" />
 
     <style>
-        li.delete-lesson-icon,
-        li.add-lesson-icon {
-            cursor: pointer;
-        }
+      li.delete-lesson-icon,
+      li.add-lesson-icon {
+        cursor: pointer;
+      }
 
-        /* Enrollment Period Banner */
-        .enrollment-banner {
-            padding: 12px 0;
-            text-align: center;
-            color: white;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+      /* Enrollment Period Banner */
+      .enrollment-banner {
+        padding: 16px 24px;
+        text-align: center;
+        color: white;
+        font-weight: 500;
+        font-size: 15px;
+        line-height: 1.6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
 
-        .enrollment-banner i {
-            margin-right: 8px;
-        }
+      .enrollment-banner i {
+        font-size: 22px;
+        line-height: 1;
+        vertical-align: middle;
+      }
 
-        .enrollment-banner.priority {
-            background-color: #1976d2; /* Blue for priority */
-        }
+      .enrollment-banner span {
+        line-height: 22px;
+      }
 
-        .enrollment-banner.open {
-            background-color: #388e3c; /* Green for open */
-        }
+      .enrollment-banner.priority {
+        background-color: #1976d2; /* Blue for priority */
+      }
 
-        .enrollment-banner.intent {
-            background-color: #f57c00; /* Orange for intent */
-        }
+      .enrollment-banner.open {
+        background-color: #388e3c; /* Green for open */
+      }
 
-        .registration-selector-container {
-            background-color: #f5f5f5;
-            padding: 16px;
-            border-radius: 4px;
-            margin-bottom: 24px;
-        }
+      .enrollment-banner.intent {
+        background-color: #f57c00; /* Orange for intent */
+      }
 
-        html {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            font-optical-sizing: auto;
-            font-weight: 400;
-            font-style: normal;
-        }
+      .registration-selector-container {
+        background-color: #f5f5f5;
+        padding: 16px;
+        border-radius: 4px;
+        margin-bottom: 24px;
+      }
 
-        header {
-            background-color: #2c3e50;
-            color: white;
-            padding: 0px;
-            text-align: center;
-        }
+      html {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        font-optical-sizing: auto;
+        font-weight: 400;
+        font-style: normal;
+      }
 
-        .day-tabs {
-            display: flex;
-            justify-content: center;
-            background: #ecf0f1;
-            padding: 10px 0;
-        }
+      header {
+        background-color: #2c3e50;
+        color: white;
+        padding: 0px;
+        text-align: center;
+      }
 
-        .tab {
-            padding: 10px 20px;
-            border: none;
-            background: transparent;
-            font-weight: bold;
-            cursor: pointer;
-            color: #2c3e50;
-            transition: background 0.3s;
-        }
+      .day-tabs {
+        display: flex;
+        justify-content: center;
+        background: #ecf0f1;
+        padding: 10px 0;
+      }
 
-        .tab:hover,
-        .tab.active {
-            background-color: #3498db;
-            color: white;
-            border-radius: 4px;
-        }
+      .tab {
+        padding: 10px 20px;
+        border: none;
+        background: transparent;
+        font-weight: bold;
+        cursor: pointer;
+        color: #2c3e50;
+        transition: background 0.3s;
+      }
 
-        #schedule-content {
-            padding: 20px;
-        }
+      .tab:hover,
+      .tab.active {
+        background-color: #3498db;
+        color: white;
+        border-radius: 4px;
+      }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            overflow-x: auto;
-        }
+      #schedule-content {
+        padding: 20px;
+      }
 
-        th,
-        td {
-            border: 1px solid #ccc;
-            padding: 8px;
-            text-align: center;
-        }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        overflow-x: auto;
+      }
 
-        th {
-            background-color: #2980b9;
-            color: white;
-        }
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 8px;
+        text-align: center;
+      }
 
-        /* Tabs */
-        .tabs .indicator {
-            background-color: #2b68a4 !important;
-        }
+      th {
+        background-color: #2980b9;
+        color: white;
+      }
 
-        .tabs .tab a.active {
-            color: #2b68a4 !important;
-            background-color: rgba(43, 104, 164, 0.1) !important;
-        }
+      /* Tabs */
+      .tabs .indicator {
+        background-color: #2b68a4 !important;
+      }
 
-        .tabs .tab a:hover {
-            color: #2b68a4 !important;
-        }
+      .tabs .tab a.active {
+        color: #2b68a4 !important;
+        background-color: rgba(43, 104, 164, 0.1) !important;
+      }
 
-        /* Navbar links */
-        .nav-wrapper .right>li>a {
-            color: white;
-        }
+      .tabs .tab a:hover {
+        color: #2b68a4 !important;
+      }
 
-        .nav-wrapper .right>li>a:hover,
-        .nav-wrapper .right>li>a:focus,
-        .nav-wrapper .right>li>a.active {
-            background-color: rgba(183, 187, 191, 0.2) !important;
-            color: white !important;
-        }
+      /* Navbar links */
+      .nav-wrapper .right > li > a {
+        color: white;
+      }
 
-        /* Version Display - Only for staging */
+      .nav-wrapper .right > li > a:hover,
+      .nav-wrapper .right > li > a:focus,
+      .nav-wrapper .right > li > a.active {
+        background-color: rgba(183, 187, 191, 0.2) !important;
+        color: white !important;
+      }
+
+      /* Version Display - Only for staging */
+      #version-display {
+        position: fixed;
+        top: 10px;
+        right: 15px;
+        background: rgba(52, 152, 219, 0.9);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        z-index: 1000;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        backdrop-filter: blur(5px);
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      #version-display:hover {
+        background: rgba(52, 152, 219, 1);
+        transform: scale(1.05);
+      }
+
+      #version-display .version-number {
+        display: block;
+        font-size: 12px;
+      }
+
+      #version-display .version-details {
+        display: block;
+        font-size: 9px;
+        opacity: 0.8;
+        margin-top: 2px;
+      }
+
+      /* Mobile responsiveness */
+      @media (max-width: 768px) {
         #version-display {
-            position: fixed;
-            top: 10px;
-            right: 15px;
-            background: rgba(52, 152, 219, 0.9);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            z-index: 1000;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            backdrop-filter: blur(5px);
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        #version-display:hover {
-            background: rgba(52, 152, 219, 1);
-            transform: scale(1.05);
+          top: 5px;
+          right: 5px;
+          padding: 6px 8px;
+          font-size: 10px;
         }
 
         #version-display .version-number {
-            display: block;
-            font-size: 12px;
+          font-size: 11px;
         }
 
         #version-display .version-details {
-            display: block;
-            font-size: 9px;
-            opacity: 0.8;
-            margin-top: 2px;
+          font-size: 8px;
+        }
+      }
+
+      /* Ripple (waves) */
+      .waves-effect .waves-ripple {
+        background-color: rgba(43, 104, 164, 0.5) !important;
+      }
+
+      /* Collections, dropdowns, etc. */
+      .collection .collection-item.active,
+      .dropdown-content li.active > a,
+      .collapsible-header.active {
+        background-color: rgba(43, 104, 164, 0.2) !important;
+        color: #2b68a4 !important;
+      }
+
+      /* Focus styles */
+      input:focus,
+      textarea:focus,
+      select:focus {
+        border-bottom: 1px solid #2b68a4 !important;
+        box-shadow: 0 1px 0 0 #2b68a4 !important;
+      }
+
+      /* Buttons */
+      .btn:focus,
+      .btn:hover {
+        background-color: #3a7953 !important;
+      }
+
+      #page-loading-container {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        height: 100vh;
+        flex-direction: column;
+        padding-top: 20px;
+      }
+
+      /* change the radio button when checked */
+      input[type='radio']:checked + span::before {
+        border: 2px solid #3a7953;
+        /* circle border */
+        background-color: #3a7953;
+        /* filled dot */
+      }
+
+      #spinner-logo {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 80px;
+        /* adjust size as needed */
+        height: 80px;
+        z-index: 2;
+      }
+
+      #loading-container {
+        position: relative;
+        width: 200px;
+        /* adjust to match spinner size */
+        height: 200px;
+        margin: 0 auto;
+      }
+
+      .preloader-wrapper {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        margin: auto;
+        z-index: 1;
+      }
+
+      /* Login Button Styling */
+      .nav-wrapper .btn.modal-trigger {
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .nav-wrapper .btn.modal-trigger:hover {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        border-color: rgba(255, 255, 255, 0.5) !important;
+      }
+
+      .nav-wrapper .btn.modal-trigger i.material-icons {
+        margin-right: 4px;
+        vertical-align: middle;
+      }
+
+      /* Login Modal Styling */
+      #login-modal {
+        max-width: 400px;
+      }
+
+      #login-modal .modal-content h4 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      /* Dual Login Modal Styling */
+      .login-type-btn {
+        transition: all 0.3s ease !important;
+        border-radius: 4px !important;
+      }
+
+      .active-login-type {
+        background-color: #2b68a4 !important;
+        color: white !important;
+      }
+
+      .inactive-login-type {
+        background-color: #e0e0e0 !important;
+        color: #666 !important;
+      }
+
+      .login-section {
+        transition: opacity 0.3s ease;
+      }
+
+      .active-section {
+        opacity: 1;
+      }
+
+      .inactive-section {
+        opacity: 0.5;
+      }
+
+      #parent-phone-input,
+      #employee-access-code {
+        font-size: 1.1rem !important;
+      }
+
+      #parent-phone-input:focus,
+      #employee-access-code:focus {
+        border-bottom: 1px solid #2b68a4 !important;
+        box-shadow: 0 1px 0 0 #2b68a4 !important;
+      }
+
+      /* Phone input specific styling */
+      #parent-phone-input {
+        letter-spacing: 1px !important;
+      }
+
+      /* Access code input specific styling */
+      #employee-access-code {
+        text-align: left !important;
+        letter-spacing: 3px !important;
+      }
+
+      /* Responsive navigation container */
+      .nav-controls {
+        position: absolute;
+        right: 0;
+        top: 0;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        padding-right: 20px;
+        gap: 15px;
+        flex-wrap: wrap;
+      }
+
+      /* Mobile responsiveness for login button */
+      @media (max-width: 992px) {
+        .nav-controls {
+          flex-direction: column;
+          justify-content: center;
+          align-items: flex-end;
+          padding-right: 15px;
+          gap: 8px;
         }
 
-        /* Mobile responsiveness */
-        @media (max-width: 768px) {
-            #version-display {
-                top: 5px;
-                right: 5px;
-                padding: 6px 8px;
-                font-size: 10px;
-            }
+        .nav-wrapper h1 {
+          margin-left: 20px !important;
+          font-size: 1.3rem !important;
+        }
+      }
 
-            #version-display .version-number {
-                font-size: 11px;
-            }
-
-            #version-display .version-details {
-                font-size: 8px;
-            }
+      @media (max-width: 768px) {
+        .nav-wrapper {
+          flex-direction: column !important;
+          align-items: center !important;
+          padding-bottom: 10px !important;
+          min-height: auto !important;
         }
 
-        /* Ripple (waves) */
-        .waves-effect .waves-ripple {
-            background-color: rgba(43, 104, 164, 0.5) !important;
+        .nav-wrapper h1 {
+          margin: 10px 0 5px 0 !important;
+          text-align: center !important;
         }
 
-        /* Collections, dropdowns, etc. */
-        .collection .collection-item.active,
-        .dropdown-content li.active>a,
-        .collapsible-header.active {
-            background-color: rgba(43, 104, 164, 0.2) !important;
-            color: #2b68a4 !important;
+        .nav-controls {
+          position: static !important;
+          width: 100% !important;
+          justify-content: center !important;
+          align-items: center !important;
+          flex-direction: row !important;
+          padding: 0 10px 5px 10px !important;
+          gap: 10px !important;
+          flex-wrap: wrap !important;
         }
 
-        /* Focus styles */
-        input:focus,
-        textarea:focus,
-        select:focus {
-            border-bottom: 1px solid #2b68a4 !important;
-            box-shadow: 0 1px 0 0 #2b68a4 !important;
+        #login-button-container,
+        #nav-mobile {
+          margin: 0 !important;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .nav-controls {
+          gap: 8px !important;
+          padding: 0 5px 5px 5px !important;
         }
 
-        /* Buttons */
-        .btn:focus,
-        .btn:hover {
-            background-color: #3a7953 !important;
-        }
-
-        #page-loading-container {
-            display: flex;
-            justify-content: flex-start;
-            align-items: center;
-            height: 100vh;
-            flex-direction: column;
-            padding-top: 20px;
-        }
-
-        /* change the radio button when checked */
-        input[type="radio"]:checked+span::before {
-            border: 2px solid #3a7953;
-            /* circle border */
-            background-color: #3a7953;
-            /* filled dot */
-        }
-
-        #spinner-logo {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 80px;
-            /* adjust size as needed */
-            height: 80px;
-            z-index: 2;
-        }
-
-        #loading-container {
-            position: relative;
-            width: 200px;
-            /* adjust to match spinner size */
-            height: 200px;
-            margin: 0 auto;
-        }
-
-        .preloader-wrapper {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            margin: auto;
-            z-index: 1;
-        }
-
-        /* Login Button Styling */
         .nav-wrapper .btn.modal-trigger {
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .nav-wrapper .btn.modal-trigger:hover {
-            background-color: rgba(255, 255, 255, 0.2) !important;
-            border-color: rgba(255, 255, 255, 0.5) !important;
+          padding: 0 10px !important;
+          font-size: 0.85rem !important;
+          height: 32px !important;
+          line-height: 32px !important;
         }
 
         .nav-wrapper .btn.modal-trigger i.material-icons {
-            margin-right: 4px;
-            vertical-align: middle;
+          font-size: 16px !important;
+          margin-right: 4px !important;
         }
 
-        /* Login Modal Styling */
-        #login-modal {
-            max-width: 400px;
+        #nav-mobile li a {
+          padding: 0 12px !important;
+          font-size: 0.9rem !important;
         }
+      }
 
-        #login-modal .modal-content h4 {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        /* Dual Login Modal Styling */
-        .login-type-btn {
-            transition: all 0.3s ease !important;
-            border-radius: 4px !important;
-        }
-        
-        .active-login-type {
-            background-color: #2b68a4 !important;
-            color: white !important;
-        }
-        
-        .inactive-login-type {
-            background-color: #e0e0e0 !important;
-            color: #666 !important;
-        }
-        
-        .login-section {
-            transition: opacity 0.3s ease;
-        }
-        
-        .active-section {
-            opacity: 1;
-        }
-        
-        .inactive-section {
-            opacity: 0.5;
-        }
-        
-        #parent-phone-input, #employee-access-code {
-            font-size: 1.1rem !important;
-        }
-
-        #parent-phone-input:focus, #employee-access-code:focus {
-            border-bottom: 1px solid #2b68a4 !important;
-            box-shadow: 0 1px 0 0 #2b68a4 !important;
-        }
-        
-        /* Phone input specific styling */
-        #parent-phone-input {
-            letter-spacing: 1px !important;
-        }
-        
-        /* Access code input specific styling */
-        #employee-access-code {
-            text-align: left !important;
-            letter-spacing: 3px !important;
-        }
-
-        /* Responsive navigation container */
+      @media (max-width: 480px) {
         .nav-controls {
-            position: absolute;
-            right: 0;
-            top: 0;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            padding-right: 20px;
-            gap: 15px;
-            flex-wrap: wrap;
+          flex-direction: column !important;
+          gap: 5px !important;
         }
 
-        /* Mobile responsiveness for login button */
-        @media (max-width: 992px) {
-            .nav-controls {
-                flex-direction: column;
-                justify-content: center;
-                align-items: flex-end;
-                padding-right: 15px;
-                gap: 8px;
-            }
-
-            .nav-wrapper h1 {
-                margin-left: 20px !important;
-                font-size: 1.3rem !important;
-            }
+        .nav-wrapper h1 {
+          font-size: 1.2rem !important;
         }
 
-        @media (max-width: 768px) {
-            .nav-wrapper {
-                flex-direction: column !important;
-                align-items: center !important;
-                padding-bottom: 10px !important;
-                min-height: auto !important;
-            }
+        .nav-wrapper .btn.modal-trigger {
+          width: auto !important;
+          min-width: 80px !important;
+        }
+      }
 
-            .nav-wrapper h1 {
-                margin: 10px 0 5px 0 !important;
-                text-align: center !important;
-            }
+      /* White background for content below navbar */
+      .container {
+        background-color: white;
+        min-height: calc(100vh - 200px);
+        border-radius: 0;
+      }
 
-            .nav-controls {
-                position: static !important;
-                width: 100% !important;
-                justify-content: center !important;
-                align-items: center !important;
-                flex-direction: row !important;
-                padding: 0 10px 5px 10px !important;
-                gap: 10px !important;
-                flex-wrap: wrap !important;
-            }
+      /* Terms of Service modal - non-dismissible styling */
+      #terms-modal.modal {
+        position: fixed !important;
+      }
 
-            #login-button-container,
-            #nav-mobile {
-                margin: 0 !important;
-            }
+      #terms-modal .modal-overlay {
+        pointer-events: none !important;
+        /* Prevent clicking on overlay to close */
+      }
+
+      /* Visual indicator that Terms modal cannot be dismissed */
+      #terms-modal .modal-content::before {
+        content: '⚠️ Please read and acknowledge to continue';
+        display: block;
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        color: #856404;
+        padding: 8px 12px;
+        margin: -20px -24px 20px -24px;
+        font-size: 12px;
+        font-weight: bold;
+        text-align: center;
+        border-radius: 4px 4px 0 0;
+      }
+
+      /* Spin animation for loading indicators */
+      @keyframes spin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Maintenance Mode Overlay */
+      #maintenance-mode-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        z-index: 9999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      #maintenance-mode-overlay.active {
+        display: flex;
+      }
+
+      .maintenance-content {
+        background: white;
+        border-radius: 16px;
+        padding: 48px 40px;
+        max-width: 600px;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: fadeInScale 0.5s ease-out;
+      }
+
+      @keyframes fadeInScale {
+        from {
+          opacity: 0;
+          transform: scale(0.9);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      .maintenance-icon {
+        font-size: 80px;
+        color: #667eea;
+        margin-bottom: 24px;
+        animation: float 3s ease-in-out infinite;
+      }
+
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateY(0px);
+        }
+        50% {
+          transform: translateY(-10px);
+        }
+      }
+
+      .maintenance-title {
+        font-size: 32px;
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 16px;
+      }
+
+      .maintenance-message {
+        font-size: 18px;
+        color: #666;
+        line-height: 1.6;
+        margin-bottom: 32px;
+      }
+
+      .maintenance-footer {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        color: #999;
+        font-size: 14px;
+      }
+
+      .maintenance-footer i {
+        font-size: 20px;
+        color: #667eea;
+      }
+
+      /* Mobile responsiveness */
+      @media (max-width: 768px) {
+        .maintenance-content {
+          padding: 32px 24px;
         }
 
-        @media (max-width: 600px) {
-            .nav-controls {
-                gap: 8px !important;
-                padding: 0 5px 5px 5px !important;
-            }
-
-            .nav-wrapper .btn.modal-trigger {
-                padding: 0 10px !important;
-                font-size: 0.85rem !important;
-                height: 32px !important;
-                line-height: 32px !important;
-            }
-
-            .nav-wrapper .btn.modal-trigger i.material-icons {
-                font-size: 16px !important;
-                margin-right: 4px !important;
-            }
-
-            #nav-mobile li a {
-                padding: 0 12px !important;
-                font-size: 0.9rem !important;
-            }
+        .maintenance-icon {
+          font-size: 60px;
         }
 
-        @media (max-width: 480px) {
-            .nav-controls {
-                flex-direction: column !important;
-                gap: 5px !important;
-            }
-
-            .nav-wrapper h1 {
-                font-size: 1.2rem !important;
-            }
-
-            .nav-wrapper .btn.modal-trigger {
-                width: auto !important;
-                min-width: 80px !important;
-            }
+        .maintenance-title {
+          font-size: 24px;
         }
 
-        /* White background for content below navbar */
-        .container {
-            background-color: white;
-            min-height: calc(100vh - 200px);
-            border-radius: 0;
+        .maintenance-message {
+          font-size: 16px;
         }
-
-        /* Terms of Service modal - non-dismissible styling */
-        #terms-modal.modal {
-            position: fixed !important;
-        }
-
-        #terms-modal .modal-overlay {
-            pointer-events: none !important;
-            /* Prevent clicking on overlay to close */
-        }
-
-        /* Visual indicator that Terms modal cannot be dismissed */
-        #terms-modal .modal-content::before {
-            content: "⚠️ Please read and acknowledge to continue";
-            display: block;
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            color: #856404;
-            padding: 8px 12px;
-            margin: -20px -24px 20px -24px;
-            font-size: 12px;
-            font-weight: bold;
-            text-align: center;
-            border-radius: 4px 4px 0 0;
-        }
-
-        /* Spin animation for loading indicators */
-        @keyframes spin {
-            from {
-                transform: rotate(0deg);
-            }
-            to {
-                transform: rotate(360deg);
-            }
-        }
+      }
     </style>
 
     <title>Forte - Marin Country Day School</title>
 
+    <link
+      rel="icon"
+      href="https://resources.finalsite.net/images/f_auto,q_auto/v1715011148/marin/eryowt6uhsakpogytm7q/favicon-marin-country-day-school.ico"
+    />
+  </head>
 
-    <link rel="icon"
-        href="https://resources.finalsite.net/images/f_auto,q_auto/v1715011148/marin/eryowt6uhsakpogytm7q/favicon-marin-country-day-school.ico">
+  <body style="background-color: #fefefe">
+    <!-- Maintenance Mode Overlay -->
+    <div id="maintenance-mode-overlay">
+      <div class="maintenance-content">
+        <div class="maintenance-icon">
+          <i class="material-icons">build_circle</i>
+        </div>
+        <div class="maintenance-title">We'll Be Right Back!</div>
+        <div class="maintenance-message" id="maintenance-message-text">
+          The Forte registration system is currently undergoing updates. We will be back shortly. Thank you for your
+          patience!
+        </div>
+        <div class="maintenance-footer">
+          <i class="material-icons">schedule</i>
+          <span>Please check back soon</span>
+        </div>
+      </div>
+    </div>
 
-</head>
-
-<body style="background-color: #fefefe">
     <!-- Version Display (only shown in staging) -->
-    <div id="version-display" style="display: none;">
-        <span class="version-number">v<span id="version-number-text">-</span></span>
-        <span class="version-details">
-            <span id="version-env">-</span> | <span id="version-commit">-</span>
-        </span>
+    <div id="version-display" style="display: none">
+      <span class="version-number">v<span id="version-number-text">-</span></span>
+      <span class="version-details"> <span id="version-env">-</span> | <span id="version-commit">-</span> </span>
     </div>
 
     <header id="fsHeader" class="fsHeader">
-        <div class=" fsBanner fsStyleAutoclear" id="fsEl_10947" data-settings-id="10944" data-use-new="true">
-
-            <div class="fsElement fsLayout fsTwoColumnLayout main-header fsStyleAutoclear" id="fsEl_11029"
-                data-use-new="true">
-
-                <div class=" fsDiv fsStyleColumn fsStyleColumn-1 fsStyleAutoclear" id="fsEl_11030">
-
-                    <div class="fsElement fsResourceElement fsSingleItem header-logo" id="fsEl_11032"
-                        data-use-new="true" data-source-element-id="11032" data-source-page-id="1204">
-
-                        <div class="fsElementContent">
-                            <article class="fsResource fsResourceTypeImage">
-                                <figure><a class="fsResourceLink" data-permitted-user="true" data-preview="false"
-                                        data-resource-title="mcds-logo-full.svg" data-resource-type="Image">
-                                        <picture><img alt="Marin Country Day School"
-                                                data-aspect-ratio="0.11568938193343899"
-                                                data-image-sizes="[{%22url%22:%22https://resources.finalsite.net/images/v1715711496/marin/klhjhjmkutqs2kvk66sq/mcds-logo-full.svg%22,%22width%22:631}]"
-                                                data-permitted-user="true" data-resource-title="mcds-logo-full.svg"
-                                                data-resource-uuid="d6d2de06-a422-40a2-8114-e03827148b08" style=""
-                                                loading="lazy"
-                                                src="https://resources.finalsite.net/images/v1715711496/marin/klhjhjmkutqs2kvk66sq/mcds-logo-full.svg">
-                                        </picture>
-                                    </a></figure>
-                            </article>
-                        </div>
-
-
-                    </div>
-                    <div class="fsElement fsResourceElement fsSingleItem header-logo colored" id="fsEl_11049"
-                        data-use-new="true" data-source-element-id="11049" data-source-page-id="1204" style="">
-
-                        <div class="fsElementContent">
-                            <article class="fsResource fsResourceTypeImage">
-                                <figure><a class="fsResourceLink" data-permitted-user="true" data-preview="false"
-                                        data-resource-title="mcds-logo-full-colored.svg" data-resource-type="Image">
-                                        <picture><img alt="Marin Country Day School"
-                                                data-aspect-ratio="0.11568938193343899"
-                                                data-image-sizes="[{%22url%22:%22https://resources.finalsite.net/images/v1715881915/marin/idovufuuscgrkodiarf0/mcds-logo-full-colored.svg%22,%22width%22:631}]"
-                                                data-permitted-user="true"
-                                                data-resource-title="mcds-logo-full-colored.svg"
-                                                data-resource-uuid="d4e50605-a693-46a6-8d6b-5a01091f26e1" style=""
-                                                loading="lazy"
-                                                src="https://resources.finalsite.net/images/v1715881915/marin/idovufuuscgrkodiarf0/mcds-logo-full-colored.svg">
-                                        </picture>
-                                    </a></figure>
-                            </article>
-                        </div>
-
-                    </div>
-
-                </div>
+      <div class="fsBanner fsStyleAutoclear" id="fsEl_10947" data-settings-id="10944" data-use-new="true">
+        <div
+          class="fsElement fsLayout fsTwoColumnLayout main-header fsStyleAutoclear"
+          id="fsEl_11029"
+          data-use-new="true"
+        >
+          <div class="fsDiv fsStyleColumn fsStyleColumn-1 fsStyleAutoclear" id="fsEl_11030">
+            <div
+              class="fsElement fsResourceElement fsSingleItem header-logo"
+              id="fsEl_11032"
+              data-use-new="true"
+              data-source-element-id="11032"
+              data-source-page-id="1204"
+            >
+              <div class="fsElementContent">
+                <article class="fsResource fsResourceTypeImage">
+                  <figure>
+                    <a
+                      class="fsResourceLink"
+                      data-permitted-user="true"
+                      data-preview="false"
+                      data-resource-title="mcds-logo-full.svg"
+                      data-resource-type="Image"
+                    >
+                      <picture
+                        ><img
+                          alt="Marin Country Day School"
+                          data-aspect-ratio="0.11568938193343899"
+                          data-image-sizes="[{%22url%22:%22https://resources.finalsite.net/images/v1715711496/marin/klhjhjmkutqs2kvk66sq/mcds-logo-full.svg%22,%22width%22:631}]"
+                          data-permitted-user="true"
+                          data-resource-title="mcds-logo-full.svg"
+                          data-resource-uuid="d6d2de06-a422-40a2-8114-e03827148b08"
+                          style=""
+                          loading="lazy"
+                          src="https://resources.finalsite.net/images/v1715711496/marin/klhjhjmkutqs2kvk66sq/mcds-logo-full.svg"
+                        />
+                      </picture>
+                    </a>
+                  </figure>
+                </article>
+              </div>
             </div>
+            <div
+              class="fsElement fsResourceElement fsSingleItem header-logo colored"
+              id="fsEl_11049"
+              data-use-new="true"
+              data-source-element-id="11049"
+              data-source-page-id="1204"
+              style=""
+            >
+              <div class="fsElementContent">
+                <article class="fsResource fsResourceTypeImage">
+                  <figure>
+                    <a
+                      class="fsResourceLink"
+                      data-permitted-user="true"
+                      data-preview="false"
+                      data-resource-title="mcds-logo-full-colored.svg"
+                      data-resource-type="Image"
+                    >
+                      <picture
+                        ><img
+                          alt="Marin Country Day School"
+                          data-aspect-ratio="0.11568938193343899"
+                          data-image-sizes="[{%22url%22:%22https://resources.finalsite.net/images/v1715881915/marin/idovufuuscgrkodiarf0/mcds-logo-full-colored.svg%22,%22width%22:631}]"
+                          data-permitted-user="true"
+                          data-resource-title="mcds-logo-full-colored.svg"
+                          data-resource-uuid="d4e50605-a693-46a6-8d6b-5a01091f26e1"
+                          style=""
+                          loading="lazy"
+                          src="https://resources.finalsite.net/images/v1715881915/marin/idovufuuscgrkodiarf0/mcds-logo-full-colored.svg"
+                        />
+                      </picture>
+                    </a>
+                  </figure>
+                </article>
+              </div>
+            </div>
+          </div>
         </div>
-
+      </div>
     </header>
 
     <!-- Navbar -->
     <nav>
-        <div class="nav-wrapper" style="background-color: #3a7953; position: relative; display: flex; align-items: center;">
-            <h1
-                style="margin-left: 60px; color: #fefefe; font-size: 1.5rem; margin-top: 0; margin-bottom: 0;">
-                <b>Forte</b>
-            </h1>
+      <div
+        class="nav-wrapper"
+        style="background-color: #3a7953; position: relative; display: flex; align-items: center"
+      >
+        <h1 style="margin-left: 60px; color: #fefefe; font-size: 1.5rem; margin-top: 0; margin-bottom: 0">
+          <b>Forte</b>
+        </h1>
 
-            <div class="nav-controls">
-                <!-- Login Button - initially hidden -->
-                <div id="login-button-container" hidden>
-                    <a class="btn waves-effect waves-light modal-trigger" href="#login-modal"
-                        style="background-color: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); margin: 0; height: 36px; line-height: 36px; display: flex; align-items: center;">
-                        <i class="material-icons left"
-                            style="font-size: 18px; margin-right: 6px; vertical-align: middle;">vpn_key</i>Login
-                    </a>
-                </div>
+        <div class="nav-controls">
+          <!-- Login Button - initially hidden -->
+          <div id="login-button-container" hidden>
+            <a
+              class="btn waves-effect waves-light modal-trigger"
+              href="#login-modal"
+              style="
+                background-color: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                margin: 0;
+                height: 36px;
+                line-height: 36px;
+                display: flex;
+                align-items: center;
+              "
+            >
+              <i class="material-icons left" style="font-size: 18px; margin-right: 6px; vertical-align: middle"
+                >vpn_key</i
+              >Login
+            </a>
+          </div>
 
-                <!-- Navigation Links - initially hidden -->
-                <ul id="nav-mobile" class="right"
-                    style="margin: 0; height: auto; display: none; align-items: center; list-style: none; padding: 0;">
-                    <li style="display: inline-block; margin-left: 10px;"><a class="section-link" data-section="admin" style="color: white; text-decoration: none; padding: 8px 12px; display: block;">Admin</a></li>
-                    <li style="display: inline-block; margin-left: 10px;"><a class="section-link" data-section="instructor" style="color: white; text-decoration: none; padding: 8px 12px; display: block;">Instructors</a></li>
-                    <li style="display: inline-block; margin-left: 10px;"><a class="section-link" data-section="parent" style="color: white; text-decoration: none; padding: 8px 12px; display: block;">Families</a></li>
-                </ul>
-            </div>
+          <!-- Navigation Links - initially hidden -->
+          <ul
+            id="nav-mobile"
+            class="right"
+            style="margin: 0; height: auto; display: none; align-items: center; list-style: none; padding: 0"
+          >
+            <li style="display: inline-block; margin-left: 10px">
+              <a
+                class="section-link"
+                data-section="admin"
+                style="color: white; text-decoration: none; padding: 8px 12px; display: block"
+                >Admin</a
+              >
+            </li>
+            <li style="display: inline-block; margin-left: 10px">
+              <a
+                class="section-link"
+                data-section="instructor"
+                style="color: white; text-decoration: none; padding: 8px 12px; display: block"
+                >Instructors</a
+              >
+            </li>
+            <li style="display: inline-block; margin-left: 10px">
+              <a
+                class="section-link"
+                data-section="parent"
+                style="color: white; text-decoration: none; padding: 8px 12px; display: block"
+                >Families</a
+              >
+            </li>
+          </ul>
         </div>
+      </div>
     </nav>
 
     <!-- Main Content -->
-    <div class="container" style="margin-top: 20px;">
+    <div class="container" style="margin-top: 20px">
+      <!-- Loading Spinner -->
+      <div id="page-loading-container">
+        <img src="images/forte-favicon.png" alt="Logo" id="spinner-logo" />
 
-        <!-- Loading Spinner -->
-        <div id="page-loading-container">
-            <img src="images/forte-favicon.png" alt="Logo" id="spinner-logo">
-
-            <div id="loading" class="preloader-wrapper big active">
-                <div class="spinner-layer spinner-blue">
-                    <div class="circle-clipper left">
-                        <div class="circle"></div>
-                    </div>
-                    <div class="gap-patch">
-                        <div class="circle"></div>
-                    </div>
-                    <div class="circle-clipper right">
-                        <div class="circle"></div>
-                    </div>
-                </div>
-
-                <div class="spinner-layer spinner-red">
-                    <div class="circle-clipper left">
-                        <div class="circle"></div>
-                    </div>
-                    <div class="gap-patch">
-                        <div class="circle"></div>
-                    </div>
-                    <div class="circle-clipper right">
-                        <div class="circle"></div>
-                    </div>
-                </div>
-
-                <div class="spinner-layer spinner-yellow">
-                    <div class="circle-clipper left">
-                        <div class="circle"></div>
-                    </div>
-                    <div class="gap-patch">
-                        <div class="circle"></div>
-                    </div>
-                    <div class="circle-clipper right">
-                        <div class="circle"></div>
-                    </div>
-                </div>
-
-                <div class="spinner-layer spinner-green">
-                    <div class="circle-clipper left">
-                        <div class="circle"></div>
-                    </div>
-                    <div class="gap-patch">
-                        <div class="circle"></div>
-                    </div>
-                    <div class="circle-clipper right">
-                        <div class="circle"></div>
-                    </div>
-                </div>
+        <div id="loading" class="preloader-wrapper big active">
+          <div class="spinner-layer spinner-blue">
+            <div class="circle-clipper left">
+              <div class="circle"></div>
             </div>
+            <div class="gap-patch">
+              <div class="circle"></div>
+            </div>
+            <div class="circle-clipper right">
+              <div class="circle"></div>
+            </div>
+          </div>
+
+          <div class="spinner-layer spinner-red">
+            <div class="circle-clipper left">
+              <div class="circle"></div>
+            </div>
+            <div class="gap-patch">
+              <div class="circle"></div>
+            </div>
+            <div class="circle-clipper right">
+              <div class="circle"></div>
+            </div>
+          </div>
+
+          <div class="spinner-layer spinner-yellow">
+            <div class="circle-clipper left">
+              <div class="circle"></div>
+            </div>
+            <div class="gap-patch">
+              <div class="circle"></div>
+            </div>
+            <div class="circle-clipper right">
+              <div class="circle"></div>
+            </div>
+          </div>
+
+          <div class="spinner-layer spinner-green">
+            <div class="circle-clipper left">
+              <div class="circle"></div>
+            </div>
+            <div class="gap-patch">
+              <div class="circle"></div>
+            </div>
+            <div class="circle-clipper right">
+              <div class="circle"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div hidden id="page-error-content" style="padding-bottom: 40px">
+        <div class="card red lighten-1">
+          <div class="card-content white-text">
+            <span class="card-title">There was an error loading the page.</span>
+            <p id="page-error-content-message"></p>
+          </div>
+        </div>
+      </div>
+
+      <div hidden id="page-content" style="padding-bottom: 40px">
+        <!-- Enrollment Period Banner -->
+        <div id="enrollment-period-banner" class="enrollment-banner" style="display: none">
+          <i class="material-icons">event_available</i>
+          <span id="enrollment-banner-text"></span>
         </div>
 
-        <div hidden id="page-error-content" style="padding-bottom: 40px;">
-            <div class="card red lighten-1">
-                <div class="card-content white-text">
-                    <span class="card-title">There was an error loading the page.</span>
-                    <p id="page-error-content-message"></p>
-                </div>
+        <!-- Intent Banner (shown during intent period) -->
+        <div id="intent-banner" class="card-panel orange lighten-4" style="display: none; margin-bottom: 25px">
+          <div class="row valign-wrapper" style="margin-bottom: 0">
+            <div class="col s12">
+              <h6 style="margin: 0 0 10px 0"><b>Reenrollment Intent Required</b></h6>
+              <p style="margin: 0">
+                Please indicate your intent for each of your current lessons below.
+                <span id="intent-incomplete-count" style="font-weight: bold"></span>
+              </p>
             </div>
+          </div>
         </div>
 
-        <div hidden id="page-content" style="padding-bottom: 40px;">
+        <ul hidden class="tabs">
+          <li hidden class="tab col s3 admin-tab">
+            <a href="#admin-master-schedule" style="color: #2b68a4"><b>Master Schedule</b></a>
+          </li>
+          <li hidden class="tab col s3 admin-tab">
+            <a href="#admin-wait-list" style="color: #2b68a4"><b>Wait List</b></a>
+          </li>
+          <li hidden class="tab col s3 admin-tab">
+            <a href="#admin-registration" style="color: #2b68a4"><b>Registration</b></a>
+          </li>
 
-            <!-- Enrollment Period Banner -->
-            <div id="enrollment-period-banner" class="enrollment-banner" style="display: none;">
-                <div class="container">
-                    <i class="material-icons">event_available</i>
-                    <span id="enrollment-banner-text"></span>
-                </div>
+          <li hidden class="tab col s3 instructor-tab">
+            <a href="#instructor-weekly-schedule" style="color: #2b68a4"><b>Weekly Schedule</b></a>
+          </li>
+          <li hidden class="tab col s3 admin-tab instructor-tab">
+            <a href="#instructor-forte-directory" style="color: #2b68a4"><b>Forte Directory</b></a>
+          </li>
+          <li hidden class="tab col s3 instructor-tab">
+            <a href="#instructor-paylocity" style="color: #2b68a4"><b>Paylocity</b></a>
+          </li>
+
+          <li hidden class="tab col s3 parent-tab">
+            <a href="#parent-weekly-schedule" style="color: #2b68a4"><b>Weekly Schedule</b></a>
+          </li>
+          <li hidden class="tab col s3 parent-tab">
+            <a href="#parent-registration" style="color: #2b68a4"><b>Registration</b></a>
+          </li>
+          <li hidden class="tab col s3 parent-tab">
+            <a href="#parent-contact-us" style="color: #2b68a4"><b>Contact Us</b></a>
+          </li>
+        </ul>
+
+        <!-- Admin Section -->
+
+        <!-- Admin Trimester Selector (shared across admin tabs) -->
+        <div
+          hidden
+          id="admin-trimester-selector-container"
+          class="admin-tab"
+          style="margin: 20px; padding: 0 20px; background-color: #fefefe"
+        >
+          <div class="row" style="margin-bottom: 0">
+            <div class="input-field col s12 m6 l4">
+              <select id="admin-trimester-select">
+                <!-- Options populated dynamically -->
+              </select>
+              <label>Trimester</label>
             </div>
-
-            <!-- Intent Banner (shown during intent period) -->
-            <div id="intent-banner" class="card-panel orange lighten-4" style="display: none; margin-bottom: 25px;">
-                <div class="row valign-wrapper" style="margin-bottom: 0;">
-                    <div class="col s12">
-                        <h6 style="margin: 0 0 10px 0;"><b>Reenrollment Intent Required</b></h6>
-                        <p style="margin: 0;">
-                            Please indicate your intent for each of your current lessons below.
-                            <span id="intent-incomplete-count" style="font-weight: bold;"></span>
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <ul hidden class="tabs">
-
-                <li hidden class="tab col s3 admin-tab"><a href="#admin-master-schedule"
-                        style="color: #2b68a4"><b>Master
-                            Schedule</b></a></li>
-                <li hidden class="tab col s3 admin-tab"><a href="#admin-wait-list" style="color: #2b68a4"><b>Wait
-                            List</b></a></li>
-                <li hidden class="tab col s3 admin-tab"><a href="#admin-registration"
-                        style="color: #2b68a4"><b>Registration</b></a></li>
-
-                <li hidden class="tab col s3 instructor-tab"><a href="#instructor-weekly-schedule"
-                        style="color: #2b68a4"><b>Weekly Schedule</b></a></li>
-                <li hidden class="tab col s3 admin-tab instructor-tab"><a href="#instructor-forte-directory"
-                        style="color: #2b68a4"><b>Forte Directory</b></a></li>
-                <li hidden class="tab col s3 instructor-tab"><a href="#instructor-paylocity"
-                        style="color: #2b68a4"><b>Paylocity</b></a></li>
-
-                <li hidden class="tab col s3 parent-tab"><a href="#parent-weekly-schedule"
-                        style="color: #2b68a4"><b>Weekly
-                            Schedule</b></a></li>
-                <li hidden class="tab col s3 parent-tab"><a href="#parent-registration"
-                        style="color: #2b68a4"><b>Registration</b></a></li>
-                <li hidden class="tab col s3 parent-tab"><a href="#parent-contact-us" style="color: #2b68a4"><b>Contact
-                            Us</b></a></li>
-
-            </ul>
-
-            <!-- Admin Section -->
-
-            <!-- Admin Trimester Selector (shared across admin tabs) -->
-            <div hidden id="admin-trimester-selector-container" class="admin-tab"
-                style="margin: 20px; padding: 0 20px; background-color: #fefefe">
-                <div class="row" style="margin-bottom: 0;">
-                    <div class="input-field col s12 m6 l4">
-                        <select id="admin-trimester-select">
-                            <!-- Options populated dynamically -->
-                        </select>
-                        <label>Trimester</label>
-                        <span class="helper-text" style="font-size: 12px; color: #666;">
-                            Select a trimester to view data. New registrations will be created for the selected trimester.
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <div hidden class="tab-content" id="admin-master-schedule" class="col s12"
-                style="background-color: #fefefe">
-                <div class="card">
-                    <div class="card-content">
-                        <span class="card-title" style="color: #2b68a4"><b>Currently Enrolled Lessons</b></span>
-
-                        <div class="row">
-                            <div class="input-field col s4">
-                                <select multiple id="master-schedule-instructor-filter-select">
-                                    <option value="" disabled> Choose instructor filter</option>
-                                </select>
-                                <label>Instructors</label>
-                            </div>
-
-                            <div class="input-field col s4">
-                                <select multiple id="master-schedule-day-filter-select">
-                                    <option value="" disabled> Choose weekday filter</option>
-                                </select>
-                                <label>Weekday</label>
-                            </div>
-
-                            <div class="input-field col s4">
-                                <select multiple id="master-schedule-grade-filter-select">
-                                    <option value="" disabled> Choose grade level filter</option>
-                                </select>
-                                <label>Grade Level</label>
-                            </div>
-
-                            <div class="input-field col s3" id="master-schedule-intent-filter-container" hidden>
-                                <select multiple id="master-schedule-intent-filter-select">
-                                    <option value="" disabled> Choose intent filter</option>
-                                </select>
-                                <label>Intent</label>
-                            </div>
-                        </div>
-
-                        <!-- <p hidden id="master-schedule-no-lessons-message">Not enrolled in any lessons.</p> -->
-                        <div id="master-schedule-count" style="margin: 16px 0; font-size: 14px; color: #666;"></div>
-                        <table hidden id="master-schedule-table">
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div hidden class="tab-content" id="admin-wait-list" class="col s12" style="background-color: #fefefe">
-                <div class="card">
-                    <div class="card-content">
-                        <span class="card-title" style="color: #2b68a4"><b>Rock Band Wait List</b></span>
-
-                        <table hidden id="admin-wait-list-table">
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div hidden class="tab-content" id="admin-registration" class="col s12" style="background-color: #fefefe; ">
-
-                <div hidden id="admin-registration-loading-container">
-                    <div class="loading preloader-wrapper big active center-align">
-                        <div class="spinner-layer spinner-blue">
-                            <div class="circle-clipper left">
-                                <div class="circle"></div>
-                            </div>
-                            <div class="gap-patch">
-                                <div class="circle"></div>
-                            </div>
-                            <div class="circle-clipper right">
-                                <div class="circle"></div>
-                            </div>
-                        </div>
-
-                        <div class="spinner-layer spinner-red">
-                            <div class="circle-clipper left">
-                                <div class="circle"></div>
-                            </div>
-                            <div class="gap-patch">
-                                <div class="circle"></div>
-                            </div>
-                            <div class="circle-clipper right">
-                                <div class="circle"></div>
-                            </div>
-                        </div>
-
-                        <div class="spinner-layer spinner-yellow">
-                            <div class="circle-clipper left">
-                                <div class="circle"></div>
-                            </div>
-                            <div class="gap-patch">
-                                <div class="circle"></div>
-                            </div>
-                            <div class="circle-clipper right">
-                                <div class="circle"></div>
-                            </div>
-                        </div>
-
-                        <div class="spinner-layer spinner-green">
-                            <div class="circle-clipper left">
-                                <div class="circle"></div>
-                            </div>
-                            <div class="gap-patch">
-                                <div class="circle"></div>
-                            </div>
-                            <div class="circle-clipper right">
-                                <div class="circle"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="admin-registration-container">
-                    <div id="admin-registration-form">
-
-                        <!-- Students -->
-                        <div class="input-field col s12">
-                            <i class="material-icons prefix">account_circle</i>
-                            <input type="text" id="student-autocomplete-input" class="autocomplete">
-                            <label for="student-autocomplete-input">Student</label>
-                        </div>
-
-                        <div hidden id="student-searched-options-container">
-
-                            <!-- Transportation Type -->
-                            <p>Transportation Type</p>
-                            <p>
-                                <label>
-                                    <input name="transportation-type" type="radio" value="pickup" checked />
-                                    <span>Pickup</span>
-                                </label>
-                            </p>
-                            <p>
-                                <label>
-                                    <input name="transportation-type" type="radio" value="bus" />
-                                    <span>Late Bus</span>
-                                </label>
-                            </p>
-
-                        </div>
-
-                        <div class="input-field">
-                            <select id="registration-type-select">
-                            </select>
-                            <label for="registration-type-select">Registration Type</label>
-                        </div>
-
-                        <div id="private-registration-container" hidden>
-
-                            <!-- Instructor -->
-                            <div class="input-field">
-                                <select id="instructor-select">
-                                </select>
-                                <label for="instructor-select">Instructor</label>
-                            </div>
-
-                            <div id="instructor-selected-info-container" hidden>
-
-                                <!-- Day -->
-                                <div class="input-field" id="instructor-day-select-options-container">
-                                    <select id="day-select">
-                                    </select>
-                                    <label for="day-select">Day</label>
-                                </div>
-
-                                <div id="instructor-day-selected-info-container" hidden>
-
-                                    <!-- Start Time -->
-                                    <div class="input-field" id="instructor-day-start-time-container">
-                                        <select id="start-time-select">
-                                        </select>
-                                        <label for="start-time-select">Start Time</label>
-                                    </div>
-
-                                    <!-- Length -->
-                                    <div id="lesson-length-container">
-                                        <p>Lesson Length</p>
-                                        <p>
-                                            <label>
-                                                <input name="lesson-length" type="radio" value="30" checked />
-                                                <span>30 Minutes</span>
-                                            </label>
-                                        </p>
-                                        <p>
-                                            <label>
-                                                <input name="lesson-length" type="radio" value="45" />
-                                                <span>45 Minutes</span>
-                                            </label>
-                                        </p>
-                                        <p>
-                                            <label>
-                                                <input name="lesson-length" type="radio" value="60" />
-                                                <span>60 Minutes</span>
-                                            </label>
-                                        </p>
-                                    </div>
-
-                                    <!-- Instrument -->
-                                    <div class="input-field" id="instrument-select-options-container">
-                                        <select id="instrument-select">
-                                        </select>
-                                        <label for="instrument-select">Instrument</label>
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                        <div id="group-registration-container" hidden>
-
-                            <div class="input-field">
-                                <select id="class-select">
-                                </select>
-                                <label for="class-select">Classes</label>
-                            </div>
-
-                        </div>
-
-                        <!-- Save Button -->
-                        <div class="center-align">
-                            <button class="btn waves-effect waves-light" type="submit"
-                                id="create-registration-submit-btn"
-                                style="background-color: #2b68a4"><b>Create</b></button>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Instructor Section -->
-            <div hidden class="tab-content" id="instructor-weekly-schedule" class="col s12"
-                style="background-color: #fefefe">
-                <div id="instructor-weekly-schedule-tables">
-                </div>
-            </div>
-            <div hidden class="tab-content" id="instructor-forte-directory" class="col s12"
-                style="background-color: #fefefe">
-                <table hidden id="employee-directory-table">
-                </table>
-            </div>
-            <div hidden class="tab-content" id="instructor-paylocity" class="col s12" style="background-color: #fefefe">
-                <a href="https://access.paylocity.com/" target="_blank" class="btn waves-effect waves-light"
-                    style="background-color: #2b68a4">
-                    <b>Log Hours</b>
-                </a>
-            </div>
-
-            <!-- Parent Section -->
-            <div hidden class="tab-content" id="parent-weekly-schedule" class="col s12"
-                style="background-color: #fefefe">
-
-                <!-- Parent Trimester Selector (ONLY for weekly schedule tab) -->
-                <div id="parent-trimester-selector-container"
-                    style="margin: 20px; padding: 0;">
-                    <div class="row" style="margin-bottom: 0;">
-                        <div class="input-field col s12 m6 l4">
-                            <select id="parent-trimester-select">
-                                <!-- Options populated dynamically -->
-                            </select>
-                            <label>Trimester</label>
-                            <span class="helper-text" style="font-size: 12px; color: #666;">
-                                View your children's schedules for different trimesters.
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <table hidden id="parent-wait-list-table">
-                </table>
-                <div id="parent-weekly-schedule-tables">
-                </div>
-            </div>
-            <div hidden class="tab-content" id="parent-registration" class="col s12" style="background-color: #fefefe">
-
-                <!-- Student Selection (conditionally shown) -->
-                <div id="parent-student-selection-section" class="student-selection-section"
-                    style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px; display: none;">
-                    <h6 style="margin: 0 0 15px 0; color: #2b68a4;"><b>Select Student</b></h6>
-                    <div class="input-field">
-                        <select id="parent-student-select">
-                            <option value="">Select Student</option>
-                            <!-- Students will be populated programmatically -->
-                        </select>
-                        <label for="parent-student-select">Student</label>
-                    </div>
-                </div>
-
-                <!-- Registration Type Selection -->
-                <div class="registration-type-section"
-                    style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
-                    <h6 style="margin: 0 0 15px 0; color: #2b68a4;"><b>Registration Type</b></h6>
-                    <div class="input-field">
-                        <select id="parent-registration-type-select">
-                            <option value="">Select Registration Type</option>
-                            <option value="private">Private Lessons</option>
-                            <option value="group">Group Classes</option>
-                        </select>
-                        <label for="parent-registration-type-select">Registration Type</label>
-                    </div>
-                </div>
-
-                <!-- Private Registration Container (hidden by default) -->
-                <div id="parent-private-registration-container" style="display: none;">
-
-                    <!-- Hybrid Approach: Smart Chips + Interactive Time Slot Grid for Private Lessons -->
-
-                    <!-- Smart Filter Chips Section -->
-                    <div class="availability-filters"
-                        style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
-                        <h6 style="margin: 0 0 15px 0; color: #2b68a4;"><b>Filter Available Options</b></h6>
-
-                        <div class="filter-section" style="margin: 15px 0;">
-                            <label style="display: block; margin-bottom: 8px; font-weight: bold;">Instrument:</label>
-                            <div class="chip-container" id="instrument-chips-container"
-                                style="display: flex; flex-wrap: wrap; gap: 8px;">
-                                <!-- Instrument chips will be populated programmatically -->
-                            </div>
-                        </div>
-
-                        <div class="filter-section" style="margin: 15px 0;">
-                            <label style="display: block; margin-bottom: 8px; font-weight: bold;">Preferred Day:</label>
-                            <div class="chip-container" id="day-chips-container"
-                                style="display: flex; flex-wrap: wrap; gap: 8px;">
-                                <!-- Day chips will be populated programmatically -->
-                            </div>
-                        </div>
-
-                        <div class="filter-section" style="margin: 15px 0;">
-                            <label style="display: block; margin-bottom: 8px; font-weight: bold;">Lesson Length:</label>
-                            <div class="chip-container" id="length-chips-container"
-                                style="display: flex; flex-wrap: wrap; gap: 8px;">
-                                <!-- Length chips will be populated programmatically -->
-                            </div>
-                        </div>
-
-                        <div class="filter-section" style="margin: 15px 0;">
-                            <label style="display: block; margin-bottom: 8px; font-weight: bold;">Instructors:</label>
-                            <div class="chip-container" id="instructor-chips-container"
-                                style="display: flex; flex-wrap: wrap; gap: 8px;">
-                                <!-- Instructor chips will be populated programmatically -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Interactive Time Slot Grid Section -->
-                    <div class="instructor-timeslot-grid" id="admin-instructor-timeslot-grid"
-                        style="margin-bottom: 250px;">
-                        <div class="section-header" style="margin-bottom: 15px;">
-                            <h6 style="margin: 0; color: #2b68a4;"><b>Available Time Slots</b></h6>
-                            <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Click on any available slot to
-                                select your lesson time</p>
-                        </div>
-
-                        <div class="instructor-card"
-                            style="border: 2px solid #ddd; margin: 15px 0; padding: 20px; border-radius: 8px; transition: border-color 0.3s;">
-                            <h6 style="margin: 0 0 15px 0; color: #2b68a4; display: flex; align-items: center;"><b>Jesse
-                                    Brewster - Piano</b> <span
-                                    style="margin-left: 10px; font-size: 12px; background: #e8f5e8; color: #4caf50; padding: 4px 8px; border-radius: 12px;">5
-                                    available</span></h6>
-                            <div class="timeslot-grid" style="display: flex; flex-wrap: wrap; gap: 10px;">
-                                <div class="timeslot available" data-instructor-id="instructor-1" data-day="monday"
-                                    data-time="14:00" data-length="30" data-instrument="Piano"
-                                    style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                    <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Monday</div>
-                                    <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">2:00 PM</div>
-                                    <div style="font-size: 12px; color: #666;">30min • Piano</div>
-                                </div>
-                                <div class="timeslot available" data-instructor-id="instructor-1" data-day="monday"
-                                    data-time="14:30" data-length="45" data-instrument="Piano"
-                                    style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                    <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Monday</div>
-                                    <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">2:30 PM</div>
-                                    <div style="font-size: 12px; color: #666;">45min • Piano</div>
-                                </div>
-                                <div class="timeslot unavailable"
-                                    style="border: 2px solid #f44336; background: #ffebee; padding: 12px 16px; border-radius: 8px; cursor: not-allowed; min-width: 110px; text-align: center; opacity: 0.6;">
-                                    <div style="font-weight: bold; color: #c62828; font-size: 14px;">Monday</div>
-                                    <div style="font-weight: bold; color: #c62828; font-size: 16px;">3:00 PM</div>
-                                    <div style="font-size: 12px; color: #666;">30min • Piano</div>
-                                    <div style="font-size: 10px; color: #f44336; margin-top: 2px;">Booked</div>
-                                </div>
-                                <div class="timeslot available" data-instructor-id="instructor-1" data-day="tuesday"
-                                    data-time="13:15" data-length="45" data-instrument="Piano"
-                                    style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                    <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Tuesday</div>
-                                    <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">1:15 PM</div>
-                                    <div style="font-size: 12px; color: #666;">45min • Piano</div>
-                                </div>
-                                <div class="timeslot available" data-instructor-id="instructor-1" data-day="wednesday"
-                                    data-time="15:30" data-length="30" data-instrument="Piano"
-                                    style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                    <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Wednesday</div>
-                                    <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">3:30 PM</div>
-                                    <div style="font-size: 12px; color: #666;">30min • Piano</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="instructor-card"
-                            style="border: 2px solid #ddd; margin: 15px 0; padding: 20px; border-radius: 8px; transition: border-color 0.3s;">
-                            <h6 style="margin: 0 0 15px 0; color: #2b68a4; display: flex; align-items: center;"><b>Cesar
-                                    Cancino - Guitar</b> <span
-                                    style="margin-left: 10px; font-size: 12px; background: #fff3e0; color: #ff9800; padding: 4px 8px; border-radius: 12px;">2
-                                    available</span></h6>
-                            <div class="timeslot-grid" style="display: flex; flex-wrap: wrap; gap: 10px;">
-                                <div class="timeslot available" data-instructor-id="instructor-2" data-day="tuesday"
-                                    data-time="13:30" data-length="30"
-                                    style="border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                    <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">Tuesday</div>
-                                    <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">1:30 PM</div>
-                                    <div style="font-size: 12px; color: #666;">30min</div>
-                                </div>
-                                <div class="timeslot limited" data-instructor-id="instructor-2" data-day="wednesday"
-                                    data-time="16:00" data-length="45"
-                                    style="border: 2px solid #ff9800; background: #fff3e0; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                    <div style="font-weight: bold; color: #ef6c00; font-size: 14px;">Wednesday</div>
-                                    <div style="font-weight: bold; color: #ef6c00; font-size: 16px;">4:00 PM</div>
-                                    <div style="font-size: 12px; color: #666;">45min</div>
-                                    <div style="font-size: 10px; color: #ff9800; margin-top: 2px;">Last slot</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Selected Lesson Display - Fixed to bottom -->
-                    <div id="admin-selected-lesson-display"
-                        style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; padding: 20px; background: #e3f2fd; border-top: 3px solid #2196f3; box-shadow: 0 -4px 12px rgba(0,0,0,0.15); display: none; pointer-events: none;">
-                        <div style="max-width: 1200px; margin: 0 auto; pointer-events: auto;">
-                            <h6 style="margin: 0 0 10px 0; color: #1976d2;"><b>Selected Lesson</b></h6>
-                            <div id="admin-selected-lesson-details"
-                                style="font-size: 16px; color: #333; margin-bottom: 15px;"></div>
-
-                            <!-- Transportation Type Selection -->
-                            <div
-                                style="margin-bottom: 15px; padding: 12px; background: rgba(255,255,255,0.7); border-radius: 6px;">
-                                <h6 style="margin: 0 0 8px 0; color: #1976d2; font-size: 14px;"><b>Transportation</b>
-                                </h6>
-                                <p style="margin: 0; font-size: 12px; color: #666;">
-                                    <label>
-                                        <input type="radio" name="parent-transportation-type" value="pickup"
-                                            checked="checked" />
-                                        <span>Late Pick Up</span>
-                                    </label>
-                                </p>
-                                <p style="margin: 0; font-size: 12px; color: #666;">
-                                    <label>
-                                        <input type="radio" name="parent-transportation-type" value="bus" />
-                                        <span>Late Bus</span>
-                                    </label>
-                                </p>
-                            </div>
-
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <button id="parent-confirm-registration-btn" class="btn waves-effect waves-light"
-                                    style="background-color: #2b68a4;">
-                                    <i class="material-icons left">check</i>Create Registration
-                                </button>
-                                <button id="parent-clear-selection-btn" class="btn-flat waves-effect"
-                                    style="color: #666;">
-                                    Clear Selection
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                </div> <!-- End of parent-private-registration-container -->
-
-                <!-- Group Registration Container (hidden by default) -->
-                <div id="parent-group-registration-container" style="display: none;">
-                    <div class="group-registration-section"
-                        style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
-                        <h6 style="margin: 0 0 15px 0; color: #2b68a4;"><b>Select Group Class</b></h6>
-
-                        <div class="input-field">
-                            <select id="parent-class-select">
-                                <!-- Classes will be populated programmatically -->
-                            </select>
-                            <label for="parent-class-select">Available Classes</label>
-                        </div>
-
-                        <!-- Transportation Type Selection for Group Classes -->
-                        <div
-                            style="margin: 20px 0; padding: 15px; background: rgba(255,255,255,0.8); border-radius: 6px; border: 1px solid #e0e0e0;">
-                            <h6 style="margin: 0 0 10px 0; color: #2b68a4; font-size: 14px;"><b>Transportation</b></h6>
-                            <p style="margin: 0; font-size: 14px; color: #666;">
-                                <label>
-                                    <input type="radio" name="parent-group-transportation-type" value="pickup"
-                                        checked="checked" />
-                                    <span>Late Pick Up</span>
-                                </label>
-                            </p>
-                            <p style="margin: 0; font-size: 14px; color: #666;">
-                                <label>
-                                    <input type="radio" name="parent-group-transportation-type" value="bus" />
-                                    <span>Late Bus</span>
-                                </label>
-                            </p>
-                        </div>
-
-                        <!-- Create Button -->
-                        <div class="center-align" style="margin-top: 20px;">
-                            <button class="btn waves-effect waves-light" type="button"
-                                id="parent-create-group-registration-btn" style="background-color: #2b68a4;">
-                                <i class="material-icons left">group_add</i>
-                                <b>Register for Class</b>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-            <div hidden class="tab-content" id="parent-contact-us" class="col s12" style="background-color: #fefefe">
-                <table id="parent-directory-table">
-                </table>
-            </div>
-
+          </div>
         </div>
 
-        <!-- Legal Links Footer - Always Visible, Full Width -->
-        <div class="legal-footer"
-            style="width: 100%; margin: 40px -20px 0 -20px; padding: 30px 20px; border-top: 1px solid #e0e0e0; background-color: #fafafa; text-align: center;">
-            <p style="margin: 0; color: #666; font-size: 14px;">
-                <a href="#terms-modal" class="modal-trigger"
-                    style="color: #2b68a4; text-decoration: underline; margin-right: 20px;">Terms of Service</a>
-                <a href="#privacy-modal" class="modal-trigger"
-                    style="color: #2b68a4; text-decoration: underline;">Privacy Policy</a>
+        <div hidden class="tab-content" id="admin-master-schedule" class="col s12" style="background-color: #fefefe">
+          <div class="card">
+            <div class="card-content">
+              <span class="card-title" style="color: #2b68a4"><b>Currently Enrolled Lessons</b></span>
+
+              <div class="row">
+                <div class="input-field col s4">
+                  <select multiple id="master-schedule-instructor-filter-select">
+                    <option value="" disabled>Choose instructor filter</option>
+                  </select>
+                  <label>Instructors</label>
+                </div>
+
+                <div class="input-field col s4">
+                  <select multiple id="master-schedule-day-filter-select">
+                    <option value="" disabled>Choose weekday filter</option>
+                  </select>
+                  <label>Weekday</label>
+                </div>
+
+                <div class="input-field col s4">
+                  <select multiple id="master-schedule-grade-filter-select">
+                    <option value="" disabled>Choose grade level filter</option>
+                  </select>
+                  <label>Grade Level</label>
+                </div>
+
+                <div class="input-field col s3" id="master-schedule-intent-filter-container" hidden>
+                  <select multiple id="master-schedule-intent-filter-select">
+                    <option value="" disabled>Choose intent filter</option>
+                  </select>
+                  <label>Intent</label>
+                </div>
+              </div>
+
+              <!-- <p hidden id="master-schedule-no-lessons-message">Not enrolled in any lessons.</p> -->
+              <div id="master-schedule-count" style="margin: 16px 0; font-size: 14px; color: #666"></div>
+              <table hidden id="master-schedule-table"></table>
+            </div>
+          </div>
+        </div>
+
+        <div hidden class="tab-content" id="admin-wait-list" class="col s12" style="background-color: #fefefe">
+          <div class="card">
+            <div class="card-content">
+              <span class="card-title" style="color: #2b68a4"><b>Rock Band Wait List</b></span>
+
+              <table hidden id="admin-wait-list-table"></table>
+            </div>
+          </div>
+        </div>
+
+        <div hidden class="tab-content" id="admin-registration" class="col s12" style="background-color: #fefefe">
+          <div hidden id="admin-registration-loading-container">
+            <div class="loading preloader-wrapper big active center-align">
+              <div class="spinner-layer spinner-blue">
+                <div class="circle-clipper left">
+                  <div class="circle"></div>
+                </div>
+                <div class="gap-patch">
+                  <div class="circle"></div>
+                </div>
+                <div class="circle-clipper right">
+                  <div class="circle"></div>
+                </div>
+              </div>
+
+              <div class="spinner-layer spinner-red">
+                <div class="circle-clipper left">
+                  <div class="circle"></div>
+                </div>
+                <div class="gap-patch">
+                  <div class="circle"></div>
+                </div>
+                <div class="circle-clipper right">
+                  <div class="circle"></div>
+                </div>
+              </div>
+
+              <div class="spinner-layer spinner-yellow">
+                <div class="circle-clipper left">
+                  <div class="circle"></div>
+                </div>
+                <div class="gap-patch">
+                  <div class="circle"></div>
+                </div>
+                <div class="circle-clipper right">
+                  <div class="circle"></div>
+                </div>
+              </div>
+
+              <div class="spinner-layer spinner-green">
+                <div class="circle-clipper left">
+                  <div class="circle"></div>
+                </div>
+                <div class="gap-patch">
+                  <div class="circle"></div>
+                </div>
+                <div class="circle-clipper right">
+                  <div class="circle"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="admin-registration-container">
+            <div id="admin-registration-form">
+              <!-- Students -->
+              <div class="input-field col s12">
+                <i class="material-icons prefix">account_circle</i>
+                <input type="text" id="student-autocomplete-input" class="autocomplete" />
+                <label for="student-autocomplete-input">Student</label>
+              </div>
+
+              <div hidden id="student-searched-options-container">
+                <!-- Transportation Type -->
+                <p>Transportation Type</p>
+                <p>
+                  <label>
+                    <input name="transportation-type" type="radio" value="pickup" checked />
+                    <span>Pickup</span>
+                  </label>
+                </p>
+                <p>
+                  <label>
+                    <input name="transportation-type" type="radio" value="bus" />
+                    <span>Late Bus</span>
+                  </label>
+                </p>
+              </div>
+
+              <div class="input-field">
+                <select id="registration-type-select"></select>
+                <label for="registration-type-select">Registration Type</label>
+              </div>
+
+              <div id="private-registration-container" hidden>
+                <!-- Instructor -->
+                <div class="input-field">
+                  <select id="instructor-select"></select>
+                  <label for="instructor-select">Instructor</label>
+                </div>
+
+                <div id="instructor-selected-info-container" hidden>
+                  <!-- Day -->
+                  <div class="input-field" id="instructor-day-select-options-container">
+                    <select id="day-select"></select>
+                    <label for="day-select">Day</label>
+                  </div>
+
+                  <div id="instructor-day-selected-info-container" hidden>
+                    <!-- Start Time -->
+                    <div class="input-field" id="instructor-day-start-time-container">
+                      <select id="start-time-select"></select>
+                      <label for="start-time-select">Start Time</label>
+                    </div>
+
+                    <!-- Length -->
+                    <div id="lesson-length-container">
+                      <p>Lesson Length</p>
+                      <p>
+                        <label>
+                          <input name="lesson-length" type="radio" value="30" checked />
+                          <span>30 Minutes</span>
+                        </label>
+                      </p>
+                      <p>
+                        <label>
+                          <input name="lesson-length" type="radio" value="45" />
+                          <span>45 Minutes</span>
+                        </label>
+                      </p>
+                      <p>
+                        <label>
+                          <input name="lesson-length" type="radio" value="60" />
+                          <span>60 Minutes</span>
+                        </label>
+                      </p>
+                    </div>
+
+                    <!-- Instrument -->
+                    <div class="input-field" id="instrument-select-options-container">
+                      <select id="instrument-select"></select>
+                      <label for="instrument-select">Instrument</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="group-registration-container" hidden>
+                <div class="input-field">
+                  <select id="class-select"></select>
+                  <label for="class-select">Classes</label>
+                </div>
+              </div>
+
+              <!-- Save Button -->
+              <div class="center-align">
+                <button
+                  class="btn waves-effect waves-light"
+                  type="submit"
+                  id="create-registration-submit-btn"
+                  style="background-color: #2b68a4"
+                >
+                  <b>Create</b>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Instructor Section -->
+        <div
+          hidden
+          class="tab-content"
+          id="instructor-weekly-schedule"
+          class="col s12"
+          style="background-color: #fefefe"
+        >
+          <div id="instructor-weekly-schedule-tables"></div>
+        </div>
+        <div
+          hidden
+          class="tab-content"
+          id="instructor-forte-directory"
+          class="col s12"
+          style="background-color: #fefefe"
+        >
+          <table hidden id="employee-directory-table"></table>
+        </div>
+        <div hidden class="tab-content" id="instructor-paylocity" class="col s12" style="background-color: #fefefe">
+          <a
+            href="https://access.paylocity.com/"
+            target="_blank"
+            class="btn waves-effect waves-light"
+            style="background-color: #2b68a4"
+          >
+            <b>Log Hours</b>
+          </a>
+        </div>
+
+        <!-- Parent Section -->
+        <div hidden class="tab-content" id="parent-weekly-schedule" class="col s12" style="background-color: #fefefe">
+          <!-- Parent Trimester Selector (ONLY for weekly schedule tab) -->
+          <div id="parent-trimester-selector-container" style="margin: 20px; padding: 0">
+            <div class="row" style="margin-bottom: 0">
+              <div class="input-field col s12 m6 l4">
+                <select id="parent-trimester-select">
+                  <!-- Options populated dynamically -->
+                </select>
+                <label>Trimester</label>
+              </div>
+            </div>
+          </div>
+
+          <table hidden id="parent-wait-list-table"></table>
+          <div id="parent-weekly-schedule-tables"></div>
+        </div>
+        <div hidden class="tab-content" id="parent-registration" class="col s12" style="background-color: #fefefe">
+          <!-- Student Selection (conditionally shown) -->
+          <div
+            id="parent-student-selection-section"
+            class="student-selection-section"
+            style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px; display: none"
+          >
+            <h6 style="margin: 0 0 15px 0; color: #2b68a4"><b>Select Student</b></h6>
+            <div class="input-field">
+              <select id="parent-student-select">
+                <option value="">Select Student</option>
+                <!-- Students will be populated programmatically -->
+              </select>
+              <label for="parent-student-select">Student</label>
+            </div>
+          </div>
+
+          <!-- Registration Selector (shown only during enrollment periods) -->
+          <div
+            id="parent-registration-selector-section"
+            class="registration-selector-section"
+            style="
+              margin-bottom: 25px;
+              padding: 20px;
+              background: #fff9e6;
+              border: 2px solid #ffc107;
+              border-radius: 8px;
+              display: none;
+            "
+          >
+            <h6 style="margin: 0 0 10px 0; color: #f57c00"><b>Enrollment Options</b></h6>
+            <p style="margin: 0 0 15px 0; color: #666; font-size: 14px">
+              You can modify an existing registration or create a new one for next trimester.
             </p>
+            <div class="input-field">
+              <select id="parent-registration-selector">
+                <option value="">Create New Registration</option>
+                <!-- Existing registrations will be populated programmatically -->
+              </select>
+              <label for="parent-registration-selector">Modify Existing or Create New</label>
+            </div>
+          </div>
+
+          <!-- Registration Type Selection -->
+          <div
+            class="registration-type-section"
+            style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px"
+          >
+            <h6 style="margin: 0 0 15px 0; color: #2b68a4"><b>Registration Type</b></h6>
+            <div class="input-field">
+              <select id="parent-registration-type-select">
+                <option value="">Select Registration Type</option>
+                <option value="private">Private Lessons</option>
+                <option value="group">Group Classes</option>
+              </select>
+              <label for="parent-registration-type-select">Registration Type</label>
+            </div>
+          </div>
+
+          <!-- Private Registration Container (hidden by default) -->
+          <div id="parent-private-registration-container" style="display: none">
+            <!-- Hybrid Approach: Smart Chips + Interactive Time Slot Grid for Private Lessons -->
+
+            <!-- Smart Filter Chips Section -->
+            <div
+              class="availability-filters"
+              style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px"
+            >
+              <h6 style="margin: 0 0 15px 0; color: #2b68a4"><b>Filter Available Options</b></h6>
+
+              <div class="filter-section" style="margin: 15px 0">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold">Instrument:</label>
+                <div
+                  class="chip-container"
+                  id="instrument-chips-container"
+                  style="display: flex; flex-wrap: wrap; gap: 8px"
+                >
+                  <!-- Instrument chips will be populated programmatically -->
+                </div>
+              </div>
+
+              <div class="filter-section" style="margin: 15px 0">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold">Preferred Day:</label>
+                <div class="chip-container" id="day-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px">
+                  <!-- Day chips will be populated programmatically -->
+                </div>
+              </div>
+
+              <div class="filter-section" style="margin: 15px 0">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold">Lesson Length:</label>
+                <div
+                  class="chip-container"
+                  id="length-chips-container"
+                  style="display: flex; flex-wrap: wrap; gap: 8px"
+                >
+                  <!-- Length chips will be populated programmatically -->
+                </div>
+              </div>
+
+              <div class="filter-section" style="margin: 15px 0">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold">Instructors:</label>
+                <div
+                  class="chip-container"
+                  id="instructor-chips-container"
+                  style="display: flex; flex-wrap: wrap; gap: 8px"
+                >
+                  <!-- Instructor chips will be populated programmatically -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Interactive Time Slot Grid Section -->
+            <div class="instructor-timeslot-grid" id="admin-instructor-timeslot-grid" style="margin-bottom: 250px">
+              <div class="section-header" style="margin-bottom: 15px">
+                <h6 style="margin: 0; color: #2b68a4"><b>Available Time Slots</b></h6>
+                <p style="margin: 5px 0 0 0; color: #666; font-size: 14px">
+                  Click on any available slot to select your lesson time
+                </p>
+              </div>
+
+              <div
+                class="instructor-card"
+                style="
+                  border: 2px solid #ddd;
+                  margin: 15px 0;
+                  padding: 20px;
+                  border-radius: 8px;
+                  transition: border-color 0.3s;
+                "
+              >
+                <h6 style="margin: 0 0 15px 0; color: #2b68a4; display: flex; align-items: center">
+                  <b>Jesse Brewster - Piano</b>
+                  <span
+                    style="
+                      margin-left: 10px;
+                      font-size: 12px;
+                      background: #e8f5e8;
+                      color: #4caf50;
+                      padding: 4px 8px;
+                      border-radius: 12px;
+                    "
+                    >5 available</span
+                  >
+                </h6>
+                <div class="timeslot-grid" style="display: flex; flex-wrap: wrap; gap: 10px">
+                  <div
+                    class="timeslot available"
+                    data-instructor-id="instructor-1"
+                    data-day="monday"
+                    data-time="14:00"
+                    data-length="30"
+                    data-instrument="Piano"
+                    style="
+                      border: 2px solid #4caf50;
+                      background: #e8f5e8;
+                      padding: 12px 16px;
+                      border-radius: 8px;
+                      cursor: pointer;
+                      min-width: 110px;
+                      text-align: center;
+                      transition: all 0.3s;
+                      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    "
+                  >
+                    <div style="font-weight: bold; color: #2e7d32; font-size: 14px">Monday</div>
+                    <div style="font-weight: bold; color: #2e7d32; font-size: 16px">2:00 PM</div>
+                    <div style="font-size: 12px; color: #666">30min • Piano</div>
+                  </div>
+                  <div
+                    class="timeslot available"
+                    data-instructor-id="instructor-1"
+                    data-day="monday"
+                    data-time="14:30"
+                    data-length="45"
+                    data-instrument="Piano"
+                    style="
+                      border: 2px solid #4caf50;
+                      background: #e8f5e8;
+                      padding: 12px 16px;
+                      border-radius: 8px;
+                      cursor: pointer;
+                      min-width: 110px;
+                      text-align: center;
+                      transition: all 0.3s;
+                      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    "
+                  >
+                    <div style="font-weight: bold; color: #2e7d32; font-size: 14px">Monday</div>
+                    <div style="font-weight: bold; color: #2e7d32; font-size: 16px">2:30 PM</div>
+                    <div style="font-size: 12px; color: #666">45min • Piano</div>
+                  </div>
+                  <div
+                    class="timeslot unavailable"
+                    style="
+                      border: 2px solid #f44336;
+                      background: #ffebee;
+                      padding: 12px 16px;
+                      border-radius: 8px;
+                      cursor: not-allowed;
+                      min-width: 110px;
+                      text-align: center;
+                      opacity: 0.6;
+                    "
+                  >
+                    <div style="font-weight: bold; color: #c62828; font-size: 14px">Monday</div>
+                    <div style="font-weight: bold; color: #c62828; font-size: 16px">3:00 PM</div>
+                    <div style="font-size: 12px; color: #666">30min • Piano</div>
+                    <div style="font-size: 10px; color: #f44336; margin-top: 2px">Booked</div>
+                  </div>
+                  <div
+                    class="timeslot available"
+                    data-instructor-id="instructor-1"
+                    data-day="tuesday"
+                    data-time="13:15"
+                    data-length="45"
+                    data-instrument="Piano"
+                    style="
+                      border: 2px solid #4caf50;
+                      background: #e8f5e8;
+                      padding: 12px 16px;
+                      border-radius: 8px;
+                      cursor: pointer;
+                      min-width: 110px;
+                      text-align: center;
+                      transition: all 0.3s;
+                      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    "
+                  >
+                    <div style="font-weight: bold; color: #2e7d32; font-size: 14px">Tuesday</div>
+                    <div style="font-weight: bold; color: #2e7d32; font-size: 16px">1:15 PM</div>
+                    <div style="font-size: 12px; color: #666">45min • Piano</div>
+                  </div>
+                  <div
+                    class="timeslot available"
+                    data-instructor-id="instructor-1"
+                    data-day="wednesday"
+                    data-time="15:30"
+                    data-length="30"
+                    data-instrument="Piano"
+                    style="
+                      border: 2px solid #4caf50;
+                      background: #e8f5e8;
+                      padding: 12px 16px;
+                      border-radius: 8px;
+                      cursor: pointer;
+                      min-width: 110px;
+                      text-align: center;
+                      transition: all 0.3s;
+                      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    "
+                  >
+                    <div style="font-weight: bold; color: #2e7d32; font-size: 14px">Wednesday</div>
+                    <div style="font-weight: bold; color: #2e7d32; font-size: 16px">3:30 PM</div>
+                    <div style="font-size: 12px; color: #666">30min • Piano</div>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                class="instructor-card"
+                style="
+                  border: 2px solid #ddd;
+                  margin: 15px 0;
+                  padding: 20px;
+                  border-radius: 8px;
+                  transition: border-color 0.3s;
+                "
+              >
+                <h6 style="margin: 0 0 15px 0; color: #2b68a4; display: flex; align-items: center">
+                  <b>Cesar Cancino - Guitar</b>
+                  <span
+                    style="
+                      margin-left: 10px;
+                      font-size: 12px;
+                      background: #fff3e0;
+                      color: #ff9800;
+                      padding: 4px 8px;
+                      border-radius: 12px;
+                    "
+                    >2 available</span
+                  >
+                </h6>
+                <div class="timeslot-grid" style="display: flex; flex-wrap: wrap; gap: 10px">
+                  <div
+                    class="timeslot available"
+                    data-instructor-id="instructor-2"
+                    data-day="tuesday"
+                    data-time="13:30"
+                    data-length="30"
+                    style="
+                      border: 2px solid #4caf50;
+                      background: #e8f5e8;
+                      padding: 12px 16px;
+                      border-radius: 8px;
+                      cursor: pointer;
+                      min-width: 110px;
+                      text-align: center;
+                      transition: all 0.3s;
+                      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    "
+                  >
+                    <div style="font-weight: bold; color: #2e7d32; font-size: 14px">Tuesday</div>
+                    <div style="font-weight: bold; color: #2e7d32; font-size: 16px">1:30 PM</div>
+                    <div style="font-size: 12px; color: #666">30min</div>
+                  </div>
+                  <div
+                    class="timeslot limited"
+                    data-instructor-id="instructor-2"
+                    data-day="wednesday"
+                    data-time="16:00"
+                    data-length="45"
+                    style="
+                      border: 2px solid #ff9800;
+                      background: #fff3e0;
+                      padding: 12px 16px;
+                      border-radius: 8px;
+                      cursor: pointer;
+                      min-width: 110px;
+                      text-align: center;
+                      transition: all 0.3s;
+                      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    "
+                  >
+                    <div style="font-weight: bold; color: #ef6c00; font-size: 14px">Wednesday</div>
+                    <div style="font-weight: bold; color: #ef6c00; font-size: 16px">4:00 PM</div>
+                    <div style="font-size: 12px; color: #666">45min</div>
+                    <div style="font-size: 10px; color: #ff9800; margin-top: 2px">Last slot</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Selected Lesson Display - Fixed to bottom -->
+            <div
+              id="admin-selected-lesson-display"
+              style="
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                z-index: 1000;
+                padding: 20px;
+                background: #e3f2fd;
+                border-top: 3px solid #2196f3;
+                box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+                display: none;
+                pointer-events: none;
+              "
+            >
+              <div style="max-width: 1200px; margin: 0 auto; pointer-events: auto">
+                <h6 style="margin: 0 0 10px 0; color: #1976d2"><b>Selected Lesson</b></h6>
+                <div id="admin-selected-lesson-details" style="font-size: 16px; color: #333; margin-bottom: 15px"></div>
+
+                <!-- Transportation Type Selection -->
+                <div
+                  style="margin-bottom: 15px; padding: 12px; background: rgba(255, 255, 255, 0.7); border-radius: 6px"
+                >
+                  <h6 style="margin: 0 0 8px 0; color: #1976d2; font-size: 14px"><b>Transportation</b></h6>
+                  <p style="margin: 0; font-size: 12px; color: #666">
+                    <label>
+                      <input type="radio" name="parent-transportation-type" value="pickup" checked="checked" />
+                      <span>Late Pick Up</span>
+                    </label>
+                  </p>
+                  <p style="margin: 0; font-size: 12px; color: #666">
+                    <label>
+                      <input type="radio" name="parent-transportation-type" value="bus" />
+                      <span>Late Bus</span>
+                    </label>
+                  </p>
+                </div>
+
+                <div style="display: flex; gap: 10px; align-items: center">
+                  <button
+                    id="parent-confirm-registration-btn"
+                    class="btn waves-effect waves-light"
+                    style="background-color: #2b68a4"
+                  >
+                    <i class="material-icons left">check</i>Create Registration
+                  </button>
+                  <button id="parent-clear-selection-btn" class="btn-flat waves-effect" style="color: #666">
+                    Clear Selection
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- End of parent-private-registration-container -->
+
+          <!-- Group Registration Container (hidden by default) -->
+          <div id="parent-group-registration-container" style="display: none">
+            <div
+              class="group-registration-section"
+              style="margin-bottom: 25px; padding: 20px; background: #f9f9f9; border-radius: 8px"
+            >
+              <h6 style="margin: 0 0 15px 0; color: #2b68a4"><b>Select Group Class</b></h6>
+
+              <div class="input-field">
+                <select id="parent-class-select">
+                  <!-- Classes will be populated programmatically -->
+                </select>
+                <label for="parent-class-select">Available Classes</label>
+              </div>
+
+              <!-- Transportation Type Selection for Group Classes -->
+              <div
+                style="
+                  margin: 20px 0;
+                  padding: 15px;
+                  background: rgba(255, 255, 255, 0.8);
+                  border-radius: 6px;
+                  border: 1px solid #e0e0e0;
+                "
+              >
+                <h6 style="margin: 0 0 10px 0; color: #2b68a4; font-size: 14px"><b>Transportation</b></h6>
+                <p style="margin: 0; font-size: 14px; color: #666">
+                  <label>
+                    <input type="radio" name="parent-group-transportation-type" value="pickup" checked="checked" />
+                    <span>Late Pick Up</span>
+                  </label>
+                </p>
+                <p style="margin: 0; font-size: 14px; color: #666">
+                  <label>
+                    <input type="radio" name="parent-group-transportation-type" value="bus" />
+                    <span>Late Bus</span>
+                  </label>
+                </p>
+              </div>
+
+              <!-- Create Button -->
+              <div class="center-align" style="margin-top: 20px">
+                <button
+                  class="btn waves-effect waves-light"
+                  type="button"
+                  id="parent-create-group-registration-btn"
+                  style="background-color: #2b68a4"
+                >
+                  <i class="material-icons left">group_add</i>
+                  <b>Register for Class</b>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
+        <div hidden class="tab-content" id="parent-contact-us" class="col s12" style="background-color: #fefefe">
+          <table id="parent-directory-table"></table>
+        </div>
+      </div>
+
+      <!-- Legal Links Footer - Always Visible, Full Width -->
+      <div
+        class="legal-footer"
+        style="
+          width: 100%;
+          margin: 40px -20px 0 -20px;
+          padding: 30px 20px;
+          border-top: 1px solid #e0e0e0;
+          background-color: #fafafa;
+          text-align: center;
+        "
+      >
+        <p style="margin: 0; color: #666; font-size: 14px">
+          <a
+            href="#terms-modal"
+            class="modal-trigger"
+            style="color: #2b68a4; text-decoration: underline; margin-right: 20px"
+            >Terms of Service</a
+          >
+          <a href="#privacy-modal" class="modal-trigger" style="color: #2b68a4; text-decoration: underline"
+            >Privacy Policy</a
+          >
+        </p>
+      </div>
     </div>
 
     <!-- Login Modal -->
     <div id="login-modal" class="modal">
-        <div class="modal-content">
-            <h4 style="color: #2b68a4; margin-bottom: 20px;">
-                <i class="material-icons" style="vertical-align: middle;">vpn_key</i>
-                Login to Tonic
-            </h4>
-            
-            <!-- Login Type Selection -->
-            <div class="login-type-selector" style="margin-bottom: 30px;">
-                <div class="row" style="margin-bottom: 10px;">
-                    <div class="col s6">
-                        <a id="parent-login-tab" class="waves-effect waves-light btn login-type-btn active-login-type" 
-                           style="width: 100%; background-color: #2b68a4;">
-                            <i class="material-icons left">phone</i>Parent
-                        </a>
-                    </div>
-                    <div class="col s6">
-                        <a id="employee-login-tab" class="waves-effect waves-light btn login-type-btn inactive-login-type"
-                           style="width: 100%; background-color: #ccc;">
-                            <i class="material-icons left">work</i>Employee
-                        </a>
-                    </div>
-                </div>
-            </div>
+      <div class="modal-content">
+        <h4 style="color: #2b68a4; margin-bottom: 20px">
+          <i class="material-icons" style="vertical-align: middle">vpn_key</i>
+          Login to Tonic
+        </h4>
 
-            <!-- Parent Login Section -->
-            <div id="parent-login-section" class="login-section active-section">
-                <p style="color: #666; margin-bottom: 20px; font-size: 14px;">
-                    <i class="material-icons tiny" style="vertical-align: middle; margin-right: 5px;">info</i>
-                    Enter your full phone number registered with Veracross
-                </p>
-                <div class="input-field">
-                    <i class="material-icons prefix">phone</i>
-                    <input id="parent-phone-input" type="tel" class="validate" 
-                           placeholder="(555) 555-5555" maxlength="14"
-                           style="font-family: 'Courier New', monospace; letter-spacing: 1px;">
-                    <label for="parent-phone-input">Phone Number</label>
-                </div>
+        <!-- Login Type Selection -->
+        <div class="login-type-selector" style="margin-bottom: 30px">
+          <div class="row" style="margin-bottom: 10px">
+            <div class="col s6">
+              <a
+                id="parent-login-tab"
+                class="waves-effect waves-light btn login-type-btn active-login-type"
+                style="width: 100%; background-color: #2b68a4"
+              >
+                <i class="material-icons left">phone</i>Parent
+              </a>
             </div>
+            <div class="col s6">
+              <a
+                id="employee-login-tab"
+                class="waves-effect waves-light btn login-type-btn inactive-login-type"
+                style="width: 100%; background-color: #ccc"
+              >
+                <i class="material-icons left">work</i>Employee
+              </a>
+            </div>
+          </div>
+        </div>
 
-            <!-- Employee Login Section -->
-            <div id="employee-login-section" class="login-section inactive-section" style="display: none;">
-                <p style="color: #666; margin-bottom: 20px; font-size: 14px;">
-                    <i class="material-icons tiny" style="vertical-align: middle; margin-right: 5px;">info</i>
-                    Enter your 6-digit access code provided by the school
-                </p>
-                <div class="input-field">
-                    <i class="material-icons prefix">lock</i>
-                    <input id="employee-access-code" type="text" class="validate" maxlength="6" 
-                           pattern="[0-9]{6}" placeholder="123456"
-                           style="font-family: 'Courier New', monospace; letter-spacing: 2px; text-align: center;">
-                    <label for="employee-access-code">6-Digit Access Code</label>
-                </div>
-            </div>
+        <!-- Parent Login Section -->
+        <div id="parent-login-section" class="login-section active-section">
+          <p style="color: #666; margin-bottom: 20px; font-size: 14px">
+            <i class="material-icons tiny" style="vertical-align: middle; margin-right: 5px">info</i>
+            Enter your full phone number registered with Veracross
+          </p>
+          <div class="input-field">
+            <i class="material-icons prefix">phone</i>
+            <input
+              id="parent-phone-input"
+              type="tel"
+              class="validate"
+              placeholder="(555) 555-5555"
+              maxlength="14"
+              style="font-family: 'Courier New', monospace; letter-spacing: 1px"
+            />
+            <label for="parent-phone-input">Phone Number</label>
+          </div>
         </div>
-        
-        <div class="modal-footer">
-            <a href="#!" class="modal-close waves-effect waves-light btn-flat"
-                style="color: #666; margin-right: 10px;">Cancel</a>
-            <a href="#!" id="login-submit-btn" class="waves-effect waves-light btn disabled" 
-               style="background-color: #2b68a4;" disabled>
-                <i class="material-icons left">login</i>Login
-            </a>
+
+        <!-- Employee Login Section -->
+        <div id="employee-login-section" class="login-section inactive-section" style="display: none">
+          <p style="color: #666; margin-bottom: 20px; font-size: 14px">
+            <i class="material-icons tiny" style="vertical-align: middle; margin-right: 5px">info</i>
+            Enter your 6-digit access code provided by the school
+          </p>
+          <div class="input-field">
+            <i class="material-icons prefix">lock</i>
+            <input
+              id="employee-access-code"
+              type="text"
+              class="validate"
+              maxlength="6"
+              pattern="[0-9]{6}"
+              placeholder="123456"
+              style="font-family: 'Courier New', monospace; letter-spacing: 2px; text-align: center"
+            />
+            <label for="employee-access-code">6-Digit Access Code</label>
+          </div>
         </div>
+      </div>
+
+      <div class="modal-footer">
+        <a href="#!" class="modal-close waves-effect waves-light btn-flat" style="color: #666; margin-right: 10px"
+          >Cancel</a
+        >
+        <a
+          href="#!"
+          id="login-submit-btn"
+          class="waves-effect waves-light btn disabled"
+          style="background-color: #2b68a4"
+          disabled
+        >
+          <i class="material-icons left">login</i>Login
+        </a>
+      </div>
     </div>
 
     <!-- Parent Registration Confirmation Modal -->
     <div id="parent-registration-confirmation-modal" class="modal">
-        <div class="modal-content">
-            <h4 style="color: #2b68a4; margin-bottom: 20px;">
-                <i class="material-icons" style="vertical-align: middle;">assignment_turned_in</i>
-                Confirm Registration
-            </h4>
-            <p id="parent-confirmation-message" style="font-size: 16px; line-height: 1.5; margin-bottom: 30px;">
-                <!-- Dynamic message will be inserted here -->
-            </p>
-        </div>
-        <div class="modal-footer">
-            <button id="parent-confirmation-cancel" class="btn-flat waves-effect" style="margin-right: 10px;">
-                Cancel
-            </button>
-            <button id="parent-confirmation-confirm" class="btn waves-effect waves-light"
-                style="background-color: #2b68a4;">
-                <i class="material-icons left">check</i>
-                Confirm Registration
-            </button>
-        </div>
+      <div class="modal-content">
+        <h4 style="color: #2b68a4; margin-bottom: 20px">
+          <i class="material-icons" style="vertical-align: middle">assignment_turned_in</i>
+          Confirm Registration
+        </h4>
+        <p id="parent-confirmation-message" style="font-size: 16px; line-height: 1.5; margin-bottom: 30px">
+          <!-- Dynamic message will be inserted here -->
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button id="parent-confirmation-cancel" class="btn-flat waves-effect" style="margin-right: 10px">Cancel</button>
+        <button id="parent-confirmation-confirm" class="btn waves-effect waves-light" style="background-color: #2b68a4">
+          <i class="material-icons left">check</i>
+          Confirm Registration
+        </button>
+      </div>
     </div>
 
     <!-- Intent Confirmation Modal -->
     <div id="intent-confirmation-modal" class="modal">
-        <div class="modal-content">
-            <h4 style="color: #2b68a4; margin-bottom: 20px;">
-                <i class="material-icons" style="vertical-align: middle;">info</i>
-                Confirm Reenrollment Intent
-            </h4>
-            <p id="intent-confirmation-message" style="font-size: 16px; line-height: 1.5; margin-bottom: 30px;">
-                <!-- Dynamic message will be inserted here -->
-            </p>
-        </div>
-        <div class="modal-footer">
-            <button id="intent-confirmation-cancel" class="btn-flat waves-effect" style="margin-right: 10px;">
-                Cancel
-            </button>
-            <button id="intent-confirmation-confirm" class="btn waves-effect waves-light"
-                style="background-color: #2b68a4;">
-                <i class="material-icons left">check</i>
-                Confirm Intent
-            </button>
-        </div>
+      <div class="modal-content">
+        <h4 style="color: #2b68a4; margin-bottom: 20px">
+          <i class="material-icons" style="vertical-align: middle">info</i>
+          Confirm Reenrollment Intent
+        </h4>
+        <p id="intent-confirmation-message" style="font-size: 16px; line-height: 1.5; margin-bottom: 30px">
+          <!-- Dynamic message will be inserted here -->
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button id="intent-confirmation-cancel" class="btn-flat waves-effect" style="margin-right: 10px">Cancel</button>
+        <button id="intent-confirmation-confirm" class="btn waves-effect waves-light" style="background-color: #2b68a4">
+          <i class="material-icons left">check</i>
+          Confirm Intent
+        </button>
+      </div>
     </div>
 
     <!-- Terms of Service Modal -->
     <div id="terms-modal" class="modal">
-        <div class="modal-content">
-            <h4 style="color: #2b68a4; margin-bottom: 20px;">
-                <i class="material-icons" style="vertical-align: middle;">description</i>
-                Terms of Service
-            </h4>
-            <div style="max-height: 400px; overflow-y: auto; padding-right: 10px;">
-                <p><strong>Effective Date:</strong> August 5, 2025</p>
-                <p><strong>Last Updated:</strong> August 5, 2025</p>
-                <p>Welcome to Tonic ("the App"), a registration platform designed to support Marin Country Day School's
-                    Forte offerings. By accessing or using the App, you agree to be bound by these Terms of Service
-                    ("Terms"). If you do not agree to these Terms, do not use the App.</p>
+      <div class="modal-content">
+        <h4 style="color: #2b68a4; margin-bottom: 20px">
+          <i class="material-icons" style="vertical-align: middle">description</i>
+          Terms of Service
+        </h4>
+        <div style="max-height: 400px; overflow-y: auto; padding-right: 10px">
+          <p><strong>Effective Date:</strong> August 5, 2025</p>
+          <p><strong>Last Updated:</strong> August 5, 2025</p>
+          <p>
+            Welcome to Tonic ("the App"), a registration platform designed to support Marin Country Day School's Forte
+            offerings. By accessing or using the App, you agree to be bound by these Terms of Service ("Terms"). If you
+            do not agree to these Terms, do not use the App.
+          </p>
 
-                <h6 style="color: #2b68a4; margin-top: 20px;"><strong>1. Eligibility</strong></h6>
-                <p>To use this App, you must be at least 18 years of age and the legal guardian of a student registering
-                    for a program. By using the App, you confirm that all information provided is accurate and complete.
-                </p>
+          <h6 style="color: #2b68a4; margin-top: 20px"><strong>1. Eligibility</strong></h6>
+          <p>
+            To use this App, you must be at least 18 years of age and the legal guardian of a student registering for a
+            program. By using the App, you confirm that all information provided is accurate and complete.
+          </p>
 
-                <h6 style="color: #2b68a4; margin-top: 20px;"><strong>2. Permitted Use</strong></h6>
-                <p>The App is intended solely for the purpose of registering for and managing participation in after
-                    school programs offered by Marin Country Day School.</p>
-                <p>You agree not to:</p>
-                <ul style="margin-left: 20px;">
-                    <li>Use the App for any commercial, promotional, or unauthorized purposes.</li>
-                    <li>Access, copy, or distribute information from the App for use outside of official program-related
-                        purposes.</li>
-                    <li>Attempt to gain unauthorized access to the App or its systems.</li>
-                    <li>Impersonate any person or entity, or misrepresent your affiliation with one.</li>
-                </ul>
+          <h6 style="color: #2b68a4; margin-top: 20px"><strong>2. Permitted Use</strong></h6>
+          <p>
+            The App is intended solely for the purpose of registering for and managing participation in after school
+            programs offered by Marin Country Day School.
+          </p>
+          <p>You agree not to:</p>
+          <ul style="margin-left: 20px">
+            <li>Use the App for any commercial, promotional, or unauthorized purposes.</li>
+            <li>
+              Access, copy, or distribute information from the App for use outside of official program-related purposes.
+            </li>
+            <li>Attempt to gain unauthorized access to the App or its systems.</li>
+            <li>Impersonate any person or entity, or misrepresent your affiliation with one.</li>
+          </ul>
 
-                <h6 style="color: #2b68a4; margin-top: 20px;"><strong>3. Use of Information</strong></h6>
-                <p>You may access personal and schedule-related information only for your own household and only in
-                    connection with participation in the after school program. You may not use, share, copy, or
-                    repurpose any contact information, schedules, or participant details for any purpose outside the
-                    scope of program registration, implementation, and participation.</p>
-                <p>Unauthorized use of information may result in removal from the platform, program ineligibility, and
-                    potential legal consequences.</p>
+          <h6 style="color: #2b68a4; margin-top: 20px"><strong>3. Use of Information</strong></h6>
+          <p>
+            You may access personal and schedule-related information only for your own household and only in connection
+            with participation in the after school program. You may not use, share, copy, or repurpose any contact
+            information, schedules, or participant details for any purpose outside the scope of program registration,
+            implementation, and participation.
+          </p>
+          <p>
+            Unauthorized use of information may result in removal from the platform, program ineligibility, and
+            potential legal consequences.
+          </p>
 
-                <h6 style="color: #2b68a4; margin-top: 20px;"><strong>4. Data Collection and Privacy</strong></h6>
-                <p>We collect and store information such as:</p>
-                <ul style="margin-left: 20px;">
-                    <li>Student and guardian names</li>
-                    <li>Contact information</li>
-                    <li>Emergency contact and medical information</li>
-                    <li>Program selections and schedules</li>
-                </ul>
-                <p>This data is used solely for internal administration of the program and is governed by our Privacy
-                    Policy. We take reasonable measures to protect your information through secure data handling and
-                    encryption protocols.</p>
+          <h6 style="color: #2b68a4; margin-top: 20px"><strong>4. Data Collection and Privacy</strong></h6>
+          <p>We collect and store information such as:</p>
+          <ul style="margin-left: 20px">
+            <li>Student and guardian names</li>
+            <li>Contact information</li>
+            <li>Emergency contact and medical information</li>
+            <li>Program selections and schedules</li>
+          </ul>
+          <p>
+            This data is used solely for internal administration of the program and is governed by our Privacy Policy.
+            We take reasonable measures to protect your information through secure data handling and encryption
+            protocols.
+          </p>
 
-                <h6 style="color: #2b68a4; margin-top: 20px;"><strong>5. Account Security</strong></h6>
-                <p>You are responsible for maintaining the confidentiality of your account credentials and for all
-                    activities that occur under your account. Please notify the Forte Director immediately of any
-                    unauthorized use.</p>
+          <h6 style="color: #2b68a4; margin-top: 20px"><strong>5. Account Security</strong></h6>
+          <p>
+            You are responsible for maintaining the confidentiality of your account credentials and for all activities
+            that occur under your account. Please notify the Forte Director immediately of any unauthorized use.
+          </p>
 
-                <h6 style="color: #2b68a4; margin-top: 20px;"><strong>6. Availability and Support</strong></h6>
-                <p>We strive to keep the App available and functioning correctly. However, we cannot guarantee
-                    uninterrupted access and may make updates or perform maintenance from time to time.</p>
-                <p>For technical support, contact the Forte Director.</p>
+          <h6 style="color: #2b68a4; margin-top: 20px"><strong>6. Availability and Support</strong></h6>
+          <p>
+            We strive to keep the App available and functioning correctly. However, we cannot guarantee uninterrupted
+            access and may make updates or perform maintenance from time to time.
+          </p>
+          <p>For technical support, contact the Forte Director.</p>
 
-                <h6 style="color: #2b68a4; margin-top: 20px;"><strong>7. Modifications</strong></h6>
-                <p>We reserve the right to modify these Terms at any time. Updated versions will be posted in the App
-                    and become effective upon posting. Continued use of the App constitutes your acceptance of the
-                    revised Terms.</p>
+          <h6 style="color: #2b68a4; margin-top: 20px"><strong>7. Modifications</strong></h6>
+          <p>
+            We reserve the right to modify these Terms at any time. Updated versions will be posted in the App and
+            become effective upon posting. Continued use of the App constitutes your acceptance of the revised Terms.
+          </p>
 
-                <h6 style="color: #2b68a4; margin-top: 20px;"><strong>8. Termination</strong></h6>
-                <p>We may suspend or terminate your access to the App at any time for violations of these Terms or at
-                    the request of Marin Country Day School.</p>
+          <h6 style="color: #2b68a4; margin-top: 20px"><strong>8. Termination</strong></h6>
+          <p>
+            We may suspend or terminate your access to the App at any time for violations of these Terms or at the
+            request of Marin Country Day School.
+          </p>
 
-                <h6 style="color: #2b68a4; margin-top: 20px;"><strong>9. Governing Law</strong></h6>
-                <p>These Terms are governed by the laws of the State of California, without regard to its conflict of
-                    laws principles.</p>
+          <h6 style="color: #2b68a4; margin-top: 20px"><strong>9. Governing Law</strong></h6>
+          <p>
+            These Terms are governed by the laws of the State of California, without regard to its conflict of laws
+            principles.
+          </p>
 
-                <h6 style="color: #2b68a4; margin-top: 20px;"><strong>10. Contact</strong></h6>
-                <p>For questions about these Terms, contact:</p>
-                <ul style="margin-left: 20px;">
-                    <li><strong>Forte Director:</strong> Noah DeMoss-Levy</li>
-                    <li><strong>Email:</strong> ndemosslevy@mcds.org</li>
-                    <li><strong>Phone:</strong> (415) 945-5121</li>
-                </ul>
-            </div>
+          <h6 style="color: #2b68a4; margin-top: 20px"><strong>10. Contact</strong></h6>
+          <p>For questions about these Terms, contact:</p>
+          <ul style="margin-left: 20px">
+            <li><strong>Forte Director:</strong> Noah DeMoss-Levy</li>
+            <li><strong>Email:</strong> ndemosslevy@mcds.org</li>
+            <li><strong>Phone:</strong> (415) 945-5121</li>
+          </ul>
         </div>
-        <div class="modal-footer">
-            <a href="#!" class="modal-close waves-effect waves-light btn" style="background-color: #2b68a4;">
-                <i class="material-icons left">check</i>I Understand
-            </a>
-        </div>
+      </div>
+      <div class="modal-footer">
+        <a href="#!" class="modal-close waves-effect waves-light btn" style="background-color: #2b68a4">
+          <i class="material-icons left">check</i>I Understand
+        </a>
+      </div>
     </div>
 
     <!-- Privacy Policy Modal -->
     <div id="privacy-modal" class="modal">
-        <div class="modal-content">
-            <h4 style="color: #2b68a4; margin-bottom: 20px;">
-                <i class="material-icons" style="vertical-align: middle;">privacy_tip</i>
-                Privacy Policy
-            </h4>
-            <div style="max-height: 400px; overflow-y: auto; padding-right: 10px;">
-                <h5 style="margin-top:0;">Privacy Policy for Tonic Music Program Registration System</h5>
-                <p><strong>Effective Date:</strong> August 4, 2025<br><strong>Last Updated:</strong> August 4, 2025</p>
-                <h6 style="color: #2b68a4; margin-top: 20px;">1. Introduction</h6>
-                <p>This Privacy Policy describes how the Tonic Music Program Registration System ("Tonic," "we," "us,"
-                    or "our") collects, uses, and protects information when you use our student registration automation
-                    system for after-school lessons and programs.</p>
-                <h6 style="color: #2b68a4; margin-top: 20px;">2. Information We Collect</h6>
-                <ul>
-                    <li><strong>Student Information:</strong> Names, IDs, grade levels, contact info, enrollment,
-                        attendance, instrument/class selections</li>
-                    <li><strong>Parent/Guardian Information:</strong> Names, contact info, emails, emergency contacts,
-                        billing/payment info</li>
-                    <li><strong>Instructor Information:</strong> Names, contact info, schedules, qualifications</li>
-                    <li><strong>Technical Information:</strong> Login credentials, usage logs, IP/browser info, session
-                        data</li>
-                </ul>
-                <h6 style="color: #2b68a4; margin-top: 20px;">3. How We Use Information</h6>
-                <ul>
-                    <li><strong>Registration Management:</strong> Process/manage enrollments</li>
-                    <li><strong>Communication:</strong> Send updates, schedules, notifications</li>
-                    <li><strong>Scheduling:</strong> Coordinate lessons, instructors, rooms</li>
-                    <li><strong>Attendance Tracking:</strong> Monitor participation/progress</li>
-                    <li><strong>Administrative Operations:</strong> Maintain records</li>
-                    <li><strong>System Improvement:</strong> Analyze usage</li>
-                    <li><strong>Compliance:</strong> Meet legal/educational requirements</li>
-                    <li><strong>Safety:</strong> Ensure student safety/supervision</li>
-                </ul>
-                <h6 style="color: #2b68a4; margin-top: 20px;">4. Information Sharing and Disclosure</h6>
-                <ul>
-                    <li><strong>Limited Sharing:</strong> Only with authorized staff, parents/guardians, students</li>
-                    <li><strong>No Third-Party Sales:</strong> No selling/renting/trading info</li>
-                    <li><strong>Required Disclosures:</strong> Legal, emergency, regulatory</li>
-                </ul>
-                <h6 style="color: #2b68a4; margin-top: 20px;">5. Data Storage and Security</h6>
-                <ul>
-                    <li><strong>Storage Location:</strong> Secure Google Sheets, cloud infrastructure, backups</li>
-                    <li><strong>Security Measures:</strong> Authentication, encryption, access controls, updates</li>
-                    <li><strong>Data Retention:</strong> Maintained for program duration, archived/deleted per policy
-                    </li>
-                </ul>
-                <h6 style="color: #2b68a4; margin-top: 20px;">6. User Rights and Choices</h6>
-                <ul>
-                    <li><strong>Access Rights:</strong> Request/review/correct info</li>
-                    <li><strong>Communication Preferences:</strong> Manage email, opt-out, receive notifications</li>
-                    <li><strong>Data Portability:</strong> Request portable data</li>
-                </ul>
-                <h6 style="color: #2b68a4; margin-top: 20px;">7. Children's Privacy (COPPA Compliance)</h6>
-                <ul>
-                    <li><strong>Parental Consent:</strong> Required for under 13, review/delete info</li>
-                    <li><strong>Limited Collection:</strong> Only necessary info, no profiling, age-appropriate
-                        protections</li>
-                </ul>
-                <h6 style="color: #2b68a4; margin-top: 20px;">8. Cookies and Tracking</h6>
-                <ul>
-                    <li><strong>Essential Cookies:</strong> Session/authentication/security only</li>
-                    <li><strong>Analytics:</strong> Basic usage analytics, no personal ID, option to disable</li>
-                </ul>
-                <h6 style="color: #2b68a4; margin-top: 20px;">9. Data Breach Response</h6>
-                <ul>
-                    <li><strong>Incident Response:</strong> Assess/contain, notify within 72 hours, coordinate with
-                        authorities</li>
-                    <li><strong>Prevention Measures:</strong> Audits, staff training, monitoring</li>
-                </ul>
-                <h6 style="color: #2b68a4; margin-top: 20px;">10. International Data Transfers</h6>
-                <p>Data processing occurs within secure, compliant cloud infrastructure. International transfers comply
-                    with privacy laws.</p>
-                <h6 style="color: #2b68a4; margin-top: 20px;">11. Policy Updates</h6>
-                <ul>
-                    <li><strong>Notification:</strong> Users notified of changes, posted updates, continued use =
-                        acceptance</li>
-                    <li><strong>Review Schedule:</strong> Reviewed annually, updated as needed</li>
-                </ul>
-                <h6 style="color: #2b68a4; margin-top: 20px;">12. Contact Information</h6>
-                <ul>
-                    <li><strong>Privacy Questions:</strong> Contact System Administrator<br>Email: [Contact
-                        Email]<br>Phone: [Contact Phone]<br>Address: [Institution Address]</li>
-                    <li><strong>Data Protection Requests:</strong> Submit requests to admin, allow 30 days for
-                        processing</li>
-                </ul>
-                <h6 style="color: #2b68a4; margin-top: 20px;">13. Legal Framework</h6>
-                <ul>
-                    <li>FERPA, COPPA, state/local regulations, institutional policies</li>
-                </ul>
-                <h6 style="color: #2b68a4; margin-top: 20px;">14. Definitions</h6>
-                <ul>
-                    <li><strong>Personal Information:</strong> Info that identifies an individual</li>
-                    <li><strong>Student Record:</strong> Educational info related to participation</li>
-                    <li><strong>System:</strong> Tonic Music Program Registration System</li>
-                </ul>
-                <hr>
-                <p style="font-size:13px; color:#888;">Note: This privacy policy is specific to the Tonic Music Program
-                    Registration System. For institutional policies, contact your school or organization
-                    directly.<br><br>Document Version: 1.0<br>Review Date: August 4, 2026</p>
-            </div>
+      <div class="modal-content">
+        <h4 style="color: #2b68a4; margin-bottom: 20px">
+          <i class="material-icons" style="vertical-align: middle">privacy_tip</i>
+          Privacy Policy
+        </h4>
+        <div style="max-height: 400px; overflow-y: auto; padding-right: 10px">
+          <h5 style="margin-top: 0">Privacy Policy for Tonic Music Program Registration System</h5>
+          <p><strong>Effective Date:</strong> August 4, 2025<br /><strong>Last Updated:</strong> August 4, 2025</p>
+          <h6 style="color: #2b68a4; margin-top: 20px">1. Introduction</h6>
+          <p>
+            This Privacy Policy describes how the Tonic Music Program Registration System ("Tonic," "we," "us," or
+            "our") collects, uses, and protects information when you use our student registration automation system for
+            after-school lessons and programs.
+          </p>
+          <h6 style="color: #2b68a4; margin-top: 20px">2. Information We Collect</h6>
+          <ul>
+            <li>
+              <strong>Student Information:</strong> Names, IDs, grade levels, contact info, enrollment, attendance,
+              instrument/class selections
+            </li>
+            <li>
+              <strong>Parent/Guardian Information:</strong> Names, contact info, emails, emergency contacts,
+              billing/payment info
+            </li>
+            <li><strong>Instructor Information:</strong> Names, contact info, schedules, qualifications</li>
+            <li>
+              <strong>Technical Information:</strong> Login credentials, usage logs, IP/browser info, session data
+            </li>
+          </ul>
+          <h6 style="color: #2b68a4; margin-top: 20px">3. How We Use Information</h6>
+          <ul>
+            <li><strong>Registration Management:</strong> Process/manage enrollments</li>
+            <li><strong>Communication:</strong> Send updates, schedules, notifications</li>
+            <li><strong>Scheduling:</strong> Coordinate lessons, instructors, rooms</li>
+            <li><strong>Attendance Tracking:</strong> Monitor participation/progress</li>
+            <li><strong>Administrative Operations:</strong> Maintain records</li>
+            <li><strong>System Improvement:</strong> Analyze usage</li>
+            <li><strong>Compliance:</strong> Meet legal/educational requirements</li>
+            <li><strong>Safety:</strong> Ensure student safety/supervision</li>
+          </ul>
+          <h6 style="color: #2b68a4; margin-top: 20px">4. Information Sharing and Disclosure</h6>
+          <ul>
+            <li><strong>Limited Sharing:</strong> Only with authorized staff, parents/guardians, students</li>
+            <li><strong>No Third-Party Sales:</strong> No selling/renting/trading info</li>
+            <li><strong>Required Disclosures:</strong> Legal, emergency, regulatory</li>
+          </ul>
+          <h6 style="color: #2b68a4; margin-top: 20px">5. Data Storage and Security</h6>
+          <ul>
+            <li><strong>Storage Location:</strong> Secure Google Sheets, cloud infrastructure, backups</li>
+            <li><strong>Security Measures:</strong> Authentication, encryption, access controls, updates</li>
+            <li><strong>Data Retention:</strong> Maintained for program duration, archived/deleted per policy</li>
+          </ul>
+          <h6 style="color: #2b68a4; margin-top: 20px">6. User Rights and Choices</h6>
+          <ul>
+            <li><strong>Access Rights:</strong> Request/review/correct info</li>
+            <li><strong>Communication Preferences:</strong> Manage email, opt-out, receive notifications</li>
+            <li><strong>Data Portability:</strong> Request portable data</li>
+          </ul>
+          <h6 style="color: #2b68a4; margin-top: 20px">7. Children's Privacy (COPPA Compliance)</h6>
+          <ul>
+            <li><strong>Parental Consent:</strong> Required for under 13, review/delete info</li>
+            <li><strong>Limited Collection:</strong> Only necessary info, no profiling, age-appropriate protections</li>
+          </ul>
+          <h6 style="color: #2b68a4; margin-top: 20px">8. Cookies and Tracking</h6>
+          <ul>
+            <li><strong>Essential Cookies:</strong> Session/authentication/security only</li>
+            <li><strong>Analytics:</strong> Basic usage analytics, no personal ID, option to disable</li>
+          </ul>
+          <h6 style="color: #2b68a4; margin-top: 20px">9. Data Breach Response</h6>
+          <ul>
+            <li>
+              <strong>Incident Response:</strong> Assess/contain, notify within 72 hours, coordinate with authorities
+            </li>
+            <li><strong>Prevention Measures:</strong> Audits, staff training, monitoring</li>
+          </ul>
+          <h6 style="color: #2b68a4; margin-top: 20px">10. International Data Transfers</h6>
+          <p>
+            Data processing occurs within secure, compliant cloud infrastructure. International transfers comply with
+            privacy laws.
+          </p>
+          <h6 style="color: #2b68a4; margin-top: 20px">11. Policy Updates</h6>
+          <ul>
+            <li>
+              <strong>Notification:</strong> Users notified of changes, posted updates, continued use = acceptance
+            </li>
+            <li><strong>Review Schedule:</strong> Reviewed annually, updated as needed</li>
+          </ul>
+          <h6 style="color: #2b68a4; margin-top: 20px">12. Contact Information</h6>
+          <ul>
+            <li>
+              <strong>Privacy Questions:</strong> Contact System Administrator<br />Email: [Contact Email]<br />Phone:
+              [Contact Phone]<br />Address: [Institution Address]
+            </li>
+            <li><strong>Data Protection Requests:</strong> Submit requests to admin, allow 30 days for processing</li>
+          </ul>
+          <h6 style="color: #2b68a4; margin-top: 20px">13. Legal Framework</h6>
+          <ul>
+            <li>FERPA, COPPA, state/local regulations, institutional policies</li>
+          </ul>
+          <h6 style="color: #2b68a4; margin-top: 20px">14. Definitions</h6>
+          <ul>
+            <li><strong>Personal Information:</strong> Info that identifies an individual</li>
+            <li><strong>Student Record:</strong> Educational info related to participation</li>
+            <li><strong>System:</strong> Tonic Music Program Registration System</li>
+          </ul>
+          <hr />
+          <p style="font-size: 13px; color: #888">
+            Note: This privacy policy is specific to the Tonic Music Program Registration System. For institutional
+            policies, contact your school or organization directly.<br /><br />Document Version: 1.0<br />Review Date:
+            August 4, 2026
+          </p>
         </div>
-        <div class="modal-footer">
-            <a href="#!" class="modal-close waves-effect waves-light btn" style="background-color: #2b68a4;">
-                <i class="material-icons left">check</i>I Understand
-            </a>
-        </div>
+      </div>
+      <div class="modal-footer">
+        <a href="#!" class="modal-close waves-effect waves-light btn" style="background-color: #2b68a4">
+          <i class="material-icons left">check</i>I Understand
+        </a>
+      </div>
     </div>
 
     <!-- Modern ES Module Loading -->
     <script type="module" src="js/main.js"></script>
-
-</body>
-
+  </body>
 </html>

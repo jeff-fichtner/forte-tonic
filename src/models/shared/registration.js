@@ -74,6 +74,9 @@ export class Registration {
     this.reenrollmentIntent = data.reenrollmentIntent || null;
     this.intentSubmittedAt = data.intentSubmittedAt ? new Date(data.intentSubmittedAt) : null;
     this.intentSubmittedBy = data.intentSubmittedBy || null;
+
+    // Linked registration for tracking changes between trimesters
+    this.linkedPreviousRegistrationId = data.linkedPreviousRegistrationId || null;
   }
 
   #validateConstructorData(data) {
@@ -213,6 +216,7 @@ export class Registration {
         reenrollmentIntent: row[16], // reenrollmentIntent
         intentSubmittedAt: row[17], // intentSubmittedAt
         intentSubmittedBy: row[18], // intentSubmittedBy
+        linkedPreviousRegistrationId: row[19], // linkedPreviousRegistrationId
       });
     } catch (error) {
       return null;
@@ -237,7 +241,7 @@ export class Registration {
   }
 
   /**
-   * Convert to database row format (simplified 16-column schema)
+   * Convert to database row format (20-column schema with intent and linking)
    */
   toDatabaseRow() {
     return [
@@ -257,6 +261,10 @@ export class Registration {
       this.expectedStartDate ? this.expectedStartDate.toISOString() : '',
       this.createdAt.toISOString(),
       this.createdBy || '',
+      this.reenrollmentIntent || '',
+      this.intentSubmittedAt ? this.intentSubmittedAt.toISOString() : '',
+      this.intentSubmittedBy || '',
+      this.linkedPreviousRegistrationId || '',
     ];
   }
 
@@ -299,6 +307,7 @@ export class Registration {
       reenrollmentIntent: this.reenrollmentIntent,
       intentSubmittedAt: this.intentSubmittedAt,
       intentSubmittedBy: this.intentSubmittedBy,
+      linkedPreviousRegistrationId: this.linkedPreviousRegistrationId,
     };
   }
 

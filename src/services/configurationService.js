@@ -43,6 +43,12 @@ export class ConfigurationService {
       rockBandClassIds: process.env.ROCK_BAND_CLASS_IDS
         ? process.env.ROCK_BAND_CLASS_IDS.split(',').map(id => id.trim())
         : [],
+
+      // Maintenance Mode Configuration
+      maintenanceMode: process.env.MAINTENANCE_MODE === 'true' || false,
+      maintenanceMessage:
+        process.env.MAINTENANCE_MESSAGE ||
+        'The Forte registration system is currently undergoing updates. We will be back shortly. Thank you for your patience!',
     };
   }
 
@@ -110,7 +116,25 @@ export class ConfigurationService {
   getApplicationConfig() {
     return {
       rockBandClassIds: this._config.rockBandClassIds,
+      maintenanceMode: this._config.maintenanceMode,
+      maintenanceMessage: this._config.maintenanceMessage,
     };
+  }
+
+  /**
+   * Check if maintenance mode is enabled.
+   * @returns {boolean} True if maintenance mode is enabled
+   */
+  isMaintenanceModeEnabled() {
+    return this._config.maintenanceMode === true;
+  }
+
+  /**
+   * Get maintenance message.
+   * @returns {string} Maintenance message
+   */
+  getMaintenanceMessage() {
+    return this._config.maintenanceMessage;
   }
 
   /**

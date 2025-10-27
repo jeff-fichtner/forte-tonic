@@ -17,10 +17,7 @@ import {
   validateBusTimeRestrictions,
   formatValidationErrors,
 } from '../utilities/registrationForm/registrationValidator.js';
-import {
-  RegistrationFormText,
-  BusDeadlines,
-} from '../constants/registrationFormConstants.js';
+import { RegistrationFormText, BusDeadlines } from '../constants/registrationFormConstants.js';
 import {
   getOrCreateErrorContainer,
   showErrorMessage,
@@ -54,6 +51,7 @@ export class ParentRegistrationForm {
 
     // Initialize basic properties
     this.selectedLesson = null;
+    this._selectedPreviousRegistrationId = null; // Track selected registration for backward linking
 
     // Defer complex initialization to avoid private method ordering issues
     setTimeout(() => {
@@ -100,7 +98,6 @@ export class ParentRegistrationForm {
     // Clear any form data
     this.#clearGroupForm();
   }
-
 
   /**
    * Create a filter chip with appropriate styling
@@ -1061,7 +1058,6 @@ export class ParentRegistrationForm {
     });
   }
 
-
   /**
    * Create an instructor card with time slots
    */
@@ -1145,6 +1141,9 @@ export class ParentRegistrationForm {
 
     // Populate student selector
     this.#populateStudentSelector();
+
+    // Render registration selector if in enrollment period
+    this._renderRegistrationSelector();
 
     // Generate all filter chips dynamically with cascading order
     // Order: Instrument → Day → Length → Instructor
@@ -1230,6 +1229,10 @@ export class ParentRegistrationForm {
         const selectedStudentId = event.target.value;
         if (selectedStudentId) {
           this.#showRegistrationTypeContainer();
+
+          // Re-render registration selector for the new student (enrollment periods only)
+          this._renderRegistrationSelector();
+
           // If group registration type is already selected, repopulate classes for new student
           const registrationTypeSelect = document.getElementById('parent-registration-type-select');
           if (registrationTypeSelect && registrationTypeSelect.value === RegistrationType.GROUP) {
@@ -1461,7 +1464,8 @@ export class ParentRegistrationForm {
 
     if (hasACapacityDefined && currentRegistrations.length >= classCapacity) {
       // Class is full
-      showErrorMessage('parent-class-error-message',
+      showErrorMessage(
+        'parent-class-error-message',
         'This class is full. Please email forte@mcds.org to be placed on the waitlist or to explore other options.'
       );
       if (registerButton) {
@@ -1484,7 +1488,10 @@ export class ParentRegistrationForm {
       if (studentId) {
         // Check for duplicate enrollment
         if (this.#checkStudentClassDuplicate(studentId, classId)) {
-          showErrorMessage('parent-class-error-message','Student is already enrolled in this class.');
+          showErrorMessage(
+            'parent-class-error-message',
+            'Student is already enrolled in this class.'
+          );
           if (registerButton) {
             registerButton.disabled = true;
             registerButton.style.opacity = '0.6';
@@ -1514,7 +1521,7 @@ export class ParentRegistrationForm {
                 ? `This class conflicts with an existing ${conflict.instrument} lesson with ${conflict.instructorName} on ${conflict.day} at ${conflict.startTime}.`
                 : `This class conflicts with existing class "${conflict.className}" on ${conflict.day} at ${conflict.startTime}.`;
 
-            showErrorMessage('parent-class-error-message',conflictMessage);
+            showErrorMessage('parent-class-error-message', conflictMessage);
             if (registerButton) {
               registerButton.disabled = true;
               registerButton.style.opacity = '0.6';
@@ -1534,7 +1541,7 @@ export class ParentRegistrationForm {
       const isWaitlistClass = ClassManager.isRockBandClass(classId);
       if (isWaitlistClass) {
         // Show waitlist message for these special classes
-        showInfoMessage('parent-class-info-message','You will be joining the wait list.', 'info');
+        showInfoMessage('parent-class-info-message', 'You will be joining the wait list.', 'info');
 
         // Update button text for waitlist classes
         if (registerButton) {
@@ -2471,7 +2478,6 @@ export class ParentRegistrationForm {
     return false;
   }
 
-
   /**
    * Validate registration data
    */
@@ -2728,7 +2734,7 @@ export class ParentRegistrationForm {
       friday: 'Friday',
     };
 
-    return {
+    const registrationData = {
       studentId: studentId,
       registrationType: RegistrationType.PRIVATE,
       transportationType: transportationType,
@@ -2738,6 +2744,13 @@ export class ParentRegistrationForm {
       startTime: this.selectedLesson.time,
       length: this.selectedLesson.length,
     };
+
+    // Add backward link if modifying existing registration during enrollment
+    if (this._isEnrollmentPeriodActive() && this._selectedPreviousRegistrationId) {
+      registrationData.linkedPreviousRegistrationId = this._selectedPreviousRegistrationId;
+    }
+
+    return registrationData;
   }
 
   /**
@@ -2773,7 +2786,7 @@ export class ParentRegistrationForm {
     );
     const transportationType = transportationTypeRadio?.value || 'pickup'; // Default to pickup if not selected
 
-    return {
+    const registrationData = {
       studentId: studentId,
       registrationType: RegistrationType.GROUP,
       transportationType: transportationType,
@@ -2789,6 +2802,13 @@ export class ParentRegistrationForm {
       length: selectedClass.length,
       instrument: selectedClass.instrument,
     };
+
+    // Add backward link if modifying existing registration during enrollment
+    if (this._isEnrollmentPeriodActive() && this._selectedPreviousRegistrationId) {
+      registrationData.linkedPreviousRegistrationId = this._selectedPreviousRegistrationId;
+    }
+
+    return registrationData;
   }
 
   /**
@@ -3344,6 +3364,174 @@ export class ParentRegistrationForm {
         delete button.dataset.originalText;
       }
     }
+  }
+
+  /**
+   * Render registration selector dropdown during enrollment periods
+   * Shows existing registrations that can be modified for next trimester
+   * Only visible during priority/open enrollment AND if user has access
+   */
+  _renderRegistrationSelector() {
+    const selectorSection = document.getElementById('parent-registration-selector-section');
+    const selectorDropdown = document.getElementById('parent-registration-selector');
+
+    if (!selectorSection || !selectorDropdown) {
+      return; // Elements not found, skip
+    }
+
+    // Check if enrollment period is active AND user has access
+    if (!this._isEnrollmentPeriodActive() || !this._canAccessNextTrimester()) {
+      selectorSection.style.display = 'none';
+      return;
+    }
+
+    // Show the section
+    selectorSection.style.display = 'block';
+
+    // Get selected student
+    const studentSelect = document.getElementById('parent-student-select');
+    const selectedStudentId = studentSelect?.value;
+
+    // Clear existing options (except first "Create New")
+    while (selectorDropdown.options.length > 1) {
+      selectorDropdown.remove(1);
+    }
+
+    // Filter registrations for selected student
+    const studentRegistrations = selectedStudentId
+      ? this.registrations.filter(
+          reg => (reg.studentId?.value || reg.studentId) === selectedStudentId
+        )
+      : [];
+
+    // Populate dropdown with existing registrations
+    studentRegistrations.forEach(registration => {
+      const option = document.createElement('option');
+      option.value = registration.id?.value || registration.id;
+
+      // Build descriptive label
+      let label = '';
+      if (registration.registrationType === 'private') {
+        const instrument = registration.instrument || 'Lesson';
+        const day = registration.day || '';
+        const time = registration.startTime || '';
+        const instructor = this.instructors.find(
+          i =>
+            (i.id?.value || i.id) ===
+            (registration.instructorId?.value || registration.instructorId)
+        );
+        const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : '';
+        label = `Modify: ${instrument} - ${day} ${time} with ${instructorName}`;
+      } else if (registration.registrationType === 'group') {
+        const classTitle = registration.classTitle || 'Class';
+        label = `Modify: ${classTitle}`;
+      }
+
+      option.textContent = label;
+      selectorDropdown.appendChild(option);
+    });
+
+    // Attach change listener
+    selectorDropdown.removeEventListener('change', this._handleRegistrationSelection);
+    selectorDropdown.addEventListener('change', this._handleRegistrationSelection.bind(this));
+
+    // Reinitialize Materialize select
+    if (window.M && window.M.FormSelect) {
+      window.M.FormSelect.init(selectorDropdown);
+    }
+  }
+
+  /**
+   * Handle registration selection from dropdown
+   * @private
+   */
+  _handleRegistrationSelection(event) {
+    const selectedId = event.target.value;
+
+    if (!selectedId) {
+      // "Create New" selected - clear tracking
+      this._selectedPreviousRegistrationId = null;
+    } else {
+      // Existing registration selected - track for linking only (don't prefill form)
+      this._selectedPreviousRegistrationId = selectedId;
+    }
+  }
+
+  /**
+   * Clear registration form to create new registration
+   * Resets all form fields and selections
+   * NOTE: This method is no longer used since we removed auto-prefill behavior
+   */
+  _clearRegistrationForm() {
+    // Reset registration type selector
+    const registrationTypeSelect = document.getElementById('parent-registration-type-select');
+    if (registrationTypeSelect) {
+      registrationTypeSelect.value = '';
+      if (window.M && window.M.FormSelect) {
+        window.M.FormSelect.init(registrationTypeSelect);
+      }
+    }
+
+    // Clear private lesson form
+    this.selectedLesson = null;
+
+    // Deselect all chips
+    const activeChips = document.querySelectorAll('.chip.active');
+    activeChips.forEach(chip => {
+      chip.classList.remove('active', 'selected');
+      // Reset styling based on availability
+      if (chip.classList.contains('available')) {
+        chip.style.background = '#e8f5e8';
+        chip.style.borderColor = '#4caf50';
+        chip.style.color = '#000';
+      } else if (chip.classList.contains('limited')) {
+        chip.style.background = '#fff3e0';
+        chip.style.borderColor = '#ff9800';
+        chip.style.color = '#000';
+      }
+    });
+
+    // Deselect time slots
+    const selectedTimeSlots = document.querySelectorAll('.time-slot-item.selected');
+    selectedTimeSlots.forEach(slot => {
+      slot.classList.remove('selected');
+      slot.style.border = '2px solid #4caf50';
+      slot.style.background = '#e8f5e8';
+    });
+
+    // Clear group class form
+    const classSelect = document.getElementById('parent-class-select');
+    if (classSelect) {
+      classSelect.value = '';
+      if (window.M && window.M.FormSelect) {
+        window.M.FormSelect.init(classSelect);
+      }
+    }
+
+    // Reset transportation to pickup
+    const pickupRadio = document.querySelector(
+      'input[name="parent-transportation-type"][value="pickup"]'
+    );
+    if (pickupRadio) {
+      pickupRadio.checked = true;
+    }
+
+    const groupPickupRadio = document.querySelector(
+      'input[name="parent-group-transportation-type"][value="pickup"]'
+    );
+    if (groupPickupRadio) {
+      groupPickupRadio.checked = true;
+    }
+
+    // Hide private and group containers, but keep registration type section visible
+    const privateContainer = document.getElementById('parent-private-registration-container');
+    const groupContainer = document.getElementById('parent-group-registration-container');
+    if (privateContainer) privateContainer.style.display = 'none';
+    if (groupContainer) groupContainer.style.display = 'none';
+
+    // Clear any error/info messages
+    clearErrorMessage('parent-class-error-message');
+    clearInfoMessage('parent-class-info-message');
   }
 
   /**
