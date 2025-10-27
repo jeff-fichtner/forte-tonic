@@ -92,8 +92,8 @@ steps:
           --set-env-vars=CI=true \
           --set-env-vars=BUILD_GIT_COMMIT=${COMMIT_SHA} \
           --set-env-vars=BUILD_GIT_TAG=${TAG_NAME} \
-          --set-env-vars=MAINTENANCE_MODE=$MAINTENANCE_MODE \
-          --set-env-vars=MAINTENANCE_MESSAGE="$MAINTENANCE_MESSAGE" \
+          --set-env-vars=MAINTENANCE_MODE="$$MAINTENANCE_MODE" \
+          --set-env-vars=MAINTENANCE_MESSAGE="$$MAINTENANCE_MESSAGE" \
           --set-secrets=WORKING_SPREADSHEET_ID=working-spreadsheet-id:latest \
           --set-secrets=GOOGLE_SERVICE_ACCOUNT_EMAIL=google-service-account-email:latest \
           --set-secrets=GOOGLE_PRIVATE_KEY=google-private-key:latest \
