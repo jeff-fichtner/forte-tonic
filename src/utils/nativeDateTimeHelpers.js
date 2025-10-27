@@ -396,15 +396,6 @@ export class TonicDateTimeHelpers {
     const duration = TonicDateTimeHelpers.parseTimeString(timeString);
     return duration.to12Hour();
   }
-
-  /**
-   * Legacy compatibility: Parse Google Sheets date (redirects to parseTimeString)
-   */
-  static parseGoogleSheetsDate(dateTimeString) {
-    // For backward compatibility, redirect to time string parsing
-    // since most "Google Sheets dates" in Tonic are actually formatted time strings
-    return TonicDateTimeHelpers.parseTimeString(dateTimeString).to24Hour();
-  }
 }
 
 // Export main classes
@@ -413,18 +404,6 @@ export {
   TonicDateTime as DateTime,
   TonicDateTimeHelpers as DateHelpers,
 };
-
-// For backwards compatibility in browser environments
-if (typeof window !== 'undefined') {
-  window.TonicDuration = TonicDuration;
-  window.TonicDateTime = TonicDateTime;
-  window.TonicDateTimeHelpers = TonicDateTimeHelpers;
-
-  // Legacy compatibility
-  window.Duration = TonicDuration;
-  window.DateTime = TonicDateTime;
-  window.DateHelpers = TonicDateTimeHelpers;
-}
 
 /**
  * USAGE EXAMPLES:

@@ -51,13 +51,4 @@ export class UuidUtility {
     }
     return uuids;
   }
-
-  /**
-   * Legacy method for backward compatibility
-   * @deprecated Use generateUuid() instead
-   * @returns {string} A UUID v4 string
-   */
-  static generateGuid() {
-    return this.generateUuid();
-  }
 }
