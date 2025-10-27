@@ -357,7 +357,8 @@ export class GoogleSheetsDbClient extends BaseService {
   }
 
   /**
-   *
+   * Get all records from a sheet using an open-ended range for optimal performance
+   * Google Sheets API will automatically return only populated rows
    */
   async getAllRecords(sheetKey, mapFunc) {
     try {
@@ -368,10 +369,14 @@ export class GoogleSheetsDbClient extends BaseService {
 
       const spreadsheetId = this.spreadsheetId;
 
-      // Use a more reasonable range - expand to column AZ to capture access codes
+      // Calculate the last column needed based on columnMap
+      const maxColumnIndex = Math.max(...Object.values(sheetInfo.columnMap));
+      const lastColumn = String.fromCharCode(65 + maxColumnIndex); // A=65, B=66, etc.
+
+      // Use open-ended range - Google Sheets returns only populated rows
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: spreadsheetId,
-        range: `${sheetInfo.sheet}!A${sheetInfo.startRow}:AZ1000`,
+        range: `${sheetInfo.sheet}!A${sheetInfo.startRow}:${lastColumn}`,
       });
 
       const rows = response.data.values || [];
@@ -385,33 +390,11 @@ export class GoogleSheetsDbClient extends BaseService {
   /**
    *
    */
-  async getAllFromSheet(sheetKey) {
-    try {
-      const sheetInfo = this.workingSheetInfo[sheetKey];
-      if (!sheetInfo) {
-        throw new Error(`Sheet info not found for key: ${sheetKey}`);
-      }
-
-      const spreadsheetId = this.spreadsheetId;
-
-      const response = await this.sheets.spreadsheets.values.get({
-        spreadsheetId: spreadsheetId,
-        range: `${sheetInfo.sheet}!A${sheetInfo.startRow}:Z1000`,
-      });
-
-      const rows = response.data.values || [];
-      return this.#convertRowsToObjects(rows, sheetInfo.columnMap);
-    } catch (error) {
-      this.logger.error(`Error getting data from sheet ${sheetKey}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   *
-   */
   async getFromSheetByColumnValue(sheetKey, columnName, value) {
-    const allData = await this.getAllFromSheet(sheetKey);
+    const sheetInfo = this.workingSheetInfo[sheetKey];
+    const allData = await this.getAllRecords(sheetKey, row =>
+      this.#convertRowToObject(row, sheetInfo.columnMap)
+    );
     return allData.filter(item => item[columnName] === value);
   }
 
@@ -567,7 +550,9 @@ export class GoogleSheetsDbClient extends BaseService {
       }
 
       // Find the row to update
-      const allData = await this.getAllFromSheet(sheetKey);
+      const allData = await this.getAllRecords(sheetKey, row =>
+        this.#convertRowToObject(row, sheetInfo.columnMap)
+      );
       const rowIndex = allData.findIndex(row => row.id === record.id);
 
       if (rowIndex === -1) {
@@ -632,10 +617,13 @@ export class GoogleSheetsDbClient extends BaseService {
    */
   async deleteRecord(sheetKey, recordId, deletedBy) {
     try {
-      const { auditSheet } = this.workingSheetInfo[sheetKey];
+      const sheetInfo = this.workingSheetInfo[sheetKey];
+      const { auditSheet } = sheetInfo;
 
       // Find the record first
-      const allData = await this.getAllFromSheet(sheetKey);
+      const allData = await this.getAllRecords(sheetKey, row =>
+        this.#convertRowToObject(row, sheetInfo.columnMap)
+      );
       const rowIndex = allData.findIndex(row => row.id === recordId);
 
       if (rowIndex === -1) {
@@ -732,17 +720,15 @@ export class GoogleSheetsDbClient extends BaseService {
   }
 
   /**
-   *
+   * Convert a single row array to an object using the column map
    */
-  #convertRowsToObjects(rows, columnMap) {
-    return rows.map(row => {
-      const obj = {};
-      Object.keys(columnMap).forEach(key => {
-        const columnIndex = columnMap[key];
-        obj[key] = row[columnIndex] || '';
-      });
-      return obj;
+  #convertRowToObject(row, columnMap) {
+    const obj = {};
+    Object.keys(columnMap).forEach(key => {
+      const columnIndex = columnMap[key];
+      obj[key] = row[columnIndex] || '';
     });
+    return obj;
   }
 
   /**
@@ -781,7 +767,10 @@ export class GoogleSheetsDbClient extends BaseService {
    */
   async getMaxIdFromSheet(sheetKey) {
     try {
-      const allData = await this.getAllFromSheet(sheetKey);
+      const sheetInfo = this.workingSheetInfo[sheetKey];
+      const allData = await this.getAllRecords(sheetKey, row =>
+        this.#convertRowToObject(row, sheetInfo.columnMap)
+      );
       if (allData.length === 0) return 0;
 
       const ids = allData.map(item => parseInt(item.id)).filter(id => !isNaN(id));

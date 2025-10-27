@@ -104,16 +104,9 @@ export class RegistrationRepository extends BaseRepository {
     try {
       // Use cached database client method instead of direct API call
       const allRegistrations = await this.dbClient.getCachedData('registrations', row => {
-        // Skip header rows and invalid data
-        if (
-          !row ||
-          !row[0] ||
-          row[0] === 'Id' ||
-          row[0] === 'id' ||
-          row[0].toLowerCase().includes('uuid') ||
-          row[0].toLowerCase().includes('registration')
-        ) {
-          return null; // Skip this row
+        // Skip empty rows
+        if (!row || !row[0]) {
+          return null;
         }
 
         try {
@@ -329,5 +322,112 @@ export class RegistrationRepository extends BaseRepository {
    */
   clearCache() {
     this.cache.clear();
+  }
+
+  /**
+   * Get all registrations for a specific trimester
+   * @param {string} trimester - 'fall', 'winter', or 'spring'
+   * @returns {Promise<Array<Registration>>} Array of registration objects
+   * @throws {Error} If trimester is invalid
+   */
+  async getRegistrationsByTrimester(trimester) {
+    const { isValidTrimester } = await import('../utils/values/trimester.js');
+
+    if (!isValidTrimester(trimester)) {
+      throw new Error(`Invalid trimester: ${trimester}`);
+    }
+
+    const tableName = `registrations_${trimester}`;
+    return await this.getFromTable(tableName);
+  }
+
+  /**
+   * Get all registrations from a specific trimester table
+   * Used during enrollment periods to read from current or next trimester
+   * @param {string} tableName - Table name like "registrations_fall"
+   * @returns {Promise<Array<Registration>>} Array of registrations from specified table
+   */
+  async getFromTable(tableName) {
+    try {
+      this.logger.info(`📋 Getting registrations from table: ${tableName}`);
+
+      const allRegistrations = await this.dbClient.getCachedData(tableName, row => {
+        // Skip empty rows
+        if (!row || !row[0]) {
+          return null;
+        }
+
+        try {
+          return Registration.fromDatabaseRow
+            ? Registration.fromDatabaseRow(row)
+            : new Registration(row);
+        } catch (error) {
+          this.logger.warn(`Skipping invalid registration row:`, row[0], error.message);
+          return null;
+        }
+      });
+
+      const validRegistrations = (allRegistrations || []).filter(reg => reg !== null);
+      this.logger.info(`✅ Found ${validRegistrations.length} registrations in ${tableName}`);
+      return validRegistrations;
+    } catch (error) {
+      this.logger.error(`Error getting registrations from table ${tableName}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a registration in a specific trimester table
+   * Used during enrollment periods to create in next trimester table
+   * @param {string} tableName - Table name like "registrations_winter"
+   * @param {object} registrationData - Registration data object
+   * @returns {Promise<Registration>} Created registration
+   * @throws {Error} If createdBy is missing or table write fails
+   */
+  async createInTable(tableName, registrationData) {
+    try {
+      this.logger.info(`📝 Creating registration in table: ${tableName}`);
+
+      // Generate UUID if not provided
+      const registrationId = registrationData.id || this.generateUUID();
+
+      // Create Registration instance
+      const registration = new Registration({
+        id: registrationId,
+        studentId: registrationData.studentId,
+        instructorId: registrationData.instructorId,
+        day: registrationData.day,
+        startTime: registrationData.startTime,
+        length: registrationData.length,
+        registrationType: registrationData.registrationType,
+        roomId: registrationData.roomId,
+        instrument: registrationData.instrument,
+        transportationType: registrationData.transportationType,
+        notes: registrationData.notes,
+        classId: registrationData.classId,
+        classTitle: registrationData.classTitle,
+        expectedStartDate: registrationData.expectedStartDate,
+        linkedPreviousRegistrationId: registrationData.linkedPreviousRegistrationId || null,
+        createdAt: new Date().toISOString(),
+        createdBy:
+          registrationData.createdBy ||
+          (() => {
+            throw new Error('createdBy is required for audit trail');
+          })(),
+      });
+
+      // Write to specific table (appendRecordv2 handles audit automatically)
+      await this.dbClient.appendRecordv2(tableName, registration, registrationData.createdBy);
+
+      // Clear cache for this table
+      this.clearCache();
+      this.dbClient.clearCache(tableName);
+
+      this.logger.info(`✅ Created registration in ${tableName}: ${registrationId}`);
+      return registration;
+    } catch (error) {
+      this.logger.error(`Error creating registration in table ${tableName}:`, error);
+      throw error;
+    }
   }
 }

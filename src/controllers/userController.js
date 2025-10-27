@@ -16,6 +16,8 @@ import { getLogger } from '../utils/logger.js';
 import { successResponse, errorResponse } from '../common/responseHelpers.js';
 import { ValidationError, NotFoundError } from '../common/errors.js';
 import { HTTP_STATUS } from '../common/errorConstants.js';
+import { PeriodType } from '../utils/values/periodType.js';
+import { TRIMESTER_SEQUENCE, Trimester } from '../utils/values/trimester.js';
 
 const logger = getLogger();
 
@@ -34,10 +36,17 @@ export class UserController {
       const currentPeriod = await periodService.getCurrentPeriod();
       const nextPeriod = await periodService.getNextPeriod();
 
+      // Determine default trimester for admin/parent UI
+      const defaultTrimester = UserController._getDefaultTrimester(currentPeriod, nextPeriod);
+
       const configurationData = {
         currentPeriod,
         nextPeriod,
         rockBandClassIds: ConfigurationService.getRockBandClassIds(),
+        currentTrimester: currentPeriod?.trimester,
+        nextTrimester: nextPeriod?.trimester,
+        availableTrimesters: TRIMESTER_SEQUENCE,
+        defaultTrimester,
       };
 
       const configuration = new AppConfigurationResponse(configurationData);
@@ -58,6 +67,22 @@ export class UserController {
         context: { controller: 'UserController', method: 'getAppConfiguration' },
       });
     }
+  }
+
+  /**
+   * Determine default trimester for admin UI
+   * - During priority/open enrollment: show NEXT trimester
+   * - Otherwise: show CURRENT trimester
+   * @private
+   */
+  static _getDefaultTrimester(currentPeriod, nextPeriod) {
+    const enrollmentPeriods = [PeriodType.PRIORITY_ENROLLMENT, PeriodType.OPEN_ENROLLMENT];
+
+    if (currentPeriod && enrollmentPeriods.includes(currentPeriod.periodType)) {
+      return nextPeriod?.trimester || currentPeriod?.trimester || Trimester.FALL;
+    }
+
+    return currentPeriod?.trimester || Trimester.FALL;
   }
 
   /**
