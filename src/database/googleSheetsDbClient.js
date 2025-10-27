@@ -546,7 +546,7 @@ export class GoogleSheetsDbClient extends BaseService {
       const maxColumnIndex = Math.max(...Object.values(sheetInfo.columnMap));
 
       // Convert column index to Excel-style column letter (A, B, ..., Z, AA, AB, ...)
-      const getColumnLetter = (index) => {
+      const getColumnLetter = index => {
         let letter = '';
         let num = index;
         while (num >= 0) {

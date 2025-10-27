@@ -45,6 +45,7 @@ Originally a Google Apps Script application, migrated to Node.js for improved pe
 **Auth**: Phone number (parents) or 6-digit AccessCode (staff)
 
 **Key Components**:
+
 - 9 Services (1 application, 4 domain, 4 supporting)
 - 4 Repositories (all extend BaseRepository with consistent caching)
 - RESTful API with Express.js

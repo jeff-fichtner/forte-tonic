@@ -69,7 +69,7 @@ export class InstructorSelector {
 
   /**
    * Get the selected instructor object
-   * @returns {Object|null} Selected instructor object or null
+   * @returns {object | null} Selected instructor object or null
    */
   getSelectedInstructor() {
     const selectedId = this.getSelectedInstructorId();

@@ -15,7 +15,6 @@ import { ConfigurationService } from '../services/configurationService.js';
 import { getLogger } from '../utils/logger.js';
 import { successResponse, errorResponse } from '../common/responseHelpers.js';
 import { ValidationError, NotFoundError } from '../common/errors.js';
-import { HTTP_STATUS } from '../common/errorConstants.js';
 import { PeriodType } from '../utils/values/periodType.js';
 import { TRIMESTER_SEQUENCE, Trimester } from '../utils/values/trimester.js';
 

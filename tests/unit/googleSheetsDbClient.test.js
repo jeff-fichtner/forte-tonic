@@ -108,8 +108,20 @@ describe('GoogleSheetsDbClient', () => {
       });
 
       expect(result).toEqual([
-        { id: 'admin-1', email: 'admin1@test.com', lastName: 'Doe', firstName: 'John', phone: '555-1234' },
-        { id: 'admin-2', email: 'admin2@test.com', lastName: 'Smith', firstName: 'Jane', phone: '555-5678' },
+        {
+          id: 'admin-1',
+          email: 'admin1@test.com',
+          lastName: 'Doe',
+          firstName: 'John',
+          phone: '555-1234',
+        },
+        {
+          id: 'admin-2',
+          email: 'admin2@test.com',
+          lastName: 'Smith',
+          firstName: 'Jane',
+          phone: '555-5678',
+        },
       ]);
     });
 
@@ -161,9 +173,9 @@ describe('GoogleSheetsDbClient', () => {
     });
 
     test('should throw error for invalid sheet key', async () => {
-      await expect(
-        client.getAllRecords('nonExistentSheet', row => row)
-      ).rejects.toThrow('Sheet info not found for key: nonExistentSheet');
+      await expect(client.getAllRecords('nonExistentSheet', row => row)).rejects.toThrow(
+        'Sheet info not found for key: nonExistentSheet'
+      );
     });
 
     test('should propagate API errors', async () => {
@@ -171,9 +183,9 @@ describe('GoogleSheetsDbClient', () => {
         new Error('API Error: Permission denied')
       );
 
-      await expect(
-        client.getAllRecords('admins', row => ({ id: row[0] }))
-      ).rejects.toThrow('API Error: Permission denied');
+      await expect(client.getAllRecords('admins', row => ({ id: row[0] }))).rejects.toThrow(
+        'API Error: Permission denied'
+      );
     });
 
     test('should calculate correct column for registrations (column S)', async () => {
@@ -304,9 +316,7 @@ describe('GoogleSheetsDbClient', () => {
     test('should return empty array when no matches found', async () => {
       mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
         data: {
-          values: [
-            ['student-1', 'Smith', 'John'],
-          ],
+          values: [['student-1', 'Smith', 'John']],
         },
       });
 
@@ -337,13 +347,15 @@ describe('GoogleSheetsDbClient', () => {
     test('should return null when no match found', async () => {
       mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
         data: {
-          values: [
-            ['student-1', 'Smith', 'John'],
-          ],
+          values: [['student-1', 'Smith', 'John']],
         },
       });
 
-      const result = await client.getFromSheetByColumnValueSingle('students', 'lastName', 'NonExistent');
+      const result = await client.getFromSheetByColumnValueSingle(
+        'students',
+        'lastName',
+        'NonExistent'
+      );
 
       expect(result).toBeNull();
     });
@@ -448,9 +460,7 @@ describe('GoogleSheetsDbClient', () => {
     test('should not update when record not found', async () => {
       mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
         data: {
-          values: [
-            ['admin-1', 'admin1@test.com', 'Doe', 'John', '555-1234'],
-          ],
+          values: [['admin-1', 'admin1@test.com', 'Doe', 'John', '555-1234']],
         },
       });
 
@@ -478,12 +488,14 @@ describe('GoogleSheetsDbClient', () => {
 
       mockSheetsApi.spreadsheets.get.mockResolvedValue({
         data: {
-          sheets: [{
-            properties: {
-              sheetId: 123,
-              title: 'admins',
+          sheets: [
+            {
+              properties: {
+                sheetId: 123,
+                title: 'admins',
+              },
             },
-          }],
+          ],
         },
       });
 
@@ -497,16 +509,18 @@ describe('GoogleSheetsDbClient', () => {
       expect(mockSheetsApi.spreadsheets.batchUpdate).toHaveBeenCalledWith({
         spreadsheetId: 'test-spreadsheet-id',
         requestBody: {
-          requests: [{
-            deleteDimension: {
-              range: {
-                sheetId: 123,
-                dimension: 'ROWS',
-                startIndex: 2,
-                endIndex: 3,
+          requests: [
+            {
+              deleteDimension: {
+                range: {
+                  sheetId: 123,
+                  dimension: 'ROWS',
+                  startIndex: 2,
+                  endIndex: 3,
+                },
               },
             },
-          }],
+          ],
         },
       });
     });
@@ -514,9 +528,7 @@ describe('GoogleSheetsDbClient', () => {
     test('should not delete when record not found', async () => {
       mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
         data: {
-          values: [
-            ['admin-1', 'admin1@test.com', 'Doe', 'John', '555-1234'],
-          ],
+          values: [['admin-1', 'admin1@test.com', 'Doe', 'John', '555-1234']],
         },
       });
 
@@ -622,7 +634,10 @@ describe('GoogleSheetsDbClient', () => {
       });
 
       const operations = [
-        { range: 'admins!A2:E2', values: [['admin-1', 'test@test.com', 'Doe', 'John', '555-1234']] },
+        {
+          range: 'admins!A2:E2',
+          values: [['admin-1', 'test@test.com', 'Doe', 'John', '555-1234']],
+        },
         { range: 'students!A2:C2', values: [['student-1', 'Smith', 'Jane']] },
       ];
 

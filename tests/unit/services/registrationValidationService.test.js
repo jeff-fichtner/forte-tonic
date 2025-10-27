@@ -139,7 +139,10 @@ describe('RegistrationValidationService', () => {
     describe('for GROUP registrations', () => {
       it('should accept valid group format', () => {
         expect(
-          RegistrationValidationService.isValidRegistrationId('STUDENT1_CLASS1', RegistrationType.GROUP)
+          RegistrationValidationService.isValidRegistrationId(
+            'STUDENT1_CLASS1',
+            RegistrationType.GROUP
+          )
         ).toBe(true);
       });
 
@@ -165,17 +168,27 @@ describe('RegistrationValidationService', () => {
 
       it('should reject invalid formats', () => {
         expect(
-          RegistrationValidationService.isValidRegistrationId('STUDENT1_TEACHER1', RegistrationType.PRIVATE)
+          RegistrationValidationService.isValidRegistrationId(
+            'STUDENT1_TEACHER1',
+            RegistrationType.PRIVATE
+          )
         ).toBe(false);
         expect(
-          RegistrationValidationService.isValidRegistrationId('STUDENT1_TEACHER1_Monday', RegistrationType.PRIVATE)
+          RegistrationValidationService.isValidRegistrationId(
+            'STUDENT1_TEACHER1_Monday',
+            RegistrationType.PRIVATE
+          )
         ).toBe(false);
       });
     });
 
     it('should reject null and undefined', () => {
-      expect(RegistrationValidationService.isValidRegistrationId(null, RegistrationType.GROUP)).toBe(false);
-      expect(RegistrationValidationService.isValidRegistrationId(undefined, RegistrationType.PRIVATE)).toBe(false);
+      expect(
+        RegistrationValidationService.isValidRegistrationId(null, RegistrationType.GROUP)
+      ).toBe(false);
+      expect(
+        RegistrationValidationService.isValidRegistrationId(undefined, RegistrationType.PRIVATE)
+      ).toBe(false);
     });
   });
 

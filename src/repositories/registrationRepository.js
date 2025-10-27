@@ -13,9 +13,9 @@ import { UuidUtility } from '../utils/uuidUtility.js';
 
 export class RegistrationRepository extends BaseRepository {
   /**
-   * @param {Object} dbClient - Database client instance
-   * @param {Object} configService - Configuration service for logger initialization
-   * @param {Object} periodService - Period service for trimester management
+   * @param {object} dbClient - Database client instance
+   * @param {object} configService - Configuration service for logger initialization
+   * @param {object} periodService - Period service for trimester management
    */
   constructor(dbClient, configService, periodService) {
     super('registrations', Registration, dbClient, configService);

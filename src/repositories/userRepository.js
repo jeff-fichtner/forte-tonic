@@ -8,8 +8,8 @@ import { Admin, Instructor, Student, Parent, Room } from '../models/shared/index
  */
 export class UserRepository extends BaseRepository {
   /**
-   * @param {Object} dbClient - Database client instance
-   * @param {Object} configService - Configuration service for logger initialization
+   * @param {object} dbClient - Database client instance
+   * @param {object} configService - Configuration service for logger initialization
    */
   constructor(dbClient, configService) {
     // Call parent with a generic entity name since this repo manages multiple entity types

@@ -158,7 +158,7 @@ export class HttpService {
   /**
    * DELETE request to server
    * @param {string} serverFunctionName - The endpoint name or path with ID (e.g., 'registrations/123')
-   * @param {function} mapper - Optional mapper function for response
+   * @param {Function} mapper - Optional mapper function for response
    * @param {object} context - Optional context for the request
    */
   static delete(serverFunctionName, mapper = null, context = null) {

@@ -15,7 +15,7 @@ import { generateTimeOptions } from '../../utilities/registrationForm/timeHelper
 export class LessonDetailsForm {
   /**
    * Create a lesson details form
-   * @param {Object} elementIds - Object with IDs for day, time, instrument selects and container
+   * @param {object} elementIds - Object with IDs for day, time, instrument selects and container
    * @param {Function} onDayChangeCallback - Callback when day changes
    * @param {Function} onTimeChangeCallback - Callback when time changes
    * @param {Function} onInstrumentChangeCallback - Callback when instrument changes

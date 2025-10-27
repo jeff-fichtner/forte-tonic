@@ -9,8 +9,8 @@ import { Class } from '../models/shared/index.js';
  */
 export class ProgramRepository extends BaseRepository {
   /**
-   * @param {Object} dbClient - Database client instance
-   * @param {Object} configService - Configuration service for logger initialization
+   * @param {object} dbClient - Database client instance
+   * @param {object} configService - Configuration service for logger initialization
    */
   constructor(dbClient, configService) {
     // Use 'classes' as the primary entity since that's the main concern

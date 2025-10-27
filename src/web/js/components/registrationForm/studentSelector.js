@@ -79,7 +79,7 @@ export class StudentSelector {
 
   /**
    * Get the currently selected student
-   * @returns {Object|null} Selected student object or null
+   * @returns {object | null} Selected student object or null
    */
   getSelectedStudent() {
     return this.selectedStudent;
@@ -99,7 +99,7 @@ export class StudentSelector {
 
   /**
    * Set the current student (for external updates)
-   * @param {Object|null} student - Student object or null to clear
+   * @param {object | null} student - Student object or null to clear
    */
   setSelectedStudent(student) {
     this.selectedStudent = student;
