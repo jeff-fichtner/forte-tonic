@@ -8,6 +8,27 @@ import { DomHelpers } from '../utilities/domHelpers.js';
 import { formatClassNameWithGradeCorrection } from '../utilities/classNameFormatter.js';
 import { ClassManager } from '../utilities/classManager.js';
 import { formatTime } from '../extensions/numberExtensions.js';
+import {
+  parseTime,
+  formatTimeFromMinutes,
+  formatDisplayTime,
+} from '../utilities/registrationForm/timeHelpers.js';
+import {
+  validateBusTimeRestrictions,
+  formatValidationErrors,
+} from '../utilities/registrationForm/registrationValidator.js';
+import {
+  RegistrationFormText,
+  BusDeadlines,
+} from '../constants/registrationFormConstants.js';
+import {
+  getOrCreateErrorContainer,
+  showErrorMessage,
+  clearErrorMessage,
+  getOrCreateInfoContainer,
+  showInfoMessage,
+  clearInfoMessage,
+} from '../utilities/registrationForm/messageDisplay.js';
 
 /**
  * Parent Registration Form with hybrid interface (progressive filters + time slot grid)
@@ -80,32 +101,6 @@ export class ParentRegistrationForm {
     this.#clearGroupForm();
   }
 
-  /**
-   * Parse time string (supports both "HH:MM" and "H:MM AM/PM" formats) to minutes since midnight
-   */
-  #parseTime(timeStr) {
-    if (!timeStr) return null;
-
-    // Handle AM/PM format (e.g., "3:00 PM", "11:30 AM")
-    if (timeStr.includes('AM') || timeStr.includes('PM')) {
-      const isPM = timeStr.includes('PM');
-      const timeOnly = timeStr.replace(/\s*(AM|PM)$/i, '').trim();
-      const [hours, minutes] = timeOnly.split(':').map(Number);
-
-      let hour24 = hours;
-      if (!isPM && hours === 12) {
-        hour24 = 0; // 12:00 AM = 00:00
-      } else if (isPM && hours !== 12) {
-        hour24 = hours + 12; // Convert PM hours to 24-hour format
-      }
-
-      return hour24 * 60 + (minutes || 0);
-    }
-
-    // Handle 24-hour format (e.g., "15:00", "09:30")
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    return hours * 60 + (minutes || 0);
-  }
 
   /**
    * Create a filter chip with appropriate styling
@@ -201,8 +196,8 @@ export class ParentRegistrationForm {
     }
 
     // Check 5: Start time must be before end time
-    const startMinutes = this.#parseTime(daySchedule.startTime);
-    const endMinutes = this.#parseTime(endTime);
+    const startMinutes = parseTime(daySchedule.startTime);
+    const endMinutes = parseTime(endTime);
 
     if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
       return false;
@@ -294,8 +289,8 @@ export class ParentRegistrationForm {
         const startTime = daySchedule.startTime;
         const endTime = daySchedule.endTime || '17:00';
 
-        const startMinutes = this.#parseTime(startTime);
-        const endMinutes = this.#parseTime(endTime);
+        const startMinutes = parseTime(startTime);
+        const endMinutes = parseTime(endTime);
 
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
           const existingRegistrations = this.registrations.filter(reg => {
@@ -384,8 +379,8 @@ export class ParentRegistrationForm {
         const startTime = daySchedule.startTime;
         const endTime = daySchedule.endTime || '17:00';
 
-        const startMinutes = this.#parseTime(startTime);
-        const endMinutes = this.#parseTime(endTime);
+        const startMinutes = parseTime(startTime);
+        const endMinutes = parseTime(endTime);
 
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
           const existingRegistrations = this.registrations.filter(reg => {
@@ -483,8 +478,8 @@ export class ParentRegistrationForm {
         const startTime = daySchedule.startTime;
         const endTime = daySchedule.endTime || '17:00';
 
-        const startMinutes = this.#parseTime(startTime);
-        const endMinutes = this.#parseTime(endTime);
+        const startMinutes = parseTime(startTime);
+        const endMinutes = parseTime(endTime);
 
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
           const existingRegistrations = this.registrations.filter(reg => {
@@ -792,8 +787,8 @@ export class ParentRegistrationForm {
         const startTime = daySchedule.startTime;
         const endTime = daySchedule.endTime || '17:00';
 
-        const startMinutes = this.#parseTime(startTime);
-        const endMinutes = this.#parseTime(endTime);
+        const startMinutes = parseTime(startTime);
+        const endMinutes = parseTime(endTime);
 
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
           const dayIndex = dayMap[day];
@@ -966,8 +961,8 @@ export class ParentRegistrationForm {
       const startTime = daySchedule.startTime;
       const endTime = daySchedule.endTime;
 
-      const startMinutes = this.#parseTime(startTime);
-      const endMinutes = this.#parseTime(endTime);
+      const startMinutes = parseTime(startTime);
+      const endMinutes = parseTime(endTime);
 
       // Check 3: Valid time window
       if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
@@ -996,7 +991,7 @@ export class ParentRegistrationForm {
 
       // Generate potential time slots (every 30 minutes from start to end)
       for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += 30) {
-        const currentTimeStr = this.#formatTimeFromMinutes(currentMinutes);
+        const currentTimeStr = formatTimeFromMinutes(currentMinutes);
 
         // Check if this time slot conflicts with existing registrations
         const hasConflict = this.#checkTimeSlotConflict(currentMinutes, 30, existingRegistrations);
@@ -1023,7 +1018,7 @@ export class ParentRegistrationForm {
               return;
             }
 
-            const slotTime = this.#formatTime(currentTimeStr);
+            const slotTime = formatDisplayTime(currentTimeStr);
 
             timeSlots.push({
               day: day,
@@ -1054,7 +1049,7 @@ export class ParentRegistrationForm {
     const slotEndMinutes = slotStartMinutes + slotLengthMinutes;
 
     return existingRegistrations.some(reg => {
-      const regStartMinutes = this.#parseTime(reg.startTime);
+      const regStartMinutes = parseTime(reg.startTime);
       if (regStartMinutes === null) return false;
 
       const regEndMinutes = regStartMinutes + (reg.length || 30);
@@ -1066,14 +1061,6 @@ export class ParentRegistrationForm {
     });
   }
 
-  /**
-   * Helper method to format minutes since midnight back to HH:MM format
-   */
-  #formatTimeFromMinutes(minutes) {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-  }
 
   /**
    * Create an instructor card with time slots
@@ -1145,14 +1132,6 @@ export class ParentRegistrationForm {
   /**
    * Format time string for display
    */
-  #formatTime(timeStr) {
-    if (!timeStr) return '';
-    const [hours, minutes] = timeStr.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    return `${displayHour}:${minutes || '00'} ${ampm}`;
-  }
 
   /**
    * Initialize the hybrid registration interface
@@ -1434,11 +1413,11 @@ export class ParentRegistrationForm {
    */
   #handleClassSelection(classId) {
     const registerButton = document.getElementById('parent-create-group-registration-btn');
-    const errorContainer = this.#getOrCreateErrorContainer();
-
-    // Clear previous error and info message states
-    this.#clearRegistrationError();
-    this.#clearRegistrationMessage();
+    // Get or create containers and clear previous states
+    getOrCreateErrorContainer('parent-class-error-message', 'parent-class-select');
+    getOrCreateInfoContainer('parent-class-info-message', 'parent-class-select');
+    clearErrorMessage('parent-class-error-message');
+    clearInfoMessage('parent-class-info-message');
 
     if (!classId) {
       // No class selected, disable button and reset text
@@ -1482,7 +1461,7 @@ export class ParentRegistrationForm {
 
     if (hasACapacityDefined && currentRegistrations.length >= classCapacity) {
       // Class is full
-      this.#showRegistrationError(
+      showErrorMessage('parent-class-error-message',
         'This class is full. Please email forte@mcds.org to be placed on the waitlist or to explore other options.'
       );
       if (registerButton) {
@@ -1505,7 +1484,7 @@ export class ParentRegistrationForm {
       if (studentId) {
         // Check for duplicate enrollment
         if (this.#checkStudentClassDuplicate(studentId, classId)) {
-          this.#showRegistrationError('Student is already enrolled in this class.');
+          showErrorMessage('parent-class-error-message','Student is already enrolled in this class.');
           if (registerButton) {
             registerButton.disabled = true;
             registerButton.style.opacity = '0.6';
@@ -1535,7 +1514,7 @@ export class ParentRegistrationForm {
                 ? `This class conflicts with an existing ${conflict.instrument} lesson with ${conflict.instructorName} on ${conflict.day} at ${conflict.startTime}.`
                 : `This class conflicts with existing class "${conflict.className}" on ${conflict.day} at ${conflict.startTime}.`;
 
-            this.#showRegistrationError(conflictMessage);
+            showErrorMessage('parent-class-error-message',conflictMessage);
             if (registerButton) {
               registerButton.disabled = true;
               registerButton.style.opacity = '0.6';
@@ -1555,7 +1534,7 @@ export class ParentRegistrationForm {
       const isWaitlistClass = ClassManager.isRockBandClass(classId);
       if (isWaitlistClass) {
         // Show waitlist message for these special classes
-        this.#showRegistrationMessage('You will be joining the wait list.', 'info');
+        showInfoMessage('parent-class-info-message','You will be joining the wait list.', 'info');
 
         // Update button text for waitlist classes
         if (registerButton) {
@@ -1585,90 +1564,6 @@ export class ParentRegistrationForm {
   /**
    * Get or create error container for registration messages
    */
-  #getOrCreateErrorContainer() {
-    let errorContainer = document.getElementById('parent-class-error-message');
-
-    if (!errorContainer) {
-      // Create error container
-      errorContainer = document.createElement('div');
-      errorContainer.id = 'parent-class-error-message';
-      errorContainer.style.cssText =
-        'margin-top: 10px; padding: 10px; background: #ffebee; border: 1px solid #f44336; border-radius: 4px; color: #d32f2f; font-size: 14px; display: none;';
-
-      // Insert after the class select
-      const classSelect = document.getElementById('parent-class-select');
-      const inputField = classSelect?.closest('.input-field');
-      if (inputField) {
-        inputField.parentNode.insertBefore(errorContainer, inputField.nextSibling);
-      }
-    }
-
-    return errorContainer;
-  }
-
-  /**
-   * Show registration error message
-   */
-  #showRegistrationError(message) {
-    const errorContainer = this.#getOrCreateErrorContainer();
-    if (errorContainer) {
-      errorContainer.textContent = message;
-      errorContainer.style.display = 'block';
-    }
-  }
-
-  /**
-   * Clear registration error message
-   */
-  #clearRegistrationError() {
-    const errorContainer = document.getElementById('parent-class-error-message');
-    if (errorContainer) {
-      errorContainer.style.display = 'none';
-      errorContainer.textContent = '';
-    }
-  }
-
-  /**
-   * Show registration message (info or warning)
-   */
-  #showRegistrationMessage(message, type = 'info') {
-    let messageContainer = document.getElementById('parent-class-info-message');
-
-    if (!messageContainer) {
-      // Create info message container
-      messageContainer = document.createElement('div');
-      messageContainer.id = 'parent-class-info-message';
-
-      // Insert after the class select
-      const classSelect = document.getElementById('parent-class-select');
-      const inputField = classSelect?.closest('.input-field');
-      if (inputField) {
-        inputField.parentNode.insertBefore(messageContainer, inputField.nextSibling);
-      }
-    }
-
-    // Set styles based on message type
-    if (type === 'info') {
-      messageContainer.style.cssText =
-        'margin-top: 10px; padding: 10px; background: #e3f2fd; border: 1px solid #2196f3; border-radius: 4px; color: #1976d2; font-size: 14px; display: block;';
-    } else if (type === 'warning') {
-      messageContainer.style.cssText =
-        'margin-top: 10px; padding: 10px; background: #fff3e0; border: 1px solid #ff9800; border-radius: 4px; color: #f57c00; font-size: 14px; display: block;';
-    }
-
-    messageContainer.textContent = message;
-  }
-
-  /**
-   * Clear registration info message
-   */
-  #clearRegistrationMessage() {
-    const messageContainer = document.getElementById('parent-class-info-message');
-    if (messageContainer) {
-      messageContainer.style.display = 'none';
-      messageContainer.textContent = '';
-    }
-  }
 
   /**
    * Attach event listeners to filter chips with cascading logic
@@ -1963,8 +1858,8 @@ export class ParentRegistrationForm {
       const startTime = daySchedule.startTime;
       const endTime = daySchedule.endTime;
 
-      const startMinutes = this.#parseTime(startTime);
-      const endMinutes = this.#parseTime(endTime);
+      const startMinutes = parseTime(startTime);
+      const endMinutes = parseTime(endTime);
 
       // Check for valid time window
       if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
@@ -1998,7 +1893,7 @@ export class ParentRegistrationForm {
 
       // Generate potential time slots (every 30 minutes from start to end)
       for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += 30) {
-        const currentTimeStr = this.#formatTimeFromMinutes(currentMinutes);
+        const currentTimeStr = formatTimeFromMinutes(currentMinutes);
 
         // Check if this time slot conflicts with existing registrations
         const hasConflict = this.#checkTimeSlotConflict(currentMinutes, 30, existingRegistrations);
@@ -2027,7 +1922,7 @@ export class ParentRegistrationForm {
               return;
             }
 
-            const slotTime = this.#formatTime(currentTimeStr);
+            const slotTime = formatDisplayTime(currentTimeStr);
 
             timeSlots.push({
               day: day,
@@ -2347,7 +2242,7 @@ export class ParentRegistrationForm {
     if (selectionDisplay) {
       const instructor = slot.dataset.instructorId;
       const dayName = slot.dataset.day.charAt(0).toUpperCase() + slot.dataset.day.slice(1);
-      const timeFormatted = this.#formatTime(slot.dataset.time);
+      const timeFormatted = formatDisplayTime(slot.dataset.time);
       const instrument = slot.dataset.instrument;
       const length = slot.dataset.length;
 
@@ -2393,7 +2288,7 @@ export class ParentRegistrationForm {
     }
 
     // Convert start time to minutes since midnight
-    const startMinutes = this.#parseTime(startTime);
+    const startMinutes = parseTime(startTime);
     const endMinutes = startMinutes + lengthMinutes;
 
     console.log(
@@ -2436,7 +2331,7 @@ export class ParentRegistrationForm {
         }
         regEndMinutes = regStartMinutes + regLengthMinutes;
         console.log(
-          `🎸 Waitlist class detected - using special conflict times: ${regDay} ${this.#formatTimeFromMinutes(regStartMinutes)}-${this.#formatTimeFromMinutes(regEndMinutes)}`
+          `🎸 Waitlist class detected - using special conflict times: ${regDay} ${formatTimeFromMinutes(regStartMinutes)}-${formatTimeFromMinutes(regEndMinutes)}`
         );
       } else {
         // Parse registration time and calculate end time for regular classes
@@ -2445,7 +2340,7 @@ export class ParentRegistrationForm {
           continue;
         }
 
-        regStartMinutes = this.#parseTime(regStartTime);
+        regStartMinutes = parseTime(regStartTime);
         regLengthMinutes = registration.length || registration.lengthMinutes || 30; // Default to 30 if not specified
         regEndMinutes = regStartMinutes + regLengthMinutes;
       }
@@ -2464,9 +2359,9 @@ export class ParentRegistrationForm {
         let formattedStartTime;
         if (ClassManager.isRockBandClass(registration.classId)) {
           // For waitlist classes, show the special conflict time instead of actual class time
-          formattedStartTime = this.#formatTime(this.#formatTimeFromMinutes(regStartMinutes));
+          formattedStartTime = formatDisplayTime(formatTimeFromMinutes(regStartMinutes));
         } else {
-          formattedStartTime = this.#formatTime(regStartTime);
+          formattedStartTime = formatDisplayTime(regStartTime);
         }
 
         // Get instructor name from the instructor object if available
@@ -2576,58 +2471,6 @@ export class ParentRegistrationForm {
     return false;
   }
 
-  /**
-   * Check if Late Bus transportation is valid for the selected time
-   * @param {string} day - Day of the week (e.g., 'Monday', 'Wednesday')
-   * @param {string} startTime - Start time (e.g., '14:30')
-   * @param {number} lengthMinutes - Duration in minutes
-   * @param {string} transportationType - Selected transportation type
-   * @returns {object} Validation result with isValid boolean and errorMessage
-   */
-  #validateBusTimeRestrictions(day, startTime, lengthMinutes, transportationType) {
-    // Only validate if Late Bus is selected
-    if (transportationType !== 'bus') {
-      return { isValid: true, errorMessage: null };
-    }
-
-    // Parse start time and calculate end time
-    const startMinutes = this.#parseTime(startTime);
-    if (startMinutes === null) {
-      console.error('Invalid start time:', startTime);
-      return { isValid: true, errorMessage: null }; // Skip validation if time is invalid
-    }
-
-    const lengthInMinutes = parseInt(lengthMinutes) || 0; // Ensure it's a number
-    const endMinutes = startMinutes + lengthInMinutes;
-
-    // Convert end time back to time string for display (use 12-hour format)
-    const endTimeHHMM = this.#formatTimeFromMinutes(endMinutes);
-    const endTimeDisplay = this.#formatTime(endTimeHHMM);
-
-    // Bus schedule restrictions
-    const busDeadlines = {
-      Monday: '16:45', // 4:45 PM
-      Tuesday: '16:45', // 4:45 PM
-      Wednesday: '16:15', // 4:15 PM
-      Thursday: '16:45', // 4:45 PM
-      Friday: '16:45', // 4:45 PM
-    };
-
-    const deadlineTime = busDeadlines[day];
-    if (!deadlineTime) {
-      return { isValid: true, errorMessage: null }; // Unknown day, allow
-    }
-
-    const deadlineMinutes = this.#parseTime(deadlineTime);
-    const deadlineDisplay = this.#formatTime(deadlineTime);
-
-    if (endMinutes > deadlineMinutes) {
-      const errorMessage = `Late Bus is not available for lessons ending after ${deadlineDisplay} on ${day}. This lesson ends at ${endTimeDisplay}. Please select "Late Pick Up" instead or choose a different time slot.`;
-      return { isValid: false, errorMessage };
-    }
-
-    return { isValid: true, errorMessage: null };
-  }
 
   /**
    * Validate registration data
@@ -2738,7 +2581,7 @@ export class ParentRegistrationForm {
     );
     const transportationType = transportationTypeRadio?.value || 'pickup';
 
-    const busValidation = this.#validateBusTimeRestrictions(
+    const busValidation = validateBusTimeRestrictions(
       dayName,
       this.selectedLesson.time,
       this.selectedLesson.length,
@@ -2838,7 +2681,7 @@ export class ParentRegistrationForm {
       );
       const transportationType = transportationTypeRadio?.value || 'pickup';
 
-      const busValidation = this.#validateBusTimeRestrictions(
+      const busValidation = validateBusTimeRestrictions(
         selectedClass.day,
         selectedClass.startTime,
         selectedClass.length,
@@ -2987,7 +2830,7 @@ export class ParentRegistrationForm {
     this.#hideAllRegistrationContainers();
 
     // Clear any error messages
-    this.#clearRegistrationError();
+    clearErrorMessage('parent-class-error-message');
 
     // Reinitialize the hybrid interface to restore proper form state
     this.#initializeHybridInterface();
@@ -3026,7 +2869,7 @@ export class ParentRegistrationForm {
     this.#hideAllRegistrationContainers();
 
     // Clear any error messages
-    this.#clearRegistrationError();
+    clearErrorMessage('parent-class-error-message');
 
     // Disable register button again
     const registerButton = document.getElementById('parent-create-group-registration-btn');
@@ -3155,7 +2998,7 @@ export class ParentRegistrationForm {
       : 'the instructor';
 
     // Format time
-    const timeFormatted = this.#formatTime(registrationData.startTime);
+    const timeFormatted = formatDisplayTime(registrationData.startTime);
 
     // Format transportation type
     const transportationDisplay =
@@ -3210,7 +3053,7 @@ export class ParentRegistrationForm {
       : 'the instructor';
 
     // Format time
-    const timeFormatted = this.#formatTime(registrationData.startTime);
+    const timeFormatted = formatDisplayTime(registrationData.startTime);
 
     // Format transportation type
     const transportationDisplay =
@@ -3263,7 +3106,7 @@ export class ParentRegistrationForm {
       : 'the instructor';
 
     // Format time
-    const timeFormatted = this.#formatTime(registrationData.startTime);
+    const timeFormatted = formatDisplayTime(registrationData.startTime);
 
     // Format transportation type
     const transportationDisplay =
@@ -3375,7 +3218,7 @@ export class ParentRegistrationForm {
     }
 
     // Clear any error messages
-    this.#clearRegistrationError();
+    clearErrorMessage('parent-class-error-message');
 
     // Hide all registration containers (type, private, group)
     this.#hideAllRegistrationContainers();
@@ -3501,5 +3344,42 @@ export class ParentRegistrationForm {
         delete button.dataset.originalText;
       }
     }
+  }
+
+  /**
+   * Check if we're in an enrollment period (priority or open)
+   * @returns {boolean} True if current period allows next trimester registration
+   */
+  _isEnrollmentPeriodActive() {
+    const currentPeriod = window.UserSession?.getCurrentPeriod?.();
+    return (
+      currentPeriod &&
+      (currentPeriod.periodType === 'priorityEnrollment' ||
+        currentPeriod.periodType === 'openEnrollment')
+    );
+  }
+
+  /**
+   * Check if user can access next trimester based on period and registration status
+   * Open enrollment: everyone
+   * Priority enrollment: only returning families
+   * @returns {boolean} True if user has access to next trimester registration
+   */
+  _canAccessNextTrimester() {
+    const currentPeriod = window.UserSession?.getCurrentPeriod?.();
+    if (!currentPeriod) return false;
+
+    // Open enrollment: everyone can access
+    if (currentPeriod.periodType === 'openEnrollment') {
+      return true;
+    }
+
+    // Priority enrollment: only returning families (those with current registrations)
+    if (currentPeriod.periodType === 'priorityEnrollment') {
+      const currentRegistrations = this.registrations || [];
+      return currentRegistrations.length > 0;
+    }
+
+    return false;
   }
 }

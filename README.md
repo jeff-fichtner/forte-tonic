@@ -39,12 +39,18 @@ Originally a Google Apps Script application, migrated to Node.js for improved pe
 
 ## System Architecture
 
-**Backend**: Controller → Service → Repository pattern with Express.js  
-**Frontend**: Vanilla JavaScript SPA with ViewModel pattern  
-**Database**: Google Sheets via API with service account authentication  
+**Backend**: Controller → Service → Repository pattern with Express.js
+**Frontend**: Vanilla JavaScript SPA with ViewModel pattern
+**Database**: Google Sheets via API with service account authentication
 **Auth**: Phone number (parents) or 6-digit AccessCode (staff)
 
-See [docs/technical/ARCHITECTURE.md](docs/technical/ARCHITECTURE.md) for details.
+**Key Components**:
+- 9 Services (1 application, 4 domain, 4 supporting)
+- 4 Repositories (all extend BaseRepository with consistent caching)
+- RESTful API with Express.js
+- Service container for dependency injection
+
+See [docs/technical/ARCHITECTURE_COMPLETE.md](docs/technical/ARCHITECTURE_COMPLETE.md) for detailed architecture information.
 
 ## Getting Started
 
@@ -84,10 +90,10 @@ See [docs/technical/ENVIRONMENT_VARIABLES.md](docs/technical/ENVIRONMENT_VARIABL
 
 ## API Overview
 
-**Authentication**: `/api/authenticateByAccessCode`  
-**Users**: `/api/getStudents`, `/api/getInstructors`, `/api/getAdmins`  
-**Registration**: `/api/registrations`, `/api/unregister`, `/api/getClasses`  
-**Attendance**: `/api/attendance`, `/api/attendance/summary/:id`  
+**Authentication**: `/api/authenticateByAccessCode`
+**Users**: `/api/getStudents`, `/api/getInstructors`, `/api/getAdmins`
+**Registration**: `/api/registrations` (POST, DELETE), `/api/getClasses`
+**Attendance**: `/api/attendance`, `/api/attendance/summary/:id`
 **System**: `/api/health`, `/api/version`
 
 Full API docs in `docs/generated/`.

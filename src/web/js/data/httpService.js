@@ -151,11 +151,18 @@ export class HttpService {
    *
    */
   static post(serverFunctionName, data, mapper = null, context = null, ...args) {
-    // For new API endpoints (like registrations), send data directly
-    // For legacy endpoints, wrap in the old format
-    const isNewEndpoint = ['registrations'].includes(serverFunctionName);
-    const payload = isNewEndpoint ? data : [{ data }, ...args];
-    return this.#callServerFunction(serverFunctionName, payload, mapper, context, 'POST');
+    // Send data directly to all endpoints (standardized format)
+    return this.#callServerFunction(serverFunctionName, data, mapper, context, 'POST');
+  }
+
+  /**
+   * DELETE request to server
+   * @param {string} serverFunctionName - The endpoint name or path with ID (e.g., 'registrations/123')
+   * @param {function} mapper - Optional mapper function for response
+   * @param {object} context - Optional context for the request
+   */
+  static delete(serverFunctionName, mapper = null, context = null) {
+    return this.#callServerFunction(serverFunctionName, null, mapper, context, 'DELETE');
   }
 
   // Updated method for calling Node.js server functions via HTTP

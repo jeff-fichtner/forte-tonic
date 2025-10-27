@@ -18,6 +18,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
   let repository;
   let mockDbClient;
   let mockSheets;
+  let mockConfigService;
 
   beforeEach(() => {
     // Mock Google Sheets API
@@ -42,7 +43,15 @@ describe('RegistrationRepository - Delete Functionality', () => {
       deleteRecord: jest.fn().mockResolvedValue(true),
     };
 
-    repository = new RegistrationRepository(mockDbClient);
+    // Create mock config service
+    mockConfigService = {
+      getConfig: jest.fn(() => ({
+        environment: 'test',
+        logLevel: 'info',
+      })),
+    };
+
+    repository = new RegistrationRepository(mockDbClient, mockConfigService);
     repository.clearCache = jest.fn();
     repository.cache = new Map(); // Add cache to repository for testing
   });
@@ -134,6 +143,14 @@ describe('RegistrationRepository - Delete Functionality', () => {
       expect(mockSheets.spreadsheets.batchUpdate).not.toHaveBeenCalled();
     });
 
+    test('should require userId for audit trail', async () => {
+      repository.getById = jest.fn().mockResolvedValue(mockRegistration);
+
+      await expect(repository.delete(testRegistrationId)).rejects.toThrow(
+        'userId is required for audit trail'
+      );
+    });
+
     test('should handle deleteRecord failure gracefully', async () => {
       repository.getById = jest.fn().mockResolvedValue(mockRegistration);
       mockDbClient.deleteRecord.mockRejectedValue(new Error('Database delete failed'));
@@ -215,6 +232,184 @@ describe('RegistrationRepository - Delete Functionality', () => {
       // Verify cache was cleared
       expect(repository.clearCache).toHaveBeenCalled();
       expect(mockDbClient.clearCache).toHaveBeenCalledWith('registrations');
+    });
+  });
+
+  describe('getRegistrationsByTrimester', () => {
+    test('should get registrations for valid trimester', async () => {
+      const mockRegistrations = [
+        {
+          id: 'c4b3d3f0-1234-4567-89ab-cdef01234567',
+          studentId: 'student-1',
+          instructorId: 'instructor-1',
+        },
+      ];
+
+      repository.getFromTable = jest.fn().mockResolvedValue(mockRegistrations);
+
+      const result = await repository.getRegistrationsByTrimester('fall');
+
+      expect(result).toEqual(mockRegistrations);
+      expect(repository.getFromTable).toHaveBeenCalledWith('registrations_fall');
+    });
+
+    test('should throw error for invalid trimester', async () => {
+      await expect(repository.getRegistrationsByTrimester('summer')).rejects.toThrow(
+        'Invalid trimester: summer'
+      );
+    });
+
+    test('should throw error for capitalized trimester', async () => {
+      await expect(repository.getRegistrationsByTrimester('Fall')).rejects.toThrow(
+        'Invalid trimester: Fall'
+      );
+    });
+
+    test('should work with all valid trimesters', async () => {
+      repository.getFromTable = jest.fn().mockResolvedValue([]);
+
+      await repository.getRegistrationsByTrimester('fall');
+      expect(repository.getFromTable).toHaveBeenCalledWith('registrations_fall');
+
+      await repository.getRegistrationsByTrimester('winter');
+      expect(repository.getFromTable).toHaveBeenCalledWith('registrations_winter');
+
+      await repository.getRegistrationsByTrimester('spring');
+      expect(repository.getFromTable).toHaveBeenCalledWith('registrations_spring');
+    });
+  });
+
+  describe('getFromTable', () => {
+    test('should get registrations from specific table', async () => {
+      const mockData = [
+        ['reg-1', 'student-1', 'instructor-1'],
+        ['reg-2', 'student-2', 'instructor-2'],
+      ];
+
+      mockDbClient.getCachedData.mockResolvedValue([
+        { id: 'reg-1' },
+        { id: 'reg-2' },
+      ]);
+
+      const result = await repository.getFromTable('registrations_fall');
+
+      expect(mockDbClient.getCachedData).toHaveBeenCalledWith(
+        'registrations_fall',
+        expect.any(Function)
+      );
+      expect(result).toHaveLength(2);
+    });
+
+    test('should handle empty table', async () => {
+      mockDbClient.getCachedData.mockResolvedValue([]);
+
+      const result = await repository.getFromTable('registrations_winter');
+
+      expect(result).toEqual([]);
+    });
+
+    test('should filter out null entries from invalid rows', async () => {
+      mockDbClient.getCachedData.mockResolvedValue([
+        { id: 'reg-1' },
+        null, // Invalid row
+        { id: 'reg-2' },
+      ]);
+
+      const result = await repository.getFromTable('registrations_spring');
+
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe('reg-1');
+      expect(result[1].id).toBe('reg-2');
+    });
+  });
+
+  describe('createInTable', () => {
+    test('should create registration in specific table', async () => {
+      const registrationData = {
+        studentId: 'student-1',
+        instructorId: 'instructor-1',
+        day: 'Monday',
+        startTime: '10:00',
+        length: 30,
+        registrationType: 'private',
+        createdBy: 'test-user@example.com',
+      };
+
+      mockDbClient.appendRecordv2 = jest.fn().mockResolvedValue(true);
+      repository.clearCache = jest.fn();
+
+      const result = await repository.createInTable('registrations_winter', registrationData);
+
+      expect(result).toBeDefined();
+      // studentId is wrapped in value object, check the value property
+      expect(result.studentId.value || result.studentId).toBe('student-1');
+      expect(mockDbClient.appendRecordv2).toHaveBeenCalledWith(
+        'registrations_winter',
+        expect.any(Object),
+        'test-user@example.com'
+      );
+      expect(repository.clearCache).toHaveBeenCalled();
+      expect(mockDbClient.clearCache).toHaveBeenCalledWith('registrations_winter');
+    });
+
+    test('should throw error if createdBy is missing', async () => {
+      const registrationData = {
+        studentId: 'student-1',
+        instructorId: 'instructor-1',
+        day: 'Monday',
+        startTime: '10:00',
+        length: 30,
+        registrationType: 'private',
+      };
+
+      await expect(
+        repository.createInTable('registrations_fall', registrationData)
+      ).rejects.toThrow('createdBy is required for audit trail');
+    });
+
+    test('should generate UUID if not provided', async () => {
+      const registrationData = {
+        studentId: 'student-1',
+        instructorId: 'instructor-1',
+        day: 'Monday',
+        startTime: '10:00',
+        length: 30,
+        registrationType: 'private',
+        createdBy: 'test-user@example.com',
+      };
+
+      mockDbClient.appendRecordv2 = jest.fn().mockResolvedValue(true);
+      repository.clearCache = jest.fn();
+
+      const result = await repository.createInTable('registrations_spring', registrationData);
+
+      expect(result.id).toBeDefined();
+      // ID can be either a string or value object
+      const idValue = result.id.value || result.id;
+      expect(typeof idValue).toBe('string');
+      expect(idValue).toMatch(/^[0-9a-f-]{36}$/); // UUID format
+    });
+
+    test('should accept linkedPreviousRegistrationId without error', async () => {
+      const registrationData = {
+        studentId: 'student-1',
+        instructorId: 'instructor-1',
+        day: 'Monday',
+        startTime: '10:00',
+        length: 30,
+        registrationType: 'private',
+        linkedPreviousRegistrationId: 'c4b3d3f0-1234-4567-89ab-cdef01234567',
+        createdBy: 'test-user@example.com',
+      };
+
+      mockDbClient.appendRecordv2 = jest.fn().mockResolvedValue(true);
+      repository.clearCache = jest.fn();
+
+      const result = await repository.createInTable('registrations_fall', registrationData);
+
+      // Should not throw error and should create registration
+      expect(result).toBeDefined();
+      expect(result.id).toBeDefined();
     });
   });
 });

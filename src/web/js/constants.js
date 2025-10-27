@@ -24,8 +24,10 @@ export const ServerFunctions = {
   getRegistrations: 'registrations',
   getRooms: 'rooms',
   register: 'registrations',
-  unregister: 'unregister',
   authenticateByAccessCode: 'authenticateByAccessCode',
+  // Next trimester registration (enrollment periods only)
+  getNextTrimesterRegistrations: 'registrations/next-trimester',
+  createNextTrimesterRegistration: 'registrations/next-trimester',
 };
 
 // IndexedDB data stores

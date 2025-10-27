@@ -1,12 +1,40 @@
 /**
- * @file Tests for GoogleSheetsDbClient using mocks.
- * This test file focuses on testing GoogleSheetsDbClient behavior through mocks
- * without instantiating the actual class to avoid authentication issues.
+ * @file Unit tests for GoogleSheetsDbClient
+ * Tests actual implementation with stubbed Google Sheets API responses
  */
 
 import { jest } from '@jest/globals';
 
-// Mock the configuration service
+// Mock googleapis BEFORE importing GoogleSheetsDbClient
+const mockSheetsApi = {
+  spreadsheets: {
+    values: {
+      get: jest.fn(),
+      append: jest.fn(),
+      update: jest.fn(),
+      batchUpdate: jest.fn(),
+    },
+    get: jest.fn(),
+    batchUpdate: jest.fn(),
+  },
+};
+
+const mockAuth = jest.fn();
+
+// Mock the entire googleapis module
+jest.mock('googleapis', () => ({
+  google: {
+    auth: {
+      GoogleAuth: jest.fn().mockImplementation(() => mockAuth),
+    },
+    sheets: jest.fn().mockReturnValue(mockSheetsApi),
+  },
+}));
+
+// Now import GoogleSheetsDbClient after mocking
+const { GoogleSheetsDbClient } = await import('../../src/database/googleSheetsDbClient.js');
+
+// Mock configuration service
 const mockConfigService = {
   getGoogleSheetsAuth: jest.fn().mockReturnValue({
     clientEmail: 'test@test.com',
@@ -15,293 +43,602 @@ const mockConfigService = {
   getGoogleSheetsConfig: jest.fn().mockReturnValue({
     spreadsheetId: 'test-spreadsheet-id',
   }),
+  logger: {
+    log: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
 };
 
 describe('GoogleSheetsDbClient', () => {
-  let MockGoogleSheetsDbClient;
-  let mockInstance;
+  let client;
 
   beforeEach(() => {
-    // Create a mock class that mimics GoogleSheetsDbClient behavior
-    MockGoogleSheetsDbClient = jest.fn().mockImplementation((configService = mockConfigService) => {
-      const authConfig = configService.getGoogleSheetsAuth();
-      const sheetsConfig = configService.getGoogleSheetsConfig();
-
-      const instance = {
-        configService: configService,
-        spreadsheetId: sheetsConfig.spreadsheetId,
-        workingSheetInfo: {
-          admins: { sheet: 'Admins', startRow: 2 },
-          students: { sheet: 'Students', startRow: 2 },
-          instructors: { sheet: 'Instructors', startRow: 2 },
-        },
-
-        // Mock methods
-        getAllRecords: jest.fn(),
-        getAllFromSheet: jest.fn(),
-        getFromSheetByColumnValue: jest.fn(),
-        appendRecord: jest.fn(),
-        updateRecord: jest.fn(),
-        deleteRecord: jest.fn(),
-        insertIntoSheet: jest.fn(),
-        readRange: jest.fn(),
-        writeRange: jest.fn(),
-      };
-
-      return instance;
-    });
-
-    mockInstance = new MockGoogleSheetsDbClient(mockConfigService);
-  });
-
-  afterEach(() => {
     jest.clearAllMocks();
+    client = new GoogleSheetsDbClient(mockConfigService);
   });
 
-  describe('constructor behavior', () => {
-    test('should initialize with service account authentication', () => {
-      const client = new MockGoogleSheetsDbClient(mockConfigService);
-
-      expect(MockGoogleSheetsDbClient).toHaveBeenCalledWith(mockConfigService);
-      expect(client.configService).toBe(mockConfigService);
+  describe('constructor', () => {
+    test('should initialize with correct spreadsheet ID', () => {
+      expect(client.spreadsheetId).toBe('test-spreadsheet-id');
     });
 
-    test('should use settings when config service returns null', () => {
-      const customConfigService = {
-        getGoogleSheetsAuth: jest.fn().mockReturnValue({
-          clientEmail: 'test@test.com',
-          privateKey: 'test-private-key',
-        }),
-        getGoogleSheetsConfig: jest.fn().mockReturnValue({
-          spreadsheetId: 'config-spreadsheet-id',
-        }),
+    test('should initialize cache', () => {
+      expect(client.cache).toBeInstanceOf(Map);
+      expect(client.cacheTimestamps).toBeInstanceOf(Map);
+      expect(client.CACHE_TTL).toBe(5 * 60 * 1000);
+    });
+
+    test('should have workingSheetInfo configured', () => {
+      expect(client.workingSheetInfo).toBeDefined();
+      expect(client.workingSheetInfo.admins).toBeDefined();
+      expect(client.workingSheetInfo.students).toBeDefined();
+      expect(client.workingSheetInfo.registrations).toBeDefined();
+    });
+  });
+
+  describe('getAllRecords', () => {
+    test('should fetch data with optimized column range', async () => {
+      const mockApiResponse = {
+        data: {
+          values: [
+            ['admin-1', 'admin1@test.com', 'Doe', 'John', '555-1234'],
+            ['admin-2', 'admin2@test.com', 'Smith', 'Jane', '555-5678'],
+          ],
+        },
       };
 
-      const client = new MockGoogleSheetsDbClient(customConfigService);
-
-      expect(client.spreadsheetId).toBe('config-spreadsheet-id');
-    });
-  });
-
-  describe('getAllRecords method', () => {
-    test('should successfully get all records from a sheet', async () => {
-      const mockData = [
-        ['admin-id-1', 'admin1@test.com', 'Doe', 'John'],
-        ['admin-id-2', 'admin2@test.com', 'Smith', 'Jane'],
-      ];
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue(mockApiResponse);
 
       const mapFunc = row => ({
         id: row[0],
         email: row[1],
         lastName: row[2],
         firstName: row[3],
+        phone: row[4],
       });
 
-      const expectedResult = mockData.map(mapFunc);
-      mockInstance.getAllRecords.mockResolvedValue(expectedResult);
+      const result = await client.getAllRecords('admins', mapFunc);
 
-      const result = await mockInstance.getAllRecords('admins', mapFunc);
-
-      expect(mockInstance.getAllRecords).toHaveBeenCalledWith('admins', mapFunc);
-      expect(result).toEqual(expectedResult);
-      expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({
-        id: 'admin-id-1',
-        email: 'admin1@test.com',
-        lastName: 'Doe',
-        firstName: 'John',
+      // Verify optimized range calculation
+      // admins columnMap has max index 4 (phone), so column = E (65+4=69='E')
+      expect(mockSheetsApi.spreadsheets.values.get).toHaveBeenCalledWith({
+        spreadsheetId: 'test-spreadsheet-id',
+        range: 'admins!A2:E',
       });
+
+      expect(result).toEqual([
+        { id: 'admin-1', email: 'admin1@test.com', lastName: 'Doe', firstName: 'John', phone: '555-1234' },
+        { id: 'admin-2', email: 'admin2@test.com', lastName: 'Smith', firstName: 'Jane', phone: '555-5678' },
+      ]);
     });
 
-    test('should handle empty sheet', async () => {
-      mockInstance.getAllRecords.mockResolvedValue([]);
-
-      const mapFunc = row => ({ id: row[0] });
-      const result = await mockInstance.getAllRecords('admins', mapFunc);
-
-      expect(result).toEqual([]);
-    });
-
-    test('should handle sheet info not found', async () => {
-      const error = new Error('Sheet info not found for key: NonExistentSheet');
-      mockInstance.getAllRecords.mockRejectedValue(error);
-
-      const mapFunc = row => ({ id: row[0] });
-
-      await expect(mockInstance.getAllRecords('NonExistentSheet', mapFunc)).rejects.toThrow(
-        'Sheet info not found for key: NonExistentSheet'
-      );
-    });
-
-    test('should handle API errors', async () => {
-      const error = new Error('Sheets API error');
-      mockInstance.getAllRecords.mockRejectedValue(error);
-
-      const mapFunc = row => ({ id: row[0] });
-
-      await expect(mockInstance.getAllRecords('admins', mapFunc)).rejects.toThrow(
-        'Sheets API error'
-      );
-    });
-  });
-
-  describe('insertIntoSheet method', () => {
-    test('should successfully insert data into sheet', async () => {
-      const data = [['new-id', 'new@test.com', 'New', 'User']];
-      const mockResponse = {
-        updates: {
-          updatedCells: 4,
-          updatedRows: 1,
+    test('should filter out null and undefined mapped values', async () => {
+      const mockApiResponse = {
+        data: {
+          values: [
+            ['admin-1', 'admin1@test.com'],
+            ['admin-2', 'admin2@test.com'],
+            ['', ''], // Empty row
+          ],
         },
       };
 
-      mockInstance.insertIntoSheet.mockResolvedValue(mockResponse);
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue(mockApiResponse);
 
-      const result = await mockInstance.insertIntoSheet('admins', data);
-
-      expect(mockInstance.insertIntoSheet).toHaveBeenCalledWith('admins', data);
-      expect(result).toEqual(mockResponse);
-    });
-
-    test('should handle sheet info not found', async () => {
-      const data = [['test']];
-      const error = new Error('Sheet info not found for key: NonExistentSheet');
-      mockInstance.insertIntoSheet.mockRejectedValue(error);
-
-      await expect(mockInstance.insertIntoSheet('NonExistentSheet', data)).rejects.toThrow(
-        'Sheet info not found for key: NonExistentSheet'
-      );
-    });
-  });
-
-  describe('getFromSheetByColumnValue method', () => {
-    test('should successfully get records by column value', async () => {
-      const mockData = [{ id: 'student-1', email: 'student1@test.com', firstName: 'Emma' }];
-
-      mockInstance.getFromSheetByColumnValue.mockResolvedValue(mockData);
-
-      const mapFunc = row => ({
-        id: row[0],
-        email: row[1],
-        firstName: row[3],
-      });
-
-      const result = await mockInstance.getFromSheetByColumnValue(
-        'students',
-        0,
-        'student-1',
-        mapFunc
-      );
-
-      expect(mockInstance.getFromSheetByColumnValue).toHaveBeenCalledWith(
-        'students',
-        0,
-        'student-1',
-        mapFunc
-      );
-      expect(result).toEqual(mockData);
-    });
-
-    test('should return empty array when no records found', async () => {
-      mockInstance.getFromSheetByColumnValue.mockResolvedValue([]);
-
-      const mapFunc = row => ({ id: row[0] });
-      const result = await mockInstance.getFromSheetByColumnValue(
-        'students',
-        0,
-        'non-existent',
-        mapFunc
-      );
-
-      expect(result).toEqual([]);
-    });
-  });
-
-  describe('readRange method', () => {
-    test('should successfully read data from a range', async () => {
-      const mockData = [
-        ['Header1', 'Header2'],
-        ['Row1Col1', 'Row1Col2'],
-        ['Row2Col1', 'Row2Col2'],
-      ];
-
-      mockInstance.readRange.mockResolvedValue(mockData);
-
-      const result = await mockInstance.readRange('Sheet1', 'A1:B3');
-
-      expect(mockInstance.readRange).toHaveBeenCalledWith('Sheet1', 'A1:B3');
-      expect(result).toEqual(mockData);
-    });
-
-    test('should handle empty range', async () => {
-      mockInstance.readRange.mockResolvedValue([]);
-
-      const result = await mockInstance.readRange('Sheet1', 'A1:B3');
-
-      expect(result).toEqual([]);
-    });
-  });
-
-  describe('writeRange method', () => {
-    test('should successfully write data to a range', async () => {
-      const data = [
-        ['Header1', 'Header2'],
-        ['Row1Col1', 'Row1Col2'],
-      ];
-
-      const mockResponse = {
-        updatedCells: 4,
-        updatedRows: 2,
+      const mapFunc = row => {
+        if (!row[0]) return null; // Filter out empty rows
+        return { id: row[0], email: row[1] };
       };
 
-      mockInstance.writeRange.mockResolvedValue(mockResponse);
+      const result = await client.getAllRecords('admins', mapFunc);
 
-      const result = await mockInstance.writeRange('Sheet1', 'A1:B2', data);
+      expect(result).toHaveLength(2);
+      expect(result).toEqual([
+        { id: 'admin-1', email: 'admin1@test.com' },
+        { id: 'admin-2', email: 'admin2@test.com' },
+      ]);
+    });
 
-      expect(mockInstance.writeRange).toHaveBeenCalledWith('Sheet1', 'A1:B2', data);
-      expect(result).toEqual(mockResponse);
+    test('should handle empty sheet', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: { values: [] },
+      });
+
+      const result = await client.getAllRecords('admins', row => ({ id: row[0] }));
+
+      expect(result).toEqual([]);
+    });
+
+    test('should handle missing values property', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: {},
+      });
+
+      const result = await client.getAllRecords('admins', row => ({ id: row[0] }));
+
+      expect(result).toEqual([]);
+    });
+
+    test('should throw error for invalid sheet key', async () => {
+      await expect(
+        client.getAllRecords('nonExistentSheet', row => row)
+      ).rejects.toThrow('Sheet info not found for key: nonExistentSheet');
+    });
+
+    test('should propagate API errors', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockRejectedValue(
+        new Error('API Error: Permission denied')
+      );
+
+      await expect(
+        client.getAllRecords('admins', row => ({ id: row[0] }))
+      ).rejects.toThrow('API Error: Permission denied');
+    });
+
+    test('should calculate correct column for registrations (column S)', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: { values: [] },
+      });
+
+      await client.getAllRecords('registrations', row => ({ id: row[0] }));
+
+      // registrations has max column index 18 (intentSubmittedBy)
+      // 65 + 18 = 83 = 'S'
+      expect(mockSheetsApi.spreadsheets.values.get).toHaveBeenCalledWith({
+        spreadsheetId: 'test-spreadsheet-id',
+        range: 'registrations!A2:S',
+      });
     });
   });
 
-  describe('appendRecord method', () => {
-    test('should successfully append a record', async () => {
-      const record = { id: 'new-1', email: 'new@test.com', firstName: 'New', lastName: 'User' };
-      const mockResponse = { updatedRows: 1 };
+  describe('getCachedData', () => {
+    test('should fetch fresh data on cache miss', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: {
+          values: [['admin-1', 'test@test.com']],
+        },
+      });
 
-      mockInstance.appendRecord.mockResolvedValue(mockResponse);
+      const mapFunc = row => ({ id: row[0], email: row[1] });
+      const result = await client.getCachedData('admins', mapFunc);
 
-      const result = await mockInstance.appendRecord('admins', record);
+      expect(mockSheetsApi.spreadsheets.values.get).toHaveBeenCalled();
+      expect(result).toEqual([{ id: 'admin-1', email: 'test@test.com' }]);
+    });
 
-      expect(mockInstance.appendRecord).toHaveBeenCalledWith('admins', record);
-      expect(result).toEqual(mockResponse);
+    test('should return cached data on cache hit', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: {
+          values: [['admin-1', 'test@test.com']],
+        },
+      });
+
+      const mapFunc = row => ({ id: row[0], email: row[1] });
+
+      // First call - cache miss
+      await client.getCachedData('admins', mapFunc);
+      expect(mockSheetsApi.spreadsheets.values.get).toHaveBeenCalledTimes(1);
+
+      // Second call - cache hit
+      const result = await client.getCachedData('admins', mapFunc);
+      expect(mockSheetsApi.spreadsheets.values.get).toHaveBeenCalledTimes(1); // Not called again
+      expect(result).toEqual([{ id: 'admin-1', email: 'test@test.com' }]);
+    });
+
+    test('should refresh cache after TTL expires', async () => {
+      jest.useFakeTimers();
+
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: {
+          values: [['admin-1', 'test@test.com']],
+        },
+      });
+
+      const mapFunc = row => ({ id: row[0], email: row[1] });
+
+      // First call
+      await client.getCachedData('admins', mapFunc);
+      expect(mockSheetsApi.spreadsheets.values.get).toHaveBeenCalledTimes(1);
+
+      // Advance time past TTL (5 minutes)
+      jest.advanceTimersByTime(6 * 60 * 1000);
+
+      // Second call - cache expired
+      await client.getCachedData('admins', mapFunc);
+      expect(mockSheetsApi.spreadsheets.values.get).toHaveBeenCalledTimes(2);
+
+      jest.useRealTimers();
     });
   });
 
-  describe('updateRecord method', () => {
-    test('should successfully update a record', async () => {
-      const record = { id: 'existing-1', email: 'updated@test.com' };
-      const mockResponse = { updatedCells: 1 };
+  describe('clearCache', () => {
+    test('should clear specific sheet cache', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: { values: [['test']] },
+      });
 
-      mockInstance.updateRecord.mockResolvedValue(mockResponse);
+      await client.getCachedData('admins', row => ({ id: row[0] }));
+      expect(client.cache.has('admins')).toBe(true);
 
-      const result = await mockInstance.updateRecord('admins', record);
+      client.clearCache('admins');
+      expect(client.cache.has('admins')).toBe(false);
+      expect(client.cacheTimestamps.has('admins')).toBe(false);
+    });
 
-      expect(mockInstance.updateRecord).toHaveBeenCalledWith('admins', record);
-      expect(result).toEqual(mockResponse);
+    test('should clear all caches when no key specified', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: { values: [['test']] },
+      });
+
+      await client.getCachedData('admins', row => ({ id: row[0] }));
+      await client.getCachedData('students', row => ({ id: row[0] }));
+
+      client.clearCache();
+      expect(client.cache.size).toBe(0);
+      expect(client.cacheTimestamps.size).toBe(0);
     });
   });
 
-  describe('deleteRecord method', () => {
-    test('should successfully delete a record', async () => {
-      const recordId = 'delete-me-1';
-      const mockResponse = { deletedRows: 1 };
+  describe('getFromSheetByColumnValue', () => {
+    test('should filter records by column value', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: {
+          values: [
+            ['student-1', 'Smith', 'John'],
+            ['student-2', 'Doe', 'Jane'],
+            ['student-3', 'Smith', 'Bob'],
+          ],
+        },
+      });
 
-      mockInstance.deleteRecord.mockResolvedValue(mockResponse);
+      const result = await client.getFromSheetByColumnValue('students', 'lastName', 'Smith');
 
-      const result = await mockInstance.deleteRecord('admins', recordId);
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe('student-1');
+      expect(result[0].lastName).toBe('Smith');
+      expect(result[1].id).toBe('student-3');
+      expect(result[1].lastName).toBe('Smith');
+    });
 
-      expect(mockInstance.deleteRecord).toHaveBeenCalledWith('admins', recordId);
-      expect(result).toEqual(mockResponse);
+    test('should return empty array when no matches found', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: {
+          values: [
+            ['student-1', 'Smith', 'John'],
+          ],
+        },
+      });
+
+      const result = await client.getFromSheetByColumnValue('students', 'lastName', 'NonExistent');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getFromSheetByColumnValueSingle', () => {
+    test('should return first matching record', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: {
+          values: [
+            ['student-1', 'Smith', 'John'],
+            ['student-2', 'Smith', 'Jane'],
+          ],
+        },
+      });
+
+      const result = await client.getFromSheetByColumnValueSingle('students', 'lastName', 'Smith');
+
+      expect(result).toBeDefined();
+      expect(result.id).toBe('student-1');
+      expect(result.firstName).toBe('John');
+    });
+
+    test('should return null when no match found', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: {
+          values: [
+            ['student-1', 'Smith', 'John'],
+          ],
+        },
+      });
+
+      const result = await client.getFromSheetByColumnValueSingle('students', 'lastName', 'NonExistent');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('insertIntoSheet', () => {
+    test('should insert data and clear cache', async () => {
+      mockSheetsApi.spreadsheets.values.append.mockResolvedValue({
+        data: {
+          updates: {
+            updatedCells: 5,
+            updatedRows: 1,
+          },
+        },
+      });
+
+      // Add to cache first
+      client.cache.set('admins', [{ id: 'old-data' }]);
+      client.cacheTimestamps.set('admins', Date.now());
+
+      const data = {
+        id: 'admin-1',
+        email: 'test@test.com',
+        lastName: 'Doe',
+        firstName: 'John',
+        phone: '555-1234',
+      };
+
+      await client.insertIntoSheet('admins', data);
+
+      expect(mockSheetsApi.spreadsheets.values.append).toHaveBeenCalledWith({
+        spreadsheetId: 'test-spreadsheet-id',
+        range: 'admins!A:A',
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [['admin-1', 'test@test.com', 'Doe', 'John', '555-1234']],
+        },
+      });
+
+      // Verify cache was cleared
+      expect(client.cache.has('admins')).toBe(false);
+      expect(client.cacheTimestamps.has('admins')).toBe(false);
+    });
+
+    test('should handle sparse data with empty columns', async () => {
+      mockSheetsApi.spreadsheets.values.append.mockResolvedValue({
+        data: { updates: {} },
+      });
+
+      const data = {
+        id: 'admin-1',
+        email: 'test@test.com',
+        // lastName and firstName omitted
+        phone: '555-1234',
+      };
+
+      await client.insertIntoSheet('admins', data);
+
+      // Verify row has empty strings for missing columns
+      const call = mockSheetsApi.spreadsheets.values.append.mock.calls[0][0];
+      expect(call.requestBody.values[0]).toEqual(['admin-1', 'test@test.com', '', '', '555-1234']);
+    });
+  });
+
+  describe('updateRecord', () => {
+    test('should find and update record by ID', async () => {
+      // Mock getAllRecords to return existing data
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: {
+          values: [
+            ['admin-1', 'old@test.com', 'Doe', 'John', '555-1234'],
+            ['admin-2', 'admin2@test.com', 'Smith', 'Jane', '555-5678'],
+          ],
+        },
+      });
+
+      mockSheetsApi.spreadsheets.values.update.mockResolvedValue({
+        data: { updatedCells: 5 },
+      });
+
+      const updatedRecord = {
+        id: 'admin-2',
+        email: 'updated@test.com',
+        lastName: 'Smith',
+        firstName: 'Jane',
+        phone: '555-9999',
+      };
+
+      await client.updateRecord('admins', updatedRecord, 'test-user');
+
+      // Should update row 3 (startRow 2 + rowIndex 1)
+      expect(mockSheetsApi.spreadsheets.values.update).toHaveBeenCalledWith({
+        spreadsheetId: 'test-spreadsheet-id',
+        range: 'admins!A3:Z3',
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [['admin-2', 'updated@test.com', 'Smith', 'Jane', '555-9999']],
+        },
+      });
+    });
+
+    test('should not update when record not found', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: {
+          values: [
+            ['admin-1', 'admin1@test.com', 'Doe', 'John', '555-1234'],
+          ],
+        },
+      });
+
+      const updatedRecord = {
+        id: 'non-existent',
+        email: 'test@test.com',
+      };
+
+      await client.updateRecord('admins', updatedRecord, 'test-user');
+
+      expect(mockSheetsApi.spreadsheets.values.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteRecord', () => {
+    test('should find and delete record by ID', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: {
+          values: [
+            ['admin-1', 'admin1@test.com', 'Doe', 'John', '555-1234'],
+            ['admin-2', 'admin2@test.com', 'Smith', 'Jane', '555-5678'],
+          ],
+        },
+      });
+
+      mockSheetsApi.spreadsheets.get.mockResolvedValue({
+        data: {
+          sheets: [{
+            properties: {
+              sheetId: 123,
+              title: 'admins',
+            },
+          }],
+        },
+      });
+
+      mockSheetsApi.spreadsheets.batchUpdate.mockResolvedValue({
+        data: {},
+      });
+
+      await client.deleteRecord('admins', 'admin-2', 'test-user');
+
+      // Should delete row 3 (startRow 2 + rowIndex 1)
+      expect(mockSheetsApi.spreadsheets.batchUpdate).toHaveBeenCalledWith({
+        spreadsheetId: 'test-spreadsheet-id',
+        requestBody: {
+          requests: [{
+            deleteDimension: {
+              range: {
+                sheetId: 123,
+                dimension: 'ROWS',
+                startIndex: 2,
+                endIndex: 3,
+              },
+            },
+          }],
+        },
+      });
+    });
+
+    test('should not delete when record not found', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: {
+          values: [
+            ['admin-1', 'admin1@test.com', 'Doe', 'John', '555-1234'],
+          ],
+        },
+      });
+
+      await client.deleteRecord('admins', 'non-existent', 'test-user');
+
+      expect(mockSheetsApi.spreadsheets.batchUpdate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getMaxIdFromSheet', () => {
+    test('should return max numeric ID', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: {
+          values: [
+            ['5', 'test'],
+            ['10', 'test'],
+            ['3', 'test'],
+          ],
+        },
+      });
+
+      const maxId = await client.getMaxIdFromSheet('admins');
+
+      expect(maxId).toBe(10);
+    });
+
+    test('should return 0 for empty sheet', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: { values: [] },
+      });
+
+      const maxId = await client.getMaxIdFromSheet('admins');
+
+      expect(maxId).toBe(0);
+    });
+
+    test('should ignore non-numeric IDs', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: {
+          values: [
+            ['uuid-123', 'test'],
+            ['5', 'test'],
+            ['abc', 'test'],
+          ],
+        },
+      });
+
+      const maxId = await client.getMaxIdFromSheet('admins');
+
+      expect(maxId).toBe(5);
+    });
+
+    test('should return 0 when all IDs are non-numeric', async () => {
+      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
+        data: {
+          values: [
+            ['uuid-123', 'test'],
+            ['uuid-456', 'test'],
+          ],
+        },
+      });
+
+      const maxId = await client.getMaxIdFromSheet('admins');
+
+      expect(maxId).toBe(0);
+    });
+  });
+
+  describe('getAllDataParallel', () => {
+    test('should load multiple sheets in parallel', async () => {
+      mockSheetsApi.spreadsheets.values.get
+        .mockResolvedValueOnce({
+          data: { values: [['admin-1', 'admin@test.com']] },
+        })
+        .mockResolvedValueOnce({
+          data: { values: [['student-1', 'Smith']] },
+        });
+
+      const mapFunctions = {
+        admins: row => ({ id: row[0], email: row[1] }),
+        students: row => ({ id: row[0], lastName: row[1] }),
+      };
+
+      const result = await client.getAllDataParallel(['admins', 'students'], mapFunctions);
+
+      expect(result).toHaveProperty('admins');
+      expect(result).toHaveProperty('students');
+      expect(result.admins).toEqual([{ id: 'admin-1', email: 'admin@test.com' }]);
+      expect(result.students).toEqual([{ id: 'student-1', lastName: 'Smith' }]);
+    });
+  });
+
+  describe('batchWrite', () => {
+    test('should write multiple operations and clear affected caches', async () => {
+      // Add some cached data
+      client.cache.set('admins', [{ id: 'old' }]);
+      client.cache.set('students', [{ id: 'old' }]);
+      client.cacheTimestamps.set('admins', Date.now());
+      client.cacheTimestamps.set('students', Date.now());
+
+      mockSheetsApi.spreadsheets.values.batchUpdate.mockResolvedValue({
+        data: { totalUpdatedCells: 10 },
+      });
+
+      const operations = [
+        { range: 'admins!A2:E2', values: [['admin-1', 'test@test.com', 'Doe', 'John', '555-1234']] },
+        { range: 'students!A2:C2', values: [['student-1', 'Smith', 'Jane']] },
+      ];
+
+      await client.batchWrite(operations);
+
+      expect(mockSheetsApi.spreadsheets.values.batchUpdate).toHaveBeenCalledWith({
+        spreadsheetId: 'test-spreadsheet-id',
+        resource: {
+          valueInputOption: 'RAW',
+          data: operations.map(op => ({ range: op.range, values: op.values })),
+        },
+      });
+
+      // Verify affected caches were cleared
+      expect(client.cache.has('admins')).toBe(false);
+      expect(client.cache.has('students')).toBe(false);
     });
   });
 });

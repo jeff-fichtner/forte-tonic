@@ -5,20 +5,28 @@ import { Admin, Parent } from '../../src/models/shared/index.js';
 describe('UserRepository', () => {
   let repository;
   let mockGoogleSheetsDbClient;
+  let mockConfigService;
 
   beforeEach(() => {
     // Create mock GoogleSheetsDbClient
     mockGoogleSheetsDbClient = {
       getAllRecords: jest.fn(),
-      getAllFromSheet: jest.fn(),
       getFromSheetByColumnValue: jest.fn(),
       appendRecord: jest.fn(),
       updateRecord: jest.fn(),
       deleteRecord: jest.fn(),
     };
 
-    // Create fresh repository instance with mock client
-    repository = new UserRepository(mockGoogleSheetsDbClient);
+    // Create mock config service
+    mockConfigService = {
+      getConfig: jest.fn(() => ({
+        environment: 'test',
+        logLevel: 'info',
+      })),
+    };
+
+    // Create fresh repository instance with mock client and config service
+    repository = new UserRepository(mockGoogleSheetsDbClient, mockConfigService);
   });
 
   afterEach(() => {
@@ -100,6 +108,8 @@ describe('UserRepository', () => {
           firstName: 'Mike',
           phone: '555-9999',
           instrument1: 'Piano',
+          role: 'instructor',
+          isActive: true,
         }),
         new Instructor({
           id: 'inst-2',
@@ -108,6 +118,8 @@ describe('UserRepository', () => {
           firstName: 'Sarah',
           phone: '555-8888',
           instrument1: 'Violin',
+          role: 'instructor',
+          isActive: true,
         }),
       ];
 
@@ -241,45 +253,38 @@ describe('UserRepository', () => {
 
   describe('getStudentById', () => {
     test('should return student by id', async () => {
-      const mockStudents = [
-        {
-          id: 'student-1',
-          studentId: 'student1@test.com',
-          lastName: 'Johnson',
-          firstName: 'Emma',
-          grade: '5',
-          parent1Id: 'parent-1',
-        },
-        {
-          id: 'student-2',
-          studentId: 'student2@test.com',
-          lastName: 'Davis',
-          firstName: 'Liam',
-          grade: '4',
-          parent1Id: 'parent-2',
-        },
+      // Student.fromDatabaseRow expects an array: [id, lastName, firstName, lastNickname, firstNickname, grade, parent1Id, parent2Id]
+      const mockStudentRows = [
+        ['student-1', 'Johnson', 'Emma', '', '', '5', 'parent-1', ''],
+        ['student-2', 'Davis', 'Liam', '', '', '4', 'parent-2', ''],
       ];
 
-      // Mock the students property directly to avoid RepositoryHelper issues
-      repository.students = mockStudents;
-      mockGoogleSheetsDbClient.getAllRecords.mockResolvedValue(mockStudents);
+      // Mock the db client calls
+      mockGoogleSheetsDbClient.getAllRecords.mockImplementation(async (key, transformer) => {
+        if (key === 'students') {
+          return mockStudentRows.map(row => transformer(row));
+        }
+        if (key === 'parents') {
+          return [];
+        }
+        return [];
+      });
 
       const result = await repository.getStudentById('student-1');
 
-      expect(result).toEqual(
-        expect.objectContaining({
-          id: 'student-1',
-          studentId: 'student1@test.com',
-          lastName: 'Johnson',
-          firstName: 'Emma',
-        })
-      );
+      // Check that result has the correct properties using getters
+      expect(result.firstName).toBe('Emma');
+      expect(result.lastName).toBe('Johnson');
+      expect(result.grade).toBe('5');
+      // ID will be wrapped in StudentId value object
+      expect(result.id.value || result.id).toBe('student-1');
     });
 
     test('should return null when student not found', async () => {
       // Mock empty students array
-      repository.students = [];
-      mockGoogleSheetsDbClient.getAllRecords.mockResolvedValue([]);
+      mockGoogleSheetsDbClient.getAllRecords.mockImplementation(async (key, transformer) => {
+        return [];
+      });
 
       const result = await repository.getStudentById('non-existent');
 
