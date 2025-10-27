@@ -9,10 +9,15 @@ import crypto from 'crypto';
 import { BaseRepository } from './baseRepository.js';
 import { Registration } from '../models/shared/registration.js';
 import { RegistrationId } from '../utils/values/registrationId.js';
+import { UuidUtility } from '../utils/uuidUtility.js';
 
 export class RegistrationRepository extends BaseRepository {
-  constructor(dbClient) {
-    super('registrations', Registration, dbClient);
+  /**
+   * @param {Object} dbClient - Database client instance
+   * @param {Object} configService - Configuration service for logger initialization
+   */
+  constructor(dbClient, configService) {
+    super('registrations', Registration, dbClient, configService);
   }
 
   /**
@@ -245,20 +250,16 @@ export class RegistrationRepository extends BaseRepository {
   }
 
   /**
-   * Generate a UUID v4 string
+   * Generate a UUID v4 string using UuidUtility
    */
   generateUUID() {
-    // Try using crypto.randomUUID() if available
+    // Try using crypto.randomUUID() if available (Node.js 16.7.0+)
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
       return crypto.randomUUID();
     }
 
-    // Fallback to Math.random() based UUID generation
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-      const r = (Math.random() * 16) | 0;
-      const v = c === 'x' ? r : (r & 0x3) | 0x8;
-      return v.toString(16);
-    });
+    // Fallback to UuidUtility for consistent UUID generation
+    return UuidUtility.generateUuid();
   }
 
   /**

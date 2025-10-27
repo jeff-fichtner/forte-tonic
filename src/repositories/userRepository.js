@@ -1,32 +1,47 @@
-import { RepositoryHelper } from './helpers/repositoryHelper.js';
+import { BaseRepository } from './baseRepository.js';
 import { Keys } from '../utils/values/keys.js';
 import { Admin, Instructor, Student, Parent, Room } from '../models/shared/index.js';
 
 /**
- *
+ * UserRepository - manages user-related entities (admins, instructors, students, parents, rooms)
+ * Extends BaseRepository for consistent logging and base functionality
  */
-export class UserRepository {
+export class UserRepository extends BaseRepository {
   /**
-   *
+   * @param {Object} dbClient - Database client instance
+   * @param {Object} configService - Configuration service for logger initialization
    */
-  constructor(dbClient) {
-    this.dbClient = dbClient;
+  constructor(dbClient, configService) {
+    // Call parent with a generic entity name since this repo manages multiple entity types
+    super('users', null, dbClient, configService);
   }
 
   /**
-   *
+   * Get all admins with caching
    */
   async getAdmins(forceRefresh = false) {
-    return await RepositoryHelper.getAndSetData(
-      () => this.admins,
-      async () =>
-        (this.admins = await this.dbClient.getAllRecords(Keys.ADMINS, x =>
-          Admin.fromDatabaseRow(x)
-        )),
-      Keys.ADMINS,
-      forceRefresh,
-      this.logger
-    );
+    const cacheKey = `${Keys.ADMINS}:all`;
+
+    // Check cache first unless force refresh
+    if (!forceRefresh && this.cache.has(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      if (Date.now() - cached.timestamp < this.cacheTtl) {
+        this.logger.info(`📦 Returning cached ${Keys.ADMINS}`);
+        return cached.data;
+      }
+    }
+
+    this.logger.info(`📋 Loading ${Keys.ADMINS}`);
+    const admins = await this.dbClient.getAllRecords(Keys.ADMINS, x => Admin.fromDatabaseRow(x));
+
+    // Cache the results
+    this.cache.set(cacheKey, {
+      data: admins,
+      timestamp: Date.now(),
+    });
+
+    this.logger.info(`✅ Found ${admins.length} ${Keys.ADMINS}`);
+    return admins;
   }
 
   /**
@@ -48,19 +63,34 @@ export class UserRepository {
   }
 
   /**
-   *
+   * Get all active instructors with caching
    */
   async getInstructors(forceRefresh = false) {
-    return await RepositoryHelper.getAndSetData(
-      () => this.instructors,
-      async () =>
-        (this.instructors = (
-          await this.dbClient.getAllRecords(Keys.INSTRUCTORS, x => Instructor.fromDatabaseRow(x))
-        ).filter(x => x.isActive)),
-      Keys.INSTRUCTORS,
-      forceRefresh,
-      this.logger
+    const cacheKey = `${Keys.INSTRUCTORS}:all`;
+
+    // Check cache first unless force refresh
+    if (!forceRefresh && this.cache.has(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      if (Date.now() - cached.timestamp < this.cacheTtl) {
+        this.logger.info(`📦 Returning cached ${Keys.INSTRUCTORS}`);
+        return cached.data;
+      }
+    }
+
+    this.logger.info(`📋 Loading ${Keys.INSTRUCTORS}`);
+    const allInstructors = await this.dbClient.getAllRecords(Keys.INSTRUCTORS, x =>
+      Instructor.fromDatabaseRow(x)
     );
+    const instructors = allInstructors.filter(x => x.isActive);
+
+    // Cache the results
+    this.cache.set(cacheKey, {
+      data: instructors,
+      timestamp: Date.now(),
+    });
+
+    this.logger.info(`✅ Found ${instructors.length} active ${Keys.INSTRUCTORS}`);
+    return instructors;
   }
 
   /**
@@ -94,47 +124,65 @@ export class UserRepository {
   }
 
   /**
-   *
+   * Get all students with parent emails enriched, with caching
    */
   async getStudents(forceRefresh = false) {
-    return await RepositoryHelper.getAndSetData(
-      () => this.students,
-      async () => {
-        // First, get the basic student data
-        const students = await this.dbClient.getAllRecords(Keys.STUDENTS, x =>
-          Student.fromDatabaseRow(x)
-        );
+    const cacheKey = `${Keys.STUDENTS}:all`;
 
-        // Then, enrich with parent emails
-        const parents = await this.getParents();
+    // Check cache first unless force refresh
+    if (!forceRefresh && this.cache.has(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      if (Date.now() - cached.timestamp < this.cacheTtl) {
+        this.logger.info(`📦 Returning cached ${Keys.STUDENTS}`);
+        return cached.data;
+      }
+    }
 
-        return (this.students = students.map(student => {
-          // Find parent emails for this student
-          const parent1 = parents.find(p => p.id === student.parent1Id);
-          const parent2 = parents.find(p => p.id === student.parent2Id);
+    this.logger.info(`📋 Loading ${Keys.STUDENTS}`);
 
-          const parentEmails = [parent1?.email, parent2?.email].filter(Boolean).join(', ');
-
-          // Create a new student with parent emails populated
-          const enrichedStudent = new Student({
-            ...student.toDataObject(),
-            parentEmails,
-          });
-
-          // Debug log for first few students to verify parent emails are populated
-          if (students.indexOf(student) < 3) {
-            this.logger?.info(
-              `Student ${student.firstName} ${student.lastName}: parentEmails = "${parentEmails}"`
-            );
-          }
-
-          return enrichedStudent;
-        }));
-      },
-      Keys.STUDENTS,
-      forceRefresh,
-      this.logger
+    // First, get the basic student data
+    const students = await this.dbClient.getAllRecords(Keys.STUDENTS, x =>
+      Student.fromDatabaseRow(x)
     );
+
+    // Then, enrich with parent emails
+    const parents = await this.getParents();
+
+    const enrichedStudents = students.map(student => {
+      // Find parent emails for this student
+      const parent1 = parents.find(p => p.id === student.parent1Id);
+      const parent2 = parents.find(p => p.id === student.parent2Id);
+
+      const parentEmails = [parent1?.email, parent2?.email].filter(Boolean).join(', ');
+
+      // Get student data - handle both Student instances and plain objects
+      const studentData =
+        typeof student.toDataObject === 'function' ? student.toDataObject() : { ...student };
+
+      // Create a new student with parent emails populated
+      const enrichedStudent = new Student({
+        ...studentData,
+        parentEmails,
+      });
+
+      // Debug log for first few students to verify parent emails are populated
+      if (students.indexOf(student) < 3) {
+        this.logger?.info(
+          `Student ${student.firstName} ${student.lastName}: parentEmails = "${parentEmails}"`
+        );
+      }
+
+      return enrichedStudent;
+    });
+
+    // Cache the results
+    this.cache.set(cacheKey, {
+      data: enrichedStudents,
+      timestamp: Date.now(),
+    });
+
+    this.logger.info(`✅ Found ${enrichedStudents.length} ${Keys.STUDENTS}`);
+    return enrichedStudents;
   }
 
   /**
@@ -150,19 +198,31 @@ export class UserRepository {
   }
 
   /**
-   *
+   * Get all parents with caching
    */
   async getParents(forceRefresh = false) {
-    return await RepositoryHelper.getAndSetData(
-      () => this.parents,
-      async () =>
-        (this.parents = await this.dbClient.getAllRecords(Keys.PARENTS, x =>
-          Parent.fromDatabaseRow(x)
-        )),
-      Keys.PARENTS,
-      forceRefresh,
-      this.logger
-    );
+    const cacheKey = `${Keys.PARENTS}:all`;
+
+    // Check cache first unless force refresh
+    if (!forceRefresh && this.cache.has(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      if (Date.now() - cached.timestamp < this.cacheTtl) {
+        this.logger.info(`📦 Returning cached ${Keys.PARENTS}`);
+        return cached.data;
+      }
+    }
+
+    this.logger.info(`📋 Loading ${Keys.PARENTS}`);
+    const parents = await this.dbClient.getAllRecords(Keys.PARENTS, x => Parent.fromDatabaseRow(x));
+
+    // Cache the results
+    this.cache.set(cacheKey, {
+      data: parents,
+      timestamp: Date.now(),
+    });
+
+    this.logger.info(`✅ Found ${parents.length} ${Keys.PARENTS}`);
+    return parents;
   }
 
   /**
@@ -194,17 +254,31 @@ export class UserRepository {
   }
 
   /**
-   *
+   * Get all rooms with caching
    */
   async getRooms(forceRefresh = false) {
-    return await RepositoryHelper.getAndSetData(
-      () => this.rooms,
-      async () =>
-        (this.rooms = await this.dbClient.getAllRecords(Keys.ROOMS, x => Room.fromDatabaseRow(x))),
-      Keys.ROOMS,
-      forceRefresh,
-      this.logger
-    );
+    const cacheKey = `${Keys.ROOMS}:all`;
+
+    // Check cache first unless force refresh
+    if (!forceRefresh && this.cache.has(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      if (Date.now() - cached.timestamp < this.cacheTtl) {
+        this.logger.info(`📦 Returning cached ${Keys.ROOMS}`);
+        return cached.data;
+      }
+    }
+
+    this.logger.info(`📋 Loading ${Keys.ROOMS}`);
+    const rooms = await this.dbClient.getAllRecords(Keys.ROOMS, x => Room.fromDatabaseRow(x));
+
+    // Cache the results
+    this.cache.set(cacheKey, {
+      data: rooms,
+      timestamp: Date.now(),
+    });
+
+    this.logger.info(`✅ Found ${rooms.length} ${Keys.ROOMS}`);
+    return rooms;
   }
 
   /**
@@ -247,11 +321,16 @@ export class UserRepository {
    * Clear all repository-level caches
    */
   clearCache() {
-    this.admins = null;
-    this.instructors = null;
-    this.students = null;
-    this.parents = null;
-    this.rooms = null;
+    // Clear all user-related caches
+    const keysToDelete = [
+      `${Keys.ADMINS}:all`,
+      `${Keys.INSTRUCTORS}:all`,
+      `${Keys.STUDENTS}:all`,
+      `${Keys.PARENTS}:all`,
+      `${Keys.ROOMS}:all`,
+    ];
+
+    keysToDelete.forEach(key => this.cache.delete(key));
     this.logger.info('🧹 UserRepository cache cleared');
   }
 }

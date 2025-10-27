@@ -55,8 +55,8 @@ export class Room {
       includeRoomId,
       capacity,
       location,
-      equipment = [],
-      isActive = true,
+      equipment,
+      isActive,
       description,
     } = data;
 
@@ -65,7 +65,7 @@ export class Room {
       includeRoomId,
       capacity,
       location,
-      equipment: Array.isArray(equipment) ? equipment : [],
+      equipment,
       isActive,
       description,
     });

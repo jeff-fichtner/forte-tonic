@@ -64,15 +64,15 @@ export class Instructor {
       firstName,
       phoneNumber,
       accessCode,
-      specialties = [],
-      isActive = true,
+      specialties,
+      isActive,
       hireDate,
       bio,
       yearsExperience,
-      certifications = [],
-      role = 'instructor',
-      availability = {},
-      gradeRange = {},
+      certifications,
+      role,
+      availability,
+      gradeRange,
     } = data;
 
     // Required fields
@@ -82,17 +82,17 @@ export class Instructor {
     this.firstName = firstName;
 
     // Optional fields
-    this.phoneNumber = phoneNumber;
-    this.accessCode = accessCode;
-    this.specialties = Array.isArray(specialties) ? specialties : [];
+    this.phoneNumber = phoneNumber || null;
+    this.accessCode = accessCode || null;
+    this.specialties = specialties || null;
     this.isActive = isActive;
     this.hireDate = hireDate ? (hireDate instanceof Date ? hireDate : new Date(hireDate)) : null;
-    this.bio = bio;
-    this.yearsExperience = yearsExperience;
-    this.certifications = Array.isArray(certifications) ? certifications : [];
-    this.role = role;
-    this.availability = availability;
-    this.gradeRange = gradeRange;
+    this.bio = bio || null;
+    this.yearsExperience = yearsExperience || null;
+    this.certifications = certifications || null;
+    this.role = role || null;
+    this.availability = availability || null;
+    this.gradeRange = gradeRange || null;
   }
 
   /**

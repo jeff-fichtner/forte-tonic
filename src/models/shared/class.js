@@ -108,7 +108,7 @@ export class Class {
       maximumGrade,
       roomId,
       description,
-      isActive = true,
+      isActive,
     } = data;
 
     return new Class(id, instructorId, day, startTime, length, endTime, instrument, title, {

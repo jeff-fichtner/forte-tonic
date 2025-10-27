@@ -7,8 +7,12 @@ import { AttendanceRecord } from '../models/shared/attendanceRecord.js';
 import { Keys } from '../utils/values/keys.js';
 
 export class AttendanceRepository extends BaseRepository {
-  constructor(dbClient) {
-    super(Keys.ATTENDANCE, AttendanceRecord, dbClient);
+  /**
+   * @param {Object} dbClient - Database client instance
+   * @param {Object} configService - Configuration service for logger initialization
+   */
+  constructor(dbClient, configService) {
+    super(Keys.ATTENDANCE, AttendanceRecord, dbClient, configService);
   }
 
   /**

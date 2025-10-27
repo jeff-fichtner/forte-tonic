@@ -30,10 +30,10 @@ export class Admin {
       firstName,
       phoneNumber,
       accessCode,
-      permissions = [],
-      isActive = true,
+      permissions,
+      isActive,
       lastLoginDate,
-      role = 'admin',
+      role,
     } = data;
 
     // Required fields
@@ -43,16 +43,16 @@ export class Admin {
     this.firstName = firstName;
 
     // Optional fields
-    this.phoneNumber = phoneNumber;
-    this.accessCode = accessCode;
-    this.permissions = Array.isArray(permissions) ? permissions : [];
+    this.phoneNumber = phoneNumber || null;
+    this.accessCode = accessCode || null;
+    this.permissions = permissions || null;
     this.isActive = isActive;
     this.lastLoginDate = lastLoginDate
       ? lastLoginDate instanceof Date
         ? lastLoginDate
         : new Date(lastLoginDate)
       : null;
-    this.role = role;
+    this.role = role || null;
   }
 
   /**

@@ -59,7 +59,20 @@ jest.unstable_mockModule('../../src/email/emailClient.js', () => ({
 const mockUserRepository = {
   getAdmins: jest.fn().mockResolvedValue([]),
   getAdminByEmail: jest.fn().mockResolvedValue(null),
-  getAdminByAccessCode: jest.fn().mockResolvedValue(null),
+  getAdminByAccessCode: jest.fn().mockImplementation(accessCode => {
+    const admins = [
+      {
+        id: 'admin1@test.com',
+        email: 'admin1@test.com',
+        firstName: 'Admin',
+        lastName: 'User',
+        accessCode: '111111',
+        isActive: true,
+      },
+    ];
+    const found = admins.find(a => a.accessCode === accessCode);
+    return Promise.resolve(found || null);
+  }),
   getInstructors: jest.fn().mockResolvedValue([
     {
       id: 'INSTRUCTOR1@TEST.COM',
@@ -125,7 +138,21 @@ const mockUserRepository = {
   getStudentById: jest.fn().mockResolvedValue(null),
   getParents: jest.fn().mockResolvedValue([]),
   getParentByEmail: jest.fn().mockResolvedValue(null),
-  getParentByAccessCode: jest.fn().mockResolvedValue(null),
+  getParentByAccessCode: jest.fn().mockImplementation(accessCode => {
+    const parents = [
+      {
+        id: 'PARENT1',
+        email: 'parent1@test.com',
+        firstName: 'Parent',
+        lastName: 'One',
+        accessCode: '222222',
+        phone: '555-1234',
+        isActive: true,
+      },
+    ];
+    const found = parents.find(p => p.accessCode === accessCode);
+    return Promise.resolve(found || null);
+  }),
   getUserByAccessCode: jest.fn().mockResolvedValue(null),
   getRooms: jest.fn().mockResolvedValue([]),
   getRoomById: jest.fn().mockResolvedValue(null),
@@ -289,6 +316,95 @@ describe('Integration Test: GET /api/getInstructorByAccessCode', () => {
       expect(response.body.data).toHaveProperty('lastName');
 
       // Check that transformation occurred (UserTransformService.transform was called)
+    });
+  });
+});
+
+describe('Integration Test: GET /api/admins/by-access-code/:accessCode', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('Success Cases', () => {
+    test('should return admin data for valid access code', async () => {
+      const accessCode = '111111';
+
+      const response = await request(app)
+        .get(`/api/admins/by-access-code/${accessCode}`)
+        .expect(200);
+
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('id', 'admin1@test.com');
+      expect(response.body.data).toHaveProperty('email', 'admin1@test.com');
+      expect(response.body.data).toHaveProperty('firstName', 'Admin');
+      expect(response.body.data).toHaveProperty('lastName', 'User');
+      // Note: accessCode is not returned by UserTransformService.transformAdmin
+
+      expect(mockUserRepository.getAdminByAccessCode).toHaveBeenCalledWith(accessCode);
+      expect(mockUserRepository.getAdminByAccessCode).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Error Cases', () => {
+    test('should return 404 when admin not found', async () => {
+      const accessCode = '999999';
+
+      const response = await request(app)
+        .get(`/api/admins/by-access-code/${accessCode}`)
+        .expect(404);
+
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('message', 'Admin not found with provided access code');
+      expect(response.body.error).toHaveProperty('type', 'not_found');
+      expect(response.body.error).toHaveProperty('code', 'NOT_FOUND');
+
+      expect(mockUserRepository.getAdminByAccessCode).toHaveBeenCalledWith(accessCode);
+    });
+  });
+});
+
+describe('Integration Test: GET /api/parents/by-access-code/:accessCode', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('Success Cases', () => {
+    test('should return parent data for valid access code', async () => {
+      const accessCode = '222222';
+
+      const response = await request(app)
+        .get(`/api/parents/by-access-code/${accessCode}`)
+        .expect(200);
+
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('id', 'PARENT1');
+      expect(response.body.data).toHaveProperty('email', 'parent1@test.com');
+      expect(response.body.data).toHaveProperty('firstName', 'Parent');
+      expect(response.body.data).toHaveProperty('lastName', 'One');
+      // Note: accessCode is not returned by UserTransformService.transformParent
+      expect(response.body.data).toHaveProperty('phone', '555-1234');
+
+      expect(mockUserRepository.getParentByAccessCode).toHaveBeenCalledWith(accessCode);
+      expect(mockUserRepository.getParentByAccessCode).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Error Cases', () => {
+    test('should return 404 when parent not found', async () => {
+      const accessCode = '999999';
+
+      const response = await request(app)
+        .get(`/api/parents/by-access-code/${accessCode}`)
+        .expect(404);
+
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body.error).toHaveProperty('message', 'Parent not found with provided access code');
+      expect(response.body.error).toHaveProperty('type', 'not_found');
+      expect(response.body.error).toHaveProperty('code', 'NOT_FOUND');
+
+      expect(mockUserRepository.getParentByAccessCode).toHaveBeenCalledWith(accessCode);
     });
   });
 });

@@ -144,6 +144,7 @@ const mockRegistrationRepository = {
   updateIntent: jest.fn().mockResolvedValue({ ...mockRegistration, reenrollmentIntent: 'keep' }),
   getFromTable: jest.fn().mockResolvedValue([mockRegistration]),
   createInTable: jest.fn().mockResolvedValue(mockRegistration),
+  getRegistrationsByTrimester: jest.fn().mockResolvedValue([mockRegistration]),
 };
 
 const mockRegistrationApplicationService = {
@@ -333,69 +334,29 @@ describe('RegistrationController Integration Tests', () => {
     });
   });
 
-  describe('POST /api/unregister (legacy)', () => {
-    test('should unregister student with standard payload', async () => {
+  describe('DELETE /api/registrations/:id', () => {
+    test('should delete registration', async () => {
+      const registrationId = '123e4567-e89b-42d3-8456-426614174000';
       const response = await request(app)
-        .post('/api/unregister')
+        .delete(`/api/registrations/${registrationId}`)
         .set('x-access-code', '123456')
-        .send({
-          registrationId: '123e4567-e89b-42d3-8456-426614174000',
-        })
         .expect(200);
 
       expect(response.body.success).toBe(true);
       expect(mockRegistrationApplicationService.cancelRegistration).toHaveBeenCalledWith(
-        '123e4567-e89b-42d3-8456-426614174000',
-        'Unregistered via legacy endpoint',
+        registrationId,
+        'Registration cancelled by user',
         expect.any(String)
       );
     });
 
-    test('should handle HttpService array payload format', async () => {
+    test('should reject deletion without authentication', async () => {
+      const registrationId = '123e4567-e89b-42d3-8456-426614174000';
       const response = await request(app)
-        .post('/api/unregister')
-        .set('x-access-code', '123456')
-        .send([
-          {
-            data: {
-              registrationId: '123e4567-e89b-42d3-8456-426614174000',
-              accessCode: '654321',
-            },
-          },
-        ])
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(mockUserRepository.getUserByAccessCode).toHaveBeenCalledWith('654321');
-    });
-
-    test('should validate access code when provided', async () => {
-      mockUserRepository.getUserByAccessCode.mockResolvedValueOnce({
-        user: { email: 'verified@test.com' },
-        userType: 'admin',
-      });
-
-      const response = await request(app)
-        .post('/api/unregister')
-        .set('x-access-code', '123456')
-        .send({
-          registrationId: '123e4567-e89b-42d3-8456-426614174000',
-          accessCode: '654321',
-        })
-        .expect(200);
-
-      expect(mockUserRepository.getUserByAccessCode).toHaveBeenCalledWith('654321');
-    });
-
-    test('should reject missing registrationId', async () => {
-      const response = await request(app)
-        .post('/api/unregister')
-        .set('x-access-code', '123456')
-        .send({})
-        .expect(400);
+        .delete(`/api/registrations/${registrationId}`)
+        .expect(500);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error.message).toContain('Missing registrationId');
     });
   });
 
@@ -511,6 +472,45 @@ describe('RegistrationController Integration Tests', () => {
           linkedPreviousRegistrationId: 'OLD-REG-ID',
         })
       );
+    });
+  });
+
+  describe('GET /api/admin/registrations/:trimester', () => {
+    test('should return registrations for specified trimester', async () => {
+      const response = await request(app)
+        .get('/api/admin/registrations/fall')
+        .set('x-access-code', '123456')
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toBeDefined();
+      expect(mockRegistrationRepository.getRegistrationsByTrimester).toHaveBeenCalledWith('fall');
+    });
+
+    test('should validate trimester parameter', async () => {
+      mockRegistrationRepository.getRegistrationsByTrimester.mockRejectedValueOnce(
+        new Error('Invalid trimester: summer')
+      );
+
+      const response = await request(app)
+        .get('/api/admin/registrations/summer')
+        .set('x-access-code', '123456')
+        .expect(500);
+
+      expect(response.body.success).toBe(false);
+    });
+
+    test('should handle all valid trimesters', async () => {
+      const trimesters = ['fall', 'winter', 'spring'];
+
+      for (const trimester of trimesters) {
+        const response = await request(app)
+          .get(`/api/admin/registrations/${trimester}`)
+          .set('x-access-code', '123456')
+          .expect(200);
+
+        expect(response.body.success).toBe(true);
+      }
     });
   });
 

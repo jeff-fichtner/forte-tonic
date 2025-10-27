@@ -1,24 +1,9 @@
 /**
- * Middleware to normalize HttpService.post request body format
- *
- * HttpService.post sends data as [{ data: actualData }, ...args]
- * This middleware provides utilities to extract the data properly.
+ * Middleware to normalize request data for paginated endpoints
  */
 
 /**
- * Middleware that extracts the first data object from HttpService.post format
- * Use this for routes that expect a single object (like access code authentication)
- */
-export function extractSingleRequestData(req, res, next) {
-  if (Array.isArray(req.body) && req.body[0]?.data) {
-    // Extract data from HttpService.post format: [{ data: { accessCode: "123456" } }]
-    req.body = req.body[0].data;
-  }
-  next();
-}
-
-/**
- * Middleware that extracts pagination and other arguments from HttpService.post format
+ * Middleware that extracts pagination and other arguments from request
  * Use this for routes that expect pagination data (like getStudents)
  */
 export function extractPaginatedRequestData(req, res, next) {
@@ -31,15 +16,4 @@ export function extractPaginatedRequestData(req, res, next) {
     req.paginationArgs = [];
   }
   next();
-}
-
-/**
- * Helper function to safely extract data from either format
- * Use this in controllers that might receive data in different formats
- */
-export function extractRequestData(reqBody) {
-  if (Array.isArray(reqBody) && reqBody[0]?.data) {
-    return reqBody[0].data;
-  }
-  return reqBody;
 }

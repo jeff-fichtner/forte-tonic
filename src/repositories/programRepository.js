@@ -1,30 +1,49 @@
-import { RepositoryHelper } from './helpers/repositoryHelper.js';
+import { BaseRepository } from './baseRepository.js';
 import { Keys } from '../utils/values/keys.js';
 import { Class } from '../models/shared/index.js';
 
 /**
  * Program Repository - handles program catalog data operations
- * Manages classes (group lessons) and rooms
+ * Manages classes (group lessons)
+ * Extends BaseRepository for consistent logging and base functionality
  */
-export class ProgramRepository {
-  constructor(dbClient) {
-    this.dbClient = dbClient;
+export class ProgramRepository extends BaseRepository {
+  /**
+   * @param {Object} dbClient - Database client instance
+   * @param {Object} configService - Configuration service for logger initialization
+   */
+  constructor(dbClient, configService) {
+    // Use 'classes' as the primary entity since that's the main concern
+    super(Keys.CLASSES, Class, dbClient, configService);
   }
 
   /**
-   * Get all classes
+   * Get all classes with caching
+   * Uses inherited findAll() method from BaseRepository
    */
   async getClasses(forceRefresh = false) {
-    return await RepositoryHelper.getAndSetData(
-      () => this.classes,
-      async () =>
-        (this.classes = await this.dbClient.getAllRecords(Keys.CLASSES, x =>
-          Class.fromDatabaseRow(x)
-        )),
-      Keys.CLASSES,
-      forceRefresh,
-      this.logger
-    );
+    const cacheKey = `${Keys.CLASSES}:all`;
+
+    // Check cache first unless force refresh
+    if (!forceRefresh && this.cache.has(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      if (Date.now() - cached.timestamp < this.cacheTtl) {
+        this.logger.info(`📦 Returning cached ${Keys.CLASSES}`);
+        return cached.data;
+      }
+    }
+
+    this.logger.info(`📋 Loading ${Keys.CLASSES}`);
+    const classes = await this.dbClient.getAllRecords(Keys.CLASSES, x => Class.fromDatabaseRow(x));
+
+    // Cache the results
+    this.cache.set(cacheKey, {
+      data: classes,
+      timestamp: Date.now(),
+    });
+
+    this.logger.info(`✅ Found ${classes.length} ${Keys.CLASSES}`);
+    return classes;
   }
 
   /**
@@ -39,7 +58,7 @@ export class ProgramRepository {
    * Clear repository-level cache
    */
   clearCache() {
-    this.classes = null;
+    this.cache.delete(`${Keys.CLASSES}:all`);
     this.logger.info('🧹 ProgramRepository cache cleared');
   }
 }

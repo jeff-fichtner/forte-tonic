@@ -21,6 +21,16 @@ import { INTENT_LABELS } from './constants/intentConstants.js';
 import { PeriodType } from './constants/periodTypeConstants.js';
 
 /**
+ * Capitalize the first letter of a string (for display purposes)
+ * @param {string} str - String to capitalize
+ * @returns {string} Capitalized string
+ */
+function capitalize(str) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/**
  * Format a datetime value for display in tables
  * @param {string|Date|number} timestamp - The timestamp to format
  * @returns {string} Formatted datetime string
@@ -101,6 +111,15 @@ export class ViewModel {
     this.adminContentInitialized = false;
     this.instructorContentInitialized = false;
     this.parentContentInitialized = false;
+
+    // Trimester selection properties
+    this.selectedTrimester = null;
+    this.defaultTrimester = null;
+    this.currentTrimesterData = {
+      registrations: [],
+      classes: [],
+      students: [],
+    };
   }
 
   async initializeAsync() {
@@ -227,11 +246,53 @@ export class ViewModel {
       }
     }
 
+    // Update enrollment banner based on current period
+    this._updateEnrollmentBanner();
+
     // Reset UI state after data load to prevent scroll lock issues
     setTimeout(() => {
       this.#resetUIState();
     }, 300); // Allow time for content to render and nav click to complete
   }
+
+  /**
+   * Update enrollment period banner based on current period
+   * Shows different messages for intent, priority enrollment, and open enrollment
+   * Hides banner during regular registration periods
+   */
+  _updateEnrollmentBanner() {
+    const currentPeriod = window.UserSession.getCurrentPeriod();
+    const banner = document.getElementById('enrollment-period-banner');
+    const bannerText = document.getElementById('enrollment-banner-text');
+
+    if (!banner || !bannerText) {
+      // Banner elements not in DOM yet
+      return;
+    }
+
+    if (!currentPeriod) {
+      banner.style.display = 'none';
+      return;
+    }
+
+    // Show appropriate message based on period type
+    if (currentPeriod.periodType === 'priorityEnrollment') {
+      banner.style.display = 'block';
+      banner.className = 'enrollment-banner priority';
+      bannerText.textContent = 'Priority Enrollment is now open for returning families';
+    } else if (currentPeriod.periodType === 'openEnrollment') {
+      banner.style.display = 'block';
+      banner.className = 'enrollment-banner open';
+      bannerText.textContent = 'Open Enrollment is now available for all families';
+    } else if (currentPeriod.periodType === 'intent') {
+      banner.style.display = 'block';
+      banner.className = 'enrollment-banner intent';
+      bannerText.textContent = 'Please indicate your intent (keep/drop/change) for current lessons';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+
   /**
    *
    */
@@ -241,6 +302,12 @@ export class ViewModel {
     if (tabsContainer) {
       tabsContainer.hidden = false;
     }
+
+    // Initialize trimester selector for admins
+    this.#initTrimesterSelector('admin');
+
+    // Store initial registrations in currentTrimesterData
+    this.currentTrimesterData.registrations = this.registrations;
 
     // master schedule tab - exclude wait list classes from master schedule
     const nonWaitlistRegistrations = this.registrations.filter(registration => {
@@ -405,6 +472,12 @@ export class ViewModel {
       console.warn('No parent ID found for current user');
       return;
     }
+
+    // Initialize trimester selector for parents
+    this.#initTrimesterSelector('parent');
+
+    // Store initial registrations in currentTrimesterData
+    this.currentTrimesterData.registrations = this.registrations;
 
     // Filter registrations for this parent's children, excluding wait list classes
     const parentChildRegistrations = this.registrations.filter(registration => {
@@ -1106,6 +1179,314 @@ export class ViewModel {
       if (countElement) {
         countElement.textContent = `${count} registration${count !== 1 ? 's' : ''} need${count === 1 ? 's' : ''} your response.`;
       }
+    }
+  }
+
+  /**
+   * Initialize the trimester dropdown selector
+   * Sets up the dropdown with available trimesters and default selection
+   * @param {string} userType - 'admin' or 'parent'
+   */
+  #initTrimesterSelector(userType) {
+    const containerId = `${userType}-trimester-selector-container`;
+    const selectId = `${userType}-trimester-select`;
+
+    const container = document.getElementById(containerId);
+    const select = document.getElementById(selectId);
+
+    if (!container || !select) {
+      console.error(`Trimester selector elements not found for ${userType}`);
+      return;
+    }
+
+    // Show the selector container
+    container.hidden = false;
+
+    // Get configuration from UserSession
+    const config = window.UserSession?.getAppConfiguration();
+    if (!config) {
+      console.error('App configuration not available');
+      return;
+    }
+
+    this.defaultTrimester = config.defaultTrimester || 'Fall';
+    this.selectedTrimester = this.defaultTrimester;
+
+    // Populate dropdown options
+    const trimesters = config.availableTrimesters || ['fall', 'winter', 'spring'];
+    select.innerHTML = trimesters
+      .map(
+        trimester =>
+          `<option value="${trimester}" ${trimester === this.defaultTrimester ? 'selected' : ''}>
+        ${capitalize(trimester)}
+      </option>`
+      )
+      .join('');
+
+    // Initialize Materialize select
+    M.FormSelect.init(select);
+
+    // Add change event listener
+    select.addEventListener('change', e => {
+      const newTrimester = e.target.value;
+      this.#handleTrimesterChange(newTrimester, userType);
+    });
+  }
+
+  /**
+   * Handle trimester selection change
+   * Loads new data and rebuilds tables based on user type
+   * @param {string} trimester - Selected trimester ('Fall', 'Winter', 'Spring')
+   * @param {string} userType - 'admin' or 'parent'
+   */
+  async #handleTrimesterChange(trimester, userType) {
+    if (trimester === this.selectedTrimester) {
+      return; // No change
+    }
+
+    this.selectedTrimester = trimester;
+
+    // Show loading state
+    this.#showLoadingState(true, userType);
+
+    try {
+      if (userType === 'admin') {
+        // Load data for selected trimester
+        await this.#loadTrimesterData(trimester);
+
+        // Rebuild all admin tables with new data
+        this.#rebuildAdminTables();
+      } else if (userType === 'parent') {
+        // Load parent's children's registrations for selected trimester
+        const currentParentId = this.currentUser.parent?.id;
+        if (!currentParentId) {
+          throw new Error('No parent ID found');
+        }
+
+        await this.#loadParentTrimesterData(trimester, currentParentId);
+
+        // Rebuild parent weekly schedule
+        this.#rebuildParentWeeklySchedule(currentParentId);
+      }
+
+      // Show success toast
+      M.toast({
+        html: `Displaying ${capitalize(trimester)} trimester data`,
+        classes: 'blue darken-2',
+      });
+    } catch (error) {
+      console.error('Error loading trimester data:', error);
+      M.toast({
+        html: 'Error loading trimester data. Please try again.',
+        classes: 'red darken-2',
+      });
+    } finally {
+      this.#showLoadingState(false, userType);
+    }
+  }
+
+  /**
+   * Load all data for a specific trimester
+   * Fetches registrations for the selected trimester
+   * @param {string} trimester - The trimester to load
+   */
+  async #loadTrimesterData(trimester) {
+    try {
+      // Fetch registrations for the trimester
+      const response = await fetch(`/api/admin/registrations/${trimester}`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${trimester} data: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      // Handle both direct array response and wrapped {success, data} response
+      const registrations = data.data || data;
+
+      // Update current trimester data
+      this.currentTrimesterData.registrations = registrations;
+
+      return registrations;
+    } catch (error) {
+      console.error('Error in loadTrimesterData:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Rebuild all admin tables with current trimester data
+   */
+  #rebuildAdminTables() {
+    const registrations = this.currentTrimesterData.registrations;
+
+    // Rebuild master schedule (exclude Rock Band classes)
+    const nonWaitlistRegistrations = registrations.filter(registration => {
+      return !ClassManager.isRockBandClass(registration.classId);
+    });
+    const sortedRegistrations = this.#sortRegistrations(nonWaitlistRegistrations);
+    this.masterScheduleTable = this.#buildRegistrationTable(sortedRegistrations);
+    this.#populateFilterDropdowns(nonWaitlistRegistrations);
+
+    // Rebuild wait list (Rock Band classes only)
+    const waitListRegistrations = registrations.filter(registration => {
+      return ClassManager.isRockBandClass(registration.classId);
+    });
+    this.adminWaitListTable = this.#buildWaitListTable(waitListRegistrations);
+
+    // Update registration form with current trimester context
+    if (this.adminRegistrationForm) {
+      this.adminRegistrationForm.setTrimester(this.selectedTrimester);
+    }
+  }
+
+  /**
+   * Load parent's children's registrations for a specific trimester
+   * @param {string} trimester - The trimester to load
+   * @param {string} parentId - The parent's ID
+   */
+  async #loadParentTrimesterData(trimester, parentId) {
+    try {
+      // Fetch registrations for the trimester
+      const response = await fetch(`/api/admin/registrations/${trimester}`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${trimester} data: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      // Handle both direct array response and wrapped {success, data} response
+      const allRegistrations = data.data || data;
+
+      // Filter to only this parent's children's registrations
+      const parentChildRegistrations = allRegistrations.filter(registration => {
+        const student = registration.student;
+        if (!student) return false;
+
+        const exactMatch = student.parent1Id === parentId || student.parent2Id === parentId;
+
+        const stringMatch =
+          !exactMatch &&
+          (String(student.parent1Id) === String(parentId) ||
+            String(student.parent2Id) === String(parentId));
+
+        const isMatch = exactMatch || stringMatch;
+
+        // Exclude Rock Band classes (wait list classes) from parent weekly schedule
+        const isWaitlistClass = ClassManager.isRockBandClass(registration.classId);
+
+        return isMatch && !isWaitlistClass;
+      });
+
+      // Update current trimester data
+      this.currentTrimesterData.registrations = parentChildRegistrations;
+
+      return parentChildRegistrations;
+    } catch (error) {
+      console.error('Error in loadParentTrimesterData:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Rebuild parent weekly schedule with current trimester data
+   * @param {string} parentId - The parent's ID
+   */
+  #rebuildParentWeeklySchedule(parentId) {
+    const parentChildRegistrations = this.currentTrimesterData.registrations;
+
+    // Get unique students with registrations (their own children only)
+    const studentsWithRegistrations = parentChildRegistrations
+      .map(registration => registration.student)
+      .filter(student => student && student.id)
+      .filter((student, index, self) => self.findIndex(s => s.id === student.id) === index);
+
+    const parentWeeklyScheduleTables = document.getElementById('parent-weekly-schedule-tables');
+
+    // Clear existing content
+    parentWeeklyScheduleTables.innerHTML = '';
+
+    // Show 'no matching registrations' message if no children have registrations
+    if (studentsWithRegistrations.length === 0) {
+      const noRegistrationsMessage = document.createElement('div');
+      noRegistrationsMessage.className = 'card-panel orange lighten-4';
+      noRegistrationsMessage.style.cssText = 'text-align: center; padding: 30px; margin: 20px 0;';
+      noRegistrationsMessage.innerHTML = `
+      <h5 style="color: #e65100; margin-bottom: 10px;">No Matching Registrations</h5>
+      <p style="color: #bf360c; font-size: 16px; margin: 0;">
+        Your children have no active lesson registrations for this trimester.
+      </p>
+    `;
+      parentWeeklyScheduleTables.appendChild(noRegistrationsMessage);
+    } else {
+      // Create a separate table for each child
+      studentsWithRegistrations.forEach(student => {
+        // Create a container for each child's schedule
+        const studentContainer = document.createElement('div');
+        studentContainer.className = 'student-schedule-container';
+        studentContainer.style.cssText = 'margin-bottom: 30px;';
+
+        // Add student name header
+        const studentHeader = document.createElement('h5');
+        studentHeader.style.cssText =
+          'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px;';
+        studentHeader.textContent = `${student.firstName} ${student.lastName}'s Schedule`;
+        studentContainer.appendChild(studentHeader);
+
+        // Create table for this student
+        const tableId = `parent-weekly-schedule-table-${student.id}`;
+        const newTable = document.createElement('table');
+        newTable.id = tableId;
+        studentContainer.appendChild(newTable);
+
+        parentWeeklyScheduleTables.appendChild(studentContainer);
+
+        // Filter registrations for this student and sort by day, then start time
+        const studentRegistrations = parentChildRegistrations.filter(
+          x => x.studentId.value === student.id.value
+        );
+        const sortedStudentRegistrations = this.#sortRegistrations(studentRegistrations);
+
+        this.#buildWeeklySchedule(tableId, sortedStudentRegistrations, 'parent');
+      });
+    }
+  }
+
+  /**
+   * Show/hide loading state for tables
+   * @param {boolean} isLoading - Whether to show loading state
+   * @param {string} userType - 'admin' or 'parent'
+   */
+  #showLoadingState(isLoading, userType) {
+    let tables = [];
+    let selectId = '';
+
+    if (userType === 'admin') {
+      tables = ['master-schedule-table', 'admin-wait-list-table'];
+      selectId = 'admin-trimester-select';
+    } else if (userType === 'parent') {
+      // Parent weekly schedule is dynamically generated, so we target the container
+      const container = document.getElementById('parent-weekly-schedule-tables');
+      if (container) {
+        container.style.opacity = isLoading ? '0.5' : '1';
+        container.style.pointerEvents = isLoading ? 'none' : 'auto';
+      }
+      selectId = 'parent-trimester-select';
+    }
+
+    tables.forEach(tableId => {
+      const table = document.getElementById(tableId);
+      if (table) {
+        table.style.opacity = isLoading ? '0.5' : '1';
+        table.style.pointerEvents = isLoading ? 'none' : 'auto';
+      }
+    });
+
+    // Disable the selector during loading
+    const selector = document.getElementById(selectId);
+    if (selector) {
+      selector.disabled = isLoading;
     }
   }
 
@@ -2161,12 +2542,9 @@ export class ViewModel {
     try {
       this.#setAdminRegistrationLoading(true);
 
-      const requestPayload = {
-        registrationId: registrationToDeleteId,
-      };
-      console.log('Sending delete request with payload:', requestPayload);
+      console.log('Sending DELETE request for registration:', registrationToDeleteId);
 
-      const response = await HttpService.post(ServerFunctions.unregister, requestPayload);
+      const response = await HttpService.delete(`registrations/${registrationToDeleteId}`);
       const registrationIndex = this.registrations.findIndex(
         x => (x.id?.value || x.id) === registrationToDeleteId
       );

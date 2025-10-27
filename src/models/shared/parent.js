@@ -60,9 +60,9 @@ export class Parent {
       phone,
       alternatePhone,
       address,
-      isEmergencyContact = false,
-      relationship = 'parent',
-      isActive = true,
+      isEmergencyContact,
+      relationship,
+      isActive,
     } = data;
 
     return new Parent(id, email, lastName, firstName, {

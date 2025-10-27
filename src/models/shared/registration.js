@@ -182,20 +182,8 @@ export class Registration {
    * Create Registration from database row data
    */
   static fromDatabaseRow(row) {
-    // Skip empty rows or header rows
+    // Skip empty rows
     if (!row || !row[0] || !Array.isArray(row) || row.length === 0) {
-      return null;
-    }
-
-    // Skip header rows (check if first column is "Id", "ID", or other header-like values)
-    const firstCell = String(row[0]).trim().toLowerCase();
-    if (firstCell === 'id' || firstCell === 'registrationid' || firstCell === 'registration_id') {
-      return null;
-    }
-
-    // Skip rows where the ID doesn't look like a UUID (basic check)
-    const idValue = String(row[0]).trim();
-    if (idValue.length < 10 || idValue === 'Id' || !idValue.includes('-')) {
       return null;
     }
 
