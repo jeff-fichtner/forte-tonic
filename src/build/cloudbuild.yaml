@@ -53,22 +53,22 @@ steps:
       - '-c'
       - |
         # Get current maintenance mode settings from the running service
-        MAINTENANCE_MODE=$(gcloud run services describe tonic-${_ENV_TYPE} \
+        MAINT_MODE=$$(gcloud run services describe tonic-${_ENV_TYPE} \
           --region=${_DEPLOY_REGION} \
           --format="value(spec.template.spec.containers[0].env.filter(name:MAINTENANCE_MODE).value)" \
           2>/dev/null || echo "false")
 
-        MAINTENANCE_MESSAGE=$(gcloud run services describe tonic-${_ENV_TYPE} \
+        MAINT_MSG=$$(gcloud run services describe tonic-${_ENV_TYPE} \
           --region=${_DEPLOY_REGION} \
           --format="value(spec.template.spec.containers[0].env.filter(name:MAINTENANCE_MESSAGE).value)" \
           2>/dev/null || echo "The Forte registration system is currently undergoing updates. We will be back shortly. Thank you for your patience!")
 
         # Save to file for next step
-        echo "$MAINTENANCE_MODE" > /workspace/maintenance_mode.txt
-        echo "$MAINTENANCE_MESSAGE" > /workspace/maintenance_message.txt
+        echo "$$MAINT_MODE" > /workspace/maintenance_mode.txt
+        echo "$$MAINT_MSG" > /workspace/maintenance_message.txt
 
-        echo "📋 Current maintenance mode: $MAINTENANCE_MODE"
-        echo "📋 Current maintenance message: $MAINTENANCE_MESSAGE"
+        echo "📋 Current maintenance mode: $$MAINT_MODE"
+        echo "📋 Current maintenance message: $$MAINT_MSG"
     id: 'get-maintenance-settings'
     waitFor: ['push-image']
 
@@ -79,10 +79,10 @@ steps:
       - '-c'
       - |
         # Read maintenance settings from previous step
-        MAINTENANCE_MODE=$(cat /workspace/maintenance_mode.txt)
-        MAINTENANCE_MESSAGE=$(cat /workspace/maintenance_message.txt)
+        MAINT_MODE=$$(cat /workspace/maintenance_mode.txt)
+        MAINT_MSG=$$(cat /workspace/maintenance_message.txt)
 
-        echo "🚀 Deploying with maintenance mode: $MAINTENANCE_MODE"
+        echo "🚀 Deploying with maintenance mode: $$MAINT_MODE"
 
         gcloud run deploy tonic-${_ENV_TYPE} \
           --image=gcr.io/$PROJECT_ID/tonic:${_ENV_TYPE}-${SHORT_SHA} \
@@ -92,8 +92,8 @@ steps:
           --set-env-vars=CI=true \
           --set-env-vars=BUILD_GIT_COMMIT=${COMMIT_SHA} \
           --set-env-vars=BUILD_GIT_TAG=${TAG_NAME} \
-          --set-env-vars=MAINTENANCE_MODE="$$MAINTENANCE_MODE" \
-          --set-env-vars=MAINTENANCE_MESSAGE="$$MAINTENANCE_MESSAGE" \
+          --set-env-vars=MAINTENANCE_MODE="$$MAINT_MODE" \
+          --set-env-vars=MAINTENANCE_MESSAGE="$$MAINT_MSG" \
           --set-secrets=WORKING_SPREADSHEET_ID=working-spreadsheet-id:latest \
           --set-secrets=GOOGLE_SERVICE_ACCOUNT_EMAIL=google-service-account-email:latest \
           --set-secrets=GOOGLE_PRIVATE_KEY=google-private-key:latest \
