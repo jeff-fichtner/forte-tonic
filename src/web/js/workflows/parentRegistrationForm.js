@@ -1259,6 +1259,9 @@ export class ParentRegistrationForm {
       studentSelect.addEventListener('change', event => {
         const selectedStudentId = event.target.value;
         if (selectedStudentId) {
+          // Clear any previously selected registration when switching students
+          this._selectedPreviousRegistrationId = null;
+
           this.#showRegistrationTypeContainer();
 
           // Re-render registration selector for the new student (enrollment periods only)
@@ -2863,6 +2866,7 @@ export class ParentRegistrationForm {
    */
   #clearForm() {
     this.selectedLesson = null;
+    this._selectedPreviousRegistrationId = null; // Clear selected registration
 
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
@@ -2907,6 +2911,8 @@ export class ParentRegistrationForm {
    * Clear the group form after successful submission
    */
   #clearGroupForm() {
+    this._selectedPreviousRegistrationId = null; // Clear selected registration
+
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
