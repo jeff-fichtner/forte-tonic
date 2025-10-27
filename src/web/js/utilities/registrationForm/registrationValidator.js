@@ -3,7 +3,11 @@
  * Shared validation logic for both admin and parent registration forms
  */
 
-import { BusDeadlines, RegistrationFormText, TransportationType } from '../../constants/registrationFormConstants.js';
+import {
+  BusDeadlines,
+  RegistrationFormText,
+  TransportationType,
+} from '../../constants/registrationFormConstants.js';
 import { parseTime, formatTimeFromMinutes, calculateEndTime } from './timeHelpers.js';
 
 /**
@@ -51,7 +55,7 @@ export function validateBusTimeRestrictions(day, startTime, lengthMinutes, trans
 
 /**
  * Validate required fields for private registration
- * @param {Object} data - Registration data to validate
+ * @param {object} data - Registration data to validate
  * @returns {{isValid: boolean, errors: string[]}} Validation result with error list
  */
 export function validatePrivateRegistration(data) {
@@ -84,7 +88,7 @@ export function validatePrivateRegistration(data) {
 
 /**
  * Validate required fields for group registration
- * @param {Object} data - Registration data to validate
+ * @param {object} data - Registration data to validate
  * @returns {{isValid: boolean, errors: string[]}} Validation result with error list
  */
 export function validateGroupRegistration(data) {
@@ -105,7 +109,7 @@ export function validateGroupRegistration(data) {
 
 /**
  * Validate registration data based on registration type
- * @param {Object} data - Registration data
+ * @param {object} data - Registration data
  * @param {string} registrationType - 'private' or 'group'
  * @returns {{isValid: boolean, errors: string[]}} Validation result
  */

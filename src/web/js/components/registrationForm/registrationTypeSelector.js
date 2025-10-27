@@ -11,7 +11,7 @@ export class RegistrationTypeSelector {
   /**
    * Create a registration type selector
    * @param {string} selectId - ID of the select element
-   * @param {Object} containerIds - Object with privateContainerId and groupContainerId
+   * @param {object} containerIds - Object with privateContainerId and groupContainerId
    * @param {Function} onChangeCallback - Callback when registration type changes
    */
   constructor(selectId, containerIds = {}, onChangeCallback = null) {

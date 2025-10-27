@@ -157,7 +157,9 @@ const mockRegistrationApplicationService = {
     warnings: [],
   }),
   updateRegistration: jest.fn().mockResolvedValue(mockRegistration),
-  cancelRegistration: jest.fn().mockResolvedValue({ success: true, registrationId: mockRegistration.id }),
+  cancelRegistration: jest
+    .fn()
+    .mockResolvedValue({ success: true, registrationId: mockRegistration.id }),
   validateRegistration: jest.fn().mockResolvedValue({
     isValid: true,
     conflicts: [],
@@ -186,7 +188,8 @@ jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js
       if (serviceName === 'programRepository') return mockProgramRepository;
       if (serviceName === 'userRepository') return mockUserRepository;
       if (serviceName === 'registrationRepository') return mockRegistrationRepository;
-      if (serviceName === 'registrationApplicationService') return mockRegistrationApplicationService;
+      if (serviceName === 'registrationApplicationService')
+        return mockRegistrationApplicationService;
       if (serviceName === 'periodService') return mockPeriodService;
       return null;
     }),
@@ -439,7 +442,9 @@ describe('RegistrationController Integration Tests', () => {
         .expect(401);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error.message).toContain('Priority enrollment is for returning families');
+      expect(response.body.error.message).toContain(
+        'Priority enrollment is for returning families'
+      );
     });
 
     test('should reject missing required fields', async () => {

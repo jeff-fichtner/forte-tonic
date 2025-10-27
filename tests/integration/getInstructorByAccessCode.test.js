@@ -355,7 +355,10 @@ describe('Integration Test: GET /api/admins/by-access-code/:accessCode', () => {
         .expect(404);
 
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body.error).toHaveProperty('message', 'Admin not found with provided access code');
+      expect(response.body.error).toHaveProperty(
+        'message',
+        'Admin not found with provided access code'
+      );
       expect(response.body.error).toHaveProperty('type', 'not_found');
       expect(response.body.error).toHaveProperty('code', 'NOT_FOUND');
 
@@ -400,7 +403,10 @@ describe('Integration Test: GET /api/parents/by-access-code/:accessCode', () => 
         .expect(404);
 
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body.error).toHaveProperty('message', 'Parent not found with provided access code');
+      expect(response.body.error).toHaveProperty(
+        'message',
+        'Parent not found with provided access code'
+      );
       expect(response.body.error).toHaveProperty('type', 'not_found');
       expect(response.body.error).toHaveProperty('code', 'NOT_FOUND');
 

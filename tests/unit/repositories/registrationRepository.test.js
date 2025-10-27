@@ -286,10 +286,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
         ['reg-2', 'student-2', 'instructor-2'],
       ];
 
-      mockDbClient.getCachedData.mockResolvedValue([
-        { id: 'reg-1' },
-        { id: 'reg-2' },
-      ]);
+      mockDbClient.getCachedData.mockResolvedValue([{ id: 'reg-1' }, { id: 'reg-2' }]);
 
       const result = await repository.getFromTable('registrations_fall');
 

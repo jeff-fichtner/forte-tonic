@@ -209,7 +209,9 @@ export class PeriodService extends BaseService {
     if (!currentTrimester || typeof currentTrimester !== 'string') {
       throw new Error(`Invalid trimester: ${currentTrimester}`);
     }
-    const index = TRIMESTER_SEQUENCE.findIndex(t => t.toLowerCase() === currentTrimester.toLowerCase());
+    const index = TRIMESTER_SEQUENCE.findIndex(
+      t => t.toLowerCase() === currentTrimester.toLowerCase()
+    );
     if (index === -1) {
       throw new Error(`Invalid trimester: ${currentTrimester}`);
     }

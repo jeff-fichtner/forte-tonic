@@ -76,7 +76,7 @@ export class ClassSelector {
 
   /**
    * Get the selected class object
-   * @returns {Object|null} Selected class object or null
+   * @returns {object | null} Selected class object or null
    */
   getSelectedClass() {
     const selectedId = this.getSelectedClassId();

@@ -6,7 +6,11 @@
  */
 
 import { jest } from '@jest/globals';
-import { Trimester, TRIMESTER_SEQUENCE, isValidTrimester } from '../../../src/utils/values/trimester.js';
+import {
+  Trimester,
+  TRIMESTER_SEQUENCE,
+  isValidTrimester,
+} from '../../../src/utils/values/trimester.js';
 
 describe('Trimester Utilities', () => {
   describe('Trimester constants', () => {
