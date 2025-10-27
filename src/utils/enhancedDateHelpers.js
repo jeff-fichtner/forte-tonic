@@ -344,13 +344,6 @@ export class EnhancedDateHelpers {
   }
 
   /**
-   * Parse Google Sheets date format
-   */
-  static parseGoogleSheetsDate(dateValue) {
-    return new TonicDateTime(dateValue, 'google-date');
-  }
-
-  /**
    * Parse time string (supports multiple formats)
    */
   static parseTimeString(timeString) {
@@ -368,10 +361,6 @@ export { TonicDateTime as DateTime, EnhancedDateHelpers as DateHelpers };
  * const startTime = DateHelpers.parseTimeString("3:30 PM");
  * const endTime = DateHelpers.parseTimeString("4:30 PM");
  * const duration = endTime.minus(startTime.toDuration());
- *
- * // Working with Google Sheets dates
- * const googleDate = DateHelpers.parseGoogleSheetsDate(44927); // Excel serial date
- * console.log(googleDate.to12HourString()); // "3:30 PM"
  *
  * // Creating audit timestamps
  * const createdAt = DateHelpers.now();

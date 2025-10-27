@@ -422,22 +422,15 @@ export class GoogleSheetsDbClient extends BaseService {
       await this.insertIntoSheet(sheetKey, processedRecord);
 
       if (auditSheet) {
+        let auditRecord;
         if (sheetKey === Keys.REGISTRATIONS) {
-          // Special handling for registration audits
-          const auditRecord = this.#createRegistrationAuditRecord(
-            processedRecord,
-            createdBy,
-            false
-          );
-          await this.insertIntoSheet(auditSheet, auditRecord);
+          auditRecord = this.#createRegistrationAuditRecord(processedRecord, createdBy, false);
+        } else if (sheetKey === Keys.ATTENDANCE) {
+          auditRecord = this.#createAttendanceAuditRecord(processedRecord, createdBy, false);
         } else {
-          // Legacy audit handling for other sheets
-          const auditValues = this.#convertToAuditValues(Object.values(processedRecord));
-          await this.insertIntoSheet(
-            auditSheet,
-            this.#convertAuditValuesToObject(auditValues, auditSheet)
-          );
+          throw new Error(`No audit record creator defined for sheet: ${sheetKey}`);
         }
+        await this.insertIntoSheet(auditSheet, auditRecord);
       }
 
       return processedRecord;
@@ -484,18 +477,15 @@ export class GoogleSheetsDbClient extends BaseService {
       // Add audit functionality (from existing appendRecord method)
       const { auditSheet } = sheetInfo;
       if (auditSheet) {
+        let auditRecord;
         if (sheetKey === 'registrations') {
-          // Special handling for registration audits
-          const auditRecord = this.#createRegistrationAuditRecord(record, createdBy, false);
-          await this.insertIntoSheet(auditSheet, auditRecord);
+          auditRecord = this.#createRegistrationAuditRecord(record, createdBy, false);
+        } else if (sheetKey === 'attendance') {
+          auditRecord = this.#createAttendanceAuditRecord(record, createdBy, false);
         } else {
-          // Legacy audit handling for other sheets
-          const auditValues = this.#convertToAuditValues(Object.values(record));
-          await this.insertIntoSheet(
-            auditSheet,
-            this.#convertAuditValuesToObject(auditValues, auditSheet)
-          );
+          throw new Error(`No audit record creator defined for sheet: ${sheetKey}`);
         }
+        await this.insertIntoSheet(auditSheet, auditRecord);
       }
 
       return record; // Return the original record without mutation
@@ -635,18 +625,15 @@ export class GoogleSheetsDbClient extends BaseService {
       await this.deleteFromSheet(sheetKey, rowIndex);
 
       if (auditSheet) {
+        let auditRecord;
         if (sheetKey === Keys.REGISTRATIONS) {
-          // Special handling for registration audits
-          const auditRecord = this.#createRegistrationAuditRecord(recordData, deletedBy, true);
-          await this.insertIntoSheet(auditSheet, auditRecord);
+          auditRecord = this.#createRegistrationAuditRecord(recordData, deletedBy, true);
+        } else if (sheetKey === Keys.ATTENDANCE) {
+          auditRecord = this.#createAttendanceAuditRecord(recordData, deletedBy, true);
         } else {
-          // Legacy audit handling for other sheets
-          const auditValues = this.#convertToAuditValues(Object.values(recordData), deletedBy);
-          await this.insertIntoSheet(
-            auditSheet,
-            this.#convertAuditValuesToObject(auditValues, auditSheet)
-          );
+          throw new Error(`No audit record creator defined for sheet: ${sheetKey}`);
         }
+        await this.insertIntoSheet(auditSheet, auditRecord);
       } else {
         this.logger.debug(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
       }
@@ -749,22 +736,6 @@ export class GoogleSheetsDbClient extends BaseService {
   /**
    *
    */
-  #convertAuditValuesToObject(values, auditSheetKey) {
-    const auditSheetInfo = this.workingSheetInfo[auditSheetKey];
-    if (!auditSheetInfo) {
-      throw new Error(`Audit sheet info not found for key: ${auditSheetKey}`);
-    }
-
-    const obj = {};
-    Object.keys(auditSheetInfo.columnMap).forEach((key, index) => {
-      obj[key] = values[index] || '';
-    });
-    return obj;
-  }
-
-  /**
-   *
-   */
   async getMaxIdFromSheet(sheetKey) {
     try {
       const sheetInfo = this.workingSheetInfo[sheetKey];
@@ -837,31 +808,50 @@ export class GoogleSheetsDbClient extends BaseService {
   }
 
   /**
+   * Create an attendance audit record with proper schema
+   * @param {object} attendanceRecord - The original attendance record
+   * @param {string} performedBy - The user who performed the action
+   * @param {boolean} isDeleted - Whether this is a delete operation
+   * @returns {object} Audit record formatted for the attendance-audit sheet
+   */
+  #createAttendanceAuditRecord(attendanceRecord, performedBy, isDeleted = false) {
+    const now = new Date().toISOString();
+
+    // Helper function to extract value from value objects or return the value as-is
+    const extractValue = field => {
+      if (field && typeof field === 'object' && field.value !== undefined) {
+        return field.value;
+      }
+      if (
+        field &&
+        typeof field === 'object' &&
+        field.getValue &&
+        typeof field.getValue === 'function'
+      ) {
+        return field.getValue();
+      }
+      return field;
+    };
+
+    return {
+      id: UuidUtility.generateUuid(), // New unique GUID for audit record
+      action: isDeleted ? 'DELETE' : 'CREATE',
+      attendanceId: extractValue(attendanceRecord.id), // ID from the original attendance
+      registrationId: extractValue(attendanceRecord.registrationId),
+      week: extractValue(attendanceRecord.week),
+      schoolYear: extractValue(attendanceRecord.schoolYear),
+      trimester: extractValue(attendanceRecord.trimester),
+      performedBy: performedBy,
+      performedAt: now,
+    };
+  }
+
+  /**
    *
    */
   #auditRecord(record, createdBy) {
     record.createdAt = new Date().toISOString();
     record.createdBy = createdBy;
     return record;
-  }
-
-  /**
-   *
-   */
-  #convertToAuditValues(values, deletedBy = null) {
-    // copy list
-    values = values.slice();
-
-    const uuid = UuidUtility.generateUuid();
-    // insert uuid at the beginning of the values array
-    values.unshift(uuid);
-
-    if (deletedBy) {
-      values.push(true);
-      values.push(new Date().toISOString());
-      values.push(deletedBy);
-    }
-
-    return values;
   }
 }
