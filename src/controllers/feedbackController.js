@@ -49,17 +49,21 @@ export class FeedbackController {
       console.log('Full feedback:', JSON.stringify(feedbackLog, null, 2));
       console.log('================================\n');
 
-      successResponse(res, { received: true }, {
-        message: 'Feedback received successfully',
-        statusCode: 200,
-        req,
-        startTime,
-        context: {
-          controller: 'FeedbackController',
-          method: 'submitFeedback',
-          userEmail: state?.currentUser?.email,
-        },
-      });
+      successResponse(
+        res,
+        { received: true },
+        {
+          message: 'Feedback received successfully',
+          statusCode: 200,
+          req,
+          startTime,
+          context: {
+            controller: 'FeedbackController',
+            method: 'submitFeedback',
+            userEmail: state?.currentUser?.email,
+          },
+        }
+      );
     } catch (error) {
       logger.error('Error processing feedback:', error);
       errorResponse(res, error, {
