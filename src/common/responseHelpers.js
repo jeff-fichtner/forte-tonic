@@ -48,9 +48,10 @@ export function successResponse(res, data, options = {}) {
  * @param {object} options.req - Express request (for logging)
  * @param {number} options.startTime - Request start time (for logging)
  * @param {object} options.context - Additional context for logs
+ * @param {boolean} options.includeRequestData - Include sanitized request data in error response (for save operations)
  */
 export function errorResponse(res, error, options = {}) {
-  const { req = null, startTime = null, context = {} } = options;
+  const { req = null, startTime = null, context = {}, includeRequestData = false } = options;
 
   // Determine HTTP status code from error
   const statusCode = determineStatusCode(error);
@@ -90,15 +91,24 @@ export function errorResponse(res, error, options = {}) {
     logger.warning(logEntry);
   }
 
-  // Send error response to client (sanitized)
-  res.status(statusCode).json({
+  // Build error response payload
+  const errorPayload = {
     success: false,
     error: {
       message: getClientMessage(error, statusCode),
       code: error.code || ERROR_CODE.INTERNAL_ERROR,
       type: getErrorType(statusCode),
     },
-  });
+  };
+
+  // Include sanitized request data for save operations (if enabled)
+  // This helps clients retry failed operations and provides better UX
+  if (includeRequestData && req) {
+    errorPayload.requestData = sanitizeRequestData(req);
+  }
+
+  // Send error response to client (sanitized)
+  res.status(statusCode).json(errorPayload);
 }
 
 /**
@@ -160,4 +170,45 @@ function getErrorType(statusCode) {
   if (statusCode >= 500) return ERROR_TYPE.SERVER;
 
   return ERROR_TYPE.CLIENT;
+}
+
+/**
+ * Sanitize request data for inclusion in error responses
+ * Removes sensitive fields and includes relevant context
+ *
+ * @param {object} req - Express request object
+ * @returns {object} Sanitized request data
+ */
+function sanitizeRequestData(req) {
+  const data = req.body || {};
+
+  // Create a shallow copy to avoid mutating the original
+  const sanitized = { ...data };
+
+  // Remove sensitive fields that should never be in error responses
+  const sensitiveFields = [
+    'password',
+    'accessCode',
+    'token',
+    'apiKey',
+    'secret',
+    'privateKey',
+    'authorization',
+  ];
+
+  sensitiveFields.forEach(field => {
+    delete sanitized[field];
+  });
+
+  // Include URL parameters if present (useful for PUT/PATCH/DELETE operations)
+  if (req.params && Object.keys(req.params).length > 0) {
+    sanitized._urlParams = req.params;
+  }
+
+  // Include query parameters if present (useful for filtered GET operations)
+  if (req.query && Object.keys(req.query).length > 0) {
+    sanitized._queryParams = req.query;
+  }
+
+  return sanitized;
 }

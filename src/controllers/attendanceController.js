@@ -75,11 +75,26 @@ export class AttendanceController {
         }
       );
     } catch (error) {
-      logger.error('Error recording attendance:', error);
+      logger.error('Error recording attendance:', {
+        error: error.message,
+        stack: error.stack,
+        requestData: {
+          registrationId: req.body?.registrationId,
+          week: req.body?.week,
+          schoolYear: req.body?.schoolYear,
+          trimester: req.body?.trimester,
+        },
+      });
       errorResponse(res, error, {
         req,
         startTime,
-        context: { controller: 'AttendanceController', method: 'markAttendance' },
+        context: {
+          controller: 'AttendanceController',
+          method: 'markAttendance',
+          registrationId: req.body?.registrationId,
+          week: req.body?.week,
+        },
+        includeRequestData: true,
       });
     }
   }
@@ -146,11 +161,20 @@ export class AttendanceController {
         },
       });
     } catch (error) {
-      logger.error('Error recording attendance:', error);
+      logger.error('Error recording attendance:', {
+        error: error.message,
+        stack: error.stack,
+        registrationId: req.body?.registrationId,
+      });
       errorResponse(res, error, {
         req,
         startTime,
-        context: { controller: 'AttendanceController', method: 'recordAttendance' },
+        context: {
+          controller: 'AttendanceController',
+          method: 'recordAttendance',
+          registrationId: req.body?.registrationId,
+        },
+        includeRequestData: true,
       });
     }
   }
@@ -182,11 +206,20 @@ export class AttendanceController {
         },
       });
     } catch (error) {
-      logger.error('Error removing attendance:', error);
+      logger.error('Error removing attendance:', {
+        error: error.message,
+        stack: error.stack,
+        registrationId: req.body?.registrationId,
+      });
       errorResponse(res, error, {
         req,
         startTime,
-        context: { controller: 'AttendanceController', method: 'removeAttendance' },
+        context: {
+          controller: 'AttendanceController',
+          method: 'removeAttendance',
+          registrationId: req.body?.registrationId,
+        },
+        includeRequestData: true,
       });
     }
   }

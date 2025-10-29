@@ -165,11 +165,28 @@ export class RegistrationController {
         context: { controller: 'RegistrationController', method: 'createRegistration' },
       });
     } catch (error) {
-      logger.error('Error creating registration:', error);
+      logger.error('Error creating registration:', {
+        error: error.message,
+        stack: error.stack,
+        requestData: {
+          studentId: req.body?.studentId,
+          instructorId: req.body?.instructorId,
+          registrationType: req.body?.registrationType,
+          classId: req.body?.classId,
+          day: req.body?.day,
+          startTime: req.body?.startTime,
+        },
+      });
       errorResponse(res, error, {
         req,
         startTime,
-        context: { controller: 'RegistrationController', method: 'createRegistration' },
+        context: {
+          controller: 'RegistrationController',
+          method: 'createRegistration',
+          studentId: req.body?.studentId,
+          registrationType: req.body?.registrationType,
+        },
+        includeRequestData: true,
       });
     }
   }
@@ -200,11 +217,21 @@ export class RegistrationController {
         context: { controller: 'RegistrationController', method: 'updateRegistration' },
       });
     } catch (error) {
-      logger.error('Error updating registration:', error);
+      logger.error('Error updating registration:', {
+        error: error.message,
+        stack: error.stack,
+        registrationId: req.params?.registrationId,
+        updates: req.body,
+      });
       errorResponse(res, error, {
         req,
         startTime,
-        context: { controller: 'RegistrationController', method: 'updateRegistration' },
+        context: {
+          controller: 'RegistrationController',
+          method: 'updateRegistration',
+          registrationId: req.params?.registrationId,
+        },
+        includeRequestData: true,
       });
     }
   }
@@ -463,11 +490,22 @@ export class RegistrationController {
         });
         return;
       }
-      logger.error('Error updating intent:', error);
+      logger.error('Error updating intent:', {
+        error: error.message,
+        stack: error.stack,
+        registrationId: req.params?.id,
+        intent: req.body?.intent,
+      });
       errorResponse(res, error, {
         req,
         startTime,
-        context: { controller: 'RegistrationController', method: 'updateIntent' },
+        context: {
+          controller: 'RegistrationController',
+          method: 'updateIntent',
+          registrationId: req.params?.id,
+          intent: req.body?.intent,
+        },
+        includeRequestData: true,
       });
     }
   }
@@ -603,14 +641,27 @@ export class RegistrationController {
         },
       });
     } catch (error) {
-      logger.error('Error creating next trimester registration:', error);
+      logger.error('Error creating next trimester registration:', {
+        error: error.message,
+        stack: error.stack,
+        requestData: {
+          studentId: req.body?.studentId,
+          instructorId: req.body?.instructorId,
+          registrationType: req.body?.registrationType,
+          classId: req.body?.classId,
+          linkedPreviousRegistrationId: req.body?.linkedPreviousRegistrationId,
+        },
+      });
       errorResponse(res, error, {
         req,
         startTime,
         context: {
           controller: 'RegistrationController',
           method: 'createNextTrimesterRegistration',
+          studentId: req.body?.studentId,
+          registrationType: req.body?.registrationType,
         },
+        includeRequestData: true,
       });
     }
   }
