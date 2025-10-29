@@ -34,7 +34,7 @@ export class FeedbackManager {
 
   /**
    * Capture current application state
-   * @returns {Object} Captured state data
+   * @returns {object} Captured state data
    */
   #captureState() {
     const state = {
