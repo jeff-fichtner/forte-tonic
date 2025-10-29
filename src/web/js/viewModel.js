@@ -20,6 +20,7 @@ import { ClassManager } from './utilities/classManager.js';
 import { INTENT_LABELS } from './constants/intentConstants.js';
 import { PeriodType } from './constants/periodTypeConstants.js';
 import { Trimester, TRIMESTER_SEQUENCE } from './constants/trimesterConstants.js';
+import { FeedbackManager } from './feedback.js';
 
 /**
  * Capitalize the first letter of a string (for display purposes)
@@ -326,6 +327,11 @@ export class ViewModel {
     // Use the default section based on user's role
     this.navTabs = new NavTabs(defaultSection);
     this.#setPageLoading(false);
+
+    // Initialize feedback system
+    if (!this.feedbackManager) {
+      this.feedbackManager = new FeedbackManager(this);
+    }
 
     // Auto-click the specified role tab if provided
     if (roleToClick) {

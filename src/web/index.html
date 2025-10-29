@@ -2029,6 +2029,49 @@
       </div>
     </div>
 
+    <!-- Feedback Button (Fixed Position) -->
+    <a
+      id="feedback-button"
+      class="btn-floating btn-large waves-effect waves-light modal-trigger"
+      data-target="feedback-modal"
+      style="position: fixed; bottom: 24px; right: 24px; background-color: #2b68a4; z-index: 999;"
+      title="Send Feedback"
+    >
+      <i class="material-icons">feedback</i>
+    </a>
+
+    <!-- Feedback Modal -->
+    <div id="feedback-modal" class="modal">
+      <div class="modal-content">
+        <h4>Send Feedback</h4>
+        <p style="color: #666; margin-bottom: 20px;">
+          <i class="material-icons tiny" style="vertical-align: middle;">info</i>
+          Your page state will be automatically captured to help us debug any issues you're experiencing.
+        </p>
+        <div class="input-field">
+          <textarea
+            id="feedback-message"
+            class="materialize-textarea"
+            maxlength="1000"
+            style="min-height: 100px;"
+          ></textarea>
+          <label for="feedback-message">Your Message (optional)</label>
+          <span class="helper-text" data-error="Message too long">Max 1000 characters</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a href="#!" class="modal-close waves-effect waves-light btn-flat">Cancel</a>
+        <a
+          href="#!"
+          id="feedback-submit-btn"
+          class="waves-effect waves-light btn"
+          style="background-color: #2b68a4;"
+        >
+          <i class="material-icons left">send</i>Submit Feedback
+        </a>
+      </div>
+    </div>
+
     <!-- Modern ES Module Loading -->
     <script type="module" src="js/main.js"></script>
   </body>
