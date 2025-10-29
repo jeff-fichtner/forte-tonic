@@ -28,6 +28,8 @@ export const ServerFunctions = {
   // Next trimester registration (enrollment periods only)
   getNextTrimesterRegistrations: 'registrations/next-trimester',
   createNextTrimesterRegistration: 'registrations/next-trimester',
+  // Feedback
+  submitFeedback: 'feedback',
 };
 
 // IndexedDB data stores

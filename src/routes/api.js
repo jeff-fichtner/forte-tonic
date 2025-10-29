@@ -6,6 +6,7 @@ import { UserController } from '../controllers/userController.js';
 import { RegistrationController } from '../controllers/registrationController.js';
 import { SystemController } from '../controllers/systemController.js';
 import { AttendanceController } from '../controllers/attendanceController.js';
+import { FeedbackController } from '../controllers/feedbackController.js';
 import { extractPaginatedRequestData } from '../middleware/requestDataNormalizer.js';
 import { initializeRepositories } from '../middleware/auth.js';
 
@@ -115,5 +116,10 @@ router.delete(
  */
 router.post('/recordAttendance', AttendanceController.recordAttendance);
 router.post('/removeAttendance', AttendanceController.removeAttendance);
+
+/**
+ * Feedback endpoint
+ */
+router.post('/feedback', FeedbackController.submitFeedback);
 
 export default router;
