@@ -585,6 +585,7 @@ export class RegistrationController {
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
       const periodService = serviceContainer.get('periodService');
       const registrationRepository = serviceContainer.get('registrationRepository');
+      const registrationApplicationService = serviceContainer.get('registrationApplicationService');
 
       logger.info('🎯 Next trimester registration creation:', {
         studentId: requestData.studentId,
@@ -618,17 +619,18 @@ export class RegistrationController {
         );
       }
 
-      // Create registration in next trimester table
-      const registration = await registrationRepository.createInTable(nextTable, {
-        ...requestData,
-        createdBy: authenticatedUserEmail,
-      });
-
-      logger.info(
-        `✅ Created next trimester registration: ${registration.id?.value || registration.id}`
+      // Use application service to validate and create registration with conflict checking
+      // This ensures the same validation rules apply as regular registration creation
+      const result = await registrationApplicationService.processRegistration(
+        requestData,
+        authenticatedUserEmail
       );
 
-      successResponse(res, registration, {
+      logger.info(
+        `✅ Created next trimester registration: ${result.registration.id?.value || result.registration.id}`
+      );
+
+      successResponse(res, result.registration, {
         message: 'Next trimester registration created successfully',
         statusCode: 201,
         req,

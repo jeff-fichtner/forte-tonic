@@ -300,7 +300,12 @@ export class ParentRegistrationForm {
         const endMinutes = parseTime(endTime);
 
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
-          const existingRegistrations = this.registrations.filter(reg => {
+          // Use next trimester registrations during enrollment periods, current trimester otherwise
+          const registrationsToCheck = this._isEnrollmentPeriodActive()
+            ? this.nextTrimesterRegistrations || []
+            : this.registrations;
+
+          const existingRegistrations = registrationsToCheck.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
             return (
               regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day)
@@ -390,7 +395,12 @@ export class ParentRegistrationForm {
         const endMinutes = parseTime(endTime);
 
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
-          const existingRegistrations = this.registrations.filter(reg => {
+          // Use next trimester registrations during enrollment periods, current trimester otherwise
+          const registrationsToCheck = this._isEnrollmentPeriodActive()
+            ? this.nextTrimesterRegistrations || []
+            : this.registrations;
+
+          const existingRegistrations = registrationsToCheck.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
             return (
               regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day)
@@ -489,7 +499,12 @@ export class ParentRegistrationForm {
         const endMinutes = parseTime(endTime);
 
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
-          const existingRegistrations = this.registrations.filter(reg => {
+          // Use next trimester registrations during enrollment periods, current trimester otherwise
+          const registrationsToCheck = this._isEnrollmentPeriodActive()
+            ? this.nextTrimesterRegistrations || []
+            : this.registrations;
+
+          const existingRegistrations = registrationsToCheck.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
             return (
               regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day)
@@ -799,7 +814,12 @@ export class ParentRegistrationForm {
 
         if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
           const dayIndex = dayMap[day];
-          const existingRegistrations = this.registrations.filter(reg => {
+          // Use next trimester registrations during enrollment periods, current trimester otherwise
+          const registrationsToCheck = this._isEnrollmentPeriodActive()
+            ? this.nextTrimesterRegistrations || []
+            : this.registrations;
+
+          const existingRegistrations = registrationsToCheck.filter(reg => {
             const regInstructorId = reg.instructorId?.value || reg.instructorId;
             return (
               regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day)
@@ -991,7 +1011,12 @@ export class ParentRegistrationForm {
 
       // Get existing registrations for this instructor on this day
       const dayIndex = dayMap[day];
-      const existingRegistrations = this.registrations.filter(reg => {
+      // Use next trimester registrations during enrollment periods, current trimester otherwise
+      const registrationsToCheck = this._isEnrollmentPeriodActive()
+        ? this.nextTrimesterRegistrations || []
+        : this.registrations;
+
+      const existingRegistrations = registrationsToCheck.filter(reg => {
         const regInstructorId = reg.instructorId?.value || reg.instructorId;
         return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
       });
@@ -1927,7 +1952,12 @@ export class ParentRegistrationForm {
 
       // Get existing registrations for this instructor on this day
       const dayIndex = dayMap[day];
-      const existingRegistrations = this.registrations.filter(reg => {
+      // Use next trimester registrations during enrollment periods, current trimester otherwise
+      const registrationsToCheck = this._isEnrollmentPeriodActive()
+        ? this.nextTrimesterRegistrations || []
+        : this.registrations;
+
+      const existingRegistrations = registrationsToCheck.filter(reg => {
         const regInstructorId = reg.instructorId?.value || reg.instructorId;
         return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
       });

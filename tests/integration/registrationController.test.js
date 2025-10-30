@@ -413,9 +413,9 @@ describe('RegistrationController Integration Tests', () => {
 
       expect(response.body.success).toBe(true);
       expect(mockPeriodService.canAccessNextTrimester).toHaveBeenCalledWith(true);
-      expect(mockRegistrationRepository.createInTable).toHaveBeenCalledWith(
-        'registrations_winter',
-        expect.objectContaining(validNextTrimesterData)
+      expect(mockRegistrationApplicationService.processRegistration).toHaveBeenCalledWith(
+        expect.objectContaining(validNextTrimesterData),
+        expect.any(String)
       );
     });
 
@@ -471,11 +471,11 @@ describe('RegistrationController Integration Tests', () => {
         .expect(201);
 
       expect(response.body.success).toBe(true);
-      expect(mockRegistrationRepository.createInTable).toHaveBeenCalledWith(
-        'registrations_winter',
+      expect(mockRegistrationApplicationService.processRegistration).toHaveBeenCalledWith(
         expect.objectContaining({
           linkedPreviousRegistrationId: 'OLD-REG-ID',
-        })
+        }),
+        expect.any(String)
       );
     });
   });
