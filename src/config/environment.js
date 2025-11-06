@@ -140,7 +140,7 @@ function getBuildDate() {
 function getLocalGitCommit() {
   // For local development, just return a static identifier
   // The actual git commit will be available on the build server via BUILD_GIT_COMMIT
-  return 'uncommitted-dev';
+  return 'new-dev';
 }
 
 // Only log environment info when not in test mode

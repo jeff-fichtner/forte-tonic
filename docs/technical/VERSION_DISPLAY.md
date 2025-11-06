@@ -7,7 +7,7 @@ This system provides automatic version display for the staging environment while
 ### Development Environment
 - **Version**: Always shows `v0.0.0-dev`
 - **Build Date**: Static date `2025-01-01T00:00:00.000Z`
-- **Git Commit**: Shows `uncommitted-dev`
+- **Git Commit**: Shows `new-dev`
 - **Display**: Version badge is **hidden** in development
 
 ### Staging Environment (Render Build Server)

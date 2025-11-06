@@ -46,19 +46,15 @@ export class ModalKeyboardHandler {
         event.preventDefault();
         event.stopPropagation();
 
-        console.log('ModalKeyboardHandler: ESC pressed on modal:', modalElement.id);
-
         if (onCancel) {
           onCancel(event);
         } else {
           // Try to find and click cancel button
           const cancelButton = modalElement.querySelector(cancelSelector);
           if (cancelButton) {
-            console.log('ModalKeyboardHandler: Auto-clicking cancel button');
             cancelButton.click();
           } else {
             // Fallback: close modal directly
-            console.log('ModalKeyboardHandler: Closing modal directly');
             modalInstance.close();
           }
         }
@@ -74,15 +70,12 @@ export class ModalKeyboardHandler {
         event.preventDefault();
         event.stopPropagation();
 
-        console.log('ModalKeyboardHandler: Enter pressed on modal:', modalElement.id);
-
         if (onConfirm) {
           onConfirm(event);
         } else {
           // Try to find and click confirm button
           const confirmButton = modalElement.querySelector(confirmSelector);
           if (confirmButton) {
-            console.log('ModalKeyboardHandler: Auto-clicking confirm button');
             confirmButton.click();
           }
         }
@@ -97,8 +90,6 @@ export class ModalKeyboardHandler {
       modalElement._keyboardHandlers = [];
     }
     modalElement._keyboardHandlers.push(keyboardHandler);
-
-    console.log('ModalKeyboardHandler: Keyboard handlers attached to modal:', modalElement.id);
 
     // Return cleanup function
     return () => {
@@ -126,7 +117,6 @@ export class ModalKeyboardHandler {
     });
 
     modalElement._keyboardHandlers = [];
-    console.log('ModalKeyboardHandler: All keyboard handlers removed from modal:', modalElement.id);
   }
 
   /**
@@ -154,8 +144,6 @@ export class ModalKeyboardHandler {
         event.preventDefault();
         event.stopPropagation();
 
-        console.log('ModalKeyboardHandler: ESC pressed in time slot container');
-
         if (onCancel) {
           onCancel(event);
         } else if (selectedSlot) {
@@ -173,15 +161,12 @@ export class ModalKeyboardHandler {
         event.preventDefault();
         event.stopPropagation();
 
-        console.log('ModalKeyboardHandler: Enter pressed on selected time slot');
-
         if (onConfirm) {
           onConfirm(event, selectedSlot);
         } else {
           // Try to find and click the create registration button
           const submitButton = document.getElementById('parent-confirm-registration-btn');
           if (submitButton && !submitButton.disabled) {
-            console.log('ModalKeyboardHandler: Auto-clicking registration submit button');
             submitButton.click();
           }
         }
@@ -195,8 +180,6 @@ export class ModalKeyboardHandler {
       containerElement._timeSlotKeyboardHandlers = [];
     }
     containerElement._timeSlotKeyboardHandlers.push(keyboardHandler);
-
-    console.log('ModalKeyboardHandler: Time slot keyboard handlers attached to container');
 
     // Return cleanup function
     return () => {

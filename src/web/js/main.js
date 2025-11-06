@@ -186,7 +186,6 @@ const UserSession = {
 
   saveAppConfig(config) {
     this.appConfig = config;
-    console.log('App configuration saved to user session');
   },
 
   getAppConfig() {
@@ -280,28 +279,40 @@ Please refresh the page and try again.`
 }
 
 /**
+ * Environment constants (must match backend NodeEnv values)
+ */
+const NodeEnv = {
+  PRODUCTION: 'production',
+  STAGING: 'staging',
+  DEVELOPMENT: 'development',
+  TEST: 'test',
+};
+
+/**
  * Initialize version display for staging environments
  */
 async function initializeVersionDisplay() {
   try {
-    console.log('🏷️ Initializing version display...');
     const response = await fetch('/api/version');
     const versionInfo = await response.json();
 
-    console.log('🏷️ Version info received:', versionInfo);
+    // Set global environment information for use throughout the application
+    window.TONIC_ENV = {
+      environment: versionInfo.environment,
+      isDevelopment: versionInfo.environment === NodeEnv.DEVELOPMENT,
+      isStaging: versionInfo.environment === NodeEnv.STAGING,
+      isProduction: versionInfo.environment === NodeEnv.PRODUCTION,
+      version: versionInfo.number,
+      gitCommit: versionInfo.gitCommit,
+      // Export NodeEnv constants for use throughout the app
+      NodeEnv,
+    };
 
     if (versionInfo.displayVersion) {
       const versionDisplay = document.getElementById('version-display');
       const versionNumber = document.getElementById('version-number-text');
       const versionEnv = document.getElementById('version-env');
       const versionCommit = document.getElementById('version-commit');
-
-      console.log('🏷️ Version display elements:', {
-        versionDisplay: !!versionDisplay,
-        versionNumber: !!versionNumber,
-        versionEnv: !!versionEnv,
-        versionCommit: !!versionCommit,
-      });
 
       if (versionDisplay && versionNumber && versionEnv && versionCommit) {
         versionNumber.textContent = versionInfo.number;
@@ -315,7 +326,6 @@ async function initializeVersionDisplay() {
           // Copy commit ID to clipboard
           try {
             await navigator.clipboard.writeText(versionInfo.gitCommit);
-            console.log('✓ Commit ID copied to clipboard:', versionInfo.gitCommit);
           } catch (error) {
             console.warn('Failed to copy commit ID:', error);
           }
@@ -333,16 +343,11 @@ Git Commit: ${versionInfo.gitCommit}
         });
 
         console.log(
-          `🏷️ Version display initialized: v${versionInfo.number} (${versionInfo.environment})`
+          `Version display initialized: ${versionInfo.number} (${versionInfo.gitCommit.substring(0, 7)})`
         );
-      } else {
-        console.warn('🏷️ Version display elements not found in DOM');
       }
-    } else {
-      console.log('🏷️ Version display disabled for this environment');
     }
   } catch (error) {
-    console.warn('🏷️ Failed to initialize version display:', error);
     // Don't throw - version display is not critical
   }
 }

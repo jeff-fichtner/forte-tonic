@@ -32,10 +32,14 @@ export class AdminRegistrationForm {
     this.classes = classes;
     this.sendDataFunction = sendDataFunction;
     this.selectedTrimester = null; // Trimester context for new registrations
+    this.trimesterRegistrations = []; // Registrations for the selected trimester
+    this._selectedRegistrationToReplace = null; // Track registration to replace
 
     // Initialize form components
     this.#initializeComponents();
     this.#attachSubmitButtonListener();
+    this.#attachRegistrationSelectorListener();
+    this.#attachStudentSelectorListener();
   }
 
   /**
@@ -48,11 +52,31 @@ export class AdminRegistrationForm {
   }
 
   /**
+   * Set registrations for the selected trimester
+   * @param {Array} registrations - Array of registration objects for the trimester
+   */
+  setTrimesterRegistrations(registrations) {
+    this.trimesterRegistrations = registrations || [];
+    console.log(
+      `Admin form: Loaded ${this.trimesterRegistrations.length} registrations for trimester`
+    );
+    // Render the selector if a student is already selected
+    const selectedStudentId = this.studentSelector.getSelectedStudentId();
+    if (selectedStudentId) {
+      this.#renderRegistrationSelector();
+    }
+  }
+
+  /**
    * Initialize all form components
    */
   #initializeComponents() {
-    // Student selector
-    this.studentSelector = new StudentSelector('student-autocomplete-input', this.students);
+    // Student selector with callback to update registration selector
+    this.studentSelector = new StudentSelector(
+      'student-autocomplete-input',
+      this.students,
+      student => this.#handleStudentChange(student)
+    );
 
     // Registration type selector
     this.registrationTypeSelector = new RegistrationTypeSelector('registration-type-select', {
@@ -208,6 +232,8 @@ export class AdminRegistrationForm {
     const registrationType = this.registrationTypeSelector.getSelectedType();
     const transportationType = this.transportationSelector.getSelectedType();
 
+    let registrationData = {};
+
     if (registrationType === RegistrationType.GROUP) {
       const selectedClass = this.classSelector.getSelectedClass();
 
@@ -215,7 +241,7 @@ export class AdminRegistrationForm {
         throw new Error(RegistrationFormText.ERROR_INVALID_CLASS);
       }
 
-      return {
+      registrationData = {
         studentId: studentId,
         registrationType: RegistrationType.GROUP,
         transportationType: transportationType,
@@ -231,17 +257,15 @@ export class AdminRegistrationForm {
         length: selectedClass.length,
         instrument: selectedClass.instrument,
       };
-    }
-
-    // For private lessons
-    if (registrationType === RegistrationType.PRIVATE) {
+    } else if (registrationType === RegistrationType.PRIVATE) {
+      // For private lessons
       const dayValue = this.lessonDetailsForm.getSelectedDayValue();
       const dayName = this.lessonDetailsForm.getSelectedDayName();
       const startTime = this.lessonDetailsForm.getSelectedTime();
       const length = this.lessonDetailsForm.getSelectedLength();
       const instrument = this.lessonDetailsForm.getSelectedInstrument();
 
-      return {
+      registrationData = {
         studentId: studentId,
         registrationType: registrationType,
         transportationType: transportationType,
@@ -251,12 +275,19 @@ export class AdminRegistrationForm {
         length: length,
         instrument: instrument,
       };
+    } else {
+      registrationData = {
+        studentId: studentId,
+        registrationType: registrationType,
+      };
     }
 
-    return {
-      studentId: studentId,
-      registrationType: registrationType,
-    };
+    // Add replaceRegistrationId if an existing registration is selected to be replaced
+    if (this._selectedRegistrationToReplace) {
+      registrationData.replaceRegistrationId = this._selectedRegistrationToReplace;
+    }
+
+    return registrationData;
   }
 
   /**
@@ -296,5 +327,147 @@ export class AdminRegistrationForm {
 
     // Hide containers
     this.#showContainer('instructor-selected-info-container', false);
+
+    // Clear registration selector
+    this._selectedRegistrationToReplace = null;
+    this.#hideRegistrationSelector();
+  }
+
+  /**
+   * Attach event listener to registration selector dropdown
+   */
+  #attachRegistrationSelectorListener() {
+    const selectorDropdown = document.getElementById('admin-registration-selector');
+    if (selectorDropdown) {
+      selectorDropdown.addEventListener('change', event => {
+        const selectedId = event.target.value;
+        if (!selectedId) {
+          // "Create New (Don't Replace)" selected
+          this._selectedRegistrationToReplace = null;
+        } else {
+          // Existing registration selected to be replaced
+          this._selectedRegistrationToReplace = selectedId;
+        }
+      });
+    }
+  }
+
+  /**
+   * Handle student selection change
+   * Called when a student is selected from autocomplete or cleared
+   */
+  #handleStudentChange(student) {
+    // Render registration selector (will hide if student is null)
+    this.#renderRegistrationSelector();
+  }
+
+  /**
+   * Attach listener to detect when student input is manually cleared
+   */
+  #attachStudentSelectorListener() {
+    const studentInput = document.getElementById('student-autocomplete-input');
+    if (studentInput) {
+      // Listen for input events to detect when field is cleared
+      studentInput.addEventListener('input', event => {
+        if (event.target.value === '') {
+          // Input was cleared, hide the registration selector
+          this.#hideRegistrationSelector();
+        }
+      });
+    }
+  }
+
+  /**
+   * Render the registration selector with existing registrations for the selected student
+   */
+  #renderRegistrationSelector() {
+    const selectorSection = document.getElementById('admin-registration-selector-section');
+    const selectorDropdown = document.getElementById('admin-registration-selector');
+
+    if (!selectorSection || !selectorDropdown) {
+      return; // Elements not found
+    }
+
+    // Get selected student
+    const selectedStudentId = this.studentSelector.getSelectedStudentId();
+
+    // Clear existing options (except first "Create New")
+    while (selectorDropdown.options.length > 1) {
+      selectorDropdown.remove(1);
+    }
+
+    if (
+      !selectedStudentId ||
+      !this.trimesterRegistrations ||
+      this.trimesterRegistrations.length === 0
+    ) {
+      this.#hideRegistrationSelector();
+      return;
+    }
+
+    // Filter registrations for selected student that have linkedPreviousRegistrationId
+    // These are registrations created from reenrollment intent that can be modified
+    const studentRegistrations = this.trimesterRegistrations.filter(reg => {
+      const regStudentId = reg.studentId?.value || reg.studentId;
+      const hasLinkedPrevious = !!(
+        reg.linkedPreviousRegistrationId?.value || reg.linkedPreviousRegistrationId
+      );
+      return regStudentId === selectedStudentId && hasLinkedPrevious;
+    });
+
+    // If no linked registrations for this student, hide the section
+    if (studentRegistrations.length === 0) {
+      this.#hideRegistrationSelector();
+      return;
+    }
+
+    // Show the section
+    selectorSection.style.display = 'block';
+
+    // Populate dropdown with existing registrations
+    studentRegistrations.forEach(registration => {
+      const option = document.createElement('option');
+      option.value = registration.id?.value || registration.id;
+
+      // Build descriptive label
+      let label = '';
+      const regType = registration.registrationType?.value || registration.registrationType;
+      if (regType === 'private') {
+        const instrument = registration.instrument?.value || registration.instrument || 'Lesson';
+        const day = registration.day?.value || registration.day || '';
+        const time = registration.startTime?.value || registration.startTime || '';
+        const instructor = this.instructors.find(
+          i =>
+            (i.id?.value || i.id) ===
+            (registration.instructorId?.value || registration.instructorId)
+        );
+        const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : '';
+        label = `${instrument} - ${day} ${time} with ${instructorName}`;
+      } else if (regType === 'group') {
+        const classTitle = registration.classTitle?.value || registration.classTitle || 'Class';
+        label = `${classTitle}`;
+      } else {
+        label = `Registration ${option.value}`;
+      }
+
+      option.textContent = label;
+      selectorDropdown.appendChild(option);
+    });
+
+    // Reinitialize Materialize select
+    if (window.M && window.M.FormSelect) {
+      window.M.FormSelect.init(selectorDropdown);
+    }
+  }
+
+  /**
+   * Hide the registration selector section
+   */
+  #hideRegistrationSelector() {
+    const selectorSection = document.getElementById('admin-registration-selector-section');
+    if (selectorSection) {
+      selectorSection.style.display = 'none';
+    }
+    this._selectedRegistrationToReplace = null;
   }
 }
