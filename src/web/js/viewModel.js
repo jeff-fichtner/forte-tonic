@@ -1788,9 +1788,10 @@ export class ViewModel {
     });
     this.adminWaitListTable = this.#buildWaitListTable(waitListRegistrations);
 
-    // Update registration form with current trimester context
+    // Update registration form with current trimester context and registrations
     if (this.adminRegistrationForm) {
       this.adminRegistrationForm.setTrimester(this.selectedTrimester);
+      this.adminRegistrationForm.setTrimesterRegistrations(registrations);
     }
   }
 
@@ -2324,15 +2325,25 @@ export class ViewModel {
     const currentPeriod = window.UserSession?.getCurrentPeriod();
     const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
 
-    const headers = [
+    // Check if we're in development to show the Recurring column
+    const showRecurringColumn = window.TONIC_ENV?.isDevelopment;
+
+    const headers = [];
+
+    // Add Recurring column first (only in dev)
+    if (showRecurringColumn) {
+      headers.push('Recurring');
+    }
+
+    headers.push(
       'Weekday',
       'Start Time',
       'Length',
       'Student',
       'Grade',
       'Instructor',
-      'Instrument/Class',
-    ];
+      'Instrument/Class'
+    );
 
     if (isIntentPeriod) {
       headers.push('Intent');
@@ -2393,6 +2404,23 @@ export class ViewModel {
           return '';
         }
 
+        // Build recurring cell (only in dev/staging)
+        let recurringCell = '';
+        if (showRecurringColumn) {
+          const hasLinkedPrevious = !!(
+            registration.linkedPreviousRegistrationId?.value ||
+            registration.linkedPreviousRegistrationId
+          );
+
+          if (hasLinkedPrevious) {
+            recurringCell = `<td style="text-align: center;">
+              <i class="material-icons green-text text-darken-2" style="font-size: 20px;">check_circle</i>
+            </td>`;
+          } else {
+            recurringCell = `<td style="text-align: center;">—</td>`;
+          }
+        }
+
         // Build intent cell (non-editable, nullable) - only during intent period
         let intentCell = '';
         if (isIntentPeriod) {
@@ -2441,6 +2469,7 @@ export class ViewModel {
         }
 
         return `
+                        ${recurringCell}
                         <td>${registration.day}</td>
                         <td>${formatTime(registration.startTime) || 'N/A'}</td>
                         <td>${registration.length || 'N/A'} min</td>
@@ -2602,9 +2631,21 @@ export class ViewModel {
    * Build wait list table for registrations with Rock Band class IDs (configured via environment)
    */
   #buildWaitListTable(registrations) {
+    // Check if we're in development to show the Recurring column
+    const showRecurringColumn = window.TONIC_ENV?.isDevelopment;
+
+    const headers = [];
+
+    // Add Recurring column first (only in dev)
+    if (showRecurringColumn) {
+      headers.push('Recurring');
+    }
+
+    headers.push('Student', 'Grade', 'Class Title', 'Timestamp', 'Contact', 'Remove');
+
     return new Table(
       'admin-wait-list-table',
-      ['Student', 'Grade', 'Class Title', 'Timestamp', 'Contact', 'Remove'],
+      headers,
       // row
       registration => {
         // Extract primitive values for comparison
@@ -2622,7 +2663,25 @@ export class ViewModel {
           return '';
         }
 
+        // Build recurring cell (only in dev/staging)
+        let recurringCell = '';
+        if (showRecurringColumn) {
+          const hasLinkedPrevious = !!(
+            registration.linkedPreviousRegistrationId?.value ||
+            registration.linkedPreviousRegistrationId
+          );
+
+          if (hasLinkedPrevious) {
+            recurringCell = `<td style="text-align: center;">
+      <i class="material-icons green-text text-darken-2" style="font-size: 20px;">check_circle</i>
+    </td>`;
+          } else {
+            recurringCell = `<td style="text-align: center;">—</td>`;
+          }
+        }
+
         return `
+                        ${recurringCell}
                         <td>${student.firstName} ${student.lastName}</td>
                         <td>${formatGrade(student.grade) || 'N/A'}</td>
                         <td>${registration.classTitle || 'N/A'}</td>
