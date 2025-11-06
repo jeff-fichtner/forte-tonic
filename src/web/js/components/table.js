@@ -55,13 +55,28 @@ export class Table {
     if (initialRows) {
       this.replaceRange(initialRows); // Populate the table with initial rows
     }
-    this.table.addEventListener('click', event => {
-      if (onClickFunction) onClickFunction(event); // Attach the click event handler
-    });
+
+    // Remove old click handler if it exists
+    if (this.table._clickHandler) {
+      this.table.removeEventListener('click', this.table._clickHandler);
+    }
+
+    // Create and store new click handler
+    this.table._clickHandler = event => {
+      if (onClickFunction) onClickFunction(event);
+    };
+    this.table.addEventListener('click', this.table._clickHandler);
+
+    // Remove old filter handlers if they exist
     if (onFilterChanges && onFilterChanges.length > 0) {
       for (const onFilterChange of onFilterChanges) {
-        // when checkboxes in filterId change
-        document.getElementById(onFilterChange.filterId).addEventListener('change', event => {
+        const filterElement = document.getElementById(onFilterChange.filterId);
+        if (filterElement && filterElement._changeHandler) {
+          filterElement.removeEventListener('change', filterElement._changeHandler);
+        }
+
+        // Create and store new filter handler
+        filterElement._changeHandler = event => {
           if (onFilterChange.type === 'checkbox' && event.target.type !== onFilterChange.type) {
             return;
           }
@@ -71,7 +86,8 @@ export class Table {
           // re-render registrations (reset to page 1 when filtering)
           this.currentPage = 1;
           this.refresh();
-        });
+        };
+        filterElement.addEventListener('change', filterElement._changeHandler);
       }
     }
   }
