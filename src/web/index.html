@@ -611,6 +611,26 @@
           font-size: 16px;
         }
       }
+
+      /* Trimester Selector Buttons */
+      .trimester-btn {
+        background-color: white;
+        color: #666;
+      }
+
+      .trimester-btn:hover {
+        background-color: #f5f5f5 !important;
+      }
+
+      .trimester-btn.active {
+        background-color: #2b68a4 !important;
+        color: white !important;
+      }
+
+      /* Tab spacing */
+      .tabs {
+        margin-bottom: 20px !important;
+      }
     </style>
 
     <title>Forte - Marin Country Day School</title>
@@ -922,14 +942,65 @@
           hidden
           id="admin-trimester-selector-container"
           class="admin-tab"
-          style="margin: 20px; padding: 0 20px; background-color: #fefefe"
+          style="margin: 20px 0; background-color: #fefefe"
         >
-          <div class="row" style="margin-bottom: 0">
-            <div class="input-field col s12 m6 l4">
-              <select id="admin-trimester-select">
-                <!-- Options populated dynamically -->
-              </select>
-              <label>Trimester</label>
+          <div class="card" style="margin: 0; border-left: 4px solid #2b68a4">
+            <div class="card-content" style="padding: 20px">
+              <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap">
+                <div style="display: flex; align-items: center; gap: 10px">
+                  <i class="material-icons" style="color: #2b68a4; font-size: 24px">event</i>
+                </div>
+                <div id="admin-trimester-buttons" style="display: flex; gap: 0; border: 2px solid #e0e0e0; border-radius: 4px; overflow: hidden">
+                  <!-- Buttons will be populated dynamically -->
+                  <button
+                    class="trimester-btn"
+                    data-trimester="fall"
+                    style="
+                      padding: 10px 24px;
+                      border: none;
+                      background: white;
+                      color: #666;
+                      font-weight: 500;
+                      cursor: pointer;
+                      transition: all 0.2s;
+                      border-right: 1px solid #e0e0e0;
+                    "
+                  >
+                    Fall
+                  </button>
+                  <button
+                    class="trimester-btn"
+                    data-trimester="winter"
+                    style="
+                      padding: 10px 24px;
+                      border: none;
+                      background: white;
+                      color: #666;
+                      font-weight: 500;
+                      cursor: pointer;
+                      transition: all 0.2s;
+                      border-right: 1px solid #e0e0e0;
+                    "
+                  >
+                    Winter
+                  </button>
+                  <button
+                    class="trimester-btn"
+                    data-trimester="spring"
+                    style="
+                      padding: 10px 24px;
+                      border: none;
+                      background: white;
+                      color: #666;
+                      font-weight: 500;
+                      cursor: pointer;
+                      transition: all 0.2s;
+                    "
+                  >
+                    Spring
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

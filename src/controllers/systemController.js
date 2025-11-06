@@ -9,6 +9,7 @@ import { configService } from '../services/configurationService.js';
 import { successResponse, errorResponse } from '../common/responseHelpers.js';
 import { HTTP_STATUS } from '../common/errorConstants.js';
 import { ValidationError, UnauthorizedError } from '../common/errors.js';
+import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
 
 const logger = getLogger();
 
@@ -183,7 +184,6 @@ export class SystemController {
       }
 
       // Use dependency injection to get the same repository instances used throughout the app
-      const { serviceContainer } = await import('../infrastructure/container/serviceContainer.js');
       const userRepository = serviceContainer.get('userRepository');
 
       // Validate admin access code using the repository

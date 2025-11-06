@@ -93,9 +93,8 @@ const AccessCodeManager = {
 
       // Check if session is still valid (optional: add expiration logic)
       const sessionAge = Date.now() - secureData.timestamp;
-      const maxSessionAge = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
 
-      if (sessionAge > maxSessionAge) {
+      if (sessionAge > window.SessionConfig.MAX_AGE_MS) {
         this.clearStoredAccessCode();
         return null;
       }
@@ -115,37 +114,51 @@ const AccessCodeManager = {
     try {
       const encodedData = sessionStorage.getItem('forte_auth_session');
       if (!encodedData) {
-        return this._accessCodeCache
-          ? {
-              accessCode: this._accessCodeCache.accessCode,
-              loginType: this._accessCodeCache.loginType || 'employee',
-            }
-          : null;
+        if (!this._accessCodeCache) {
+          return null;
+        }
+        if (!this._accessCodeCache.loginType) {
+          console.error('loginType not found in access code cache');
+          return null;
+        }
+        return {
+          accessCode: this._accessCodeCache.accessCode,
+          loginType: this._accessCodeCache.loginType,
+        };
       }
 
       const secureData = JSON.parse(atob(encodedData));
 
       // Check if session is still valid (optional: add expiration logic)
       const sessionAge = Date.now() - secureData.timestamp;
-      const maxSessionAge = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
 
-      if (sessionAge > maxSessionAge) {
+      if (sessionAge > window.SessionConfig.MAX_AGE_MS) {
         this.clearStoredAccessCode();
+        return null;
+      }
+
+      if (!secureData.loginType) {
+        console.error('loginType not found in stored auth data');
         return null;
       }
 
       return {
         accessCode: secureData.accessCode,
-        loginType: secureData.loginType || 'employee',
+        loginType: secureData.loginType,
       };
     } catch (error) {
       console.error('Failed to retrieve stored auth data:', error);
-      return this._accessCodeCache
-        ? {
-            accessCode: this._accessCodeCache.accessCode,
-            loginType: this._accessCodeCache.loginType || 'employee',
-          }
-        : null;
+      if (!this._accessCodeCache) {
+        return null;
+      }
+      if (!this._accessCodeCache.loginType) {
+        console.error('loginType not found in access code cache');
+        return null;
+      }
+      return {
+        accessCode: this._accessCodeCache.accessCode,
+        loginType: this._accessCodeCache.loginType,
+      };
     }
   },
 

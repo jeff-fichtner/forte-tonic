@@ -7,6 +7,22 @@ import { Duration, DateTime, DateHelpers } from '../../utils/nativeDateTimeHelpe
 
 export { Duration, DateTime, DateHelpers };
 
+// Month abbreviations
+export const MonthNames = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
 // Application sections/roles
 export const Sections = {
   ADMIN: 'admin',
@@ -44,12 +60,25 @@ export const RegistrationType = {
   // REMOTE: 'remote',
 };
 
+// Session configuration
+export const SessionConfig = {
+  MAX_AGE_MS: 8 * 60 * 60 * 1000, // 8 hours in milliseconds
+};
+
+// Filter constants
+export const FilterValue = {
+  ALL: 'all',
+};
+
 // Make constants available globally for backward compatibility
 // Make available globally for backward compatibility
 window.DateTime = DateTime;
 window.Duration = Duration;
 window.DateHelpers = DateHelpers;
+window.MonthNames = MonthNames;
 window.Sections = Sections;
 window.ServerFunctions = ServerFunctions;
 window.DataStores = DataStores;
 window.RegistrationType = RegistrationType;
+window.SessionConfig = SessionConfig;
+window.FilterValue = FilterValue;

@@ -12,6 +12,8 @@ import { serviceContainer } from '../infrastructure/container/serviceContainer.j
 import { _fetchData } from '../utils/helpers.js';
 import { successResponse, errorResponse } from '../common/responseHelpers.js';
 import { ValidationError, UnauthorizedError, NotFoundError } from '../common/errors.js';
+import { TRIMESTER_SEQUENCE } from '../utils/values/trimester.js';
+import { INTENT_TYPES } from '../constants/intentTypes.js';
 
 const logger = getLogger();
 
@@ -409,10 +411,41 @@ export class RegistrationController {
       }
 
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
+      const registrationRepository = serviceContainer.get('registrationRepository');
+
+      // Find which table contains this registration by searching all trimester tables
+      const trimesterTables = TRIMESTER_SEQUENCE.map(trimester => `registrations_${trimester}`);
+      let tableName = null;
+
+      for (const table of trimesterTables) {
+        try {
+          const registration = await registrationRepository.findByIdInTable(table, registrationId);
+          if (registration) {
+            tableName = table;
+            break;
+          }
+        } catch {
+          // Continue searching in other tables
+          logger.debug(`Registration not found in ${table}, continuing search...`);
+        }
+      }
+
+      if (!tableName) {
+        throw new ValidationError(
+          `Registration ${registrationId} not found in any trimester table`
+        );
+      }
+
+      logger.info(`🎯 Deleting registration from table: ${tableName}`, {
+        registrationId,
+        authenticatedUser: authenticatedUserEmail,
+      });
+
       const result = await registrationApplicationService.cancelRegistration(
         registrationId,
         'Registration cancelled by user',
-        authenticatedUserEmail
+        authenticatedUserEmail,
+        tableName
       );
 
       successResponse(res, result, {
@@ -448,7 +481,6 @@ export class RegistrationController {
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
 
       // Validate intent
-      const { INTENT_TYPES } = await import('../constants/intentTypes.js');
       if (!Object.values(INTENT_TYPES).includes(intent)) {
         throw new ValidationError('Invalid intent. Must be: keep, drop, or change');
       }
@@ -604,19 +636,24 @@ export class RegistrationController {
         throw new ValidationError('Next trimester registration is not currently available');
       }
 
-      // Check access permissions
-      const currentTable = await periodService.getCurrentTrimesterTable();
-      const currentRegistrations = await registrationRepository.getFromTable(currentTable);
-      const hasActiveRegistrations = currentRegistrations.some(
-        reg => (reg.studentId?.value || reg.studentId) === requestData.studentId
-      );
+      // Admins bypass enrollment period restrictions
+      const isAdmin = req.currentUser?.admin !== undefined;
 
-      const canAccess = await periodService.canAccessNextTrimester(hasActiveRegistrations);
-      if (!canAccess) {
-        throw new UnauthorizedError(
-          'You do not have access to next trimester registration at this time. ' +
-            'Priority enrollment is for returning families only.'
+      if (!isAdmin) {
+        // Check access permissions for non-admin users
+        const currentTable = await periodService.getCurrentTrimesterTable();
+        const currentRegistrations = await registrationRepository.getFromTable(currentTable);
+        const hasActiveRegistrations = currentRegistrations.some(
+          reg => (reg.studentId?.value || reg.studentId) === requestData.studentId
         );
+
+        const canAccess = await periodService.canAccessNextTrimester(hasActiveRegistrations);
+        if (!canAccess) {
+          throw new UnauthorizedError(
+            'You do not have access to next trimester registration at this time. ' +
+              'Priority enrollment is for returning families only.'
+          );
+        }
       }
 
       // Use application service to validate and create registration with conflict checking

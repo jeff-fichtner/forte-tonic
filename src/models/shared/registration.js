@@ -52,7 +52,11 @@ export class Registration {
     // Scheduling fields
     this.day = data.day;
     this.startTime = data.startTime;
-    this.length = parseInt(data.length) || 30;
+    const parsedLength = parseInt(data.length);
+    if (!parsedLength || isNaN(parsedLength)) {
+      throw new Error('length is required and must be a valid number');
+    }
+    this.length = parsedLength;
 
     // Registration details
     this.registrationType = data.registrationType; // Already normalized in validation
@@ -324,13 +328,19 @@ export class Registration {
    * Factory method: Create new registration
    */
   static createNew(studentId, instructorId, options = {}) {
+    if (!options.length) {
+      throw new Error('length is required');
+    }
+    if (!options.registrationType) {
+      throw new Error('registrationType is required');
+    }
     return new Registration({
       studentId,
       instructorId,
       day: options.day,
       startTime: options.startTime,
-      length: options.length || 30,
-      registrationType: options.registrationType || 'private',
+      length: options.length,
+      registrationType: options.registrationType,
       roomId: options.roomId,
       instrument: options.instrument,
       transportationType: options.transportationType,
