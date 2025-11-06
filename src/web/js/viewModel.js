@@ -2505,8 +2505,8 @@ export class ViewModel {
         const registrationId = linkElement?.getAttribute('data-registration-id');
         if (!registrationId) return;
 
-        // Find the registration by ID in the original registrations array
-        const currentRegistration = this.registrations.find(
+        // Find the registration by ID in the registrations passed to this table
+        const currentRegistration = registrations.find(
           r => (r.id?.value || r.id) === registrationId
         );
         if (!currentRegistration) return;
@@ -2713,8 +2713,8 @@ export class ViewModel {
         const registrationId = linkElement?.getAttribute('data-registration-id');
         if (!registrationId) return;
 
-        // Find the registration by ID in the original registrations array
-        const currentRegistration = this.registrations.find(
+        // Find the registration by ID in the registrations passed to this table
+        const currentRegistration = registrations.find(
           r => (r.id?.value || r.id) === registrationId
         );
         if (!currentRegistration) return;
@@ -2803,8 +2803,8 @@ export class ViewModel {
         const registrationId = linkElement?.getAttribute('data-registration-id');
         if (!registrationId) return;
 
-        // Find the registration by ID in the original registrations array
-        const currentRegistration = this.registrations.find(
+        // Find the registration by ID in the registrations passed to this table
+        const currentRegistration = registrations.find(
           r => (r.id?.value || r.id) === registrationId
         );
         if (!currentRegistration) return;
