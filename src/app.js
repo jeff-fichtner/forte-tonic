@@ -113,7 +113,7 @@ app.use('/api', apiRoutes);
 app.use(
   '/shared',
   express.static(path.join(__dirname, 'shared'), {
-    setHeaders: (res) => {
+    setHeaders: res => {
       if (isDevelopment) {
         res.set({
           'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -131,7 +131,7 @@ app.use(
 app.use(
   '/core',
   express.static(path.join(__dirname, 'core'), {
-    setHeaders: (res) => {
+    setHeaders: res => {
       if (isDevelopment) {
         res.set({
           'Cache-Control': 'no-cache, no-store, must-revalidate',
