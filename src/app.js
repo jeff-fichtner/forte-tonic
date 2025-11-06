@@ -89,22 +89,65 @@ const developmentStaticOptions = isDevelopment
     }
   : {};
 
-// Serve static files
-app.use(express.static(path.join(__dirname, 'web'), developmentStaticOptions));
-
-// Serve shared models for frontend access
-app.use('/shared', express.static(path.join(__dirname, 'shared'), developmentStaticOptions));
-
-// Serve core utilities for frontend access
-app.use('/core', express.static(path.join(__dirname, 'core'), developmentStaticOptions));
+// Production cache headers for versioned assets
+const productionVersionedOptions = !isDevelopment
+  ? {
+      setHeaders: (res, filePath, stat) => {
+        // Check if request has version parameter (from req object in middleware)
+        // For static middleware, we'll use a different approach
+        res.set('Cache-Control', 'public, max-age=31536000, immutable');
+      },
+    }
+  : {};
 
 // Apply authentication middleware to API routes (with exceptions)
 // Apply repository initialization to all API routes (no authentication)
 app.use('/api', initializeRepositories);
 
-// Route handlers
+// Route handlers - IMPORTANT: Static routes must come before generic static middleware
+// so that the version injection middleware for index.html runs first
 app.use('/', staticRoutes);
 app.use('/api', apiRoutes);
+
+// Serve shared models for frontend access with versioned caching
+app.use(
+  '/shared',
+  express.static(path.join(__dirname, 'shared'), {
+    setHeaders: (res) => {
+      if (isDevelopment) {
+        res.set({
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        });
+      } else {
+        res.set('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    },
+  })
+);
+
+// Serve core utilities for frontend access with versioned caching
+app.use(
+  '/core',
+  express.static(path.join(__dirname, 'core'), {
+    setHeaders: (res) => {
+      if (isDevelopment) {
+        res.set({
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        });
+      } else {
+        res.set('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    },
+  })
+);
+
+// Fallback: Serve other static files from web directory (images, etc)
+// This comes AFTER the static routes so version injection middleware runs first
+app.use(express.static(path.join(__dirname, 'web'), developmentStaticOptions));
 
 // 404 handler
 app.use('*', (req, res) => {

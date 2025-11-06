@@ -7,6 +7,7 @@ import { LogLevel, NodeEnv, createLogger } from '../utils/logger.js';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { getFrontendVersionHash } from '../utils/versionHash.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageJsonPath = join(__dirname, '../../package.json');
@@ -104,6 +105,7 @@ export const version = {
   environment,
   isStaging: environment === NodeEnv.STAGING,
   displayVersion: environment !== NodeEnv.PRODUCTION, // Show in all environments except production
+  frontendHash: getFrontendVersionHash(), // Cache-busting hash for frontend assets
 };
 
 /**
