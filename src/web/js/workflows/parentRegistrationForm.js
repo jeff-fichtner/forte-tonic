@@ -1504,7 +1504,13 @@ export class ParentRegistrationForm {
     }
 
     // Count current registrations for this class
-    const currentRegistrations = this.registrations.filter(reg => {
+    // During enrollment periods, count next trimester registrations
+    // Outside enrollment periods, count current trimester
+    const registrationsToCheck = this._isEnrollmentPeriodActive()
+      ? this.nextTrimesterRegistrations || []
+      : this.registrations;
+
+    const currentRegistrations = registrationsToCheck.filter(reg => {
       const regClassId = reg.classId?.value || reg.classId;
       return regClassId === classId;
     });
@@ -2542,7 +2548,13 @@ export class ParentRegistrationForm {
       return false;
     }
 
-    const existingEnrollment = this.registrations.find(reg => {
+    // During enrollment periods, check ONLY next trimester registrations
+    // Outside enrollment periods, check current trimester
+    const registrationsToCheck = this._isEnrollmentPeriodActive()
+      ? this.nextTrimesterRegistrations || []
+      : this.registrations;
+
+    const existingEnrollment = registrationsToCheck.find(reg => {
       const regStudentId = typeof reg.studentId === 'object' ? reg.studentId.value : reg.studentId;
       const regClassId = typeof reg.classId === 'object' ? reg.classId.value : reg.classId;
       return regStudentId === studentId && regClassId === classId;
