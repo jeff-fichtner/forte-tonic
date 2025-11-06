@@ -357,14 +357,14 @@ Git Commit: ${versionInfo.gitCommit}
  */
 async function main() {
   try {
-    await initializeApplication();
-
-    // Version display is optional and not critical
+    // Initialize version info first so window.TONIC_ENV is available during app initialization
     try {
       await initializeVersionDisplay();
     } catch (error) {
       console.warn('Version display initialization failed:', error);
     }
+
+    await initializeApplication();
   } catch (error) {
     console.error('Fatal error starting application:', error);
   }
