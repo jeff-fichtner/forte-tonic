@@ -223,7 +223,10 @@ export class Registration {
       // Try to get Rock Band class IDs from browser or fallback to hardcoded value
       // In browser: window.UserSession.getAppConfig().rockBandClassIds
       // On server: Not available, but we use default G015
-      const rockBandClassIds = (typeof window !== 'undefined' && window?.UserSession?.getAppConfig?.()?.rockBandClassIds) || ['G015'];
+      const rockBandClassIds =
+        (typeof window !== 'undefined' &&
+          window?.UserSession?.getAppConfig?.()?.rockBandClassIds) ||
+        [];
       const isWaitlistClass = classId && rockBandClassIds.includes(String(classId).trim());
 
       return new Registration({
