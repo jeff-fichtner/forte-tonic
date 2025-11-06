@@ -580,6 +580,16 @@ export class RegistrationController {
       // Get all registrations from next trimester table
       const allRegistrations = await registrationRepository.getFromTable(nextTable);
 
+      // Debug: Log classId for each registration
+      logger.info(`📋 Found ${allRegistrations.length} registrations in next trimester:`);
+      allRegistrations.forEach((reg, i) => {
+        const classId = reg.classId || '';
+        const classTitle = reg.classTitle || '';
+        logger.info(
+          `  [${i}] classId: "${classId}", classTitle: "${classTitle}", type: ${reg.registrationType}`
+        );
+      });
+
       // TODO: Filter by user's access (parent sees their students, admin sees all)
       // For now, returning all - implement proper filtering based on req.currentUser
       const userRegistrations = allRegistrations;

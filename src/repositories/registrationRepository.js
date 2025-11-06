@@ -250,6 +250,7 @@ export class RegistrationRepository extends BaseRepository {
           (() => {
             throw new Error('createdBy is required for audit trail');
           })(),
+        isWaitlistClass: registrationData.isWaitlistClass, // Pass flag for validation
       });
 
       // Use the new appendRecordv2 method that handles direct Google Sheets append and audit
@@ -417,7 +418,9 @@ export class RegistrationRepository extends BaseRepository {
             ? Registration.fromDatabaseRow(row)
             : new Registration(row);
         } catch (error) {
-          this.logger.warn(`Skipping invalid registration row:`, row[0], error.message);
+          this.logger.warn(
+            `⚠️ Skipping invalid registration row - ID: ${row[0]}, classId: ${row[11]}, error: ${error.message}`
+          );
           return null;
         }
       });

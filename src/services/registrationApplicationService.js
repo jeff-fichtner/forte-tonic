@@ -36,6 +36,10 @@ export class RegistrationApplicationService extends BaseService {
           throw new Error(`Class not found: ${registrationData.classId}`);
         }
 
+        // Check if this is a Rock Band waitlist class
+        const rockBandClassIds = this.configService.getRockBandClassIds();
+        const isWaitlistClass = rockBandClassIds.includes(groupClass.id);
+
         // Populate instructor and class-specific data for group registrations
         registrationData.instructorId = groupClass.instructorId;
         registrationData.day = groupClass.day;
@@ -43,6 +47,7 @@ export class RegistrationApplicationService extends BaseService {
         registrationData.length = groupClass.length;
         registrationData.instrument = groupClass.instrument;
         registrationData.classTitle = groupClass.title;
+        registrationData.isWaitlistClass = isWaitlistClass; // Pass to model for validation
 
         // Set default transportation for group registrations if not specified
         if (!registrationData.transportationType) {
@@ -55,6 +60,7 @@ export class RegistrationApplicationService extends BaseService {
           day: registrationData.day,
           startTime: registrationData.startTime,
           instrument: registrationData.instrument,
+          isWaitlistClass: isWaitlistClass,
         });
       }
 
@@ -185,12 +191,14 @@ export class RegistrationApplicationService extends BaseService {
           notes: registrationData.notes,
           expectedStartDate: registrationData.expectedStartDate,
           createdBy: userId,
+          isWaitlistClass: registrationData.isWaitlistClass, // Pass flag for validation
         }
       );
 
       // Step 7: Persist the registration
       const registrationDataObject = registrationEntity.toDataObject();
       this.logger.info('📊 Registration data object before persistence:', registrationDataObject);
+      this.logger.info(`🔍 isWaitlistClass flag: ${registrationDataObject.isWaitlistClass}`);
 
       const persistedRegistration =
         await this.registrationRepository.create(registrationDataObject);
