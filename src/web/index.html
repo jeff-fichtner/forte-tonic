@@ -1119,6 +1119,32 @@
                 <label for="student-autocomplete-input">Student</label>
               </div>
 
+              <!-- Registration Selector (for existing registrations) -->
+              <div
+                id="admin-registration-selector-section"
+                class="registration-selector-section"
+                style="
+                  margin-bottom: 25px;
+                  padding: 20px;
+                  background: #e8f5e9;
+                  border: 2px solid #4caf50;
+                  border-radius: 8px;
+                  display: none;
+                "
+              >
+                <h6 style="margin: 0 0 10px 0; color: #2e7d32"><b>Replace Existing Registration</b></h6>
+                <p style="margin: 0 0 15px 0; color: #666; font-size: 14px">
+                  Select an existing registration to replace it with the new one you're creating, or create a new registration without replacing any.
+                </p>
+                <div class="input-field">
+                  <select id="admin-registration-selector">
+                    <option value="">Create New (Don't Replace)</option>
+                    <!-- Existing registrations will be populated programmatically -->
+                  </select>
+                  <label for="admin-registration-selector">Replace Existing or Create New</label>
+                </div>
+              </div>
+
               <div hidden id="student-searched-options-container">
                 <!-- Transportation Type -->
                 <p>Transportation Type</p>
