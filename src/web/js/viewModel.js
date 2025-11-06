@@ -277,6 +277,15 @@ export class ViewModel {
               x => Registration.fromApiData(x)
             );
 
+            console.log(
+              `📥 Fetched ${nextTrimesterRegs.length} next trimester registrations from API`
+            );
+            nextTrimesterRegs.forEach((reg, i) => {
+              console.log(
+                `  [${i}] classId: "${reg.classId || ''}", classTitle: "${reg.classTitle || ''}", type: ${reg.registrationType}`
+              );
+            });
+
             // Enrich next trimester registrations with student and instructor objects
             this.nextTrimesterRegistrations = nextTrimesterRegs.map(registration => {
               if (!registration.student) {
@@ -787,6 +796,12 @@ export class ViewModel {
    * @private
    */
   #renderParentWaitListSection(registrations, currentParentId, container, trimesterType) {
+    console.log(`📋 Rendering parent waitlist section for ${trimesterType} trimester`);
+    console.log(`Total registrations to check: ${registrations?.length || 0}`);
+    console.log(
+      `Rock Band class IDs configured: ${JSON.stringify(ClassManager.getRockBandClassIds())}`
+    );
+
     // Filter for wait list registrations belonging to this parent's children
     const parentWaitListRegistrations = registrations.filter(registration => {
       const student = registration.student;
@@ -807,10 +822,17 @@ export class ViewModel {
       const isMatch = exactMatch || stringMatch;
 
       // Include only Rock Band classes (wait list classes)
+      const classId = registration.classId?.value || registration.classId;
       const isWaitlistClass = ClassManager.isRockBandClass(registration.classId);
+
+      if (isMatch) {
+        console.log(`Registration classId: ${classId}, isWaitlistClass: ${isWaitlistClass}`);
+      }
 
       return isMatch && isWaitlistClass;
     });
+
+    console.log(`Found ${parentWaitListRegistrations.length} parent waitlist registrations`);
 
     if (parentWaitListRegistrations.length > 0) {
       // Create wait list section
@@ -1241,9 +1263,11 @@ export class ViewModel {
   #refreshTablesAfterRegistration() {
     // Always update the master schedule table if it exists (for admin view)
     if (this.masterScheduleTable) {
-      const nonWaitlistRegistrations = this.registrations.filter(registration => {
-        return !ClassManager.isRockBandClass(registration.classId);
-      });
+      const nonWaitlistRegistrations = this.currentTrimesterData.registrations.filter(
+        registration => {
+          return !ClassManager.isRockBandClass(registration.classId);
+        }
+      );
       const sortedRegistrations = this.#sortRegistrations(nonWaitlistRegistrations);
       this.masterScheduleTable.replaceRange(sortedRegistrations);
 
@@ -1253,7 +1277,7 @@ export class ViewModel {
 
     // Always update the wait list table if it exists (for admin view)
     if (this.adminWaitListTable) {
-      const waitListRegistrations = this.registrations.filter(registration => {
+      const waitListRegistrations = this.currentTrimesterData.registrations.filter(registration => {
         return ClassManager.isRockBandClass(registration.classId);
       });
       this.adminWaitListTable.replaceRange(waitListRegistrations);
@@ -1333,6 +1357,12 @@ export class ViewModel {
     // Update parent weekly schedules if current user is a parent
     if (this.currentUser?.parent && this.parentContentInitialized) {
       this.#initParentContent();
+    }
+
+    // Update admin registration form's trimester registrations list if it exists
+    // This ensures the registration selector dropdown reflects the current state
+    if (this.adminRegistrationForm && this.currentUser?.admin) {
+      this.adminRegistrationForm.setTrimesterRegistrations(this.currentTrimesterData.registrations);
     }
   }
 
@@ -1465,6 +1495,9 @@ export class ViewModel {
       console.log(
         `✅ Added registration to next trimester (total: ${this.nextTrimesterRegistrations.length})`
       );
+      console.log(
+        `🔍 New registration - classId: "${newRegistration.classId || ''}", classTitle: "${newRegistration.classTitle || ''}", registrationType: "${newRegistration.registrationType}"`
+      );
     } else {
       // For admins or non-enrollment periods: add to selected trimester's data
       // Always add to currentTrimesterData which reflects what's currently displayed
@@ -1575,6 +1608,13 @@ export class ViewModel {
       return;
     }
 
+    // Get default trimester first (needed for all users)
+    this.defaultTrimester = config.defaultTrimester;
+    if (!this.defaultTrimester) {
+      console.error('defaultTrimester not configured in app configuration');
+      return;
+    }
+
     // For parents: only show trimester selector during enrollment periods (priority/open) and ONLY for winter or later
     if (userType === 'parent') {
       const currentPeriod = window.UserSession?.getCurrentPeriod();
@@ -1588,18 +1628,17 @@ export class ViewModel {
 
       if (!isEnrollmentPeriod || !isWinterOrLater) {
         container.hidden = true;
+        // Still set selectedTrimester even though UI is hidden
+        this.selectedTrimester = this.defaultTrimester;
+        console.log(
+          `📌 Parent trimester set to default (selector hidden): ${this.selectedTrimester}`
+        );
         return;
       }
     }
 
     // Show the selector container (for admins always, for parents only during enrollment and winter+)
     container.hidden = false;
-
-    this.defaultTrimester = config.defaultTrimester;
-    if (!this.defaultTrimester) {
-      console.error('defaultTrimester not configured in app configuration');
-      return;
-    }
 
     // For admins: restore trimester from sessionStorage (persists across refresh, unique per tab)
     // For parents: always use default trimester
@@ -3156,11 +3195,16 @@ export class ViewModel {
       console.log('Sending DELETE request for registration:', registrationToDeleteId);
 
       const response = await HttpService.delete(`registrations/${registrationToDeleteId}`);
-      const registrationIndex = this.registrations.findIndex(
+
+      // Remove from current trimester data
+      const registrationIndex = this.currentTrimesterData.registrations.findIndex(
         x => (x.id?.value || x.id) === registrationToDeleteId
       );
+      if (registrationIndex !== -1) {
+        this.currentTrimesterData.registrations.splice(registrationIndex, 1);
+      }
+
       M.toast({ html: 'Registration deleted successfully.' });
-      this.registrations.splice(registrationIndex, 1);
 
       // Refresh all relevant tables after deletion
       this.#refreshTablesAfterRegistration();

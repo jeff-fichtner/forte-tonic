@@ -56,11 +56,24 @@ export class Registration {
     // Scheduling fields
     this.day = data.day;
     this.startTime = data.startTime;
+
+    // Length validation: strict for non-waitlist classes, optional for waitlist classes
     const parsedLength = parseInt(data.length);
-    if (!parsedLength || isNaN(parsedLength)) {
-      throw new Error('length is required and must be a valid number');
+    const isWaitlistClass = data.isWaitlistClass === true;
+
+    if (!isWaitlistClass) {
+      // For non-waitlist classes, length is required and must be positive
+      if (!parsedLength || isNaN(parsedLength)) {
+        throw new Error('length is required and must be a valid number');
+      }
+      this.length = parsedLength;
+    } else {
+      // For waitlist classes, allow null/0 or positive number
+      this.length = !isNaN(parsedLength) ? parsedLength : null;
     }
-    this.length = parsedLength;
+
+    // Store waitlist class flag for persistence
+    this.isWaitlistClass = isWaitlistClass;
 
     // Registration details
     this.registrationType = data.registrationType; // Already normalized in validation
@@ -204,6 +217,15 @@ export class Registration {
       //        RoomId, Instrument, TransportationType, Notes, ClassId, ClassTitle,
       //        ExpectedStartDate, CreatedAt, CreatedBy, reenrollmentIntent, intentSubmittedAt, intentSubmittedBy
 
+      // Detect if this is a Rock Band waitlist class by checking the classId
+      // This is necessary because isWaitlistClass is not stored in the database
+      const classId = row[11]; // ClassId
+      // Try to get Rock Band class IDs from browser or fallback to hardcoded value
+      // In browser: window.UserSession.getAppConfig().rockBandClassIds
+      // On server: Not available, but we use default G015
+      const rockBandClassIds = (typeof window !== 'undefined' && window?.UserSession?.getAppConfig?.()?.rockBandClassIds) || ['G015'];
+      const isWaitlistClass = classId && rockBandClassIds.includes(String(classId).trim());
+
       return new Registration({
         id: row[0] ? String(row[0]) : row[0], // Id (UUID) - ensure string
         studentId: row[1] ? String(row[1]) : row[1], // StudentId - ensure string
@@ -225,6 +247,7 @@ export class Registration {
         intentSubmittedAt: row[17], // intentSubmittedAt
         intentSubmittedBy: row[18], // intentSubmittedBy
         linkedPreviousRegistrationId: row[19], // linkedPreviousRegistrationId
+        isWaitlistClass: isWaitlistClass, // Derived from classId for validation
       });
     } catch (error) {
       return null;
@@ -316,6 +339,7 @@ export class Registration {
       intentSubmittedAt: this.intentSubmittedAt,
       intentSubmittedBy: this.intentSubmittedBy,
       linkedPreviousRegistrationId: this.linkedPreviousRegistrationId,
+      isWaitlistClass: this.isWaitlistClass,
     };
   }
 
@@ -332,7 +356,9 @@ export class Registration {
    * Factory method: Create new registration
    */
   static createNew(studentId, instructorId, options = {}) {
-    if (!options.length) {
+    // Length validation: strict for non-waitlist classes, optional for waitlist classes
+    const isWaitlistClass = options.isWaitlistClass === true;
+    if (!isWaitlistClass && !options.length) {
       throw new Error('length is required');
     }
     if (!options.registrationType) {
@@ -354,6 +380,7 @@ export class Registration {
       expectedStartDate: options.expectedStartDate,
       createdAt: new Date().toISOString(),
       createdBy: options.createdBy,
+      isWaitlistClass: options.isWaitlistClass, // Pass flag to constructor for validation
     });
   }
 
