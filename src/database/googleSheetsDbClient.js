@@ -989,6 +989,7 @@ export class GoogleSheetsDbClient extends BaseService {
       reenrollmentIntent: extractValue(registrationRecord.reenrollmentIntent),
       intentSubmittedAt: extractValue(registrationRecord.intentSubmittedAt),
       intentSubmittedBy: extractValue(registrationRecord.intentSubmittedBy),
+      linkedPreviousRegistrationId: extractValue(registrationRecord.linkedPreviousRegistrationId),
       updatedAt: now,
       updatedBy: performedBy,
     };
