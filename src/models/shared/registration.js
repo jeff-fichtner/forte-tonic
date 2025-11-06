@@ -10,6 +10,10 @@ import { StudentId } from '../../utils/values/studentId.js';
 import { InstructorId } from '../../utils/values/instructorId.js';
 import { LessonTime } from '../../utils/values/lessonTime.js';
 
+// Day names constant for schedule generation
+// Defined locally to avoid import issues when this shared model is loaded in the browser
+const DayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 // Helper function to extract string values from various data types
 function extractStringValue(value) {
   if (value === null || value === undefined) {
@@ -360,7 +364,7 @@ export class Registration {
   generateSchedule(numberOfLessons = 12) {
     const lessons = [];
     const startDate = new Date(this.expectedStartDate);
-    const dayOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].indexOf(this.day);
+    const dayOfWeek = DayNames.indexOf(this.day);
 
     if (dayOfWeek === -1) {
       throw new Error(`Invalid day: ${this.day}`);

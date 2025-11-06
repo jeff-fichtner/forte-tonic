@@ -253,7 +253,7 @@ describe('Server Integration Tests', () => {
       // This will try to load an actual file, so we'll test with a known file
       const response = await request(app).get('/js/viewModel.js');
       expect(response.status).toBe(200);
-      expect(response.get('Content-Type')).toBe('application/javascript; charset=UTF-8');
+      expect(response.get('Content-Type')).toBe('text/javascript; charset=utf-8');
     });
   });
 
