@@ -10,6 +10,7 @@ import { BaseRepository } from './baseRepository.js';
 import { Registration } from '../models/shared/registration.js';
 import { RegistrationId } from '../utils/values/registrationId.js';
 import { UuidUtility } from '../utils/uuidUtility.js';
+import { isValidTrimester } from '../utils/values/trimester.js';
 
 export class RegistrationRepository extends BaseRepository {
   /**
@@ -387,8 +388,6 @@ export class RegistrationRepository extends BaseRepository {
    * @throws {Error} If trimester is invalid
    */
   async getRegistrationsByTrimester(trimester) {
-    const { isValidTrimester } = await import('../utils/values/trimester.js');
-
     if (!isValidTrimester(trimester)) {
       throw new Error(`Invalid trimester: ${trimester}`);
     }

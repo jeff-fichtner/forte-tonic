@@ -23,7 +23,7 @@ export class Parent {
     this.alternatePhone = options.alternatePhone || null;
     this.address = options.address || null;
     this.isEmergencyContact = options.isEmergencyContact || false;
-    this.relationship = options.relationship || 'parent';
+    this.relationship = options.relationship || null; // No default value, null if not provided
     this.isActive = options.isActive !== false;
   }
 

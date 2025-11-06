@@ -28,12 +28,20 @@ export class AttendanceController {
         throw new ValidationError('Missing required fields: registrationId, week');
       }
 
+      // Validate required fields
+      if (!schoolYear) {
+        throw new ValidationError('schoolYear is required');
+      }
+      if (!trimester) {
+        throw new ValidationError('trimester is required');
+      }
+
       // Check if attendance already exists
       const existingAttendance = await req.attendanceRepository.hasAttendance(
         registrationId,
         week,
-        schoolYear || '2025-2026',
-        trimester || 'Fall'
+        schoolYear,
+        trimester
       );
 
       if (existingAttendance) {
@@ -44,8 +52,8 @@ export class AttendanceController {
       const attendanceData = {
         registrationId,
         week: parseInt(week),
-        schoolYear: schoolYear || '2025-2026',
-        trimester: trimester || 'Fall',
+        schoolYear,
+        trimester,
         recordedBy: authenticatedUserEmail,
         recordedAt: new Date().toISOString(),
       };

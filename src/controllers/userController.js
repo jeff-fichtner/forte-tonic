@@ -11,7 +11,7 @@ import { getAuthenticatedUserEmail } from '../middleware/auth.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
 import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
 import { AppConfigurationResponse } from '../models/shared/responses/appConfigurationResponse.js';
-import { ConfigurationService } from '../services/configurationService.js';
+import { ConfigurationService, configService } from '../services/configurationService.js';
 import { getLogger } from '../utils/logger.js';
 import { successResponse, errorResponse } from '../common/responseHelpers.js';
 import { ValidationError, NotFoundError } from '../common/errors.js';
@@ -39,7 +39,6 @@ export class UserController {
       const defaultTrimester = UserController._getDefaultTrimester(currentPeriod, nextPeriod);
 
       // Get maintenance mode configuration from singleton configService
-      const { configService } = await import('../services/configurationService.js');
       const appConfig = configService.getApplicationConfig();
 
       const configurationData = {

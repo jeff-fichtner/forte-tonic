@@ -145,6 +145,7 @@ const mockRegistrationRepository = {
   getFromTable: jest.fn().mockResolvedValue([mockRegistration]),
   createInTable: jest.fn().mockResolvedValue(mockRegistration),
   getRegistrationsByTrimester: jest.fn().mockResolvedValue([mockRegistration]),
+  findByIdInTable: jest.fn().mockResolvedValue(mockRegistration),
 };
 
 const mockRegistrationApplicationService = {
@@ -349,7 +350,8 @@ describe('RegistrationController Integration Tests', () => {
       expect(mockRegistrationApplicationService.cancelRegistration).toHaveBeenCalledWith(
         registrationId,
         'Registration cancelled by user',
-        expect.any(String)
+        expect.any(String),
+        expect.any(String) // tableName parameter
       );
     });
 

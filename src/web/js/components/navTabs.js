@@ -59,6 +59,20 @@ export class NavTabs {
         }
       });
 
+      // Show/hide admin trimester selector based on tab
+      // Trimester selector should only show for admin-specific tabs (Master Schedule, Wait List, Registration)
+      // Hide for directory tab and all non-admin tabs
+      const trimesterSelector = document.getElementById('admin-trimester-selector-container');
+      if (trimesterSelector) {
+        const adminTrimesterTabs = [
+          '#admin-master-schedule',
+          '#admin-wait-list',
+          '#admin-registration',
+        ];
+        const shouldShowTrimester = adminTrimesterTabs.includes(targetTab);
+        trimesterSelector.hidden = !shouldShowTrimester;
+      }
+
       // Force layout refresh when switching tabs to fix scroll/rendering issues
       setTimeout(() => {
         this.#forceTabContentRefresh(targetContent);
@@ -340,6 +354,18 @@ export class NavTabs {
           link.classList.remove('active');
         });
         firstTabLink.classList.add('active');
+
+        // Show/hide admin trimester selector based on section and first tab
+        const trimesterSelector = document.getElementById('admin-trimester-selector-container');
+        if (trimesterSelector) {
+          const adminTrimesterTabs = [
+            '#admin-master-schedule',
+            '#admin-wait-list',
+            '#admin-registration',
+          ];
+          const shouldShowTrimester = adminTrimesterTabs.includes(firstTabHref);
+          trimesterSelector.hidden = !shouldShowTrimester;
+        }
 
         // Simulate the click for Materialize's indicator
         firstTabLink.click();

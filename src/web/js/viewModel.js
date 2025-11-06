@@ -1,5 +1,12 @@
 import { HttpService } from './data/httpService.js';
-import { ServerFunctions, Sections, RegistrationType } from './constants.js';
+import {
+  ServerFunctions,
+  Sections,
+  RegistrationType,
+  MonthNames,
+  SessionConfig,
+  FilterValue,
+} from './constants.js';
 import { AppConfigurationResponse } from '../../models/shared/responses/appConfigurationResponse.js';
 import {
   Admin,
@@ -92,22 +99,7 @@ function formatDateTime(timestamp) {
     }
 
     // Format as "Aug 10 - 8:11 PM"
-    const monthNames = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-
-    const month = monthNames[date.getMonth()];
+    const month = MonthNames[date.getMonth()];
     const day = date.getDate();
     const time = date.toLocaleTimeString('en-US', {
       hour: 'numeric',
@@ -137,6 +129,7 @@ export class ViewModel {
     // Trimester selection properties
     this.selectedTrimester = null;
     this.defaultTrimester = null;
+    this.lastRenderedTrimester = null; // Track what trimester is currently displayed in tables
     this.currentTrimesterData = {
       registrations: [],
       classes: [],
@@ -438,7 +431,42 @@ export class ViewModel {
 
     // Update intent banner (will hide for non-parent users)
     this.#updateIntentBanner();
+
+    // Add tab click listeners to sync tables when switching back to master schedule
+    this.#setupAdminTabSyncListeners();
   }
+
+  /**
+   * Setup listeners to sync admin tables when switching tabs
+   * Ensures tables display correct trimester data when returning to master schedule/wait list tabs
+   */
+  #setupAdminTabSyncListeners() {
+    const masterScheduleTab = document.querySelector('a[href="#admin-master-schedule"]');
+    const waitListTab = document.querySelector('a[href="#admin-wait-list"]');
+
+    // Initialize lastRenderedTrimester to track what's currently shown in tables
+    // Tables are initially built with default trimester data
+    this.lastRenderedTrimester = this.defaultTrimester;
+
+    const syncTables = () => {
+      // Only rebuild if the selected trimester has changed since last render
+      if (this.selectedTrimester !== this.lastRenderedTrimester) {
+        console.log(
+          `🔄 Syncing admin tables from ${this.lastRenderedTrimester} to ${this.selectedTrimester}`
+        );
+        this.#rebuildAdminTables();
+        this.lastRenderedTrimester = this.selectedTrimester;
+      }
+    };
+
+    if (masterScheduleTab) {
+      masterScheduleTab.addEventListener('click', syncTables);
+    }
+    if (waitListTab) {
+      waitListTab.addEventListener('click', syncTables);
+    }
+  }
+
   /**
    *
    */
@@ -597,7 +625,25 @@ export class ViewModel {
       (currentPeriod.periodType === PeriodType.PRIORITY_ENROLLMENT ||
         currentPeriod.periodType === PeriodType.OPEN_ENROLLMENT);
 
-    if (isEnrollmentPeriod) {
+    // Check if parent has ANY registrations across all trimesters to determine if we should show "No Matching Registrations"
+    const hasAnyRegistrations = this.#parentHasAnyRegistrations(
+      currentParentId,
+      isEnrollmentPeriod
+    );
+
+    if (!hasAnyRegistrations) {
+      // Show single "No Matching Registrations" message if parent has no registrations in any trimester
+      const noRegistrationsMessage = document.createElement('div');
+      noRegistrationsMessage.className = 'card-panel orange lighten-4';
+      noRegistrationsMessage.style.cssText = 'text-align: center; padding: 30px; margin: 20px 0;';
+      noRegistrationsMessage.innerHTML = `
+        <h5 style="color: #e65100; margin-bottom: 10px;">No Matching Registrations</h5>
+        <p style="color: #bf360c; font-size: 16px; margin: 0;">
+          Your children have no active lesson registrations for this trimester.
+        </p>
+      `;
+      parentWeeklyScheduleTables.appendChild(noRegistrationsMessage);
+    } else if (isEnrollmentPeriod) {
       // During enrollment: Show upcoming trimester wait list + schedule, then current trimester wait list + schedule
       console.log('📅 Enrollment period detected - showing both trimesters');
 
@@ -616,7 +662,8 @@ export class ViewModel {
           this.nextTrimesterRegistrations,
           currentParentId,
           parentWeeklyScheduleTables,
-          'next'
+          'next',
+          false // Don't show "No Matching Registrations" - we handle it above
         );
       }
 
@@ -626,7 +673,8 @@ export class ViewModel {
         this.registrations,
         currentParentId,
         parentWeeklyScheduleTables,
-        'current'
+        'current',
+        false // Don't show "No Matching Registrations" - we handle it above
       );
     } else {
       // During registration or intent period: Show only current trimester
@@ -643,7 +691,8 @@ export class ViewModel {
         this.registrations,
         currentParentId,
         parentWeeklyScheduleTables,
-        'current'
+        'current',
+        false // Don't show "No Matching Registrations" - we handle it above
       );
     }
 
@@ -777,11 +826,19 @@ export class ViewModel {
       // Determine trimester name for title
       let trimesterName;
       if (trimesterType === 'next') {
-        const currentTrimester = this.selectedTrimester || 'fall';
+        const currentTrimester = this.selectedTrimester;
+        if (!currentTrimester) {
+          console.error('selectedTrimester not set');
+          return;
+        }
         const nextTrimester = getNextTrimester(currentTrimester);
         trimesterName = capitalize(nextTrimester);
       } else {
-        trimesterName = capitalize(this.selectedTrimester || 'fall');
+        if (!this.selectedTrimester) {
+          console.error('selectedTrimester not set');
+          return;
+        }
+        trimesterName = capitalize(this.selectedTrimester);
       }
 
       waitListTitle.textContent = `${trimesterName} Rock Band Wait List`;
@@ -801,14 +858,58 @@ export class ViewModel {
   }
 
   /**
+   * Check if parent has any registrations across all relevant trimesters
+   * @param {string} currentParentId - Current parent's ID
+   * @param {boolean} isEnrollmentPeriod - Whether we're in an enrollment period
+   * @returns {boolean} True if parent has at least one registration
+   * @private
+   */
+  #parentHasAnyRegistrations(currentParentId, isEnrollmentPeriod) {
+    const allRegistrations = isEnrollmentPeriod
+      ? [...(this.registrations || []), ...(this.nextTrimesterRegistrations || [])]
+      : this.registrations || [];
+
+    return allRegistrations.some(registration => {
+      const student = registration.student;
+      if (!student) {
+        return false;
+      }
+
+      // Check if the current parent is either parent1 or parent2 of the student
+      const exactMatch =
+        student.parent1Id === currentParentId || student.parent2Id === currentParentId;
+
+      // Also try string comparison in case of type mismatches
+      const stringMatch =
+        !exactMatch &&
+        (String(student.parent1Id) === String(currentParentId) ||
+          String(student.parent2Id) === String(currentParentId));
+
+      const isMatch = exactMatch || stringMatch;
+
+      // Exclude Rock Band classes (wait list classes) from count
+      const isWaitlistClass = ClassManager.isRockBandClass(registration.classId);
+
+      return isMatch && !isWaitlistClass;
+    });
+  }
+
+  /**
    * Render parent schedule section for a given set of registrations
    * @param {Array} registrations - Registrations to render
    * @param {string} currentParentId - Current parent's ID
    * @param {HTMLElement} container - Container element to append to
    * @param {string} trimesterType - 'current' or 'next'
+   * @param {boolean} showNoRegistrationsMessage - Whether to show "No Matching Registrations" message (default true)
    * @private
    */
-  #renderParentScheduleSection(registrations, currentParentId, container, trimesterType) {
+  #renderParentScheduleSection(
+    registrations,
+    currentParentId,
+    container,
+    trimesterType,
+    showNoRegistrationsMessage = true
+  ) {
     // Filter registrations for this parent's children, excluding wait list classes
     const parentChildRegistrations = registrations.filter(registration => {
       const student = registration.student;
@@ -840,8 +941,8 @@ export class ViewModel {
       .filter(student => student && student.id)
       .filter((student, index, self) => self.findIndex(s => s.id === student.id) === index);
 
-    // Show 'no matching registrations' message if no children have registrations
-    if (studentsWithRegistrations.length === 0) {
+    // Show 'no matching registrations' message if no children have registrations (and enabled)
+    if (studentsWithRegistrations.length === 0 && showNoRegistrationsMessage) {
       const noRegistrationsMessage = document.createElement('div');
       noRegistrationsMessage.className = 'card-panel orange lighten-4';
       noRegistrationsMessage.style.cssText = 'text-align: center; padding: 30px; margin: 20px 0;';
@@ -852,7 +953,7 @@ export class ViewModel {
         </p>
       `;
       container.appendChild(noRegistrationsMessage);
-    } else {
+    } else if (studentsWithRegistrations.length > 0) {
       // Create a separate table for each child
       studentsWithRegistrations.forEach(student => {
         // Create a container for each child's schedule
@@ -868,11 +969,19 @@ export class ViewModel {
         // Determine trimester name for header
         let trimesterName;
         if (trimesterType === 'next') {
-          const currentTrimester = this.selectedTrimester || 'fall';
+          const currentTrimester = this.selectedTrimester;
+          if (!currentTrimester) {
+            console.error('selectedTrimester not set');
+            return;
+          }
           const nextTrimester = getNextTrimester(currentTrimester);
           trimesterName = capitalize(nextTrimester);
         } else {
-          trimesterName = capitalize(this.selectedTrimester || 'fall');
+          if (!this.selectedTrimester) {
+            console.error('selectedTrimester not set');
+            return;
+          }
+          trimesterName = capitalize(this.selectedTrimester);
         }
 
         studentHeader.textContent = `${student.firstName} ${student.lastName}'s ${trimesterName} Schedule`;
@@ -1230,19 +1339,25 @@ export class ViewModel {
   /**
    * Shared method to create registration with proper enrichment
    * This method handles the API call and enriches the response with instructor and student objects
-   * Routes to next trimester endpoint during enrollment periods
+   * Routes to next trimester endpoint during enrollment periods (for parents only)
+   * Admins always use the regular endpoint regardless of period
    */
   async #createRegistrationWithEnrichment(data) {
-    // Determine which endpoint to use based on enrollment period
+    // Admins always use the regular endpoint - they can create registrations for any trimester
+    const isAdmin = this.currentUser?.admin !== undefined;
+
+    // Determine which endpoint to use based on enrollment period (for non-admin users)
     const currentPeriod = window.UserSession?.getCurrentPeriod?.();
     const isEnrollmentPeriod =
       currentPeriod &&
       (currentPeriod.periodType === PeriodType.PRIORITY_ENROLLMENT ||
         currentPeriod.periodType === PeriodType.OPEN_ENROLLMENT);
 
-    const endpoint = isEnrollmentPeriod
-      ? ServerFunctions.createNextTrimesterRegistration
-      : ServerFunctions.register;
+    // Admins always use regular endpoint, parents use next trimester endpoint during enrollment
+    const endpoint =
+      isEnrollmentPeriod && !isAdmin
+        ? ServerFunctions.createNextTrimesterRegistration
+        : ServerFunctions.register;
 
     // If replacing an existing registration (has replaceRegistrationId),
     // delete the old registration first (this creates an audit record for the deletion)
@@ -1253,16 +1368,18 @@ export class ViewModel {
       );
       try {
         // Use the appropriate delete endpoint based on enrollment period
+        // Admins always use regular endpoint
         // For next trimester during enrollment: registrations/next-trimester/{id}
         // For current trimester: registrations/{id}
-        const deleteEndpoint = isEnrollmentPeriod
-          ? `registrations/next-trimester/${data.replaceRegistrationId}`
-          : `registrations/${data.replaceRegistrationId}`;
+        const deleteEndpoint =
+          isEnrollmentPeriod && !isAdmin
+            ? `registrations/next-trimester/${data.replaceRegistrationId}`
+            : `registrations/${data.replaceRegistrationId}`;
 
         await HttpService.delete(deleteEndpoint);
 
         // Remove the old registration from local state (from the appropriate array)
-        if (isEnrollmentPeriod && this.nextTrimesterRegistrations) {
+        if (isEnrollmentPeriod && !isAdmin && this.nextTrimesterRegistrations) {
           const oldRegIndex = this.nextTrimesterRegistrations.findIndex(reg => {
             const regId = reg.id?.value || reg.id;
             return regId === data.replaceRegistrationId;
@@ -1335,8 +1452,11 @@ export class ViewModel {
       }
     }
 
-    // Add to appropriate registrations array based on enrollment period
-    if (isEnrollmentPeriod) {
+    // Add to appropriate registrations array
+    // Admins: add to current trimester data (respects selected trimester)
+    // Parents during enrollment: add to next trimester
+    // Others: add to current default trimester
+    if (isEnrollmentPeriod && !isAdmin) {
       // Next trimester registration - add to nextTrimesterRegistrations
       if (!this.nextTrimesterRegistrations) {
         this.nextTrimesterRegistrations = [];
@@ -1346,10 +1466,11 @@ export class ViewModel {
         `✅ Added registration to next trimester (total: ${this.nextTrimesterRegistrations.length})`
       );
     } else {
-      // Current trimester registration - add to registrations
-      this.registrations.push(newRegistration);
+      // For admins or non-enrollment periods: add to selected trimester's data
+      // Always add to currentTrimesterData which reflects what's currently displayed
+      this.currentTrimesterData.registrations.push(newRegistration);
       console.log(
-        `✅ Added registration to current trimester (total: ${this.registrations.length})`
+        `✅ Added registration to ${this.selectedTrimester} trimester (total: ${this.currentTrimesterData.registrations.length})`
       );
     }
 
@@ -1431,8 +1552,8 @@ export class ViewModel {
   }
 
   /**
-   * Initialize the trimester dropdown selector
-   * Sets up the dropdown with available trimesters and default selection
+   * Initialize the trimester button selector
+   * Sets up segmented buttons with available trimesters and default selection
    * @param {string} userType - 'admin' or 'parent'
    */
   #initTrimesterSelector(userType) {
@@ -1440,8 +1561,6 @@ export class ViewModel {
     console.trace('Call stack:');
 
     const containerId = `${userType}-trimester-selector-container`;
-    const selectId = `${userType}-trimester-select`;
-
     const container = document.getElementById(containerId);
 
     if (!container) {
@@ -1456,7 +1575,7 @@ export class ViewModel {
       return;
     }
 
-    // For parents: only show trimester dropdown during enrollment periods (priority/open) and ONLY for winter or later
+    // For parents: only show trimester selector during enrollment periods (priority/open) and ONLY for winter or later
     if (userType === 'parent') {
       const currentPeriod = window.UserSession?.getCurrentPeriod();
       const isEnrollmentPeriod =
@@ -1476,58 +1595,96 @@ export class ViewModel {
     // Show the selector container (for admins always, for parents only during enrollment and winter+)
     container.hidden = false;
 
-    this.defaultTrimester = config.defaultTrimester || 'Fall';
-    this.selectedTrimester = this.defaultTrimester;
+    this.defaultTrimester = config.defaultTrimester;
+    if (!this.defaultTrimester) {
+      console.error('defaultTrimester not configured in app configuration');
+      return;
+    }
 
-    // Get the select element (might exist from previous initialization)
-    let select = document.getElementById(selectId);
-
-    // Destroy existing Materialize instance if it exists
-    if (select) {
-      const existingInstance = M.FormSelect.getInstance(select);
-      if (existingInstance) {
-        existingInstance.destroy();
-      }
+    // For admins: restore trimester from sessionStorage (persists across refresh, unique per tab)
+    // For parents: always use default trimester
+    if (userType === 'admin') {
+      const sessionKey = 'admin-selected-trimester';
+      const savedTrimester = sessionStorage.getItem(sessionKey);
+      this.selectedTrimester = savedTrimester || this.defaultTrimester;
+      console.log(`📌 Restored admin trimester from session: ${this.selectedTrimester}`);
+    } else {
+      this.selectedTrimester = this.defaultTrimester;
     }
 
     // Clear and rebuild the entire container to ensure clean state
-    const trimesters = config.availableTrimesters || ['fall', 'winter', 'spring'];
-    const optionsHtml = trimesters
+    const trimesters = config.availableTrimesters;
+    if (!trimesters || trimesters.length === 0) {
+      console.error('availableTrimesters not configured in app configuration');
+      return;
+    }
+    const buttonsHtml = trimesters
       .map(
-        trimester =>
-          `<option value="${trimester}" ${trimester === this.defaultTrimester ? 'selected' : ''}>
-        ${capitalize(trimester)}
-      </option>`
+        (trimester, index) =>
+          `<button
+            class="trimester-btn ${trimester === this.selectedTrimester ? 'active' : ''}"
+            data-trimester="${trimester}"
+            style="
+              padding: 10px 24px;
+              border: none;
+              font-weight: 500;
+              cursor: pointer;
+              transition: all 0.2s;
+              ${index < trimesters.length - 1 ? 'border-right: 1px solid #e0e0e0;' : ''}
+            "
+          >
+            ${capitalize(trimester)}
+          </button>`
       )
       .join('');
 
     container.innerHTML = `
-      <div class="row" style="margin-bottom: 0">
-        <div class="input-field col s12 m6 l4">
-          <select id="${selectId}">
-            ${optionsHtml}
-          </select>
-          <label>Trimester</label>
+      <div class="card" style="margin: 0; border-left: 4px solid #2b68a4">
+        <div class="card-content" style="padding: 20px">
+          <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap">
+            <div style="display: flex; align-items: center; gap: 10px">
+              <i class="material-icons" style="color: #2b68a4; font-size: 24px">event</i>
+            </div>
+            <div id="${userType}-trimester-buttons" style="display: flex; gap: 0; border: 2px solid #e0e0e0; border-radius: 4px; overflow: hidden">
+              ${buttonsHtml}
+            </div>
+          </div>
         </div>
       </div>
     `;
 
-    // Get the fresh select element
-    select = document.getElementById(selectId);
+    // Add click event listeners to all buttons
+    const buttons = container.querySelectorAll('.trimester-btn');
+    buttons.forEach(button => {
+      button.addEventListener('click', () => {
+        const newTrimester = button.getAttribute('data-trimester');
 
-    if (!select) {
-      console.error(`Failed to create trimester select for ${userType}`);
-      return;
-    }
+        // Update active state - query fresh buttons from the container
+        const currentButtons = container.querySelectorAll('.trimester-btn');
+        currentButtons.forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
 
-    // Add change event listener
-    select.addEventListener('change', e => {
-      const newTrimester = e.target.value;
-      this.#handleTrimesterChange(newTrimester, userType);
+        // Trigger change handler
+        this.#handleTrimesterChange(newTrimester, userType);
+      });
     });
 
-    // Initialize Materialize select
-    M.FormSelect.init(select);
+    // For admins: if restored trimester differs from default, load that trimester's data
+    if (userType === 'admin' && this.selectedTrimester !== this.defaultTrimester) {
+      console.log(`🔄 Loading saved trimester data: ${this.selectedTrimester}`);
+      this.#loadTrimesterData(this.selectedTrimester)
+        .then(() => {
+          this.#rebuildAdminTables();
+          this.lastRenderedTrimester = this.selectedTrimester; // Update tracking after rebuild
+          console.log(`✅ Restored ${this.selectedTrimester} trimester data from session`);
+        })
+        .catch(err => {
+          console.error(`Failed to load saved trimester data:`, err);
+          // Fall back to default trimester
+          this.selectedTrimester = this.defaultTrimester;
+          sessionStorage.removeItem('admin-selected-trimester');
+        });
+    }
   }
 
   /**
@@ -1542,6 +1699,12 @@ export class ViewModel {
     }
 
     this.selectedTrimester = trimester;
+
+    // Save admin's selected trimester to sessionStorage (persists across refresh, unique per tab)
+    if (userType === 'admin') {
+      sessionStorage.setItem('admin-selected-trimester', trimester);
+      console.log(`💾 Saved admin trimester to session: ${trimester}`);
+    }
 
     // Show loading state
     this.#showLoadingState(true, userType);
@@ -1565,12 +1728,6 @@ export class ViewModel {
         // Rebuild parent weekly schedule
         this.#rebuildParentWeeklySchedule(currentParentId);
       }
-
-      // Show success toast
-      M.toast({
-        html: `Displaying ${capitalize(trimester)} trimester data`,
-        classes: 'blue darken-2',
-      });
     } catch (error) {
       console.error('Error loading trimester data:', error);
       M.toast({
@@ -1728,7 +1885,11 @@ export class ViewModel {
         const studentHeader = document.createElement('h5');
         studentHeader.style.cssText =
           'color: #2b68a4; margin-bottom: 15px; border-bottom: 2px solid #2b68a4; padding-bottom: 10px;';
-        const trimesterName = capitalize(this.selectedTrimester || 'Fall');
+        if (!this.selectedTrimester) {
+          console.error('selectedTrimester not set');
+          return;
+        }
+        const trimesterName = capitalize(this.selectedTrimester);
         studentHeader.textContent = `${student.firstName} ${student.lastName}'s ${trimesterName} Schedule`;
         studentContainer.appendChild(studentHeader);
 
@@ -1758,11 +1919,11 @@ export class ViewModel {
    */
   #showLoadingState(isLoading, userType) {
     let tables = [];
-    let selectId = '';
+    let buttonsContainerId = '';
 
     if (userType === 'admin') {
       tables = ['master-schedule-table', 'admin-wait-list-table'];
-      selectId = 'admin-trimester-select';
+      buttonsContainerId = 'admin-trimester-buttons';
     } else if (userType === 'parent') {
       // Parent weekly schedule is dynamically generated, so we target the container
       const container = document.getElementById('parent-weekly-schedule-tables');
@@ -1770,7 +1931,7 @@ export class ViewModel {
         container.style.opacity = isLoading ? '0.5' : '1';
         container.style.pointerEvents = isLoading ? 'none' : 'auto';
       }
-      selectId = 'parent-trimester-select';
+      buttonsContainerId = 'parent-trimester-buttons';
     }
 
     tables.forEach(tableId => {
@@ -1781,12 +1942,15 @@ export class ViewModel {
       }
     });
 
-    // Disable the selector during loading
-    const selector = document.getElementById(selectId);
-    if (selector) {
-      selector.disabled = isLoading;
-      // Reinitialize Materialize select to reflect disabled state change
-      M.FormSelect.init(selector);
+    // Disable the buttons during loading
+    const buttonsContainer = document.getElementById(buttonsContainerId);
+    if (buttonsContainer) {
+      const buttons = buttonsContainer.querySelectorAll('.trimester-btn');
+      buttons.forEach(button => {
+        button.disabled = isLoading;
+        button.style.opacity = isLoading ? '0.5' : '1';
+        button.style.cursor = isLoading ? 'not-allowed' : 'pointer';
+      });
     }
   }
 
