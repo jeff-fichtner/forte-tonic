@@ -821,4 +821,67 @@ export class RegistrationController {
       });
     }
   }
+
+  /**
+   * Get comprehensive admin data for a specific trimester
+   * Returns all data needed for admin UI: registrations, students, instructors, classes
+   * GET /api/admin/trimester-data/:trimester
+   */
+  static async getAdminTrimesterData(req, res) {
+    const startTime = Date.now();
+
+    try {
+      const { trimester } = req.params;
+
+      logger.info(`📋 Getting comprehensive admin data for trimester: ${trimester}`);
+
+      // Get all necessary repositories
+      const registrationRepository = serviceContainer.get('registrationRepository');
+      const userRepository = serviceContainer.get('userRepository');
+      const classRepository = serviceContainer.get('classRepository');
+
+      // Fetch all data in parallel for performance
+      const [registrations, students, instructors, classes] = await Promise.all([
+        registrationRepository.getRegistrationsByTrimester(trimester),
+        userRepository.getStudents(),
+        userRepository.getInstructors(),
+        classRepository.getClasses(),
+      ]);
+
+      const result = {
+        trimester,
+        registrations,
+        students,
+        instructors,
+        classes,
+      };
+
+      successResponse(res, result, {
+        message: `Retrieved admin data for ${trimester} trimester`,
+        req,
+        startTime,
+        context: {
+          controller: 'RegistrationController',
+          method: 'getAdminTrimesterData',
+          trimester,
+          counts: {
+            registrations: registrations.length,
+            students: students.length,
+            instructors: instructors.length,
+            classes: classes.length,
+          },
+        },
+      });
+    } catch (error) {
+      logger.error('Error getting admin trimester data:', error);
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: {
+          controller: 'RegistrationController',
+          method: 'getAdminTrimesterData',
+        },
+      });
+    }
+  }
 }
