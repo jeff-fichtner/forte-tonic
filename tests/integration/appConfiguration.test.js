@@ -199,4 +199,152 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
     expect(mockPeriodService.getCurrentPeriod).toHaveBeenCalled();
     expect(mockPeriodService.getNextPeriod).toHaveBeenCalled();
   });
+
+  test('should return previous and current trimester during intent period', async () => {
+    // During fall intent period, both spring (previous) and fall (current) should be available
+    // This allows viewing spring history while managing fall intent
+    mockPeriodService.getCurrentPeriod.mockResolvedValue({
+      trimester: 'fall',
+      periodType: PeriodType.INTENT,
+      isCurrentPeriod: true,
+      startDate: new Date('2025-01-15'),
+    });
+    mockPeriodService.getNextPeriod.mockResolvedValue({
+      trimester: 'winter',
+      periodType: PeriodType.PRIORITY_ENROLLMENT,
+      startDate: new Date('2025-02-01'),
+    });
+
+    const response = await request(app).get('/api/configuration').expect(200);
+
+    expect(response.body.data).toHaveProperty('availableTrimesters');
+    expect(response.body.data.availableTrimesters).toEqual(['spring', 'fall']);
+    expect(response.body.data.defaultTrimester).toBe('fall');
+  });
+
+  test('should return current and next trimester during priority enrollment', async () => {
+    // During fall priority enrollment, both fall and winter should be available
+    mockPeriodService.getCurrentPeriod.mockResolvedValue({
+      trimester: 'fall',
+      periodType: PeriodType.PRIORITY_ENROLLMENT,
+      isCurrentPeriod: true,
+      startDate: new Date('2025-02-01'),
+    });
+    mockPeriodService.getNextPeriod.mockResolvedValue({
+      trimester: 'winter',
+      periodType: PeriodType.OPEN_ENROLLMENT,
+      startDate: new Date('2025-03-01'),
+    });
+
+    const response = await request(app).get('/api/configuration').expect(200);
+
+    expect(response.body.data).toHaveProperty('availableTrimesters');
+    expect(response.body.data.availableTrimesters).toEqual(['fall', 'winter']);
+    expect(response.body.data.defaultTrimester).toBe('winter');
+  });
+
+  test('should cycle fall to next year during spring priority enrollment', async () => {
+    // During spring priority enrollment, both spring and fall should be available
+    mockPeriodService.getCurrentPeriod.mockResolvedValue({
+      trimester: 'spring',
+      periodType: PeriodType.PRIORITY_ENROLLMENT,
+      isCurrentPeriod: true,
+      startDate: new Date('2025-06-01'),
+    });
+    mockPeriodService.getNextPeriod.mockResolvedValue({
+      trimester: 'fall',
+      periodType: PeriodType.OPEN_ENROLLMENT,
+      startDate: new Date('2025-07-01'),
+    });
+
+    const response = await request(app).get('/api/configuration').expect(200);
+
+    expect(response.body.data).toHaveProperty('availableTrimesters');
+    expect(response.body.data.availableTrimesters).toEqual(['spring', 'fall']);
+    expect(response.body.data.defaultTrimester).toBe('fall');
+  });
+
+  test('should return current and next trimester during open enrollment', async () => {
+    // During winter open enrollment, both winter and spring should be available
+    mockPeriodService.getCurrentPeriod.mockResolvedValue({
+      trimester: 'winter',
+      periodType: PeriodType.OPEN_ENROLLMENT,
+      isCurrentPeriod: true,
+      startDate: new Date('2025-03-01'),
+    });
+    mockPeriodService.getNextPeriod.mockResolvedValue({
+      trimester: 'spring',
+      periodType: PeriodType.REGISTRATION,
+      startDate: new Date('2025-04-01'),
+    });
+
+    const response = await request(app).get('/api/configuration').expect(200);
+
+    expect(response.body.data).toHaveProperty('availableTrimesters');
+    expect(response.body.data.availableTrimesters).toEqual(['winter', 'spring']);
+    expect(response.body.data.defaultTrimester).toBe('spring');
+  });
+
+  test('should return current and next trimester during registration period', async () => {
+    // During registration period, both current and next trimester should be available
+    mockPeriodService.getCurrentPeriod.mockResolvedValue({
+      trimester: 'fall',
+      periodType: PeriodType.REGISTRATION,
+      isCurrentPeriod: true,
+      startDate: new Date('2025-01-01'),
+    });
+    mockPeriodService.getNextPeriod.mockResolvedValue({
+      trimester: 'winter',
+      periodType: PeriodType.INTENT,
+      startDate: new Date('2025-02-01'),
+    });
+
+    const response = await request(app).get('/api/configuration').expect(200);
+
+    expect(response.body.data).toHaveProperty('availableTrimesters');
+    expect(response.body.data.availableTrimesters).toEqual(['fall', 'winter']);
+    expect(response.body.data.defaultTrimester).toBe('fall');
+  });
+
+  test('should return previous and current during winter intent period', async () => {
+    // During winter intent, show fall (previous) and winter (current)
+    mockPeriodService.getCurrentPeriod.mockResolvedValue({
+      trimester: 'winter',
+      periodType: PeriodType.INTENT,
+      isCurrentPeriod: true,
+      startDate: new Date('2025-03-15'),
+    });
+    mockPeriodService.getNextPeriod.mockResolvedValue({
+      trimester: 'spring',
+      periodType: PeriodType.PRIORITY_ENROLLMENT,
+      startDate: new Date('2025-04-01'),
+    });
+
+    const response = await request(app).get('/api/configuration').expect(200);
+
+    expect(response.body.data).toHaveProperty('availableTrimesters');
+    expect(response.body.data.availableTrimesters).toEqual(['fall', 'winter']);
+    expect(response.body.data.defaultTrimester).toBe('winter');
+  });
+
+  test('should return previous and current during spring intent period', async () => {
+    // During spring intent, show winter (previous) and spring (current)
+    mockPeriodService.getCurrentPeriod.mockResolvedValue({
+      trimester: 'spring',
+      periodType: PeriodType.INTENT,
+      isCurrentPeriod: true,
+      startDate: new Date('2025-07-15'),
+    });
+    mockPeriodService.getNextPeriod.mockResolvedValue({
+      trimester: 'fall',
+      periodType: PeriodType.PRIORITY_ENROLLMENT,
+      startDate: new Date('2025-08-01'),
+    });
+
+    const response = await request(app).get('/api/configuration').expect(200);
+
+    expect(response.body.data).toHaveProperty('availableTrimesters');
+    expect(response.body.data.availableTrimesters).toEqual(['winter', 'spring']);
+    expect(response.body.data.defaultTrimester).toBe('spring');
+  });
 });
