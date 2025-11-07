@@ -86,9 +86,10 @@ router.patch(
 );
 
 /**
- * Admin endpoint to get registrations by trimester
+ * Admin endpoints
  */
 router.get('/admin/registrations/:trimester', RegistrationController.getRegistrationsByTrimester);
+router.get('/admin/trimester-data/:trimester', RegistrationController.getAdminTrimesterData);
 
 /**
  * Next trimester registration endpoints (enrollment periods only)
