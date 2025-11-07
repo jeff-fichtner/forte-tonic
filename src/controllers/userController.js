@@ -47,7 +47,7 @@ export class UserController {
         rockBandClassIds: ConfigurationService.getRockBandClassIds(),
         currentTrimester: currentPeriod?.trimester,
         nextTrimester: nextPeriod?.trimester,
-        availableTrimesters: TRIMESTER_SEQUENCE,
+        availableTrimesters: UserController._getAvailableTrimesters(currentPeriod),
         defaultTrimester,
         maintenanceMode: appConfig.maintenanceMode,
         maintenanceMessage: appConfig.maintenanceMessage,
@@ -71,6 +71,72 @@ export class UserController {
         context: { controller: 'UserController', method: 'getAppConfiguration' },
       });
     }
+  }
+
+  /**
+   * Get the previous trimester in the sequence
+   * @private
+   */
+  static _getPreviousTrimester(currentTrimester) {
+    const currentIndex = TRIMESTER_SEQUENCE.indexOf(currentTrimester);
+    const prevIndex = (currentIndex - 1 + TRIMESTER_SEQUENCE.length) % TRIMESTER_SEQUENCE.length;
+    return TRIMESTER_SEQUENCE[prevIndex];
+  }
+
+  /**
+   * Get the next trimester in the sequence
+   * @private
+   */
+  static _getNextTrimester(currentTrimester) {
+    const currentIndex = TRIMESTER_SEQUENCE.indexOf(currentTrimester);
+    const nextIndex = (currentIndex + 1) % TRIMESTER_SEQUENCE.length;
+    return TRIMESTER_SEQUENCE[nextIndex];
+  }
+
+  /**
+   * Determine which trimesters should be visible/accessible based on current period
+   *
+   * Rules:
+   * - Intent period: Show previous trimester (for review/history) + current trimester
+   * - Priority/Open Enrollment/Registration: Show current trimester + next trimester (for enrollment)
+   *
+   * Examples:
+   * - Fall Intent → [spring, fall] - can view spring history and current fall
+   * - Fall Priority Enrollment → [fall, winter] - can view fall and enroll in winter
+   * - Winter Priority Enrollment → [winter, spring] - can view winter and enroll in spring
+   * - Spring Priority Enrollment → [spring, fall] - can view spring and enroll in fall (next year)
+   *
+   * @private
+   */
+  static _getAvailableTrimesters(currentPeriod) {
+    if (!currentPeriod) {
+      // No period configured - show only fall as fallback
+      return [Trimester.FALL];
+    }
+
+    const currentTrimester = currentPeriod.trimester;
+    const currentPeriodType = currentPeriod.periodType;
+
+    // During Intent period: show previous trimester + current trimester
+    // This allows viewing history from previous trimester while in intent for current
+    if (currentPeriodType === PeriodType.INTENT) {
+      const previousTrimester = UserController._getPreviousTrimester(currentTrimester);
+      return [previousTrimester, currentTrimester];
+    }
+
+    // During Priority Enrollment, Open Enrollment, or Registration:
+    // Show current trimester AND next trimester (for enrollment)
+    if (
+      currentPeriodType === PeriodType.PRIORITY_ENROLLMENT ||
+      currentPeriodType === PeriodType.OPEN_ENROLLMENT ||
+      currentPeriodType === PeriodType.REGISTRATION
+    ) {
+      const nextTrimester = UserController._getNextTrimester(currentTrimester);
+      return [currentTrimester, nextTrimester];
+    }
+
+    // Fallback: show only current trimester
+    return [currentTrimester];
   }
 
   /**
