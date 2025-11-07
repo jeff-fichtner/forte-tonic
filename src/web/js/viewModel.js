@@ -1847,7 +1847,7 @@ export class ViewModel {
       // Add event listener to refresh button
       const refreshBtn = overlay.querySelector('.trimester-error-refresh');
       refreshBtn.addEventListener('click', () => {
-        location.reload();
+        window.location.reload();
       });
 
       // Insert overlay at the beginning of the container
