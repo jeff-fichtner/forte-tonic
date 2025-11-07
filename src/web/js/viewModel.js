@@ -1408,7 +1408,8 @@ export class ViewModel {
 
         await HttpService.delete(deleteEndpoint);
 
-        // Remove the old registration from local state (from the appropriate array)
+        // Remove the old registration from local state (from ALL relevant arrays)
+        // This is critical to prevent the old registration from persisting in the UI
         if (isEnrollmentPeriod && !isAdmin && this.nextTrimesterRegistrations) {
           const oldRegIndex = this.nextTrimesterRegistrations.findIndex(reg => {
             const regId = reg.id?.value || reg.id;
@@ -1429,6 +1430,17 @@ export class ViewModel {
             this.registrations.splice(oldRegIndex, 1);
             console.log(`✅ Old registration removed from current trimester registrations`);
           }
+        }
+
+        // ALSO remove from currentTrimesterData.registrations (used by master schedule table)
+        const currentTrimesterIndex = this.currentTrimesterData.registrations.findIndex(reg => {
+          const regId = reg.id?.value || reg.id;
+          return regId === data.replaceRegistrationId;
+        });
+
+        if (currentTrimesterIndex !== -1) {
+          this.currentTrimesterData.registrations.splice(currentTrimesterIndex, 1);
+          console.log(`✅ Old registration removed from currentTrimesterData`);
         }
 
         // Remove the replaceRegistrationId from the data object before creating the new registration
@@ -1615,18 +1627,18 @@ export class ViewModel {
       return;
     }
 
-    // For parents: only show trimester selector during enrollment periods (priority/open) and ONLY for winter or later
+    // For parents: only show trimester selector during enrollment periods (priority/open)
+    // Backend determines which trimesters are available via availableTrimesters
+    // Note: Intent periods show 2 trimesters (prev + current) but parents shouldn't toggle during intent
     if (userType === 'parent') {
       const currentPeriod = window.UserSession?.getCurrentPeriod();
       const isEnrollmentPeriod =
         currentPeriod &&
         (currentPeriod.periodType === 'priorityEnrollment' ||
           currentPeriod.periodType === 'openEnrollment');
-      const isWinterOrLater =
-        currentPeriod &&
-        (currentPeriod.trimester === 'winter' || currentPeriod.trimester === 'spring');
 
-      if (!isEnrollmentPeriod || !isWinterOrLater) {
+      // Hide selector if not in enrollment period OR if only one trimester is available
+      if (!isEnrollmentPeriod || (config.availableTrimesters?.length || 0) <= 1) {
         container.hidden = true;
         // Still set selectedTrimester even though UI is hidden
         this.selectedTrimester = this.defaultTrimester;
@@ -1637,7 +1649,9 @@ export class ViewModel {
       }
     }
 
-    // Show the selector container (for admins always, for parents only during enrollment and winter+)
+    // Show the selector container
+    // - Admins: always visible (can toggle between all available trimesters)
+    // - Parents: visible during enrollment periods with multiple trimesters
     container.hidden = false;
 
     // For admins: restore trimester from sessionStorage (persists across refresh, unique per tab)
@@ -1659,18 +1673,10 @@ export class ViewModel {
     }
     const buttonsHtml = trimesters
       .map(
-        (trimester, index) =>
+        trimester =>
           `<button
             class="trimester-btn ${trimester === this.selectedTrimester ? 'active' : ''}"
             data-trimester="${trimester}"
-            style="
-              padding: 10px 24px;
-              border: none;
-              font-weight: 500;
-              cursor: pointer;
-              transition: all 0.2s;
-              ${index < trimesters.length - 1 ? 'border-right: 1px solid #e0e0e0;' : ''}
-            "
           >
             ${capitalize(trimester)}
           </button>`
@@ -1683,8 +1689,9 @@ export class ViewModel {
           <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap">
             <div style="display: flex; align-items: center; gap: 10px">
               <i class="material-icons" style="color: #2b68a4; font-size: 24px">event</i>
+              <span style="color: #666; font-size: 14px; font-weight: 500">Trimester</span>
             </div>
-            <div id="${userType}-trimester-buttons" style="display: flex; gap: 0; border: 2px solid #e0e0e0; border-radius: 4px; overflow: hidden">
+            <div id="${userType}-trimester-buttons" class="trimester-selector-container">
               ${buttonsHtml}
             </div>
           </div>
@@ -1773,9 +1780,90 @@ export class ViewModel {
         html: 'Error loading trimester data. Please try again.',
         classes: 'red darken-2',
       });
+
+      // Show permanent error overlay to indicate data is stale/inaccessible
+      this.#showTrimesterErrorOverlay(userType, trimester, error.message);
     } finally {
       this.#showLoadingState(false, userType);
     }
+  }
+
+  /**
+   * Show error overlay when trimester data fails to load
+   * Covers the content area to indicate data is stale/inaccessible
+   * @param {string} userType - 'admin' or 'parent'
+   * @param {string} trimester - The trimester that failed to load
+   * @param {string} errorMessage - Error message to display
+   */
+  #showTrimesterErrorOverlay(userType, trimester, errorMessage) {
+    // Find all visible tab content areas for the given user type
+    let visibleContainers = [];
+
+    if (userType === 'admin') {
+      // Find all admin tabs (master schedule, wait list, registration)
+      const adminTabs = ['admin-master-schedule', 'admin-wait-list', 'admin-registration'];
+      visibleContainers = adminTabs
+        .map(id => document.getElementById(id))
+        .filter(el => el && !el.hidden);
+    } else {
+      // Find all parent tabs (weekly schedule, registration, contact us)
+      const parentTabs = ['parent-weekly-schedule', 'parent-registration', 'parent-contact-us'];
+      visibleContainers = parentTabs
+        .map(id => document.getElementById(id))
+        .filter(el => el && !el.hidden);
+    }
+
+    if (visibleContainers.length === 0) {
+      console.error(`No visible ${userType} tabs found for error overlay`);
+      return;
+    }
+
+    // Apply overlay to all visible tab containers
+    visibleContainers.forEach(container => {
+      // Remove any existing error overlay in this container
+      const existingOverlay = container.querySelector('.trimester-error-overlay');
+      if (existingOverlay) {
+        existingOverlay.remove();
+      }
+
+      // Create error overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'trimester-error-overlay';
+      overlay.innerHTML = `
+        <div class="trimester-error-content">
+          <i class="material-icons" style="font-size: 48px; color: #f44336; margin-bottom: 16px">error_outline</i>
+          <h5 style="margin: 0 0 8px 0; font-weight: 500">Failed to Load ${this.#capitalizeTrimester(trimester)} Trimester</h5>
+          <p style="margin: 0 0 16px 0; color: #666; max-width: 500px">
+            The data displayed may be outdated or incomplete. Please refresh the page or try selecting a different trimester.
+          </p>
+          <button class="btn waves-effect waves-light trimester-error-refresh">
+            <i class="material-icons left">refresh</i>
+            Refresh Page
+          </button>
+          ${errorMessage ? `<p style="margin-top: 16px; font-size: 12px; color: #999; font-family: monospace">${errorMessage}</p>` : ''}
+        </div>
+      `;
+
+      // Add event listener to refresh button
+      const refreshBtn = overlay.querySelector('.trimester-error-refresh');
+      refreshBtn.addEventListener('click', () => {
+        location.reload();
+      });
+
+      // Insert overlay at the beginning of the container
+      container.style.position = 'relative';
+      container.insertBefore(overlay, container.firstChild);
+    });
+  }
+
+  /**
+   * Helper to capitalize trimester names
+   * @param {string} trimester
+   * @returns {string}
+   */
+  #capitalizeTrimester(trimester) {
+    if (!trimester) return '';
+    return trimester.charAt(0).toUpperCase() + trimester.slice(1).toLowerCase();
   }
 
   /**
