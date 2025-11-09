@@ -38,6 +38,7 @@ import { InstructorWeeklyScheduleTab } from './tabs/instructorWeeklyScheduleTab.
 import { ParentContactTab } from './tabs/parentContactTab.js';
 import { ParentWeeklyScheduleTab } from './tabs/parentWeeklyScheduleTab.js';
 import { AdminWaitListTab } from './tabs/adminWaitListTab.js';
+import { AdminMasterScheduleTab } from './tabs/adminMasterScheduleTab.js';
 
 /**
  * Access code manager for secure storage and retrieval of access codes
@@ -282,9 +283,13 @@ async function initializeApplication() {
     const parentWeeklyScheduleTab = new ParentWeeklyScheduleTab();
     tabController.registerTab('parent-weekly-schedule', parentWeeklyScheduleTab);
 
+    // Phase 4.1: Admin Master Schedule
+    const adminMasterScheduleTab = new AdminMasterScheduleTab();
+    tabController.registerTab('admin-master-schedule', adminMasterScheduleTab);
+
     // Make TabController available globally for NavTabs integration
     window.tabController = tabController;
-    console.log('✓ TabController initialized with 5 registered tabs');
+    console.log('✓ TabController initialized with 6 registered tabs');
 
     // Expose maintenance mode override function globally
     // Usage: window.overrideMaintenanceMode() in browser console

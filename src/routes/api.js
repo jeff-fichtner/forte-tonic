@@ -132,5 +132,6 @@ router.get('/instructor/tabs/weekly-schedule', RegistrationController.getInstruc
 router.get('/parent/tabs/contact', UserController.getParentContactTabData);
 router.get('/parent/tabs/weekly-schedule/:trimester', RegistrationController.getParentWeeklyScheduleTabData);
 router.get('/admin/tabs/wait-list/:trimester', RegistrationController.getAdminWaitListTabData);
+router.get('/admin/tabs/master-schedule/:trimester', RegistrationController.getAdminMasterScheduleTabData);
 
 export default router;

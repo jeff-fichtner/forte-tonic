@@ -1128,4 +1128,49 @@ export class RegistrationController {
       });
     }
   }
+
+  /**
+   * Get admin master schedule tab data
+   * Returns registrations for trimester + students + instructors + classes
+   * (no rooms, no other trimesters)
+   * REST: GET /api/admin/tabs/master-schedule/:trimester
+   */
+  static async getAdminMasterScheduleTabData(req, res) {
+    const startTime = Date.now();
+
+    try {
+      const { trimester } = req.params;
+
+      const userRepository = serviceContainer.get('userRepository');
+
+      // Fetch all data for the trimester in parallel
+      const [registrations, students, instructors, classes] = await Promise.all([
+        userRepository.getRegistrationData(trimester),
+        userRepository.getStudentData(),
+        userRepository.getInstructorData(),
+        userRepository.getClassData(trimester),
+      ]);
+
+      const responseData = {
+        registrations: registrations,
+        students: students,
+        instructors: instructors,
+        classes: classes,
+      };
+
+      successResponse(res, responseData, {
+        req,
+        startTime,
+        message: 'Admin master schedule data retrieved successfully',
+        context: { controller: 'RegistrationController', method: 'getAdminMasterScheduleTabData' },
+      });
+    } catch (error) {
+      logger.error('Error getting admin master schedule data:', error);
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'getAdminMasterScheduleTabData' },
+      });
+    }
+  }
 }
