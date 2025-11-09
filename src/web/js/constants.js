@@ -70,8 +70,8 @@ export const FilterValue = {
   ALL: 'all',
 };
 
-// Make constants available globally for backward compatibility
-// Make available globally for backward compatibility
+// Expose to window for console debugging and runtime access
+// Expose to window for console debugging and runtime access
 window.DateTime = DateTime;
 window.Duration = Duration;
 window.DateHelpers = DateHelpers;

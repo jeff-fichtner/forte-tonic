@@ -72,5 +72,5 @@ export class DomHelpers {
   }
 }
 
-// For backwards compatibility with existing code
+// Expose to window for console debugging and runtime access
 window.DomHelpers = DomHelpers;

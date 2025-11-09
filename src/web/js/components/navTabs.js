@@ -422,5 +422,5 @@ export class NavTabs {
   }
 }
 
-// For backwards compatibility with existing code
+// Expose to window for console debugging and runtime access
 window.NavTabs = NavTabs;

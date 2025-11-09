@@ -5,5 +5,5 @@ export class ApiClient {
   // move loose objects to here
 }
 
-// For backwards compatibility with existing code
+// Expose to window for console debugging and runtime access
 window.ApiClient = ApiClient;
