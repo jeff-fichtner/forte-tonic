@@ -145,9 +145,7 @@ export class BaseTab {
    * @throws {Error} If not implemented
    */
   async fetchData(sessionInfo) {
-    throw new Error(
-      `fetchData() must be implemented by ${this.constructor.name}`
-    );
+    throw new Error(`fetchData() must be implemented by ${this.constructor.name}`);
   }
 
   /**
@@ -158,9 +156,7 @@ export class BaseTab {
    * @throws {Error} If not implemented
    */
   async render() {
-    throw new Error(
-      `render() must be implemented by ${this.constructor.name}`
-    );
+    throw new Error(`render() must be implemented by ${this.constructor.name}`);
   }
 
   /**
@@ -317,5 +313,37 @@ export class BaseTab {
    */
   getAbortSignal() {
     return this.abortController?.signal;
+  }
+
+  /**
+   * Find a student by ID from the tab's data
+   * @protected
+   * @param {string|Object} studentId - Student ID (string or object with .value)
+   * @returns {Object|undefined} Student object or undefined if not found
+   */
+  findStudent(studentId) {
+    if (!this.data?.students) return undefined;
+
+    const idToFind = studentId?.value || studentId;
+    return this.data.students.find(student => {
+      const id = student.id?.value || student.id;
+      return id === idToFind;
+    });
+  }
+
+  /**
+   * Find an instructor by ID from the tab's data
+   * @protected
+   * @param {string|Object} instructorId - Instructor ID (string or object with .value)
+   * @returns {Object|undefined} Instructor object or undefined if not found
+   */
+  findInstructor(instructorId) {
+    if (!this.data?.instructors) return undefined;
+
+    const idToFind = instructorId?.value || instructorId;
+    return this.data.instructors.find(instructor => {
+      const id = instructor.id?.value || instructor.id;
+      return id === idToFind;
+    });
   }
 }

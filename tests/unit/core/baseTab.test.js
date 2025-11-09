@@ -209,9 +209,7 @@ describe('BaseTab', () => {
       const baseTab = Object.create(BaseTab.prototype);
       baseTab.tabId = 'base-tab';
 
-      await expect(baseTab.render()).rejects.toThrow(
-        'render() must be implemented by BaseTab'
-      );
+      await expect(baseTab.render()).rejects.toThrow('render() must be implemented by BaseTab');
     });
   });
 
