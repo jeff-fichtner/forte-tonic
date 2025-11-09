@@ -223,7 +223,7 @@ export class HttpService {
         // The Node.js server returns JSON.stringify'd responses to match the original behavior
         const parsedResponse = JSON.parse(responseText);
 
-        // Auto-unwrap standardized response format for backward compatibility
+        // Auto-unwrap standardized response format
         // New format: { success: true, data: {...} }
         // Old format: {...} (raw data)
         // This allows backend to use standardized responses without breaking frontend
@@ -247,5 +247,5 @@ export class HttpService {
   }
 }
 
-// Make HttpService available globally for backward compatibility
+// Expose to window for console debugging and runtime access
 window.HttpService = HttpService;

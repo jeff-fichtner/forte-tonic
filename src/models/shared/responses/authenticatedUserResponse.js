@@ -131,7 +131,7 @@ export class AuthenticatedUserResponse {
   }
 }
 
-// Make AuthenticatedUserResponse available globally for backward compatibility
+// Expose to window for console debugging and runtime access
 if (typeof window !== 'undefined') {
   window.AuthenticatedUserResponse = AuthenticatedUserResponse;
 }

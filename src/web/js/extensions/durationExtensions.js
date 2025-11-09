@@ -1,4 +1,4 @@
-// Native Duration extensions for backward compatibility
+// Native Duration extensions
 
 // Add methods to native Duration class for 12-hour format
 if (typeof window !== 'undefined' && window.Duration) {

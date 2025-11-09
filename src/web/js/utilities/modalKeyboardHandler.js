@@ -194,5 +194,5 @@ export class ModalKeyboardHandler {
   }
 }
 
-// Make available globally for backward compatibility
+// Expose to window for console debugging and runtime access
 window.ModalKeyboardHandler = ModalKeyboardHandler;

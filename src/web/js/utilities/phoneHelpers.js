@@ -89,7 +89,7 @@ export function isValidPhoneNumber(phoneNumber) {
   return true;
 }
 
-// For backwards compatibility with existing code (browser only)
+// Expose to window for console debugging and runtime access (browser only)
 if (typeof window !== 'undefined') {
   window.formatPhone = formatPhone;
   window.isValidUnformattedPhone = isValidUnformattedPhone;
