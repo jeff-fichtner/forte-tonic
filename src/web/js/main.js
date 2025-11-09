@@ -35,6 +35,7 @@ import './viewModel.js';
 import { TabController } from './core/tabController.js';
 import { InstructorDirectoryTab } from './tabs/instructorDirectoryTab.js';
 import { ParentContactTab } from './tabs/parentContactTab.js';
+import { AdminWaitListTab } from './tabs/adminWaitListTab.js';
 
 /**
  * Access code manager for secure storage and retrieval of access codes
@@ -267,9 +268,13 @@ async function initializeApplication() {
     const parentContactTab = new ParentContactTab();
     tabController.registerTab('parent-contact-us', parentContactTab);
 
+    // Phase 3.2: Admin Wait List
+    const adminWaitListTab = new AdminWaitListTab();
+    tabController.registerTab('admin-wait-list', adminWaitListTab);
+
     // Make TabController available globally for NavTabs integration
     window.tabController = tabController;
-    console.log('✓ TabController initialized with 2 registered tabs');
+    console.log('✓ TabController initialized with 3 registered tabs');
 
     // Expose maintenance mode override function globally
     // Usage: window.overrideMaintenanceMode() in browser console
