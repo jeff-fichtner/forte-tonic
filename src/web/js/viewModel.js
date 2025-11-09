@@ -198,56 +198,20 @@ export class ViewModel {
     // Show content area
     document.getElementById('page-content').hidden = false;
 
-    // NOTE: Frontend Data Independence Migration (Phase 0-4 Complete)
+    // Phase 5: Aggressive Cleanup - Removed global data fetching
     // Tabs now fetch their own scoped data via TabController pattern.
-    // This global data fetch is kept for backward compatibility with:
-    // 1. Registration forms (still use viewModel.createRegistrationWithEnrichment)
-    // 2. Legacy code paths that may still reference this.admins, this.instructors, etc.
-    // 3. Progressive enhancement fallback
-    //
-    // Future optimization (Phase 6): Remove this global fetch entirely once
-    // registration methods are extracted to a service and all legacy references removed.
-    // See: docs/technical/refactoring/phase-5-completion-summary.md
-    const [_, admins, instructors, students, registrations, classes, rooms] = await Promise.all([
-      DomHelpers.waitForDocumentReadyAsync(),
-      HttpService.fetch(ServerFunctions.getAdmins, x => x.map(y => Admin.fromApiData(y))),
-      HttpService.fetch(ServerFunctions.getInstructors, x => x.map(y => Instructor.fromApiData(y))),
-      this.#getStudents(),
-      HttpService.fetchAllPages(ServerFunctions.getRegistrations, x => Registration.fromApiData(x)),
-      HttpService.fetch(ServerFunctions.getClasses, x => x.map(y => Class.fromApiData(y))),
-      HttpService.fetch(ServerFunctions.getRooms, x => x.map(y => Room.fromApiData(y))),
-    ]);
+    // No backward compatibility - all data is now fetched by individual tabs.
+    await DomHelpers.waitForDocumentReadyAsync();
 
     M.AutoInit();
 
-    this.admins = admins;
-    this.instructors = instructors;
-    this.students = students;
-
-    this.registrations = registrations.map(registration => {
-      // ensure student is populated
-      if (!registration.student) {
-        registration.student = this.students.find(x => {
-          const studentId = x.id?.value || x.id;
-          const registrationStudentId = registration.studentId?.value || registration.studentId;
-          return studentId === registrationStudentId;
-        });
-      }
-
-      // ensure instructor is populated
-      if (!registration.instructor) {
-        registration.instructor = this.instructors.find(x => {
-          const instructorId = x.id?.value || x.id;
-          const registrationInstructorId =
-            registration.instructorId?.value || registration.instructorId;
-          return instructorId === registrationInstructorId;
-        });
-      }
-      return registration;
-    });
-
-    this.classes = classes;
-    this.rooms = rooms;
+    // Initialize empty arrays - tabs will fetch their own data
+    this.admins = [];
+    this.instructors = [];
+    this.students = [];
+    this.registrations = [];
+    this.classes = [];
+    this.rooms = [];
 
     // Store current user for access throughout the application
     this.currentUser = user;
