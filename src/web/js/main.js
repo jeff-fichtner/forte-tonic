@@ -34,6 +34,7 @@ import './viewModel.js';
 // Phase 2: Tab-based architecture imports
 import { TabController } from './core/tabController.js';
 import { InstructorDirectoryTab } from './tabs/instructorDirectoryTab.js';
+import { ParentContactTab } from './tabs/parentContactTab.js';
 
 /**
  * Access code manager for secure storage and retrieval of access codes
@@ -257,13 +258,18 @@ async function initializeApplication() {
     const tabController = new TabController();
     tabController.initialize();
 
-    // Register migrated tabs (Phase 2.1: Instructor Directory - pilot)
+    // Register migrated tabs
+    // Phase 2.1: Instructor Directory (pilot)
     const instructorDirectoryTab = new InstructorDirectoryTab();
     tabController.registerTab('instructor-forte-directory', instructorDirectoryTab);
 
+    // Phase 3.1: Parent Contact
+    const parentContactTab = new ParentContactTab();
+    tabController.registerTab('parent-contact-us', parentContactTab);
+
     // Make TabController available globally for NavTabs integration
     window.tabController = tabController;
-    console.log('✓ TabController initialized with 1 registered tab');
+    console.log('✓ TabController initialized with 2 registered tabs');
 
     // Expose maintenance mode override function globally
     // Usage: window.overrideMaintenanceMode() in browser console

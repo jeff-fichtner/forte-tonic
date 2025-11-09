@@ -620,4 +620,82 @@ export class UserController {
       });
     }
   }
+
+  /**
+   * Get parent contact tab data
+   * Returns admins and instructors currently teaching the parent's children
+   * REST: GET /api/parent/tabs/contact?parentId={parentId}
+   */
+  static async getParentContactTabData(req, res) {
+    const startTime = Date.now();
+
+    try {
+      const { parentId } = req.query;
+
+      if (!parentId) {
+        return errorResponse(
+          res,
+          new Error('Parent ID is required'),
+          {
+            req,
+            startTime,
+            context: { controller: 'UserController', method: 'getParentContactTabData' },
+          },
+          400
+        );
+      }
+
+      const userRepository = serviceContainer.get('userRepository');
+      const registrationRepository = serviceContainer.get('registrationRepository');
+
+      // Fetch admins and all students/instructors/registrations in parallel
+      const [admins, students, instructors, registrations] = await Promise.all([
+        userRepository.getAdmins(),
+        userRepository.getStudents(),
+        userRepository.getInstructors(),
+        registrationRepository.getRegistrations(),
+      ]);
+
+      // Filter students belonging to this parent (either parent1 or parent2)
+      const parentStudents = students.filter(
+        student => student.parent1Id === parentId || student.parent2Id === parentId
+      );
+      const parentStudentIds = parentStudents.map(s => s.id);
+
+      // Filter registrations for parent's children
+      const parentRegistrations = registrations.filter(reg =>
+        parentStudentIds.includes(reg.studentId)
+      );
+
+      // Get unique instructor IDs from parent's registrations
+      const instructorIds = [...new Set(parentRegistrations.map(reg => reg.instructorId).filter(Boolean))];
+
+      // Filter instructors to only include those teaching this parent's children
+      const relevantInstructors = instructors.filter(instructor =>
+        instructorIds.includes(instructor.id)
+      );
+
+      // Transform data for frontend
+      const transformedAdmins = UserTransformService.transformArray(admins, 'admin');
+
+      const responseData = {
+        admins: transformedAdmins,
+        instructors: relevantInstructors,
+      };
+
+      successResponse(res, responseData, {
+        req,
+        startTime,
+        message: 'Parent contact data retrieved successfully',
+        context: { controller: 'UserController', method: 'getParentContactTabData' },
+      });
+    } catch (error) {
+      logger.error('Error getting parent contact tab data:', error);
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getParentContactTabData' },
+      });
+    }
+  }
 }
