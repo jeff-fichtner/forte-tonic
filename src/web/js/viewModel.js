@@ -319,9 +319,6 @@ export class ViewModel {
 
         this.#initParentContent();
         this.parentContentInitialized = true;
-      } else {
-        // Reinitialize trimester selector on user switch
-        this.#initTrimesterSelector('parent');
       }
       defaultSection = Sections.PARENT;
     }
@@ -604,8 +601,13 @@ export class ViewModel {
       return;
     }
 
-    // Initialize trimester selector for parents
-    this.#initTrimesterSelector('parent');
+    // Set default trimester for parents (they don't get a selector, but need the default value)
+    const config = window.UserSession?.getAppConfig();
+    if (config?.defaultTrimester) {
+      this.defaultTrimester = config.defaultTrimester;
+      this.selectedTrimester = config.defaultTrimester;
+      console.log(`📌 Parent trimester set to default: ${this.defaultTrimester}`);
+    }
 
     // Store initial registrations in currentTrimesterData
     this.currentTrimesterData.registrations = this.registrations;
@@ -1605,11 +1607,23 @@ export class ViewModel {
     console.log(`🔧 initTrimesterSelector called for ${userType}`);
     console.trace('Call stack:');
 
-    const containerId = `${userType}-trimester-selector-container`;
+    // CRITICAL: Trimester selector is ADMIN-ONLY
+    // This method should NEVER be called for non-admins
+    if (userType !== 'admin') {
+      console.error(`❌ Trimester selector should only be initialized for admins, not ${userType}`);
+      return;
+    }
+
+    if (!this.currentUser?.admin) {
+      console.warn('❌ Admin trimester selector requested but user is not an admin');
+      return;
+    }
+
+    const containerId = 'admin-trimester-selector-container';
     const container = document.getElementById(containerId);
 
     if (!container) {
-      console.error(`Trimester selector container not found for ${userType}`);
+      console.error(`Trimester selector container not found`);
       return;
     }
 
@@ -1620,50 +1634,21 @@ export class ViewModel {
       return;
     }
 
-    // Get default trimester first (needed for all users)
+    // Get default trimester
     this.defaultTrimester = config.defaultTrimester;
     if (!this.defaultTrimester) {
       console.error('defaultTrimester not configured in app configuration');
       return;
     }
 
-    // For parents: only show trimester selector during enrollment periods (priority/open)
-    // Backend determines which trimesters are available via availableTrimesters
-    // Note: Intent periods show 2 trimesters (prev + current) but parents shouldn't toggle during intent
-    if (userType === 'parent') {
-      const currentPeriod = window.UserSession?.getCurrentPeriod();
-      const isEnrollmentPeriod =
-        currentPeriod &&
-        (currentPeriod.periodType === 'priorityEnrollment' ||
-          currentPeriod.periodType === 'openEnrollment');
-
-      // Hide selector if not in enrollment period OR if only one trimester is available
-      if (!isEnrollmentPeriod || (config.availableTrimesters?.length || 0) <= 1) {
-        container.hidden = true;
-        // Still set selectedTrimester even though UI is hidden
-        this.selectedTrimester = this.defaultTrimester;
-        console.log(
-          `📌 Parent trimester set to default (selector hidden): ${this.selectedTrimester}`
-        );
-        return;
-      }
-    }
-
-    // Show the selector container
-    // - Admins: always visible (can toggle between all available trimesters)
-    // - Parents: visible during enrollment periods with multiple trimesters
+    // Show the selector container for admins
     container.hidden = false;
 
-    // For admins: restore trimester from sessionStorage (persists across refresh, unique per tab)
-    // For parents: always use default trimester
-    if (userType === 'admin') {
-      const sessionKey = 'admin-selected-trimester';
-      const savedTrimester = sessionStorage.getItem(sessionKey);
-      this.selectedTrimester = savedTrimester || this.defaultTrimester;
-      console.log(`📌 Restored admin trimester from session: ${this.selectedTrimester}`);
-    } else {
-      this.selectedTrimester = this.defaultTrimester;
-    }
+    // Restore trimester from sessionStorage (persists across refresh, unique per tab)
+    const sessionKey = 'admin-selected-trimester';
+    const savedTrimester = sessionStorage.getItem(sessionKey);
+    this.selectedTrimester = savedTrimester || this.defaultTrimester;
+    console.log(`📌 Restored admin trimester from session: ${this.selectedTrimester}`);
 
     // Clear and rebuild the entire container to ensure clean state
     const trimesters = config.availableTrimesters;
@@ -1691,7 +1676,7 @@ export class ViewModel {
               <i class="material-icons" style="color: #2b68a4; font-size: 24px">event</i>
               <span style="color: #666; font-size: 14px; font-weight: 500">Trimester</span>
             </div>
-            <div id="${userType}-trimester-buttons" class="trimester-selector-container">
+            <div id="admin-trimester-buttons" class="trimester-selector-container">
               ${buttonsHtml}
             </div>
           </div>
@@ -1711,12 +1696,12 @@ export class ViewModel {
         button.classList.add('active');
 
         // Trigger change handler
-        this.#handleTrimesterChange(newTrimester, userType);
+        this.#handleTrimesterChange(newTrimester, 'admin');
       });
     });
 
-    // For admins: if restored trimester differs from default, load that trimester's data
-    if (userType === 'admin' && this.selectedTrimester !== this.defaultTrimester) {
+    // If restored trimester differs from default, load that trimester's data
+    if (this.selectedTrimester !== this.defaultTrimester) {
       console.log(`🔄 Loading saved trimester data: ${this.selectedTrimester}`);
       this.#loadTrimesterData(this.selectedTrimester)
         .then(() => {
