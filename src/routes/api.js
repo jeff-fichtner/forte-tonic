@@ -128,12 +128,21 @@ router.post('/feedback', FeedbackController.submitFeedback);
  * These endpoints return only the data needed for specific tabs
  */
 router.get('/instructor/tabs/directory', UserController.getInstructorDirectoryTabData);
-router.get('/instructor/tabs/weekly-schedule', RegistrationController.getInstructorWeeklyScheduleTabData);
+router.get(
+  '/instructor/tabs/weekly-schedule',
+  RegistrationController.getInstructorWeeklyScheduleTabData
+);
 router.get('/parent/tabs/contact', UserController.getParentContactTabData);
-router.get('/parent/tabs/weekly-schedule/:trimester', RegistrationController.getParentWeeklyScheduleTabData);
+router.get(
+  '/parent/tabs/weekly-schedule/:trimester',
+  RegistrationController.getParentWeeklyScheduleTabData
+);
 router.get('/parent/tabs/registration', RegistrationController.getParentRegistrationTabData);
 router.get('/admin/tabs/wait-list/:trimester', RegistrationController.getAdminWaitListTabData);
-router.get('/admin/tabs/master-schedule/:trimester', RegistrationController.getAdminMasterScheduleTabData);
+router.get(
+  '/admin/tabs/master-schedule/:trimester',
+  RegistrationController.getAdminMasterScheduleTabData
+);
 router.get('/admin/tabs/registration', RegistrationController.getAdminRegistrationTabData);
 
 export default router;
