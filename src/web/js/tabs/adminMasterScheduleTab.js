@@ -2,7 +2,7 @@ import { BaseTab } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatGrade, formatTime } from '../extensions/numberExtensions.js';
 import { RegistrationType } from '../constants.js';
-import { PeriodType } from '../../../models/shared/period.js';
+import { PeriodType } from '../constants/periodTypeConstants.js';
 
 // Intent labels (matching viewModel.js)
 const INTENT_LABELS = {
@@ -686,7 +686,7 @@ export class AdminMasterScheduleTab extends BaseTab {
    * @private
    */
   async #deleteRegistration(registrationId) {
-    // Use the legacy viewModel method for now (will refactor later)
+    // Delegate to viewModel for registration deletion
     if (window.viewModel && typeof window.viewModel.requestDeleteRegistrationAsync === 'function') {
       await window.viewModel.requestDeleteRegistrationAsync(registrationId);
 

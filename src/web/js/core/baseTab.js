@@ -75,7 +75,6 @@ export class BaseTab {
       return;
     }
 
-    console.log(`Loading tab: ${this.tabId}`);
     this.sessionInfo = sessionInfo;
 
     // Create abort controller for this load cycle
@@ -96,13 +95,9 @@ export class BaseTab {
 
       this.isLoaded = true;
       this.showLoadingState(false);
-
-      console.log(`Tab loaded: ${this.tabId}`);
     } catch (error) {
       // Don't log abort errors (user navigated away)
-      if (error.name === 'AbortError') {
-        console.log(`Tab load cancelled: ${this.tabId}`);
-      } else {
+      if (error.name !== 'AbortError') {
         console.error(`Error loading tab ${this.tabId}:`, error);
         this.showError(error);
       }
@@ -123,8 +118,6 @@ export class BaseTab {
       return;
     }
 
-    console.log(`Unloading tab: ${this.tabId}`);
-
     // Cancel any in-flight requests
     if (this.abortController) {
       this.abortController.abort();
@@ -141,8 +134,6 @@ export class BaseTab {
     this.data = null;
     this.sessionInfo = null;
     this.isLoaded = false;
-
-    console.log(`Tab unloaded: ${this.tabId}`);
   }
 
   /**
@@ -291,8 +282,6 @@ export class BaseTab {
    * @returns {Promise<void>}
    */
   async reload() {
-    console.log(`Reloading tab: ${this.tabId}`);
-
     // Cancel any in-flight requests
     if (this.abortController) {
       this.abortController.abort();
@@ -310,8 +299,6 @@ export class BaseTab {
       await this.render();
 
       this.showLoadingState(false);
-
-      console.log(`Tab reloaded: ${this.tabId}`);
     } catch (error) {
       if (error.name !== 'AbortError') {
         console.error(`Error reloading tab ${this.tabId}:`, error);
