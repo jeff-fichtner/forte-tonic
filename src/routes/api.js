@@ -128,5 +128,6 @@ router.post('/feedback', FeedbackController.submitFeedback);
  * These endpoints return only the data needed for specific tabs
  */
 router.get('/instructor/tabs/directory', UserController.getInstructorDirectoryTabData);
+router.get('/parent/tabs/contact', UserController.getParentContactTabData);
 
 export default router;
