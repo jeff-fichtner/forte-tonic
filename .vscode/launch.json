@@ -11,7 +11,8 @@
             },
             "console": "integratedTerminal",
             "skipFiles": [
-                "<node_internals>/**"
+                "<node_internals>/**",
+                "${workspaceFolder}/node_modules/**"
             ],
             "outputCapture": "console",
             "runtimeArgs": [
