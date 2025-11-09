@@ -129,5 +129,6 @@ router.post('/feedback', FeedbackController.submitFeedback);
  */
 router.get('/instructor/tabs/directory', UserController.getInstructorDirectoryTabData);
 router.get('/parent/tabs/contact', UserController.getParentContactTabData);
+router.get('/admin/tabs/wait-list/:trimester', RegistrationController.getAdminWaitListTabData);
 
 export default router;

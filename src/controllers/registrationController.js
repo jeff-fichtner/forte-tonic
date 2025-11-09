@@ -884,4 +884,83 @@ export class RegistrationController {
       });
     }
   }
+
+  /**
+   * Get admin wait list tab data
+   * Returns only Rock Band registrations + associated students for wait list
+   * REST: GET /api/admin/tabs/wait-list/:trimester
+   */
+  static async getAdminWaitListTabData(req, res) {
+    const startTime = Date.now();
+
+    try {
+      const { trimester } = req.params;
+
+      if (!trimester) {
+        return errorResponse(
+          res,
+          new Error('Trimester is required'),
+          {
+            req,
+            startTime,
+            context: { controller: 'RegistrationController', method: 'getAdminWaitListTabData' },
+          },
+          400
+        );
+      }
+
+      const registrationRepository = serviceContainer.get('registrationRepository');
+      const userRepository = serviceContainer.get('userRepository');
+      const configService = serviceContainer.get('configurationService');
+
+      // Get Rock Band class IDs (wait list classes)
+      const rockBandClassIds = configService.getRockBandClassIds();
+
+      // Fetch registrations for trimester and all students in parallel
+      const [allRegistrations, students] = await Promise.all([
+        registrationRepository.getRegistrationsByTrimester(trimester),
+        userRepository.getStudents(),
+      ]);
+
+      // Filter registrations to only include Rock Band classes (wait list)
+      const waitListRegistrations = allRegistrations.filter(registration => {
+        const classId = registration.classId?.value || registration.classId;
+        return rockBandClassIds.includes(classId);
+      });
+
+      // Get unique student IDs from wait list registrations
+      const studentIdsInWaitList = [
+        ...new Set(
+          waitListRegistrations
+            .map(reg => reg.studentId?.value || reg.studentId)
+            .filter(Boolean)
+        ),
+      ];
+
+      // Filter students to only include those in wait list registrations
+      const relevantStudents = students.filter(student => {
+        const studentId = student.id?.value || student.id;
+        return studentIdsInWaitList.includes(studentId);
+      });
+
+      const responseData = {
+        registrations: waitListRegistrations,
+        students: relevantStudents,
+      };
+
+      successResponse(res, responseData, {
+        req,
+        startTime,
+        message: 'Admin wait list data retrieved successfully',
+        context: { controller: 'RegistrationController', method: 'getAdminWaitListTabData' },
+      });
+    } catch (error) {
+      logger.error('Error getting admin wait list tab data:', error);
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'getAdminWaitListTabData' },
+      });
+    }
+  }
 }
