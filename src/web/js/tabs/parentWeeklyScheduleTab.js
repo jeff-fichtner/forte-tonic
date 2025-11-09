@@ -3,6 +3,7 @@ import { Table } from '../components/table.js';
 import { formatGrade, formatTime } from '../extensions/numberExtensions.js';
 import { RegistrationType } from '../constants.js';
 import { PeriodType } from '../constants/periodTypeConstants.js';
+import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 
 // Intent labels (matching viewModel.js)
 const INTENT_LABELS = {
@@ -273,11 +274,13 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * @private
    */
   #buildScheduleTableRow(enrollment) {
-    const instructor = this.#findInstructor(enrollment.instructorId);
-    const student = this.#findStudent(enrollment.studentId);
+    const instructor = this.findInstructor(enrollment.instructorId);
+    const student = this.findStudent(enrollment.studentId);
 
     if (!instructor || !student) {
-      console.warn(`Instructor or student not found for enrollment: ${enrollment.id?.value || enrollment.id}`);
+      console.warn(
+        `Instructor or student not found for enrollment: ${enrollment.id?.value || enrollment.id}`
+      );
       return '';
     }
 
@@ -337,10 +340,12 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * @private
    */
   #buildWaitListTableRow(enrollment) {
-    const student = this.#findStudent(enrollment.studentId);
+    const student = this.findStudent(enrollment.studentId);
 
     if (!student) {
-      console.warn(`Student not found for wait list enrollment: ${enrollment.id?.value || enrollment.id}`);
+      console.warn(
+        `Student not found for wait list enrollment: ${enrollment.id?.value || enrollment.id}`
+      );
       return '';
     }
 
@@ -376,40 +381,17 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     if (!currentEnrollment) return;
 
     // For parent view: show instructor emails
-    const instructorIdToFind = currentEnrollment.instructorId?.value || currentEnrollment.instructorId;
-    const instructor = this.#findInstructor(instructorIdToFind);
+    const instructorIdToFind =
+      currentEnrollment.instructorId?.value || currentEnrollment.instructorId;
+    const instructor = this.findInstructor(instructorIdToFind);
 
     if (instructor && instructor.email && instructor.email.trim()) {
-      await this.#copyToClipboard(instructor.email);
+      await copyToClipboard(instructor.email);
     } else {
       if (typeof M !== 'undefined') {
         M.toast({ html: 'No instructor email available.' });
       }
     }
-  }
-
-  /**
-   * Find instructor by ID
-   * @private
-   */
-  #findInstructor(instructorId) {
-    const idToFind = instructorId?.value || instructorId;
-    return this.data.instructors.find(x => {
-      const id = x.id?.value || x.id;
-      return id === idToFind;
-    });
-  }
-
-  /**
-   * Find student by ID
-   * @private
-   */
-  #findStudent(studentId) {
-    const idToFind = studentId?.value || studentId;
-    return this.data.students.find(x => {
-      const id = x.id?.value || x.id;
-      return id === idToFind;
-    });
   }
 
   /**
@@ -502,43 +484,6 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     } catch (error) {
       console.error('Error formatting timestamp:', error);
       return 'Error formatting date';
-    }
-  }
-
-  /**
-   * Copy text to clipboard with fallback for older browsers
-   * @private
-   */
-  async #copyToClipboard(text) {
-    try {
-      // Attempt to use the Clipboard API
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(text);
-        if (typeof M !== 'undefined') {
-          M.toast({ html: `Copied '${text}' to clipboard.` });
-        }
-        return;
-      }
-    } catch (error) {
-      console.error('Failed to copy text to clipboard with modern API:', error);
-    }
-
-    try {
-      // Fallback to execCommand for older browsers
-      const tempInput = document.createElement('textarea');
-      tempInput.value = text;
-      document.body.appendChild(tempInput);
-      tempInput.select();
-      document.execCommand('copy');
-      document.body.removeChild(tempInput);
-      if (typeof M !== 'undefined') {
-        M.toast({ html: `Copied '${text}' to clipboard.` });
-      }
-    } catch (error) {
-      console.error('Failed to copy text to clipboard with fallback:', error);
-      if (typeof M !== 'undefined') {
-        M.toast({ html: 'Failed to copy text to clipboard.' });
-      }
     }
   }
 

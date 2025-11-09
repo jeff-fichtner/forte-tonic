@@ -3,6 +3,7 @@ import { Table } from '../components/table.js';
 import { formatGrade, formatTime } from '../extensions/numberExtensions.js';
 import { RegistrationType } from '../constants.js';
 import { PeriodType } from '../constants/periodTypeConstants.js';
+import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 
 // Intent labels (matching viewModel.js)
 const INTENT_LABELS = {
@@ -84,7 +85,15 @@ export class AdminMasterScheduleTab extends BaseTab {
       headers.push('Recurring');
     }
 
-    headers.push('Weekday', 'Start Time', 'Length', 'Student', 'Grade', 'Instructor', 'Instrument/Class');
+    headers.push(
+      'Weekday',
+      'Start Time',
+      'Length',
+      'Student',
+      'Grade',
+      'Instructor',
+      'Instrument/Class'
+    );
 
     // Add Intent column before Contact (only during intent period)
     if (isIntentPeriod) {
@@ -315,7 +324,7 @@ export class AdminMasterScheduleTab extends BaseTab {
       });
 
       if (fullStudent && fullStudent.parentEmails && fullStudent.parentEmails.trim()) {
-        await this.#copyToClipboard(fullStudent.parentEmails);
+        await copyToClipboard(fullStudent.parentEmails);
       } else {
         if (typeof M !== 'undefined') {
           M.toast({ html: 'No parent email available for this student.' });
@@ -402,7 +411,9 @@ export class AdminMasterScheduleTab extends BaseTab {
       }
 
       // Get unique instructor IDs from registrations
-      const instructorIds = [...new Set(registrations.map(reg => reg.instructorId?.value || reg.instructorId))];
+      const instructorIds = [
+        ...new Set(registrations.map(reg => reg.instructorId?.value || reg.instructorId)),
+      ];
 
       // Create options for each instructor
       instructorIds
@@ -441,7 +452,15 @@ export class AdminMasterScheduleTab extends BaseTab {
       ];
 
       // Sort days in logical weekday order
-      const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      const dayOrder = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+      ];
       uniqueDays
         .sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b))
         .forEach(day => {
@@ -493,7 +512,9 @@ export class AdminMasterScheduleTab extends BaseTab {
     const currentPeriod = window.UserSession?.getCurrentPeriod();
     const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
 
-    const intentFilterContainer = document.getElementById('master-schedule-intent-filter-container');
+    const intentFilterContainer = document.getElementById(
+      'master-schedule-intent-filter-container'
+    );
     const intentSelect = document.getElementById('master-schedule-intent-filter-select');
 
     // Adjust column widths based on whether intent filter is shown
@@ -501,8 +522,8 @@ export class AdminMasterScheduleTab extends BaseTab {
       ?.parentElement?.parentElement;
     const dayFilter = document.getElementById('master-schedule-day-filter-select')?.parentElement
       ?.parentElement;
-    const gradeFilter = document.getElementById('master-schedule-grade-filter-select')?.parentElement
-      ?.parentElement;
+    const gradeFilter = document.getElementById('master-schedule-grade-filter-select')
+      ?.parentElement?.parentElement;
 
     if (isIntentPeriod && intentSelect) {
       // Show the intent filter and use 4-column layout
@@ -624,61 +645,12 @@ export class AdminMasterScheduleTab extends BaseTab {
       }
 
       // Finally sort by student grade
-      const studentA = this.#findStudent(a.studentId);
-      const studentB = this.#findStudent(b.studentId);
+      const studentA = this.findStudent(a.studentId);
+      const studentB = this.findStudent(b.studentId);
       const gradeA = studentA?.grade || '';
       const gradeB = studentB?.grade || '';
       return String(gradeA).localeCompare(String(gradeB));
     });
-  }
-
-  /**
-   * Find student by ID
-   * @private
-   */
-  #findStudent(studentId) {
-    const idToFind = studentId?.value || studentId;
-    return this.data.students.find(x => {
-      const id = x.id?.value || x.id;
-      return id === idToFind;
-    });
-  }
-
-  /**
-   * Copy text to clipboard with fallback for older browsers
-   * @private
-   */
-  async #copyToClipboard(text) {
-    try {
-      // Attempt to use the Clipboard API
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(text);
-        if (typeof M !== 'undefined') {
-          M.toast({ html: `Copied '${text}' to clipboard.` });
-        }
-        return;
-      }
-    } catch (error) {
-      console.error('Failed to copy text to clipboard with modern API:', error);
-    }
-
-    try {
-      // Fallback to execCommand for older browsers
-      const tempInput = document.createElement('textarea');
-      tempInput.value = text;
-      document.body.appendChild(tempInput);
-      tempInput.select();
-      document.execCommand('copy');
-      document.body.removeChild(tempInput);
-      if (typeof M !== 'undefined') {
-        M.toast({ html: `Copied '${text}' to clipboard.` });
-      }
-    } catch (error) {
-      console.error('Failed to copy text to clipboard with fallback:', error);
-      if (typeof M !== 'undefined') {
-        M.toast({ html: 'Failed to copy text to clipboard.' });
-      }
-    }
   }
 
   /**

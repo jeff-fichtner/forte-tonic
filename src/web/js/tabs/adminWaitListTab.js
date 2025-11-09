@@ -1,6 +1,7 @@
 import { BaseTab } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatGrade } from '../extensions/numberExtensions.js';
+import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 
 /**
  * formatDateTime - Format a datetime value for display in tables
@@ -243,8 +244,7 @@ export class AdminWaitListTab extends BaseTab {
 
     if (isCopy) {
       // Get the student ID from the current registration
-      const studentIdToFind =
-        currentRegistration.studentId?.value || currentRegistration.studentId;
+      const studentIdToFind = currentRegistration.studentId?.value || currentRegistration.studentId;
 
       // Find the full student object with parent emails
       const fullStudent = this.data.students.find(x => {
@@ -253,7 +253,7 @@ export class AdminWaitListTab extends BaseTab {
       });
 
       if (fullStudent && fullStudent.parentEmails && fullStudent.parentEmails.trim()) {
-        await this.#copyToClipboard(fullStudent.parentEmails);
+        await copyToClipboard(fullStudent.parentEmails);
       } else {
         if (typeof M !== 'undefined') {
           M.toast({ html: 'No parent email available for this student.' });
@@ -266,43 +266,6 @@ export class AdminWaitListTab extends BaseTab {
       const idToDelete = currentRegistration.id?.value || currentRegistration.id;
       await this.#deleteRegistration(idToDelete);
       return;
-    }
-  }
-
-  /**
-   * Copy text to clipboard with fallback for older browsers
-   * @private
-   */
-  async #copyToClipboard(text) {
-    try {
-      // Attempt to use the Clipboard API
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(text);
-        if (typeof M !== 'undefined') {
-          M.toast({ html: `Copied '${text}' to clipboard.` });
-        }
-        return;
-      }
-    } catch (error) {
-      console.error('Failed to copy text to clipboard with modern API:', error);
-    }
-
-    try {
-      // Fallback to execCommand for older browsers
-      const tempInput = document.createElement('textarea');
-      tempInput.value = text;
-      document.body.appendChild(tempInput);
-      tempInput.select();
-      document.execCommand('copy');
-      document.body.removeChild(tempInput);
-      if (typeof M !== 'undefined') {
-        M.toast({ html: `Copied '${text}' to clipboard.` });
-      }
-    } catch (error) {
-      console.error('Failed to copy text to clipboard with fallback:', error);
-      if (typeof M !== 'undefined') {
-        M.toast({ html: 'Failed to copy text to clipboard.' });
-      }
     }
   }
 

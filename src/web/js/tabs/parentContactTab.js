@@ -1,6 +1,7 @@
 import { BaseTab } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatPhone } from '../utilities/phoneHelpers.js';
+import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 
 /**
  * ParentContactTab - Contact directory for parents
@@ -128,7 +129,7 @@ export class ParentContactTab extends BaseTab {
     const email = linkElement?.getAttribute('data-employee-email');
 
     if (email && email !== 'No email') {
-      await this.#copyToClipboard(email);
+      await copyToClipboard(email);
     } else {
       if (typeof M !== 'undefined') {
         M.toast({ html: 'No email available for this contact.' });
@@ -140,38 +141,6 @@ export class ParentContactTab extends BaseTab {
    * Copy text to clipboard with fallback for older browsers
    * @private
    */
-  async #copyToClipboard(text) {
-    try {
-      // Attempt to use the Clipboard API
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(text);
-        if (typeof M !== 'undefined') {
-          M.toast({ html: `Copied '${text}' to clipboard.` });
-        }
-        return;
-      }
-    } catch (error) {
-      console.error('Failed to copy text to clipboard with modern API:', error);
-    }
-
-    try {
-      // Fallback to execCommand for older browsers
-      const tempInput = document.createElement('textarea');
-      tempInput.value = text;
-      document.body.appendChild(tempInput);
-      tempInput.select();
-      document.execCommand('copy');
-      document.body.removeChild(tempInput);
-      if (typeof M !== 'undefined') {
-        M.toast({ html: `Copied '${text}' to clipboard.` });
-      }
-    } catch (error) {
-      console.error('Failed to copy text to clipboard with fallback:', error);
-      if (typeof M !== 'undefined') {
-        M.toast({ html: 'Failed to copy text to clipboard.' });
-      }
-    }
-  }
 
   /**
    * Map admins to employee format

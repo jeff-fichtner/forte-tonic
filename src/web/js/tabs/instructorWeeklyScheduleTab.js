@@ -2,6 +2,7 @@ import { BaseTab } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatGrade, formatTime } from '../extensions/numberExtensions.js';
 import { RegistrationType } from '../constants.js';
+import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 
 /**
  * InstructorWeeklyScheduleTab - Weekly schedule for instructors
@@ -35,9 +36,12 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
       throw new Error('No instructor ID found in session');
     }
 
-    const response = await fetch(`/api/instructor/tabs/weekly-schedule?instructorId=${instructorId}`, {
-      signal: this.getAbortSignal(),
-    });
+    const response = await fetch(
+      `/api/instructor/tabs/weekly-schedule?instructorId=${instructorId}`,
+      {
+        signal: this.getAbortSignal(),
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -88,9 +92,9 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
 
     // Get unique days with registrations, sorted by day of week
     const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const daysWithRegistrations = [
-      ...new Set(this.data.registrations.map(reg => reg.day))
-    ].sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
+    const daysWithRegistrations = [...new Set(this.data.registrations.map(reg => reg.day))].sort(
+      (a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b)
+    );
 
     // Create a table for each day
     daysWithRegistrations.forEach(day => {
@@ -139,8 +143,8 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
           }
 
           // Finally sort by student grade
-          const studentA = this.#findStudent(a.studentId);
-          const studentB = this.#findStudent(b.studentId);
+          const studentA = this.findStudent(a.studentId);
+          const studentB = this.findStudent(b.studentId);
           const gradeA = studentA?.grade || '';
           const gradeB = studentB?.grade || '';
           return String(gradeA).localeCompare(String(gradeB));
@@ -182,18 +186,21 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
    * @private
    */
   #buildTableRow(enrollment) {
-    const instructor = this.#findInstructor(enrollment.instructorId);
-    const student = this.#findStudent(enrollment.studentId);
+    const instructor = this.findInstructor(enrollment.instructorId);
+    const student = this.findStudent(enrollment.studentId);
 
     if (!instructor || !student) {
-      console.warn(`Instructor or student not found for enrollment: ${enrollment.id?.value || enrollment.id}`);
+      console.warn(
+        `Instructor or student not found for enrollment: ${enrollment.id?.value || enrollment.id}`
+      );
       return '';
     }
 
     // Determine instrument/class name
-    const instrumentOrClass = enrollment.registrationType === RegistrationType.GROUP
-      ? enrollment.classTitle || enrollment.className || 'N/A'
-      : enrollment.instrument || 'N/A';
+    const instrumentOrClass =
+      enrollment.registrationType === RegistrationType.GROUP
+        ? enrollment.classTitle || enrollment.className || 'N/A'
+        : enrollment.instrument || 'N/A';
 
     return `
       <td>${enrollment.day}</td>
@@ -236,74 +243,13 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
 
     // For instructor view: show parent emails
     const studentIdToFind = currentEnrollment.studentId?.value || currentEnrollment.studentId;
-    const student = this.#findStudent(studentIdToFind);
+    const student = this.findStudent(studentIdToFind);
 
     if (student && student.parentEmails && student.parentEmails.trim()) {
-      await this.#copyToClipboard(student.parentEmails);
+      await copyToClipboard(student.parentEmails);
     } else {
       if (typeof M !== 'undefined') {
         M.toast({ html: 'No parent email available for this student.' });
-      }
-    }
-  }
-
-  /**
-   * Find instructor by ID
-   * @private
-   */
-  #findInstructor(instructorId) {
-    const idToFind = instructorId?.value || instructorId;
-    return this.data.instructors.find(x => {
-      const id = x.id?.value || x.id;
-      return id === idToFind;
-    });
-  }
-
-  /**
-   * Find student by ID
-   * @private
-   */
-  #findStudent(studentId) {
-    const idToFind = studentId?.value || studentId;
-    return this.data.students.find(x => {
-      const id = x.id?.value || x.id;
-      return id === idToFind;
-    });
-  }
-
-  /**
-   * Copy text to clipboard with fallback for older browsers
-   * @private
-   */
-  async #copyToClipboard(text) {
-    try {
-      // Attempt to use the Clipboard API
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(text);
-        if (typeof M !== 'undefined') {
-          M.toast({ html: `Copied '${text}' to clipboard.` });
-        }
-        return;
-      }
-    } catch (error) {
-      console.error('Failed to copy text to clipboard with modern API:', error);
-    }
-
-    try {
-      // Fallback to execCommand for older browsers
-      const tempInput = document.createElement('textarea');
-      tempInput.value = text;
-      document.body.appendChild(tempInput);
-      tempInput.select();
-      document.execCommand('copy');
-      document.body.removeChild(tempInput);
-      if (typeof M !== 'undefined') {
-        M.toast({ html: `Copied '${text}' to clipboard.` });
-      }
-    } catch (error) {
-      console.error('Failed to copy text to clipboard with fallback:', error);
-      if (typeof M !== 'undefined') {
-        M.toast({ html: 'Failed to copy text to clipboard.' });
       }
     }
   }
