@@ -198,6 +198,16 @@ export class ViewModel {
     // Show content area
     document.getElementById('page-content').hidden = false;
 
+    // NOTE: Frontend Data Independence Migration (Phase 0-4 Complete)
+    // Tabs now fetch their own scoped data via TabController pattern.
+    // This global data fetch is kept for backward compatibility with:
+    // 1. Registration forms (still use viewModel.createRegistrationWithEnrichment)
+    // 2. Legacy code paths that may still reference this.admins, this.instructors, etc.
+    // 3. Progressive enhancement fallback
+    //
+    // Future optimization (Phase 6): Remove this global fetch entirely once
+    // registration methods are extracted to a service and all legacy references removed.
+    // See: docs/technical/refactoring/phase-5-completion-summary.md
     const [_, admins, instructors, students, registrations, classes, rooms] = await Promise.all([
       DomHelpers.waitForDocumentReadyAsync(),
       HttpService.fetch(ServerFunctions.getAdmins, x => x.map(y => Admin.fromApiData(y))),
