@@ -130,6 +130,7 @@ router.post('/feedback', FeedbackController.submitFeedback);
 router.get('/instructor/tabs/directory', UserController.getInstructorDirectoryTabData);
 router.get('/instructor/tabs/weekly-schedule', RegistrationController.getInstructorWeeklyScheduleTabData);
 router.get('/parent/tabs/contact', UserController.getParentContactTabData);
+router.get('/parent/tabs/weekly-schedule/:trimester', RegistrationController.getParentWeeklyScheduleTabData);
 router.get('/admin/tabs/wait-list/:trimester', RegistrationController.getAdminWaitListTabData);
 
 export default router;

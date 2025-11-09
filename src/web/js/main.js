@@ -36,6 +36,7 @@ import { TabController } from './core/tabController.js';
 import { InstructorDirectoryTab } from './tabs/instructorDirectoryTab.js';
 import { InstructorWeeklyScheduleTab } from './tabs/instructorWeeklyScheduleTab.js';
 import { ParentContactTab } from './tabs/parentContactTab.js';
+import { ParentWeeklyScheduleTab } from './tabs/parentWeeklyScheduleTab.js';
 import { AdminWaitListTab } from './tabs/adminWaitListTab.js';
 
 /**
@@ -277,9 +278,13 @@ async function initializeApplication() {
     const instructorWeeklyScheduleTab = new InstructorWeeklyScheduleTab();
     tabController.registerTab('instructor-weekly-schedule', instructorWeeklyScheduleTab);
 
+    // Phase 3.4: Parent Weekly Schedule
+    const parentWeeklyScheduleTab = new ParentWeeklyScheduleTab();
+    tabController.registerTab('parent-weekly-schedule', parentWeeklyScheduleTab);
+
     // Make TabController available globally for NavTabs integration
     window.tabController = tabController;
-    console.log('✓ TabController initialized with 4 registered tabs');
+    console.log('✓ TabController initialized with 5 registered tabs');
 
     // Expose maintenance mode override function globally
     // Usage: window.overrideMaintenanceMode() in browser console

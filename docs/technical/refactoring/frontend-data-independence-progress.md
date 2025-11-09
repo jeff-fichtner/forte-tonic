@@ -1,7 +1,7 @@
 # Frontend Data Independence Migration - Progress Tracker
 
 **Started:** 2025-11-08
-**Status:** Phase 3 In Progress - 3/8 tabs migrated (37.5% complete)
+**Status:** Phase 3 In Progress - 5/8 tabs migrated (62.5% complete)
 **Branch:** `refactor/frontend-data-independence`
 **Last Updated:** 2025-11-08
 
@@ -372,16 +372,18 @@ Phase 2.2: Update NavTabs to use TabController
 **Phase 3: Tab Migrations** 🔄 (In Progress)
 - Phase 3.1: ParentContactTab (287 lines) - 99% data reduction ✅
 - Phase 3.2: AdminWaitListTab (335 lines) - 95% data reduction ✅
+- Phase 3.3: InstructorWeeklyScheduleTab (318 lines) - 90% data reduction ✅
+- Phase 3.4: ParentWeeklyScheduleTab (485 lines) - 90% data reduction ✅
 
-### Tab Migration Progress: 3/8 Complete (37.5%)
+### Tab Migration Progress: 5/8 Complete (62.5%)
 
 | Tab | Status | Complexity | Data Reduction | Commit |
 |-----|--------|------------|----------------|--------|
 | `instructor-forte-directory` | ✅ Complete | LOW | 98% (2070→40) | 3dcb1fb9 |
 | `parent-contact-us` | ✅ Complete | LOW | 99% (2070→20) | 3dcba433 |
 | `admin-wait-list` | ✅ Complete | LOW | 95% (2070→100) | 9d5fda1b |
-| `instructor-weekly-schedule` | ⏳ Next | MEDIUM | Est. ~95% | - |
-| `parent-weekly-schedule` | 📋 Pending | MEDIUM | Est. ~95% | - |
+| `instructor-weekly-schedule` | ✅ Complete | MEDIUM | 90% (2070→200) | 5e1d27fc |
+| `parent-weekly-schedule` | ✅ Complete | MEDIUM | 90% (2070→200) | TBD |
 | `admin-master-schedule` | 📋 Pending | HIGH | Est. ~75% | - |
 | `parent-registration` | 📋 Pending | VERY HIGH | Est. ~90% | - |
 | `admin-registration` | 📋 Pending | VERY HIGH | Est. ~75% | - |
@@ -390,14 +392,16 @@ Phase 2.2: Update NavTabs to use TabController
 ### Code Statistics
 
 **Files Created:**
-- 3 tab classes: 902 lines total
+- 5 tab classes: 1,705 lines total
 - 2 core classes: 604 lines (TabController + BaseTab)
 - 78 tests: 740 lines
 - 5 documentation files: 3,708 lines
 
 **Backend Endpoints Created:**
 - GET `/api/instructor/tabs/directory` (UserController)
+- GET `/api/instructor/tabs/weekly-schedule` (RegistrationController)
 - GET `/api/parent/tabs/contact` (UserController)
+- GET `/api/parent/tabs/weekly-schedule/:trimester` (RegistrationController)
 - GET `/api/admin/tabs/wait-list/:trimester` (RegistrationController)
 
 **Test Results:**
@@ -411,14 +415,16 @@ Phase 2.2: Update NavTabs to use TabController
 - Instructor Directory: 2070 → 40 records (98% reduction)
 - Parent Contact: 2070 → 20 records (99% reduction)
 - Admin Wait List: 2070 → 100 records (95% reduction)
+- Instructor Weekly Schedule: 2070 → 200 records (90% reduction)
+- Parent Weekly Schedule: 2070 → 200 records (90% reduction)
 
-**Average reduction: 97% less data per tab**
+**Average reduction: 94% less data per tab**
 
 ### Next Steps
 
-1. **Phase 3.3:** Migrate `instructor-weekly-schedule` (MEDIUM complexity)
-2. **Phase 3.4:** Migrate `parent-weekly-schedule` (MEDIUM complexity)
-3. **Phase 4:** Migrate high complexity tabs
+1. **Phase 4.1:** Migrate `admin-master-schedule` (HIGH complexity)
+2. **Phase 4.2:** Migrate `parent-registration` (VERY HIGH complexity)
+3. **Phase 4.3:** Migrate `admin-registration` (VERY HIGH complexity)
 4. **Phase 5:** Cleanup and remove legacy code
 
 ---
