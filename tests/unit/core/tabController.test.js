@@ -120,9 +120,7 @@ describe('TabController', () => {
     });
 
     it('should throw if tabInstance is null', () => {
-      expect(() => controller.registerTab('test-tab', null)).toThrow(
-        'Tab instance is required'
-      );
+      expect(() => controller.registerTab('test-tab', null)).toThrow('Tab instance is required');
     });
 
     it('should throw if tab does not implement BaseTab interface', () => {
@@ -136,9 +134,7 @@ describe('TabController', () => {
       const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
       controller.registerTab('test-tab', mockTab);
       controller.registerTab('test-tab', mockTab);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Tab "test-tab" is already registered. Overwriting.'
-      );
+      expect(consoleSpy).toHaveBeenCalledWith('Tab "test-tab" is already registered. Overwriting.');
       consoleSpy.mockRestore();
     });
   });

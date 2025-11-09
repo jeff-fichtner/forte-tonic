@@ -1,19 +1,10 @@
 import { HttpService } from './data/httpService.js';
-import {
-  ServerFunctions,
-  Sections,
-  RegistrationType,
-  MonthNames,
-  SessionConfig,
-  FilterValue,
-} from './constants.js';
+import { ServerFunctions, Sections, RegistrationType } from './constants.js';
 import { AppConfigurationResponse } from '../../models/shared/responses/appConfigurationResponse.js';
 import { Registration } from '../../models/shared/index.js';
 import { DomHelpers } from './utilities/domHelpers.js';
 import { NavTabs } from './components/navTabs.js';
-import { Table } from './components/table.js';
 import { formatPhone } from './utilities/phoneHelpers.js';
-import { formatGrade, formatTime } from './extensions/numberExtensions.js';
 import { ClassManager } from './utilities/classManager.js';
 import { INTENT_LABELS } from './constants/intentConstants.js';
 import { PeriodType } from './constants/periodTypeConstants.js';
@@ -413,27 +404,9 @@ export class ViewModel {
     }
   }
 
-  // TODO duplicated (will be consolidated elsewhere)
   /**
-   *
-   */
-  #setAdminRegistrationLoading(isLoading) {
-    const adminRegistrationLoadingContainer = document.getElementById(
-      'admin-registration-loading-container'
-    );
-    const adminRegistrationContainer = document.getElementById('admin-registration-container');
-    adminRegistrationLoadingContainer.hidden = !isLoading;
-    adminRegistrationContainer.hidden = isLoading;
-  }
-
-  /**
-   * Build directory table for employees (admins + instructors)
-   * @param {string} tableId - HTML table element ID
-   * @param {Array} employees - Array of employee objects
-   * @returns {Table} Table instance
-   */
-  /**
-   *
+   * Delete a registration by ID
+   * @param {string} registrationToDeleteId - Registration ID to delete
    */
   async requestDeleteRegistrationAsync(registrationToDeleteId) {
     // Confirm delete
@@ -509,84 +482,6 @@ export class ViewModel {
       M.toast({ html: error.message || 'Error submitting intent.' });
       throw error;
     }
-  }
-  /**
-   *
-   */
-  async #copyToClipboard(text) {
-    try {
-      // Attempt to use the Clipboard API
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(text);
-        M.toast({ html: `Copied '${text}' to clipboard.` });
-        return;
-      }
-    } catch (error) {
-      console.error('Failed to copy text to clipboard WITH MODERN API:', error);
-    }
-    try {
-      // Fallback to execCommand for older browsers
-      const tempInput = document.createElement('textarea');
-      tempInput.value = text;
-      document.body.appendChild(tempInput);
-      tempInput.select();
-      document.execCommand('copy');
-      document.body.removeChild(tempInput);
-      M.toast({ html: `Copied '${text}' to clipboard.` });
-    } catch (error) {
-      console.error('Failed to copy text to clipboard WITH FALLBACK:', error);
-      M.toast({ html: 'Failed to copy text to clipboard.' });
-    }
-  }
-  /**
-   *
-   */
-  adminEmployees() {
-    const noah = this.admins.find(admin => admin.email === 'ndemosslevy@mcds.org'); // TODO migrate to data column
-    return this.admins.map(x => {
-      if (x === noah) {
-        return {
-          id: x.id,
-          fullName: x.fullName,
-          email: x.email,
-          phone: '(415) 945-5121', // TODO migrate to data column
-          roles: ['Forte Director'], // TODO migrate to data column
-        };
-      }
-      return {
-        id: x.id,
-        fullName: x.fullName,
-        email: 'forte@mcds.org', // TODO migrate to data column
-        phone: '(415) 945-5122', // TODO migrate to data column
-        roles: ['Forte Associate Manager'], // TODO migrate to data column
-      };
-    });
-  }
-  /**
-   * Convert instructor to employee format for directory display
-   * @param {object} instructor - Instructor object
-   * @returns {object} Employee object for table display
-   */
-  instructorToEmployee(instructor, obscurePhone = false) {
-    // Get instruments from either specialties or instruments field
-    const instruments = instructor.specialties || instructor.instruments || [];
-    const instrumentsText = instruments.length > 0 ? instruments.join(', ') : 'Instructor';
-
-    // Format phone number using the formatPhone function
-    const rawPhone = instructor.phone || instructor.phoneNumber || '';
-    const formattedPhone = rawPhone && !obscurePhone ? formatPhone(rawPhone) : '';
-
-    return {
-      id: instructor.id,
-      fullName:
-        instructor.fullName || `${instructor.firstName || ''} ${instructor.lastName || ''}`.trim(),
-      email: instructor.email,
-      phone: formattedPhone,
-      role: instrumentsText, // Keep for comparison in sorting
-      roles: [instrumentsText], // This is what the directory table displays - make it an array for sorting compatibility
-      lastName: instructor.lastName || '', // Add lastName for sorting
-      firstName: instructor.firstName || '', // Add firstName for sorting
-    };
   }
 
   /**

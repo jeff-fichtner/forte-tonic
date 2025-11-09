@@ -31,7 +31,7 @@ import './extensions/numberExtensions.js';
 import './extensions/stringExtensions.js';
 import './viewModel.js';
 
-// Phase 2: Tab-based architecture imports
+// Tab-based architecture
 import { TabController } from './core/tabController.js';
 import { InstructorDirectoryTab } from './tabs/instructorDirectoryTab.js';
 import { InstructorWeeklyScheduleTab } from './tabs/instructorWeeklyScheduleTab.js';
@@ -259,41 +259,33 @@ async function initializeApplication() {
     // Store globally for debugging and other scripts
     window.viewModel = viewModel;
 
-    // Phase 2: Initialize TabController for tab-based architecture
+    // Initialize TabController for tab-based architecture
     console.log('Initializing TabController...');
     const tabController = new TabController();
     tabController.initialize();
 
-    // Register migrated tabs
-    // Phase 2.1: Instructor Directory (pilot)
+    // Register tabs
     const instructorDirectoryTab = new InstructorDirectoryTab();
     tabController.registerTab('instructor-forte-directory', instructorDirectoryTab);
 
-    // Phase 3.1: Parent Contact
     const parentContactTab = new ParentContactTab();
     tabController.registerTab('parent-contact-us', parentContactTab);
 
-    // Phase 3.2: Admin Wait List
     const adminWaitListTab = new AdminWaitListTab();
     tabController.registerTab('admin-wait-list', adminWaitListTab);
 
-    // Phase 3.3: Instructor Weekly Schedule
     const instructorWeeklyScheduleTab = new InstructorWeeklyScheduleTab();
     tabController.registerTab('instructor-weekly-schedule', instructorWeeklyScheduleTab);
 
-    // Phase 3.4: Parent Weekly Schedule
     const parentWeeklyScheduleTab = new ParentWeeklyScheduleTab();
     tabController.registerTab('parent-weekly-schedule', parentWeeklyScheduleTab);
 
-    // Phase 4.1: Admin Master Schedule
     const adminMasterScheduleTab = new AdminMasterScheduleTab();
     tabController.registerTab('admin-master-schedule', adminMasterScheduleTab);
 
-    // Phase 4.2: Parent Registration
     const parentRegistrationTab = new ParentRegistrationTab();
     tabController.registerTab('parent-registration', parentRegistrationTab);
 
-    // Phase 4.3: Admin Registration
     const adminRegistrationTab = new AdminRegistrationTab();
     tabController.registerTab('admin-registration', adminRegistrationTab);
 

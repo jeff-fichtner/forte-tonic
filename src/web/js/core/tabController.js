@@ -83,9 +83,7 @@ export class TabController {
     const requiredMethods = ['onLoad', 'onUnload', 'fetchData', 'render'];
     for (const method of requiredMethods) {
       if (typeof tabInstance[method] !== 'function') {
-        throw new Error(
-          `Tab "${tabId}" must implement ${method}() method (BaseTab interface)`
-        );
+        throw new Error(`Tab "${tabId}" must implement ${method}() method (BaseTab interface)`);
       }
     }
 
