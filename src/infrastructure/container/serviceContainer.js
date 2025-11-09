@@ -75,11 +75,9 @@ export class ServiceContainer {
       this.dbClient = null;
     }
 
-    // Initialize email client
+    // Initialize email client (logs its own status)
     try {
-      this.logger.info('🔧 Initializing email client...');
       this.emailClient = new EmailClient(configService);
-      this.logger.info('✅ Email client initialized');
     } catch (error) {
       this.logger.error('❌ Failed to initialize email client:', error.message);
       hasErrors = true;
