@@ -143,6 +143,7 @@ dev/
 
 # Credentials directory (service account keys, etc.)
 config/credentials/
+scripts/credentials/
 
 # Google Apps Script generated config
 gas/.clasp.json
