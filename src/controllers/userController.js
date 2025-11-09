@@ -668,7 +668,9 @@ export class UserController {
       );
 
       // Get unique instructor IDs from parent's registrations
-      const instructorIds = [...new Set(parentRegistrations.map(reg => reg.instructorId).filter(Boolean))];
+      const instructorIds = [
+        ...new Set(parentRegistrations.map(reg => reg.instructorId).filter(Boolean)),
+      ];
 
       // Filter instructors to only include those teaching this parent's children
       const relevantInstructors = instructors.filter(instructor =>

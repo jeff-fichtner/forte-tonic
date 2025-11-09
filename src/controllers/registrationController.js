@@ -931,9 +931,7 @@ export class RegistrationController {
       // Get unique student IDs from wait list registrations
       const studentIdsInWaitList = [
         ...new Set(
-          waitListRegistrations
-            .map(reg => reg.studentId?.value || reg.studentId)
-            .filter(Boolean)
+          waitListRegistrations.map(reg => reg.studentId?.value || reg.studentId).filter(Boolean)
         ),
       ];
 
@@ -982,7 +980,10 @@ export class RegistrationController {
           {
             req,
             startTime,
-            context: { controller: 'RegistrationController', method: 'getInstructorWeeklyScheduleTabData' },
+            context: {
+              controller: 'RegistrationController',
+              method: 'getInstructorWeeklyScheduleTabData',
+            },
           },
           400
         );
@@ -1009,9 +1010,7 @@ export class RegistrationController {
       // Get unique student IDs from instructor's registrations
       const studentIdsInSchedule = [
         ...new Set(
-          instructorRegistrations
-            .map(reg => reg.studentId?.value || reg.studentId)
-            .filter(Boolean)
+          instructorRegistrations.map(reg => reg.studentId?.value || reg.studentId).filter(Boolean)
         ),
       ];
 
@@ -1032,14 +1031,20 @@ export class RegistrationController {
         req,
         startTime,
         message: 'Instructor weekly schedule data retrieved successfully',
-        context: { controller: 'RegistrationController', method: 'getInstructorWeeklyScheduleTabData' },
+        context: {
+          controller: 'RegistrationController',
+          method: 'getInstructorWeeklyScheduleTabData',
+        },
       });
     } catch (error) {
       logger.error('Error getting instructor weekly schedule tab data:', error);
       errorResponse(res, error, {
         req,
         startTime,
-        context: { controller: 'RegistrationController', method: 'getInstructorWeeklyScheduleTabData' },
+        context: {
+          controller: 'RegistrationController',
+          method: 'getInstructorWeeklyScheduleTabData',
+        },
       });
     }
   }
@@ -1061,26 +1066,29 @@ export class RegistrationController {
         return errorResponse(res, new Error('Parent ID is required'), {
           req,
           startTime,
-          context: { controller: 'RegistrationController', method: 'getParentWeeklyScheduleTabData' },
+          context: {
+            controller: 'RegistrationController',
+            method: 'getParentWeeklyScheduleTabData',
+          },
         });
       }
 
       const userRepository = serviceContainer.get('userRepository');
+      const registrationRepository = serviceContainer.get('registrationRepository');
+      const programRepository = serviceContainer.get('programRepository');
 
       // Fetch all data in parallel
       const [allRegistrations, students, instructors, classes] = await Promise.all([
-        userRepository.getRegistrationData(trimester),
-        userRepository.getStudentData(),
-        userRepository.getInstructorData(),
-        userRepository.getClassData(trimester),
+        registrationRepository.getRegistrationsByTrimester(trimester),
+        userRepository.getStudents(),
+        userRepository.getInstructors(),
+        programRepository.getClasses(),
       ]);
 
       // Filter students by parent
       const parentStudents = students.filter(student => {
-        const parent1IdMatch =
-          (student.parent1Id?.value || student.parent1Id) === parentId;
-        const parent2IdMatch =
-          (student.parent2Id?.value || student.parent2Id) === parentId;
+        const parent1IdMatch = (student.parent1Id?.value || student.parent1Id) === parentId;
+        const parent2IdMatch = (student.parent2Id?.value || student.parent2Id) === parentId;
         return parent1IdMatch || parent2IdMatch;
       });
 
@@ -1095,9 +1103,7 @@ export class RegistrationController {
 
       // Get instructor IDs from parent's registrations
       const instructorIds = [
-        ...new Set(
-          parentRegistrations.map(reg => reg.instructorId?.value || reg.instructorId)
-        ),
+        ...new Set(parentRegistrations.map(reg => reg.instructorId?.value || reg.instructorId)),
       ];
 
       // Filter instructors to only those teaching parent's children
@@ -1142,13 +1148,15 @@ export class RegistrationController {
       const { trimester } = req.params;
 
       const userRepository = serviceContainer.get('userRepository');
+      const registrationRepository = serviceContainer.get('registrationRepository');
+      const programRepository = serviceContainer.get('programRepository');
 
       // Fetch all data for the trimester in parallel
       const [registrations, students, instructors, classes] = await Promise.all([
-        userRepository.getRegistrationData(trimester),
-        userRepository.getStudentData(),
-        userRepository.getInstructorData(),
-        userRepository.getClassData(trimester),
+        registrationRepository.getRegistrationsByTrimester(trimester),
+        userRepository.getStudents(),
+        userRepository.getInstructors(),
+        programRepository.getClasses(),
       ]);
 
       const responseData = {
@@ -1194,19 +1202,25 @@ export class RegistrationController {
       }
 
       const userRepository = serviceContainer.get('userRepository');
+      const registrationRepository = serviceContainer.get('registrationRepository');
+      const programRepository = serviceContainer.get('programRepository');
 
       // Get current and next trimesters
       const currentTrimester = req.session?.currentTrimester || 'fall';
-      const nextTrimester = userRepository.getNextTrimester(currentTrimester);
+      // Calculate next trimester: fall → winter → spring → fall
+      const index = TRIMESTER_SEQUENCE.findIndex(
+        t => t.toLowerCase() === currentTrimester.toLowerCase()
+      );
+      const nextTrimester = TRIMESTER_SEQUENCE[(index + 1) % TRIMESTER_SEQUENCE.length];
 
       // Fetch all data in parallel
       const [instructors, allStudents, classes, nextTrimesterRegs, currentTrimesterRegs] =
         await Promise.all([
-          userRepository.getInstructorData(),
-          userRepository.getStudentData(),
-          userRepository.getClassData(nextTrimester), // Classes for next trimester
-          userRepository.getRegistrationData(nextTrimester), // Next trimester registrations
-          userRepository.getRegistrationData(currentTrimester), // Current trimester for recurring
+          userRepository.getInstructors(),
+          userRepository.getStudents(),
+          programRepository.getClasses(), // Classes for next trimester
+          registrationRepository.getRegistrationsByTrimester(nextTrimester), // Next trimester registrations
+          registrationRepository.getRegistrationsByTrimester(currentTrimester), // Current trimester for recurring
         ]);
 
       // Filter to parent's children only
@@ -1265,13 +1279,15 @@ export class RegistrationController {
       }
 
       const userRepository = serviceContainer.get('userRepository');
+      const registrationRepository = serviceContainer.get('registrationRepository');
+      const programRepository = serviceContainer.get('programRepository');
 
       // Fetch all data in parallel
       const [instructors, students, classes, registrations] = await Promise.all([
-        userRepository.getInstructorData(),
-        userRepository.getStudentData(),
-        userRepository.getClassData(trimester),
-        userRepository.getRegistrationData(trimester),
+        userRepository.getInstructors(),
+        userRepository.getStudents(),
+        programRepository.getClasses(),
+        registrationRepository.getRegistrationsByTrimester(trimester),
       ]);
 
       const responseData = {
