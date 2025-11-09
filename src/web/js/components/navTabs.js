@@ -62,14 +62,17 @@ export class NavTabs {
       // Show/hide admin trimester selector based on tab
       // Trimester selector should only show for admin-specific tabs (Master Schedule, Wait List, Registration)
       // Hide for directory tab and all non-admin tabs
+      // CRITICAL: Trimester selector is ADMIN-ONLY - never show to parents or instructors
       const trimesterSelector = document.getElementById('admin-trimester-selector-container');
       if (trimesterSelector) {
+        const isAdmin = window.viewModel?.currentUser?.admin !== undefined;
+
         const adminTrimesterTabs = [
           '#admin-master-schedule',
           '#admin-wait-list',
           '#admin-registration',
         ];
-        const shouldShowTrimester = adminTrimesterTabs.includes(targetTab);
+        const shouldShowTrimester = adminTrimesterTabs.includes(targetTab) && isAdmin;
         trimesterSelector.hidden = !shouldShowTrimester;
       }
 
@@ -356,14 +359,17 @@ export class NavTabs {
         firstTabLink.classList.add('active');
 
         // Show/hide admin trimester selector based on section and first tab
+        // CRITICAL: Trimester selector is ADMIN-ONLY - never show to parents or instructors
         const trimesterSelector = document.getElementById('admin-trimester-selector-container');
         if (trimesterSelector) {
+          const isAdmin = window.viewModel?.currentUser?.admin !== undefined;
+
           const adminTrimesterTabs = [
             '#admin-master-schedule',
             '#admin-wait-list',
             '#admin-registration',
           ];
-          const shouldShowTrimester = adminTrimesterTabs.includes(firstTabHref);
+          const shouldShowTrimester = adminTrimesterTabs.includes(firstTabHref) && isAdmin;
           trimesterSelector.hidden = !shouldShowTrimester;
         }
 
