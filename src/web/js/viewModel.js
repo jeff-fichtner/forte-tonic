@@ -9,12 +9,7 @@ import {
 } from './constants.js';
 import { AppConfigurationResponse } from '../../models/shared/responses/appConfigurationResponse.js';
 import {
-  Admin,
-  Instructor,
-  Student,
   Registration,
-  Class,
-  Room,
 } from '../../models/shared/index.js';
 import { DomHelpers } from './utilities/domHelpers.js';
 import { NavTabs } from './components/navTabs.js';
@@ -3422,21 +3417,8 @@ export class ViewModel {
       firstName: instructor.firstName || '', // Add firstName for sorting
     };
   }
-  /**
-   *
-   */
-  async #getStudents(forceRefresh = false) {
-    // BYPASS INDEXEDDB: Always load students fresh from server
-    const students = await HttpService.fetchAllPages(ServerFunctions.getStudents, x =>
-      Student.fromApiData(x)
-    );
-
-    // Note: IndexedDB saving is bypassed to ensure fresh data on every load
-    if (students.length === 0) {
-      console.warn('⚠️ No students found from server.');
-    }
-    return students;
-  }
+  // Phase 5: Removed #getStudents() - no longer needed
+  // Tabs fetch their own data via dedicated endpoints
 
   /**
    * Initialize the login modal functionality
