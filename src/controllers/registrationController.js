@@ -963,4 +963,84 @@ export class RegistrationController {
       });
     }
   }
+
+  /**
+   * Get instructor weekly schedule tab data
+   * Returns registrations for instructor + associated students + instructors + classes
+   * REST: GET /api/instructor/tabs/weekly-schedule?instructorId={instructorId}
+   */
+  static async getInstructorWeeklyScheduleTabData(req, res) {
+    const startTime = Date.now();
+
+    try {
+      const { instructorId } = req.query;
+
+      if (!instructorId) {
+        return errorResponse(
+          res,
+          new Error('Instructor ID is required'),
+          {
+            req,
+            startTime,
+            context: { controller: 'RegistrationController', method: 'getInstructorWeeklyScheduleTabData' },
+          },
+          400
+        );
+      }
+
+      const registrationRepository = serviceContainer.get('registrationRepository');
+      const userRepository = serviceContainer.get('userRepository');
+      const programRepository = serviceContainer.get('programRepository');
+
+      // Fetch all data in parallel
+      const [allRegistrations, students, instructors, classes] = await Promise.all([
+        registrationRepository.getRegistrations(),
+        userRepository.getStudents(),
+        userRepository.getInstructors(),
+        programRepository.getClasses(),
+      ]);
+
+      // Filter registrations to only include those for this instructor
+      const instructorRegistrations = allRegistrations.filter(registration => {
+        const regInstructorId = registration.instructorId?.value || registration.instructorId;
+        return regInstructorId === instructorId;
+      });
+
+      // Get unique student IDs from instructor's registrations
+      const studentIdsInSchedule = [
+        ...new Set(
+          instructorRegistrations
+            .map(reg => reg.studentId?.value || reg.studentId)
+            .filter(Boolean)
+        ),
+      ];
+
+      // Filter students to only include those in instructor's schedule
+      const relevantStudents = students.filter(student => {
+        const studentId = student.id?.value || student.id;
+        return studentIdsInSchedule.includes(studentId);
+      });
+
+      const responseData = {
+        registrations: instructorRegistrations,
+        students: relevantStudents,
+        instructors: instructors, // Needed for table rendering
+        classes: classes, // Needed for group class titles
+      };
+
+      successResponse(res, responseData, {
+        req,
+        startTime,
+        message: 'Instructor weekly schedule data retrieved successfully',
+        context: { controller: 'RegistrationController', method: 'getInstructorWeeklyScheduleTabData' },
+      });
+    } catch (error) {
+      logger.error('Error getting instructor weekly schedule tab data:', error);
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'getInstructorWeeklyScheduleTabData' },
+      });
+    }
+  }
 }

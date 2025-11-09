@@ -34,6 +34,7 @@ import './viewModel.js';
 // Phase 2: Tab-based architecture imports
 import { TabController } from './core/tabController.js';
 import { InstructorDirectoryTab } from './tabs/instructorDirectoryTab.js';
+import { InstructorWeeklyScheduleTab } from './tabs/instructorWeeklyScheduleTab.js';
 import { ParentContactTab } from './tabs/parentContactTab.js';
 import { AdminWaitListTab } from './tabs/adminWaitListTab.js';
 
@@ -272,9 +273,13 @@ async function initializeApplication() {
     const adminWaitListTab = new AdminWaitListTab();
     tabController.registerTab('admin-wait-list', adminWaitListTab);
 
+    // Phase 3.3: Instructor Weekly Schedule
+    const instructorWeeklyScheduleTab = new InstructorWeeklyScheduleTab();
+    tabController.registerTab('instructor-weekly-schedule', instructorWeeklyScheduleTab);
+
     // Make TabController available globally for NavTabs integration
     window.tabController = tabController;
-    console.log('✓ TabController initialized with 3 registered tabs');
+    console.log('✓ TabController initialized with 4 registered tabs');
 
     // Expose maintenance mode override function globally
     // Usage: window.overrideMaintenanceMode() in browser console
