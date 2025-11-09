@@ -18,71 +18,7 @@ import { ClassManager } from './utilities/classManager.js';
 import { INTENT_LABELS } from './constants/intentConstants.js';
 import { PeriodType } from './constants/periodTypeConstants.js';
 import { FeedbackManager } from './feedback.js';
-
-/**
- * Capitalize the first letter of a string (for display purposes)
- * @param {string} str - String to capitalize
- * @returns {string} Capitalized string
- */
-function capitalize(str) {
-  if (!str) return '';
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-/**
- * Format a datetime value for display in tables
- * @param {string|Date|number} timestamp - The timestamp to format
- * @returns {string} Formatted datetime string
- */
-function formatDateTime(timestamp) {
-  if (!timestamp) return 'N/A';
-
-  try {
-    let date;
-
-    // Handle different input types
-    if (timestamp instanceof Date) {
-      date = timestamp;
-    } else if (typeof timestamp === 'string') {
-      // Handle ISO strings or other date strings
-      date = new Date(timestamp);
-    } else if (typeof timestamp === 'number') {
-      // Handle Google Sheets serial dates or Unix timestamps
-      if (timestamp > 1 && timestamp < 100000) {
-        // Likely a Google Sheets serial date (days since 1899-12-30)
-        const googleEpoch = new Date(1899, 11, 30); // Month is 0-indexed
-        const msPerDay = 24 * 60 * 60 * 1000;
-        date = new Date(googleEpoch.getTime() + timestamp * msPerDay);
-      } else {
-        // Assume Unix timestamp (milliseconds or seconds)
-        date = new Date(timestamp > 1000000000000 ? timestamp : timestamp * 1000);
-      }
-    } else {
-      // Try to convert to string and parse
-      date = new Date(String(timestamp));
-    }
-
-    // Check if date is valid
-    if (isNaN(date.getTime())) {
-      console.warn('Invalid timestamp:', timestamp);
-      return 'Invalid Date';
-    }
-
-    // Format as "Aug 10 - 8:11 PM"
-    const month = MonthNames[date.getMonth()];
-    const day = date.getDate();
-    const time = date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
-
-    return `${month} ${day} - ${time}`;
-  } catch (error) {
-    console.warn('Error formatting timestamp:', timestamp, error);
-    return 'Invalid Date';
-  }
-}
+import { capitalize } from './utilities/formatHelpers.js';
 
 /**
  *
@@ -368,16 +304,6 @@ export class ViewModel {
   }
 
   /**
-   * Helper to capitalize trimester names
-   * @param {string} trimester
-   * @returns {string}
-   */
-  #capitalizeTrimester(trimester) {
-    if (!trimester) return '';
-    return trimester.charAt(0).toUpperCase() + trimester.slice(1).toLowerCase();
-  }
-
-  /**
    * Show maintenance mode overlay
    * @param {string} message - Custom maintenance message
    */
@@ -498,46 +424,6 @@ export class ViewModel {
     const adminRegistrationContainer = document.getElementById('admin-registration-container');
     adminRegistrationLoadingContainer.hidden = !isLoading;
     adminRegistrationContainer.hidden = isLoading;
-  }
-
-  /**
-   * Sort registrations by day, then start time, then length, then registration type (private first, then group)
-   */
-  #sortRegistrations(registrations) {
-    const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-    return [...registrations].sort((a, b) => {
-      // 1. Sort by day
-      const dayA = dayOrder.indexOf(a.day);
-      const dayB = dayOrder.indexOf(b.day);
-      if (dayA !== dayB) {
-        return dayA - dayB;
-      }
-
-      // 2. Sort by start time
-      const timeA = a.startTime || '';
-      const timeB = b.startTime || '';
-      if (timeA !== timeB) {
-        return timeA.localeCompare(timeB);
-      }
-
-      // 3. Sort by length (numeric)
-      const lengthA = parseInt(a.length) || 0;
-      const lengthB = parseInt(b.length) || 0;
-      if (lengthA !== lengthB) {
-        return lengthA - lengthB;
-      }
-
-      // 4. Sort by registration type (private first, then group)
-      const typeA = a.registrationType || '';
-      const typeB = b.registrationType || '';
-      if (typeA !== typeB) {
-        // 'private' comes before 'group' alphabetically, which is what we want
-        return typeA.localeCompare(typeB);
-      }
-
-      return 0;
-    });
   }
 
   /**
