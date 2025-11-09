@@ -23,6 +23,13 @@ export class EmailClient {
     try {
       const emailConfig = this.configService.getEmailConfig();
 
+      // Check if email is actually configured
+      if (!emailConfig.smtpHost || !emailConfig.smtpUser) {
+        this.logger.info('⚠️ Email client not configured (SMTP credentials missing)');
+        this.transporter = null;
+        return;
+      }
+
       // Create reusable transporter object using SMTP transport
       this.transporter = nodemailer.createTransport(emailConfig);
       this.logger.info('📧 Email client initialized successfully');
