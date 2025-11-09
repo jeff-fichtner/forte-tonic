@@ -1173,4 +1173,70 @@ export class RegistrationController {
       });
     }
   }
+
+  /**
+   * Get parent registration tab data
+   * Returns instructors, parent's children, classes, next trimester registrations, current trimester registrations
+   * REST: GET /api/parent/tabs/registration?parentId=xxx
+   */
+  static async getParentRegistrationTabData(req, res) {
+    const startTime = Date.now();
+
+    try {
+      const { parentId } = req.query;
+
+      if (!parentId) {
+        return errorResponse(res, new Error('Parent ID is required'), {
+          req,
+          startTime,
+          context: { controller: 'RegistrationController', method: 'getParentRegistrationTabData' },
+        });
+      }
+
+      const userRepository = serviceContainer.get('userRepository');
+
+      // Get current and next trimesters
+      const currentTrimester = req.session?.currentTrimester || 'fall';
+      const nextTrimester = userRepository.getNextTrimester(currentTrimester);
+
+      // Fetch all data in parallel
+      const [instructors, allStudents, classes, nextTrimesterRegs, currentTrimesterRegs] =
+        await Promise.all([
+          userRepository.getInstructorData(),
+          userRepository.getStudentData(),
+          userRepository.getClassData(nextTrimester), // Classes for next trimester
+          userRepository.getRegistrationData(nextTrimester), // Next trimester registrations
+          userRepository.getRegistrationData(currentTrimester), // Current trimester for recurring
+        ]);
+
+      // Filter to parent's children only
+      const parentStudents = allStudents.filter(student => {
+        const parent1IdMatch = (student.parent1Id?.value || student.parent1Id) === parentId;
+        const parent2IdMatch = (student.parent2Id?.value || student.parent2Id) === parentId;
+        return parent1IdMatch || parent2IdMatch;
+      });
+
+      const responseData = {
+        instructors: instructors,
+        students: parentStudents, // Only parent's children
+        classes: classes,
+        nextTrimesterRegistrations: nextTrimesterRegs,
+        currentTrimesterRegistrations: currentTrimesterRegs,
+      };
+
+      successResponse(res, responseData, {
+        req,
+        startTime,
+        message: 'Parent registration data retrieved successfully',
+        context: { controller: 'RegistrationController', method: 'getParentRegistrationTabData' },
+      });
+    } catch (error) {
+      logger.error('Error getting parent registration data:', error);
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'getParentRegistrationTabData' },
+      });
+    }
+  }
 }

@@ -37,6 +37,7 @@ import { InstructorDirectoryTab } from './tabs/instructorDirectoryTab.js';
 import { InstructorWeeklyScheduleTab } from './tabs/instructorWeeklyScheduleTab.js';
 import { ParentContactTab } from './tabs/parentContactTab.js';
 import { ParentWeeklyScheduleTab } from './tabs/parentWeeklyScheduleTab.js';
+import { ParentRegistrationTab } from './tabs/parentRegistrationTab.js';
 import { AdminWaitListTab } from './tabs/adminWaitListTab.js';
 import { AdminMasterScheduleTab } from './tabs/adminMasterScheduleTab.js';
 
@@ -287,9 +288,13 @@ async function initializeApplication() {
     const adminMasterScheduleTab = new AdminMasterScheduleTab();
     tabController.registerTab('admin-master-schedule', adminMasterScheduleTab);
 
+    // Phase 4.2: Parent Registration
+    const parentRegistrationTab = new ParentRegistrationTab();
+    tabController.registerTab('parent-registration', parentRegistrationTab);
+
     // Make TabController available globally for NavTabs integration
     window.tabController = tabController;
-    console.log('✓ TabController initialized with 6 registered tabs');
+    console.log('✓ TabController initialized with 7 registered tabs');
 
     // Expose maintenance mode override function globally
     // Usage: window.overrideMaintenanceMode() in browser console
