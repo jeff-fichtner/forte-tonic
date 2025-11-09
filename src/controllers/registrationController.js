@@ -1043,4 +1043,89 @@ export class RegistrationController {
       });
     }
   }
+
+  /**
+   * Get parent weekly schedule tab data
+   * Returns registrations for parent's children + students + instructors + classes
+   * (no admins, no other parents' data)
+   * REST: GET /api/parent/tabs/weekly-schedule/:trimester?parentId=xxx
+   */
+  static async getParentWeeklyScheduleTabData(req, res) {
+    const startTime = Date.now();
+
+    try {
+      const { trimester } = req.params;
+      const { parentId } = req.query;
+
+      if (!parentId) {
+        return errorResponse(res, new Error('Parent ID is required'), {
+          req,
+          startTime,
+          context: { controller: 'RegistrationController', method: 'getParentWeeklyScheduleTabData' },
+        });
+      }
+
+      const userRepository = serviceContainer.get('userRepository');
+
+      // Fetch all data in parallel
+      const [allRegistrations, students, instructors, classes] = await Promise.all([
+        userRepository.getRegistrationData(trimester),
+        userRepository.getStudentData(),
+        userRepository.getInstructorData(),
+        userRepository.getClassData(trimester),
+      ]);
+
+      // Filter students by parent
+      const parentStudents = students.filter(student => {
+        const parent1IdMatch =
+          (student.parent1Id?.value || student.parent1Id) === parentId;
+        const parent2IdMatch =
+          (student.parent2Id?.value || student.parent2Id) === parentId;
+        return parent1IdMatch || parent2IdMatch;
+      });
+
+      // Get student IDs for filtering registrations
+      const studentIds = parentStudents.map(student => student.id?.value || student.id);
+
+      // Filter registrations by parent's students
+      const parentRegistrations = allRegistrations.filter(registration => {
+        const regStudentId = registration.studentId?.value || registration.studentId;
+        return studentIds.includes(regStudentId);
+      });
+
+      // Get instructor IDs from parent's registrations
+      const instructorIds = [
+        ...new Set(
+          parentRegistrations.map(reg => reg.instructorId?.value || reg.instructorId)
+        ),
+      ];
+
+      // Filter instructors to only those teaching parent's children
+      const relevantInstructors = instructors.filter(instructor => {
+        const instructorId = instructor.id?.value || instructor.id;
+        return instructorIds.includes(instructorId);
+      });
+
+      const responseData = {
+        registrations: parentRegistrations,
+        students: parentStudents,
+        instructors: relevantInstructors,
+        classes: classes,
+      };
+
+      successResponse(res, responseData, {
+        req,
+        startTime,
+        message: 'Parent weekly schedule data retrieved successfully',
+        context: { controller: 'RegistrationController', method: 'getParentWeeklyScheduleTabData' },
+      });
+    } catch (error) {
+      logger.error('Error getting parent weekly schedule data:', error);
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'getParentWeeklyScheduleTabData' },
+      });
+    }
+  }
 }
