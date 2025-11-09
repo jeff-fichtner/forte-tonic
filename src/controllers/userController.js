@@ -578,4 +578,46 @@ export class UserController {
       });
     }
   }
+
+  /**
+   * Get instructor directory tab data
+   * Returns only admins and instructors (no students, registrations, classes, rooms)
+   * REST: GET /api/instructor/tabs/directory
+   */
+  static async getInstructorDirectoryTabData(req, res) {
+    const startTime = Date.now();
+
+    try {
+      const userRepository = serviceContainer.get('userRepository');
+
+      // Fetch only what this tab needs (admins + instructors)
+      const [admins, instructors] = await Promise.all([
+        userRepository.getAdmins(),
+        userRepository.getInstructors(),
+      ]);
+
+      // Transform data for frontend
+      const transformedAdmins = UserTransformService.transformArray(admins, 'admin');
+
+      // Instructors are already transformed by Instructor.fromDatabaseRow
+      const responseData = {
+        admins: transformedAdmins,
+        instructors: instructors,
+      };
+
+      successResponse(res, responseData, {
+        req,
+        startTime,
+        message: 'Instructor directory data retrieved successfully',
+        context: { controller: 'UserController', method: 'getInstructorDirectoryTabData' },
+      });
+    } catch (error) {
+      logger.error('Error getting instructor directory tab data:', error);
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'getInstructorDirectoryTabData' },
+      });
+    }
+  }
 }

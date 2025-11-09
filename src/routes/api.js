@@ -123,4 +123,10 @@ router.post('/removeAttendance', AttendanceController.removeAttendance);
  */
 router.post('/feedback', FeedbackController.submitFeedback);
 
+/**
+ * Tab-specific data endpoints (Phase 2: Frontend Data Independence)
+ * These endpoints return only the data needed for specific tabs
+ */
+router.get('/instructor/tabs/directory', UserController.getInstructorDirectoryTabData);
+
 export default router;
