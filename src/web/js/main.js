@@ -40,6 +40,7 @@ import { ParentWeeklyScheduleTab } from './tabs/parentWeeklyScheduleTab.js';
 import { ParentRegistrationTab } from './tabs/parentRegistrationTab.js';
 import { AdminWaitListTab } from './tabs/adminWaitListTab.js';
 import { AdminMasterScheduleTab } from './tabs/adminMasterScheduleTab.js';
+import { AdminRegistrationTab } from './tabs/adminRegistrationTab.js';
 
 /**
  * Access code manager for secure storage and retrieval of access codes
@@ -292,9 +293,13 @@ async function initializeApplication() {
     const parentRegistrationTab = new ParentRegistrationTab();
     tabController.registerTab('parent-registration', parentRegistrationTab);
 
+    // Phase 4.3: Admin Registration
+    const adminRegistrationTab = new AdminRegistrationTab();
+    tabController.registerTab('admin-registration', adminRegistrationTab);
+
     // Make TabController available globally for NavTabs integration
     window.tabController = tabController;
-    console.log('✓ TabController initialized with 7 registered tabs');
+    console.log('✓ TabController initialized with 8 registered tabs');
 
     // Expose maintenance mode override function globally
     // Usage: window.overrideMaintenanceMode() in browser console

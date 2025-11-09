@@ -1239,4 +1239,61 @@ export class RegistrationController {
       });
     }
   }
+
+  /**
+   * Get data for admin registration tab
+   * Returns all instructors, students, classes, and registrations for selected trimester
+   * No scoping - admins need full dataset for registration management
+   *
+   * @route GET /api/admin/tabs/registration?trimester=fall
+   */
+  static async getAdminRegistrationTabData(req, res) {
+    const startTime = Date.now();
+
+    try {
+      const { trimester } = req.query;
+
+      if (!trimester) {
+        return errorResponse(res, new Error('Trimester parameter is required'), {
+          req,
+          startTime,
+          context: {
+            controller: 'RegistrationController',
+            method: 'getAdminRegistrationTabData',
+          },
+        });
+      }
+
+      const userRepository = serviceContainer.get('userRepository');
+
+      // Fetch all data in parallel
+      const [instructors, students, classes, registrations] = await Promise.all([
+        userRepository.getInstructorData(),
+        userRepository.getStudentData(),
+        userRepository.getClassData(trimester),
+        userRepository.getRegistrationData(trimester),
+      ]);
+
+      const responseData = {
+        instructors: instructors,
+        students: students,
+        classes: classes,
+        registrations: registrations,
+      };
+
+      successResponse(res, responseData, {
+        req,
+        startTime,
+        message: 'Admin registration data retrieved successfully',
+        context: { controller: 'RegistrationController', method: 'getAdminRegistrationTabData' },
+      });
+    } catch (error) {
+      logger.error('Error getting admin registration data:', error);
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'RegistrationController', method: 'getAdminRegistrationTabData' },
+      });
+    }
+  }
 }
