@@ -31,6 +31,10 @@ import './extensions/numberExtensions.js';
 import './extensions/stringExtensions.js';
 import './viewModel.js';
 
+// Phase 2: Tab-based architecture imports
+import { TabController } from './core/tabController.js';
+import { InstructorDirectoryTab } from './tabs/instructorDirectoryTab.js';
+
 /**
  * Access code manager for secure storage and retrieval of access codes
  */
@@ -247,6 +251,19 @@ async function initializeApplication() {
 
     // Store globally for debugging and other scripts
     window.viewModel = viewModel;
+
+    // Phase 2: Initialize TabController for tab-based architecture
+    console.log('Initializing TabController...');
+    const tabController = new TabController();
+    tabController.initialize();
+
+    // Register migrated tabs (Phase 2.1: Instructor Directory - pilot)
+    const instructorDirectoryTab = new InstructorDirectoryTab();
+    tabController.registerTab('instructor-forte-directory', instructorDirectoryTab);
+
+    // Make TabController available globally for NavTabs integration
+    window.tabController = tabController;
+    console.log('✓ TabController initialized with 1 registered tab');
 
     // Expose maintenance mode override function globally
     // Usage: window.overrideMaintenanceMode() in browser console

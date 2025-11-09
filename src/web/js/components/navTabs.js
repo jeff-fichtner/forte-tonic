@@ -26,7 +26,7 @@ export class NavTabs {
       console.warn('No tabs container or tabs found - NavTabs not initialized');
       return;
     }
-    tabsContainer.addEventListener('click', event => {
+    tabsContainer.addEventListener('click', async event => {
       // return if not a tab link
       const tabLink = event.target.closest('.tab a');
       if (!tabLink) return;
@@ -48,16 +48,61 @@ export class NavTabs {
         t.classList.toggle('active', t.getAttribute('href') === tabLink.getAttribute('href'));
       });
 
-      // Toggle all tab contents
-      tabContents.forEach(content => {
-        const wasHidden = content.hidden;
-        content.hidden = content.id !== targetContent.id;
-        if (wasHidden && !content.hidden) {
-          console.log(`📋 Showing tab content: ${content.id}`);
-        } else if (!wasHidden && content.hidden) {
-          console.log(`📋 Hiding tab content: ${content.id}`);
+      // Phase 2: Check if this tab is registered with TabController
+      const tabId = targetContent.id;
+      const isTabControllerRegistered =
+        window.tabController && window.tabController.isTabRegistered(tabId);
+
+      if (isTabControllerRegistered) {
+        console.log(`🎯 Activating tab via TabController: ${tabId}`);
+        try {
+          // Get session info from viewModel if available
+          const sessionInfo = window.viewModel?.currentUser
+            ? {
+                user: window.viewModel.currentUser,
+                userType: window.viewModel.currentUser.admin
+                  ? 'admin'
+                  : window.viewModel.currentUser.instructor
+                    ? 'instructor'
+                    : 'parent',
+              }
+            : null;
+
+          // Update TabController session if needed
+          if (sessionInfo) {
+            window.tabController.updateSession(sessionInfo);
+          }
+
+          // Hide all tab contents first
+          tabContents.forEach(content => {
+            content.hidden = true;
+          });
+
+          // Show the target tab content (TabController will populate it)
+          targetContent.hidden = false;
+
+          // Activate the tab via TabController (fetches data and renders)
+          await window.tabController.activateTab(tabId);
+
+          console.log(`✅ Tab activated via TabController: ${tabId}`);
+        } catch (error) {
+          console.error(`❌ Error activating tab ${tabId} via TabController:`, error);
+          // Fallback: just show the content without TabController
+          targetContent.hidden = false;
         }
-      });
+      } else {
+        // Old behavior for non-migrated tabs
+        console.log(`📋 Using legacy tab switching for: ${tabId}`);
+        tabContents.forEach(content => {
+          const wasHidden = content.hidden;
+          content.hidden = content.id !== targetContent.id;
+          if (wasHidden && !content.hidden) {
+            console.log(`📋 Showing tab content: ${content.id}`);
+          } else if (!wasHidden && content.hidden) {
+            console.log(`📋 Hiding tab content: ${content.id}`);
+          }
+        });
+      }
 
       // Show/hide admin trimester selector based on tab
       // Trimester selector should only show for admin-specific tabs (Master Schedule, Wait List, Registration)
@@ -349,6 +394,30 @@ export class NavTabs {
         if (targetContent) {
           targetContent.hidden = false;
           console.log(`📋 Showing tab content: ${targetContent.id}`);
+
+          // Phase 2: Try to activate via TabController if registered
+          const tabId = targetContent.id;
+          if (window.tabController && window.tabController.isTabRegistered(tabId)) {
+            console.log(`🎯 Activating first tab via TabController: ${tabId}`);
+            const sessionInfo = window.viewModel?.currentUser
+              ? {
+                  user: window.viewModel.currentUser,
+                  userType: window.viewModel.currentUser.admin
+                    ? 'admin'
+                    : window.viewModel.currentUser.instructor
+                      ? 'instructor'
+                      : 'parent',
+                }
+              : null;
+
+            if (sessionInfo) {
+              window.tabController.updateSession(sessionInfo);
+            }
+
+            window.tabController.activateTab(tabId).catch(error => {
+              console.error(`❌ Error activating first tab ${tabId}:`, error);
+            });
+          }
         }
 
         // Add active class to the clicked tab link
