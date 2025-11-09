@@ -8,9 +8,7 @@ import {
   FilterValue,
 } from './constants.js';
 import { AppConfigurationResponse } from '../../models/shared/responses/appConfigurationResponse.js';
-import {
-  Registration,
-} from '../../models/shared/index.js';
+import { Registration } from '../../models/shared/index.js';
 import { DomHelpers } from './utilities/domHelpers.js';
 import { NavTabs } from './components/navTabs.js';
 import { Table } from './components/table.js';
@@ -30,9 +28,6 @@ function capitalize(str) {
   if (!str) return '';
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
-
-// Phase 7: Aggressive Cleanup - Removed getNextTrimester helper function
-// (18 lines) - no longer needed, tabs use their own trimester logic
 
 /**
  * Format a datetime value for display in tables
@@ -173,9 +168,6 @@ export class ViewModel {
     // Show content area
     document.getElementById('page-content').hidden = false;
 
-    // Phase 5: Aggressive Cleanup - Removed global data fetching
-    // Tabs now fetch their own scoped data via TabController pattern.
-    // No backward compatibility - all data is now fetched by individual tabs.
     await DomHelpers.waitForDocumentReadyAsync();
 
     M.AutoInit();
@@ -191,8 +183,6 @@ export class ViewModel {
     // Store current user for access throughout the application
     this.currentUser = user;
 
-    // Phase 6: Aggressive Cleanup - Tab initialization now handled by TabController
-    // Each tab fetches its own data when activated via TabController
     let defaultSection;
     if (user.admin) {
       defaultSection = Sections.ADMIN;
@@ -266,26 +256,6 @@ export class ViewModel {
       banner.style.display = 'none';
     }
   }
-
-  // Phase 6: Aggressive Cleanup - Removed legacy init methods
-  // All tab initialization now handled by TabController and individual tab classes
-  // Removed methods:
-  // - #initAdminContent() (52 lines)
-  // - #setupAdminTabSyncListeners() (26 lines)
-  // - #initInstructorContent() (113 lines)
-  // - #initParentContent() (196 lines)
-  // Total: 387 lines removed
-
-  // Phase 7: Aggressive Cleanup - Removed unused parent helper methods
-  // #renderParentWaitListSection (83 lines) - no longer used, tabs handle their own rendering
-  // #parentHasAnyRegistrations (36 lines) - no longer used, tabs handle their own logic
-
-  // Phase 7: Aggressive Cleanup - Removed unused parent rendering methods
-  // #renderParentScheduleSection (111 lines) - tabs handle their own schedule rendering
-  // #attachIntentDropdownListeners (97 lines) - intent handling moved to tabs
-
-  // Phase 7: Aggressive Cleanup - Removed unused intent modal method
-  // #showIntentConfirmationModal (126 lines) - intent functionality moved to tabs
 
   /**
    * Refresh all relevant tables after a new registration is created
@@ -380,9 +350,6 @@ export class ViewModel {
       }
     }
 
-    // Phase 6: Aggressive Cleanup - Tab updates now handled by TabController
-    // When tabs are reactivated, they will automatically fetch fresh data
-    // No need to manually reinitialize content here
   }
 
   /**
@@ -1888,9 +1855,6 @@ export class ViewModel {
     );
   }
 
-  // Phase 7: Aggressive Cleanup - Removed unused wait list table method
-  // #buildParentWaitListTable (78 lines) - parent wait list now handled by tabs
-
   /**
    *
    */
@@ -2089,9 +2053,6 @@ export class ViewModel {
    * @param {Array} employees - Array of employee objects
    * @returns {Table} Table instance
    */
-  // Phase 7: Aggressive Cleanup - Removed unused directory methods
-  // #buildDirectory (48 lines) - directory tabs now handle their own building
-  // #sortEmployeesForDirectory (46 lines) - sorting moved to directory tabs
   /**
    *
    */
@@ -2293,8 +2254,6 @@ export class ViewModel {
       firstName: instructor.firstName || '', // Add firstName for sorting
     };
   }
-  // Phase 5: Removed #getStudents() - no longer needed
-  // Tabs fetch their own data via dedicated endpoints
 
   /**
    * Initialize the login modal functionality

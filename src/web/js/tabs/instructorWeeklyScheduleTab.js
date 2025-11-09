@@ -186,8 +186,7 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
     const student = this.#findStudent(enrollment.studentId);
 
     if (!instructor || !student) {
-      const enrollmentId = enrollment.id?.value || enrollment.id;
-      console.warn(`❌ Instructor or student not found for enrollment: ${enrollmentId}`);
+      console.warn(`Instructor or student not found for enrollment: ${enrollment.id?.value || enrollment.id}`);
       return '';
     }
 

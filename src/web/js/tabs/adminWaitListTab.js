@@ -175,7 +175,6 @@ export class AdminWaitListTab extends BaseTab {
 
     if (!student) {
       console.warn(`Student not found for registration: ${registration.id}`);
-      console.warn(`Looking for studentId: ${studentIdToFind}`);
       return '';
     }
 
@@ -312,7 +311,7 @@ export class AdminWaitListTab extends BaseTab {
    * @private
    */
   async #deleteRegistration(registrationId) {
-    // Use the legacy viewModel method for now (will refactor later)
+    // Delegate to viewModel for registration deletion
     if (window.viewModel && typeof window.viewModel.requestDeleteRegistrationAsync === 'function') {
       await window.viewModel.requestDeleteRegistrationAsync(registrationId);
 

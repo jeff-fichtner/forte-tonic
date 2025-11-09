@@ -48,7 +48,6 @@ export class TabController {
     }
 
     this.initialized = true;
-    console.log('TabController initialized');
   }
 
   /**
@@ -95,7 +94,6 @@ export class TabController {
     }
 
     this.tabs.set(tabId, tabInstance);
-    console.log(`Tab registered: ${tabId}`);
   }
 
   /**
@@ -117,7 +115,6 @@ export class TabController {
     }
 
     this.tabs.delete(tabId);
-    console.log(`Tab unregistered: ${tabId}`);
     return true;
   }
 
@@ -143,13 +140,11 @@ export class TabController {
 
     // If same tab is already active and not forcing reload, do nothing
     if (this.currentTabId === tabId && !forceReload) {
-      console.log(`Tab "${tabId}" is already active`);
       return;
     }
 
     // Unload current tab if any
     if (this.currentTab && this.currentTabId !== tabId) {
-      console.log(`Unloading tab: ${this.currentTabId}`);
       try {
         await this.currentTab.onUnload();
       } catch (error) {
@@ -163,12 +158,9 @@ export class TabController {
     this.currentTabId = tabId;
     this.currentTab = newTab;
 
-    console.log(`Activating tab: ${tabId}`);
-
     try {
       // Call tab's onLoad lifecycle method
       await newTab.onLoad(this.sessionInfo);
-      console.log(`Tab activated: ${tabId}`);
     } catch (error) {
       console.error(`Error activating tab "${tabId}":`, error);
       this.currentTabId = null;
@@ -187,7 +179,6 @@ export class TabController {
       return;
     }
 
-    console.log(`Reloading current tab: ${this.currentTabId}`);
     await this.activateTab(this.currentTabId, { forceReload: true });
   }
 
@@ -229,8 +220,6 @@ export class TabController {
    * @returns {Promise<void>}
    */
   async cleanup() {
-    console.log('TabController: Cleaning up all tabs');
-
     // Unload current tab
     if (this.currentTab) {
       try {
@@ -244,7 +233,5 @@ export class TabController {
     this.currentTabId = null;
     this.sessionInfo = null;
     this.initialized = false;
-
-    console.log('TabController: Cleanup complete');
   }
 }

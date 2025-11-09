@@ -8,19 +8,11 @@ export class NavTabs {
    *
    */
   constructor(defaultSection) {
-    console.log('🚀 NavTabs constructor called with defaultSection:', defaultSection);
-
     const tabsContainer = document.querySelector('.tabs');
     const tabs = document.querySelectorAll('.tabs .tab');
     const tabLinks = document.querySelectorAll('.tabs .tab a');
     const tabContents = document.querySelectorAll('.tab-content');
     const links = document.querySelectorAll('.section-link');
-
-    console.log(`Found ${tabs.length} tabs, ${links.length} section links`);
-    console.log(
-      'Navigation links visible:',
-      links.length > 0 ? !links[0].closest('#nav-mobile').hidden : 'No links found'
-    );
 
     if (!tabsContainer || tabs.length === 0) {
       console.warn('No tabs container or tabs found - NavTabs not initialized');
@@ -35,8 +27,6 @@ export class NavTabs {
       // Get the tab href and target content
       const targetTab = tabLink.getAttribute('href');
       const targetContent = document.querySelector(targetTab);
-
-      console.log(`Tab clicked with href: ${targetTab}`);
 
       if (!targetContent) {
         console.warn(`No content found for tab: ${targetTab}`);
@@ -54,7 +44,6 @@ export class NavTabs {
         window.tabController && window.tabController.isTabRegistered(tabId);
 
       if (isTabControllerRegistered) {
-        console.log(`🎯 Activating tab via TabController: ${tabId}`);
         try {
           // Get session info from viewModel if available
           const sessionInfo = window.viewModel?.currentUser
@@ -83,24 +72,15 @@ export class NavTabs {
 
           // Activate the tab via TabController (fetches data and renders)
           await window.tabController.activateTab(tabId);
-
-          console.log(`✅ Tab activated via TabController: ${tabId}`);
         } catch (error) {
-          console.error(`❌ Error activating tab ${tabId} via TabController:`, error);
+          console.error(`Error activating tab ${tabId} via TabController:`, error);
           // Fallback: just show the content without TabController
           targetContent.hidden = false;
         }
       } else {
         // Old behavior for non-migrated tabs
-        console.log(`📋 Using legacy tab switching for: ${tabId}`);
         tabContents.forEach(content => {
-          const wasHidden = content.hidden;
           content.hidden = content.id !== targetContent.id;
-          if (wasHidden && !content.hidden) {
-            console.log(`📋 Showing tab content: ${content.id}`);
-          } else if (!wasHidden && content.hidden) {
-            console.log(`📋 Hiding tab content: ${content.id}`);
-          }
         });
       }
 
@@ -135,11 +115,6 @@ export class NavTabs {
         event.preventDefault();
         const dataSection = link.getAttribute('data-section');
 
-        // Console log the nav link click
-        console.log(`🖱️ Nav link clicked: ${dataSection}`);
-
-        console.log(`✅ Access granted for section: ${dataSection}`);
-
         // Show the main content when access is granted
         this.#showContent();
 
@@ -170,8 +145,6 @@ export class NavTabs {
    * @param {string} section - The section that was just activated
    */
   #forceLayoutRefresh(section) {
-    console.log(`🔄 Forcing layout refresh for section: ${section}`);
-
     // Reset scroll position to top
     window.scrollTo(0, 0);
 
@@ -215,8 +188,6 @@ export class NavTabs {
               }
             }
           });
-
-          console.log(`✅ Layout refresh completed for ${section} section`);
         }
       }
     }, 10); // Small delay to ensure DOM updates are complete
@@ -247,8 +218,6 @@ export class NavTabs {
           pageContent.style.overflow = originalOverflow;
         }, 50);
       }
-
-      console.log(`📜 Final scroll reset completed for ${section} section`);
     }, 100);
   }
 
@@ -258,8 +227,6 @@ export class NavTabs {
    */
   #forceTabContentRefresh(tabContent) {
     if (!tabContent || tabContent.hidden) return;
-
-    console.log(`🔄 Forcing refresh for tab content: ${tabContent.id}`);
 
     // Reset scroll to top when switching tabs
     window.scrollTo(0, 0);
@@ -294,8 +261,6 @@ export class NavTabs {
         window.M.FormSelect.init(selects);
       }
     }
-
-    console.log(`✅ Tab content refresh completed for: ${tabContent.id}`);
   }
 
   /**
@@ -303,8 +268,6 @@ export class NavTabs {
    * @param {string} section - The section that was selected ('admin', 'instructor', 'parent')
    */
   #showTabsForSection(section) {
-    console.log(`🔄 #showTabsForSection called with section: ${section}`);
-
     // First show the tabs container
     const tabsContainer = document.querySelector('.tabs');
     if (tabsContainer) {
@@ -313,17 +276,14 @@ export class NavTabs {
 
     // Hide all tabs first
     const allTabs = document.querySelectorAll('.tabs .tab');
-    console.log(`Found ${allTabs.length} total tabs to hide`);
     allTabs.forEach(tab => {
       tab.style.display = 'none';
     });
 
     // Show only tabs for the selected section
     const sectionTabs = document.querySelectorAll(`.tabs .tab.${section}-tab`);
-    console.log(`Found ${sectionTabs.length} tabs with class '${section}-tab'`);
     sectionTabs.forEach(tab => {
       tab.style.display = '';
-      console.log(`Showing tab:`, tab);
     });
 
     // Hide registration tab for parents during intent period
@@ -337,19 +297,15 @@ export class NavTabs {
           ?.closest('.tab');
         if (registrationTab) {
           registrationTab.style.display = 'none';
-          console.log('🚫 Hiding parent registration tab during intent period');
         }
       }
     }
 
-    console.log(`✅ Showing ${sectionTabs.length} tabs for ${section} section`);
-
     // Reinitialize Materialize tabs to update the indicator
     if (tabsContainer && window.M && window.M.Tabs) {
-      console.log('🔄 Reinitializing Materialize tabs');
       window.M.Tabs.init(tabsContainer);
     } else {
-      console.warn('❌ Could not reinitialize Materialize tabs');
+      console.warn('Could not reinitialize Materialize tabs');
     }
   }
 
@@ -369,17 +325,12 @@ export class NavTabs {
     if (firstTabHref) {
       const firstTabLink = document.querySelector(`a[href="${firstTabHref}"]`);
       if (firstTabLink) {
-        console.log(`🎯 Auto-clicking first tab in ${section} section: ${firstTabHref}`);
-
         // Check if the tab link is visible
         const tabParent = firstTabLink.closest('.tab');
         if (tabParent) {
-          console.log(`Tab parent hidden status: ${tabParent.hidden}`);
-
           // Make sure the tab is visible
           if (tabParent.hidden) {
             tabParent.hidden = false;
-            console.log(`Made tab parent visible for first click`);
           }
         }
 
@@ -393,12 +344,10 @@ export class NavTabs {
         const targetContent = document.querySelector(firstTabHref);
         if (targetContent) {
           targetContent.hidden = false;
-          console.log(`📋 Showing tab content: ${targetContent.id}`);
 
           // Phase 2: Try to activate via TabController if registered
           const tabId = targetContent.id;
           if (window.tabController && window.tabController.isTabRegistered(tabId)) {
-            console.log(`🎯 Activating first tab via TabController: ${tabId}`);
             const sessionInfo = window.viewModel?.currentUser
               ? {
                   user: window.viewModel.currentUser,
@@ -415,7 +364,7 @@ export class NavTabs {
             }
 
             window.tabController.activateTab(tabId).catch(error => {
-              console.error(`❌ Error activating first tab ${tabId}:`, error);
+              console.error(`Error activating first tab ${tabId}:`, error);
             });
           }
         }
@@ -445,23 +394,11 @@ export class NavTabs {
         // Simulate the click for Materialize's indicator
         firstTabLink.click();
 
-        // Debug: Check table visibility after tab click
+        // Ensure table is visible after tab click
         setTimeout(() => {
           const table = document.getElementById('master-schedule-table');
-          const tabContent = document.getElementById('admin-master-schedule');
-
-          if (table) {
-            console.log(`📊 After tab click - Master schedule table hidden: ${table.hidden}`);
-            // Make sure the table is visible if we're in admin section
-            if (section === 'admin' && table.hidden) {
-              table.hidden = false;
-              console.log('📊 Forcing master schedule table to be visible');
-            }
-          }
-          if (tabContent) {
-            console.log(
-              `📋 After tab click - Admin master schedule content hidden: ${tabContent.hidden}`
-            );
+          if (table && section === 'admin' && table.hidden) {
+            table.hidden = false;
           }
         }, 50);
       } else {
@@ -482,8 +419,6 @@ export class NavTabs {
     if (pageContent) pageContent.hidden = false;
     if (pageLoading) pageLoading.hidden = true; // Hide loading
     if (pageError) pageError.hidden = true; // Hide errors
-
-    console.log('Main content shown');
   }
 }
 

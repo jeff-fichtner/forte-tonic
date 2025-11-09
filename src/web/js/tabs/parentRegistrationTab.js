@@ -85,7 +85,7 @@ export class ParentRegistrationTab extends BaseTab {
         this.data.classes,
         this.data.nextTrimesterRegistrations, // registrations for availability calculation
         async registrationData => {
-          // Send data function - use legacy viewModel method for now
+          // Send data function - delegate to viewModel for registration creation
           await this.#createRegistration(registrationData);
         },
         this.data.students, // parentChildren = all students for this parent
@@ -95,11 +95,11 @@ export class ParentRegistrationTab extends BaseTab {
   }
 
   /**
-   * Create a registration via legacy viewModel method
+   * Create a registration via viewModel delegation
    * @private
    */
   async #createRegistration(registrationData) {
-    // Use the legacy viewModel method for registration creation
+    // Delegate to viewModel for registration creation
     if (
       window.viewModel &&
       typeof window.viewModel.createRegistrationWithEnrichment === 'function'

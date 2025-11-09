@@ -132,7 +132,6 @@ describe('BaseTab', () => {
 
     it('should not log abort errors', async () => {
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
 
       const abortError = new Error('Aborted');
       abortError.name = 'AbortError';
@@ -140,10 +139,8 @@ describe('BaseTab', () => {
 
       await expect(tab.onLoad(sessionInfo)).rejects.toThrow();
       expect(consoleErrorSpy).not.toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith('Tab load cancelled: test-tab');
 
       consoleErrorSpy.mockRestore();
-      consoleLogSpy.mockRestore();
     });
   });
 

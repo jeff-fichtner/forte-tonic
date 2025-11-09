@@ -65,13 +65,6 @@ export class AdminRegistrationTab extends BaseTab {
       this.registrationForm.classes = this.data.classes;
       this.registrationForm.setTrimester(this.currentTrimester);
       this.registrationForm.setTrimesterRegistrations(this.data.registrations);
-
-      console.log(
-        `Admin registration form updated with ${this.data.students.length} students, ` +
-          `${this.data.instructors.length} instructors, ` +
-          `${this.data.classes.length} classes, ` +
-          `${this.data.registrations.length} registrations for ${this.currentTrimester}`
-      );
     } else {
       // Create new form instance
       this.registrationForm = new AdminRegistrationForm(
@@ -86,23 +79,16 @@ export class AdminRegistrationTab extends BaseTab {
       // Set trimester context
       this.registrationForm.setTrimester(this.currentTrimester);
       this.registrationForm.setTrimesterRegistrations(this.data.registrations);
-
-      console.log(
-        `Admin registration form created with ${this.data.students.length} students, ` +
-          `${this.data.instructors.length} instructors, ` +
-          `${this.data.classes.length} classes, ` +
-          `${this.data.registrations.length} registrations for ${this.currentTrimester}`
-      );
     }
   }
 
   /**
    * Create a new registration
-   * Uses legacy viewModel method temporarily
+   * Delegates to viewModel for registration creation
    * @private
    */
   async #createRegistration(registrationData) {
-    // Use legacy viewModel method for registration creation
+    // Delegate to viewModel for registration creation
     if (
       window.viewModel &&
       typeof window.viewModel.createRegistrationWithEnrichment === 'function'
