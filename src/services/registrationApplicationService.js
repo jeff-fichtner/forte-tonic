@@ -23,10 +23,15 @@ export class RegistrationApplicationService extends BaseService {
 
   /**
    * Process a new registration with full workflow
+   * @param {object} registrationData - Registration data
+   * @param {string} userId - User ID for audit logging
+   * @param {object} options - Additional options
+   * @param {boolean} options.isAdmin - Whether the user is an admin (bypasses capacity checks)
    */
-  async processRegistration(registrationData, userId) {
+  async processRegistration(registrationData, userId, options = {}) {
     try {
-      this.logger.info('🎵 Processing new registration');
+      const { isAdmin = false } = options;
+      this.logger.info('🎵 Processing new registration', { isAdmin });
 
       // Step 1: Handle group registration data population
       if (registrationData.registrationType === 'group' && registrationData.classId) {
@@ -163,7 +168,8 @@ export class RegistrationApplicationService extends BaseService {
 
       const conflictCheck = await RegistrationConflictService.checkConflicts(
         registrationData,
-        existingRegistrations
+        existingRegistrations,
+        { skipCapacityCheck: isAdmin }
       );
 
       if (conflictCheck.hasConflicts) {
@@ -200,8 +206,15 @@ export class RegistrationApplicationService extends BaseService {
       this.logger.info('📊 Registration data object before persistence:', registrationDataObject);
       this.logger.info(`🔍 isWaitlistClass flag: ${registrationDataObject.isWaitlistClass}`);
 
-      const persistedRegistration =
-        await this.registrationRepository.create(registrationDataObject);
+      // For admin-created registrations with explicit trimester, use that trimester table
+      // Otherwise, use the enrollment trimester (for parents during enrollment periods)
+      const targetTrimester =
+        isAdmin && registrationData.trimester ? registrationData.trimester : null;
+
+      const persistedRegistration = await this.registrationRepository.create(
+        registrationDataObject,
+        targetTrimester
+      );
 
       // Step 8: Audit logging
       if (this.auditService) {

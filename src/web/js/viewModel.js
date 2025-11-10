@@ -117,8 +117,11 @@ export class ViewModel {
       this.feedbackManager = new FeedbackManager(this);
     }
 
-    // Auto-click the specified role tab if provided
-    if (roleToClick) {
+    // Store roleToClick for later activation (after TabController is initialized)
+    this.roleToClick = roleToClick;
+
+    // If TabController already exists (user switching), activate the section immediately
+    if (roleToClick && window.tabController) {
       const navLink = document.querySelector(`a[data-section="${roleToClick}"]`);
       if (navLink) {
         navLink.click();

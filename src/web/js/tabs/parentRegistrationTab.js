@@ -26,8 +26,8 @@ export class ParentRegistrationTab extends BaseTab {
    * Fetch registration form data for parent
    * Returns instructors, parent's children, classes, next trimester registrations,
    * current trimester registrations
-   * @param {Object} sessionInfo - User session
-   * @returns {Promise<Object>} Registration form data
+   * @param {object} sessionInfo - User session
+   * @returns {Promise<object>} Registration form data
    */
   async fetchData(sessionInfo) {
     const parentId = sessionInfo?.user?.parent?.id;
@@ -43,7 +43,10 @@ export class ParentRegistrationTab extends BaseTab {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const result = await response.json();
+
+    // Unwrap the data from { success: true, data: {...} } envelope
+    const data = result.data || result;
 
     // Validate response
     if (
@@ -109,7 +112,7 @@ export class ParentRegistrationTab extends BaseTab {
       await window.viewModel.createRegistrationWithEnrichment(registrationData);
 
       // Reload the tab to show updated data
-      await this.onLoad(this.sessionInfo);
+      await this.reload();
     } else {
       console.error('Registration creation method not available');
       if (typeof M !== 'undefined') {

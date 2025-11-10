@@ -24,13 +24,14 @@ export class AdminRegistrationTab extends BaseTab {
   /**
    * Fetch registration form data for admins
    * Returns all instructors, students, classes, and registrations for selected trimester
-   * @param {Object} sessionInfo - User session
-   * @returns {Promise<Object>} Registration form data
+   * @param {object} sessionInfo - User session
+   * @returns {Promise<object>} Registration form data
    */
   async fetchData(sessionInfo) {
-    // Get trimester from selector (defaults to current trimester from session)
-    const trimesterSelector = document.getElementById('admin-registration-trimester-selector');
-    const trimester = trimesterSelector?.value || sessionInfo?.currentTrimester || 'fall';
+    // Get selected trimester from admin selector buttons
+    const trimesterButtons = document.getElementById('admin-trimester-buttons');
+    const activeButton = trimesterButtons?.querySelector('.trimester-btn.active');
+    const trimester = activeButton?.dataset.trimester || sessionInfo?.currentTrimester || 'fall';
     this.currentTrimester = trimester;
 
     const response = await fetch(`/api/admin/tabs/registration?trimester=${trimester}`, {
@@ -41,7 +42,10 @@ export class AdminRegistrationTab extends BaseTab {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const result = await response.json();
+
+    // Unwrap the data from { success: true, data: {...} } envelope
+    const data = result.data || result;
 
     // Validate response
     if (!data.instructors || !data.students || !data.classes || !data.registrations) {
@@ -96,12 +100,34 @@ export class AdminRegistrationTab extends BaseTab {
       await window.viewModel.createRegistrationWithEnrichment(registrationData);
 
       // Reload the tab to show updated data
-      await this.onLoad(this.sessionInfo);
+      await this.reload();
     } else {
       console.error('Registration creation method not available');
       if (typeof M !== 'undefined') {
         M.toast({ html: 'Unable to create registration. Please refresh and try again.' });
       }
+    }
+  }
+
+  /**
+   * Attach event listeners for trimester selector
+   */
+  attachEventListeners() {
+    const trimesterButtons = document.getElementById('admin-trimester-buttons');
+    if (trimesterButtons) {
+      this.addEventListener(trimesterButtons, 'click', async event => {
+        const button = event.target.closest('.trimester-btn');
+        if (button) {
+          // Update active button state
+          trimesterButtons.querySelectorAll('.trimester-btn').forEach(btn => {
+            btn.classList.remove('active');
+          });
+          button.classList.add('active');
+
+          // Reload tab with new trimester
+          await this.reload();
+        }
+      });
     }
   }
 

@@ -287,6 +287,12 @@ export class AdminRegistrationForm {
       registrationData.replaceRegistrationId = this._selectedRegistrationToReplace;
     }
 
+    // Add trimester context for admin registrations
+    // Admins can create registrations for any trimester, not just the enrollment trimester
+    if (this.selectedTrimester) {
+      registrationData.trimester = this.selectedTrimester;
+    }
+
     return registrationData;
   }
 

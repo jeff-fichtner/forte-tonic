@@ -120,7 +120,8 @@ describe('Group Registration Service', () => {
           roomId: 'ROOM-001', // Should populate from instructor's availability
           registrationType: 'group',
           classId: 'CLASS-001',
-        })
+        }),
+        null // targetTrimester parameter
       );
     });
 
@@ -197,7 +198,8 @@ describe('Group Registration Service', () => {
       expect(mockRegistrationRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
           transportationType: 'pickup', // Should set default
-        })
+        }),
+        null // targetTrimester parameter
       );
     });
 
@@ -259,7 +261,8 @@ describe('Group Registration Service', () => {
       expect(mockRegistrationRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
           transportationType: 'both', // Should preserve existing value
-        })
+        }),
+        null // targetTrimester parameter
       );
     });
   });

@@ -24,8 +24,8 @@ export class ParentContactTab extends BaseTab {
   /**
    * Fetch contact directory data for parent
    * Returns admins + instructors teaching this parent's children
-   * @param {Object} sessionInfo - User session
-   * @returns {Promise<Object>} Directory data
+   * @param {object} sessionInfo - User session
+   * @returns {Promise<object>} Directory data
    */
   async fetchData(sessionInfo) {
     const parentId = sessionInfo?.user?.parent?.id;
@@ -41,7 +41,10 @@ export class ParentContactTab extends BaseTab {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const result = await response.json();
+
+    // Unwrap the data from { success: true, data: {...} } envelope
+    const data = result.data || result;
 
     // Validate response
     if (!data.admins || !data.instructors) {
@@ -173,7 +176,7 @@ export class ParentContactTab extends BaseTab {
   /**
    * Map instructor to employee format
    * @private
-   * @param {Object} instructor - Instructor object
+   * @param {object} instructor - Instructor object
    * @param {boolean} obscurePhone - Whether to hide phone number
    */
   #mapInstructorToEmployee(instructor, obscurePhone = false) {

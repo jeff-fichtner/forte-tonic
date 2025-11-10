@@ -217,13 +217,20 @@ export class RegistrationRepository extends BaseRepository {
 
   /**
    * Create a new registration
+   * @param {object} registrationData - Registration data
+   * @param {string} targetTrimester - Optional specific trimester (for admin use)
    */
-  async create(registrationData) {
+  async create(registrationData, targetTrimester = null) {
     try {
-      // Get enrollment trimester table (next trimester during enrollment periods)
-      const enrollmentTable = await this.periodService.getEnrollmentTrimesterTable();
+      // If targetTrimester is provided (admin creating for specific trimester), use that table
+      // Otherwise, get enrollment trimester table (next trimester during enrollment periods)
+      const enrollmentTable = targetTrimester
+        ? `registrations_${targetTrimester.toLowerCase()}`
+        : await this.periodService.getEnrollmentTrimesterTable();
 
-      this.logger.info(`📝 Creating registration in table: ${enrollmentTable}`);
+      this.logger.info(
+        `📝 Creating registration in table: ${enrollmentTable}${targetTrimester ? ` (admin-specified: ${targetTrimester})` : ''}`
+      );
 
       // Generate UUID if not provided
       const registrationId = registrationData.id || this.generateUUID();

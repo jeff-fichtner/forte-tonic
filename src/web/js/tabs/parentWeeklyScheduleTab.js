@@ -39,9 +39,9 @@ export class ParentWeeklyScheduleTab extends BaseTab {
 
   /**
    * Fetch weekly schedule data for parent's children
-   * Returns registrations for parent + associated students + instructors + classes
-   * @param {Object} sessionInfo - User session
-   * @returns {Promise<Object>} Weekly schedule data
+   * Returns registrations for BOTH current and next trimester
+   * @param {object} sessionInfo - User session
+   * @returns {Promise<object>} Weekly schedule data for both trimesters
    */
   async fetchData(sessionInfo) {
     const parentId = sessionInfo?.user?.parent?.id;
@@ -49,10 +49,41 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       throw new Error('No parent ID found in session');
     }
 
-    // Get selected trimester from parent selector
-    const trimesterSelector = document.getElementById('parent-trimester-selector');
-    const trimester = trimesterSelector?.value || 'fall';
+    // Get current and next trimester info from UserSession
+    const currentPeriod = window.UserSession?.getCurrentPeriod();
+    const nextPeriod = window.UserSession?.getNextPeriod();
 
+    if (!currentPeriod || !nextPeriod) {
+      throw new Error('Period information not available');
+    }
+
+    // Fetch data for both trimesters in parallel
+    const [currentData, nextData] = await Promise.all([
+      this.#fetchTrimesterData(parentId, currentPeriod.trimester),
+      this.#fetchTrimesterData(parentId, nextPeriod.trimester),
+    ]);
+
+    return {
+      currentTrimester: {
+        name: currentPeriod.trimester,
+        data: currentData,
+      },
+      nextTrimester: {
+        name: nextPeriod.trimester,
+        data: nextData,
+      },
+      // Merge students, instructors, classes from both trimesters (deduplicated)
+      students: this.#mergeUnique([...currentData.students, ...nextData.students], 'id'),
+      instructors: this.#mergeUnique([...currentData.instructors, ...nextData.instructors], 'id'),
+      classes: this.#mergeUnique([...currentData.classes, ...nextData.classes], 'id'),
+    };
+  }
+
+  /**
+   * Fetch data for a specific trimester
+   * @private
+   */
+  async #fetchTrimesterData(parentId, trimester) {
     const response = await fetch(
       `/api/parent/tabs/weekly-schedule/${trimester}?parentId=${parentId}`,
       {
@@ -64,7 +95,8 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const result = await response.json();
+    const data = result.data || result;
 
     // Validate response
     if (!data.registrations || !data.students || !data.instructors || !data.classes) {
@@ -75,7 +107,23 @@ export class ParentWeeklyScheduleTab extends BaseTab {
   }
 
   /**
-   * Render the weekly schedule tables (one per student + wait list)
+   * Merge arrays and remove duplicates by ID
+   * @private
+   */
+  #mergeUnique(array, idField) {
+    const seen = new Set();
+    return array.filter(item => {
+      const id = item[idField]?.value || item[idField];
+      if (seen.has(id)) {
+        return false;
+      }
+      seen.add(id);
+      return true;
+    });
+  }
+
+  /**
+   * Render the weekly schedule tables (one per student + wait list) for BOTH trimesters
    */
   async render() {
     const container = this.getContainer();
@@ -93,21 +141,70 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     this.studentTables.clear();
     this.waitListTable = null;
 
+    // Render Current Trimester Section
+    this.#renderTrimesterSection(scheduleContainer, this.data.currentTrimester, 'current');
+
+    // Render Next Trimester Section
+    this.#renderTrimesterSection(scheduleContainer, this.data.nextTrimester, 'next');
+  }
+
+  /**
+   * Render a section for a specific trimester
+   * @private
+   */
+  #renderTrimesterSection(container, trimesterInfo, sectionType) {
+    const { name: trimesterName, data: trimesterData } = trimesterInfo;
+    const registrations = trimesterData.registrations;
+
+    // Create trimester header
+    const trimesterHeader = document.createElement('h4');
+    const capitalizedName = trimesterName.charAt(0).toUpperCase() + trimesterName.slice(1);
+    trimesterHeader.textContent = `${capitalizedName} Trimester Schedule`;
+    trimesterHeader.style.cssText =
+      'color: #1565c0; margin-top: 30px; margin-bottom: 20px; font-weight: bold; border-bottom: 2px solid #1565c0; padding-bottom: 10px;';
+    container.appendChild(trimesterHeader);
+
+    // Get Rock Band class IDs from this trimester's data
+    const rockBandClassIds = trimesterData.classes
+      .filter(c => c.title && c.title.toLowerCase().includes('rock band'))
+      .map(c => c.id?.value || c.id);
+
     // Separate regular registrations from wait list (Rock Band)
-    const rockBandClassIds = this.#getRockBandClassIds();
-    const regularRegistrations = this.data.registrations.filter(
+    const regularRegistrations = registrations.filter(
       reg => !rockBandClassIds.includes(reg.classId?.value || reg.classId)
     );
-    const waitListRegistrations = this.data.registrations.filter(reg =>
+    const waitListRegistrations = registrations.filter(reg =>
       rockBandClassIds.includes(reg.classId?.value || reg.classId)
     );
 
-    // Render regular schedule section
-    this.#renderScheduleSection(scheduleContainer, regularRegistrations);
+    // Temporarily override this.data.registrations, students, instructors for rendering
+    // This allows the existing helper methods (findStudent, findInstructor) to work correctly
+    const savedData = {
+      registrations: this.data.registrations,
+      students: this.data.students,
+      instructors: this.data.instructors,
+      classes: this.data.classes,
+    };
 
-    // Render wait list section if there are wait list registrations
-    if (waitListRegistrations.length > 0) {
-      this.#renderWaitListSection(scheduleContainer, waitListRegistrations);
+    this.data.registrations = trimesterData.registrations;
+    this.data.students = trimesterData.students;
+    this.data.instructors = trimesterData.instructors;
+    this.data.classes = trimesterData.classes;
+
+    try {
+      // Render regular schedule section
+      this.#renderScheduleSection(container, regularRegistrations, trimesterName, sectionType);
+
+      // Render wait list section if there are wait list registrations
+      if (waitListRegistrations.length > 0) {
+        this.#renderWaitListSection(container, waitListRegistrations, trimesterName, sectionType);
+      }
+    } finally {
+      // Restore original data
+      this.data.registrations = savedData.registrations;
+      this.data.students = savedData.students;
+      this.data.instructors = savedData.instructors;
+      this.data.classes = savedData.classes;
     }
   }
 
@@ -115,23 +212,24 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Render the main schedule section (one table per student)
    * @private
    */
-  #renderScheduleSection(container, registrations) {
+  #renderScheduleSection(container, registrations, trimesterName, sectionType) {
     // Show 'no matching registrations' message if no registrations
     if (registrations.length === 0) {
       const noRegistrationsMessage = document.createElement('div');
-      noRegistrationsMessage.className = 'card-panel orange lighten-4';
-      noRegistrationsMessage.style.cssText = 'text-align: center; padding: 30px; margin: 20px 0;';
+      noRegistrationsMessage.className = 'card-panel grey lighten-3';
+      noRegistrationsMessage.style.cssText = 'text-align: center; padding: 20px; margin: 20px 0;';
+      const capitalizedName = trimesterName.charAt(0).toUpperCase() + trimesterName.slice(1);
       noRegistrationsMessage.innerHTML = `
-        <h5 style="color: #e65100; margin-bottom: 10px;">No Scheduled Lessons</h5>
-        <p style="color: #bf360c; font-size: 16px; margin: 0;">
-          Your children currently have no scheduled lessons for this trimester.
+        <p style="color: #616161; font-size: 14px; margin: 0;">
+          No scheduled lessons for ${capitalizedName} trimester
         </p>
       `;
       container.appendChild(noRegistrationsMessage);
       return;
     }
 
-    // Get parent's students who have registrations
+    // Get parent's students from this trimester's data who have registrations
+    // Using this.data.students because we've temporarily swapped it to trimester-specific data
     const studentsWithRegistrations = this.data.students.filter(student => {
       const studentId = student.id?.value || student.id;
       return registrations.some(reg => {
@@ -162,8 +260,8 @@ export class ParentWeeklyScheduleTab extends BaseTab {
         'color: #2b68a4; margin-bottom: 15px; margin-top: 20px; font-weight: bold;';
       studentContainer.appendChild(studentHeader);
 
-      // Create table element
-      const tableId = `parent-weekly-schedule-table-${studentId}`;
+      // Create table element with trimester-specific ID
+      const tableId = `parent-weekly-schedule-table-${sectionType}-${studentId}`;
       const tableElement = document.createElement('table');
       tableElement.id = tableId;
       studentContainer.appendChild(tableElement);
@@ -179,7 +277,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
 
       // Build the table for this student
       const table = this.#buildWeeklyScheduleTable(tableId, sortedRegistrations);
-      this.studentTables.set(studentId, table);
+      this.studentTables.set(`${sectionType}-${studentId}`, table);
     });
   }
 
@@ -187,7 +285,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Render the wait list section (Rock Band registrations)
    * @private
    */
-  #renderWaitListSection(container, waitListRegistrations) {
+  #renderWaitListSection(container, waitListRegistrations, trimesterName, sectionType) {
     // Create wait list header
     const waitListHeader = document.createElement('h5');
     waitListHeader.textContent = 'Rock Band Wait List';
@@ -195,13 +293,14 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       'color: #2b68a4; margin-bottom: 15px; margin-top: 30px; font-weight: bold;';
     container.appendChild(waitListHeader);
 
-    // Create table element
+    // Create table element with trimester-specific ID
+    const tableId = `parent-wait-list-table-${sectionType}`;
     const tableElement = document.createElement('table');
-    tableElement.id = 'parent-wait-list-table';
+    tableElement.id = tableId;
     container.appendChild(tableElement);
 
     // Build the wait list table
-    this.waitListTable = this.#buildWaitListTable('parent-wait-list-table', waitListRegistrations);
+    this.waitListTable = this.#buildWaitListTable(tableId, waitListRegistrations);
   }
 
   /**
@@ -392,16 +491,6 @@ export class ParentWeeklyScheduleTab extends BaseTab {
         M.toast({ html: 'No instructor email available.' });
       }
     }
-  }
-
-  /**
-   * Get Rock Band class IDs
-   * @private
-   */
-  #getRockBandClassIds() {
-    return this.data.classes
-      .filter(c => c.title && c.title.toLowerCase().includes('rock band'))
-      .map(c => c.id?.value || c.id);
   }
 
   /**

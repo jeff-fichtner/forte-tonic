@@ -39,13 +39,14 @@ export class AdminMasterScheduleTab extends BaseTab {
   /**
    * Fetch master schedule data for admin
    * Returns registrations for trimester + students + instructors + classes
-   * @param {Object} sessionInfo - User session
-   * @returns {Promise<Object>} Master schedule data
+   * @param {object} sessionInfo - User session
+   * @returns {Promise<object>} Master schedule data
    */
   async fetchData(sessionInfo) {
-    // Get selected trimester from admin selector
-    const trimesterSelector = document.getElementById('admin-trimester-selector');
-    const trimester = trimesterSelector?.value || 'fall';
+    // Get selected trimester from admin selector buttons
+    const trimesterButtons = document.getElementById('admin-trimester-buttons');
+    const activeButton = trimesterButtons?.querySelector('.trimester-btn.active');
+    const trimester = activeButton?.dataset.trimester || 'fall';
 
     const response = await fetch(`/api/admin/tabs/master-schedule/${trimester}`, {
       signal: this.getAbortSignal(),
@@ -55,10 +56,14 @@ export class AdminMasterScheduleTab extends BaseTab {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const result = await response.json();
+
+    // Unwrap the data from { success: true, data: {...} } envelope
+    const data = result.data || result;
 
     // Validate response
     if (!data.registrations || !data.students || !data.instructors || !data.classes) {
+      console.error('Invalid API response:', result);
       throw new Error('Invalid response: missing required data');
     }
 
@@ -663,12 +668,34 @@ export class AdminMasterScheduleTab extends BaseTab {
       await window.viewModel.requestDeleteRegistrationAsync(registrationId);
 
       // Reload the tab to show updated data
-      await this.onLoad(this.sessionInfo);
+      await this.reload();
     } else {
       console.error('Delete registration method not available');
       if (typeof M !== 'undefined') {
         M.toast({ html: 'Unable to delete registration. Please refresh and try again.' });
       }
+    }
+  }
+
+  /**
+   * Attach event listeners for trimester selector
+   */
+  attachEventListeners() {
+    const trimesterButtons = document.getElementById('admin-trimester-buttons');
+    if (trimesterButtons) {
+      this.addEventListener(trimesterButtons, 'click', async event => {
+        const button = event.target.closest('.trimester-btn');
+        if (button) {
+          // Update active button state
+          trimesterButtons.querySelectorAll('.trimester-btn').forEach(btn => {
+            btn.classList.remove('active');
+          });
+          button.classList.add('active');
+
+          // Reload tab with new trimester
+          await this.reload();
+        }
+      });
     }
   }
 
