@@ -484,7 +484,7 @@ export class Instructor {
    * Converts the instructor to a plain object for API responses
    * @returns {object} Plain object representation
    */
-  toJSON() {
+  toDataObject() {
     return {
       id: this.id,
       email: this.email,
@@ -508,5 +508,9 @@ export class Instructor {
       availableDays: this.availableDays,
       gradeRange: this.gradeRange,
     };
+  }
+
+  toJSON() {
+    return this.toDataObject();
   }
 }

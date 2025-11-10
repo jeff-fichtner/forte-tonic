@@ -22,8 +22,8 @@ export class InstructorDirectoryTab extends BaseTab {
 
   /**
    * Fetch directory data (admins + instructors only)
-   * @param {Object} sessionInfo - User session
-   * @returns {Promise<Object>} Directory data
+   * @param {object} sessionInfo - User session
+   * @returns {Promise<object>} Directory data
    */
   async fetchData(sessionInfo) {
     const response = await fetch('/api/instructor/tabs/directory', {
@@ -34,7 +34,10 @@ export class InstructorDirectoryTab extends BaseTab {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const result = await response.json();
+
+    // Unwrap the data from { success: true, data: {...} } envelope
+    const data = result.data || result;
 
     // Validate response
     if (!data.admins || !data.instructors) {

@@ -27,8 +27,8 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
   /**
    * Fetch weekly schedule data for instructor
    * Returns registrations for this instructor + associated students + classes
-   * @param {Object} sessionInfo - User session
-   * @returns {Promise<Object>} Weekly schedule data
+   * @param {object} sessionInfo - User session
+   * @returns {Promise<object>} Weekly schedule data
    */
   async fetchData(sessionInfo) {
     const instructorId = sessionInfo?.user?.instructor?.id;
@@ -47,7 +47,10 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const result = await response.json();
+
+    // Unwrap the data from { success: true, data: {...} } envelope
+    const data = result.data || result;
 
     // Validate response
     if (!data.registrations || !data.students || !data.instructors || !data.classes) {

@@ -308,7 +308,8 @@ describe('RegistrationController Integration Tests', () => {
       expect(response.body.data).toBeDefined();
       expect(mockRegistrationApplicationService.processRegistration).toHaveBeenCalledWith(
         validRegistrationData,
-        expect.any(String)
+        expect.any(String),
+        { isAdmin: false }
       );
     });
 
@@ -417,7 +418,8 @@ describe('RegistrationController Integration Tests', () => {
       expect(mockPeriodService.canAccessNextTrimester).toHaveBeenCalledWith(true);
       expect(mockRegistrationApplicationService.processRegistration).toHaveBeenCalledWith(
         expect.objectContaining(validNextTrimesterData),
-        expect.any(String)
+        expect.any(String),
+        { isAdmin: false }
       );
     });
 
@@ -477,7 +479,8 @@ describe('RegistrationController Integration Tests', () => {
         expect.objectContaining({
           linkedPreviousRegistrationId: 'OLD-REG-ID',
         }),
-        expect.any(String)
+        expect.any(String),
+        { isAdmin: false }
       );
     });
   });

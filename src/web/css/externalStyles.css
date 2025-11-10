@@ -44731,3 +44731,25 @@ noscript {
 .registration-row-waitlist {
   background-color: #fff0f0 !important; /* Super light red for wait list */
 }
+
+/* Trimester selector buttons */
+.trimester-btn {
+  padding: 8px 20px;
+  margin: 0 5px;
+  border: 2px solid #2b68a4;
+  background-color: white;
+  color: #2b68a4;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.trimester-btn:hover {
+  background-color: #f0f7fb;
+}
+
+.trimester-btn.active {
+  background-color: #2b68a4;
+  color: white;
+}

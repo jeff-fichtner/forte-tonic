@@ -153,10 +153,14 @@ export class RegistrationController {
       // Use the registration application service for business logic
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
 
+      // Check if user is an admin (admins can bypass capacity restrictions)
+      const isAdmin = req.currentUser?.admin !== undefined;
+
       // Process registration through application service with authenticated user
       const result = await registrationApplicationService.processRegistration(
         requestData,
-        authenticatedUserEmail
+        authenticatedUserEmail,
+        { isAdmin }
       );
 
       successResponse(res, result.registration, {
@@ -368,9 +372,11 @@ export class RegistrationController {
       };
 
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
+      const isAdmin = req.currentUser?.admin !== undefined;
       const result = await registrationApplicationService.processRegistration(
         registrationData,
-        authenticatedUserEmail
+        authenticatedUserEmail,
+        { isAdmin }
       );
 
       successResponse(res, result.registration, {
@@ -670,7 +676,8 @@ export class RegistrationController {
       // This ensures the same validation rules apply as regular registration creation
       const result = await registrationApplicationService.processRegistration(
         requestData,
-        authenticatedUserEmail
+        authenticatedUserEmail,
+        { isAdmin }
       );
 
       logger.info(
@@ -943,7 +950,7 @@ export class RegistrationController {
 
       const responseData = {
         registrations: waitListRegistrations,
-        students: relevantStudents,
+        students: relevantStudents.map(s => s.toDataObject()),
       };
 
       successResponse(res, responseData, {
@@ -1022,8 +1029,8 @@ export class RegistrationController {
 
       const responseData = {
         registrations: instructorRegistrations,
-        students: relevantStudents,
-        instructors: instructors, // Needed for table rendering
+        students: relevantStudents.map(s => s.toDataObject()),
+        instructors: instructors.map(i => i.toDataObject()), // Needed for table rendering
         classes: classes, // Needed for group class titles
       };
 
@@ -1114,8 +1121,8 @@ export class RegistrationController {
 
       const responseData = {
         registrations: parentRegistrations,
-        students: parentStudents,
-        instructors: relevantInstructors,
+        students: parentStudents.map(s => s.toDataObject()),
+        instructors: relevantInstructors.map(i => i.toDataObject()),
         classes: classes,
       };
 
@@ -1161,8 +1168,8 @@ export class RegistrationController {
 
       const responseData = {
         registrations: registrations,
-        students: students,
-        instructors: instructors,
+        students: students.map(s => s.toDataObject()),
+        instructors: instructors.map(i => i.toDataObject()),
         classes: classes,
       };
 
@@ -1231,8 +1238,8 @@ export class RegistrationController {
       });
 
       const responseData = {
-        instructors: instructors,
-        students: parentStudents, // Only parent's children
+        instructors: instructors.map(i => i.toDataObject()),
+        students: parentStudents.map(s => s.toDataObject()), // Only parent's children
         classes: classes,
         nextTrimesterRegistrations: nextTrimesterRegs,
         currentTrimesterRegistrations: currentTrimesterRegs,
@@ -1259,7 +1266,7 @@ export class RegistrationController {
    * Returns all instructors, students, classes, and registrations for selected trimester
    * No scoping - admins need full dataset for registration management
    *
-   * @route GET /api/admin/tabs/registration?trimester=fall
+   * Route: GET /api/admin/tabs/registration?trimester=fall
    */
   static async getAdminRegistrationTabData(req, res) {
     const startTime = Date.now();
@@ -1291,8 +1298,8 @@ export class RegistrationController {
       ]);
 
       const responseData = {
-        instructors: instructors,
-        students: students,
+        instructors: instructors.map(i => i.toDataObject()),
+        students: students.map(s => s.toDataObject()),
         classes: classes,
         registrations: registrations,
       };

@@ -293,6 +293,14 @@ async function initializeApplication() {
     window.tabController = tabController;
     console.log('✓ TabController initialized with 8 registered tabs');
 
+    // Now that TabController is ready, auto-click the default section if specified
+    if (viewModel.roleToClick) {
+      const navLink = document.querySelector(`a[data-section="${viewModel.roleToClick}"]`);
+      if (navLink) {
+        navLink.click();
+      }
+    }
+
     // Expose maintenance mode override function globally
     // Usage: window.overrideMaintenanceMode() in browser console
     window.overrideMaintenanceMode = function () {

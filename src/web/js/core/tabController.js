@@ -16,8 +16,8 @@
 
 export class TabController {
   /**
-   * @param {Object} sessionInfo - User session information
-   * @param {Object} sessionInfo.user - Current user (admin/instructor/parent)
+   * @param {object} sessionInfo - User session information
+   * @param {object} sessionInfo.user - Current user (admin/instructor/parent)
    * @param {string} sessionInfo.userType - 'admin' | 'instructor' | 'parent'
    */
   constructor(sessionInfo = null) {
@@ -52,7 +52,7 @@ export class TabController {
 
   /**
    * Update session information (e.g., after login/logout)
-   * @param {Object|null} sessionInfo - New session info or null to clear
+   * @param {object | null} sessionInfo - New session info or null to clear
    */
   updateSession(sessionInfo) {
     this.sessionInfo = sessionInfo;
@@ -120,7 +120,7 @@ export class TabController {
    * Activate a tab (load its data and render)
    *
    * @param {string} tabId - Tab to activate
-   * @param {Object} options - Activation options
+   * @param {object} options - Activation options
    * @param {boolean} options.forceReload - Force reload even if already active
    * @returns {Promise<void>}
    * @throws {Error} If tab is not registered

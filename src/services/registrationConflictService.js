@@ -10,9 +10,12 @@ export class RegistrationConflictService {
    * Checks for registration conflicts
    * @param {object} newRegistration - New registration data
    * @param {Array} existingRegistrations - Existing registrations
+   * @param {object} options - Additional options
+   * @param {boolean} options.skipCapacityCheck - Skip capacity validation (for admins)
    * @returns {object} Conflict check result
    */
-  static async checkConflicts(newRegistration, existingRegistrations) {
+  static async checkConflicts(newRegistration, existingRegistrations, options = {}) {
+    const { skipCapacityCheck = false } = options;
     const conflicts = [];
 
     // Check for duplicate registration
@@ -29,7 +32,8 @@ export class RegistrationConflictService {
     }
 
     // Check for capacity conflicts (group classes only)
-    if (newRegistration.registrationType === RegistrationType.GROUP) {
+    // Admins can bypass capacity restrictions
+    if (newRegistration.registrationType === RegistrationType.GROUP && !skipCapacityCheck) {
       const capacityConflict = this.checkClassCapacity(newRegistration, existingRegistrations);
       if (capacityConflict) conflicts.push(capacityConflict);
     }

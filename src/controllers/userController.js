@@ -599,10 +599,9 @@ export class UserController {
       // Transform data for frontend
       const transformedAdmins = UserTransformService.transformArray(admins, 'admin');
 
-      // Instructors are already transformed by Instructor.fromDatabaseRow
       const responseData = {
         admins: transformedAdmins,
-        instructors: instructors,
+        instructors: instructors.map(i => i.toDataObject()),
       };
 
       successResponse(res, responseData, {
@@ -682,7 +681,7 @@ export class UserController {
 
       const responseData = {
         admins: transformedAdmins,
-        instructors: relevantInstructors,
+        instructors: relevantInstructors.map(i => i.toDataObject()),
       };
 
       successResponse(res, responseData, {

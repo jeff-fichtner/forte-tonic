@@ -64,8 +64,8 @@ export class BaseTab {
    * Called when tab becomes active
    * Orchestrates the tab loading sequence
    *
-   * @param {Object} sessionInfo - User session information
-   * @param {Object} sessionInfo.user - Current user object
+   * @param {object} sessionInfo - User session information
+   * @param {object} sessionInfo.user - Current user object
    * @param {string} sessionInfo.userType - 'admin' | 'instructor' | 'parent'
    * @returns {Promise<void>}
    */
@@ -140,8 +140,8 @@ export class BaseTab {
    * Fetch tab-specific data from API
    * MUST be implemented by subclasses
    *
-   * @param {Object} sessionInfo - User session information
-   * @returns {Promise<Object>} Tab data
+   * @param {object} sessionInfo - User session information
+   * @returns {Promise<object>} Tab data
    * @throws {Error} If not implemented
    */
   async fetchData(sessionInfo) {
@@ -190,7 +190,7 @@ export class BaseTab {
    * @param {Element} element - DOM element
    * @param {string} event - Event name
    * @param {Function} handler - Event handler
-   * @param {Object} options - Event listener options
+   * @param {object} options - Event listener options
    */
   addEventListener(element, event, handler, options = {}) {
     element.addEventListener(event, handler, options);
@@ -212,7 +212,7 @@ export class BaseTab {
    * Called when session changes (e.g., user switches role)
    * Override in subclasses if tab needs to react to session changes
    *
-   * @param {Object} sessionInfo - New session information
+   * @param {object} sessionInfo - New session information
    * @returns {void}
    */
   onSessionChange(sessionInfo) {
@@ -318,8 +318,8 @@ export class BaseTab {
   /**
    * Find a student by ID from the tab's data
    * @protected
-   * @param {string|Object} studentId - Student ID (string or object with .value)
-   * @returns {Object|undefined} Student object or undefined if not found
+   * @param {string | object} studentId - Student ID (string or object with .value)
+   * @returns {object | undefined} Student object or undefined if not found
    */
   findStudent(studentId) {
     if (!this.data?.students) return undefined;
@@ -334,8 +334,8 @@ export class BaseTab {
   /**
    * Find an instructor by ID from the tab's data
    * @protected
-   * @param {string|Object} instructorId - Instructor ID (string or object with .value)
-   * @returns {Object|undefined} Instructor object or undefined if not found
+   * @param {string | object} instructorId - Instructor ID (string or object with .value)
+   * @returns {object | undefined} Instructor object or undefined if not found
    */
   findInstructor(instructorId) {
     if (!this.data?.instructors) return undefined;

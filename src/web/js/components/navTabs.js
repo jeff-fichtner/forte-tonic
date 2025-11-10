@@ -1,4 +1,5 @@
 import { PeriodType } from '../constants/periodTypeConstants.js';
+import { UserType } from '../constants/userTypeConstants.js';
 
 /**
  *
@@ -50,10 +51,10 @@ export class NavTabs {
             ? {
                 user: window.viewModel.currentUser,
                 userType: window.viewModel.currentUser.admin
-                  ? 'admin'
+                  ? UserType.ADMIN
                   : window.viewModel.currentUser.instructor
-                    ? 'instructor'
-                    : 'parent',
+                    ? UserType.INSTRUCTOR
+                    : UserType.PARENT,
               }
             : null;
 
@@ -90,7 +91,7 @@ export class NavTabs {
       // CRITICAL: Trimester selector is ADMIN-ONLY - never show to parents or instructors
       const trimesterSelector = document.getElementById('admin-trimester-selector-container');
       if (trimesterSelector) {
-        const isAdmin = window.viewModel?.currentUser?.admin !== undefined;
+        const isAdmin = !!window.viewModel?.currentUser?.admin;
 
         const adminTrimesterTabs = [
           '#admin-master-schedule',
@@ -111,7 +112,7 @@ export class NavTabs {
       return;
     }
     links.forEach(link => {
-      link.addEventListener('click', event => {
+      link.addEventListener('click', async event => {
         event.preventDefault();
         const dataSection = link.getAttribute('data-section');
 
@@ -121,8 +122,11 @@ export class NavTabs {
         // Show/hide tabs based on selected section
         this.#showTabsForSection(dataSection);
 
+        // Initialize section-specific UI (trimester selector for admin)
+        this.#initializeSectionUI(dataSection);
+
         // Auto-click the first tab within this section to show content
-        this.#activateFirstTabInSection(dataSection);
+        await this.#activateFirstTabInSection(dataSection);
 
         // Force layout reflow and scroll reset to fix rendering issues
         this.#forceLayoutRefresh(dataSection);
@@ -310,10 +314,38 @@ export class NavTabs {
   }
 
   /**
+   * Initialize section-specific UI components
+   * @param {string} section - The section that was selected ('admin', 'instructor', 'parent')
+   */
+  #initializeSectionUI(section) {
+    if (section === 'admin') {
+      const isAdmin = !!window.viewModel?.currentUser?.admin;
+      const trimesterSelector = document.getElementById('admin-trimester-selector-container');
+
+      if (trimesterSelector && isAdmin) {
+        trimesterSelector.hidden = false;
+
+        // Initialize Fall button as active if no button is currently active
+        const trimesterButtons = document.getElementById('admin-trimester-buttons');
+        if (trimesterButtons) {
+          const activeButton = trimesterButtons.querySelector('.trimester-btn.active');
+
+          if (!activeButton) {
+            const fallButton = trimesterButtons.querySelector('[data-trimester="fall"]');
+            if (fallButton) {
+              fallButton.classList.add('active');
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
    * Activate the first tab within a section when access is granted
    * @param {string} section - The section that was accessed
    */
-  #activateFirstTabInSection(section) {
+  async #activateFirstTabInSection(section) {
     // Define mapping of sections to their first tab
     const sectionFirstTabs = {
       admin: '#admin-master-schedule',
@@ -322,8 +354,10 @@ export class NavTabs {
     };
 
     const firstTabHref = sectionFirstTabs[section];
+
     if (firstTabHref) {
       const firstTabLink = document.querySelector(`a[href="${firstTabHref}"]`);
+
       if (firstTabLink) {
         // Check if the tab link is visible
         const tabParent = firstTabLink.closest('.tab');
@@ -342,20 +376,23 @@ export class NavTabs {
 
         // Show the target tab content
         const targetContent = document.querySelector(firstTabHref);
+
         if (targetContent) {
           targetContent.hidden = false;
 
           // Phase 2: Try to activate via TabController if registered
           const tabId = targetContent.id;
-          if (window.tabController && window.tabController.isTabRegistered(tabId)) {
+          const isRegistered = window.tabController && window.tabController.isTabRegistered(tabId);
+
+          if (isRegistered) {
             const sessionInfo = window.viewModel?.currentUser
               ? {
                   user: window.viewModel.currentUser,
                   userType: window.viewModel.currentUser.admin
-                    ? 'admin'
+                    ? UserType.ADMIN
                     : window.viewModel.currentUser.instructor
-                      ? 'instructor'
-                      : 'parent',
+                      ? UserType.INSTRUCTOR
+                      : UserType.PARENT,
                 }
               : null;
 
@@ -363,44 +400,63 @@ export class NavTabs {
               window.tabController.updateSession(sessionInfo);
             }
 
-            window.tabController.activateTab(tabId).catch(error => {
-              console.error(`Error activating first tab ${tabId}:`, error);
+            // Add active class to the tab link BEFORE activating
+            const allTabLinks = document.querySelectorAll('.tabs .tab a');
+            allTabLinks.forEach(link => {
+              link.classList.remove('active');
             });
+            firstTabLink.classList.add('active');
+
+            // Activate the tab via TabController (await to ensure it completes)
+            try {
+              await window.tabController.activateTab(tabId);
+            } catch (error) {
+              console.error(`Error activating first tab ${tabId}:`, error);
+            }
+
+            // Update Materialize tabs indicator without triggering click
+            const tabsContainer = document.querySelector('.tabs');
+            if (tabsContainer && window.M && window.M.Tabs) {
+              const tabsInstance = window.M.Tabs.getInstance(tabsContainer);
+              if (tabsInstance) {
+                // Update the indicator to the correct tab
+                const tabIdForMaterialize = firstTabLink.getAttribute('href').substring(1);
+                tabsInstance.select(tabIdForMaterialize);
+              }
+            }
+
+            // Force table visibility for admin tabs
+            if (section === 'admin') {
+              setTimeout(() => {
+                const table = document.getElementById('master-schedule-table');
+                if (table && table.hidden) {
+                  table.hidden = false;
+                }
+              }, 50);
+            }
+          } else {
+            // Fallback for non-TabController tabs: just click
+            // Add active class to the clicked tab link
+            const allTabLinks = document.querySelectorAll('.tabs .tab a');
+            allTabLinks.forEach(link => {
+              link.classList.remove('active');
+            });
+            firstTabLink.classList.add('active');
+
+            // Simulate the click for Materialize's indicator
+            firstTabLink.click();
+
+            // Ensure table is visible after tab click for admin tabs
+            if (section === 'admin') {
+              setTimeout(() => {
+                const table = document.getElementById('master-schedule-table');
+                if (table && table.hidden) {
+                  table.hidden = false;
+                }
+              }, 50);
+            }
           }
         }
-
-        // Add active class to the clicked tab link
-        const allTabLinks = document.querySelectorAll('.tabs .tab a');
-        allTabLinks.forEach(link => {
-          link.classList.remove('active');
-        });
-        firstTabLink.classList.add('active');
-
-        // Show/hide admin trimester selector based on section and first tab
-        // CRITICAL: Trimester selector is ADMIN-ONLY - never show to parents or instructors
-        const trimesterSelector = document.getElementById('admin-trimester-selector-container');
-        if (trimesterSelector) {
-          const isAdmin = window.viewModel?.currentUser?.admin !== undefined;
-
-          const adminTrimesterTabs = [
-            '#admin-master-schedule',
-            '#admin-wait-list',
-            '#admin-registration',
-          ];
-          const shouldShowTrimester = adminTrimesterTabs.includes(firstTabHref) && isAdmin;
-          trimesterSelector.hidden = !shouldShowTrimester;
-        }
-
-        // Simulate the click for Materialize's indicator
-        firstTabLink.click();
-
-        // Ensure table is visible after tab click
-        setTimeout(() => {
-          const table = document.getElementById('master-schedule-table');
-          if (table && section === 'admin' && table.hidden) {
-            table.hidden = false;
-          }
-        }, 50);
       } else {
         console.warn(`First tab link not found for section ${section}: ${firstTabHref}`);
       }

@@ -38,6 +38,9 @@ export default [
         confirm: 'readonly',
         Event: 'readonly',
         Node: 'readonly',
+        AbortController: 'readonly',
+        AbortSignal: 'readonly',
+        HTMLElement: 'readonly',
         // Materialize CSS
         M: 'readonly',
         // Application globals
@@ -69,8 +72,8 @@ export default [
       'jsdoc/require-returns-description': 'off',
       'jsdoc/check-alignment': 'error',
       'jsdoc/check-param-names': 'error',
-      'jsdoc/check-tag-names': 'error',
-      'jsdoc/check-types': 'error',
+      'jsdoc/check-tag-names': ['error', { definedTags: ['jest-environment'] }],
+      'jsdoc/check-types': 'off', // Too strict - complains about "object" vs "{[key: string]: string}"
       'jsdoc/require-jsdoc': 'off', // Too strict for now
     },
   },
