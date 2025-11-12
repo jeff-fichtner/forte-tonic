@@ -91,7 +91,14 @@ export class AdminWaitListTab extends BaseTab {
     // Get selected trimester from admin selector buttons
     const trimesterButtons = document.getElementById('admin-trimester-buttons');
     const activeButton = trimesterButtons?.querySelector('.trimester-btn.active');
-    const trimester = activeButton?.dataset.trimester || 'fall';
+
+    // During non-enrollment periods, trimester buttons are hidden, so use current period
+    const currentPeriod = window.UserSession?.getCurrentPeriod();
+    const trimester = activeButton?.dataset.trimester || currentPeriod?.trimester;
+
+    if (!trimester) {
+      throw new Error('Could not determine trimester: no button selected and no current period');
+    }
 
     const response = await fetch(`/api/admin/tabs/wait-list/${trimester}`, {
       signal: this.getAbortSignal(),

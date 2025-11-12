@@ -131,9 +131,9 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
             return timeA.localeCompare(timeB);
           }
 
-          // Then sort by length (duration)
-          const lengthA = a.length || a.duration || 0;
-          const lengthB = b.length || b.duration || 0;
+          // Then sort by length
+          const lengthA = a.length || 0;
+          const lengthB = b.length || 0;
           if (lengthA !== lengthB) {
             return lengthA - lengthB;
           }
@@ -202,7 +202,7 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
     // Determine instrument/class name
     const instrumentOrClass =
       enrollment.registrationType === RegistrationType.GROUP
-        ? enrollment.classTitle || enrollment.className || 'N/A'
+        ? enrollment.classTitle || 'N/A'
         : enrollment.instrument || 'N/A';
 
     return `

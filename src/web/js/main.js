@@ -68,8 +68,6 @@ const AccessCodeManager = {
       // Store encrypted/encoded data
       const encodedData = btoa(JSON.stringify(secureData)); // Base64 encode for basic obfuscation
       sessionStorage.setItem('forte_auth_session', encodedData);
-
-      console.log('Access code saved securely in session storage');
     } catch (error) {
       console.error('Failed to save access code securely:', error);
       // Fallback to memory storage if sessionStorage fails
@@ -180,7 +178,6 @@ const AccessCodeManager = {
     try {
       sessionStorage.removeItem('forte_auth_session');
       this._accessCodeCache = null;
-      console.log('Stored access code cleared');
       return true;
     } catch (error) {
       console.error('Failed to clear stored access code:', error);
@@ -213,7 +210,6 @@ const UserSession = {
 
   clearAppConfig() {
     this.appConfig = null;
-    console.log('App configuration cleared from user session');
   },
 
   /**
@@ -229,7 +225,6 @@ const UserSession = {
    */
   acceptTermsOfService() {
     localStorage.setItem('hasAcceptedTermsOfService', 'true');
-    console.log('Terms of Service acceptance stored');
   },
 
   /**
@@ -237,7 +232,6 @@ const UserSession = {
    */
   unacceptTermsOfService() {
     localStorage.removeItem('hasAcceptedTermsOfService');
-    console.log('Terms of Service acceptance cleared');
   },
 };
 
@@ -246,7 +240,16 @@ const UserSession = {
  */
 async function initializeApplication() {
   try {
-    console.log('Initializing Tonic application...');
+    // Log version information
+    try {
+      const versionResponse = await fetch('/api/version');
+      const versionInfo = await versionResponse.json();
+      console.log(
+        `Tonic v${versionInfo.number} (${versionInfo.environment}) [${versionInfo.gitCommit.substring(0, 7)}]`
+      );
+    } catch (error) {
+      console.warn('Could not fetch version info:', error);
+    }
 
     // Make UserSession and AccessCodeManager available globally before ViewModel initialization
     window.UserSession = UserSession;
@@ -260,7 +263,6 @@ async function initializeApplication() {
     window.viewModel = viewModel;
 
     // Initialize TabController for tab-based architecture
-    console.log('Initializing TabController...');
     const tabController = new TabController();
     tabController.initialize();
 
@@ -291,7 +293,6 @@ async function initializeApplication() {
 
     // Make TabController available globally for NavTabs integration
     window.tabController = tabController;
-    console.log('✓ TabController initialized with 8 registered tabs');
 
     // Now that TabController is ready, auto-click the default section if specified
     if (viewModel.roleToClick) {
@@ -311,8 +312,6 @@ async function initializeApplication() {
         return false;
       }
     };
-
-    console.log('✓ Application initialized successfully');
   } catch (error) {
     console.error('✗ Error initializing application:', error);
 
@@ -394,10 +393,6 @@ Git Commit: ${versionInfo.gitCommit}
 
           alert(details);
         });
-
-        console.log(
-          `Version display initialized: ${versionInfo.number} (${versionInfo.gitCommit.substring(0, 7)})`
-        );
       }
     }
   } catch (error) {

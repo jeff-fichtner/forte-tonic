@@ -4,6 +4,8 @@ import { formatGrade, formatTime } from '../extensions/numberExtensions.js';
 import { RegistrationType } from '../constants.js';
 import { PeriodType } from '../constants/periodTypeConstants.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
+import { isEnrollmentPeriod } from '../utilities/periodHelpers.js';
+import { ClassManager } from '../utilities/classManager.js';
 
 // Intent labels (matching viewModel.js)
 const INTENT_LABELS = {
@@ -49,7 +51,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       throw new Error('No parent ID found in session');
     }
 
-    // Get current and next trimester info from UserSession
+    // Get period info from UserSession
     const currentPeriod = window.UserSession?.getCurrentPeriod();
     const nextPeriod = window.UserSession?.getNextPeriod();
 
@@ -57,26 +59,78 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       throw new Error('Period information not available');
     }
 
-    // Fetch data for both trimesters in parallel
-    const [currentData, nextData] = await Promise.all([
-      this.#fetchTrimesterData(parentId, currentPeriod.trimester),
-      this.#fetchTrimesterData(parentId, nextPeriod.trimester),
-    ]);
+    console.log('Parent weekly schedule fetching:', {
+      currentPeriod: currentPeriod.trimester,
+      currentPeriodType: currentPeriod.periodType,
+      nextPeriod: nextPeriod.trimester,
+      isEnrollment: isEnrollmentPeriod(currentPeriod),
+    });
 
-    return {
+    // Determine which trimesters to show
+    let firstTrimester, secondTrimester;
+    let showTwoTrimesters = false;
+
+    if (isEnrollmentPeriod(currentPeriod)) {
+      // During enrollment periods, show BOTH trimesters:
+      // 1. Current trimester (classes happening now)
+      // 2. Next trimester (what they're enrolling for)
+      firstTrimester = currentPeriod.trimester;
+      secondTrimester = nextPeriod.trimester;
+      showTwoTrimesters = true;
+
+      console.log(
+        `Enrollment period: showing current (${firstTrimester}) + next (${secondTrimester}) trimesters`
+      );
+    } else {
+      // Non-enrollment periods: show only current period's trimester
+      firstTrimester = currentPeriod.trimester;
+      showTwoTrimesters = false;
+
+      console.log(`Non-enrollment period: showing current trimester (${firstTrimester})`);
+    }
+
+    // Fetch data for the trimester(s)
+    const fetchPromises = [this.#fetchTrimesterData(parentId, firstTrimester)];
+    if (showTwoTrimesters) {
+      fetchPromises.push(this.#fetchTrimesterData(parentId, secondTrimester));
+    }
+
+    const results = await Promise.all(fetchPromises);
+    const firstData = results[0];
+    const secondData = results[1] || null;
+
+    console.log('Parent weekly schedule fetched:', {
+      firstTrimester,
+      firstRegistrations: firstData.registrations.length,
+      ...(showTwoTrimesters && {
+        secondTrimester,
+        secondRegistrations: secondData.registrations.length,
+      }),
+    });
+
+    const responseData = {
       currentTrimester: {
-        name: currentPeriod.trimester,
-        data: currentData,
+        name: firstTrimester,
+        data: firstData,
       },
-      nextTrimester: {
-        name: nextPeriod.trimester,
-        data: nextData,
-      },
-      // Merge students, instructors, classes from both trimesters (deduplicated)
-      students: this.#mergeUnique([...currentData.students, ...nextData.students], 'id'),
-      instructors: this.#mergeUnique([...currentData.instructors, ...nextData.instructors], 'id'),
-      classes: this.#mergeUnique([...currentData.classes, ...nextData.classes], 'id'),
+      showTwoTrimesters,
+      // Merge students, instructors, classes from all fetched trimesters (deduplicated)
+      students: this.#mergeUnique([...firstData.students, ...(secondData?.students || [])], 'id'),
+      instructors: this.#mergeUnique(
+        [...firstData.instructors, ...(secondData?.instructors || [])],
+        'id'
+      ),
+      classes: this.#mergeUnique([...firstData.classes, ...(secondData?.classes || [])], 'id'),
     };
+
+    if (showTwoTrimesters) {
+      responseData.nextTrimester = {
+        name: secondTrimester,
+        data: secondData,
+      };
+    }
+
+    return responseData;
   }
 
   /**
@@ -123,7 +177,8 @@ export class ParentWeeklyScheduleTab extends BaseTab {
   }
 
   /**
-   * Render the weekly schedule tables (one per student + wait list) for BOTH trimesters
+   * Render the weekly schedule tables
+   * Shows one or two trimesters depending on period type
    */
   async render() {
     const container = this.getContainer();
@@ -144,8 +199,10 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     // Render Current Trimester Section
     this.#renderTrimesterSection(scheduleContainer, this.data.currentTrimester, 'current');
 
-    // Render Next Trimester Section
-    this.#renderTrimesterSection(scheduleContainer, this.data.nextTrimester, 'next');
+    // Render Next Trimester Section (only during enrollment periods)
+    if (this.data.showTwoTrimesters && this.data.nextTrimester) {
+      this.#renderTrimesterSection(scheduleContainer, this.data.nextTrimester, 'next');
+    }
   }
 
   /**
@@ -164,10 +221,8 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       'color: #1565c0; margin-top: 30px; margin-bottom: 20px; font-weight: bold; border-bottom: 2px solid #1565c0; padding-bottom: 10px;';
     container.appendChild(trimesterHeader);
 
-    // Get Rock Band class IDs from this trimester's data
-    const rockBandClassIds = trimesterData.classes
-      .filter(c => c.title && c.title.toLowerCase().includes('rock band'))
-      .map(c => c.id?.value || c.id);
+    // Get Rock Band class IDs from configuration (authoritative source)
+    const rockBandClassIds = ClassManager.getRockBandClassIds();
 
     // Separate regular registrations from wait list (Rock Band)
     const regularRegistrations = registrations.filter(
@@ -177,34 +232,24 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       rockBandClassIds.includes(reg.classId?.value || reg.classId)
     );
 
-    // Temporarily override this.data.registrations, students, instructors for rendering
-    // This allows the existing helper methods (findStudent, findInstructor) to work correctly
-    const savedData = {
-      registrations: this.data.registrations,
-      students: this.data.students,
-      instructors: this.data.instructors,
-      classes: this.data.classes,
-    };
+    // Render regular schedule section using trimesterData directly
+    this.#renderScheduleSection(
+      container,
+      regularRegistrations,
+      trimesterName,
+      sectionType,
+      trimesterData
+    );
 
-    this.data.registrations = trimesterData.registrations;
-    this.data.students = trimesterData.students;
-    this.data.instructors = trimesterData.instructors;
-    this.data.classes = trimesterData.classes;
-
-    try {
-      // Render regular schedule section
-      this.#renderScheduleSection(container, regularRegistrations, trimesterName, sectionType);
-
-      // Render wait list section if there are wait list registrations
-      if (waitListRegistrations.length > 0) {
-        this.#renderWaitListSection(container, waitListRegistrations, trimesterName, sectionType);
-      }
-    } finally {
-      // Restore original data
-      this.data.registrations = savedData.registrations;
-      this.data.students = savedData.students;
-      this.data.instructors = savedData.instructors;
-      this.data.classes = savedData.classes;
+    // Render wait list section if there are wait list registrations
+    if (waitListRegistrations.length > 0) {
+      this.#renderWaitListSection(
+        container,
+        waitListRegistrations,
+        trimesterName,
+        sectionType,
+        trimesterData
+      );
     }
   }
 
@@ -212,7 +257,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Render the main schedule section (one table per student)
    * @private
    */
-  #renderScheduleSection(container, registrations, trimesterName, sectionType) {
+  #renderScheduleSection(container, registrations, trimesterName, sectionType, trimesterData) {
     // Show 'no matching registrations' message if no registrations
     if (registrations.length === 0) {
       const noRegistrationsMessage = document.createElement('div');
@@ -229,8 +274,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     }
 
     // Get parent's students from this trimester's data who have registrations
-    // Using this.data.students because we've temporarily swapped it to trimester-specific data
-    const studentsWithRegistrations = this.data.students.filter(student => {
+    const studentsWithRegistrations = trimesterData.students.filter(student => {
       const studentId = student.id?.value || student.id;
       return registrations.some(reg => {
         const regStudentId = reg.studentId?.value || reg.studentId;
@@ -276,7 +320,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       const sortedRegistrations = this.#sortRegistrations(studentRegistrations);
 
       // Build the table for this student
-      const table = this.#buildWeeklyScheduleTable(tableId, sortedRegistrations);
+      const table = this.#buildWeeklyScheduleTable(tableId, sortedRegistrations, trimesterData);
       this.studentTables.set(`${sectionType}-${studentId}`, table);
     });
   }
@@ -285,7 +329,13 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Render the wait list section (Rock Band registrations)
    * @private
    */
-  #renderWaitListSection(container, waitListRegistrations, trimesterName, sectionType) {
+  #renderWaitListSection(
+    container,
+    waitListRegistrations,
+    trimesterName,
+    sectionType,
+    trimesterData
+  ) {
     // Create wait list header
     const waitListHeader = document.createElement('h5');
     waitListHeader.textContent = 'Rock Band Wait List';
@@ -300,14 +350,14 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     container.appendChild(tableElement);
 
     // Build the wait list table
-    this.waitListTable = this.#buildWaitListTable(tableId, waitListRegistrations);
+    this.waitListTable = this.#buildWaitListTable(tableId, waitListRegistrations, trimesterData);
   }
 
   /**
    * Build a weekly schedule table for a specific student
    * @private
    */
-  #buildWeeklyScheduleTable(tableId, enrollments) {
+  #buildWeeklyScheduleTable(tableId, enrollments, trimesterData) {
     // Check if we're in the intent period to show the Intent column
     const currentPeriod = window.UserSession?.getCurrentPeriod();
     const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
@@ -328,10 +378,13 @@ export class ParentWeeklyScheduleTab extends BaseTab {
 
     headers.push('Contact');
 
+    // Create a wrapper function that has access to trimesterData
+    const rowBuilder = enrollment => this.#buildScheduleTableRow(enrollment, trimesterData);
+
     return new Table(
       tableId,
       headers,
-      this.#buildScheduleTableRow.bind(this),
+      rowBuilder,
       enrollments,
       this.#handleScheduleTableClick.bind(this),
       null, // filterFunction
@@ -351,13 +404,16 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Build a wait list table
    * @private
    */
-  #buildWaitListTable(tableId, enrollments) {
+  #buildWaitListTable(tableId, enrollments, trimesterData) {
     const headers = ['Student', 'Grade', 'Class Title', 'Timestamp'];
+
+    // Create a wrapper function that has access to trimesterData
+    const rowBuilder = enrollment => this.#buildWaitListTableRow(enrollment, trimesterData);
 
     return new Table(
       tableId,
       headers,
-      this.#buildWaitListTableRow.bind(this),
+      rowBuilder,
       enrollments,
       null, // no click handler for wait list
       null, // filterFunction
@@ -372,9 +428,13 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Build a table row for a schedule enrollment
    * @private
    */
-  #buildScheduleTableRow(enrollment) {
-    const instructor = this.findInstructor(enrollment.instructorId);
-    const student = this.findStudent(enrollment.studentId);
+  #buildScheduleTableRow(enrollment, trimesterData) {
+    // Find instructor and student from trimesterData
+    const instructorId = enrollment.instructorId?.value || enrollment.instructorId;
+    const studentId = enrollment.studentId?.value || enrollment.studentId;
+
+    const instructor = trimesterData.instructors.find(i => (i.id?.value || i.id) === instructorId);
+    const student = trimesterData.students.find(s => (s.id?.value || s.id) === studentId);
 
     if (!instructor || !student) {
       console.warn(
@@ -386,7 +446,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     // Determine instrument/class name
     const instrumentOrClass =
       enrollment.registrationType === RegistrationType.GROUP
-        ? enrollment.classTitle || enrollment.className || 'N/A'
+        ? enrollment.classTitle || 'N/A'
         : enrollment.instrument || 'N/A';
 
     // Build intent cell for parent view during intent period only
@@ -438,8 +498,10 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Build a table row for a wait list enrollment
    * @private
    */
-  #buildWaitListTableRow(enrollment) {
-    const student = this.findStudent(enrollment.studentId);
+  #buildWaitListTableRow(enrollment, trimesterData) {
+    // Find student from trimesterData
+    const studentId = enrollment.studentId?.value || enrollment.studentId;
+    const student = trimesterData.students.find(s => (s.id?.value || s.id) === studentId);
 
     if (!student) {
       console.warn(
@@ -473,10 +535,18 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     const registrationId = linkElement?.getAttribute('data-registration-id');
     if (!registrationId) return;
 
-    // Find the enrollment by ID
-    const currentEnrollment = this.data.registrations.find(
+    // Find the enrollment by ID - search in both current and next trimester data
+    let currentEnrollment = this.data.currentTrimester.data.registrations.find(
       e => (e.id?.value || e.id) === registrationId
     );
+
+    // If not found in current trimester, check next trimester (if it exists)
+    if (!currentEnrollment && this.data.nextTrimester) {
+      currentEnrollment = this.data.nextTrimester.data.registrations.find(
+        e => (e.id?.value || e.id) === registrationId
+      );
+    }
+
     if (!currentEnrollment) return;
 
     // For parent view: show instructor emails

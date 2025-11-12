@@ -31,7 +31,15 @@ export class AdminRegistrationTab extends BaseTab {
     // Get selected trimester from admin selector buttons
     const trimesterButtons = document.getElementById('admin-trimester-buttons');
     const activeButton = trimesterButtons?.querySelector('.trimester-btn.active');
-    const trimester = activeButton?.dataset.trimester || sessionInfo?.currentTrimester || 'fall';
+
+    // During non-enrollment periods, trimester buttons are hidden, so use current period
+    const currentPeriod = window.UserSession?.getCurrentPeriod();
+    const trimester = activeButton?.dataset.trimester || currentPeriod?.trimester;
+
+    if (!trimester) {
+      throw new Error('Could not determine trimester: no button selected and no current period');
+    }
+
     this.currentTrimester = trimester;
 
     const response = await fetch(`/api/admin/tabs/registration?trimester=${trimester}`, {

@@ -99,7 +99,7 @@ export class InstructorDirectoryTab extends BaseTab {
       <td>${fullName}</td>
       <td>${roles}</td>
       <td>${email}</td>
-      <td>${employee.phone || ''}</td>
+      <td style="white-space: nowrap;">${employee.phone || ''}</td>
       <td>
         <a href="#!" data-employee-email="${email}">
           <i class="copy-parent-emails-table-icon material-icons gray-text text-darken-4">email</i>
@@ -166,12 +166,12 @@ export class InstructorDirectoryTab extends BaseTab {
    * @private
    */
   #mapInstructorToEmployee(instructor, obscurePhone = false) {
-    // Get instruments from either specialties or instruments field
-    const instruments = instructor.specialties || instructor.instruments || [];
+    // Get instruments from specialties field
+    const instruments = instructor.specialties || [];
     const instrumentsText = instruments.length > 0 ? instruments.join(', ') : 'Instructor';
 
     // Format phone number
-    const rawPhone = instructor.phone || instructor.phoneNumber || '';
+    const rawPhone = instructor.phone || '';
     const formattedPhone = rawPhone && !obscurePhone ? formatPhone(rawPhone) : '';
 
     return {

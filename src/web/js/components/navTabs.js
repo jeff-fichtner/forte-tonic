@@ -1,5 +1,6 @@
 import { PeriodType } from '../constants/periodTypeConstants.js';
 import { UserType } from '../constants/userTypeConstants.js';
+import { isEnrollmentPeriod } from '../utilities/periodHelpers.js';
 
 /**
  *
@@ -85,20 +86,22 @@ export class NavTabs {
         });
       }
 
-      // Show/hide admin trimester selector based on tab
-      // Trimester selector should only show for admin-specific tabs (Master Schedule, Wait List, Registration)
-      // Hide for directory tab and all non-admin tabs
-      // CRITICAL: Trimester selector is ADMIN-ONLY - never show to parents or instructors
+      // Show/hide admin trimester selector based on tab AND period type
+      // Trimester selector should only show for admin-specific tabs during enrollment periods
+      // Hide for directory tab, non-admin tabs, and non-enrollment periods
+      // CRITICAL: Trimester selector is ADMIN-ONLY and ENROLLMENT-PERIOD-ONLY
       const trimesterSelector = document.getElementById('admin-trimester-selector-container');
       if (trimesterSelector) {
         const isAdmin = !!window.viewModel?.currentUser?.admin;
+        const currentPeriod = window.UserSession?.getCurrentPeriod();
 
         const adminTrimesterTabs = [
           '#admin-master-schedule',
           '#admin-wait-list',
           '#admin-registration',
         ];
-        const shouldShowTrimester = adminTrimesterTabs.includes(targetTab) && isAdmin;
+        const shouldShowTrimester =
+          adminTrimesterTabs.includes(targetTab) && isAdmin && isEnrollmentPeriod(currentPeriod);
         trimesterSelector.hidden = !shouldShowTrimester;
       }
 
@@ -320,23 +323,34 @@ export class NavTabs {
   #initializeSectionUI(section) {
     if (section === 'admin') {
       const isAdmin = !!window.viewModel?.currentUser?.admin;
+      const currentPeriod = window.UserSession?.getCurrentPeriod();
+
       const trimesterSelector = document.getElementById('admin-trimester-selector-container');
 
-      if (trimesterSelector && isAdmin) {
+      // Only show trimester selector during enrollment periods
+      if (trimesterSelector && isAdmin && isEnrollmentPeriod(currentPeriod)) {
         trimesterSelector.hidden = false;
 
-        // Initialize Fall button as active if no button is currently active
+        // Initialize current trimester button as active if no button is currently active
         const trimesterButtons = document.getElementById('admin-trimester-buttons');
         if (trimesterButtons) {
           const activeButton = trimesterButtons.querySelector('.trimester-btn.active');
 
-          if (!activeButton) {
-            const fallButton = trimesterButtons.querySelector('[data-trimester="fall"]');
-            if (fallButton) {
-              fallButton.classList.add('active');
+          if (!activeButton && currentPeriod?.trimester) {
+            // Get current trimester from period service
+            const currentTrimester = currentPeriod.trimester;
+
+            const currentButton = trimesterButtons.querySelector(
+              `[data-trimester="${currentTrimester}"]`
+            );
+            if (currentButton) {
+              currentButton.classList.add('active');
             }
           }
         }
+      } else if (trimesterSelector) {
+        // Hide trimester selector during non-enrollment periods
+        trimesterSelector.hidden = true;
       }
     }
   }
