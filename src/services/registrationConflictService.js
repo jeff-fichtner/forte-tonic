@@ -15,7 +15,7 @@ export class RegistrationConflictService {
    * @returns {object} Conflict check result
    */
   static async checkConflicts(newRegistration, existingRegistrations, options = {}) {
-    const { skipCapacityCheck = false } = options;
+    const { skipCapacityCheck = false, groupClass = null } = options;
     const conflicts = [];
 
     // Check for duplicate registration
@@ -34,7 +34,11 @@ export class RegistrationConflictService {
     // Check for capacity conflicts (group classes only)
     // Admins can bypass capacity restrictions
     if (newRegistration.registrationType === RegistrationType.GROUP && !skipCapacityCheck) {
-      const capacityConflict = this.checkClassCapacity(newRegistration, existingRegistrations);
+      const capacityConflict = this.checkClassCapacity(
+        newRegistration,
+        existingRegistrations,
+        groupClass
+      );
       if (capacityConflict) conflicts.push(capacityConflict);
     }
 
@@ -180,7 +184,7 @@ export class RegistrationConflictService {
    * @param {Array} existingRegistrations - Existing registrations
    * @returns {object|null} Capacity conflict or null
    */
-  static checkClassCapacity(newRegistration, existingRegistrations) {
+  static checkClassCapacity(newRegistration, existingRegistrations, groupClass = null) {
     const classRegistrations = existingRegistrations.filter(
       reg =>
         reg.classId === newRegistration.classId &&
@@ -189,8 +193,8 @@ export class RegistrationConflictService {
         reg.isActive !== false
     );
 
-    // TODO: Get actual class capacity from class repository
-    const maxCapacity = 12; // Default capacity
+    // Get actual class capacity from the class object, fallback to 12 if not available
+    const maxCapacity = groupClass?.size || 12;
 
     if (classRegistrations.length >= maxCapacity) {
       return {
