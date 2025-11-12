@@ -10,6 +10,7 @@ import { INTENT_LABELS } from './constants/intentConstants.js';
 import { PeriodType } from './constants/periodTypeConstants.js';
 import { FeedbackManager } from './feedback.js';
 import { capitalize } from './utilities/formatHelpers.js';
+import { isEnrollmentPeriod } from './utilities/periodHelpers.js';
 
 /**
  *
@@ -38,8 +39,6 @@ export class ViewModel {
       if (appConfig.maintenanceMode && !hasOverride) {
         this.#showMaintenanceMode(appConfig.maintenanceMessage);
         return; // Block further initialization
-      } else if (appConfig.maintenanceMode && hasOverride) {
-        console.log('⚠️  Maintenance mode is active but bypassed via override');
       }
     }
 
@@ -166,7 +165,7 @@ export class ViewModel {
       banner.style.display = 'block';
       banner.className = 'enrollment-banner open';
       bannerText.textContent = 'Open Enrollment is now available for all families';
-    } else if (currentPeriod.periodType === 'intent') {
+    } else if (currentPeriod.periodType === PeriodType.INTENT) {
       // Don't show this banner during intent period - the intent-banner with count is shown instead
       banner.style.display = 'none';
     } else {
@@ -186,14 +185,10 @@ export class ViewModel {
 
     // Determine which endpoint to use based on enrollment period (for non-admin users)
     const currentPeriod = window.UserSession?.getCurrentPeriod?.();
-    const isEnrollmentPeriod =
-      currentPeriod &&
-      (currentPeriod.periodType === PeriodType.PRIORITY_ENROLLMENT ||
-        currentPeriod.periodType === PeriodType.OPEN_ENROLLMENT);
 
     // Admins always use regular endpoint, parents use next trimester endpoint during enrollment
     const endpoint =
-      isEnrollmentPeriod && !isAdmin
+      isEnrollmentPeriod(currentPeriod) && !isAdmin
         ? ServerFunctions.createNextTrimesterRegistration
         : ServerFunctions.register;
 
@@ -201,9 +196,6 @@ export class ViewModel {
     // delete the old registration first (this creates an audit record for the deletion)
     // The old registration being deleted may have linkedPreviousRegistrationId, which will be in the audit record
     if (data.replaceRegistrationId) {
-      console.log(
-        `🔄 Replacing registration - deleting old registration: ${data.replaceRegistrationId}`
-      );
       try {
         // Use the appropriate delete endpoint based on enrollment period
         // Admins always use regular endpoint
@@ -226,7 +218,6 @@ export class ViewModel {
 
           if (oldRegIndex !== -1) {
             this.nextTrimesterRegistrations.splice(oldRegIndex, 1);
-            console.log(`✅ Old registration removed from next trimester registrations`);
           }
         } else {
           const oldRegIndex = this.registrations.findIndex(reg => {
@@ -236,7 +227,6 @@ export class ViewModel {
 
           if (oldRegIndex !== -1) {
             this.registrations.splice(oldRegIndex, 1);
-            console.log(`✅ Old registration removed from current trimester registrations`);
           }
         }
 
@@ -265,10 +255,6 @@ export class ViewModel {
         console.warn(
           `❌ Student not found for new registration with studentId "${newRegistration.studentId?.value || newRegistration.studentId}"`
         );
-      } else {
-        console.log(
-          `✅ Student enriched: ${newRegistration.student.firstName} ${newRegistration.student.lastName}`
-        );
       }
     }
 
@@ -284,16 +270,10 @@ export class ViewModel {
         console.warn(
           `❌ Instructor not found for new registration with instructorId "${newRegistration.instructorId?.value || newRegistration.instructorId}"`
         );
-      } else {
-        console.log(
-          `✅ Instructor enriched: ${newRegistration.instructor.firstName} ${newRegistration.instructor.lastName}`
-        );
       }
     }
 
     // Tabs handle their own data refresh after creation - they call tab.onLoad() to reload fresh data
-    console.log(`✅ Registration created successfully`);
-
     return newRegistration;
   }
 
@@ -336,8 +316,6 @@ export class ViewModel {
 
       // Show page content
       if (pageContent) pageContent.hidden = false;
-
-      console.log('✓ Maintenance mode override activated');
     }
   }
 
@@ -349,7 +327,6 @@ export class ViewModel {
     try {
       // Set session storage flag to persist override for this session
       sessionStorage.setItem('maintenance_mode_override', 'true');
-      console.log('✓ Maintenance mode override flag set');
 
       // Hide maintenance overlay and continue initialization
       this.#hideMaintenanceMode();
@@ -377,7 +354,6 @@ export class ViewModel {
         }
       }
 
-      console.log('✓ Application reinitialized with maintenance mode bypassed');
       return true;
     } catch (error) {
       console.error('✗ Failed to override maintenance mode:', error);
@@ -424,8 +400,6 @@ export class ViewModel {
     }
 
     try {
-      console.log('Sending DELETE request for registration:', registrationToDeleteId);
-
       const response = await HttpService.delete(`registrations/${registrationToDeleteId}`);
 
       M.toast({ html: 'Registration deleted successfully.' });
@@ -472,10 +446,6 @@ export class ViewModel {
       }
 
       const result = await response.json();
-
-      console.log('Intent submission response:', result);
-
-      console.log('Intent submission successful:', result);
 
       // Tabs handle their own data refresh - ParentWeeklyScheduleTab will reload fresh data
       M.toast({ html: 'Intent submitted successfully.' });
@@ -1111,8 +1081,6 @@ export class ViewModel {
     onSuccessfulLogin = null,
     onFailedLogin = null
   ) {
-    console.log('Login attempt with value:', loginValue, 'type:', loginType);
-
     try {
       this.#setPageLoading(true);
 
@@ -1135,7 +1103,7 @@ export class ViewModel {
         onSuccessfulLogin?.();
 
         // Clear cached data and reset initialization flags for new user
-        this.#resetInitializationFlags();
+        await this.#resetInitializationFlags();
 
         // Clear cached data properties
         this.admins = null;
@@ -1222,9 +1190,9 @@ export class ViewModel {
   /**
    * Public method to clear stored access code (for logout functionality)
    */
-  clearUserSession() {
+  async clearUserSession() {
     window.AccessCodeManager.clearStoredAccessCode();
-    this.#resetInitializationFlags();
+    await this.#resetInitializationFlags();
     this.#updateLoginButtonState();
     M.toast({ html: 'User session cleared', classes: 'blue darken-1', displayLength: 2000 });
   }
@@ -1232,10 +1200,25 @@ export class ViewModel {
   /**
    * Reset all initialization flags (useful for testing or when switching users)
    */
-  #resetInitializationFlags() {
+  async #resetInitializationFlags() {
     this.adminContentInitialized = false;
     this.instructorContentInitialized = false;
     this.parentContentInitialized = false;
+
+    // Unload current tab so it will reload with new user data
+    if (window.tabController) {
+      const currentTab = window.tabController.getCurrentTab();
+      if (currentTab) {
+        try {
+          await currentTab.onUnload();
+          // Clear TabController's current tab tracking so next activation is treated as fresh
+          window.tabController.currentTab = null;
+          window.tabController.currentTabId = null;
+        } catch (error) {
+          console.error('Error unloading tab during user switch:', error);
+        }
+      }
+    }
 
     // Clear parent registration form selection when user changes
     if (this.parentRegistrationForm) {

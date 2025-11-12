@@ -46,7 +46,14 @@ export class AdminMasterScheduleTab extends BaseTab {
     // Get selected trimester from admin selector buttons
     const trimesterButtons = document.getElementById('admin-trimester-buttons');
     const activeButton = trimesterButtons?.querySelector('.trimester-btn.active');
-    const trimester = activeButton?.dataset.trimester || 'fall';
+
+    // During non-enrollment periods, trimester buttons are hidden, so use current period
+    const currentPeriod = window.UserSession?.getCurrentPeriod();
+    const trimester = activeButton?.dataset.trimester || currentPeriod?.trimester;
+
+    if (!trimester) {
+      throw new Error('Could not determine trimester: no button selected and no current period');
+    }
 
     const response = await fetch(`/api/admin/tabs/master-schedule/${trimester}`, {
       signal: this.getAbortSignal(),
@@ -635,9 +642,9 @@ export class AdminMasterScheduleTab extends BaseTab {
         return timeA.localeCompare(timeB);
       }
 
-      // Then sort by length (duration)
-      const lengthA = a.length || a.duration || 0;
-      const lengthB = b.length || b.duration || 0;
+      // Then sort by length
+      const lengthA = a.length || 0;
+      const lengthB = b.length || 0;
       if (lengthA !== lengthB) {
         return lengthA - lengthB;
       }

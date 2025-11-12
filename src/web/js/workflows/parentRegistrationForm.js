@@ -271,7 +271,6 @@ export class ParentRegistrationForm {
       instructorsToUse = instructorsToUse.filter(instructor => {
         const instructorInstruments =
           instructor.specialties ||
-          instructor.instruments ||
           (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
 
         const normalizedInstruments = Array.isArray(instructorInstruments)
@@ -360,7 +359,6 @@ export class ParentRegistrationForm {
       instructorsToUse = instructorsToUse.filter(instructor => {
         const instructorInstruments =
           instructor.specialties ||
-          instructor.instruments ||
           (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
 
         const normalizedInstruments = Array.isArray(instructorInstruments)
@@ -459,7 +457,6 @@ export class ParentRegistrationForm {
       instructorsToUse = instructorsToUse.filter(instructor => {
         const instructorInstruments =
           instructor.specialties ||
-          instructor.instruments ||
           (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
 
         const normalizedInstruments = Array.isArray(instructorInstruments)
@@ -762,7 +759,6 @@ export class ParentRegistrationForm {
     instructorsToUse.forEach(instructor => {
       const instructorInstruments =
         instructor.specialties ||
-        instructor.instruments ||
         (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
 
       const normalizedInstruments = Array.isArray(instructorInstruments)
@@ -792,7 +788,6 @@ export class ParentRegistrationForm {
 
       const instructorInstruments =
         instructor.specialties ||
-        instructor.instruments ||
         (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
 
       const normalizedInstruments = Array.isArray(instructorInstruments)
@@ -999,7 +994,6 @@ export class ParentRegistrationForm {
       // Get all instruments this instructor teaches
       const instructorInstruments =
         instructor.specialties ||
-        instructor.instruments ||
         (instructor.primaryInstrument ? [instructor.primaryInstrument] : ['Piano']);
 
       const normalizedInstruments = Array.isArray(instructorInstruments)
@@ -1066,7 +1060,6 @@ export class ParentRegistrationForm {
       }
     });
 
-    console.log(`🎯 Generated ${timeSlots.length} total slots for ${instructor.firstName}`);
     return timeSlots.slice(0, 15); // Increased limit since we have better filtering
   }
 
@@ -1130,7 +1123,6 @@ export class ParentRegistrationForm {
     // Get all instruments this instructor teaches
     const instructorInstruments =
       instructor.specialties ||
-      instructor.instruments ||
       (instructor.primaryInstrument ? [instructor.primaryInstrument] : ['Piano']);
 
     const normalizedInstruments = Array.isArray(instructorInstruments)
@@ -1464,10 +1456,6 @@ export class ParentRegistrationForm {
     if (typeof M !== 'undefined') {
       M.FormSelect.init(classSelect);
     }
-
-    console.log(
-      `🎯 Populated parent classes dropdown with ${availableClasses.length} available classes (filtered from ${this.classes.length} total)`
-    );
   }
 
   /**
@@ -1514,10 +1502,6 @@ export class ParentRegistrationForm {
       const regClassId = reg.classId?.value || reg.classId;
       return regClassId === classId;
     });
-
-    console.log(
-      `📊 Class ${selectedClass.title || selectedClass.instrument} - Current: ${currentRegistrations.length}, Capacity: ${selectedClass.capacity || selectedClass.size || selectedClass.maxStudents || 'Unknown'}`
-    );
 
     // Get class capacity (check multiple possible property names)
     const classCapacity = selectedClass.size;
@@ -1803,7 +1787,6 @@ export class ParentRegistrationForm {
       instructorsToInclude = instructorsToInclude.filter(instructor => {
         const instructorInstruments =
           instructor.specialties ||
-          instructor.instruments ||
           (instructor.primaryInstrument ? [instructor.primaryInstrument] : ['Piano']);
         const normalizedInstruments = Array.isArray(instructorInstruments)
           ? instructorInstruments
@@ -1941,7 +1924,6 @@ export class ParentRegistrationForm {
       // Get instructor's instruments
       const instructorInstruments =
         instructor.specialties ||
-        instructor.instruments ||
         (instructor.primaryInstrument ? [instructor.primaryInstrument] : ['Piano']);
 
       const normalizedInstruments = Array.isArray(instructorInstruments)
@@ -2015,7 +1997,6 @@ export class ParentRegistrationForm {
       }
     });
 
-    console.log(`🎯 Generated ${timeSlots.length} filtered slots for ${instructor.firstName}`);
     return timeSlots.slice(0, 20); // Limit to prevent overwhelming UI
   }
 
@@ -2093,8 +2074,6 @@ export class ParentRegistrationForm {
 
       slot.dataset.listenerAttached = 'true';
     });
-
-    console.log(`Attached listeners to ${timeSlots.length} time slots`);
   }
 
   /**
@@ -2406,7 +2385,7 @@ export class ParentRegistrationForm {
 
       // For waitlist classes (Rock Band), use special conflict times instead of actual class times
       let regStartMinutes, regLengthMinutes, regEndMinutes;
-      const regStartTime = registration.startTime || registration.time;
+      const regStartTime = registration.startTime;
 
       if (ClassManager.isRockBandClass(registration.classId)) {
         // Use special waitlist class times for conflict checking
@@ -2432,7 +2411,7 @@ export class ParentRegistrationForm {
         }
 
         regStartMinutes = parseTime(regStartTime);
-        regLengthMinutes = registration.length || registration.lengthMinutes || 30; // Default to 30 if not specified
+        regLengthMinutes = registration.length || 30; // Default to 30 if not specified
         regEndMinutes = regStartMinutes + regLengthMinutes;
       }
 
@@ -2480,7 +2459,6 @@ export class ParentRegistrationForm {
         console.log('🔍 Debug registration object for class name lookup:', {
           classId: registration.classId,
           classTitle: registration.classTitle,
-          className: registration.className,
           class: registration.class,
           registrationType: registration.registrationType,
           allKeys: Object.keys(registration),
@@ -2511,9 +2489,6 @@ export class ParentRegistrationForm {
           // Try direct class object property
           className = formatClassNameWithGradeCorrection(registration.class);
           console.log('✅ Used registration.class, formatted name:', className);
-        } else if (registration.className) {
-          className = registration.className;
-          console.log('✅ Used registration.className:', className);
         } else {
           console.log('❌ No class information found in registration');
         }
@@ -3261,6 +3236,35 @@ export class ParentRegistrationForm {
   }
 
   /**
+   * Destroy the form and clean up Materialize component instances
+   */
+  destroy() {
+    const parentContainer = document.getElementById('parent-registration');
+    if (!parentContainer) return;
+
+    // Destroy all Materialize Select instances
+    const selects = parentContainer.querySelectorAll('select');
+    selects.forEach(select => {
+      const instance = M.FormSelect.getInstance(select);
+      if (instance) {
+        instance.destroy();
+      }
+    });
+
+    // Destroy any Materialize Modal instances
+    const modals = parentContainer.querySelectorAll('.modal');
+    modals.forEach(modal => {
+      const instance = M.Modal.getInstance(modal);
+      if (instance) {
+        instance.destroy();
+      }
+    });
+
+    // Clear selection
+    this.clearSelection();
+  }
+
+  /**
    * Clear only the time slot selection without hiding containers
    */
   #clearTimeSlotSelection() {
@@ -3409,8 +3413,6 @@ export class ParentRegistrationForm {
         }
       },
     });
-
-    console.log('Time slot keyboard handlers attached');
   }
 
   /**
