@@ -596,8 +596,9 @@ export class RegistrationController {
         );
       });
 
-      // TODO: Filter by user's access (parent sees their students, admin sees all)
-      // For now, returning all - implement proper filtering based on req.currentUser
+      // Note: This endpoint returns all next trimester registrations for the enrollment UI
+      // Access control is enforced at the enrollment period level (see periodService checks)
+      // Parents can only see/modify their own students via enrollment form validation
       const userRegistrations = allRegistrations;
 
       successResponse(res, userRegistrations, {

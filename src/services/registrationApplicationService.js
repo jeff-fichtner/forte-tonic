@@ -125,7 +125,7 @@ export class RegistrationApplicationService extends BaseService {
         registrationData.roomId = instructor[roomIdKey];
       } else {
         this.logger.warn(`No room assignment found for instructor ${instructor.id} on ${dayName}`);
-        registrationData.roomId = 'ROOM-001'; // Default fallback
+        registrationData.roomId = 'unknown';
       }
 
       this.logger.info(
@@ -169,7 +169,7 @@ export class RegistrationApplicationService extends BaseService {
       const conflictCheck = await RegistrationConflictService.checkConflicts(
         registrationData,
         existingRegistrations,
-        { skipCapacityCheck: isAdmin }
+        { skipCapacityCheck: isAdmin, groupClass }
       );
 
       if (conflictCheck.hasConflicts) {
@@ -434,11 +434,9 @@ export class RegistrationApplicationService extends BaseService {
                   id: groupClass.id,
                   name: groupClass.name,
                   instrument: groupClass.instrument,
-                  capacity: groupClass.capacity,
+                  size: groupClass.size,
                 }
               : null,
-            // Add business logic flags
-            hasConflicts: false, // TODO: Implement conflict detection
             isActive: true, // Simplified - no status field
           };
         })
