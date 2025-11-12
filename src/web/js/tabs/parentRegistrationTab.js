@@ -125,8 +125,11 @@ export class ParentRegistrationTab extends BaseTab {
    * Cleanup when tab is unloaded
    */
   async cleanup() {
-    // Note: We keep the form instance alive for performance
-    // It will be updated with new data when the tab is reloaded
-    // Only set to null if we want to force recreation
+    // Destroy the form instance to ensure clean state when tab is reloaded
+    // This prevents Materialize component state issues when switching tabs
+    if (this.registrationForm && typeof this.registrationForm.destroy === 'function') {
+      this.registrationForm.destroy();
+    }
+    this.registrationForm = null;
   }
 }

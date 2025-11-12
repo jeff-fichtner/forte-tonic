@@ -141,8 +141,8 @@ export class TabController {
       return;
     }
 
-    // Unload current tab if any
-    if (this.currentTab && this.currentTabId !== tabId) {
+    // Unload current tab if any (when switching tabs OR force reloading same tab)
+    if (this.currentTab && (this.currentTabId !== tabId || forceReload)) {
       try {
         await this.currentTab.onUnload();
       } catch (error) {
