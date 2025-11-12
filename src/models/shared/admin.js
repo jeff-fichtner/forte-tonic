@@ -1,6 +1,13 @@
 /**
  * Admin API model - for client-server communication
  * Rich model with validation, formatting, and business logic
+ *
+ * Database fields (persisted in Admins sheet):
+ * - id, email, lastName, firstName, phoneNumber, accessCode
+ *
+ * Future properties (NOT in database):
+ * - permissions, isActive, lastLoginDate, role
+ *   These are placeholders for future RBAC system and always return defaults
  */
 export class Admin {
   /**
