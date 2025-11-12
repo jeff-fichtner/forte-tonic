@@ -2,6 +2,13 @@ import { DateHelpers } from '../../utils/nativeDateTimeHelpers.js';
 
 /**
  * Class model - unified for both backend and frontend use
+ *
+ * Database fields (persisted in Classes sheet):
+ * - id, instructorId, day, startTime, length, endTime, instrument, title, size, minimumGrade, maximumGrade
+ *
+ * Computed/business logic properties (NOT in database):
+ * - roomId, description, isActive
+ *   These are used for business logic but not persisted
  */
 export class Class {
   /**
@@ -28,7 +35,7 @@ export class Class {
     this.title = title;
 
     // Optional properties with defaults
-    this.size = options.size || options.capacity || null;
+    this.size = options.size || null;
     this.minimumGrade = options.minimumGrade || null;
     this.maximumGrade = options.maximumGrade || null;
     this.roomId = options.roomId || null;
@@ -103,7 +110,6 @@ export class Class {
       instrument,
       title,
       size,
-      capacity,
       minimumGrade,
       maximumGrade,
       roomId,
@@ -112,7 +118,7 @@ export class Class {
     } = data;
 
     return new Class(id, instructorId, day, startTime, length, endTime, instrument, title, {
-      size: size || capacity,
+      size,
       minimumGrade,
       maximumGrade,
       roomId,

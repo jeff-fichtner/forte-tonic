@@ -1,5 +1,12 @@
 /**
  * Parent model - unified for both backend and frontend use
+ *
+ * Database fields (persisted in Parents sheet):
+ * - id, email, lastName, firstName, phone, accessCode
+ *
+ * Future properties (NOT in database):
+ * - alternatePhone, address, isEmergencyContact, relationship, isActive
+ *   These are placeholders for future enhanced contact management and always return defaults
  */
 export class Parent {
   /**

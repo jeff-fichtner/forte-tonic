@@ -1,5 +1,12 @@
 /**
  * Room model - unified for both backend and frontend use
+ *
+ * Database fields (persisted in Rooms sheet):
+ * - id, name, altName, includeRoomId
+ *
+ * Future/computed properties (NOT in database):
+ * - capacity, location, equipment, isActive, description
+ *   These are placeholders for future features and always return default values
  */
 export class Room {
   /**

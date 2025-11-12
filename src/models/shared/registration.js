@@ -57,18 +57,18 @@ export class Registration {
     this.day = data.day;
     this.startTime = data.startTime;
 
-    // Length validation: strict for non-waitlist classes, optional for waitlist classes
+    // Length validation: strict for everything EXCEPT waitlist
     const parsedLength = parseInt(data.length);
     const isWaitlistClass = data.isWaitlistClass === true;
 
     if (!isWaitlistClass) {
-      // For non-waitlist classes, length is required and must be positive
+      // All non-waitlist registrations require valid length
       if (!parsedLength || isNaN(parsedLength)) {
         throw new Error('length is required and must be a valid number');
       }
       this.length = parsedLength;
     } else {
-      // For waitlist classes, allow null/0 or positive number
+      // Waitlist: length is completely ignored
       this.length = !isNaN(parsedLength) ? parsedLength : null;
     }
 
@@ -217,17 +217,21 @@ export class Registration {
       //        RoomId, Instrument, TransportationType, Notes, ClassId, ClassTitle,
       //        ExpectedStartDate, CreatedAt, CreatedBy, reenrollmentIntent, intentSubmittedAt, intentSubmittedBy
 
-      // Detect if this is a Rock Band waitlist class by checking the classId
-      // This is necessary because isWaitlistClass is not stored in the database
-      const classId = row[11]; // ClassId
-      // Try to get Rock Band class IDs from browser or fallback to hardcoded value
-      // In browser: window.UserSession.getAppConfig().rockBandClassIds
-      // On server: Not available, but we use default G015
-      const rockBandClassIds =
-        (typeof window !== 'undefined' &&
-          window?.UserSession?.getAppConfig?.()?.rockBandClassIds) ||
-        [];
-      const isWaitlistClass = classId && rockBandClassIds.includes(String(classId).trim());
+      // Determine if this is a waitlist class based on classId
+      // On server: This will be set based on whatever validation we can do
+      // On browser: ClassManager can check against configuration
+      const classId = row[11];
+      const classTitle = row[12];
+      let isWaitlistClass = false;
+
+      // Browser environment: use ClassManager if available
+      if (typeof window !== 'undefined' && window.ClassManager?.isRockBandClass) {
+        isWaitlistClass = window.ClassManager.isRockBandClass(classId);
+      }
+      // Server environment: check classTitle for "Waitlist" indicator
+      else {
+        isWaitlistClass = classTitle && String(classTitle).toLowerCase().includes('waitlist');
+      }
 
       return new Registration({
         id: row[0] ? String(row[0]) : row[0], // Id (UUID) - ensure string
