@@ -95,6 +95,5 @@ export const TimeSlotConfig = {
 // Transportation Types
 export const TransportationType = {
   BUS: 'bus',
-  LATE_PICKUP: 'latePickup',
-  EARLY_PICKUP: 'earlyPickup',
+  PICKUP: 'pickup',
 };
