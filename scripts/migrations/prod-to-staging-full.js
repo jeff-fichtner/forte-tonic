@@ -143,6 +143,9 @@ class FullDatabaseMigration {
 
     await this.initialize();
 
+    // Clean up any previous mapping files before starting
+    await this.cleanupMappingFiles();
+
     // Pass 1: Instructors, Classes, Rooms
     await this.runPass1();
 
@@ -251,6 +254,9 @@ class FullDatabaseMigration {
         this.logger.log(`   ⚠️  ${migratedSheetName} not found (may have been deleted already)`);
       }
     }
+
+    // Clean up mapping files
+    await this.cleanupMappingFiles();
 
     this.logger.log('\n🔒 MIGRATION COMMITTED - Old data permanently removed!');
     this.logger.log('The migration is now permanent and cannot be reversed.');
@@ -686,7 +692,7 @@ class FullDatabaseMigration {
   async extractSheet(sheetName) {
     const response = await this.prodSheets.spreadsheets.values.get({
       spreadsheetId: this.prodSpreadsheetId,
-      range: `${sheetName}!A:Z`,
+      range: sheetName, // Unbounded range - gets all columns
     });
     return this.rowsToObjects(response.data.values || []);
   }
@@ -694,7 +700,7 @@ class FullDatabaseMigration {
   async extractSheetRaw(sheetName) {
     const response = await this.prodSheets.spreadsheets.values.get({
       spreadsheetId: this.prodSpreadsheetId,
-      range: `${sheetName}!A:Z`,
+      range: sheetName, // Unbounded range - gets all columns
     });
     return response.data.values || [];
   }
@@ -851,9 +857,31 @@ class FullDatabaseMigration {
     });
   }
 
+  async cleanupMappingFiles() {
+    this.logger.log('\n🗑️  Cleaning up mapping files...');
+    
+    try {
+      // Find all full-migration-mappings-*.json files in the migrations directory
+      const files = await fs.readdir(__dirname);
+      const mappingFiles = files.filter(f => f.startsWith('full-migration-mappings-') && f.endsWith('.json'));
+      
+      for (const file of mappingFiles) {
+        const filepath = join(__dirname, file);
+        await fs.unlink(filepath);
+        this.logger.log(`   🗑️  Deleted ${file}`);
+      }
+      
+      if (mappingFiles.length === 0) {
+        this.logger.log('   ℹ️  No mapping files found to clean up');
+      }
+    } catch (error) {
+      this.logger.log(`   ⚠️  Error cleaning up mapping files: ${error.message}`);
+    }
+  }
+
   async saveMappings() {
     const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\..+/, '');
-    const filename = `full-migration-mappings-${timestamp}.json`;
+    const filename = join(__dirname, `full-migration-mappings-${timestamp}.json`);
 
     const mappingsData = {
       migration: this.migrationName,
@@ -866,6 +894,9 @@ class FullDatabaseMigration {
 
     await fs.writeFile(filename, JSON.stringify(mappingsData, null, 2));
     this.logger.log(`\n💾 All mappings saved to: ${filename}`);
+    
+    // Store the filename for later cleanup
+    this.mappingsFilename = filename;
   }
 }
 
