@@ -42,13 +42,6 @@ export class FeedbackController {
 
       logger.info('📝 USER FEEDBACK RECEIVED', feedbackLog);
 
-      // Also log to console in development for easy viewing
-      console.log('\n=== USER FEEDBACK RECEIVED ===');
-      console.log('Message:', message || '(no message)');
-      console.log('User:', state?.currentUser?.email || 'unknown');
-      console.log('Full feedback:', JSON.stringify(feedbackLog, null, 2));
-      console.log('================================\n');
-
       successResponse(
         res,
         { received: true },

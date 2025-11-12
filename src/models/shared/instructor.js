@@ -167,18 +167,6 @@ export class Instructor {
    * @returns {Instructor} Instructor instance
    */
   static fromDatabaseRow(row) {
-    // Debug logging
-    if (row && row[0]) {
-      console.log(`Instructor row data for ${row[0]}:`, {
-        id: row[0],
-        email: row[1],
-        lastName: row[2],
-        firstName: row[3],
-        phone: row[4],
-        rowLength: row.length,
-      });
-    }
-
     const [
       id,
       email,
