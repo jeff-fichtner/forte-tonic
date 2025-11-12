@@ -35,9 +35,13 @@ export function createVersionedHtmlMiddleware(htmlPath) {
         Expires: '0',
       });
     } else {
-      // In production, cache HTML for a short time but assets for longer
+      // In production, use ETag-based revalidation
+      // Browser must check with server on each load to see if version changed
+      // If ETag matches, server responds 304 Not Modified (fast)
+      // If ETag differs (new deployment), server sends new HTML
       res.set({
-        'Cache-Control': 'public, max-age=300', // 5 minutes for HTML
+        'Cache-Control': 'no-cache, must-revalidate',
+        ETag: `"${version.frontendHash}"`,
       });
     }
 
