@@ -123,7 +123,7 @@ app.use(
       } else {
         res.set('Cache-Control', 'public, max-age=31536000, immutable');
       }
-      res.set('Content-Type', 'text/javascript');
+      res.set('Content-Type', 'text/javascript; charset=utf-8');
     },
   })
 );
@@ -142,7 +142,7 @@ app.use(
       } else {
         res.set('Cache-Control', 'public, max-age=31536000, immutable');
       }
-      res.set('Content-Type', 'text/javascript');
+      res.set('Content-Type', 'text/javascript; charset=utf-8');
     },
   })
 );
