@@ -5,7 +5,7 @@
 
 import { Select } from '../select.js';
 import { RegistrationFormText } from '../../constants/registrationFormConstants.js';
-import { RegistrationType } from '../../../utils/values/registrationType.js';
+import { RegistrationType } from '/utils/values/registrationType.js';
 
 export class RegistrationTypeSelector {
   /**

@@ -3,7 +3,7 @@
  * Simplified progressive filters without restrictions
  */
 
-import { RegistrationType } from '../../../utils/values/registrationType.js';
+import { RegistrationType } from '/utils/values/registrationType.js';
 import { RegistrationFormText, DayNames } from '../constants/registrationFormConstants.js';
 import {
   validateBusTimeRestrictions,
