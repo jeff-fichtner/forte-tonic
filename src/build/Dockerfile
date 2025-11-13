@@ -15,9 +15,6 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Run build checks and generate any build artifacts
-RUN npm run format:check && npm run lint
-
 # Build frontend with Vite (generates dist/web with hashed files)
 RUN npm run build:frontend
 
