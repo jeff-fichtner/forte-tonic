@@ -18,6 +18,9 @@ COPY . .
 # Run build checks and generate any build artifacts
 RUN npm run format:check && npm run lint
 
+# Build frontend with Vite (generates dist/web with hashed files)
+RUN npm run build:frontend
+
 # Production stage
 FROM node:20-alpine AS production
 
@@ -46,6 +49,9 @@ COPY --from=builder --chown=nodejs:nodejs /app/src ./src
 COPY --from=builder --chown=nodejs:nodejs /app/config ./config
 COPY --from=builder --chown=nodejs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nodejs:nodejs /app/start.js ./
+
+# Copy built frontend assets (dist/web contains Vite-built files with hashed names)
+COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 
 # Switch to non-root user
 USER nodejs
