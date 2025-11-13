@@ -8,10 +8,13 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+const isDevelopment =
+  process.env.NODE_ENV === 'development' ||
+  process.env.NODE_ENV === 'test' ||
+  !process.env.NODE_ENV;
 
 // In production, serve from dist/web (built by Vite with hashed filenames)
-// In development, serve from src/web (source files with manual version injection)
+// In development/test, serve from src/web (source files with manual version injection)
 const webPath = isDevelopment
   ? path.join(__dirname, '..', 'web')
   : path.join(__dirname, '..', '..', 'dist', 'web');
@@ -60,11 +63,11 @@ router.use(
         }
       }
 
-      // Set correct MIME types
+      // Set correct MIME types with charset
       if (filePath.endsWith('.js')) {
-        res.set('Content-Type', 'text/javascript');
+        res.set('Content-Type', 'text/javascript; charset=utf-8');
       } else if (filePath.endsWith('.css')) {
-        res.set('Content-Type', 'text/css');
+        res.set('Content-Type', 'text/css; charset=utf-8');
       }
     },
   })
