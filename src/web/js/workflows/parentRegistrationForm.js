@@ -3,7 +3,7 @@
  * This class handles the registration workflow for parents with full validation and restrictions
  */
 
-import { RegistrationType } from '../../../utils/values/registrationType.js';
+import { RegistrationType } from '/utils/values/registrationType.js';
 import { DomHelpers } from '../utilities/domHelpers.js';
 import { formatClassNameWithGradeCorrection } from '../utilities/classNameFormatter.js';
 import { ClassManager } from '../utilities/classManager.js';
