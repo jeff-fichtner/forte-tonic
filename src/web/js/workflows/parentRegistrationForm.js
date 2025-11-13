@@ -38,17 +38,18 @@ export class ParentRegistrationForm {
     instructors,
     students,
     classes,
-    registrations,
+    nextTrimesterRegistrations,
     sendDataFunction,
     parentChildren = [],
-    nextTrimesterRegistrations = []
+    currentTrimesterRegistrations = []
   ) {
     this.instructors = instructors;
     this.students = students;
     this.classes = classes;
-    this.registrations = registrations || [];
+    this.registrations = nextTrimesterRegistrations || []; // For backward compatibility
     this.sendDataFunction = sendDataFunction;
     this.parentChildren = parentChildren || [];
+    this.currentTrimesterRegistrations = currentTrimesterRegistrations || [];
     this.nextTrimesterRegistrations = nextTrimesterRegistrations || [];
 
     // Initialize basic properties
@@ -68,15 +69,16 @@ export class ParentRegistrationForm {
     instructors,
     students,
     classes,
-    registrations,
+    nextTrimesterRegistrations,
     parentChildren,
-    nextTrimesterRegistrations = []
+    currentTrimesterRegistrations = []
   ) {
     this.instructors = instructors;
     this.students = students;
     this.classes = classes;
-    this.registrations = registrations || [];
+    this.registrations = nextTrimesterRegistrations || []; // For backward compatibility
     this.parentChildren = parentChildren || [];
+    this.currentTrimesterRegistrations = currentTrimesterRegistrations || [];
     this.nextTrimesterRegistrations = nextTrimesterRegistrations || [];
 
     // Refresh the interface with new data by re-running initialization
@@ -3672,7 +3674,7 @@ export class ParentRegistrationForm {
 
     // Priority enrollment: only returning families (those with current registrations)
     if (currentPeriod.periodType === 'priorityEnrollment') {
-      const currentRegistrations = this.registrations || [];
+      const currentRegistrations = this.currentTrimesterRegistrations || [];
       return currentRegistrations.length > 0;
     }
 
