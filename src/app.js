@@ -109,6 +109,44 @@ app.use('/api', initializeRepositories);
 app.use('/', staticRoutes);
 app.use('/api', apiRoutes);
 
+// Serve models directory for frontend ES module imports
+app.use(
+  '/models',
+  express.static(path.join(__dirname, 'models'), {
+    setHeaders: res => {
+      if (isDevelopment) {
+        res.set({
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        });
+      } else {
+        res.set('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+      res.set('Content-Type', 'text/javascript');
+    },
+  })
+);
+
+// Serve utils directory for frontend ES module imports
+app.use(
+  '/utils',
+  express.static(path.join(__dirname, 'utils'), {
+    setHeaders: res => {
+      if (isDevelopment) {
+        res.set({
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        });
+      } else {
+        res.set('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+      res.set('Content-Type', 'text/javascript');
+    },
+  })
+);
+
 // Serve shared models for frontend access with versioned caching
 app.use(
   '/shared',
