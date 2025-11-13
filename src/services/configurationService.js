@@ -78,7 +78,7 @@ export class ConfigurationService {
     return {
       port: this._config.port,
       nodeEnv: this._config.nodeEnv,
-      cloudRunServiceUrl: this._config.cloudRunServiceUrl,
+      serviceUrl: this._config.serviceUrl,
       logLevel: this._config.logLevel,
       isDevelopment: this._config.nodeEnv !== 'production',
       isTest: this._config.nodeEnv === 'test',
@@ -91,9 +91,18 @@ export class ConfigurationService {
    */
   getBaseUrl() {
     const serverConfig = this.getServerConfig();
-    return serverConfig.isDevelopment
-      ? `http://localhost:${serverConfig.port}`
-      : serverConfig.cloudRunServiceUrl || 'https://your-cloud-run-service.run.app';
+    if (serverConfig.isDevelopment) {
+      return `http://localhost:${serverConfig.port}`;
+    }
+
+    // In staging/production, SERVICE_URL is set by Cloud Run deployment
+    if (serverConfig.serviceUrl) {
+      return serverConfig.serviceUrl;
+    }
+
+    // Fallback - should never happen in properly configured deployments
+    console.warn('⚠️ SERVICE_URL not set - base URL will be undefined');
+    return undefined;
   }
 
   /**
