@@ -112,10 +112,9 @@ steps:
     args:
       - '-c'
       - |
-        # Get the actual service URL now that deployment is complete
-        SERVICE_URL=$$(gcloud run services describe tonic-${_ENV_TYPE} \
-          --region=${_DEPLOY_REGION} \
-          --format='value(status.url)')
+        # Construct the stable project-based URL format
+        # Format: https://{service-name}-{project-number}.{region}.run.app
+        SERVICE_URL="https://tonic-${_ENV_TYPE}-$${PROJECT_NUMBER}.${_DEPLOY_REGION}.run.app"
 
         echo "🔗 Service URL: $$SERVICE_URL"
         echo "🔧 Updating SERVICE_URL environment variable..."
