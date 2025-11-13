@@ -114,7 +114,7 @@ steps:
       - |
         # Construct the stable project-based URL format
         # Format: https://{service-name}-{project-number}.{region}.run.app
-        SERVICE_URL="https://tonic-${_ENV_TYPE}-$${PROJECT_NUMBER}.${_DEPLOY_REGION}.run.app"
+        SERVICE_URL="https://tonic-${_ENV_TYPE}-${PROJECT_NUMBER}.${_DEPLOY_REGION}.run.app"
 
         echo "🔗 Service URL: $$SERVICE_URL"
         echo "🔧 Updating SERVICE_URL environment variable..."
@@ -134,7 +134,7 @@ steps:
       - '-c'
       - |
         # Use the same project-based URL format
-        SERVICE_URL="https://tonic-${_ENV_TYPE}-$${PROJECT_NUMBER}.${_DEPLOY_REGION}.run.app"
+        SERVICE_URL="https://tonic-${_ENV_TYPE}-${PROJECT_NUMBER}.${_DEPLOY_REGION}.run.app"
 
         echo "⏳ Waiting for deployment to be ready..."
         echo "🔗 Service URL: $$SERVICE_URL"
@@ -158,8 +158,8 @@ steps:
       - '-c'
       - |
         # Use the same project-based URL format
-        SERVICE_URL="https://tonic-${_ENV_TYPE}-$${PROJECT_NUMBER}.${_DEPLOY_REGION}.run.app"
-        
+        SERVICE_URL="https://tonic-${_ENV_TYPE}-${PROJECT_NUMBER}.${_DEPLOY_REGION}.run.app"
+
         echo ""
         echo "🎉 CI/CD PIPELINE COMPLETED SUCCESSFULLY!"
         echo "========================================"
