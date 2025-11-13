@@ -133,8 +133,10 @@ steps:
     args:
       - '-c'
       - |
+        # Use the same project-based URL format
+        SERVICE_URL="https://tonic-${_ENV_TYPE}-$${PROJECT_NUMBER}.${_DEPLOY_REGION}.run.app"
+
         echo "⏳ Waiting for deployment to be ready..."
-        SERVICE_URL=$(gcloud run services describe tonic-${_ENV_TYPE} --region=${_DEPLOY_REGION} --format='value(status.url)')
         echo "🔗 Service URL: $$SERVICE_URL"
 
         # Wait up to 2 minutes for health check
@@ -155,7 +157,8 @@ steps:
     args:
       - '-c'
       - |
-        SERVICE_URL=$(gcloud run services describe tonic-${_ENV_TYPE} --region=${_DEPLOY_REGION} --format='value(status.url)')
+        # Use the same project-based URL format
+        SERVICE_URL="https://tonic-${_ENV_TYPE}-$${PROJECT_NUMBER}.${_DEPLOY_REGION}.run.app"
         
         echo ""
         echo "🎉 CI/CD PIPELINE COMPLETED SUCCESSFULLY!"
