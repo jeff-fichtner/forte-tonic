@@ -27,7 +27,7 @@
     "build": "npm run check:all",
     "build:frontend": "vite build",
     "build:production": "npm run build:frontend && npm run check:all",
-    "build:staging": "./scripts/version-manager.sh auto && npm run build:frontend && npm run check:all",
+    "build:staging": "npm run check:all && npm run build:frontend && ./scripts/version-manager.sh auto",
     "preview": "vite preview",
     "version:increment": "npm version patch --no-git-tag-version",
     "version:increment:minor": "npm version minor --no-git-tag-version",

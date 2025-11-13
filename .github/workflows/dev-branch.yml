@@ -42,15 +42,9 @@ jobs:
       
       - name: 'Install dependencies'
         run: npm ci
-      
-      - name: 'Run linting'
-        run: npm run lint
-        
-      - name: 'Run formatting check'
-        run: npm run format:check
-      
-      - name: 'Run unit tests'
-        run: npm test
+
+      - name: 'Run all validation checks'
+        run: npm run check:all
         
       # Only proceed with versioning if all previous steps pass
       - name: 'Check if merge from main'
