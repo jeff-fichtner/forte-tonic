@@ -487,9 +487,9 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       <td>${instrumentOrClass}</td>
       ${intentCell}
       <td>
-        <a href="#" data-registration-id="${enrollment.id?.value || enrollment.id}">
+        <button type="button" class="btn-flat" style="padding: 0; min-width: 0; background: none; border: none; cursor: pointer;" data-registration-id="${enrollment.id?.value || enrollment.id}">
           <i class="material-icons copy-emails-table-icon gray-text text-darken-4">email</i>
-        </a>
+        </button>
       </td>
     `;
   }
@@ -529,10 +529,11 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     }
 
     event.preventDefault();
+    event.stopPropagation();
 
     // Get the registration ID from the data attribute
-    const linkElement = event.target.closest('a');
-    const registrationId = linkElement?.getAttribute('data-registration-id');
+    const buttonElement = event.target.closest('button');
+    const registrationId = buttonElement?.getAttribute('data-registration-id');
     if (!registrationId) return;
 
     // Find the enrollment by ID - search in both current and next trimester data

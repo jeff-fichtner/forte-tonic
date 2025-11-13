@@ -288,14 +288,14 @@ export class AdminMasterScheduleTab extends BaseTab {
       <td>${instrumentOrClass}</td>
       ${intentCell}
       <td>
-        <a href="#" data-registration-id="${registrationId}">
+        <button type="button" class="btn-flat" style="padding: 0; min-width: 0; background: none; border: none; cursor: pointer;" data-registration-id="${registrationId}">
           <i class="material-icons copy-parent-emails-table-icon gray-text text-darken-4">email</i>
-        </a>
+        </button>
       </td>
       <td>
-        <a href="#" data-registration-id="${registrationId}">
+        <button type="button" class="btn-flat" style="padding: 0; min-width: 0; background: none; border: none; cursor: pointer;" data-registration-id="${registrationId}">
           <i class="material-icons remove-registration-table-icon red-text text-darken-4">delete</i>
-        </a>
+        </button>
       </td>
     `;
   }
@@ -313,10 +313,11 @@ export class AdminMasterScheduleTab extends BaseTab {
     }
 
     event.preventDefault();
+    event.stopPropagation();
 
     // Get the registration ID from the data attribute
-    const linkElement = event.target.closest('a');
-    const registrationId = linkElement?.getAttribute('data-registration-id');
+    const buttonElement = event.target.closest('button');
+    const registrationId = buttonElement?.getAttribute('data-registration-id');
     if (!registrationId) return;
 
     // Find the registration by ID

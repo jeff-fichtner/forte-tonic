@@ -108,9 +108,9 @@ export class ParentContactTab extends BaseTab {
       <td>${email}</td>
       <td style="white-space: nowrap;">${employee.phone || ''}</td>
       <td>
-        <a href="#!" data-employee-email="${email}">
+        <button type="button" class="btn-flat" style="padding: 0; min-width: 0; background: none; border: none; cursor: pointer;" data-employee-email="${email}">
           <i class="copy-parent-emails-table-icon material-icons gray-text text-darken-4">email</i>
-        </a>
+        </button>
       </td>
     `;
   }
@@ -126,10 +126,11 @@ export class ParentContactTab extends BaseTab {
     }
 
     event.preventDefault();
+    event.stopPropagation();
 
     // Get the email from the data attribute
-    const linkElement = event.target.closest('a');
-    const email = linkElement?.getAttribute('data-employee-email');
+    const buttonElement = event.target.closest('button');
+    const email = buttonElement?.getAttribute('data-employee-email');
 
     if (email && email !== 'No email') {
       await copyToClipboard(email);
