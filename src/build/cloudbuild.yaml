@@ -84,6 +84,13 @@ steps:
 
         echo "🚀 Deploying with maintenance mode: $$MAINT_MODE"
 
+        # Get the service URL dynamically for this deployment
+        SERVICE_URL=$$(gcloud run services describe tonic-${_ENV_TYPE} \
+          --region=${_DEPLOY_REGION} \
+          --format='value(status.url)' 2>/dev/null || echo "")
+
+        echo "🔗 Deploying with SERVICE_URL: $$SERVICE_URL"
+
         gcloud run deploy tonic-${_ENV_TYPE} \
           --image=gcr.io/$PROJECT_ID/tonic:${_ENV_TYPE}-${SHORT_SHA} \
           --region=${_DEPLOY_REGION} \
@@ -92,6 +99,7 @@ steps:
           --set-env-vars=CI=true \
           --set-env-vars=BUILD_GIT_COMMIT=${COMMIT_SHA} \
           --set-env-vars=BUILD_GIT_TAG=${TAG_NAME} \
+          --set-env-vars=SERVICE_URL="$$SERVICE_URL" \
           --set-env-vars=MAINTENANCE_MODE="$$MAINT_MODE" \
           --set-env-vars=MAINTENANCE_MESSAGE="$$MAINT_MSG" \
           --set-secrets=WORKING_SPREADSHEET_ID=working-spreadsheet-id:latest \
