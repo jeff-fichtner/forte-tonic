@@ -3,9 +3,6 @@
  * This file uses ES module imports to load all required dependencies
  */
 
-// CSS is loaded via <link> tag in index.html for both dev and production
-// (Vite will process and bundle it during build even without an import here)
-
 // Import all required modules
 import './constants.js';
 import './data/httpService.js';
