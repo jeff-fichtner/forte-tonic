@@ -8,122 +8,63 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-// Check if we're in development mode
 const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
 
-// Development cache headers for non-HTML files
-const developmentHeaders = isDevelopment
-  ? {
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      Pragma: 'no-cache',
-      Expires: '0',
-    }
-  : {};
+// In production, serve from dist/web (built by Vite with hashed filenames)
+// In development, serve from src/web (source files with manual version injection)
+const webPath = isDevelopment
+  ? path.join(__dirname, '..', 'web')
+  : path.join(__dirname, '..', '..', 'dist', 'web');
 
-// Production cache headers for versioned assets (long cache)
-const productionAssetHeaders = !isDevelopment
-  ? {
-      'Cache-Control': 'public, max-age=31536000, immutable', // 1 year for versioned assets
-    }
-  : {};
-
-// Serve the main HTML file at root with version injection
-const htmlPath = path.join(__dirname, '..', 'web', 'index.html');
-router.get('/', createVersionedHtmlMiddleware(htmlPath));
-
-// Use Express.js built-in static middleware for efficient file serving
-const webPath = path.join(__dirname, '..', 'web');
-
-// Serve JavaScript files with correct MIME type and versioned cache headers
-router.use(
-  '/js',
-  express.static(path.join(webPath, 'js'), {
-    setHeaders: (res, filePath) => {
-      if (filePath.endsWith('.js')) {
-        res.set('Content-Type', 'text/javascript');
-      }
-
-      // Apply cache headers based on environment
-      if (isDevelopment) {
-        Object.entries(developmentHeaders).forEach(([key, value]) => {
-          res.set(key, value);
-        });
-      } else {
-        // In production, use long cache for versioned assets
-        // Since we inject version params in HTML, all JS will have ?v=hash
-        res.set('Cache-Control', 'public, max-age=31536000, immutable');
-      }
-    },
-  })
+console.log(
+  `🌐 Serving static files from: ${webPath} (${isDevelopment ? 'development' : 'production'})`
 );
 
-// Serve CSS files with correct MIME type and versioned cache headers
+// Serve the main HTML file at root
+if (isDevelopment) {
+  // Development: use version injection middleware for cache busting
+  const htmlPath = path.join(webPath, 'index.html');
+  router.get('/', createVersionedHtmlMiddleware(htmlPath));
+} else {
+  // Production: serve pre-built HTML with hashed assets from Vite
+  router.get('/', (req, res) => {
+    const htmlPath = path.join(webPath, 'index.html');
+    res.set({
+      'Cache-Control': 'no-cache, must-revalidate', // Always check for new HTML
+      ETag: `"${process.env.BUILD_GIT_COMMIT || 'latest'}"`,
+    });
+    res.sendFile(htmlPath);
+  });
+}
+
+// Serve all other static assets with appropriate caching
 router.use(
-  '/css',
-  express.static(path.join(webPath, 'css'), {
+  express.static(webPath, {
     setHeaders: (res, filePath) => {
-      if (filePath.endsWith('.css')) {
+      if (isDevelopment) {
+        // Development: no cache for fast iteration
+        res.set({
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        });
+      } else {
+        // Production: check if file has hash in filename (Vite output)
+        // Pattern: main.abc123.js, main.abc123.css, etc.
+        if (filePath.match(/\.[a-f0-9]{8,}\.(js|css|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/i)) {
+          // Hashed files: cache forever (immutable)
+          res.set('Cache-Control', 'public, max-age=31536000, immutable');
+        } else {
+          // Non-hashed files: short cache with revalidation
+          res.set('Cache-Control', 'public, max-age=300, must-revalidate');
+        }
+      }
+
+      // Set correct MIME types
+      if (filePath.endsWith('.js')) {
+        res.set('Content-Type', 'text/javascript');
+      } else if (filePath.endsWith('.css')) {
         res.set('Content-Type', 'text/css');
-      }
-
-      // Apply cache headers based on environment
-      if (isDevelopment) {
-        Object.entries(developmentHeaders).forEach(([key, value]) => {
-          res.set(key, value);
-        });
-      } else {
-        // In production, use long cache for versioned assets
-        // Since we inject version params in HTML, all CSS will have ?v=hash
-        res.set('Cache-Control', 'public, max-age=31536000, immutable');
-      }
-    },
-  })
-);
-
-// Serve image files
-router.use('/images', express.static(path.join(webPath, 'images')));
-
-// Serve model files for frontend imports with versioned cache headers
-router.use(
-  '/models',
-  express.static(path.join(__dirname, '..', 'models'), {
-    setHeaders: (res, filePath) => {
-      if (filePath.endsWith('.js')) {
-        res.set('Content-Type', 'text/javascript');
-      }
-
-      // Apply cache headers based on environment
-      if (isDevelopment) {
-        Object.entries(developmentHeaders).forEach(([key, value]) => {
-          res.set(key, value);
-        });
-      } else {
-        // In production, use long cache for versioned assets
-        // Since we inject version params in HTML, all imports will have ?v=hash
-        res.set('Cache-Control', 'public, max-age=31536000, immutable');
-      }
-    },
-  })
-);
-
-// Serve utility files for frontend imports with versioned cache headers
-router.use(
-  '/utils',
-  express.static(path.join(__dirname, '..', 'utils'), {
-    setHeaders: (res, filePath) => {
-      if (filePath.endsWith('.js')) {
-        res.set('Content-Type', 'text/javascript');
-      }
-
-      // Apply cache headers based on environment
-      if (isDevelopment) {
-        Object.entries(developmentHeaders).forEach(([key, value]) => {
-          res.set(key, value);
-        });
-      } else {
-        // In production, use long cache for versioned assets
-        // Since we inject version params in HTML, all imports will have ?v=hash
-        res.set('Cache-Control', 'public, max-age=31536000, immutable');
       }
     },
   })
