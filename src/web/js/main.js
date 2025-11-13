@@ -3,6 +3,9 @@
  * This file uses ES module imports to load all required dependencies
  */
 
+// Import CSS
+import '../css/externalStyles.css';
+
 // Import all required modules
 import './constants.js';
 import './data/httpService.js';
