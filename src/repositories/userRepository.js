@@ -1,6 +1,7 @@
 import { BaseRepository } from './baseRepository.js';
 import { Keys } from '../utils/values/keys.js';
 import { Admin, Instructor, Student, Parent, Room } from '../models/shared/index.js';
+import { UserType } from '../config/constants.js';
 
 /**
  * UserRepository - manages user-related entities (admins, instructors, students, parents, rooms)
@@ -298,19 +299,19 @@ export class UserRepository extends BaseRepository {
     // Try to find admin first
     const admin = await this.getAdminByAccessCode(accessCode);
     if (admin) {
-      return { user: admin, userType: 'admin' };
+      return { user: admin, userType: UserType.ADMIN };
     }
 
     // Try to find instructor
     const instructor = await this.getInstructorByAccessCode(accessCode);
     if (instructor) {
-      return { user: instructor, userType: 'instructor' };
+      return { user: instructor, userType: UserType.INSTRUCTOR };
     }
 
     // Try to find parent
     const parent = await this.getParentByAccessCode(accessCode);
     if (parent) {
-      return { user: parent, userType: 'parent' };
+      return { user: parent, userType: UserType.PARENT };
     }
 
     // Not found in any user type

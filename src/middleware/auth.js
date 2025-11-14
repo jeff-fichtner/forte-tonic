@@ -2,6 +2,7 @@ import { serviceContainer } from '../infrastructure/container/serviceContainer.j
 import { currentConfig } from '../config/environment.js';
 import { createLogger } from '../utils/logger.js';
 import { configService } from '../services/configurationService.js';
+import { UserType } from '../config/constants.js';
 
 const logger = createLogger(configService);
 
@@ -102,7 +103,7 @@ async function extractAuthenticatedUser(req, userRepository) {
         // For parent login, accessCode is actually a phone number
         const parent = await userRepository.getParentByPhone(accessCode);
         if (parent) {
-          userResult = { user: parent, userType: 'parent' };
+          userResult = { user: parent, userType: UserType.PARENT };
         }
       }
 
@@ -116,7 +117,7 @@ async function extractAuthenticatedUser(req, userRepository) {
         if (isPhoneNumber && loginType !== 'parent') {
           const parent = await userRepository.getParentByPhone(accessCode);
           if (parent) {
-            userResult = { user: parent, userType: 'parent' };
+            userResult = { user: parent, userType: UserType.PARENT };
           }
         } else if (isAccessCode && loginType !== 'employee') {
           userResult = await userRepository.getUserByAccessCode(accessCode);
