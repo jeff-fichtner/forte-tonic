@@ -312,6 +312,40 @@ async function initializeApplication() {
         return false;
       }
     };
+
+    // Expose server cache clearing function globally (admin only)
+    // Usage: window.clearServerCache('your-admin-code') in browser console
+    window.clearServerCache = async function (adminCode) {
+      if (!adminCode) {
+        console.error('✗ Admin code required. Usage: window.clearServerCache("your-admin-code")');
+        return false;
+      }
+
+      try {
+        console.log('🧹 Clearing server cache...');
+        const response = await fetch('/api/admin/clearCache', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ adminCode }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('✗ Failed to clear cache:', errorData.error || response.statusText);
+          return false;
+        }
+
+        const result = await response.json();
+        console.log('✓ Server cache cleared successfully by:', result.clearedBy);
+        console.log('  Message:', result.message);
+        return true;
+      } catch (error) {
+        console.error('✗ Error clearing server cache:', error);
+        return false;
+      }
+    };
   } catch (error) {
     console.error('✗ Error initializing application:', error);
 
