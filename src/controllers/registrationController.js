@@ -153,8 +153,8 @@ export class RegistrationController {
       // Use the registration application service for business logic
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
 
-      // Check if user is an admin (admins can bypass capacity restrictions)
-      const isAdmin = req.currentUser?.admin !== undefined;
+      // Check if user is an admin (admins can bypass capacity restrictions and specify trimester)
+      const isAdmin = req.currentUser?.userType === 'admin';
 
       // Process registration through application service with authenticated user
       const result = await registrationApplicationService.processRegistration(
