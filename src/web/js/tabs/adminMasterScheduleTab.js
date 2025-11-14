@@ -606,12 +606,13 @@ export class AdminMasterScheduleTab extends BaseTab {
 
   /**
    * Exclude Rock Band classes from registrations
+   * Uses ROCK_BAND_CLASS_IDS from application config instead of title matching
    * @private
    */
   #excludeRockBandClasses(registrations) {
-    const rockBandClassIds = this.data.classes
-      .filter(c => c.title && c.title.toLowerCase().includes('rock band'))
-      .map(c => c.id?.value || c.id);
+    // Get Rock Band class IDs from application configuration
+    const appConfig = window.TONIC_ENV?.appConfig;
+    const rockBandClassIds = appConfig?.rockBandClassIds || [];
 
     return registrations.filter(
       reg => !rockBandClassIds.includes(reg.classId?.value || reg.classId)
