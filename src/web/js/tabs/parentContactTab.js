@@ -151,27 +151,13 @@ export class ParentContactTab extends BaseTab {
    * @private
    */
   #mapAdminsToEmployees(admins) {
-    // TODO: This hard-coding should eventually come from the database
-    const noah = admins.find(admin => admin.email === 'ndemosslevy@mcds.org');
-
-    return admins.map(admin => {
-      if (admin === noah) {
-        return {
-          id: admin.id,
-          fullName: admin.fullName,
-          email: admin.email,
-          phone: '(415) 945-5121', // TODO: migrate to data column
-          roles: ['Forte Director'], // TODO: migrate to data column
-        };
-      }
-      return {
-        id: admin.id,
-        fullName: admin.fullName,
-        email: 'forte@mcds.org', // TODO: migrate to data column
-        phone: '(415) 945-5122', // TODO: migrate to data column
-        roles: ['Forte Associate Manager'], // TODO: migrate to data column
-      };
-    });
+    return admins.map(admin => ({
+      id: admin.id,
+      fullName: admin.fullName,
+      email: admin.displayEmail || admin.email,
+      phone: admin.displayPhone || admin.phoneNumber,
+      roles: admin.role ? [admin.role] : [],
+    }));
   }
 
   /**
