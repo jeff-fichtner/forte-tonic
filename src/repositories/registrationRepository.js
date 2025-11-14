@@ -39,8 +39,8 @@ export class RegistrationRepository extends BaseRepository {
         }
       }
 
-      // Use cached database client method instead of direct API call
-      const allRegistrations = await this.dbClient.getCachedData('registrations', row =>
+      // Get all registrations from database
+      const allRegistrations = await this.dbClient.getAllRecords('registrations', row =>
         Registration.fromDatabaseRow ? Registration.fromDatabaseRow(row) : new Registration(row)
       );
 
@@ -69,8 +69,8 @@ export class RegistrationRepository extends BaseRepository {
    */
   async getByStudentId(studentId) {
     try {
-      // Use cached database client method instead of direct API call
-      const allRegistrations = await this.dbClient.getCachedData('registrations', row =>
+      // Get all registrations from database
+      const allRegistrations = await this.dbClient.getAllRecords('registrations', row =>
         Registration.fromDatabaseRow ? Registration.fromDatabaseRow(row) : new Registration(row)
       );
 
@@ -89,8 +89,8 @@ export class RegistrationRepository extends BaseRepository {
    */
   async getByInstructorId(instructorId) {
     try {
-      // Use cached database client method instead of direct API call
-      const allRegistrations = await this.dbClient.getCachedData('registrations', row =>
+      // Get all registrations from database
+      const allRegistrations = await this.dbClient.getAllRecords('registrations', row =>
         Registration.fromDatabaseRow ? Registration.fromDatabaseRow(row) : new Registration(row)
       );
 
@@ -115,8 +115,8 @@ export class RegistrationRepository extends BaseRepository {
 
       this.logger.info(`📋 Getting active registrations from table: ${currentTable}`);
 
-      // Use cached database client method instead of direct API call
-      const allRegistrations = await this.dbClient.getCachedData(currentTable, row => {
+      // Get all registrations from database
+      const allRegistrations = await this.dbClient.getAllRecords(currentTable, row => {
         // Skip empty rows
         if (!row || !row[0]) {
           return null;
@@ -169,8 +169,8 @@ export class RegistrationRepository extends BaseRepository {
 
       this.logger.info(`📋 Getting enrollment registrations from table: ${enrollmentTable}`);
 
-      // Use cached database client method
-      const allRegistrations = await this.dbClient.getCachedData(enrollmentTable, row => {
+      // Get all registrations from database
+      const allRegistrations = await this.dbClient.getAllRecords(enrollmentTable, row => {
         // Skip empty rows
         if (!row || !row[0]) {
           return null;
@@ -414,7 +414,7 @@ export class RegistrationRepository extends BaseRepository {
     try {
       this.logger.info(`📋 Getting registrations from table: ${tableName}`);
 
-      const allRegistrations = await this.dbClient.getCachedData(tableName, row => {
+      const allRegistrations = await this.dbClient.getAllRecords(tableName, row => {
         // Skip empty rows
         if (!row || !row[0]) {
           return null;

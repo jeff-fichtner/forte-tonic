@@ -7,20 +7,16 @@ import { configService } from '../services/configurationService.js';
 import { BaseService } from '../infrastructure/base/baseService.js';
 
 /**
- * Enhanced GoogleSheetsDbClient with caching and performance optimizations
+ * GoogleSheetsDbClient - Thin wrapper around Google Sheets API
  * Consolidated from multiple client versions for better maintainability
+ * Note: Caching is handled at the repository layer, not here
  */
 export class GoogleSheetsDbClient extends BaseService {
   /**
-   * Initialize the Google Sheets client with caching capabilities
+   * Initialize the Google Sheets client
    */
   constructor(configurationService = configService) {
     super(configurationService); // Initialize logger via BaseService
-
-    // Performance optimization: Add caching
-    this.cache = new Map();
-    this.cacheTimestamps = new Map();
-    this.CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
 
     // Get authentication configuration from config service
     const authConfig = this.configService.getGoogleSheetsAuth();
@@ -414,33 +410,6 @@ export class GoogleSheetsDbClient extends BaseService {
   }
 
   /**
-   *
-   */
-
-  /**
-   * Get data with caching support for improved performance
-   */
-  async getCachedData(sheetKey, mapFunc = null) {
-    const now = Date.now();
-    const cachedTime = this.cacheTimestamps.get(sheetKey);
-
-    if (cachedTime && now - cachedTime < this.CACHE_TTL) {
-      this.logger.log('📦', `Using cached data for ${sheetKey}`);
-      return this.cache.get(sheetKey);
-    }
-
-    // Cache miss, load fresh data
-    this.logger.log('🔄', `Loading fresh data for ${sheetKey}`);
-    const data = await this.getAllRecords(sheetKey, mapFunc || (row => row));
-
-    // Cache the results
-    this.cache.set(sheetKey, data);
-    this.cacheTimestamps.set(sheetKey, now);
-
-    return data;
-  }
-
-  /**
    * Batch load multiple sheets in parallel for better performance
    */
   async getAllDataParallel(sheetKeys, mapFunctions = {}) {
@@ -450,7 +419,7 @@ export class GoogleSheetsDbClient extends BaseService {
       // Load all requested sheets in parallel
       const promises = sheetKeys.map(async sheetKey => {
         const mapFunc = mapFunctions[sheetKey] || (row => row);
-        const data = await this.getCachedData(sheetKey, mapFunc);
+        const data = await this.getAllRecords(sheetKey, mapFunc);
         return { sheetKey, data };
       });
 
@@ -476,22 +445,7 @@ export class GoogleSheetsDbClient extends BaseService {
   }
 
   /**
-   * Clear cache manually - useful for testing or forced refresh
-   */
-  clearCache(sheetKey = null) {
-    if (sheetKey) {
-      this.cache.delete(sheetKey);
-      this.cacheTimestamps.delete(sheetKey);
-      this.logger.log('🧹', `Cache cleared for ${sheetKey}`);
-    } else {
-      this.cache.clear();
-      this.cacheTimestamps.clear();
-      this.logger.log('🧹', 'All cache cleared');
-    }
-  }
-
-  /**
-   * Enhanced batch operations for writes with cache invalidation
+   * Enhanced batch operations for writes
    */
   async batchWrite(operations) {
     const batchRequest = {
@@ -513,17 +467,6 @@ export class GoogleSheetsDbClient extends BaseService {
       '📝',
       `Batch write of ${operations.length} operations completed in ${endTime - startTime}ms`
     );
-
-    // Invalidate cache for affected sheets
-    operations.forEach(op => {
-      const sheetName = op.range.split('!')[0];
-      // Find the sheet key that matches this sheet name
-      Object.keys(this.workingSheetInfo).forEach(key => {
-        if (this.workingSheetInfo[key].sheet === sheetName) {
-          this.clearCache(key);
-        }
-      });
-    });
 
     return response;
   }
@@ -657,9 +600,6 @@ export class GoogleSheetsDbClient extends BaseService {
         },
       });
 
-      // Clear cache for this sheet since we modified it
-      this.clearCache(sheetKey);
-
       // Add audit functionality (from existing appendRecord method)
       const { auditSheet } = sheetInfo;
 
@@ -683,7 +623,7 @@ export class GoogleSheetsDbClient extends BaseService {
   }
 
   /**
-   * Insert data into sheet and invalidate cache
+   * Insert data into sheet
    */
   async insertIntoSheet(sheetKey, data) {
     try {
@@ -706,9 +646,6 @@ export class GoogleSheetsDbClient extends BaseService {
         },
       });
 
-      // Clear cache for this sheet since we modified it
-      this.clearCache(sheetKey);
-
       return response.data;
     } catch (error) {
       this.logger.error(`Error inserting data into sheet ${sheetKey}:`, error);
@@ -717,7 +654,7 @@ export class GoogleSheetsDbClient extends BaseService {
   }
 
   /**
-   * Update record and invalidate cache
+   * Update record
    */
   async updateRecord(sheetKey, record, updatedBy) {
     try {
@@ -746,9 +683,6 @@ export class GoogleSheetsDbClient extends BaseService {
         await this.insertIntoSheet(sheetInfo.auditSheet, auditRecord);
         this.logger.debug(`Audit record created for registration update: ${record.id}`);
       }
-
-      // Clear cache for this sheet since we modified it
-      this.clearCache(sheetKey);
     } catch (error) {
       this.logger.error(`Error updating record in sheet ${sheetKey}:`, error);
       throw error;
@@ -756,7 +690,7 @@ export class GoogleSheetsDbClient extends BaseService {
   }
 
   /**
-   * Update data in sheet and invalidate cache
+   * Update data in sheet
    */
   async updateInSheet(sheetKey, rowIndex, data) {
     try {
@@ -778,9 +712,6 @@ export class GoogleSheetsDbClient extends BaseService {
           values: [row],
         },
       });
-
-      // Clear cache for this sheet since we modified it
-      this.clearCache(sheetKey);
 
       return response.data;
     } catch (error) {
@@ -873,9 +804,6 @@ export class GoogleSheetsDbClient extends BaseService {
           ],
         },
       });
-
-      // Clear cache for this sheet since we modified it
-      this.clearCache(sheetKey);
 
       return response.data;
     } catch (error) {

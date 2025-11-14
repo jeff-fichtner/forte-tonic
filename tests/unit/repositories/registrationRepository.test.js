@@ -32,15 +32,10 @@ describe('RegistrationRepository - Delete Functionality', () => {
       },
     };
 
-    // Mock database client
+    // Mock database client (no caching - handled by repositories)
     mockDbClient = {
       spreadsheetId: 'test-spreadsheet-id',
       sheets: mockSheets,
-      cache: {
-        delete: jest.fn(),
-      },
-      getCachedData: jest.fn(),
-      clearCache: jest.fn(),
       deleteRecord: jest.fn().mockResolvedValue(true),
     };
 
@@ -120,7 +115,6 @@ describe('RegistrationRepository - Delete Functionality', () => {
 
       // Verify cache clearing
       expect(repository.clearCache).toHaveBeenCalled();
-      expect(mockDbClient.clearCache).toHaveBeenCalledWith('registrations_fall');
     });
 
     test('should handle string ID parameter', async () => {
@@ -204,14 +198,14 @@ describe('RegistrationRepository - Delete Functionality', () => {
       );
     });
 
-    test('should clear both repository and database client caches', async () => {
+    test('should clear repository cache', async () => {
       repository.getById = jest.fn().mockResolvedValue(mockRegistration);
       repository.clearCache = jest.fn();
 
       await repository.delete(testRegistrationId, 'test-user-id');
 
       expect(repository.clearCache).toHaveBeenCalled();
-      expect(mockDbClient.clearCache).toHaveBeenCalledWith('registrations_fall');
+      // DB client no longer has caching - removed in refactor
     });
   });
 
@@ -241,7 +235,6 @@ describe('RegistrationRepository - Delete Functionality', () => {
 
       // Verify cache was cleared
       expect(repository.clearCache).toHaveBeenCalled();
-      expect(mockDbClient.clearCache).toHaveBeenCalledWith('registrations_fall');
     });
   });
 
@@ -356,7 +349,6 @@ describe('RegistrationRepository - Delete Functionality', () => {
         'test-user@example.com'
       );
       expect(repository.clearCache).toHaveBeenCalled();
-      expect(mockDbClient.clearCache).toHaveBeenCalledWith('registrations_winter');
     });
 
     test('should throw error if createdBy is missing', async () => {

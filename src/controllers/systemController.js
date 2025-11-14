@@ -192,14 +192,7 @@ export class SystemController {
         throw new UnauthorizedError('Invalid admin code');
       }
 
-      // Clear ALL caches in the system
-
-      // 1. Clear database client cache (the main Google Sheets cache)
-      const dbClient = userRepository.dbClient;
-      dbClient.clearCache();
-      logger.info('✅ Database client cache cleared');
-
-      // 2. Clear ALL repository-level caches systematically
+      // Clear all repository-level caches
       const repositoryTypes = [
         'userRepository',
         'registrationRepository',
@@ -224,7 +217,7 @@ export class SystemController {
       logger.info(`✅ Repository caches cleared: ${clearedRepositories.join(', ')}`);
 
       const adminName = validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName;
-      logger.info(`🧹 All caches cleared by admin: ${adminName}`);
+      logger.info(`🧹 All repository caches cleared by admin: ${adminName}`);
 
       const cacheData = {
         success: true,

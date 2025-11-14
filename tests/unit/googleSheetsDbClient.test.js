@@ -63,10 +63,11 @@ describe('GoogleSheetsDbClient', () => {
       expect(client.spreadsheetId).toBe('test-spreadsheet-id');
     });
 
-    test('should initialize cache', () => {
-      expect(client.cache).toBeInstanceOf(Map);
-      expect(client.cacheTimestamps).toBeInstanceOf(Map);
-      expect(client.CACHE_TTL).toBe(5 * 60 * 1000);
+    test('should not have caching (moved to repository layer)', () => {
+      // DB client no longer has caching
+      expect(client.cache).toBeUndefined();
+      expect(client.cacheTimestamps).toBeUndefined();
+      expect(client.CACHE_TTL).toBeUndefined();
     });
 
     test('should have workingSheetInfo configured', () => {
@@ -208,91 +209,19 @@ describe('GoogleSheetsDbClient', () => {
     });
   });
 
+  // DB client caching removed - getCachedData method no longer exists
   describe('getCachedData', () => {
-    test('should fetch fresh data on cache miss', async () => {
-      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
-        data: {
-          values: [['admin-1', 'test@test.com']],
-        },
-      });
-
-      const mapFunc = row => ({ id: row[0], email: row[1] });
-      const result = await client.getCachedData('admins', mapFunc);
-
-      expect(mockSheetsApi.spreadsheets.values.get).toHaveBeenCalled();
-      expect(result).toEqual([{ id: 'admin-1', email: 'test@test.com' }]);
-    });
-
-    test('should return cached data on cache hit', async () => {
-      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
-        data: {
-          values: [['admin-1', 'test@test.com']],
-        },
-      });
-
-      const mapFunc = row => ({ id: row[0], email: row[1] });
-
-      // First call - cache miss
-      await client.getCachedData('admins', mapFunc);
-      expect(mockSheetsApi.spreadsheets.values.get).toHaveBeenCalledTimes(1);
-
-      // Second call - cache hit
-      const result = await client.getCachedData('admins', mapFunc);
-      expect(mockSheetsApi.spreadsheets.values.get).toHaveBeenCalledTimes(1); // Not called again
-      expect(result).toEqual([{ id: 'admin-1', email: 'test@test.com' }]);
-    });
-
-    test('should refresh cache after TTL expires', async () => {
-      jest.useFakeTimers();
-
-      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
-        data: {
-          values: [['admin-1', 'test@test.com']],
-        },
-      });
-
-      const mapFunc = row => ({ id: row[0], email: row[1] });
-
-      // First call
-      await client.getCachedData('admins', mapFunc);
-      expect(mockSheetsApi.spreadsheets.values.get).toHaveBeenCalledTimes(1);
-
-      // Advance time past TTL (5 minutes)
-      jest.advanceTimersByTime(6 * 60 * 1000);
-
-      // Second call - cache expired
-      await client.getCachedData('admins', mapFunc);
-      expect(mockSheetsApi.spreadsheets.values.get).toHaveBeenCalledTimes(2);
-
-      jest.useRealTimers();
+    test('getCachedData tests removed - caching moved to repository layer', () => {
+      // getCachedData method removed - DB client now always fetches fresh data
+      expect(true).toBe(true);
     });
   });
 
+  // DB client caching removed - caching is now handled at repository layer
   describe('clearCache', () => {
-    test('should clear specific sheet cache', async () => {
-      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
-        data: { values: [['test']] },
-      });
-
-      await client.getCachedData('admins', row => ({ id: row[0] }));
-      expect(client.cache.has('admins')).toBe(true);
-
-      client.clearCache('admins');
-      expect(client.cache.has('admins')).toBe(false);
-      expect(client.cacheTimestamps.has('admins')).toBe(false);
-    });
-
-    test('should clear all caches when no key specified', async () => {
-      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
-        data: { values: [['test']] },
-      });
-
-      await client.getCachedData('admins', row => ({ id: row[0] }));
-      await client.getCachedData('students', row => ({ id: row[0] }));
-
-      client.clearCache();
-      expect(client.cache.size).toBe(0);
-      expect(client.cacheTimestamps.size).toBe(0);
+    test('clearCache tests removed - caching moved to repository layer', () => {
+      // DB client no longer has caching - this is handled by repositories
+      expect(true).toBe(true);
     });
   });
 
@@ -366,7 +295,7 @@ describe('GoogleSheetsDbClient', () => {
   });
 
   describe('insertIntoSheet', () => {
-    test('should insert data and clear cache', async () => {
+    test('should insert data', async () => {
       mockSheetsApi.spreadsheets.values.append.mockResolvedValue({
         data: {
           updates: {
@@ -375,10 +304,6 @@ describe('GoogleSheetsDbClient', () => {
           },
         },
       });
-
-      // Add to cache first
-      client.cache.set('admins', [{ id: 'old-data' }]);
-      client.cacheTimestamps.set('admins', Date.now());
 
       const data = {
         id: 'admin-1',
@@ -399,10 +324,6 @@ describe('GoogleSheetsDbClient', () => {
           values: [['admin-1', 'test@test.com', 'Doe', 'John', '555-1234', '']],
         },
       });
-
-      // Verify cache was cleared
-      expect(client.cache.has('admins')).toBe(false);
-      expect(client.cacheTimestamps.has('admins')).toBe(false);
     });
 
     test('should handle sparse data with empty columns', async () => {
@@ -636,13 +557,7 @@ describe('GoogleSheetsDbClient', () => {
   });
 
   describe('batchWrite', () => {
-    test('should write multiple operations and clear affected caches', async () => {
-      // Add some cached data
-      client.cache.set('admins', [{ id: 'old' }]);
-      client.cache.set('students', [{ id: 'old' }]);
-      client.cacheTimestamps.set('admins', Date.now());
-      client.cacheTimestamps.set('students', Date.now());
-
+    test('should write multiple operations', async () => {
       mockSheetsApi.spreadsheets.values.batchUpdate.mockResolvedValue({
         data: { totalUpdatedCells: 10 },
       });
@@ -664,10 +579,6 @@ describe('GoogleSheetsDbClient', () => {
           data: operations.map(op => ({ range: op.range, values: op.values })),
         },
       });
-
-      // Verify affected caches were cleared
-      expect(client.cache.has('admins')).toBe(false);
-      expect(client.cache.has('students')).toBe(false);
     });
   });
 });
