@@ -265,7 +265,6 @@ export class RegistrationRepository extends BaseRepository {
 
       // Clear cache after mutation to ensure data consistency
       this.clearCache();
-      this.dbClient.clearCache(enrollmentTable);
 
       // Cache the new registration
       this.cache.set(registrationId, registration);
@@ -304,7 +303,6 @@ export class RegistrationRepository extends BaseRepository {
 
       // Clear cache after mutation
       this.clearCache();
-      this.dbClient.clearCache(currentTable);
 
       return true;
     } catch (error) {
@@ -486,7 +484,6 @@ export class RegistrationRepository extends BaseRepository {
 
       // Clear cache for this table
       this.clearCache();
-      this.dbClient.clearCache(tableName);
 
       this.logger.info(`✅ Created registration in ${tableName}: ${registrationId}`);
       return registration;
@@ -552,7 +549,6 @@ export class RegistrationRepository extends BaseRepository {
 
       // Clear cache after mutation
       this.clearCache();
-      this.dbClient.clearCache(tableName);
 
       return true;
     } catch (error) {
