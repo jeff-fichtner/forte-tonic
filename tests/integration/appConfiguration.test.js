@@ -60,7 +60,7 @@ jest.unstable_mockModule('../../src/database/googleSheetsDbClient.js', () => ({
   GoogleSheetsDbClient: jest.fn().mockImplementation(() => ({
     spreadsheetId: 'test-sheet-id',
     getAllRecords: jest.fn().mockResolvedValue([]),
-    getCachedData: jest.fn().mockResolvedValue([]),
+    getAllRecords: jest.fn().mockResolvedValue([]),
   })),
 }));
 
