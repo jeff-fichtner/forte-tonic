@@ -289,11 +289,11 @@ describe('RegistrationRepository - Delete Functionality', () => {
         ['reg-2', 'student-2', 'instructor-2'],
       ];
 
-      mockDbClient.getCachedData.mockResolvedValue([{ id: 'reg-1' }, { id: 'reg-2' }]);
+      mockDbClient.getAllRecords = jest.fn().mockResolvedValue([{ id: 'reg-1' }, { id: 'reg-2' }]);
 
       const result = await repository.getFromTable('registrations_fall');
 
-      expect(mockDbClient.getCachedData).toHaveBeenCalledWith(
+      expect(mockDbClient.getAllRecords).toHaveBeenCalledWith(
         'registrations_fall',
         expect.any(Function)
       );
@@ -301,7 +301,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
     });
 
     test('should handle empty table', async () => {
-      mockDbClient.getCachedData.mockResolvedValue([]);
+      mockDbClient.getAllRecords = jest.fn().mockResolvedValue([]);
 
       const result = await repository.getFromTable('registrations_winter');
 
@@ -309,7 +309,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
     });
 
     test('should filter out null entries from invalid rows', async () => {
-      mockDbClient.getCachedData.mockResolvedValue([
+      mockDbClient.getAllRecords = jest.fn().mockResolvedValue([
         { id: 'reg-1' },
         null, // Invalid row
         { id: 'reg-2' },
