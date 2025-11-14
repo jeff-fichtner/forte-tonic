@@ -272,31 +272,23 @@ export class Class {
 
   /**
    * Checks if the class is suitable for a specific grade
-   * @param {string|number} grade - Grade to check
+   * @param {number} grade - Grade to check (0-8, where 0 = Kindergarten)
    * @returns {boolean} True if grade is within range
    */
   isGradeEligible(grade) {
-    const gradeNum = this.gradeToNumber(grade);
-    const minNum = this.gradeToNumber(this.minimumGrade);
-    const maxNum = this.gradeToNumber(this.maximumGrade);
-
+    const gradeNum = Number(grade);
+    const minNum = Number(this.minimumGrade);
+    const maxNum = Number(this.maximumGrade);
     return gradeNum >= minNum && gradeNum <= maxNum;
   }
 
   /**
    * Converts grade to number for comparison
-   * @param {string|number} grade - Grade to convert
+   * @param {string|number} grade - Grade to convert (0-8)
    * @returns {number} Numeric grade value
    */
   gradeToNumber(grade) {
-    if (typeof grade === 'number') return grade;
-
-    const gradeStr = grade.toString().toLowerCase();
-    if (gradeStr === 'k' || gradeStr === 'kindergarten') return 0;
-    if (gradeStr.includes('pre')) return -1;
-
-    const num = parseInt(gradeStr);
-    return isNaN(num) ? 0 : num;
+    return Number(grade);
   }
 
   /**

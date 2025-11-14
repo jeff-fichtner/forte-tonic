@@ -1400,11 +1400,33 @@ export class ParentRegistrationForm {
       return;
     }
 
-    // Filter classes where student is NOT already enrolled
+    // Get the selected student to access their grade
+    const selectedStudent = this.students.find(
+      s => s.id && s.id.value && s.id.value.toString() === selectedStudentId.toString()
+    );
+    const studentGrade = selectedStudent?.grade;
+
+    // Helper function to check grade eligibility
+    // Grades are always numbers 0-8 (0 = Kindergarten, 1-8 = grades 1-8)
+    const isGradeEligible = (studentGrade, minGrade, maxGrade) => {
+      const gradeNum = Number(studentGrade);
+      const minNum = Number(minGrade);
+      const maxNum = Number(maxGrade);
+      return gradeNum >= minNum && gradeNum <= maxNum;
+    };
+
+    // Filter classes where student is NOT already enrolled AND grade is eligible
     const availableClasses = this.classes.filter(cls => {
       // First, filter out restricted classes
       if (ClassManager.isRestrictedClass(cls.id)) {
         return false;
+      }
+
+      // Filter by grade eligibility if student has a grade
+      if (studentGrade !== null && studentGrade !== undefined) {
+        if (!isGradeEligible(studentGrade, cls.minimumGrade, cls.maximumGrade)) {
+          return false;
+        }
       }
 
       // Check if student already has a group registration for this class
