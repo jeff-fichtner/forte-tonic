@@ -1,14 +1,14 @@
 /**
  * Migration 012: Add isRestricted Column to Classes
  *
- * Adds 1 new column to Classes sheet:
+ * Adds 1 new column to classes sheet:
  * - isRestricted: Boolean flag to indicate classes restricted from parent registration
  *
  * This replaces the hardcoded RESTRICTED_CLASS_IDS array in classManager.js
  * Currently hardcoded as ['G001', 'G012', 'G014']
  *
  * Pattern: run/apply
- * - run(): Creates MIGRATION_Classes working copy with changes
+ * - run(): Creates MIGRATION_classes working copy with changes
  * - apply(): Deletes original, renames working copy (DESTRUCTIVE)
  */
 
@@ -22,7 +22,7 @@ function runAddIsRestrictedToClassesMigration() {
 
 /**
  * Step 2: Apply migration - Makes changes permanent
- * WARNING: DESTRUCTIVE - Deletes original Classes sheet
+ * WARNING: DESTRUCTIVE - Deletes original classes sheet
  */
 function applyAddIsRestrictedToClassesMigration() {
   const migration = new AddIsRestrictedToClassesMigration(getSpreadsheetId());
@@ -35,7 +35,7 @@ class AddIsRestrictedToClassesMigration {
     this.migrationName = 'Migration_012_AddIsRestrictedToClasses';
 
     this.sheetsToMigrate = [
-      { original: 'Classes', working: 'MIGRATION_Classes' }
+      { original: 'classes', working: 'MIGRATION_classes' }
     ];
   }
 
@@ -45,29 +45,29 @@ class AddIsRestrictedToClassesMigration {
 
     try {
       // Delete previous working copy if exists
-      const existingWorking = this.spreadsheet.getSheetByName('MIGRATION_Classes');
+      const existingWorking = this.spreadsheet.getSheetByName('MIGRATION_classes');
       if (existingWorking) {
-        Logger.log('🗑️  Deleting previous MIGRATION_Classes');
+        Logger.log('🗑️  Deleting previous MIGRATION_classes');
         this.spreadsheet.deleteSheet(existingWorking);
       }
 
-      // Get original Classes sheet
-      const originalSheet = this.spreadsheet.getSheetByName('Classes');
+      // Get original classes sheet
+      const originalSheet = this.spreadsheet.getSheetByName('classes');
       if (!originalSheet) {
-        throw new Error('Classes sheet not found');
+        throw new Error('classes sheet not found');
       }
 
       // Create full copy
-      Logger.log('📋 Creating full copy: MIGRATION_Classes');
+      Logger.log('📋 Creating full copy: MIGRATION_classes');
       const workingCopy = originalSheet.copyTo(this.spreadsheet);
-      workingCopy.setName('MIGRATION_Classes');
+      workingCopy.setName('MIGRATION_classes');
 
       // Apply changes
       this._addIsRestrictedColumn(workingCopy);
 
       Logger.log('\n🎉 MIGRATION RUN COMPLETED!');
       Logger.log('\n📋 Next steps:');
-      Logger.log('   1. Review MIGRATION_Classes sheet to verify column was added');
+      Logger.log('   1. Review MIGRATION_classes sheet to verify column was added');
       Logger.log('   2. Run applyAddIsRestrictedToClassesMigration() to make permanent');
       Logger.log('   ⚠️  WARNING: apply() is DESTRUCTIVE and cannot be undone!');
 
@@ -85,9 +85,9 @@ class AddIsRestrictedToClassesMigration {
 
     try {
       // Verify working copy exists
-      const workingSheet = this.spreadsheet.getSheetByName('MIGRATION_Classes');
+      const workingSheet = this.spreadsheet.getSheetByName('MIGRATION_classes');
       if (!workingSheet) {
-        throw new Error('MIGRATION_Classes not found. Run runAddIsRestrictedToClassesMigration() first.');
+        throw new Error('MIGRATION_classes not found. Run runAddIsRestrictedToClassesMigration() first.');
       }
 
       // Verify column was added
@@ -99,22 +99,22 @@ class AddIsRestrictedToClassesMigration {
       Logger.log('   ✅ Verified isRestricted column exists');
 
       // Delete original
-      const originalSheet = this.spreadsheet.getSheetByName('Classes');
+      const originalSheet = this.spreadsheet.getSheetByName('classes');
       if (originalSheet) {
-        Logger.log('🗑️  Deleting original Classes');
+        Logger.log('🗑️  Deleting original classes');
         this.spreadsheet.deleteSheet(originalSheet);
       }
 
       // Rename working copy
-      Logger.log('✏️  Renaming MIGRATION_Classes → Classes');
-      workingSheet.setName('Classes');
+      Logger.log('✏️  Renaming MIGRATION_classes → classes');
+      workingSheet.setName('classes');
 
       Logger.log('\n🎉 MIGRATION APPLIED SUCCESSFULLY!');
-      Logger.log('✅ Classes sheet now has isRestricted column');
+      Logger.log('✅ classes sheet now has isRestricted column');
 
     } catch (error) {
       Logger.log(`\n❌ MIGRATION APPLY FAILED: ${error.message}`);
-      Logger.log('⚠️  Original Classes sheet may have been deleted. Check manually.');
+      Logger.log('⚠️  Original classes sheet may have been deleted. Check manually.');
       Logger.log(error.stack);
       throw error;
     }
@@ -135,13 +135,12 @@ class AddIsRestrictedToClassesMigration {
       return;
     }
 
-    // Add new column at the end
-    Logger.log('   Inserting isRestricted column at end...');
-    sheet.insertColumnAfter(sheet.getLastColumn());
-    const newColIndex = sheet.getLastColumn();
+    // Append new column at the end (just set the header, cells will be blank by default)
+    Logger.log('   Appending isRestricted column at end...');
+    const lastCol = sheet.getLastColumn();
 
-    // Set header
-    sheet.getRange(1, newColIndex).setValue('isRestricted');
+    // Set header only - data cells remain blank
+    sheet.getRange(1, lastCol + 1).setValue('isRestricted');
 
     Logger.log('   ✅ Added isRestricted column');
 

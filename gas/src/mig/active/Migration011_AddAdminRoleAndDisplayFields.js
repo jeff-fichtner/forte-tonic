@@ -1,14 +1,18 @@
 /**
  * Migration 011: Add Admin Role and Display Fields
  *
- * Adds 4 new columns to Admins sheet:
+ * Appends 4 new columns to the end of the admins sheet:
  * - role: Job title/role (e.g., "Forte Director", "Forte Associate Manager")
  * - displayEmail: Public-facing email (if different from personal email)
  * - displayPhone: Public-facing phone (if different from personal phone)
  * - isDirector: Boolean flag to identify the director
  *
+ * Current column order: id, email, lastName, firstName, phone, accessCode
+ * Resulting column order: id, email, lastName, firstName, phone, accessCode,
+ *                         role, displayEmail, displayPhone, isDirector
+ *
  * Pattern: run/apply
- * - run(): Creates MIGRATION_Admins working copy with changes
+ * - run(): Creates MIGRATION_admins working copy with changes
  * - apply(): Deletes original, renames working copy (DESTRUCTIVE)
  */
 
@@ -22,7 +26,7 @@ function runAddAdminRoleAndDisplayFieldsMigration() {
 
 /**
  * Step 2: Apply migration - Makes changes permanent
- * WARNING: DESTRUCTIVE - Deletes original Admins sheet
+ * WARNING: DESTRUCTIVE - Deletes original admins sheet
  */
 function applyAddAdminRoleAndDisplayFieldsMigration() {
   const migration = new AddAdminRoleAndDisplayFieldsMigration(getSpreadsheetId());
@@ -35,7 +39,7 @@ class AddAdminRoleAndDisplayFieldsMigration {
     this.migrationName = 'Migration_011_AddAdminRoleAndDisplayFields';
 
     this.sheetsToMigrate = [
-      { original: 'Admins', working: 'MIGRATION_Admins' }
+      { original: 'admins', working: 'MIGRATION_admins' }
     ];
   }
 
@@ -45,29 +49,29 @@ class AddAdminRoleAndDisplayFieldsMigration {
 
     try {
       // Delete previous working copy if exists
-      const existingWorking = this.spreadsheet.getSheetByName('MIGRATION_Admins');
+      const existingWorking = this.spreadsheet.getSheetByName('MIGRATION_admins');
       if (existingWorking) {
-        Logger.log('🗑️  Deleting previous MIGRATION_Admins');
+        Logger.log('🗑️  Deleting previous MIGRATION_admins');
         this.spreadsheet.deleteSheet(existingWorking);
       }
 
-      // Get original Admins sheet
-      const originalSheet = this.spreadsheet.getSheetByName('Admins');
+      // Get original admins sheet
+      const originalSheet = this.spreadsheet.getSheetByName('admins');
       if (!originalSheet) {
-        throw new Error('Admins sheet not found');
+        throw new Error('admins sheet not found');
       }
 
       // Create full copy
-      Logger.log('📋 Creating full copy: MIGRATION_Admins');
+      Logger.log('📋 Creating full copy: MIGRATION_admins');
       const workingCopy = originalSheet.copyTo(this.spreadsheet);
-      workingCopy.setName('MIGRATION_Admins');
+      workingCopy.setName('MIGRATION_admins');
 
       // Apply changes
       this._addColumns(workingCopy);
 
       Logger.log('\n🎉 MIGRATION RUN COMPLETED!');
       Logger.log('\n📋 Next steps:');
-      Logger.log('   1. Review MIGRATION_Admins sheet to verify columns were added');
+      Logger.log('   1. Review MIGRATION_admins sheet to verify columns were added');
       Logger.log('   2. Run applyAddAdminRoleAndDisplayFieldsMigration() to make permanent');
       Logger.log('   ⚠️  WARNING: apply() is DESTRUCTIVE and cannot be undone!');
       Logger.log('\n📝 After applying:');
@@ -89,9 +93,9 @@ class AddAdminRoleAndDisplayFieldsMigration {
 
     try {
       // Verify working copy exists
-      const workingSheet = this.spreadsheet.getSheetByName('MIGRATION_Admins');
+      const workingSheet = this.spreadsheet.getSheetByName('MIGRATION_admins');
       if (!workingSheet) {
-        throw new Error('MIGRATION_Admins not found. Run runAddAdminRoleAndDisplayFieldsMigration() first.');
+        throw new Error('MIGRATION_admins not found. Run runAddAdminRoleAndDisplayFieldsMigration() first.');
       }
 
       // Verify columns were added
@@ -104,20 +108,20 @@ class AddAdminRoleAndDisplayFieldsMigration {
       }
 
       // Delete original
-      const originalSheet = this.spreadsheet.getSheetByName('Admins');
+      const originalSheet = this.spreadsheet.getSheetByName('admins');
       if (originalSheet) {
-        Logger.log('🗑️  Deleting original Admins');
+        Logger.log('🗑️  Deleting original admins');
         this.spreadsheet.deleteSheet(originalSheet);
       }
 
       // Rename working copy
-      Logger.log('✏️  Renaming MIGRATION_Admins → Admins');
-      workingSheet.setName('Admins');
+      Logger.log('✏️  Renaming MIGRATION_admins → admins');
+      workingSheet.setName('admins');
 
       Logger.log('\n🎉 MIGRATION APPLIED SUCCESSFULLY!');
-      Logger.log('✅ Admins sheet now has 4 new columns: role, displayEmail, displayPhone, isDirector');
+      Logger.log('✅ admins sheet now has 4 new columns: role, displayEmail, displayPhone, isDirector');
       Logger.log('\n⚠️  IMPORTANT: Admin must now manually populate the new columns:');
-      Logger.log('   1. Open the Admins sheet');
+      Logger.log('   1. Open the admins sheet');
       Logger.log('   2. For director (ndemosslevy@mcds.org):');
       Logger.log('      - role: "Forte Director"');
       Logger.log('      - displayEmail: (leave empty)');
@@ -131,7 +135,7 @@ class AddAdminRoleAndDisplayFieldsMigration {
 
     } catch (error) {
       Logger.log(`\n❌ MIGRATION APPLY FAILED: ${error.message}`);
-      Logger.log('⚠️  Original Admins sheet may have been deleted. Check manually.');
+      Logger.log('⚠️  Original admins sheet may have been deleted. Check manually.');
       Logger.log(error.stack);
       throw error;
     }
@@ -146,24 +150,24 @@ class AddAdminRoleAndDisplayFieldsMigration {
 
     Logger.log(`   Current columns: ${headers.join(', ')}`);
 
-    // Find accessCode column index
-    const accessCodeIndex = headers.indexOf('accessCode');
-    if (accessCodeIndex === -1) {
-      throw new Error('accessCode column not found in Admins sheet');
+    // Check if columns already exist
+    const columnsToAdd = ['role', 'displayEmail', 'displayPhone', 'isDirector'];
+    const existingColumns = columnsToAdd.filter(col => headers.includes(col));
+
+    if (existingColumns.length > 0) {
+      Logger.log(`   ⚠️  Columns already exist: ${existingColumns.join(', ')}`);
+      Logger.log('   Skipping column addition');
+      return;
     }
 
-    Logger.log(`   Found accessCode at column ${accessCodeIndex + 1}`);
+    // Append 4 new columns at the end
+    Logger.log('   Appending 4 new columns at end...');
+    const lastCol = sheet.getLastColumn();
 
-    // Insert 4 new columns after accessCode
-    Logger.log(`   Inserting 4 new columns after accessCode...`);
-    sheet.insertColumnsAfter(accessCodeIndex + 1, 4);
-
-    // Set new column headers (1-based indexing)
-    const newColStart = accessCodeIndex + 2;
-    sheet.getRange(1, newColStart).setValue('role');
-    sheet.getRange(1, newColStart + 1).setValue('displayEmail');
-    sheet.getRange(1, newColStart + 2).setValue('displayPhone');
-    sheet.getRange(1, newColStart + 3).setValue('isDirector');
+    sheet.getRange(1, lastCol + 1).setValue('role');
+    sheet.getRange(1, lastCol + 2).setValue('displayEmail');
+    sheet.getRange(1, lastCol + 3).setValue('displayPhone');
+    sheet.getRange(1, lastCol + 4).setValue('isDirector');
 
     Logger.log('   ✅ Added 4 columns: role, displayEmail, displayPhone, isDirector');
 
