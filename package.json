@@ -1,6 +1,6 @@
 {
   "name": "tonic",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Student registration automation for after school lessons and programs",
   "main": "src/server.js",
   "type": "module",
