@@ -144,6 +144,12 @@ dev/
 # Credentials directory (service account keys, etc.)
 config/credentials/
 scripts/credentials/
+**/credentials/*.json
+**/*credentials*.json
+**/*service*account*.json
+*.pem
+*.p12
+*.key
 
 # Google Apps Script generated config
 gas/.clasp.json
