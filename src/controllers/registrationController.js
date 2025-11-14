@@ -14,6 +14,7 @@ import { successResponse, errorResponse } from '../common/responseHelpers.js';
 import { ValidationError, UnauthorizedError, NotFoundError } from '../common/errors.js';
 import { TRIMESTER_SEQUENCE } from '../utils/values/trimester.js';
 import { INTENT_TYPES } from '../constants/intentTypes.js';
+import { UserType } from '../config/constants.js';
 
 const logger = getLogger();
 
@@ -154,7 +155,7 @@ export class RegistrationController {
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
 
       // Check if user is an admin (admins can bypass capacity restrictions and specify trimester)
-      const isAdmin = req.currentUser?.userType === 'admin';
+      const isAdmin = req.currentUser?.userType === UserType.ADMIN;
 
       // Process registration through application service with authenticated user
       const result = await registrationApplicationService.processRegistration(
