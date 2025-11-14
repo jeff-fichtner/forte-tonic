@@ -4,9 +4,10 @@
  *
  * Database fields (persisted in Admins sheet):
  * - id, email, lastName, firstName, phoneNumber, accessCode
+ * - role, displayEmail, displayPhone, isDirector
  *
  * Future properties (NOT in database):
- * - permissions, isActive, lastLoginDate, role
+ * - permissions, isActive, lastLoginDate
  *   These are placeholders for future RBAC system and always return defaults
  */
 export class Admin {
@@ -19,10 +20,13 @@ export class Admin {
    * @param {string} data.firstName - First name
    * @param {string} [data.phoneNumber] - Phone number
    * @param {string} [data.accessCode] - Access code for authentication
+   * @param {string} [data.role] - Job title/role
+   * @param {string} [data.displayEmail] - Public-facing email
+   * @param {string} [data.displayPhone] - Public-facing phone
+   * @param {boolean} [data.isDirector=false] - Director flag
    * @param {Array<string>} [data.permissions] - Permissions array
    * @param {boolean} [data.isActive=true] - Active status
    * @param {Date|string} [data.lastLoginDate] - Last login date
-   * @param {string} [data.role='admin'] - User role
    */
   constructor(data) {
     // Validate input
@@ -37,10 +41,13 @@ export class Admin {
       firstName,
       phoneNumber,
       accessCode,
+      role,
+      displayEmail,
+      displayPhone,
+      isDirector,
       permissions,
       isActive,
       lastLoginDate,
-      role,
     } = data;
 
     // Required fields
@@ -49,9 +56,15 @@ export class Admin {
     this.lastName = lastName;
     this.firstName = firstName;
 
-    // Optional fields
+    // Optional database fields
     this.phoneNumber = phoneNumber || null;
     this.accessCode = accessCode || null;
+    this.role = role || null;
+    this.displayEmail = displayEmail || null;
+    this.displayPhone = displayPhone || null;
+    this.isDirector = isDirector || false;
+
+    // Future/placeholder fields
     this.permissions = permissions || null;
     this.isActive = isActive;
     this.lastLoginDate = lastLoginDate
@@ -59,7 +72,6 @@ export class Admin {
         ? lastLoginDate
         : new Date(lastLoginDate)
       : null;
-    this.role = role || null;
   }
 
   /**
@@ -85,7 +97,18 @@ export class Admin {
    * @returns {Admin} Admin instance
    */
   static fromDatabaseRow(row) {
-    const [id, email, lastName, firstName, phone, accessCode] = row;
+    const [
+      id,
+      email,
+      lastName,
+      firstName,
+      phone,
+      accessCode,
+      role,
+      displayEmail,
+      displayPhone,
+      isDirector,
+    ] = row;
 
     return new Admin({
       id,
@@ -94,10 +117,13 @@ export class Admin {
       firstName,
       phoneNumber: phone,
       accessCode,
+      role,
+      displayEmail,
+      displayPhone,
+      isDirector,
       permissions: [],
       isActive: true,
       lastLoginDate: null,
-      role: 'admin',
     });
   }
 
@@ -122,6 +148,10 @@ export class Admin {
       firstName: this.firstName,
       phone: this.phoneNumber, // Note: mapping from 'phoneNumber' to 'phone'
       accessCode: this.accessCode,
+      role: this.role,
+      displayEmail: this.displayEmail,
+      displayPhone: this.displayPhone,
+      isDirector: this.isDirector,
     };
   }
 
@@ -235,12 +265,15 @@ export class Admin {
       fullName: this.fullName,
       displayName: this.displayName,
       phoneNumber: this.phoneNumber,
+      role: this.role,
+      displayEmail: this.displayEmail,
+      displayPhone: this.displayPhone,
+      isDirector: this.isDirector,
       permissions: this.permissions,
       isActive: this.isActive,
       lastLoginDate: this.lastLoginDate,
       daysSinceLastLogin: this.daysSinceLastLogin,
       isSuperAdmin: this.isSuperAdmin,
-      role: this.role,
     };
   }
 }
