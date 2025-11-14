@@ -211,7 +211,9 @@ export class RegistrationApplicationService extends BaseService {
       const targetTrimester =
         isAdmin && registrationData.trimester ? registrationData.trimester : null;
 
-      this.logger.info(`🎯 Registration target trimester: ${targetTrimester || 'default (enrollment period)'}, isAdmin: ${isAdmin}, registrationData.trimester: ${registrationData.trimester}`);
+      this.logger.info(
+        `🎯 Registration target trimester: ${targetTrimester || 'default (enrollment period)'}, isAdmin: ${isAdmin}, registrationData.trimester: ${registrationData.trimester}`
+      );
 
       const persistedRegistration = await this.registrationRepository.create(
         registrationDataObject,
