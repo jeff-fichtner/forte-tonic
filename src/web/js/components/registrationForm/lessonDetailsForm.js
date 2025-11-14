@@ -78,7 +78,6 @@ export class LessonDetailsForm {
    * @private
    */
   #handleDayChange(event) {
-    console.log('Day selected:', event.target.value);
     const hasDay = !!event.target.value;
 
     // Show the lesson length and start time container when day is selected
@@ -114,8 +113,6 @@ export class LessonDetailsForm {
    * @private
    */
   #handleTimeChange(event) {
-    console.log('Start time selected:', event.target.value);
-
     // Trigger callback if provided
     if (this.onTimeChangeCallback && typeof this.onTimeChangeCallback === 'function') {
       this.onTimeChangeCallback(event.target.value);
@@ -127,8 +124,6 @@ export class LessonDetailsForm {
    * @private
    */
   #handleInstrumentChange(event) {
-    console.log('Instrument selected:', event.target.value);
-
     // Trigger callback if provided
     if (this.onInstrumentChangeCallback && typeof this.onInstrumentChangeCallback === 'function') {
       this.onInstrumentChangeCallback(event.target.value);
@@ -208,8 +203,6 @@ export class LessonDetailsForm {
     }
 
     this.instrumentSelect.populateOptions(instrumentOptions, true);
-
-    console.log('Updated instrument options:', instruments);
   }
 
   /**

@@ -51,8 +51,6 @@ export class InstructorSelector {
     const selectedValue = event.target.value;
     const selectedInstructor = this.instructors.find(x => x.id === selectedValue);
 
-    console.log('Instructor selected:', selectedInstructor);
-
     // Trigger callback if provided
     if (this.onChangeCallback && typeof this.onChangeCallback === 'function') {
       this.onChangeCallback(selectedInstructor);

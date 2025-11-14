@@ -48,7 +48,6 @@ export class AdminRegistrationForm {
    */
   setTrimester(trimester) {
     this.selectedTrimester = trimester;
-    console.log(`Admin registration form trimester set to: ${trimester}`);
   }
 
   /**
@@ -57,9 +56,6 @@ export class AdminRegistrationForm {
    */
   setTrimesterRegistrations(registrations) {
     this.trimesterRegistrations = registrations || [];
-    console.log(
-      `Admin form: Loaded ${this.trimesterRegistrations.length} registrations for trimester`
-    );
     // Render the selector if a student is already selected
     const selectedStudentId = this.studentSelector.getSelectedStudentId();
     if (selectedStudentId) {
@@ -215,7 +211,6 @@ export class AdminRegistrationForm {
       }
 
       if (busValidation && !busValidation.isValid) {
-        console.log('Admin validation failed: Bus time restriction violated');
         M.toast({ html: busValidation.errorMessage });
         return false;
       }

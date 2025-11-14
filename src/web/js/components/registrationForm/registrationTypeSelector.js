@@ -48,8 +48,6 @@ export class RegistrationTypeSelector {
     event.preventDefault();
     const selectedValue = event.target.value;
 
-    console.log('Registration type changed to:', selectedValue);
-
     // Show/hide appropriate containers
     this.#showContainer(this.privateContainerId, selectedValue === RegistrationType.PRIVATE);
     this.#showContainer(this.groupContainerId, selectedValue === RegistrationType.GROUP);

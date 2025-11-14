@@ -61,15 +61,10 @@ export class Select {
       return;
     }
 
-    console.log(`Populating options for select: ${this.select.id}`, JSON.stringify(newOptions));
     this.options = newOptions; // Update the options
     const optionTextToUse = this.options.length > 0 ? this.defaultOptionsText : this.noOptionsText;
-    console.log(
-      `There are${this.options.length > 0 ? '' : "n't"} options, using: ${optionTextToUse}`
-    );
     // get current selected option
     const currentSelectedValue = this.getSelectedOption();
-    console.log(`Current selected value: ${currentSelectedValue}`);
     // clear existing options
     this.select.innerHTML = '';
     // create a default option
