@@ -309,14 +309,21 @@ class FullDatabaseMigration {
       const phone = `555${faker.string.numeric(7)}`;
       const accessCode = faker.number.int({ min: 100000, max: 999999 });
 
+      // DisplayEmail: Always use new email
+      // DisplayPhone: Only use new phone if production has a non-blank displayPhone value
+      const displayEmail = newEmail;
+      const displayPhone = (instructor.displayPhone && instructor.displayPhone.trim() !== '') ? phone : '';
+
       return {
         ...instructor,
         Id: newEmail,
         Email: newEmail,
         FirstName: firstName,
         LastName: lastName,
-        Phone: instructor.Phone ? phone : '',
+        Phone: phone,
         AccessCode: instructor.AccessCode ? accessCode.toString() : '',
+        displayEmail: displayEmail,
+        displayPhone: displayPhone,
       };
     });
   }
