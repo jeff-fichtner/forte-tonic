@@ -16,11 +16,14 @@ export class UserTransformService {
       email: admin.email,
       lastName: admin.lastName,
       firstName: admin.firstName,
-      phoneNumber: admin.phone, // Map phone to phoneNumber for consistency
-      phone: admin.phone, // Keep both for compatibility
+      phoneNumber: admin.phoneNumber,
+      phone: admin.phoneNumber, // Keep both for compatibility
+      displayEmail: admin.displayEmail,
+      displayPhone: admin.displayPhone,
+      role: admin.role,
+      isDirector: admin.isDirector,
       fullName: `${admin.firstName} ${admin.lastName}`,
       isActive: true,
-      role: 'admin',
       // Add any additional computed properties that frontend expects
     };
   }

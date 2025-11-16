@@ -159,18 +159,26 @@ export class RegistrationRepository extends BaseRepository {
   }
 
   /**
-   * Get registrations from the enrollment trimester table
-   * (During enrollment periods, this returns registrations from the NEXT trimester)
+   * Get registrations for a specific trimester
+   * @param {string} trimester - Trimester name (fall, winter, spring)
+   * @returns {Promise<Array<Registration>>} Array of registrations
    */
-  async getEnrollmentRegistrations() {
+  async getRegistrationsForTrimester(trimester) {
     try {
-      // Get enrollment trimester table name from period service
-      const enrollmentTable = await this.periodService.getEnrollmentTrimesterTable();
+      if (!trimester) {
+        this.logger.info('📋 No trimester provided');
+        return [];
+      }
 
-      this.logger.info(`📋 Getting enrollment registrations from table: ${enrollmentTable}`);
+      if (!isValidTrimester(trimester)) {
+        throw new Error(`Invalid trimester: ${trimester}`);
+      }
+
+      const tableName = `registrations_${trimester.toLowerCase()}`;
+      this.logger.info(`📋 Getting registrations from table: ${tableName}`);
 
       // Get all registrations from database
-      const allRegistrations = await this.dbClient.getAllRecords(enrollmentTable, row => {
+      const allRegistrations = await this.dbClient.getAllRecords(tableName, row => {
         // Skip empty rows
         if (!row || !row[0]) {
           return null;
@@ -189,9 +197,26 @@ export class RegistrationRepository extends BaseRepository {
       // Filter out null values from parsing errors
       return allRegistrations.filter(reg => reg !== null);
     } catch (error) {
-      this.logger.error('Error getting enrollment registrations:', error);
+      this.logger.error(`Error getting registrations for trimester ${trimester}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Get registrations from the next trimester table
+   * @deprecated Use getRegistrationsForTrimester() with explicit trimester instead
+   */
+  async getNextTrimesterRegistrations() {
+    const nextTrimester = await this.periodService.getNextTrimester();
+    return this.getRegistrationsForTrimester(nextTrimester);
+  }
+
+  /**
+   * Alias for backward compatibility
+   * @deprecated Use getNextTrimesterRegistrations() instead
+   */
+  async getEnrollmentRegistrations() {
+    return this.getNextTrimesterRegistrations();
   }
 
   /**
@@ -218,19 +243,24 @@ export class RegistrationRepository extends BaseRepository {
   /**
    * Create a new registration
    * @param {object} registrationData - Registration data
-   * @param {string} targetTrimester - Optional specific trimester (for admin use)
+   * @param {string} targetTrimester - Required trimester (fall, winter, spring)
    */
-  async create(registrationData, targetTrimester = null) {
+  async create(registrationData, targetTrimester) {
     try {
-      // If targetTrimester is provided (admin creating for specific trimester), use that table
-      // Otherwise, get enrollment trimester table (next trimester during enrollment periods)
-      const enrollmentTable = targetTrimester
-        ? `registrations_${targetTrimester.toLowerCase()}`
-        : await this.periodService.getEnrollmentTrimesterTable();
+      // Trimester is required - caller must explicitly specify which trimester to write to
+      if (!targetTrimester) {
+        throw new Error(
+          'targetTrimester is required - must explicitly specify which trimester to save to'
+        );
+      }
 
-      this.logger.info(
-        `📝 Creating registration in table: ${enrollmentTable}${targetTrimester ? ` (admin-specified: ${targetTrimester})` : ''}`
-      );
+      if (!isValidTrimester(targetTrimester)) {
+        throw new Error(`Invalid trimester: ${targetTrimester}`);
+      }
+
+      const tableName = `registrations_${targetTrimester.toLowerCase()}`;
+
+      this.logger.info(`📝 Creating registration in table: ${tableName}`);
 
       // Generate UUID if not provided
       const registrationId = registrationData.id || this.generateUUID();
@@ -261,7 +291,7 @@ export class RegistrationRepository extends BaseRepository {
       });
 
       // Use the new appendRecordv2 method that handles direct Google Sheets append and audit
-      await this.dbClient.appendRecordv2(enrollmentTable, registration, registrationData.createdBy);
+      await this.dbClient.appendRecordv2(tableName, registration, registrationData.createdBy);
 
       // Clear cache after mutation to ensure data consistency
       this.clearCache();

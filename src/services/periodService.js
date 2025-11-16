@@ -98,6 +98,19 @@ export class PeriodService extends BaseService {
   }
 
   /**
+   * Check if we're currently in an enrollment period (priority or open)
+   * @returns {Promise<boolean>} True if current period is priority or open enrollment
+   */
+  async isEnrollmentPeriodActive() {
+    const currentPeriod = await this.getCurrentPeriod();
+    return !!(
+      currentPeriod &&
+      (currentPeriod.periodType === PeriodType.PRIORITY_ENROLLMENT ||
+        currentPeriod.periodType === PeriodType.OPEN_ENROLLMENT)
+    );
+  }
+
+  /**
    * Get the next upcoming period
    * @returns {Promise<object|null>} Next period object {trimester, periodType, startDate} or null if no future periods
    * @throws {Error} If database read fails
@@ -149,26 +162,22 @@ export class PeriodService extends BaseService {
   }
 
   /**
-   * Get the next trimester's registration table name (only during enrollment periods)
-   * Returns null if not in an enrollment period
-   * @returns {Promise<string|null>} Table name like "registrations_winter" or null
+   * Get the next trimester in sequence from the next period
+   * Returns null if there is no next period scheduled
+   * @returns {Promise<string|null>} Trimester name like "winter" or null
    */
-  async getNextTrimesterTable() {
-    const period = await this.getCurrentPeriod();
-    if (!period) {
-      return null;
-    }
+  async getNextTrimester() {
+    const nextPeriod = await this.getNextPeriod();
+    return nextPeriod?.trimester || null;
+  }
 
-    // Only available during enrollment periods
-    if (
-      period.periodType !== PeriodType.PRIORITY_ENROLLMENT &&
-      period.periodType !== PeriodType.OPEN_ENROLLMENT
-    ) {
-      return null;
-    }
-
-    const nextTrimester = this._getNextTrimester(period.trimester);
-    return `registrations_${nextTrimester}`;
+  /**
+   * Get current trimester from current period
+   * @returns {Promise<string|null>} Trimester name like "fall" or null
+   */
+  async getCurrentTrimester() {
+    const currentPeriod = await this.getCurrentPeriod();
+    return currentPeriod?.trimester || null;
   }
 
   /**

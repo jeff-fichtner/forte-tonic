@@ -206,14 +206,18 @@ export class RegistrationApplicationService extends BaseService {
       this.logger.info('📊 Registration data object before persistence:', registrationDataObject);
       this.logger.info(`🔍 isWaitlistClass flag: ${registrationDataObject.isWaitlistClass}`);
 
-      // For admin-created registrations with explicit trimester, use that trimester table
-      // Otherwise, use the enrollment trimester (for parents during enrollment periods)
-      const targetTrimester =
-        isAdmin && registrationData.trimester ? registrationData.trimester : null;
+      // Determine target trimester - caller must always provide explicit trimester
+      // For admins: use their specified trimester
+      // For parents: use the trimester they're enrolling for (determined by controller/UI)
+      const targetTrimester = registrationData.trimester;
 
-      this.logger.info(
-        `🎯 Registration target trimester: ${targetTrimester || 'default (enrollment period)'}, isAdmin: ${isAdmin}, registrationData.trimester: ${registrationData.trimester}`
-      );
+      if (!targetTrimester) {
+        throw new Error(
+          'Trimester must be explicitly provided when creating registration - cannot determine automatically'
+        );
+      }
+
+      this.logger.info(`🎯 Registration target trimester: ${targetTrimester}, isAdmin: ${isAdmin}`);
 
       const persistedRegistration = await this.registrationRepository.create(
         registrationDataObject,
