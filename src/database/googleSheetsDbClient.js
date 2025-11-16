@@ -60,6 +60,10 @@ export class GoogleSheetsDbClient extends BaseService {
           firstName: 3,
           phone: 4,
           accessCode: 5,
+          role: 6,
+          displayEmail: 7,
+          displayPhone: 8,
+          isDirector: 9,
         },
       },
       [Keys.INSTRUCTORS]: {
@@ -99,6 +103,8 @@ export class GoogleSheetsDbClient extends BaseService {
           fridayEndTime: 30,
           fridayRoomId: 31,
           accessCode: 32,
+          displayEmail: 33,
+          displayPhone: 34,
         },
       },
       [Keys.PARENTS]: {
@@ -142,6 +148,7 @@ export class GoogleSheetsDbClient extends BaseService {
           size: 8, // Size
           minimumGrade: 9, // MinimumGrade
           maximumGrade: 10, // MaximumGrade
+          isRestricted: 11, // isRestricted
         },
       },
       [Keys.ROOMS]: {

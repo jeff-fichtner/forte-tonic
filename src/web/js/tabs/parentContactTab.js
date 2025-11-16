@@ -148,20 +148,23 @@ export class ParentContactTab extends BaseTab {
 
   /**
    * Map admins to employee format
+   * For parent contact, show public contact info (displayEmail, displayPhone)
+   * Shows blank if not set (no fallback to personal contact info)
    * @private
    */
   #mapAdminsToEmployees(admins) {
     return admins.map(admin => ({
       id: admin.id,
       fullName: admin.fullName,
-      email: admin.displayEmail || admin.email,
-      phone: admin.displayPhone || admin.phoneNumber,
+      email: admin.displayEmail,
+      phone: formatPhone(admin.displayPhone),
       roles: admin.role ? [admin.role] : [],
     }));
   }
 
   /**
    * Map instructor to employee format
+   * For parent contact, show public contact info (displayEmail, displayPhone)
    * @private
    * @param {object} instructor - Instructor object
    * @param {boolean} obscurePhone - Whether to hide phone number
@@ -171,16 +174,15 @@ export class ParentContactTab extends BaseTab {
     const instruments = instructor.specialties || [];
     const instrumentsText = instruments.length > 0 ? instruments.join(', ') : 'Instructor';
 
-    // Format phone number (obscured for parent view)
-    const rawPhone = instructor.phone || '';
-    const formattedPhone = rawPhone && !obscurePhone ? formatPhone(rawPhone) : '';
+    const displayEmail = instructor.displayEmail || '';
+    const displayPhone = instructor.displayPhone || '';
 
     return {
       id: instructor.id,
       fullName:
         instructor.fullName || `${instructor.firstName || ''} ${instructor.lastName || ''}`.trim(),
-      email: instructor.email,
-      phone: formattedPhone,
+      email: displayEmail,
+      phone: formatPhone(displayPhone),
       role: instrumentsText,
       roles: [instrumentsText], // Array for sorting compatibility
       lastName: instructor.lastName || '',

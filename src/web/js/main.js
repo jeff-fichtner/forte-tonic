@@ -33,7 +33,7 @@ import './viewModel.js';
 
 // Tab-based architecture
 import { TabController } from './core/tabController.js';
-import { InstructorDirectoryTab } from './tabs/instructorDirectoryTab.js';
+import { EmployeeDirectoryTab } from './tabs/employeeDirectoryTab.js';
 import { InstructorWeeklyScheduleTab } from './tabs/instructorWeeklyScheduleTab.js';
 import { ParentContactTab } from './tabs/parentContactTab.js';
 import { ParentWeeklyScheduleTab } from './tabs/parentWeeklyScheduleTab.js';
@@ -236,6 +236,49 @@ const UserSession = {
 };
 
 /**
+ * Load director information from API and populate HTML elements
+ * Fetches admins and finds the one marked as director (isDirector=true)
+ */
+async function loadDirectorInfo() {
+  try {
+    // Fetch all admins from API
+    const response = await fetch('/api/admins');
+    if (!response.ok) {
+      console.warn('Failed to fetch admins for director info');
+      return;
+    }
+
+    const admins = await response.json();
+
+    // Check if admins is null or not an array (unauthenticated user)
+    if (!admins || !Array.isArray(admins)) {
+      return; // Silently fail - user not authenticated yet
+    }
+
+    // Find the director (admin with isDirector=true)
+    const director = admins.find(admin => admin.isDirector);
+
+    if (director) {
+      // Populate HTML elements with director info
+      const nameElement = document.getElementById('director-name');
+      const emailElement = document.getElementById('director-email');
+      const phoneElement = document.getElementById('director-phone');
+
+      if (nameElement) nameElement.textContent = director.fullName;
+      if (emailElement) emailElement.textContent = director.displayEmail || director.email;
+      if (phoneElement)
+        phoneElement.textContent = director.displayPhone || director.phoneNumber || 'N/A';
+    } else {
+      console.warn('No director found in admins data');
+      // Leave "Loading..." text if no director found
+    }
+  } catch (error) {
+    console.error('Error loading director info:', error);
+    // Leave "Loading..." text on error
+  }
+}
+
+/**
  * Initialize application
  */
 async function initializeApplication() {
@@ -267,8 +310,8 @@ async function initializeApplication() {
     tabController.initialize();
 
     // Register tabs
-    const instructorDirectoryTab = new InstructorDirectoryTab();
-    tabController.registerTab('instructor-forte-directory', instructorDirectoryTab);
+    const employeeDirectoryTab = new EmployeeDirectoryTab();
+    tabController.registerTab('instructor-forte-directory', employeeDirectoryTab);
 
     const parentContactTab = new ParentContactTab();
     tabController.registerTab('parent-contact-us', parentContactTab);
@@ -346,6 +389,10 @@ async function initializeApplication() {
         return false;
       }
     };
+
+    // Load director info for Terms of Service display
+    // This is a non-critical operation, so we don't await it
+    loadDirectorInfo();
   } catch (error) {
     console.error('✗ Error initializing application:', error);
 

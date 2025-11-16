@@ -35,9 +35,6 @@ export class UserController {
       const currentPeriod = await periodService.getCurrentPeriod();
       const nextPeriod = await periodService.getNextPeriod();
 
-      // Determine default trimester for admin/parent UI
-      const defaultTrimester = UserController._getDefaultTrimester(currentPeriod, nextPeriod);
-
       // Get maintenance mode configuration from singleton configService
       const appConfig = configService.getApplicationConfig();
 
@@ -48,7 +45,8 @@ export class UserController {
         currentTrimester: currentPeriod?.trimester,
         nextTrimester: nextPeriod?.trimester,
         availableTrimesters: UserController._getAvailableTrimesters(currentPeriod),
-        defaultTrimester,
+        // Default trimester is always the current one (where active classes are happening)
+        defaultTrimester: currentPeriod?.trimester,
         maintenanceMode: appConfig.maintenanceMode,
         maintenanceMessage: appConfig.maintenanceMessage,
       };
@@ -137,22 +135,6 @@ export class UserController {
 
     // Fallback: show only current trimester
     return [currentTrimester];
-  }
-
-  /**
-   * Determine default trimester for admin UI
-   * - During priority/open enrollment: show NEXT trimester
-   * - Otherwise: show CURRENT trimester
-   * @private
-   */
-  static _getDefaultTrimester(currentPeriod, nextPeriod) {
-    const enrollmentPeriods = [PeriodType.PRIORITY_ENROLLMENT, PeriodType.OPEN_ENROLLMENT];
-
-    if (currentPeriod && enrollmentPeriods.includes(currentPeriod.periodType)) {
-      return nextPeriod?.trimester || currentPeriod?.trimester || Trimester.FALL;
-    }
-
-    return currentPeriod?.trimester || Trimester.FALL;
   }
 
   /**
@@ -646,25 +628,62 @@ export class UserController {
 
       const userRepository = serviceContainer.get('userRepository');
       const registrationRepository = serviceContainer.get('registrationRepository');
+      const periodService = serviceContainer.get('periodService');
 
-      // Fetch admins and all students/instructors/registrations in parallel
-      const [admins, students, instructors, registrations] = await Promise.all([
+      // Get current and next trimesters from period service
+      const currentTrimester = await periodService.getCurrentTrimester();
+      const nextTrimester = await periodService.getNextTrimester();
+
+      // Current trimester is required - if null, this is an error
+      if (!currentTrimester) {
+        throw new Error('No current period found - cannot load contact data');
+      }
+
+      // Build promises array - always fetch current trimester registrations
+      const promises = [
         userRepository.getAdmins(),
         userRepository.getStudents(),
         userRepository.getInstructors(),
-        registrationRepository.getRegistrations(),
-      ]);
+        registrationRepository.getRegistrationsForTrimester(currentTrimester),
+      ];
+
+      // Only fetch next trimester registrations if next trimester exists
+      if (nextTrimester) {
+        promises.push(registrationRepository.getRegistrationsForTrimester(nextTrimester));
+      }
+
+      const results = await Promise.allSettled(promises);
+
+      // Extract values from settled promises
+      const admins = results[0].status === 'fulfilled' ? results[0].value : [];
+      const students = results[1].status === 'fulfilled' ? results[1].value : [];
+      const instructors = results[2].status === 'fulfilled' ? results[2].value : [];
+      const currentRegistrations = results[3].status === 'fulfilled' ? results[3].value : [];
+      const nextTrimesterRegistrations =
+        nextTrimester && results[4]?.status === 'fulfilled' ? results[4].value : [];
+
+      // Combine current and next trimester registrations
+      const allRegistrations = [...currentRegistrations, ...nextTrimesterRegistrations];
 
       // Filter students belonging to this parent (either parent1 or parent2)
       const parentStudents = students.filter(
         student => student.parent1Id === parentId || student.parent2Id === parentId
       );
-      const parentStudentIds = parentStudents.map(s => s.id);
+
+      // Extract student ID values for comparison (handle both value objects and plain strings)
+      const parentStudentIds = parentStudents.map(s => {
+        const id = s.id;
+        return typeof id === 'object' && id.value ? id.value : id;
+      });
 
       // Filter registrations for parent's children
-      const parentRegistrations = registrations.filter(reg =>
-        parentStudentIds.includes(reg.studentId)
-      );
+      const parentRegistrations = allRegistrations.filter(reg => {
+        const regStudentId =
+          typeof reg.studentId === 'object' && reg.studentId.value
+            ? reg.studentId.value
+            : reg.studentId;
+        return parentStudentIds.includes(regStudentId);
+      });
 
       // Get unique instructor IDs from parent's registrations
       const instructorIds = [
@@ -672,9 +691,20 @@ export class UserController {
       ];
 
       // Filter instructors to only include those teaching this parent's children
-      const relevantInstructors = instructors.filter(instructor =>
-        instructorIds.includes(instructor.id)
-      );
+      // Need to handle both string IDs and InstructorId value objects
+      const relevantInstructors = instructors.filter(instructor => {
+        const instructorId =
+          typeof instructor.id === 'object' && instructor.id.value
+            ? instructor.id.value
+            : instructor.id;
+        return instructorIds.some(regInstructorId => {
+          const regId =
+            typeof regInstructorId === 'object' && regInstructorId.value
+              ? regInstructorId.value
+              : regInstructorId;
+          return instructorId === regId;
+        });
+      });
 
       // Transform data for frontend
       const transformedAdmins = UserTransformService.transformArray(admins, 'admin');

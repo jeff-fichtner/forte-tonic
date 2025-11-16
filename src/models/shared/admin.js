@@ -120,7 +120,7 @@ export class Admin {
       role,
       displayEmail,
       displayPhone,
-      isDirector,
+      isDirector: isDirector === 'TRUE' || isDirector === true,
       permissions: [],
       isActive: true,
       lastLoginDate: null,

@@ -41,6 +41,8 @@ export class Instructor {
    * @param {string} data.firstName - First name
    * @param {string} [data.phoneNumber] - Phone number
    * @param {string} [data.accessCode] - Access code for authentication
+   * @param {string} [data.displayEmail] - Public display email
+   * @param {string} [data.displayPhone] - Public display phone
    * @param {Array<string>} [data.specialties] - Teaching specialties/instruments
    * @param {boolean} [data.isActive=true] - Active status
    * @param {Date|string} [data.hireDate] - Hire date
@@ -64,6 +66,8 @@ export class Instructor {
       firstName,
       phoneNumber,
       accessCode,
+      displayEmail,
+      displayPhone,
       specialties,
       isActive,
       hireDate,
@@ -84,6 +88,8 @@ export class Instructor {
     // Optional fields
     this.phoneNumber = phoneNumber || null;
     this.accessCode = accessCode || null;
+    this.displayEmail = displayEmail || null;
+    this.displayPhone = displayPhone || null;
     this.specialties = specialties || null;
     this.isActive = isActive;
     this.hireDate = hireDate ? (hireDate instanceof Date ? hireDate : new Date(hireDate)) : null;
@@ -201,6 +207,8 @@ export class Instructor {
       fridayEndTime,
       fridayRoomId,
       accessCode, // Position 32 - access code for authentication
+      displayEmail, // Position 33 - public display email
+      displayPhone, // Position 34 - public display phone
     ] = row;
 
     const specialties = [instrument1, instrument2, instrument3, instrument4].filter(Boolean);
@@ -247,6 +255,8 @@ export class Instructor {
       firstName,
       phoneNumber: phone,
       accessCode, // Add access code back
+      displayEmail,
+      displayPhone,
       specialties,
       isActive: !isDeactivated,
       availability,
@@ -481,6 +491,8 @@ export class Instructor {
       fullName: this.fullName,
       displayName: this.displayName,
       phoneNumber: this.phoneNumber,
+      displayEmail: this.displayEmail,
+      displayPhone: this.displayPhone,
       specialties: this.specialties,
       formattedSpecialties: this.formattedSpecialties,
       certifications: this.certifications,
