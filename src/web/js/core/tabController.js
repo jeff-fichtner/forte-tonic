@@ -10,7 +10,7 @@
  *
  * Usage:
  *   const controller = new TabController();
- *   controller.registerTab('instructor-directory', new InstructorDirectoryTab());
+ *   controller.registerTab('instructor-directory', new EmployeeDirectoryTab());
  *   await controller.activateTab('instructor-directory');
  */
 
