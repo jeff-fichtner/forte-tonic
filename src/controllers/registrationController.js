@@ -1001,6 +1001,10 @@ export class RegistrationController {
       const registrationRepository = serviceContainer.get('registrationRepository');
       const userRepository = serviceContainer.get('userRepository');
       const programRepository = serviceContainer.get('programRepository');
+      const configService = serviceContainer.get('configurationService');
+
+      // Get Rock Band class IDs (wait list classes)
+      const rockBandClassIds = configService.getRockBandClassIds();
 
       // Fetch all data in parallel
       const [allRegistrations, students, instructors, classes] = await Promise.all([
@@ -1010,10 +1014,13 @@ export class RegistrationController {
         programRepository.getClasses(),
       ]);
 
-      // Filter registrations to only include those for this instructor
+      // Filter registrations to only include those for this instructor, excluding wait list
       const instructorRegistrations = allRegistrations.filter(registration => {
         const regInstructorId = registration.instructorId?.value || registration.instructorId;
-        return regInstructorId === instructorId;
+        const classId = registration.classId?.value || registration.classId;
+        const isInstructorMatch = regInstructorId === instructorId;
+        const isNotWaitList = !rockBandClassIds.includes(classId);
+        return isInstructorMatch && isNotWaitList;
       });
 
       // Get unique student IDs from instructor's registrations
