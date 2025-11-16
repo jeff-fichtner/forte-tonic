@@ -605,18 +605,16 @@ export class AdminMasterScheduleTab extends BaseTab {
   }
 
   /**
-   * Exclude Rock Band classes from registrations
-   * Uses ROCK_BAND_CLASS_IDS from application config instead of title matching
+   * Exclude waitlist registrations from master schedule
+   * Waitlist registrations are identified by the isWaitlistClass property
    * @private
    */
   #excludeRockBandClasses(registrations) {
-    // Get Rock Band class IDs from application configuration
-    const appConfig = window.TONIC_ENV?.appConfig;
-    const rockBandClassIds = appConfig?.rockBandClassIds || [];
-
-    return registrations.filter(
-      reg => !rockBandClassIds.includes(reg.classId?.value || reg.classId)
-    );
+    return registrations.filter(reg => {
+      // Exclude registrations marked as waitlist classes
+      const isWaitlist = reg.isWaitlistClass === true;
+      return !isWaitlist;
+    });
   }
 
   /**
