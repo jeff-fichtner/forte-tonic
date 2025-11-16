@@ -1,22 +1,27 @@
 /**
  * Google Apps Script Migration 004: Convert Attendance Tables to UUID
  *
- * 🎯 PURPOSE:
+ * ❌ STATUS: REJECTED - NOT IMPLEMENTED
+ *
+ * REJECTION REASON:
+ * Upcoming project direction changes will include migration from Google Sheets
+ * to SQL database. This migration will handle UUID conversion as part of the
+ * SQL migration with a more robust solution. Performing this migration now
+ * would be redundant and potentially complicate the SQL migration.
+ *
+ * SUPERSEDED BY: Planned SQL migration (post-Google Sheets migration)
+ *
+ * 🎯 ORIGINAL PURPOSE:
  * Converts the attendance and attendance_audit tables to use UUID primary keys
  * for consistency with the registration system.
  *
- * 📋 WHAT IT DOES:
+ * 📋 WHAT IT WOULD HAVE DONE:
  * - Converts non-UUID IDs in attendance table to UUID format
  * - Converts non-UUID IDs in attendance_audit table to UUID format
  * - Preserves existing valid UUIDs
  * - Generates cryptographically secure UUIDs for non-UUID IDs
  *
- * 🚀 TO USE:
- * 1. Set spreadsheet ID in Config.js
- * 2. Deploy with clasp push
- * 3. Run: runAttendanceToUuidMigration() - Creates MIGRATION_* working copies
- * 4. Review MIGRATION_attendance and MIGRATION_attendance_audit sheets
- * 5. Run: applyAttendanceToUuidMigration() - Makes changes permanent (DESTRUCTIVE)
+ * 🚫 DO NOT USE - ARCHIVED AS REFERENCE ONLY
  */
 
 /**
