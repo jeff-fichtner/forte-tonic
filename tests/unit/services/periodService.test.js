@@ -311,68 +311,68 @@ describe('PeriodService', () => {
     });
   });
 
-  describe('getNextTrimesterTable', () => {
-    test('should return next trimester table during priorityEnrollment', async () => {
+  describe('getNextTrimester', () => {
+    test('should return next trimester from next period', async () => {
       mockCurrentDate('2025-02-15');
-      const { service } = createPeriodService([PERIOD_FALL_PRIORITY]);
+      const { service } = createPeriodService([
+        PERIOD_FALL_PRIORITY,
+        ['Winter', 'openEnrollment', '2025-03-01'],
+      ]);
 
-      const result = await service.getNextTrimesterTable();
+      const result = await service.getNextTrimester();
 
-      expect(result).toBe('registrations_winter');
+      expect(result).toBe('winter');
     });
 
-    test('should return next trimester table during openEnrollment', async () => {
+    test('should return null when no next period exists', async () => {
       mockCurrentDate('2025-02-20');
       const { service } = createPeriodService([PERIOD_FALL_OPEN]);
 
-      const result = await service.getNextTrimesterTable();
-
-      expect(result).toBe('registrations_winter');
-    });
-
-    test('should return null during intent period', async () => {
-      mockCurrentDate('2025-02-01');
-      const { service } = createPeriodService([PERIOD_FALL_INTENT]);
-
-      const result = await service.getNextTrimesterTable();
+      const result = await service.getNextTrimester();
 
       expect(result).toBeNull();
+    });
+
+    test('should work during any period type', async () => {
+      mockCurrentDate('2025-02-01');
+      const { service } = createPeriodService([
+        PERIOD_FALL_INTENT,
+        ['Winter', 'priorityEnrollment', '2025-03-01'],
+      ]);
+
+      const result = await service.getNextTrimester();
+
+      expect(result).toBe('winter');
+    });
+
+    test('should return next period trimester when before all periods', async () => {
+      mockCurrentDate('2025-01-01');
+      const { service } = createPeriodService([['Fall', 'intent', '2025-12-15']]);
+
+      const result = await service.getNextTrimester();
+
+      // When current date is before all periods, the first period is the "next" period
+      expect(result).toBe('fall');
+    });
+  });
+
+  describe('getCurrentTrimester', () => {
+    test('should return current trimester from current period', async () => {
+      mockCurrentDate('2025-02-15');
+      const { service } = createPeriodService([PERIOD_FALL_PRIORITY]);
+
+      const result = await service.getCurrentTrimester();
+
+      expect(result).toBe('fall');
     });
 
     test('should return null when no current period', async () => {
       mockCurrentDate('2025-01-01');
       const { service } = createPeriodService([['Fall', 'intent', '2025-12-15']]);
 
-      const result = await service.getNextTrimesterTable();
+      const result = await service.getCurrentTrimester();
 
       expect(result).toBeNull();
-    });
-
-    test('should cycle from Fall to Winter', async () => {
-      mockCurrentDate('2025-02-15');
-      const { service } = createPeriodService([PERIOD_FALL_PRIORITY]);
-
-      const result = await service.getNextTrimesterTable();
-
-      expect(result).toBe('registrations_winter');
-    });
-
-    test('should cycle from Winter to Spring', async () => {
-      mockCurrentDate('2025-04-15');
-      const { service } = createPeriodService([PERIOD_WINTER_PRIORITY]);
-
-      const result = await service.getNextTrimesterTable();
-
-      expect(result).toBe('registrations_spring');
-    });
-
-    test('should cycle from Spring to Fall', async () => {
-      mockCurrentDate('2025-06-15');
-      const { service } = createPeriodService([['Spring', 'priorityEnrollment', '2025-06-01']]);
-
-      const result = await service.getNextTrimesterTable();
-
-      expect(result).toBe('registrations_fall');
     });
   });
 

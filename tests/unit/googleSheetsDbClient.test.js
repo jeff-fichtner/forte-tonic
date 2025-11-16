@@ -105,10 +105,10 @@ describe('GoogleSheetsDbClient', () => {
       const result = await client.getAllRecords('admins', mapFunc);
 
       // Verify optimized range calculation
-      // admins columnMap has max index 5 (accessCode), so column = F (65+5=70='F')
+      // admins columnMap has max index 9 (isDirector), so column = J (65+9=74='J')
       expect(mockSheetsApi.spreadsheets.values.get).toHaveBeenCalledWith({
         spreadsheetId: 'test-spreadsheet-id',
-        range: 'admins!A2:F',
+        range: 'admins!A2:J',
       });
 
       expect(result).toEqual([
@@ -312,6 +312,10 @@ describe('GoogleSheetsDbClient', () => {
         firstName: 'John',
         phone: '555-1234',
         accessCode: '',
+        role: '',
+        displayEmail: '',
+        displayPhone: '',
+        isDirector: false,
       };
 
       await client.insertIntoSheet('admins', data);
@@ -321,7 +325,7 @@ describe('GoogleSheetsDbClient', () => {
         range: 'admins!A:A',
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: [['admin-1', 'test@test.com', 'Doe', 'John', '555-1234', '']],
+          values: [['admin-1', 'test@test.com', 'Doe', 'John', '555-1234', '', '', '', '', '']],
         },
       });
     });
@@ -336,12 +340,12 @@ describe('GoogleSheetsDbClient', () => {
         email: 'test@test.com',
         // lastName and firstName omitted
         phone: '555-1234',
-        // accessCode omitted
+        // accessCode, role, displayEmail, displayPhone, isDirector omitted
       };
 
       await client.insertIntoSheet('admins', data);
 
-      // Verify row has empty strings for missing columns (including accessCode at index 5)
+      // Verify row has empty strings for missing columns (up to isDirector at index 9)
       const call = mockSheetsApi.spreadsheets.values.append.mock.calls[0][0];
       expect(call.requestBody.values[0]).toEqual([
         'admin-1',
@@ -350,18 +354,22 @@ describe('GoogleSheetsDbClient', () => {
         '',
         '555-1234',
         '',
+        '',
+        '',
+        '',
+        '',
       ]);
     });
   });
 
   describe('updateRecord', () => {
     test('should find and update record by ID', async () => {
-      // Mock getAllRecords to return existing data
+      // Mock getAllRecords to return existing data (with all 10 admin columns)
       mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
         data: {
           values: [
-            ['admin-1', 'old@test.com', 'Doe', 'John', '555-1234'],
-            ['admin-2', 'admin2@test.com', 'Smith', 'Jane', '555-5678'],
+            ['admin-1', 'old@test.com', 'Doe', 'John', '555-1234', '', '', '', '', ''],
+            ['admin-2', 'admin2@test.com', 'Smith', 'Jane', '555-5678', '', '', '', '', ''],
           ],
         },
       });
@@ -377,6 +385,10 @@ describe('GoogleSheetsDbClient', () => {
         firstName: 'Jane',
         phone: '555-9999',
         accessCode: '',
+        role: '',
+        displayEmail: '',
+        displayPhone: '',
+        isDirector: false,
       };
 
       await client.updateRecord('admins', updatedRecord, 'test-user');
@@ -387,7 +399,9 @@ describe('GoogleSheetsDbClient', () => {
         range: 'admins!A3:Z3',
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: [['admin-2', 'updated@test.com', 'Smith', 'Jane', '555-9999', '']],
+          values: [
+            ['admin-2', 'updated@test.com', 'Smith', 'Jane', '555-9999', '', '', '', '', ''],
+          ],
         },
       });
     });

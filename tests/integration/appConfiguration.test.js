@@ -239,7 +239,7 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
 
     expect(response.body.data).toHaveProperty('availableTrimesters');
     expect(response.body.data.availableTrimesters).toEqual(['fall', 'winter']);
-    expect(response.body.data.defaultTrimester).toBe('winter');
+    expect(response.body.data.defaultTrimester).toBe('fall');
   });
 
   test('should cycle fall to next year during spring priority enrollment', async () => {
@@ -260,7 +260,7 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
 
     expect(response.body.data).toHaveProperty('availableTrimesters');
     expect(response.body.data.availableTrimesters).toEqual(['spring', 'fall']);
-    expect(response.body.data.defaultTrimester).toBe('fall');
+    expect(response.body.data.defaultTrimester).toBe('spring');
   });
 
   test('should return current and next trimester during open enrollment', async () => {
@@ -281,7 +281,7 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
 
     expect(response.body.data).toHaveProperty('availableTrimesters');
     expect(response.body.data.availableTrimesters).toEqual(['winter', 'spring']);
-    expect(response.body.data.defaultTrimester).toBe('spring');
+    expect(response.body.data.defaultTrimester).toBe('winter');
   });
 
   test('should return current and next trimester during registration period', async () => {

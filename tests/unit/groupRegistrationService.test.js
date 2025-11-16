@@ -87,6 +87,7 @@ describe('Group Registration Service', () => {
         studentId: 'STU-001',
         registrationType: 'group',
         classId: 'CLASS-001',
+        trimester: 'fall', // Explicit trimester required
       };
 
       // Mock repository responses
@@ -121,7 +122,7 @@ describe('Group Registration Service', () => {
           registrationType: 'group',
           classId: 'CLASS-001',
         }),
-        null // targetTrimester parameter
+        'fall' // targetTrimester parameter
       );
     });
 
@@ -177,6 +178,7 @@ describe('Group Registration Service', () => {
         studentId: 'STU-002',
         registrationType: 'group',
         classId: 'CLASS-001',
+        trimester: 'winter', // Explicit trimester required
         // No transportationType specified
       };
 
@@ -199,7 +201,7 @@ describe('Group Registration Service', () => {
         expect.objectContaining({
           transportationType: 'pickup', // Should set default
         }),
-        null // targetTrimester parameter
+        'winter' // targetTrimester parameter
       );
     });
 
@@ -240,6 +242,7 @@ describe('Group Registration Service', () => {
         studentId: 'STU-003',
         registrationType: 'group',
         classId: 'CLASS-001',
+        trimester: 'spring', // Explicit trimester required
         transportationType: 'both', // Already specified - should not be overridden
       };
 
@@ -262,7 +265,7 @@ describe('Group Registration Service', () => {
         expect.objectContaining({
           transportationType: 'both', // Should preserve existing value
         }),
-        null // targetTrimester parameter
+        'spring' // targetTrimester parameter
       );
     });
   });
