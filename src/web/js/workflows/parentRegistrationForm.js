@@ -26,6 +26,7 @@ import {
   showInfoMessage,
   clearInfoMessage,
 } from '../utilities/registrationForm/messageDisplay.js';
+import { FORTE_PROGRAM_EMAIL } from '../constants.js';
 
 /**
  * Parent Registration Form with hybrid interface (progressive filters + time slot grid)
@@ -1401,9 +1402,11 @@ export class ParentRegistrationForm {
     }
 
     // Get the selected student to access their grade
-    const selectedStudent = this.students.find(
-      s => s.id && s.id.value && s.id.value.toString() === selectedStudentId.toString()
-    );
+    const selectedStudent = this.students.find(s => {
+      // Handle both plain string IDs and value objects
+      const studentId = s.id?.value || s.id;
+      return studentId && studentId.toString() === selectedStudentId.toString();
+    });
     const studentGrade = selectedStudent?.grade;
 
     // Helper function to check grade eligibility
@@ -1417,14 +1420,15 @@ export class ParentRegistrationForm {
 
     // Filter classes where student is NOT already enrolled AND grade is eligible
     const availableClasses = this.classes.filter(cls => {
-      // First, filter out restricted classes
-      if (ClassManager.isRestrictedClass(cls.id)) {
+      // First, filter out restricted classes using the database field
+      if (cls.isRestricted) {
         return false;
       }
 
       // Filter by grade eligibility if student has a grade
       if (studentGrade !== null && studentGrade !== undefined) {
-        if (!isGradeEligible(studentGrade, cls.minimumGrade, cls.maximumGrade)) {
+        const eligible = isGradeEligible(studentGrade, cls.minimumGrade, cls.maximumGrade);
+        if (!eligible) {
           return false;
         }
       }
@@ -1439,6 +1443,14 @@ export class ParentRegistrationForm {
 
       return !hasExistingRegistration;
     });
+
+    // Destroy existing Materialize select instance before modifying
+    if (typeof M !== 'undefined') {
+      const existingInstance = M.FormSelect.getInstance(classSelect);
+      if (existingInstance) {
+        existingInstance.destroy();
+      }
+    }
 
     // Clear existing options
     classSelect.innerHTML = '';
@@ -1539,7 +1551,7 @@ export class ParentRegistrationForm {
       // Class is full
       showErrorMessage(
         'parent-class-error-message',
-        'This class is full. Please email forte@mcds.org to be placed on the waitlist or to explore other options.'
+        `This class is full. Please email ${FORTE_PROGRAM_EMAIL} to be placed on the waitlist or to explore other options.`
       );
       if (registerButton) {
         registerButton.disabled = true;
@@ -3129,7 +3141,7 @@ export class ParentRegistrationForm {
       • <strong>Duration:</strong> ${registrationData.length} minutes<br>
       • <strong>Transportation:</strong> ${transportationDisplay}
       <br><br>
-      <p>If you need to change or cancel this registration, please contact forte@mcds.org. The last day to cancel registrations without charge is August 29th. After this date, all registrations will be billed in full for the Fall Trimester.</p>
+      <p>If you need to change or cancel this registration, please contact ${FORTE_PROGRAM_EMAIL}. The last day to cancel registrations without charge is August 29th. After this date, all registrations will be billed in full for the Fall Trimester.</p>
       
       <p><strong>Absence and Cancellation Policy:</strong></p>
       
@@ -3139,7 +3151,7 @@ export class ParentRegistrationForm {
       
       <p>Instructors are encouraged to schedule make-up lessons for lessons they have missed; however, as they are working professionals in their fields, make-up lessons may not always be possible. The scheduling of make-up lessons will be at the instructor's discretion.</p>
       
-      <p>Please notify your instructor at least 24 hours in advance of any student absence when possible. Additionally, notify FORTE staff of student absences at forte@mcds.org.</p>
+      <p>Please notify your instructor at least 24 hours in advance of any student absence when possible. Additionally, notify FORTE staff of student absences at ${FORTE_PROGRAM_EMAIL}.</p>
       
       <p>Instructor cancellations will be communicated to parents/guardians via phone or email at least 24 hours in advance whenever possible. Same-day cancellations by instructors will result in no charge for PM care.</p>
       
@@ -3184,7 +3196,7 @@ export class ParentRegistrationForm {
       • <strong>Duration:</strong> ${registrationData.length} minutes<br>
       • <strong>Transportation:</strong> ${transportationDisplay}
       <br><br>
-      <p>If you need to change or cancel this class, please contact forte@mcds.org. The last day to cancel classes without charge is August 29th. After this date, all classes will be billed in full for the Fall Trimester.</p>
+      <p>If you need to change or cancel this class, please contact ${FORTE_PROGRAM_EMAIL}. The last day to cancel classes without charge is August 29th. After this date, all classes will be billed in full for the Fall Trimester.</p>
       
       <p><strong>Absence and Cancellation Policy:</strong></p>
       
@@ -3192,7 +3204,7 @@ export class ParentRegistrationForm {
       
       <p>There will be no charge for classes canceled by instructors. There are no makeup classes.</p>
       
-      <p>Please notify your instructor at least 24 hours in advance of any student absence when possible. Additionally, notify FORTE staff of student absences at forte@mcds.org.</p>
+      <p>Please notify your instructor at least 24 hours in advance of any student absence when possible. Additionally, notify FORTE staff of student absences at ${FORTE_PROGRAM_EMAIL}.</p>
       
       <p>Instructor cancellations will be communicated to parents/guardians via phone or email at least 24 hours in advance whenever possible. Same-day cancellations by instructors will result in no charge for PM care.</p>
       
@@ -3235,7 +3247,7 @@ export class ParentRegistrationForm {
       • <strong>Possible Class Times:</strong> Monday 3-4 PM or Monday 4-5 PM or Friday 3-4 PM<br>
       • <strong>Transportation:</strong> ${transportationDisplay}
       <br><br>
-      <p>You will be notified by email when a spot has been found for your student. If you need to change or cancel this wait list registration, please contact forte@mcds.org.</p>
+      <p>You will be notified by email when a spot has been found for your student. If you need to change or cancel this wait list registration, please contact ${FORTE_PROGRAM_EMAIL}.</p>
       
       <p><strong>Absence and Cancellation Policy:</strong></p>
       
@@ -3243,7 +3255,7 @@ export class ParentRegistrationForm {
       
       <p>There will be no charge for classes canceled by instructors. There are no makeup classes.</p>
       
-      <p>Please notify your instructor at least 24 hours in advance of any student absence when possible. Additionally, notify FORTE staff of student absences at forte@mcds.org.</p>
+      <p>Please notify your instructor at least 24 hours in advance of any student absence when possible. Additionally, notify FORTE staff of student absences at ${FORTE_PROGRAM_EMAIL}.</p>
       
       <p>Instructor cancellations will be communicated to parents/guardians via phone or email at least 24 hours in advance whenever possible. Same-day cancellations by instructors will result in no charge for PM care.</p>
       

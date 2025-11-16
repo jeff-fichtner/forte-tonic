@@ -38,6 +38,7 @@ export class Class {
     this.size = options.size || null;
     this.minimumGrade = options.minimumGrade || null;
     this.maximumGrade = options.maximumGrade || null;
+    this.isRestricted = options.isRestricted || null;
     this.roomId = options.roomId || null;
     this.description = options.description || null;
     this.isActive = options.isActive !== false;
@@ -61,6 +62,7 @@ export class Class {
       size,
       minimumGrade,
       maximumGrade,
+      isRestricted,
     ] = row;
 
     // Process time strings with DateHelpers if available
@@ -87,6 +89,7 @@ export class Class {
         size,
         minimumGrade,
         maximumGrade,
+        isRestricted,
         roomId: null,
         description: null,
         isActive: true,
@@ -112,6 +115,7 @@ export class Class {
       size,
       minimumGrade,
       maximumGrade,
+      isRestricted,
       roomId,
       description,
       isActive,
@@ -121,6 +125,7 @@ export class Class {
       size,
       minimumGrade,
       maximumGrade,
+      isRestricted,
       roomId,
       description,
       isActive,
@@ -346,6 +351,7 @@ export class Class {
       size: this.size,
       minimumGrade: this.minimumGrade,
       maximumGrade: this.maximumGrade,
+      isRestricted: this.isRestricted,
       roomId: this.roomId,
       description: this.description,
       isActive: this.isActive,
