@@ -105,7 +105,11 @@ export class AdminRegistrationTab extends BaseTab {
       window.viewModel &&
       typeof window.viewModel.createRegistrationWithEnrichment === 'function'
     ) {
-      await window.viewModel.createRegistrationWithEnrichment(registrationData);
+      // Pass the tab's student/instructor data for proper enrichment
+      await window.viewModel.createRegistrationWithEnrichment(registrationData, {
+        students: this.data.students,
+        instructors: this.data.instructors,
+      });
 
       // Reload the tab to show updated data
       await this.reload();

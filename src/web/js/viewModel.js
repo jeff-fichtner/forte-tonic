@@ -178,8 +178,12 @@ export class ViewModel {
    * This method handles the API call and enriches the response with instructor and student objects
    * Routes to next trimester endpoint during enrollment periods (for parents only)
    * Admins always use the regular endpoint regardless of period
+   * @param {object} data - Registration data
+   * @param {object} options - Optional enrichment lookup data
+   * @param {Array} options.students - Optional students array for enrichment lookup
+   * @param {Array} options.instructors - Optional instructors array for enrichment lookup
    */
-  async createRegistrationWithEnrichment(data) {
+  async createRegistrationWithEnrichment(data, { students = null, instructors = null } = {}) {
     // Admins always use the regular endpoint - they can create registrations for any trimester
     const isAdmin = this.currentUser?.admin !== undefined;
 
@@ -244,14 +248,18 @@ export class ViewModel {
     const newRegistration = Registration.fromApiData(response);
 
     // Enrich the registration with instructor and student objects (same logic as initial data loading)
+    // Use provided lookup arrays if available, otherwise fall back to viewModel's cached arrays
+    const studentsLookup = students || this.students || [];
+    const instructorsLookup = instructors || this.instructors || [];
+
     if (!newRegistration.student) {
-      newRegistration.student = this.students.find(x => {
+      newRegistration.student = studentsLookup.find(x => {
         const studentId = x.id?.value || x.id;
         const registrationStudentId = newRegistration.studentId?.value || newRegistration.studentId;
         return studentId === registrationStudentId;
       });
 
-      if (!newRegistration.student) {
+      if (!newRegistration.student && studentsLookup.length > 0) {
         console.warn(
           `❌ Student not found for new registration with studentId "${newRegistration.studentId?.value || newRegistration.studentId}"`
         );
@@ -259,14 +267,14 @@ export class ViewModel {
     }
 
     if (!newRegistration.instructor) {
-      newRegistration.instructor = this.instructors.find(x => {
+      newRegistration.instructor = instructorsLookup.find(x => {
         const instructorId = x.id?.value || x.id;
         const registrationInstructorId =
           newRegistration.instructorId?.value || newRegistration.instructorId;
         return instructorId === registrationInstructorId;
       });
 
-      if (!newRegistration.instructor) {
+      if (!newRegistration.instructor && instructorsLookup.length > 0) {
         console.warn(
           `❌ Instructor not found for new registration with instructorId "${newRegistration.instructorId?.value || newRegistration.instructorId}"`
         );
