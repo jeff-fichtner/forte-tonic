@@ -68,6 +68,32 @@ export class AdminMasterScheduleTab extends BaseTab {
     // Unwrap the data from { success: true, data: {...} } envelope
     const data = result.data || result;
 
+    console.log('[Master Schedule] API response received:', {
+      registrationsCount: data.registrations?.length,
+      studentsCount: data.students?.length,
+      instructorsCount: data.instructors?.length,
+      classesCount: data.classes?.length,
+    });
+
+    // Log sample registrations from API to verify isWaitlistClass flag
+    if (data.registrations?.length > 0) {
+      const sampleRegs = data.registrations.slice(0, 3);
+      console.log(
+        '[Master Schedule] Sample API registrations:',
+        sampleRegs.map(r => ({
+          id: r.id?.value || r.id,
+          classTitle: r.classTitle,
+          instrument: r.instrument,
+          isWaitlistClass: r.isWaitlistClass,
+          registrationType: r.registrationType,
+        }))
+      );
+
+      // Count waitlist registrations in API response
+      const waitlistCount = data.registrations.filter(r => r.isWaitlistClass === true).length;
+      console.log('[Master Schedule] API response contains waitlist registrations:', waitlistCount);
+    }
+
     // Validate response
     if (!data.registrations || !data.students || !data.instructors || !data.classes) {
       console.error('Invalid API response:', result);
@@ -81,6 +107,33 @@ export class AdminMasterScheduleTab extends BaseTab {
    * Render the master schedule table
    */
   async render() {
+    console.log('[Master Schedule] Render starting');
+    console.log('[Master Schedule] Data received:', {
+      registrationsCount: this.data.registrations?.length,
+      studentsCount: this.data.students?.length,
+      instructorsCount: this.data.instructors?.length,
+      classesCount: this.data.classes?.length,
+    });
+
+    // Log sample registrations to see isWaitlistClass values
+    if (this.data.registrations?.length > 0) {
+      const sampleRegs = this.data.registrations.slice(0, 3);
+      console.log(
+        '[Master Schedule] Sample registrations:',
+        sampleRegs.map(r => ({
+          id: r.id?.value || r.id,
+          classTitle: r.classTitle,
+          instrument: r.instrument,
+          isWaitlistClass: r.isWaitlistClass,
+          registrationType: r.registrationType,
+        }))
+      );
+
+      // Count waitlist registrations
+      const waitlistCount = this.data.registrations.filter(r => r.isWaitlistClass === true).length;
+      console.log('[Master Schedule] Total waitlist registrations in data:', waitlistCount);
+    }
+
     const container = this.getContainer();
 
     // Check if we're in development to show the Recurring column
@@ -610,11 +663,29 @@ export class AdminMasterScheduleTab extends BaseTab {
    * @private
    */
   #excludeRockBandClasses(registrations) {
-    return registrations.filter(reg => {
+    console.log('[Master Schedule] Starting waitlist exclusion filter');
+    console.log('[Master Schedule] Total registrations before filter:', registrations.length);
+
+    const filtered = registrations.filter(reg => {
       // Exclude registrations marked as waitlist classes
       const isWaitlist = reg.isWaitlistClass === true;
+
+      if (isWaitlist) {
+        console.log('[Master Schedule] Filtering out waitlist registration:', {
+          id: reg.id?.value || reg.id,
+          classTitle: reg.classTitle,
+          isWaitlistClass: reg.isWaitlistClass,
+          registrationType: reg.registrationType,
+        });
+      }
+
       return !isWaitlist;
     });
+
+    console.log('[Master Schedule] Registrations after filter:', filtered.length);
+    console.log('[Master Schedule] Filtered out count:', registrations.length - filtered.length);
+
+    return filtered;
   }
 
   /**
