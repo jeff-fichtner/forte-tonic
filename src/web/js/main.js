@@ -56,25 +56,19 @@ const AccessCodeManager = {
    */
   saveAccessCodeSecurely(accessCode, loginType = 'employee') {
     try {
-      // Use sessionStorage for secure, session-based storage
-      // Data persists only for the browser session and is cleared when tab is closed
       const secureData = {
         accessCode: accessCode,
         loginType: loginType,
-        timestamp: Date.now(),
         sessionId: this.generateSessionId(),
       };
 
-      // Store encrypted/encoded data
-      const encodedData = btoa(JSON.stringify(secureData)); // Base64 encode for basic obfuscation
-      sessionStorage.setItem('forte_auth_session', encodedData);
+      const encodedData = btoa(JSON.stringify(secureData));
+      localStorage.setItem('forte_auth_session', encodedData);
     } catch (error) {
       console.error('Failed to save access code securely:', error);
-      // Fallback to memory storage if sessionStorage fails
       this._accessCodeCache = {
         accessCode: accessCode,
         loginType: loginType,
-        timestamp: Date.now(),
       };
     }
   },
@@ -89,39 +83,20 @@ const AccessCodeManager = {
 
   /**
    * Retrieve the securely stored access code
-   * @returns {string|null} The stored access code or null if not found/expired
+   * @returns {string|null} The stored access code or null if not found
    */
   getStoredAccessCode() {
-    try {
-      const encodedData = sessionStorage.getItem('forte_auth_session');
-      if (!encodedData) {
-        return this._accessCodeCache?.accessCode || null;
-      }
-
-      const secureData = JSON.parse(atob(encodedData));
-
-      // Check if session is still valid (optional: add expiration logic)
-      const sessionAge = Date.now() - secureData.timestamp;
-
-      if (sessionAge > window.SessionConfig.MAX_AGE_MS) {
-        this.clearStoredAccessCode();
-        return null;
-      }
-
-      return secureData.accessCode;
-    } catch (error) {
-      console.error('Failed to retrieve stored access code:', error);
-      return this._accessCodeCache?.accessCode || null;
-    }
+    const authData = this.getStoredAuthData();
+    return authData?.accessCode || null;
   },
 
   /**
    * Retrieve the securely stored access code and login type
-   * @returns {object | null} Object with accessCode and loginType, or null if not found/expired
+   * @returns {object | null} Object with accessCode and loginType, or null if not found
    */
   getStoredAuthData() {
     try {
-      const encodedData = sessionStorage.getItem('forte_auth_session');
+      const encodedData = localStorage.getItem('forte_auth_session');
       if (!encodedData) {
         if (!this._accessCodeCache) {
           return null;
@@ -137,14 +112,6 @@ const AccessCodeManager = {
       }
 
       const secureData = JSON.parse(atob(encodedData));
-
-      // Check if session is still valid (optional: add expiration logic)
-      const sessionAge = Date.now() - secureData.timestamp;
-
-      if (sessionAge > window.SessionConfig.MAX_AGE_MS) {
-        this.clearStoredAccessCode();
-        return null;
-      }
 
       if (!secureData.loginType) {
         console.error('loginType not found in stored auth data');
@@ -176,7 +143,7 @@ const AccessCodeManager = {
    */
   clearStoredAccessCode() {
     try {
-      sessionStorage.removeItem('forte_auth_session');
+      localStorage.removeItem('forte_auth_session');
       this._accessCodeCache = null;
       return true;
     } catch (error) {

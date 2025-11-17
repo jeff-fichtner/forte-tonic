@@ -104,11 +104,6 @@ export const RegistrationType = {
   // REMOTE: 'remote',
 };
 
-// Session configuration
-export const SessionConfig = {
-  MAX_AGE_MS: 8 * 60 * 60 * 1000, // 8 hours in milliseconds
-};
-
 // Filter constants
 export const FilterValue = {
   ALL: 'all',
@@ -123,7 +118,6 @@ window.Sections = Sections;
 window.ServerFunctions = ServerFunctions;
 window.DataStores = DataStores;
 window.RegistrationType = RegistrationType;
-window.SessionConfig = SessionConfig;
 window.FilterValue = FilterValue;
 window.FORTE_PROGRAM_EMAIL = FORTE_PROGRAM_EMAIL;
 window.FORTE_PROGRAM_PHONE = FORTE_PROGRAM_PHONE;
