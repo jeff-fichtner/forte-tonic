@@ -88,6 +88,7 @@ describe('DropRequestRepository', () => {
         'drop-123',
         'reg-456',
         'parent-789',
+        'fall',
         'Moving to a new school',
         '2025-01-15T10:00:00Z',
         DropRequestStatus.PENDING,
@@ -101,6 +102,7 @@ describe('DropRequestRepository', () => {
       expect(dropRequest.id).toBe('drop-123');
       expect(dropRequest.registrationId).toBe('reg-456');
       expect(dropRequest.parentId).toBe('parent-789');
+      expect(dropRequest.trimester).toBe('fall');
       expect(dropRequest.reason).toBe('Moving to a new school');
       expect(dropRequest.requestedAt).toBe('2025-01-15T10:00:00Z');
       expect(dropRequest.status).toBe(DropRequestStatus.PENDING);
@@ -114,6 +116,7 @@ describe('DropRequestRepository', () => {
         'drop-123',
         'reg-456',
         'parent-789',
+        'winter',
         'Moving to a new school',
         '2025-01-15T10:00:00Z',
         DropRequestStatus.APPROVED,
