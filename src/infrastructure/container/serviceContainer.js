@@ -17,10 +17,12 @@ import { RegistrationRepository } from '../../repositories/registrationRepositor
 import { UserRepository } from '../../repositories/userRepository.js';
 import { ProgramRepository } from '../../repositories/programRepository.js';
 import { AttendanceRepository } from '../../repositories/attendanceRepository.js';
+import { DropRequestRepository } from '../../repositories/dropRequestRepository.js';
 
 // Import services
 import { RegistrationApplicationService } from '../../services/registrationApplicationService.js';
 import { PeriodService } from '../../services/periodService.js';
+import { DropRequestService } from '../../services/dropRequestService.js';
 
 export class ServiceContainer {
   constructor() {
@@ -62,11 +64,22 @@ export class ServiceContainer {
   async #initializeInfrastructure() {
     let hasErrors = false;
 
-    // Initialize database client (Google Sheets)
+    // Initialize cache service first (needed by dbClient)
+    try {
+      this.logger.info('🔧 Initializing cache service...');
+      this.cacheService = new CacheService();
+      this.logger.info('✅ Cache service initialized');
+    } catch (error) {
+      this.logger.error('❌ Failed to initialize cache service:', error.message);
+      hasErrors = true;
+      this.cacheService = null;
+    }
+
+    // Initialize database client (Google Sheets) with cache service
     try {
       this.logger.info('🔧 Initializing Google Sheets database client...');
-      this.dbClient = new GoogleSheetsDbClient(configService);
-      this.logger.info('✅ Google Sheets database client initialized');
+      this.dbClient = new GoogleSheetsDbClient(configService, this.cacheService);
+      this.logger.info('✅ Google Sheets database client initialized with caching');
     } catch (error) {
       this.logger.error('❌ Failed to initialize Google Sheets database client:', error.message);
       this.logger.error('📋 Stack trace:', error.stack);
@@ -82,17 +95,6 @@ export class ServiceContainer {
       this.logger.error('❌ Failed to initialize email client:', error.message);
       hasErrors = true;
       this.emailClient = null;
-    }
-
-    // Initialize cache service
-    try {
-      this.logger.info('🔧 Initializing cache service...');
-      this.cacheService = new CacheService();
-      this.logger.info('✅ Cache service initialized');
-    } catch (error) {
-      this.logger.error('❌ Failed to initialize cache service:', error.message);
-      hasErrors = true;
-      this.cacheService = null;
     }
 
     if (hasErrors) {
@@ -291,6 +293,10 @@ export class ServiceContainer {
     this.register('attendanceRepository', () => {
       return new AttendanceRepository(this.dbClient, configService);
     });
+
+    this.register('dropRequestRepository', () => {
+      return new DropRequestRepository(this.dbClient, configService);
+    });
   }
 
   /**
@@ -308,6 +314,16 @@ export class ServiceContainer {
 
     this.register('periodService', () => {
       return new PeriodService(this.dbClient, configService);
+    });
+
+    this.register('dropRequestService', () => {
+      return new DropRequestService(
+        this.get('dropRequestRepository'),
+        this.get('registrationRepository'),
+        this.get('userRepository'), // UserRepository has getStudentById method
+        this.get('periodService'),
+        configService
+      );
     });
   }
 

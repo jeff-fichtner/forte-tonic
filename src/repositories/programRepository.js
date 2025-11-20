@@ -18,29 +18,12 @@ export class ProgramRepository extends BaseRepository {
   }
 
   /**
-   * Get all classes with caching
-   * Uses inherited findAll() method from BaseRepository
+   * Get all classes
+   * Caching is handled at the GoogleSheetsDbClient layer
    */
-  async getClasses(forceRefresh = false) {
-    const cacheKey = `${Keys.CLASSES}:all`;
-
-    // Check cache first unless force refresh
-    if (!forceRefresh && this.cache.has(cacheKey)) {
-      const cached = this.cache.get(cacheKey);
-      if (Date.now() - cached.timestamp < this.cacheTtl) {
-        this.logger.info(`📦 Returning cached ${Keys.CLASSES}`);
-        return cached.data;
-      }
-    }
-
+  async getClasses() {
     this.logger.info(`📋 Loading ${Keys.CLASSES}`);
     const classes = await this.dbClient.getAllRecords(Keys.CLASSES, x => Class.fromDatabaseRow(x));
-
-    // Cache the results
-    this.cache.set(cacheKey, {
-      data: classes,
-      timestamp: Date.now(),
-    });
 
     this.logger.info(`✅ Found ${classes.length} ${Keys.CLASSES}`);
     return classes;
@@ -52,13 +35,5 @@ export class ProgramRepository extends BaseRepository {
   async getClassById(id) {
     const classes = await this.getClasses();
     return classes.find(x => x.id === id);
-  }
-
-  /**
-   * Clear repository-level cache
-   */
-  clearCache() {
-    this.cache.delete(`${Keys.CLASSES}:all`);
-    this.logger.info('🧹 ProgramRepository cache cleared');
   }
 }

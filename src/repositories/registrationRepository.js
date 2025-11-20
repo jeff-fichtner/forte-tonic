@@ -25,39 +25,39 @@ export class RegistrationRepository extends BaseRepository {
 
   /**
    * Get registration by UUID (new format)
+   * Caching is handled at the GoogleSheetsDbClient layer
    */
   async getById(id) {
     try {
       const registrationId = typeof id === 'string' ? new RegistrationId(id) : id;
 
-      // Check cache first
-      const cacheKey = `registrations:${registrationId.getValue()}`;
-      if (this.cache.has(cacheKey)) {
-        const cached = this.cache.get(cacheKey);
-        if (Date.now() - cached.timestamp < this.cacheTtl) {
-          return cached.data;
+      // Registrations are stored in trimester-specific sheets, so we need to search all three
+      const tables = ['registrations_fall', 'registrations_winter', 'registrations_spring'];
+
+      for (const table of tables) {
+        const allRegistrations = await this.dbClient.getAllRecords(table, row => {
+          if (!row || !row[0]) return null;
+          try {
+            return Registration.fromDatabaseRow
+              ? Registration.fromDatabaseRow(row)
+              : new Registration(row);
+          } catch (error) {
+            return null;
+          }
+        });
+
+        // Filter out null values and find registration by UUID
+        const validRegistrations = allRegistrations.filter(reg => reg !== null);
+        const registration = validRegistrations.find(
+          reg => reg.id.getValue() === registrationId.getValue()
+        );
+
+        if (registration) {
+          return registration;
         }
       }
 
-      // Get all registrations from database
-      const allRegistrations = await this.dbClient.getAllRecords('registrations', row =>
-        Registration.fromDatabaseRow ? Registration.fromDatabaseRow(row) : new Registration(row)
-      );
-
-      // Find registration by UUID
-      const registration = allRegistrations.find(
-        reg => reg.id.getValue() === registrationId.getValue()
-      );
-
-      if (registration) {
-        // Cache the individual result
-        this.cache.set(cacheKey, {
-          data: registration,
-          timestamp: Date.now(),
-        });
-      }
-
-      return registration || null;
+      return null;
     } catch (error) {
       this.logger.error('Error getting registration by ID:', error);
       throw error;
@@ -69,10 +69,26 @@ export class RegistrationRepository extends BaseRepository {
    */
   async getByStudentId(studentId) {
     try {
-      // Get all registrations from database
-      const allRegistrations = await this.dbClient.getAllRecords('registrations', row =>
-        Registration.fromDatabaseRow ? Registration.fromDatabaseRow(row) : new Registration(row)
-      );
+      // Registrations are stored in trimester-specific sheets, so we need to search all three
+      const tables = ['registrations_fall', 'registrations_winter', 'registrations_spring'];
+      let allRegistrations = [];
+
+      for (const table of tables) {
+        const tableRegistrations = await this.dbClient.getAllRecords(table, row => {
+          if (!row || !row[0]) return null;
+          try {
+            return Registration.fromDatabaseRow
+              ? Registration.fromDatabaseRow(row)
+              : new Registration(row);
+          } catch (error) {
+            return null;
+          }
+        });
+
+        // Filter out null values
+        const validRegistrations = tableRegistrations.filter(reg => reg !== null);
+        allRegistrations = allRegistrations.concat(validRegistrations);
+      }
 
       // Filter registrations by student ID
       return allRegistrations.filter(
@@ -89,10 +105,26 @@ export class RegistrationRepository extends BaseRepository {
    */
   async getByInstructorId(instructorId) {
     try {
-      // Get all registrations from database
-      const allRegistrations = await this.dbClient.getAllRecords('registrations', row =>
-        Registration.fromDatabaseRow ? Registration.fromDatabaseRow(row) : new Registration(row)
-      );
+      // Registrations are stored in trimester-specific sheets, so we need to search all three
+      const tables = ['registrations_fall', 'registrations_winter', 'registrations_spring'];
+      let allRegistrations = [];
+
+      for (const table of tables) {
+        const tableRegistrations = await this.dbClient.getAllRecords(table, row => {
+          if (!row || !row[0]) return null;
+          try {
+            return Registration.fromDatabaseRow
+              ? Registration.fromDatabaseRow(row)
+              : new Registration(row);
+          } catch (error) {
+            return null;
+          }
+        });
+
+        // Filter out null values
+        const validRegistrations = tableRegistrations.filter(reg => reg !== null);
+        allRegistrations = allRegistrations.concat(validRegistrations);
+      }
 
       // Filter registrations by instructor ID
       return allRegistrations.filter(
@@ -292,12 +324,7 @@ export class RegistrationRepository extends BaseRepository {
 
       // Use the new appendRecordv2 method that handles direct Google Sheets append and audit
       await this.dbClient.appendRecordv2(tableName, registration, registrationData.createdBy);
-
-      // Clear cache after mutation to ensure data consistency
-      this.clearCache();
-
-      // Cache the new registration
-      this.cache.set(registrationId, registration);
+      // Cache cleared automatically by dbClient
 
       return registration;
     } catch (error) {
@@ -330,9 +357,7 @@ export class RegistrationRepository extends BaseRepository {
 
       // Use the database client's deleteRecord method which handles audit trails and proper deletion
       await this.dbClient.deleteRecord(currentTable, registrationId.getValue(), userId);
-
-      // Clear cache after mutation
-      this.clearCache();
+      // Cache cleared automatically by dbClient
 
       return true;
     } catch (error) {
@@ -403,18 +428,9 @@ export class RegistrationRepository extends BaseRepository {
       },
       submittedBy
     );
-
-    // Clear cache
-    this.clearCache();
+    // Cache cleared automatically by dbClient
 
     return registration;
-  }
-
-  /**
-   * Clear cache
-   */
-  clearCache() {
-    this.cache.clear();
   }
 
   /**
@@ -511,9 +527,7 @@ export class RegistrationRepository extends BaseRepository {
 
       // Write to specific table (appendRecordv2 handles audit automatically)
       await this.dbClient.appendRecordv2(tableName, registration, registrationData.createdBy);
-
-      // Clear cache for this table
-      this.clearCache();
+      // Cache cleared automatically by dbClient
 
       this.logger.info(`✅ Created registration in ${tableName}: ${registrationId}`);
       return registration;
@@ -576,9 +590,7 @@ export class RegistrationRepository extends BaseRepository {
 
       // Use the database client's deleteRecord method which handles audit trails and proper deletion
       await this.dbClient.deleteRecord(tableName, registrationId.getValue(), userId);
-
-      // Clear cache after mutation
-      this.clearCache();
+      // Cache cleared automatically by dbClient
 
       return true;
     } catch (error) {

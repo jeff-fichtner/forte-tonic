@@ -127,6 +127,7 @@ async function extractAuthenticatedUser(req, userRepository) {
       if (userResult) {
         const { user, userType } = userResult;
         req.currentUser = {
+          id: user.id,
           email: user.email,
           accessCode: accessCode,
           userType: userType,

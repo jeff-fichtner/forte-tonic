@@ -46,37 +46,64 @@
 
 ## 4 Staging Decommission Prep
 - [x] Reset `dev`
-- [ ] Confirm CI/CD no longer deploys to Render staging
+- [x] Confirm CI/CD no longer deploys to Render staging
 
 ## 5 Staging Decommission
-- [ ] Render Dashboard → tonic-staging → Settings → Delete Service
+- [x] Render Dashboard → tonic-staging → Settings → Delete Service
 
 ## 6 Staging Decommission Cleanup
-- [ ] Update deployment docs
-- [ ] Confirm migration notice continues working on Render
+- [x] Update deployment docs
+- [x] Confirm migration notice continues working on Render
 
 ## 7 Production Decommission Prep
-- [ ] Confirm no active production users
-- [ ] Confirm team aware of production decommission
-- [ ] Confirm CI/CD no longer deploys to Render production
+- [x] Confirm no active production users
+- [x] Confirm team aware of production decommission
+- [x] Confirm CI/CD no longer deploys to Render production
 
 ## 8 Production Decommission ⚠️ POINT OF NO RETURN ⚠️
-- [ ] Render Dashboard → tonic-production → Settings → Delete Service
+- [x] Render Dashboard → tonic-production → Settings → Delete Service
 
 ## 9 Old Tonic Project GCP Wind-down
-- [ ] Delete project
-- [ ] Remove service account access to dev/prod sheets for old service accounts
+- [x] Delete project
+- [x] Remove service account access to dev/prod sheets for old service accounts
 
 ## 9 Final checks
-- [ ] No Render code in codebase
-- [ ] No Render environment variables
-- [ ] Git branches cleaned up
-- [ ] CI/CD only references GCP
-- [ ] No broken documentation links
-- [ ] Render account deleted or services removed
-- [ ] GCP production fully operational
-- [ ] 100% traffic on GCP Cloud Run
-- [ ] Monitoring/alerting configured for GCP
-- [ ] All Render documentation removed/updated
-- [ ] Remove unnecessary security permissions for jeff
-- [ ] Make sure old tonic project and service account and all documents accessing service account are deleted
+- [x] No Render code in codebase
+- [x] No Render environment variables
+- [x] Git branches cleaned up (render/main deleted)
+- [x] CI/CD only references GCP
+- [x] No broken documentation links
+- [x] Render account deleted or services removed
+- [x] GCP production fully operational
+- [x] 100% traffic on GCP Cloud Run
+- [x] Monitoring/alerting configured for GCP
+- [x] All Render documentation removed/updated
+- [x] Remove unnecessary security permissions for jeff
+- [x] Make sure old tonic project and service account and all documents accessing service account are deleted
+
+---
+
+## Migration Complete - November 18, 2025
+
+All Render infrastructure has been successfully decommissioned and replaced with Google Cloud Platform deployment:
+
+### ✅ Completed Items
+1. **Code Cleanup**: All Render-specific code and configuration removed
+2. **Environment Variables**: Migrated to GCP Cloud Run with Secret Manager
+3. **Git Branches**: `render/main` branch deleted (local and remote)
+4. **CI/CD Pipeline**: GitHub Actions → Cloud Build → Cloud Run (tag-based deployments)
+5. **Documentation**: Updated to reflect GCP deployment, removed Render references
+6. **Infrastructure**: Both staging and production services active on GCP
+7. **Traffic Migration**: 100% of traffic served from GCP Cloud Run
+8. **Monitoring**: GCP Cloud Logging and monitoring configured
+9. **Old Infrastructure**: Previous Render services decommissioned
+10. **Service Accounts**: Old service accounts removed from spreadsheet access
+
+### Current Deployment Architecture
+- **CI/CD**: GitHub Actions (test, version, tag) → Cloud Build (build, deploy)
+- **Staging**: Triggered by `v*-dev` tags → `tonic-staging` service
+- **Production**: Triggered by `v*` tags → `tonic-production` service
+- **Infrastructure**: Cloud Run with 512MB RAM, 1 vCPU, auto-scaling
+- **Secrets**: Managed via GCP Secret Manager
+
+This document is retained for historical reference.

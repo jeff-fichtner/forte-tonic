@@ -9,14 +9,20 @@ import { BaseService } from '../infrastructure/base/baseService.js';
 /**
  * GoogleSheetsDbClient - Thin wrapper around Google Sheets API
  * Consolidated from multiple client versions for better maintainability
- * Note: Caching is handled at the repository layer, not here
+ * Implements caching at the data access layer to minimize Google Sheets API calls
  */
 export class GoogleSheetsDbClient extends BaseService {
   /**
    * Initialize the Google Sheets client
+   * @param {object} configurationService - Configuration service
+   * @param {object} cacheService - Optional cache service (injected by container)
    */
-  constructor(configurationService = configService) {
+  constructor(configurationService = configService, cacheService = null) {
     super(configurationService); // Initialize logger via BaseService
+
+    // Store cache service reference
+    this.cacheService = cacheService;
+    this.cacheTtl = 5 * 60 * 1000; // 5 minutes in milliseconds
 
     // Get authentication configuration from config service
     const authConfig = this.configService.getGoogleSheetsAuth();
@@ -413,6 +419,22 @@ export class GoogleSheetsDbClient extends BaseService {
           startDate: 2,
         },
       },
+      drop_requests: {
+        sheet: 'drop_requests',
+        startRow: 2,
+        columnMap: {
+          id: 0, // UUID primary key
+          registrationId: 1, // UUID FK to registrations
+          parentId: 2, // UUID FK to parents
+          trimester: 3, // fall|winter|spring
+          reason: 4, // Text explanation from parent
+          requestedAt: 5, // ISO date string
+          status: 6, // pending|approved|rejected
+          reviewedBy: 7, // Admin email (nullable)
+          reviewedAt: 8, // ISO date string (nullable)
+          adminNotes: 9, // Admin comments (nullable)
+        },
+      },
     };
   }
 
@@ -481,6 +503,7 @@ export class GoogleSheetsDbClient extends BaseService {
   /**
    * Get all records from a sheet using an open-ended range for optimal performance
    * Google Sheets API will automatically return only populated rows
+   * Implements caching to minimize API calls
    */
   async getAllRecords(sheetKey, mapFunc) {
     try {
@@ -507,14 +530,37 @@ export class GoogleSheetsDbClient extends BaseService {
       };
 
       const lastColumn = getColumnLetter(maxColumnIndex);
+      const range = `${sheetInfo.sheet}!A${sheetInfo.startRow}:${lastColumn}`;
 
-      // Use open-ended range - Google Sheets returns only populated rows
+      // Generate cache key based on spreadsheet ID and range
+      const cacheKey = `sheets:${spreadsheetId}:${range}`;
+
+      // Check cache if available
+      if (this.cacheService) {
+        const cached = this.cacheService.get(cacheKey);
+        if (cached) {
+          this.logger.info(`📦 Cache hit for ${sheetKey}`);
+          // Apply mapFunc to cached rows
+          return cached
+            .map(row => mapFunc(row))
+            .filter(item => item !== null && item !== undefined);
+        }
+      }
+
+      // Cache miss - fetch from Google Sheets API
+      this.logger.info(`🌐 API call for ${sheetKey}`);
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: spreadsheetId,
-        range: `${sheetInfo.sheet}!A${sheetInfo.startRow}:${lastColumn}`,
+        range: range,
       });
 
       const rows = response.data.values || [];
+
+      // Store raw rows in cache if available
+      if (this.cacheService) {
+        this.cacheService.set(cacheKey, rows, this.cacheTtl);
+      }
+
       return rows.map(row => mapFunc(row)).filter(item => item !== null && item !== undefined);
     } catch (error) {
       this.logger.error(`Error getting data from sheet ${sheetKey}:`, error.message);
@@ -567,6 +613,9 @@ export class GoogleSheetsDbClient extends BaseService {
         }
         await this.insertIntoSheet(auditSheet, auditRecord);
       }
+
+      // Clear cache after successful write
+      this.clearSheetCache(sheetKey);
 
       return processedRecord;
     } catch (error) {
@@ -621,6 +670,9 @@ export class GoogleSheetsDbClient extends BaseService {
         }
         await this.insertIntoSheet(auditSheet, auditRecord);
       }
+
+      // Clear cache after successful write
+      this.clearSheetCache(sheetKey);
 
       return record; // Return the original record without mutation
     } catch (error) {
@@ -690,6 +742,9 @@ export class GoogleSheetsDbClient extends BaseService {
         await this.insertIntoSheet(sheetInfo.auditSheet, auditRecord);
         this.logger.debug(`Audit record created for registration update: ${record.id}`);
       }
+
+      // Clear cache after successful write
+      this.clearSheetCache(sheetKey);
     } catch (error) {
       this.logger.error(`Error updating record in sheet ${sheetKey}:`, error);
       throw error;
@@ -762,6 +817,9 @@ export class GoogleSheetsDbClient extends BaseService {
       } else {
         this.logger.debug(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
       }
+
+      // Clear cache after successful write
+      this.clearSheetCache(sheetKey);
 
       this.logger.debug(`Record with ID ${recordId} deleted from ${sheetKey}.`);
     } catch (error) {
@@ -976,5 +1034,52 @@ export class GoogleSheetsDbClient extends BaseService {
     record.createdAt = new Date().toISOString();
     record.createdBy = createdBy;
     return record;
+  }
+
+  /**
+   * Clear cache for a specific sheet
+   * Called after write operations to invalidate stale cache entries
+   * @param {string} sheetKey - The sheet key to clear cache for
+   */
+  clearSheetCache(sheetKey) {
+    if (!this.cacheService) {
+      return;
+    }
+
+    const sheetInfo = this.workingSheetInfo[sheetKey];
+    if (!sheetInfo) {
+      return;
+    }
+
+    // Build the same cache key format used in getAllRecords
+    const maxColumnIndex = Math.max(...Object.values(sheetInfo.columnMap));
+    const getColumnLetter = index => {
+      let letter = '';
+      let num = index;
+      while (num >= 0) {
+        letter = String.fromCharCode((num % 26) + 65) + letter;
+        num = Math.floor(num / 26) - 1;
+      }
+      return letter;
+    };
+    const lastColumn = getColumnLetter(maxColumnIndex);
+    const range = `${sheetInfo.sheet}!A${sheetInfo.startRow}:${lastColumn}`;
+    const cacheKey = `sheets:${this.spreadsheetId}:${range}`;
+
+    this.cacheService.delete(cacheKey);
+    this.logger.info(`🧹 Cache cleared for ${sheetKey}`);
+  }
+
+  /**
+   * Clear all cache entries
+   * Used by manual cache clear operations
+   */
+  clearAllCache() {
+    if (!this.cacheService) {
+      return;
+    }
+
+    this.cacheService.clear();
+    this.logger.info('🧹 All Google Sheets cache cleared');
   }
 }

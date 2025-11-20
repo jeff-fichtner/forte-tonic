@@ -43,7 +43,7 @@ Tonic does not share, sell, or disclose any personal data with third parties. Al
 
 5.1 Storage Location
 Data is stored securely using Google Sheets with enterprise-grade security
-System hosted on secure cloud infrastructure (Render.com)
+System hosted on Google Cloud Platform (Cloud Run) with enterprise-grade infrastructure
 Regular backups and data redundancy measures in place
 
 5.2 Security Measures

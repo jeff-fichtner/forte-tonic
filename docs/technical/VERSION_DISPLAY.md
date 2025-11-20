@@ -10,23 +10,22 @@ This system provides automatic version display for the staging environment while
 - **Git Commit**: Shows `new-dev`
 - **Display**: Version badge is **hidden** in development
 
-### Staging Environment (Render Build Server)
+### Staging Environment (Cloud Build)
 - **Version**: Uses actual `package.json` version
 - **Build Date**: Current timestamp when deployed
-- **Git Commit**: From `RENDER_GIT_COMMIT` environment variable
+- **Git Commit**: From `BUILD_GIT_COMMIT` environment variable
 - **Display**: Version badge is **visible** in upper-right corner
 
 ### Production Environment
-- **Version**: Uses actual `package.json` version 
+- **Version**: Uses actual `package.json` version
 - **Build Date**: Current timestamp when deployed
-- **Git Commit**: From `RENDER_GIT_COMMIT` environment variable
+- **Git Commit**: From `BUILD_GIT_COMMIT` environment variable
 - **Display**: Version badge is **hidden** in production
 
 ## Environment Detection
 
 The system detects build server environments using:
-- `process.env.RENDER` (Render.com build environment)
-- `process.env.CI` (Generic CI environment)
+- `process.env.CI` (CI/CD build environment - GitHub Actions, Cloud Build)
 
 ## Usage
 
@@ -114,8 +113,8 @@ Response:
 
 ### Wrong Version Displayed
 - Ensure `package.json` version was updated before deployment
-- Check if `RENDER` environment variable is set on build server
-- Verify git commit hash in `RENDER_GIT_COMMIT`
+- Check if `CI` environment variable is set on build server
+- Verify git commit hash in `BUILD_GIT_COMMIT`
 
 ### Deployment Issues
 - Ensure scripts are executable: `chmod +x scripts/*.sh`

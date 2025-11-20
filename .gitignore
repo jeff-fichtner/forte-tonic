@@ -154,10 +154,6 @@ scripts/credentials/
 # Google Apps Script generated config
 gas/.clasp.json
 
-# Render build artifacts
-.render-build-*
-render-build.log
-
 # Environment files (keep templates, exclude actual env files)
 .env.local
 .env.production

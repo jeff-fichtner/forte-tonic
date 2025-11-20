@@ -14,7 +14,7 @@ Documentation is organized into two main categories:
 
 ### Setup & Administration
 - **[NODE_SETUP.md](business/NODE_SETUP.md)** - Setup instructions for administrators
-- **[RENDER_DEPLOYMENT.md](business/RENDER_DEPLOYMENT.md)** - Deployment guide for hosting platforms
+- **[RENDER_WINDDOWN_PROCEDURE.md](business/RENDER_WINDDOWN_PROCEDURE.md)** - Historical record of migration from Render to GCP
 
 ---
 
@@ -47,8 +47,9 @@ Documentation is organized into two main categories:
 - **[DUAL_CONSTRUCTOR_ANALYSIS.md](technical/DUAL_CONSTRUCTOR_ANALYSIS.md)** - Constructor pattern analysis
 
 ### Versioning & Deployment
-- **[VERSION_SYSTEM.md](technical/VERSION_SYSTEM.md)** - Version management system
 - **[VERSION_DISPLAY.md](technical/VERSION_DISPLAY.md)** - Version display implementation
+- **[BRANCH_PROTECTION.md](technical/BRANCH_PROTECTION.md)** - Branch protection and CI/CD workflow
+- **[Build Configuration](../src/build/README.md)** - Docker and Cloud Build deployment guide
 
 ---
 
@@ -87,10 +88,10 @@ These documents are written for:
 3. Check [Architecture](technical/ARCHITECTURE.md) for system design
 4. See [Environment Variables](technical/ENVIRONMENT_VARIABLES.md) for configuration
 
-### For Administrators  
-1. Review [Technical Hosting Proposal](business/TECHNICAL_HOSTING_PROPOSAL.md)
+### For Administrators
+1. Review [Technical Hosting Decision](business/TECHNICAL_HOSTING_PROPOSAL.md)
 2. Follow [Node Setup Guide](business/NODE_SETUP.md)
-3. Use [Deployment Checklist](business/DEPLOYMENT_CHECKLIST.md)
+3. Check [Build Configuration](../src/build/README.md) for deployment
 
 ### For AI Assistants
 1. Always refer to [Claude Codebase Cache](../CLAUDE_CODEBASE_CACHE.md) first
@@ -99,4 +100,4 @@ These documents are written for:
 
 ---
 
-*Last updated: August 31, 2025*
+*Last updated: November 18, 2025*

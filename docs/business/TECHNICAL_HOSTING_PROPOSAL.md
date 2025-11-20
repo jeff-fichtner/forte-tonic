@@ -1,19 +1,21 @@
-# Hosting Proposal: Tonic Music Program Registration System
+# Hosting Decision Record: Tonic Music Program Registration System
 
 **Prepared for:** Marin Country Day School
-**Date:** August 4, 2025  
-**Document Version:** 2.0
+**Date:** August 4, 2025
+**Last Updated:** November 18, 2025
+**Document Version:** 3.0
+**Status:** IMPLEMENTED - Google Cloud Platform
 
 ---
 
 ## Executive Summary
 
-This proposal outlines three hosting options for the Tonic Music Program Registration System. We recommend Google Cloud Platform as the best choice for reliability and integration, with Firebase and Render as cost-effective alternatives.
+This document records the hosting evaluation and decision for the Tonic Music Program Registration System. After evaluating three hosting options, **Google Cloud Platform was selected and is now the active hosting platform**.
 
-**Hosting Options:**
-- **Best Choice:** Google Cloud Platform - $35-50/month
-- **Budget Alternative 1:** Firebase - $15-30/month (serverless)
-- **Budget Alternative 2:** Render.com - $25-75/month (always-on)
+**Options Evaluated:**
+- **✅ SELECTED:** Google Cloud Platform - $35-50/month (CURRENT HOSTING)
+- **Alternative 1:** Firebase - $15-30/month (serverless)
+- **Alternative 2:** Render.com - $25-75/month (always-on, RETIRED)
 
 ---
 
@@ -117,7 +119,7 @@ Firebase uses "serverless" technology, which means your application "sleeps" whe
 
 ---
 
-## Option 3: Render.com (CURRENT HOSTING)
+## Option 3: Render.com (RETIRED)
 
 ### What is Render?
 
@@ -193,10 +195,22 @@ Render is a straightforward hosting platform that keeps your application running
 - Lower cost than GCP
 - Limited Google integration features
 
-## Final Recommendation
+## Final Decision
 
-**For a private school with budget for quality infrastructure: Google Cloud Platform**
+**SELECTED: Google Cloud Platform (Implemented November 2025)**
 
-The combination of always-on reliability, optimized Google integration, and professional infrastructure makes GCP the best long-term investment. The monthly cost of $35-50 provides enterprise-grade hosting that will serve your school well as the music program grows.
+The school selected Google Cloud Platform and successfully migrated from Render.com in November 2025. The combination of always-on reliability, optimized Google integration, and professional infrastructure provides enterprise-grade hosting for the music program.
 
-**Alternative:** If budget is the primary concern, Firebase offers excellent value at $15-30/month with only minor trade-offs in availability.
+**Migration Status:**
+- ✅ GCP Cloud Run deployment active (staging and production)
+- ✅ Automated CI/CD via GitHub Actions and Cloud Build
+- ✅ Render.com services decommissioned
+- ✅ All traffic migrated to GCP infrastructure
+
+**Current Configuration:**
+- Cloud Run service with 512MB RAM, 1 vCPU
+- Automated deployments on tag-based triggers
+- Integrated monitoring and logging
+- Custom domain support ready
+
+**Alternative Considered:** Firebase was evaluated as a budget option at $15-30/month but GCP was chosen for superior reliability and integration.

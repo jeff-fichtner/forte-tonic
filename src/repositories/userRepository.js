@@ -15,31 +15,19 @@ export class UserRepository extends BaseRepository {
   constructor(dbClient, configService) {
     // Call parent with a generic entity name since this repo manages multiple entity types
     super('users', null, dbClient, configService);
+
+    // Cache for enriched students to avoid re-enriching on every getStudentById call
+    this._enrichedStudentsCache = null;
+    this._enrichedStudentsCacheTime = null;
   }
 
   /**
-   * Get all admins with caching
+   * Get all admins
+   * Caching is handled at the GoogleSheetsDbClient layer
    */
-  async getAdmins(forceRefresh = false) {
-    const cacheKey = `${Keys.ADMINS}:all`;
-
-    // Check cache first unless force refresh
-    if (!forceRefresh && this.cache.has(cacheKey)) {
-      const cached = this.cache.get(cacheKey);
-      if (Date.now() - cached.timestamp < this.cacheTtl) {
-        this.logger.info(`📦 Returning cached ${Keys.ADMINS}`);
-        return cached.data;
-      }
-    }
-
+  async getAdmins() {
     this.logger.info(`📋 Loading ${Keys.ADMINS}`);
     const admins = await this.dbClient.getAllRecords(Keys.ADMINS, x => Admin.fromDatabaseRow(x));
-
-    // Cache the results
-    this.cache.set(cacheKey, {
-      data: admins,
-      timestamp: Date.now(),
-    });
 
     this.logger.info(`✅ Found ${admins.length} ${Keys.ADMINS}`);
     return admins;
@@ -64,31 +52,15 @@ export class UserRepository extends BaseRepository {
   }
 
   /**
-   * Get all active instructors with caching
+   * Get all active instructors
+   * Caching is handled at the GoogleSheetsDbClient layer
    */
-  async getInstructors(forceRefresh = false) {
-    const cacheKey = `${Keys.INSTRUCTORS}:all`;
-
-    // Check cache first unless force refresh
-    if (!forceRefresh && this.cache.has(cacheKey)) {
-      const cached = this.cache.get(cacheKey);
-      if (Date.now() - cached.timestamp < this.cacheTtl) {
-        this.logger.info(`📦 Returning cached ${Keys.INSTRUCTORS}`);
-        return cached.data;
-      }
-    }
-
+  async getInstructors() {
     this.logger.info(`📋 Loading ${Keys.INSTRUCTORS}`);
     const allInstructors = await this.dbClient.getAllRecords(Keys.INSTRUCTORS, x =>
       Instructor.fromDatabaseRow(x)
     );
     const instructors = allInstructors.filter(x => x.isActive);
-
-    // Cache the results
-    this.cache.set(cacheKey, {
-      data: instructors,
-      timestamp: Date.now(),
-    });
 
     this.logger.info(`✅ Found ${instructors.length} active ${Keys.INSTRUCTORS}`);
     return instructors;
@@ -125,18 +97,15 @@ export class UserRepository extends BaseRepository {
   }
 
   /**
-   * Get all students with parent emails enriched, with caching
+   * Get all students with parent emails enriched
+   * Caching is handled at the GoogleSheetsDbClient layer for raw data,
+   * and in-memory for enriched data to avoid repeated enrichment operations
    */
-  async getStudents(forceRefresh = false) {
-    const cacheKey = `${Keys.STUDENTS}:all`;
-
-    // Check cache first unless force refresh
-    if (!forceRefresh && this.cache.has(cacheKey)) {
-      const cached = this.cache.get(cacheKey);
-      if (Date.now() - cached.timestamp < this.cacheTtl) {
-        this.logger.info(`📦 Returning cached ${Keys.STUDENTS}`);
-        return cached.data;
-      }
+  async getStudents() {
+    // Check if we have a valid cache (enriched students)
+    if (this._enrichedStudentsCache) {
+      this.logger.info(`📦 Cache hit for enriched students`);
+      return this._enrichedStudentsCache;
     }
 
     this.logger.info(`📋 Loading ${Keys.STUDENTS}`);
@@ -176,13 +145,12 @@ export class UserRepository extends BaseRepository {
       return enrichedStudent;
     });
 
-    // Cache the results
-    this.cache.set(cacheKey, {
-      data: enrichedStudents,
-      timestamp: Date.now(),
-    });
-
     this.logger.info(`✅ Found ${enrichedStudents.length} ${Keys.STUDENTS}`);
+
+    // Cache the enriched students
+    this._enrichedStudentsCache = enrichedStudents;
+    this._enrichedStudentsCacheTime = Date.now();
+
     return enrichedStudents;
   }
 
@@ -199,28 +167,12 @@ export class UserRepository extends BaseRepository {
   }
 
   /**
-   * Get all parents with caching
+   * Get all parents
+   * Caching is handled at the GoogleSheetsDbClient layer
    */
-  async getParents(forceRefresh = false) {
-    const cacheKey = `${Keys.PARENTS}:all`;
-
-    // Check cache first unless force refresh
-    if (!forceRefresh && this.cache.has(cacheKey)) {
-      const cached = this.cache.get(cacheKey);
-      if (Date.now() - cached.timestamp < this.cacheTtl) {
-        this.logger.info(`📦 Returning cached ${Keys.PARENTS}`);
-        return cached.data;
-      }
-    }
-
+  async getParents() {
     this.logger.info(`📋 Loading ${Keys.PARENTS}`);
     const parents = await this.dbClient.getAllRecords(Keys.PARENTS, x => Parent.fromDatabaseRow(x));
-
-    // Cache the results
-    this.cache.set(cacheKey, {
-      data: parents,
-      timestamp: Date.now(),
-    });
 
     this.logger.info(`✅ Found ${parents.length} ${Keys.PARENTS}`);
     return parents;
@@ -255,28 +207,12 @@ export class UserRepository extends BaseRepository {
   }
 
   /**
-   * Get all rooms with caching
+   * Get all rooms
+   * Caching is handled at the GoogleSheetsDbClient layer
    */
-  async getRooms(forceRefresh = false) {
-    const cacheKey = `${Keys.ROOMS}:all`;
-
-    // Check cache first unless force refresh
-    if (!forceRefresh && this.cache.has(cacheKey)) {
-      const cached = this.cache.get(cacheKey);
-      if (Date.now() - cached.timestamp < this.cacheTtl) {
-        this.logger.info(`📦 Returning cached ${Keys.ROOMS}`);
-        return cached.data;
-      }
-    }
-
+  async getRooms() {
     this.logger.info(`📋 Loading ${Keys.ROOMS}`);
     const rooms = await this.dbClient.getAllRecords(Keys.ROOMS, x => Room.fromDatabaseRow(x));
-
-    // Cache the results
-    this.cache.set(cacheKey, {
-      data: rooms,
-      timestamp: Date.now(),
-    });
 
     this.logger.info(`✅ Found ${rooms.length} ${Keys.ROOMS}`);
     return rooms;
@@ -316,22 +252,5 @@ export class UserRepository extends BaseRepository {
 
     // Not found in any user type
     return null;
-  }
-
-  /**
-   * Clear all repository-level caches
-   */
-  clearCache() {
-    // Clear all user-related caches
-    const keysToDelete = [
-      `${Keys.ADMINS}:all`,
-      `${Keys.INSTRUCTORS}:all`,
-      `${Keys.STUDENTS}:all`,
-      `${Keys.PARENTS}:all`,
-      `${Keys.ROOMS}:all`,
-    ];
-
-    keysToDelete.forEach(key => this.cache.delete(key));
-    this.logger.info('🧹 UserRepository cache cleared');
   }
 }

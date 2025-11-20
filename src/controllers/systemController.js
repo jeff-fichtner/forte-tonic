@@ -192,32 +192,17 @@ export class SystemController {
         throw new UnauthorizedError('Invalid admin code');
       }
 
-      // Clear all repository-level caches
-      const repositoryTypes = [
-        'userRepository',
-        'registrationRepository',
-        'attendanceRepository',
-        'programRepository',
-      ];
-
-      const clearedRepositories = [];
-      for (const repoType of repositoryTypes) {
-        try {
-          const repository = serviceContainer.get(repoType);
-          if (repository && typeof repository.clearCache === 'function') {
-            repository.clearCache();
-            clearedRepositories.push(repoType);
-          }
-        } catch (e) {
-          // Repository might not be registered or initialized yet
-          logger.info(`⚠️ Could not clear cache for ${repoType}: ${e.message}`);
-        }
+      // Clear cache at the database client level (single source of truth)
+      const dbClient = serviceContainer.get('databaseClient');
+      if (dbClient && typeof dbClient.clearAllCache === 'function') {
+        dbClient.clearAllCache();
+        logger.info('✅ All Google Sheets cache cleared');
+      } else {
+        logger.warn('⚠️ Database client not available or does not support cache clearing');
       }
 
-      logger.info(`✅ Repository caches cleared: ${clearedRepositories.join(', ')}`);
-
       const adminName = validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName;
-      logger.info(`🧹 All repository caches cleared by admin: ${adminName}`);
+      logger.info(`🧹 All caches cleared by admin: ${adminName}`);
 
       const cacheData = {
         success: true,

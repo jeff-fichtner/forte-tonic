@@ -113,13 +113,11 @@ describe('RegistrationRepository - Delete Functionality', () => {
         'test-user-id'
       );
 
-      // Verify cache clearing
-      expect(repository.clearCache).toHaveBeenCalled();
+      // Cache is now handled at dbClient layer, no repository.clearCache
     });
 
     test('should handle string ID parameter', async () => {
       repository.getById = jest.fn().mockResolvedValue(mockRegistration);
-      repository.clearCache = jest.fn();
 
       await repository.delete(testRegistrationId, 'test-user-id');
 
@@ -129,7 +127,6 @@ describe('RegistrationRepository - Delete Functionality', () => {
     test('should handle RegistrationId object parameter', async () => {
       const registrationIdObj = new RegistrationId(testRegistrationId);
       repository.getById = jest.fn().mockResolvedValue(mockRegistration);
-      repository.clearCache = jest.fn();
 
       await repository.delete(registrationIdObj, 'test-user-id');
 
@@ -198,14 +195,13 @@ describe('RegistrationRepository - Delete Functionality', () => {
       );
     });
 
-    test('should clear repository cache', async () => {
+    test('should verify dbClient handles cache clearing', async () => {
       repository.getById = jest.fn().mockResolvedValue(mockRegistration);
-      repository.clearCache = jest.fn();
 
       await repository.delete(testRegistrationId, 'test-user-id');
 
-      expect(repository.clearCache).toHaveBeenCalled();
-      // DB client no longer has caching - removed in refactor
+      // Cache is now handled at dbClient layer automatically
+      expect(mockDbClient.deleteRecord).toHaveBeenCalled();
     });
   });
 
@@ -220,8 +216,6 @@ describe('RegistrationRepository - Delete Functionality', () => {
         instructorId: 'instructor-456',
       });
 
-      repository.clearCache = jest.fn();
-
       const result = await repository.delete(testId, 'test-user@example.com');
 
       expect(result).toBe(true);
@@ -233,8 +227,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
         'test-user@example.com'
       );
 
-      // Verify cache was cleared
-      expect(repository.clearCache).toHaveBeenCalled();
+      // Cache is handled at dbClient layer
     });
   });
 
@@ -336,7 +329,6 @@ describe('RegistrationRepository - Delete Functionality', () => {
       };
 
       mockDbClient.appendRecordv2 = jest.fn().mockResolvedValue(true);
-      repository.clearCache = jest.fn();
 
       const result = await repository.createInTable('registrations_winter', registrationData);
 
@@ -348,7 +340,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
         expect.any(Object),
         'test-user@example.com'
       );
-      expect(repository.clearCache).toHaveBeenCalled();
+      // Cache is handled at dbClient layer
     });
 
     test('should throw error if createdBy is missing', async () => {

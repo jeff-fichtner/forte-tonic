@@ -129,9 +129,7 @@ export class AttendanceRepository extends BaseRepository {
       new AttendanceRecord(registrationId),
       createdBy
     );
-
-    // Clear cache after mutation
-    this.clearCache();
+    // Cache cleared automatically by dbClient
 
     return result;
   }
@@ -152,9 +150,7 @@ export class AttendanceRepository extends BaseRepository {
     }
 
     await this.dbClient.deleteRecord(Keys.ATTENDANCE, registrationId, deletedBy);
-
-    // Clear cache after mutation
-    this.clearCache();
+    // Cache cleared automatically by dbClient
 
     return true;
   }
