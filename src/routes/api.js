@@ -7,6 +7,7 @@ import { RegistrationController } from '../controllers/registrationController.js
 import { SystemController } from '../controllers/systemController.js';
 import { AttendanceController } from '../controllers/attendanceController.js';
 import { FeedbackController } from '../controllers/feedbackController.js';
+import { DropRequestController } from '../controllers/dropRequestController.js';
 import { extractPaginatedRequestData } from '../middleware/requestDataNormalizer.js';
 import { initializeRepositories } from '../middleware/auth.js';
 
@@ -122,6 +123,37 @@ router.post('/removeAttendance', AttendanceController.removeAttendance);
  * Feedback endpoint
  */
 router.post('/feedback', FeedbackController.submitFeedback);
+
+/**
+ * Drop Request endpoints
+ * Parent endpoints - allow parents to submit and view drop requests
+ */
+router.post('/drop-requests', initializeRepositories, DropRequestController.createDropRequest);
+router.get(
+  '/drop-requests/my-requests',
+  initializeRepositories,
+  DropRequestController.getMyDropRequests
+);
+
+/**
+ * Admin Drop Request endpoints
+ * Admin-only - view all pending requests and approve/reject them
+ */
+router.get(
+  '/admin/drop-requests',
+  initializeRepositories,
+  DropRequestController.getAllDropRequests
+);
+router.post(
+  '/admin/drop-requests/:id/approve',
+  initializeRepositories,
+  DropRequestController.approveDropRequest
+);
+router.post(
+  '/admin/drop-requests/:id/reject',
+  initializeRepositories,
+  DropRequestController.rejectDropRequest
+);
 
 /**
  * Tab-specific data endpoints (Phase 2: Frontend Data Independence)

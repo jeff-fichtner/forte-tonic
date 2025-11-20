@@ -22,6 +22,7 @@ export class DropRequest {
     this.id = data.id || UuidUtility.generateUuid();
     this.registrationId = data.registrationId;
     this.parentId = data.parentId;
+    this.trimester = data.trimester;
     this.reason = data.reason;
     this.requestedAt = data.requestedAt || new Date().toISOString();
     this.status = data.status || DropRequestStatus.PENDING;
@@ -38,6 +39,7 @@ export class DropRequest {
       id: this.id,
       registrationId: this.registrationId,
       parentId: this.parentId,
+      trimester: this.trimester,
       reason: this.reason,
       requestedAt: this.requestedAt,
       status: this.status,
@@ -55,12 +57,13 @@ export class DropRequest {
       id: row[0],
       registrationId: row[1],
       parentId: row[2],
-      reason: row[3],
-      requestedAt: row[4],
-      status: row[5],
-      reviewedBy: row[6] || null,
-      reviewedAt: row[7] || null,
-      adminNotes: row[8] || null,
+      trimester: row[3],
+      reason: row[4],
+      requestedAt: row[5],
+      status: row[6],
+      reviewedBy: row[7] || null,
+      reviewedAt: row[8] || null,
+      adminNotes: row[9] || null,
     });
   }
 }
