@@ -117,15 +117,37 @@ export class DropRequestService extends BaseService {
         throw new InvalidPeriodError();
       }
 
-      // 2. Verify registration exists
-      const registration = await this.registrationRepository.getById(registrationId);
+      // 2. Verify registration exists and determine which trimester it belongs to
+      let registration = null;
+      let trimester = null;
+
+      // Check each trimester to find the registration
+      const trimesters = ['fall', 'winter', 'spring'];
+      for (const tri of trimesters) {
+        try {
+          const tableRegistrations =
+            await this.registrationRepository.getRegistrationsByTrimester(tri);
+          const found = tableRegistrations.find(reg => reg.id.getValue() === registrationId);
+
+          if (found) {
+            registration = found;
+            trimester = tri;
+            this.logger.info(`Found registration in ${trimester} trimester`);
+            break;
+          }
+        } catch (error) {
+          // Continue checking other trimesters
+          this.logger.debug(`Registration not found in ${tri}:`, error.message);
+        }
+      }
+
       if (!registration) {
         this.logger.warn(`Drop request rejected: Registration not found ${registrationId}`);
         throw new RegistrationNotFoundError(registrationId);
       }
 
       // 3. Verify parent owns the student
-      const studentId = registration.studentId.getValue();
+      const studentId = registration.studentId.value || registration.studentId;
       const student = await this.studentRepository.getStudentById(studentId);
 
       if (!student) {
@@ -137,9 +159,16 @@ export class DropRequestService extends BaseService {
       const parent1Id = student.parent1Id?.getValue?.() || student.parent1Id;
       const parent2Id = student.parent2Id?.getValue?.() || student.parent2Id;
 
-      if (parent1Id !== parentId && parent2Id !== parentId) {
+      // Extract email from composite parent ID (format: email_lastname_firstname)
+      const parentEmail = parentId.split('_')[0];
+
+      // Check if parent ID or parent email matches either parent
+      const isParent1 = parent1Id === parentId || parent1Id === parentEmail;
+      const isParent2 = parent2Id === parentId || parent2Id === parentEmail;
+
+      if (!isParent1 && !isParent2) {
         this.logger.warn(
-          `Drop request rejected: Parent ${parentId} does not own student ${studentId}`
+          `Drop request rejected: Parent ${parentId} (email: ${parentEmail}) does not own student ${studentId} (parent1: ${parent1Id}, parent2: ${parent2Id})`
         );
         throw new UnauthorizedDropRequestError();
       }
@@ -158,6 +187,7 @@ export class DropRequestService extends BaseService {
         {
           registrationId,
           parentId,
+          trimester,
           reason,
           status: DropRequestStatus.PENDING,
         },
@@ -286,7 +316,17 @@ export class DropRequestService extends BaseService {
         DropRequestStatus.PENDING
       );
 
-      // Enrich with related data
+      // Load students ONCE (cached at DB layer, but avoids repeated method calls)
+      const allStudents = await this.studentRepository.getStudents();
+
+      // Create lookup map for O(1) access
+      const studentMap = new Map();
+      allStudents.forEach(student => {
+        const id = student.id?.getValue?.() || student.id;
+        studentMap.set(id, student);
+      });
+
+      // Enrich with related data - no async calls in loop
       const enriched = await Promise.all(
         pendingRequests.map(async request => {
           try {
@@ -301,7 +341,7 @@ export class DropRequestService extends BaseService {
             }
 
             const studentId = registration.studentId.getValue();
-            const student = await this.studentRepository.getById(studentId);
+            const student = studentMap.get(studentId) || null;
 
             return {
               ...request,
