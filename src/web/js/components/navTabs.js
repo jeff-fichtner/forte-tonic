@@ -90,8 +90,8 @@ export class NavTabs {
       // Trimester selector should only show for admin-specific tabs during enrollment periods
       // Hide for directory tab, non-admin tabs, and non-enrollment periods
       // CRITICAL: Trimester selector is ADMIN-ONLY and ENROLLMENT-PERIOD-ONLY
-      const trimesterSelector = document.getElementById('admin-trimester-selector-container');
-      if (trimesterSelector) {
+      const adminTrimesterSelector = document.getElementById('admin-trimester-selector-container');
+      if (adminTrimesterSelector) {
         const isAdmin = !!window.viewModel?.currentUser?.admin;
         const currentPeriod = window.UserSession?.getCurrentPeriod();
 
@@ -100,9 +100,26 @@ export class NavTabs {
           '#admin-wait-list',
           '#admin-registration',
         ];
-        const shouldShowTrimester =
+        const shouldShowAdminTrimester =
           adminTrimesterTabs.includes(targetTab) && isAdmin && isEnrollmentPeriod(currentPeriod);
-        trimesterSelector.hidden = !shouldShowTrimester;
+        adminTrimesterSelector.hidden = !shouldShowAdminTrimester;
+      }
+
+      // Show/hide instructor trimester selector based on tab AND period type
+      // Trimester selector should only show for instructor-specific tabs during enrollment periods
+      const instructorTrimesterSelector = document.getElementById(
+        'instructor-trimester-selector-container'
+      );
+      if (instructorTrimesterSelector) {
+        const isInstructor = !!window.viewModel?.currentUser?.instructor;
+        const currentPeriod = window.UserSession?.getCurrentPeriod();
+
+        const instructorTrimesterTabs = ['#instructor-weekly-schedule'];
+        const shouldShowInstructorTrimester =
+          instructorTrimesterTabs.includes(targetTab) &&
+          isInstructor &&
+          isEnrollmentPeriod(currentPeriod);
+        instructorTrimesterSelector.hidden = !shouldShowInstructorTrimester;
       }
 
       // Force layout refresh when switching tabs to fix scroll/rendering issues
@@ -333,6 +350,39 @@ export class NavTabs {
 
         // Initialize current trimester button as active if no button is currently active
         const trimesterButtons = document.getElementById('admin-trimester-buttons');
+        if (trimesterButtons) {
+          const activeButton = trimesterButtons.querySelector('.trimester-btn.active');
+
+          if (!activeButton && currentPeriod?.trimester) {
+            // Get current trimester from period service
+            const currentTrimester = currentPeriod.trimester;
+
+            const currentButton = trimesterButtons.querySelector(
+              `[data-trimester="${currentTrimester}"]`
+            );
+            if (currentButton) {
+              currentButton.classList.add('active');
+            }
+          }
+        }
+      } else if (trimesterSelector) {
+        // Hide trimester selector during non-enrollment periods
+        trimesterSelector.hidden = true;
+      }
+    }
+
+    if (section === 'instructor') {
+      const isInstructor = !!window.viewModel?.currentUser?.instructor;
+      const currentPeriod = window.UserSession?.getCurrentPeriod();
+
+      const trimesterSelector = document.getElementById('instructor-trimester-selector-container');
+
+      // Only show trimester selector during enrollment periods
+      if (trimesterSelector && isInstructor && isEnrollmentPeriod(currentPeriod)) {
+        trimesterSelector.hidden = false;
+
+        // Initialize current trimester button as active if no button is currently active
+        const trimesterButtons = document.getElementById('instructor-trimester-buttons');
         if (trimesterButtons) {
           const activeButton = trimesterButtons.querySelector('.trimester-btn.active');
 

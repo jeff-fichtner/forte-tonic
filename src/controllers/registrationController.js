@@ -974,13 +974,13 @@ export class RegistrationController {
   /**
    * Get instructor weekly schedule tab data
    * Returns registrations for instructor + associated students + instructors + classes
-   * REST: GET /api/instructor/tabs/weekly-schedule?instructorId={instructorId}
+   * REST: GET /api/instructor/tabs/weekly-schedule?instructorId={instructorId}&trimester={trimester}
    */
   static async getInstructorWeeklyScheduleTabData(req, res) {
     const startTime = Date.now();
 
     try {
-      const { instructorId } = req.query;
+      const { instructorId, trimester } = req.query;
 
       if (!instructorId) {
         return errorResponse(
@@ -1007,8 +1007,11 @@ export class RegistrationController {
       const rockBandClassIds = configService.getRockBandClassIds();
 
       // Fetch all data in parallel
+      // If trimester is provided, filter registrations by trimester
       const [allRegistrations, students, instructors, classes] = await Promise.all([
-        registrationRepository.getRegistrations(),
+        trimester
+          ? registrationRepository.getRegistrationsByTrimester(trimester)
+          : registrationRepository.getRegistrations(),
         userRepository.getStudents(),
         userRepository.getInstructors(),
         programRepository.getClasses(),

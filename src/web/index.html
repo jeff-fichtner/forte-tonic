@@ -1319,6 +1319,31 @@
         </div>
 
         <!-- Instructor Section -->
+
+        <!-- Instructor Trimester Selector (instructor tabs) -->
+        <div
+          hidden
+          id="instructor-trimester-selector-container"
+          class="instructor-tab"
+          style="margin: 20px 0; background-color: #fefefe"
+        >
+          <div class="card" style="margin: 0; border-left: 4px solid #2b68a4">
+            <div class="card-content" style="padding: 20px">
+              <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap">
+                <div style="display: flex; align-items: center; gap: 10px">
+                  <i class="material-icons" style="color: #2b68a4; font-size: 24px">event</i>
+                  <span style="color: #666; font-size: 14px; font-weight: 500">Trimester</span>
+                </div>
+                <div id="instructor-trimester-buttons" class="trimester-selector-container">
+                  <!-- Buttons will be populated dynamically -->
+                  <button class="trimester-btn" data-trimester="fall">Fall</button>
+                  <button class="trimester-btn" data-trimester="winter">Winter</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div
           hidden
           class="tab-content"

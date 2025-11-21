@@ -36,8 +36,16 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
       throw new Error('No instructor ID found in session');
     }
 
+    // Get selected trimester from instructor selector buttons
+    const trimesterButtons = document.getElementById('instructor-trimester-buttons');
+    const activeButton = trimesterButtons?.querySelector('.trimester-btn.active');
+
+    // Fallback to current period if no button selected
+    const currentPeriod = window.UserSession?.getCurrentPeriod();
+    const trimester = activeButton?.dataset.trimester || currentPeriod?.trimester;
+
     const response = await fetch(
-      `/api/instructor/tabs/weekly-schedule?instructorId=${instructorId}`,
+      `/api/instructor/tabs/weekly-schedule?instructorId=${instructorId}&trimester=${trimester}`,
       {
         signal: this.getAbortSignal(),
       }
@@ -255,6 +263,28 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
       if (typeof M !== 'undefined') {
         M.toast({ html: 'No parent email available for this student.' });
       }
+    }
+  }
+
+  /**
+   * Attach event listeners for trimester selector
+   */
+  attachEventListeners() {
+    const trimesterButtons = document.getElementById('instructor-trimester-buttons');
+    if (trimesterButtons) {
+      this.addEventListener(trimesterButtons, 'click', async event => {
+        const button = event.target.closest('.trimester-btn');
+        if (button) {
+          // Update active button state
+          trimesterButtons.querySelectorAll('.trimester-btn').forEach(btn => {
+            btn.classList.remove('active');
+          });
+          button.classList.add('active');
+
+          // Reload tab with new trimester
+          await this.reload();
+        }
+      });
     }
   }
 
