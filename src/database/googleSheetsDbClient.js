@@ -535,8 +535,11 @@ export class GoogleSheetsDbClient extends BaseService {
       // Generate cache key based on spreadsheet ID and range
       const cacheKey = `sheets:${spreadsheetId}:${range}`;
 
-      // Check cache if available
-      if (this.cacheService) {
+      // CRITICAL: Periods should NEVER be cached as they control time-sensitive application behavior
+      const shouldCache = sheetKey !== Keys.PERIODS;
+
+      // Check cache if available and caching is allowed for this sheet
+      if (this.cacheService && shouldCache) {
         const cached = this.cacheService.get(cacheKey);
         if (cached) {
           this.logger.info(`📦 Cache hit for ${sheetKey}`);
@@ -556,8 +559,8 @@ export class GoogleSheetsDbClient extends BaseService {
 
       const rows = response.data.values || [];
 
-      // Store raw rows in cache if available
-      if (this.cacheService) {
+      // Store raw rows in cache if available and caching is allowed for this sheet
+      if (this.cacheService && shouldCache) {
         this.cacheService.set(cacheKey, rows, this.cacheTtl);
       }
 
