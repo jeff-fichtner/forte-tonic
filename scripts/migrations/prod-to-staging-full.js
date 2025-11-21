@@ -574,16 +574,27 @@ class FullDatabaseMigration {
 
       // Get parent for intentSubmittedBy
       const studentParents = this.studentParents.get(newStudentId) || [];
-      const intentSubmittedBy = reg.intentSubmittedBy
-        ? (studentParents.length > 0 ? faker.helpers.arrayElement(studentParents) : '')
-        : '';
+      let intentSubmittedBy = '';
+      if (reg.intentSubmittedBy && studentParents.length > 0) {
+        // Look up parent email by ID
+        const randomParentId = faker.helpers.arrayElement(studentParents);
+        const parentObj = this.transformedData.parents.find(p => p.Id === randomParentId);
+        intentSubmittedBy = parentObj ? parentObj.Email : '';
+      }
 
       // Get createdBy (could be parent or instructor)
-      const createdBy = reg.CreatedBy
-        ? (Math.random() > 0.5
-            ? (studentParents.length > 0 ? faker.helpers.arrayElement(studentParents) : '')
-            : faker.helpers.arrayElement(this.transformedData.instructors).Email)
-        : '';
+      let createdBy = '';
+      if (reg.CreatedBy) {
+        if (Math.random() > 0.5 && studentParents.length > 0) {
+          // Use parent email - need to look up the parent object by ID to get email
+          const randomParentId = faker.helpers.arrayElement(studentParents);
+          const parentObj = this.transformedData.parents.find(p => p.Id === randomParentId);
+          createdBy = parentObj ? parentObj.Email : '';
+        } else {
+          // Use instructor email
+          createdBy = faker.helpers.arrayElement(this.transformedData.instructors).Email;
+        }
+      }
 
       const roomId = randomClass.RoomId || reg.RoomId || '';
       const linkedPrevious = reg.linkedPreviousRegistrationId
