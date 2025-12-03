@@ -98,6 +98,9 @@ export class DropRequestRepository extends BaseRepository {
       const dropRequest = new DropRequest(requestData);
       const created = await this.dbClient.insertIntoSheet('drop_requests', dropRequest.toJSON());
 
+      // Clear cache after write to ensure subsequent reads see the new data
+      this.dbClient.clearSheetCache('drop_requests');
+
       this.logger.info(`✅ Created drop request with ID: ${dropRequest.id}`);
       return dropRequest;
     } catch (error) {
@@ -214,6 +217,9 @@ export class DropRequestRepository extends BaseRepository {
       });
 
       await this.dbClient.updateRecord('drop_requests', updated.toJSON(), updatedBy);
+
+      // Clear cache after write to ensure subsequent reads see the updated data
+      this.dbClient.clearSheetCache('drop_requests');
 
       this.logger.info(`✅ Updated drop request: ${id}`);
       return updated;

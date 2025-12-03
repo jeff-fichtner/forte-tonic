@@ -10,7 +10,7 @@ import { getAuthenticatedUserEmail } from '../middleware/auth.js';
 import { getLogger } from '../utils/logger.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
 import { successResponse, errorResponse } from '../common/responseHelpers.js';
-import { ValidationError } from '../common/errors.js';
+import { ValidationError, UnauthorizedError } from '../common/errors.js';
 import {
   DropRequestError,
   DropRequestNotFoundError,
@@ -194,6 +194,12 @@ export class DropRequestController {
     const startTime = Date.now();
 
     try {
+      // Verify caller is an admin
+      const isAdmin = req.currentUser?.admin !== undefined;
+      if (!isAdmin) {
+        throw new UnauthorizedError('Admin access required');
+      }
+
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
 
       logger.info('📋 Admin requesting all pending drop requests:', {
@@ -233,6 +239,12 @@ export class DropRequestController {
     const startTime = Date.now();
 
     try {
+      // Verify caller is an admin
+      const isAdmin = req.currentUser?.admin !== undefined;
+      if (!isAdmin) {
+        throw new UnauthorizedError('Admin access required');
+      }
+
       const { id: requestId } = req.params;
       const { adminNotes } = req.body;
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
@@ -314,6 +326,12 @@ export class DropRequestController {
     const startTime = Date.now();
 
     try {
+      // Verify caller is an admin
+      const isAdmin = req.currentUser?.admin !== undefined;
+      if (!isAdmin) {
+        throw new UnauthorizedError('Admin access required');
+      }
+
       const { id: requestId } = req.params;
       const { adminNotes } = req.body;
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
