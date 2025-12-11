@@ -6,8 +6,7 @@
  * Validates reason input and submits to backend API.
  */
 
-import { HttpService } from '/data/httpService.js';
-import { DropRequestStatus } from '/utils/values/dropRequestStatus.js';
+import { HttpService } from '../data/httpService.js';
 
 export class DropRequestModal {
   /**

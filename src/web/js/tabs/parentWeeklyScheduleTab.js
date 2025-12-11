@@ -6,6 +6,7 @@ import { PeriodType } from '../constants/periodTypeConstants.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { isEnrollmentPeriod } from '../utilities/periodHelpers.js';
 import { ClassManager } from '../utilities/classManager.js';
+import { DropRequestModal } from '../components/dropRequestModal.js';
 import { HttpService } from '../data/httpService.js';
 
 // Intent labels (matching viewModel.js)
@@ -38,6 +39,9 @@ export class ParentWeeklyScheduleTab extends BaseTab {
 
     /** @private {Table|null} Wait list table */
     this.waitListTable = null;
+
+    /** @private {Map<string, object>} Drop requests by registration ID */
+    this.dropRequestsByRegistrationId = new Map();
   }
 
   /**
@@ -111,6 +115,17 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       }),
     });
 
+    // Fetch drop requests during registration period
+    let dropRequests = [];
+    if (currentPeriod?.periodType === PeriodType.REGISTRATION) {
+      try {
+        const dropRequestResponse = await HttpService.fetch('drop-requests/my-requests');
+        dropRequests = dropRequestResponse?.dropRequests || [];
+      } catch (error) {
+        console.warn('Failed to fetch drop requests:', error);
+      }
+    }
+
     const responseData = {
       currentTrimester: {
         name: firstTrimester,
@@ -124,6 +139,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
         'id'
       ),
       classes: this.#mergeUnique([...firstData.classes, ...(secondData?.classes || [])], 'id'),
+      dropRequests,
     };
 
     if (showTwoTrimesters) {
@@ -198,6 +214,14 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     scheduleContainer.innerHTML = '';
     this.studentTables.clear();
     this.waitListTable = null;
+
+    // Build drop requests map by registration ID for quick lookup
+    this.dropRequestsByRegistrationId.clear();
+    if (this.data.dropRequests) {
+      for (const dropRequest of this.data.dropRequests) {
+        this.dropRequestsByRegistrationId.set(dropRequest.registrationId, dropRequest);
+      }
+    }
 
     // Render Current Trimester Section
     this.#renderTrimesterSection(scheduleContainer, this.data.currentTrimester, 'current');
@@ -367,6 +391,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     // Check if we're in the intent period to show the Intent column
     const currentPeriod = window.UserSession?.getCurrentPeriod();
     const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
+    const isRegistrationPeriod = currentPeriod?.periodType === PeriodType.REGISTRATION;
 
     const headers = [
       'Weekday',
@@ -380,6 +405,11 @@ export class ParentWeeklyScheduleTab extends BaseTab {
 
     if (isIntentPeriod) {
       headers.push('Intent');
+    }
+
+    // Add Drop column during registration period
+    if (isRegistrationPeriod) {
+      headers.push('Drop');
     }
 
     headers.push('Contact');
@@ -462,6 +492,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     // Build intent cell for parent view during intent period only
     const currentPeriod = window.UserSession?.getCurrentPeriod();
     const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
+    const isRegistrationPeriod = currentPeriod?.periodType === PeriodType.REGISTRATION;
 
     let intentCell = '';
     if (isIntentPeriod) {
@@ -499,6 +530,27 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     // Add visual indicator for orphaned rows
     const rowStyle = isOrphaned ? 'background-color: #ffebee;' : '';
 
+    // Build drop request cell during registration period
+    let dropCell = '';
+    if (isRegistrationPeriod) {
+      const enrollmentId = enrollment.id?.value || enrollment.id;
+      const existingDropRequest = this.dropRequestsByRegistrationId.get(enrollmentId);
+
+      if (existingDropRequest) {
+        // Show status badge if drop request exists
+        const statusBadge = this.#getDropRequestStatusBadge(existingDropRequest);
+        dropCell = `<td>${statusBadge}</td>`;
+      } else {
+        // Show "Request Drop" button
+        dropCell = `<td>
+          <button type="button" class="btn-small waves-effect waves-light red lighten-1 request-drop-btn"
+            data-registration-id="${enrollmentId}"
+            style="padding: 0 8px; height: 24px; line-height: 24px; font-size: 11px;">
+            Request Drop
+          </button>
+        </td>`;
+      }
+    }
     return `
       <td style="${rowStyle}">${enrollment.day}</td>
       <td style="${rowStyle}">${formatTime(enrollment.startTime) || 'N/A'}</td>
@@ -508,6 +560,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       <td style="${rowStyle}">${instructorName}</td>
       <td style="${rowStyle}">${instrumentOrClass}</td>
       ${intentCell}
+      ${dropCell}
       <td style="${rowStyle}">
         <button type="button" class="btn-flat" style="padding: 0; min-width: 0; background: none; border: none; cursor: pointer;" data-registration-id="${enrollment.id?.value || enrollment.id}" ${isOrphaned ? 'disabled' : ''}>
           <i class="material-icons copy-emails-table-icon ${isOrphaned ? 'grey-text' : 'gray-text text-darken-4'}">email</i>
@@ -547,18 +600,36 @@ export class ParentWeeklyScheduleTab extends BaseTab {
   }
 
   /**
-   * Handle table clicks (email copy for parent view)
+   * Handle table clicks (email copy and drop request for parent view)
    * @private
    */
   async #handleScheduleTableClick(event) {
+    // Handle email copy
     const isCopy = event.target.classList.contains('copy-emails-table-icon');
-    if (!isCopy) {
+    if (isCopy) {
+      event.preventDefault();
+      event.stopPropagation();
+      await this.#handleEmailCopy(event);
       return;
     }
 
-    event.preventDefault();
-    event.stopPropagation();
+    // Handle drop request button
+    const isDropRequest =
+      event.target.classList.contains('request-drop-btn') ||
+      event.target.closest('.request-drop-btn');
+    if (isDropRequest) {
+      event.preventDefault();
+      event.stopPropagation();
+      await this.#handleDropRequestClick(event);
+      return;
+    }
+  }
 
+  /**
+   * Handle email copy click
+   * @private
+   */
+  async #handleEmailCopy(event) {
     // Get the registration ID from the data attribute
     const buttonElement = event.target.closest('button');
     const registrationId = buttonElement?.getAttribute('data-registration-id');
@@ -590,6 +661,63 @@ export class ParentWeeklyScheduleTab extends BaseTab {
         M.toast({ html: 'No instructor email available.' });
       }
     }
+  }
+
+  /**
+   * Handle drop request button click
+   * @private
+   */
+  async #handleDropRequestClick(event) {
+    const buttonElement = event.target.closest('.request-drop-btn');
+    const registrationId = buttonElement?.getAttribute('data-registration-id');
+    if (!registrationId) return;
+
+    // Find the enrollment by ID
+    let enrollment = this.data.currentTrimester.data.registrations.find(
+      e => (e.id?.value || e.id) === registrationId
+    );
+
+    if (!enrollment && this.data.nextTrimester) {
+      enrollment = this.data.nextTrimester.data.registrations.find(
+        e => (e.id?.value || e.id) === registrationId
+      );
+    }
+
+    if (!enrollment) {
+      console.error('Enrollment not found for drop request:', registrationId);
+      return;
+    }
+
+    // Enrich enrollment with student and instructor data for modal display
+    const studentId = enrollment.studentId?.value || enrollment.studentId;
+    const instructorId = enrollment.instructorId?.value || enrollment.instructorId;
+
+    const student = this.data.students.find(s => (s.id?.value || s.id) === studentId);
+    const instructor = this.data.instructors.find(i => (i.id?.value || i.id) === instructorId);
+
+    const enrichedEnrollment = {
+      ...enrollment,
+      id: enrollment.id?.value || enrollment.id,
+      student,
+      instructor,
+    };
+
+    // Open drop request modal
+    new DropRequestModal(enrichedEnrollment, {
+      onSuccess: response => {
+        if (typeof M !== 'undefined') {
+          M.toast({ html: 'Drop request submitted successfully!' });
+        }
+        // Reload the tab to show updated status
+        this.reload();
+      },
+      onError: error => {
+        console.error('Drop request error:', error);
+        if (typeof M !== 'undefined') {
+          M.toast({ html: `Error: ${error.message}` });
+        }
+      },
+    });
   }
 
   /**
@@ -757,6 +885,43 @@ export class ParentWeeklyScheduleTab extends BaseTab {
   }
 
   /**
+   * Get status badge HTML for a drop request
+   * @private
+   */
+  #getDropRequestStatusBadge(dropRequest) {
+    const status = dropRequest.status;
+    let badgeClass, badgeText, tooltip;
+
+    switch (status) {
+      case 'pending':
+        badgeClass = 'orange lighten-2';
+        badgeText = 'Drop Pending';
+        tooltip = `Submitted: ${this.#formatDateTime(dropRequest.requestedAt)}`;
+        break;
+      case 'approved':
+        badgeClass = 'green lighten-2';
+        badgeText = 'Drop Approved';
+        tooltip = dropRequest.adminNotes
+          ? `Approved: ${dropRequest.adminNotes}`
+          : 'Drop request approved';
+        break;
+      case 'rejected':
+        badgeClass = 'red lighten-2';
+        badgeText = 'Drop Rejected';
+        tooltip = dropRequest.adminNotes
+          ? `Rejected: ${dropRequest.adminNotes}`
+          : 'Drop request rejected';
+        break;
+      default:
+        badgeClass = 'grey lighten-1';
+        badgeText = status || 'Unknown';
+        tooltip = '';
+    }
+
+    return `<span class="badge ${badgeClass}" style="padding: 4px 8px; border-radius: 4px; font-size: 11px; color: #333;" title="${tooltip}">${badgeText}</span>`;
+  }
+
+  /**
    * Cleanup when tab is unloaded
    */
   async cleanup() {
@@ -769,5 +934,6 @@ export class ParentWeeklyScheduleTab extends BaseTab {
 
     this.studentTables.clear();
     this.waitListTable = null;
+    this.dropRequestsByRegistrationId.clear();
   }
 }
