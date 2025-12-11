@@ -90,9 +90,9 @@ const developmentStaticOptions = isDevelopment
   : {};
 
 // Production cache headers for versioned assets
-const productionVersionedOptions = !isDevelopment
+const _productionVersionedOptions = !isDevelopment
   ? {
-      setHeaders: (res, filePath, stat) => {
+      setHeaders: (res, _filePath, _stat) => {
         // Check if request has version parameter (from req object in middleware)
         // For static middleware, we'll use a different approach
         res.set('Cache-Control', 'public, max-age=31536000, immutable');

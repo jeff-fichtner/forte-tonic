@@ -196,6 +196,12 @@ export class ViewModel {
         ? ServerFunctions.createNextTrimesterRegistration
         : ServerFunctions.register;
 
+    // Ensure trimester is set when using the regular endpoint
+    // For parents during registration period, use the current trimester
+    if (endpoint === ServerFunctions.register && !data.trimester && currentPeriod?.trimester) {
+      data.trimester = currentPeriod.trimester;
+    }
+
     // If replacing an existing registration (has replaceRegistrationId),
     // delete the old registration first (this creates an audit record for the deletion)
     // The old registration being deleted may have linkedPreviousRegistrationId, which will be in the audit record
