@@ -156,6 +156,17 @@ export class HttpService {
   }
 
   /**
+   * PATCH request to server
+   * @param {string} serverFunctionName - The endpoint name or path with ID (e.g., 'registrations/123/intent')
+   * @param {object} data - The data to send in the request body
+   * @param {Function} mapper - Optional mapper function for response
+   * @param {object} context - Optional context for the request
+   */
+  static patch(serverFunctionName, data, mapper = null, context = null) {
+    return this.#callServerFunction(serverFunctionName, data, mapper, context, 'PATCH');
+  }
+
+  /**
    * DELETE request to server
    * @param {string} serverFunctionName - The endpoint name or path with ID (e.g., 'registrations/123')
    * @param {Function} mapper - Optional mapper function for response

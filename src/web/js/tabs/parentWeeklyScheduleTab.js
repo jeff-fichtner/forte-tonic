@@ -6,6 +6,7 @@ import { PeriodType } from '../constants/periodTypeConstants.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { isEnrollmentPeriod } from '../utilities/periodHelpers.js';
 import { ClassManager } from '../utilities/classManager.js';
+import { HttpService } from '../data/httpService.js';
 
 // Intent labels (matching viewModel.js)
 const INTENT_LABELS = {
@@ -203,6 +204,9 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     if (this.data.showTwoTrimesters && this.data.nextTrimester) {
       this.#renderTrimesterSection(scheduleContainer, this.data.nextTrimester, 'next');
     }
+
+    // Attach event listeners for intent dropdowns
+    this.#attachIntentDropdownListeners();
   }
 
   /**
@@ -648,9 +652,97 @@ export class ParentWeeklyScheduleTab extends BaseTab {
   }
 
   /**
+   * Attach event listeners for intent dropdowns
+   * @private
+   */
+  #attachIntentDropdownListeners() {
+    // Find all intent dropdowns in the container
+    const container = this.getContainer();
+    const intentDropdowns = container.querySelectorAll('.intent-dropdown');
+
+    intentDropdowns.forEach(dropdown => {
+      // Remove existing listeners to avoid duplicates
+      dropdown.removeEventListener('change', this.#handleIntentChange);
+
+      // Add the change listener
+      dropdown.addEventListener('change', this.#handleIntentChange.bind(this));
+    });
+  }
+
+  /**
+   * Handle intent dropdown change events
+   * @private
+   */
+  async #handleIntentChange(event) {
+    const dropdown = event.target;
+    const registrationId = dropdown.getAttribute('data-registration-id');
+    const intent = dropdown.value;
+
+    if (!registrationId || !intent) {
+      // Don't send request for empty intent (placeholder option)
+      return;
+    }
+
+    // Find the status indicator for this dropdown
+    const statusIndicator = dropdown.parentElement.querySelector(
+      `.intent-status-indicator[data-registration-id="${registrationId}"]`
+    );
+    if (statusIndicator) {
+      statusIndicator.textContent = '⏳ Saving...';
+      statusIndicator.style.display = 'inline';
+    }
+
+    try {
+      // Use HttpService which handles authentication headers automatically
+      await HttpService.patch(`registrations/${registrationId}/intent`, { intent });
+
+      // Success - show checkmark
+      if (statusIndicator) {
+        statusIndicator.textContent = '✅ Saved';
+        statusIndicator.style.color = 'green';
+
+        // Hide after 2 seconds
+        setTimeout(() => {
+          statusIndicator.style.display = 'none';
+        }, 2000);
+      }
+
+      // Show toast notification
+      if (typeof M !== 'undefined' && M.toast) {
+        M.toast({ html: 'Intent updated successfully!' });
+      }
+    } catch (error) {
+      console.error('Error updating intent:', error);
+
+      // Show error
+      if (statusIndicator) {
+        statusIndicator.textContent = '❌ Error';
+        statusIndicator.style.color = 'red';
+
+        // Hide after 3 seconds
+        setTimeout(() => {
+          statusIndicator.style.display = 'none';
+        }, 3000);
+      }
+
+      // Show error toast
+      if (typeof M !== 'undefined' && M.toast) {
+        M.toast({ html: 'Failed to update intent. Please try again.' });
+      }
+    }
+  }
+
+  /**
    * Cleanup when tab is unloaded
    */
   async cleanup() {
+    // Remove intent dropdown listeners
+    const container = this.getContainer();
+    const intentDropdowns = container.querySelectorAll('.intent-dropdown');
+    intentDropdowns.forEach(dropdown => {
+      dropdown.removeEventListener('change', this.#handleIntentChange);
+    });
+
     this.studentTables.clear();
     this.waitListTable = null;
   }

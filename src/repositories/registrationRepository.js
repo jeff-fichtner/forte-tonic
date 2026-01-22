@@ -402,9 +402,40 @@ export class RegistrationRepository extends BaseRepository {
     // Update the intent
     registration.updateIntent(intent, submittedBy);
 
-    // Save to database
+    // Determine which trimester sheet this registration belongs to
+    // Search across all trimester sheets to find the record
+    const tables = ['registrations_fall', 'registrations_winter', 'registrations_spring'];
+    let targetSheet = null;
+
+    for (const table of tables) {
+      const allRegistrations = await this.dbClient.getAllRecords(table, row => {
+        if (!row || !row[0]) return null;
+        try {
+          return Registration.fromDatabaseRow
+            ? Registration.fromDatabaseRow(row)
+            : new Registration(row);
+        } catch (error) {
+          return null;
+        }
+      });
+
+      const found = allRegistrations.find(
+        reg => reg && (reg.id.value || reg.id) === registrationId
+      );
+
+      if (found) {
+        targetSheet = table;
+        break;
+      }
+    }
+
+    if (!targetSheet) {
+      throw new Error('Registration not found in any trimester sheet');
+    }
+
+    // Save to the correct trimester-specific database sheet
     await this.dbClient.updateRecord(
-      this.entityName,
+      targetSheet,
       {
         id: registration.id.value || registration.id,
         studentId: registration.studentId.value || registration.studentId,
