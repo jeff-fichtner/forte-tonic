@@ -288,19 +288,16 @@ export class AdminMasterScheduleTab extends BaseTab {
           keep: {
             bgClass: 'teal lighten-5',
             textClass: 'teal-text text-darken-2',
-            icon: 'check_circle',
             label: INTENT_LABELS[intentValue],
           },
           drop: {
             bgClass: 'red lighten-5',
             textClass: 'red-text text-darken-2',
-            icon: 'cancel',
             label: INTENT_LABELS[intentValue],
           },
           change: {
             bgClass: 'amber lighten-5',
             textClass: 'amber-text text-darken-3',
-            icon: 'swap_horiz',
             label: INTENT_LABELS[intentValue],
           },
         };
@@ -312,15 +309,14 @@ export class AdminMasterScheduleTab extends BaseTab {
           label: intentValue,
         };
 
-        intentCell = `<td>
-          <span class="chip ${style.bgClass} ${style.textClass}" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.9em; padding: 6px 12px; border-radius: 16px;">
-            <i class="material-icons" style="font-size: 16px;">${style.icon}</i>
-            ${style.label}
+        intentCell = `<td style="white-space: nowrap; text-align: center;">
+          <span class="chip ${style.bgClass} ${style.textClass}" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.9em; padding: 6px 12px; border-radius: 16px; white-space: nowrap; flex-wrap: nowrap;">
+            <span style="white-space: nowrap;">${style.label}</span>
           </span>
         </td>`;
       } else {
         // No intent set
-        intentCell = `<td class="grey-text text-lighten-1" style="text-align: center;">—</td>`;
+        intentCell = `<td class="grey-text text-lighten-1" style="text-align: center; white-space: nowrap;">—</td>`;
       }
     }
 
