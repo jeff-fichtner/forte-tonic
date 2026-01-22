@@ -464,7 +464,7 @@ class FullDatabaseMigration {
   }
 
   transformParents(parents) {
-    return parents.map(parent => {
+    return parents.map((parent, index) => {
       const oldId = parent.Id;
       const newId = this.parentIdMap.get(oldId);
 
@@ -474,7 +474,15 @@ class FullDatabaseMigration {
       const lastName = parts[1];
       const firstName = parts[2];
 
-      const phone = `555${faker.string.numeric(7)}`;
+      // For the first nine parents, assign deterministic phone numbers:
+      // 1111111111, 2222222222, ..., 9999999999. After that, use randomized numbers.
+      let phone;
+      if (index < 9) {
+        phone = String(index + 1).repeat(10);
+      } else {
+        phone = `555${faker.string.numeric(7)}`;
+      }
+
       const accessCode = faker.number.int({ min: 1000, max: 9999 }).toString().padStart(4, '0');
 
       return {

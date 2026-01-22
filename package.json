@@ -38,7 +38,11 @@
     "dev:analyze-ai": "node dev/scripts/generate_ai_comparable_analysis.js",
     "dev:analyze-structure": "node dev/scripts/analyze_structure.js",
     "dev:analyze-sheets": "node dev/scripts/analyze_sheets.js",
-    "dev:deep-analyze": "node dev/scripts/deep_analyze.js"
+    "dev:deep-analyze": "node dev/scripts/deep_analyze.js",
+    "mig:run": "node scripts/migrations/prod-to-staging-full.js run",
+    "mig:apply": "node scripts/migrations/prod-to-staging-full.js apply",
+    "mig:commit": "node scripts/migrations/prod-to-staging-full.js commit",
+    "mig:unapply": "node scripts/migrations/prod-to-staging-full.js unapply"
   },
   "dependencies": {
     "cors": "^2.8.5",
