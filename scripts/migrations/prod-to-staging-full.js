@@ -251,7 +251,12 @@ class FullDatabaseMigration {
         await this.deleteSheet(migratedSheetName);
         this.logger.log(`   🗑️  Deleted ${migratedSheetName}`);
       } catch (error) {
-        this.logger.log(`   ⚠️  ${migratedSheetName} not found (may have been deleted already)`);
+        if (error.message.includes('not found')) {
+          this.logger.log(`   ⚠️  ${migratedSheetName} not found (may have been deleted already)`);
+        } else {
+          this.logger.error(`   ❌ Failed to delete ${migratedSheetName}: ${error.message}`);
+          throw error; // Re-throw unexpected errors
+        }
       }
     }
 

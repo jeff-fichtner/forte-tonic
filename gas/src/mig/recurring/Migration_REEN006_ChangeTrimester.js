@@ -66,7 +66,10 @@ class ChangeTrimesterMigration {
     this.migrationName = 'Migration_REEN006';
 
     // ⚠️  CONFIGURE THIS: Set target trimester to "winter" or "spring"
-    this.TARGET_TRIMESTER = 'winter';
+    this.TARGET_TRIMESTER = '';
+    if (!this.TARGET_TRIMESTER) {
+      throw new Error('TARGET_TRIMESTER is required');
+    }
 
     // Determine source and target tables based on target trimester
     this.sourceTrimester = this._getSourceTrimester();
