@@ -341,6 +341,7 @@ export class NavTabs {
     if (section === 'admin') {
       const isAdmin = !!window.viewModel?.currentUser?.admin;
       const currentPeriod = window.UserSession?.getCurrentPeriod();
+      const appConfig = window.UserSession?.getAppConfig();
 
       const trimesterSelector = document.getElementById('admin-trimester-selector-container');
 
@@ -348,17 +349,25 @@ export class NavTabs {
       if (trimesterSelector && isAdmin && isEnrollmentPeriod(currentPeriod)) {
         trimesterSelector.hidden = false;
 
-        // Initialize current trimester button as active if no button is currently active
+        // Populate trimester buttons dynamically from availableTrimesters
         const trimesterButtons = document.getElementById('admin-trimester-buttons');
-        if (trimesterButtons) {
+        if (trimesterButtons && appConfig?.availableTrimesters) {
+          // Only populate if buttons don't exist yet
+          if (trimesterButtons.children.length === 0) {
+            appConfig.availableTrimesters.forEach(trimester => {
+              const button = document.createElement('button');
+              button.className = 'trimester-btn';
+              button.setAttribute('data-trimester', trimester);
+              button.textContent = trimester.charAt(0).toUpperCase() + trimester.slice(1);
+              trimesterButtons.appendChild(button);
+            });
+          }
+
+          // Set default active button to current trimester if none active
           const activeButton = trimesterButtons.querySelector('.trimester-btn.active');
-
           if (!activeButton && currentPeriod?.trimester) {
-            // Get current trimester from period service
-            const currentTrimester = currentPeriod.trimester;
-
             const currentButton = trimesterButtons.querySelector(
-              `[data-trimester="${currentTrimester}"]`
+              `[data-trimester="${currentPeriod.trimester}"]`
             );
             if (currentButton) {
               currentButton.classList.add('active');
@@ -374,6 +383,7 @@ export class NavTabs {
     if (section === 'instructor') {
       const isInstructor = !!window.viewModel?.currentUser?.instructor;
       const currentPeriod = window.UserSession?.getCurrentPeriod();
+      const appConfig = window.UserSession?.getAppConfig();
 
       const trimesterSelector = document.getElementById('instructor-trimester-selector-container');
 
@@ -381,17 +391,25 @@ export class NavTabs {
       if (trimesterSelector && isInstructor && isEnrollmentPeriod(currentPeriod)) {
         trimesterSelector.hidden = false;
 
-        // Initialize current trimester button as active if no button is currently active
+        // Populate trimester buttons dynamically from availableTrimesters
         const trimesterButtons = document.getElementById('instructor-trimester-buttons');
-        if (trimesterButtons) {
+        if (trimesterButtons && appConfig?.availableTrimesters) {
+          // Only populate if buttons don't exist yet
+          if (trimesterButtons.children.length === 0) {
+            appConfig.availableTrimesters.forEach(trimester => {
+              const button = document.createElement('button');
+              button.className = 'trimester-btn';
+              button.setAttribute('data-trimester', trimester);
+              button.textContent = trimester.charAt(0).toUpperCase() + trimester.slice(1);
+              trimesterButtons.appendChild(button);
+            });
+          }
+
+          // Set default active button to current trimester if none active
           const activeButton = trimesterButtons.querySelector('.trimester-btn.active');
-
           if (!activeButton && currentPeriod?.trimester) {
-            // Get current trimester from period service
-            const currentTrimester = currentPeriod.trimester;
-
             const currentButton = trimesterButtons.querySelector(
-              `[data-trimester="${currentTrimester}"]`
+              `[data-trimester="${currentPeriod.trimester}"]`
             );
             if (currentButton) {
               currentButton.classList.add('active');
