@@ -34,6 +34,7 @@ function getSpreadsheetId() {
   if (SPREADSHEET_ID && SPREADSHEET_ID.trim() !== "") {
     // Save to Properties Service for future use
     PropertiesService.getScriptProperties().setProperty('SPREADSHEET_ID', SPREADSHEET_ID);
+    Logger.log(`Using spreadsheet ID from constant: ${SPREADSHEET_ID}`);
     return SPREADSHEET_ID;
   }
 
@@ -42,6 +43,7 @@ function getSpreadsheetId() {
   const savedSpreadsheetId = properties.getProperty('SPREADSHEET_ID');
 
   if (savedSpreadsheetId) {
+    Logger.log(`Using spreadsheet ID from Properties Service: ${savedSpreadsheetId}`);
     return savedSpreadsheetId;
   }
 
