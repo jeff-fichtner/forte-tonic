@@ -46,10 +46,9 @@ export class UserController {
         // Show the name of the next trimester in sequence, not the next period's trimester
         // During enrollment, the next scheduled period (e.g., open enrollment) can be the same trimester
         // Admins expect the label to reflect the upcoming trimester (e.g., winter → spring)
-        nextTrimester:
-          currentPeriod?.trimester
-            ? UserController._getNextTrimester(currentPeriod.trimester)
-            : nextPeriod?.trimester,
+        nextTrimester: currentPeriod?.trimester
+          ? UserController._getNextTrimester(currentPeriod.trimester)
+          : nextPeriod?.trimester,
         availableTrimesters: UserController._getAvailableTrimesters(currentPeriod),
         // Default trimester is always the current one (where active classes are happening)
         defaultTrimester: currentPeriod?.trimester,
