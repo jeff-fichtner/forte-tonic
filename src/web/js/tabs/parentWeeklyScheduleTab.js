@@ -52,18 +52,19 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       throw new Error('No parent ID found in session');
     }
 
-    // Get period info from UserSession
+    // Get period info and trimester config from UserSession
     const currentPeriod = window.UserSession?.getCurrentPeriod();
-    const nextPeriod = window.UserSession?.getNextPeriod();
+    const appConfig = window.UserSession?.getAppConfig();
 
-    if (!currentPeriod || !nextPeriod) {
+    if (!currentPeriod) {
       throw new Error('Period information not available');
     }
 
     console.log('Parent weekly schedule fetching:', {
       currentPeriod: currentPeriod.trimester,
       currentPeriodType: currentPeriod.periodType,
-      nextPeriod: nextPeriod.trimester,
+      currentTrimester: appConfig?.currentTrimester,
+      nextTrimester: appConfig?.nextTrimester,
       isEnrollment: isEnrollmentPeriod(currentPeriod),
     });
 
@@ -75,8 +76,9 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       // During enrollment periods, show BOTH trimesters:
       // 1. Current trimester (classes happening now)
       // 2. Next trimester (what they're enrolling for)
-      firstTrimester = currentPeriod.trimester;
-      secondTrimester = nextPeriod.trimester;
+      // Use config values which give us the academic sequence, not period phases
+      firstTrimester = appConfig?.currentTrimester || currentPeriod.trimester;
+      secondTrimester = appConfig?.nextTrimester || currentPeriod.trimester;
       showTwoTrimesters = true;
 
       console.log(
