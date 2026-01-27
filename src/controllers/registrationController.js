@@ -579,7 +579,7 @@ export class RegistrationController {
       logger.info('🎯 Next trimester registrations request from:', authenticatedUserEmail);
 
       // Check if next trimester table is available
-      const nextTable = await periodService.getNextTrimesterTable();
+      const nextTable = await periodService.getEnrollmentTrimesterTable();
       if (!nextTable) {
         throw new ValidationError('Next trimester registration is not currently available');
       }
@@ -649,7 +649,7 @@ export class RegistrationController {
       }
 
       // Check if next trimester table is available
-      const nextTable = await periodService.getNextTrimesterTable();
+      const nextTable = await periodService.getEnrollmentTrimesterTable();
       if (!nextTable) {
         throw new ValidationError('Next trimester registration is not currently available');
       }
@@ -749,7 +749,7 @@ export class RegistrationController {
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
 
       // Get next trimester table
-      const nextTable = await periodService.getNextTrimesterTable();
+      const nextTable = await periodService.getEnrollmentTrimesterTable();
       if (!nextTable) {
         throw new ValidationError('Next trimester registration is not currently available');
       }

@@ -2835,6 +2835,12 @@ export class ParentRegistrationForm {
       friday: 'Friday',
     };
 
+    // Determine the target trimester
+    const appConfig = window.UserSession?.getAppConfig?.();
+    const trimester = this._isEnrollmentPeriodActive()
+      ? appConfig?.nextTrimester
+      : appConfig?.currentTrimester;
+
     const registrationData = {
       studentId: studentId,
       registrationType: RegistrationType.PRIVATE,
@@ -2844,6 +2850,7 @@ export class ParentRegistrationForm {
       day: dayMap[this.selectedLesson.day],
       startTime: this.selectedLesson.time,
       length: this.selectedLesson.length,
+      trimester: trimester,
     };
 
     // If modifying an existing registration during enrollment, include the ID to trigger deletion
@@ -2888,6 +2895,12 @@ export class ParentRegistrationForm {
     );
     const transportationType = transportationTypeRadio?.value || 'pickup'; // Default to pickup if not selected
 
+    // Determine the target trimester
+    const appConfig = window.UserSession?.getAppConfig?.();
+    const trimester = this._isEnrollmentPeriodActive()
+      ? appConfig?.nextTrimester
+      : appConfig?.currentTrimester;
+
     const registrationData = {
       studentId: studentId,
       registrationType: RegistrationType.GROUP,
@@ -2903,6 +2916,7 @@ export class ParentRegistrationForm {
       startTime: selectedClass.startTime,
       length: selectedClass.length,
       instrument: selectedClass.instrument,
+      trimester: trimester,
     };
 
     // If modifying an existing registration during enrollment, include the ID to trigger deletion

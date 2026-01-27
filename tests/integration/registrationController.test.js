@@ -178,7 +178,7 @@ const mockPeriodService = {
   isIntentPeriodActive: jest.fn().mockResolvedValue(true),
   getCurrentTrimester: jest.fn().mockResolvedValue('fall'),
   getCurrentTrimesterTable: jest.fn().mockResolvedValue('registrations_fall'),
-  getNextTrimesterTable: jest.fn().mockResolvedValue('registrations_winter'),
+  getEnrollmentTrimesterTable: jest.fn().mockResolvedValue('registrations_winter'),
   canAccessNextTrimester: jest.fn().mockResolvedValue(true),
 };
 
@@ -381,12 +381,12 @@ describe('RegistrationController Integration Tests', () => {
           createdAt: mockRegistration.createdAt.toISOString(),
         },
       ]);
-      expect(mockPeriodService.getNextTrimesterTable).toHaveBeenCalled();
+      expect(mockPeriodService.getEnrollmentTrimesterTable).toHaveBeenCalled();
       expect(mockRegistrationRepository.getFromTable).toHaveBeenCalledWith('registrations_winter');
     });
 
     test('should reject when next trimester not available', async () => {
-      mockPeriodService.getNextTrimesterTable.mockResolvedValueOnce(null);
+      mockPeriodService.getEnrollmentTrimesterTable.mockResolvedValueOnce(null);
 
       const response = await request(app)
         .get('/api/registrations/next-trimester')
@@ -424,7 +424,7 @@ describe('RegistrationController Integration Tests', () => {
     });
 
     test('should reject when next trimester not available', async () => {
-      mockPeriodService.getNextTrimesterTable.mockResolvedValueOnce(null);
+      mockPeriodService.getEnrollmentTrimesterTable.mockResolvedValueOnce(null);
 
       const response = await request(app)
         .post('/api/registrations/next-trimester')
