@@ -176,6 +176,7 @@ const mockPeriodService = {
     startDate: new Date('2025-01-15'),
   }),
   isIntentPeriodActive: jest.fn().mockResolvedValue(true),
+  getCurrentTrimester: jest.fn().mockResolvedValue('fall'),
   getCurrentTrimesterTable: jest.fn().mockResolvedValue('registrations_fall'),
   getNextTrimesterTable: jest.fn().mockResolvedValue('registrations_winter'),
   canAccessNextTrimester: jest.fn().mockResolvedValue(true),
