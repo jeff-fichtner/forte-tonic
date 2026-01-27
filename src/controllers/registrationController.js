@@ -1249,19 +1249,12 @@ export class RegistrationController {
         return parent1IdMatch || parent2IdMatch;
       });
 
-      // Filter registrations to only include parent's children
-      const parentStudentIds = parentStudents.map(s => s.id.value || s.id);
-
       const responseData = {
         instructors: instructors.map(i => i.toDataObject()),
         students: parentStudents.map(s => s.toDataObject()), // Only parent's children
         classes: classes,
-        nextTrimesterRegistrations: nextTrimesterRegs.filter(r =>
-          parentStudentIds.includes(r.studentId.value || r.studentId)
-        ),
-        currentTrimesterRegistrations: currentTrimesterRegs.filter(r =>
-          parentStudentIds.includes(r.studentId.value || r.studentId)
-        ),
+        nextTrimesterRegistrations: nextTrimesterRegs.map(r => r.toDataObject()),
+        currentTrimesterRegistrations: currentTrimesterRegs.map(r => r.toDataObject()),
       };
 
       successResponse(res, responseData, {
