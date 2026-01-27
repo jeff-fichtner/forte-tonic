@@ -1223,10 +1223,10 @@ export class RegistrationController {
       const userRepository = serviceContainer.get('userRepository');
       const registrationRepository = serviceContainer.get('registrationRepository');
       const programRepository = serviceContainer.get('programRepository');
+      const periodService = serviceContainer.get('periodService');
 
-      // Get current and next trimesters
-      const currentTrimester = req.session?.currentTrimester || 'fall';
-      // Calculate next trimester: fall → winter → spring → fall
+      // Get current and next trimesters from period service
+      const currentTrimester = await periodService.getCurrentTrimester();
       const index = TRIMESTER_SEQUENCE.findIndex(
         t => t.toLowerCase() === currentTrimester.toLowerCase()
       );
@@ -1249,12 +1249,19 @@ export class RegistrationController {
         return parent1IdMatch || parent2IdMatch;
       });
 
+      // Filter registrations to only include parent's children
+      const parentStudentIds = parentStudents.map(s => s.id.value || s.id);
+
       const responseData = {
         instructors: instructors.map(i => i.toDataObject()),
         students: parentStudents.map(s => s.toDataObject()), // Only parent's children
         classes: classes,
-        nextTrimesterRegistrations: nextTrimesterRegs,
-        currentTrimesterRegistrations: currentTrimesterRegs,
+        nextTrimesterRegistrations: nextTrimesterRegs.filter(r =>
+          parentStudentIds.includes(r.studentId.value || r.studentId)
+        ),
+        currentTrimesterRegistrations: currentTrimesterRegs.filter(r =>
+          parentStudentIds.includes(r.studentId.value || r.studentId)
+        ),
       };
 
       successResponse(res, responseData, {
