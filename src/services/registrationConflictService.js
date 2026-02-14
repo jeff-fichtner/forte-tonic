@@ -4,6 +4,20 @@
  */
 
 import { RegistrationType } from '../utils/values/registrationType.js';
+import { getLogger } from '../utils/logger.js';
+import { DateHelpers } from '../utils/nativeDateTimeHelpers.js';
+
+const logger = getLogger();
+
+/**
+ * Extracts string value from a value object or plain value.
+ * Handles InstructorId, StudentId, and other value objects that have a .value property.
+ */
+function extractValue(val) {
+  if (val === null || val === undefined) return val;
+  if (typeof val === 'object' && val.value !== undefined) return val.value;
+  return val;
+}
 
 export class RegistrationConflictService {
   /**
@@ -18,22 +32,62 @@ export class RegistrationConflictService {
     const { skipCapacityCheck = false, groupClass = null } = options;
     const conflicts = [];
 
+    logger.info('========== CONFLICT CHECK START ==========');
+    logger.info('New registration:', {
+      studentId: extractValue(newRegistration.studentId),
+      instructorId: extractValue(newRegistration.instructorId),
+      day: newRegistration.day,
+      startTime: newRegistration.startTime,
+      length: newRegistration.length,
+      registrationType: newRegistration.registrationType,
+      classId: newRegistration.classId,
+    });
+    logger.info(`Existing registrations count: ${existingRegistrations.length}`);
+    logger.info(
+      `Options: skipCapacityCheck=${skipCapacityCheck}, groupClass=${groupClass?.id || 'none'}`
+    );
+
     // Check for duplicate registration
     const duplicateConflict = this.checkDuplicateRegistration(
       newRegistration,
       existingRegistrations
     );
-    if (duplicateConflict) conflicts.push(duplicateConflict);
+    if (duplicateConflict) {
+      // Exit early - duplicate is definitive, no need to check other conflicts
+      logger.info('Duplicate found - exiting early');
+      conflicts.push(duplicateConflict);
+      return {
+        hasConflicts: true,
+        conflicts,
+      };
+    }
 
-    // Check for schedule conflicts (private lessons only)
+    // Check for student schedule conflicts (both private and group)
+    // Students cannot have overlapping lessons regardless of type
+    logger.info('Checking student schedule conflicts');
+    const studentConflict = this.checkStudentScheduleConflict(
+      newRegistration,
+      existingRegistrations
+    );
+    if (studentConflict) conflicts.push(studentConflict);
+
+    // Check for instructor schedule conflicts (private lessons only)
+    // Group classes don't block instructor time in the same way
     if (newRegistration.registrationType === RegistrationType.PRIVATE) {
-      const scheduleConflicts = this.checkScheduleConflicts(newRegistration, existingRegistrations);
-      conflicts.push(...scheduleConflicts);
+      logger.info('Registration is PRIVATE - checking instructor schedule conflicts');
+      const instructorConflict = this.checkInstructorScheduleConflict(
+        newRegistration,
+        existingRegistrations
+      );
+      if (instructorConflict) conflicts.push(instructorConflict);
+    } else {
+      logger.info('Registration is GROUP - skipping instructor schedule conflicts');
     }
 
     // Check for capacity conflicts (group classes only)
     // Admins can bypass capacity restrictions
     if (newRegistration.registrationType === RegistrationType.GROUP && !skipCapacityCheck) {
+      logger.info('Registration is GROUP - checking capacity');
       const capacityConflict = this.checkClassCapacity(
         newRegistration,
         existingRegistrations,
@@ -41,6 +95,15 @@ export class RegistrationConflictService {
       );
       if (capacityConflict) conflicts.push(capacityConflict);
     }
+
+    logger.info('========== CONFLICT CHECK RESULT ==========');
+    logger.info(`Conflicts found: ${conflicts.length}`);
+    if (conflicts.length > 0) {
+      conflicts.forEach((c, i) => {
+        logger.info(`  Conflict ${i + 1}: type=${c.type}, message=${c.message}`);
+      });
+    }
+    logger.info('========== CONFLICT CHECK END ==========');
 
     return {
       hasConflicts: conflicts.length > 0,
@@ -55,27 +118,52 @@ export class RegistrationConflictService {
    * @returns {object|null} Duplicate conflict or null
    */
   static checkDuplicateRegistration(newRegistration, existingRegistrations) {
-    const existing = existingRegistrations.find(reg => {
-      if (reg.studentId !== newRegistration.studentId) return false;
+    logger.info('--- Checking for DUPLICATE registration ---');
+
+    const newStudentId = extractValue(newRegistration.studentId);
+    const newInstructorId = extractValue(newRegistration.instructorId);
+
+    logger.info(
+      `New reg: studentId=${newStudentId}, instructorId=${newInstructorId}, day=${newRegistration.day}, startTime=${newRegistration.startTime}, classId=${newRegistration.classId}`
+    );
+
+    const existing = existingRegistrations.find((reg, index) => {
+      const regStudentId = extractValue(reg.studentId);
+      const regInstructorId = extractValue(reg.instructorId);
 
       if (newRegistration.registrationType === RegistrationType.GROUP) {
-        return (
-          reg.classId === newRegistration.classId &&
-          reg.schoolYear === newRegistration.schoolYear &&
-          reg.trimester === newRegistration.trimester
-        );
+        // Group: classId + studentId
+        const classMatch = reg.classId === newRegistration.classId;
+        const studentMatch = regStudentId === newStudentId;
+        const isDuplicate = classMatch && studentMatch;
+
+        if (classMatch || studentMatch) {
+          logger.info(
+            `  [${index}] GROUP check: classId=${reg.classId} (match=${classMatch}), studentId=${regStudentId} (match=${studentMatch}) => duplicate=${isDuplicate}`
+          );
+        }
+
+        return isDuplicate;
       } else {
-        return (
-          reg.instructorId === newRegistration.instructorId &&
-          reg.day === newRegistration.day &&
-          reg.startTime === newRegistration.startTime &&
-          reg.schoolYear === newRegistration.schoolYear &&
-          reg.trimester === newRegistration.trimester
-        );
+        // Private: studentId + instructorId + startTime + day
+        const studentMatch = regStudentId === newStudentId;
+        const instructorMatch = regInstructorId === newInstructorId;
+        const timeMatch = reg.startTime === newRegistration.startTime;
+        const dayMatch = reg.day === newRegistration.day;
+        const isDuplicate = studentMatch && instructorMatch && timeMatch && dayMatch;
+
+        if (studentMatch && instructorMatch) {
+          logger.info(
+            `  [${index}] PRIVATE check: studentId=${regStudentId} (match=${studentMatch}), instructorId=${regInstructorId} (match=${instructorMatch}), day=${reg.day} (match=${dayMatch}), startTime=${reg.startTime} (match=${timeMatch}) => duplicate=${isDuplicate}`
+          );
+        }
+
+        return isDuplicate;
       }
     });
 
     if (existing) {
+      logger.info(`DUPLICATE FOUND: existingId=${extractValue(existing.id)}`);
       return {
         type: 'duplicate',
         message: 'Student is already registered for this class/lesson',
@@ -83,6 +171,7 @@ export class RegistrationConflictService {
       };
     }
 
+    logger.info('No duplicate found');
     return null;
   }
 
@@ -119,29 +208,44 @@ export class RegistrationConflictService {
    * @returns {object|null} Student conflict or null
    */
   static checkStudentScheduleConflict(newRegistration, existingRegistrations) {
-    const conflict = existingRegistrations.find(
-      reg =>
-        reg.studentId === newRegistration.studentId &&
-        reg.day === newRegistration.day &&
-        this.timesOverlap(
+    logger.info('--- Checking for STUDENT SCHEDULE conflict ---');
+
+    const newStudentId = extractValue(newRegistration.studentId);
+    logger.info(
+      `New reg: studentId=${newStudentId}, day=${newRegistration.day}, startTime=${newRegistration.startTime}, length=${newRegistration.length}`
+    );
+
+    const conflict = existingRegistrations.find((reg, index) => {
+      const regStudentId = extractValue(reg.studentId);
+      const studentMatch = regStudentId === newStudentId;
+      const dayMatch = reg.day === newRegistration.day;
+
+      if (studentMatch && dayMatch) {
+        const overlap = this.timesOverlap(
           reg.startTime,
           reg.length,
           newRegistration.startTime,
           newRegistration.length
-        ) &&
-        reg.schoolYear === newRegistration.schoolYear &&
-        reg.trimester === newRegistration.trimester &&
-        reg.isActive !== false
-    );
+        );
+        logger.info(
+          `  [${index}] studentId=${regStudentId} (match=${studentMatch}), day=${reg.day} (match=${dayMatch}), time=${reg.startTime}-${reg.startTime}+${reg.length}min vs ${newRegistration.startTime}+${newRegistration.length}min => overlap=${overlap}`
+        );
+        return overlap;
+      }
+
+      return false;
+    });
 
     if (conflict) {
+      logger.info(`STUDENT SCHEDULE CONFLICT FOUND: conflictingId=${extractValue(conflict.id)}`);
       return {
         type: 'student_schedule',
-        message: `Student has conflicting lesson on ${newRegistration.day} at ${newRegistration.startTime}`,
+        message: `Student has conflicting lesson on ${conflict.day} at ${DateHelpers.convertTo12HourFormat(conflict.startTime)}`,
         conflictingRegistrationId: conflict.id,
       };
     }
 
+    logger.info('No student schedule conflict found');
     return null;
   }
 
@@ -152,29 +256,44 @@ export class RegistrationConflictService {
    * @returns {object|null} Instructor conflict or null
    */
   static checkInstructorScheduleConflict(newRegistration, existingRegistrations) {
-    const conflict = existingRegistrations.find(
-      reg =>
-        reg.instructorId === newRegistration.instructorId &&
-        reg.day === newRegistration.day &&
-        this.timesOverlap(
+    logger.info('--- Checking for INSTRUCTOR SCHEDULE conflict ---');
+
+    const newInstructorId = extractValue(newRegistration.instructorId);
+    logger.info(
+      `New reg: instructorId=${newInstructorId}, day=${newRegistration.day}, startTime=${newRegistration.startTime}, length=${newRegistration.length}`
+    );
+
+    const conflict = existingRegistrations.find((reg, index) => {
+      const regInstructorId = extractValue(reg.instructorId);
+      const instructorMatch = regInstructorId === newInstructorId;
+      const dayMatch = reg.day === newRegistration.day;
+
+      if (instructorMatch && dayMatch) {
+        const overlap = this.timesOverlap(
           reg.startTime,
           reg.length,
           newRegistration.startTime,
           newRegistration.length
-        ) &&
-        reg.schoolYear === newRegistration.schoolYear &&
-        reg.trimester === newRegistration.trimester &&
-        reg.isActive !== false
-    );
+        );
+        logger.info(
+          `  [${index}] instructorId=${regInstructorId} (match=${instructorMatch}), day=${reg.day} (match=${dayMatch}), time=${reg.startTime}+${reg.length}min vs ${newRegistration.startTime}+${newRegistration.length}min => overlap=${overlap}`
+        );
+        return overlap;
+      }
+
+      return false;
+    });
 
     if (conflict) {
+      logger.info(`INSTRUCTOR SCHEDULE CONFLICT FOUND: conflictingId=${extractValue(conflict.id)}`);
       return {
         type: 'instructor_schedule',
-        message: `Instructor has conflicting lesson on ${newRegistration.day} at ${newRegistration.startTime}`,
+        message: `Instructor has conflicting lesson on ${conflict.day} at ${DateHelpers.convertTo12HourFormat(conflict.startTime)}`,
         conflictingRegistrationId: conflict.id,
       };
     }
 
+    logger.info('No instructor schedule conflict found');
     return null;
   }
 
@@ -185,18 +304,25 @@ export class RegistrationConflictService {
    * @returns {object|null} Capacity conflict or null
    */
   static checkClassCapacity(newRegistration, existingRegistrations, groupClass = null) {
+    logger.info('--- Checking for CLASS CAPACITY conflict ---');
+    logger.info(`classId=${newRegistration.classId}, groupClass.size=${groupClass?.size}`);
+
+    const maxCapacity = groupClass?.size;
+    if (!maxCapacity) {
+      logger.info('No size defined on class - unlimited capacity, skipping check');
+      return null; // No size defined = unlimited capacity
+    }
+
     const classRegistrations = existingRegistrations.filter(
-      reg =>
-        reg.classId === newRegistration.classId &&
-        reg.schoolYear === newRegistration.schoolYear &&
-        reg.trimester === newRegistration.trimester &&
-        reg.isActive !== false
+      reg => reg.classId === newRegistration.classId
     );
 
-    // Get actual class capacity from the class object, fallback to 12 if not available
-    const maxCapacity = groupClass?.size || 12;
+    logger.info(
+      `Current registrations for class: ${classRegistrations.length}, maxCapacity: ${maxCapacity}`
+    );
 
     if (classRegistrations.length >= maxCapacity) {
+      logger.info(`CLASS CAPACITY CONFLICT: ${classRegistrations.length} >= ${maxCapacity}`);
       return {
         type: 'class_capacity',
         message: `Class has reached maximum capacity (${maxCapacity} students)`,
@@ -205,6 +331,7 @@ export class RegistrationConflictService {
       };
     }
 
+    logger.info('No capacity conflict found');
     return null;
   }
 
@@ -222,7 +349,12 @@ export class RegistrationConflictService {
     const start2 = this.timeToMinutes(time2);
     const end2 = start2 + duration2;
 
-    return start1 < end2 && start2 < end1;
+    const overlaps = start1 < end2 && start2 < end1;
+    logger.debug(
+      `timesOverlap: ${time1}(${start1})+${duration1}min=[${start1}-${end1}] vs ${time2}(${start2})+${duration2}min=[${start2}-${end2}] => ${overlaps}`
+    );
+
+    return overlaps;
   }
 
   /**

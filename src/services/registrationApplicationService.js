@@ -11,6 +11,7 @@ import { RegistrationValidationService } from './registrationValidationService.j
 import { RegistrationConflictService } from './registrationConflictService.js';
 import { ProgramValidationService } from './programValidationService.js';
 import { Registration } from '../models/shared/registration.js';
+import { ConflictError } from '../common/errors.js';
 
 export class RegistrationApplicationService extends BaseService {
   constructor(dependencies, configService) {
@@ -173,7 +174,7 @@ export class RegistrationApplicationService extends BaseService {
       );
 
       if (conflictCheck.hasConflicts) {
-        throw new Error(
+        throw new ConflictError(
           `Registration conflicts detected: ${conflictCheck.conflicts.map(c => c.message).join('; ')}`
         );
       }
