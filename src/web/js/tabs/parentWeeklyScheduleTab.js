@@ -442,11 +442,15 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     const instructor = trimesterData.instructors.find(i => (i.id?.value || i.id) === instructorId);
     const student = trimesterData.students.find(s => (s.id?.value || s.id) === studentId);
 
-    if (!instructor || !student) {
-      console.warn(
-        `Instructor or student not found for enrollment: ${enrollment.id?.value || enrollment.id}`
-      );
-      return '';
+    // Handle orphaned enrollments (student or instructor deleted but enrollment remains)
+    const isOrphaned = !instructor || !student;
+    if (isOrphaned) {
+      console.warn(`Orphaned enrollment: ${enrollment.id?.value || enrollment.id}`, {
+        studentId,
+        instructorId,
+        studentFound: !!student,
+        instructorFound: !!instructor,
+      });
     }
 
     // Determine instrument/class name
@@ -483,18 +487,30 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       </td>`;
     }
 
+    // Display names - use placeholders for orphaned records
+    const studentName = student
+      ? `${student.firstName} ${student.lastName}`
+      : `<span class="red-text text-darken-2">⚠ Unknown Student</span>`;
+    const studentGrade = student ? formatGrade(student.grade) || 'N/A' : '—';
+    const instructorName = instructor
+      ? `${instructor.firstName} ${instructor.lastName}`
+      : `<span class="red-text text-darken-2">⚠ Unknown Instructor</span>`;
+
+    // Add visual indicator for orphaned rows
+    const rowStyle = isOrphaned ? 'background-color: #ffebee;' : '';
+
     return `
-      <td>${enrollment.day}</td>
-      <td>${formatTime(enrollment.startTime) || 'N/A'}</td>
-      <td>${enrollment.length || 'N/A'} min</td>
-      <td>${student.firstName} ${student.lastName}</td>
-      <td>${formatGrade(student.grade) || 'N/A'}</td>
-      <td>${instructor.firstName} ${instructor.lastName}</td>
-      <td>${instrumentOrClass}</td>
+      <td style="${rowStyle}">${enrollment.day}</td>
+      <td style="${rowStyle}">${formatTime(enrollment.startTime) || 'N/A'}</td>
+      <td style="${rowStyle}">${enrollment.length || 'N/A'} min</td>
+      <td style="${rowStyle}">${studentName}</td>
+      <td style="${rowStyle}">${studentGrade}</td>
+      <td style="${rowStyle}">${instructorName}</td>
+      <td style="${rowStyle}">${instrumentOrClass}</td>
       ${intentCell}
-      <td>
-        <button type="button" class="btn-flat" style="padding: 0; min-width: 0; background: none; border: none; cursor: pointer;" data-registration-id="${enrollment.id?.value || enrollment.id}">
-          <i class="material-icons copy-emails-table-icon gray-text text-darken-4">email</i>
+      <td style="${rowStyle}">
+        <button type="button" class="btn-flat" style="padding: 0; min-width: 0; background: none; border: none; cursor: pointer;" data-registration-id="${enrollment.id?.value || enrollment.id}" ${isOrphaned ? 'disabled' : ''}>
+          <i class="material-icons copy-emails-table-icon ${isOrphaned ? 'grey-text' : 'gray-text text-darken-4'}">email</i>
         </button>
       </td>
     `;
@@ -511,16 +527,22 @@ export class ParentWeeklyScheduleTab extends BaseTab {
 
     if (!student) {
       console.warn(
-        `Student not found for wait list enrollment: ${enrollment.id?.value || enrollment.id}`
+        `Student not found for wait list enrollment: ${enrollment.id?.value || enrollment.id}`,
+        { studentId }
       );
-      return '';
     }
 
+    const studentName = student
+      ? `${student.firstName} ${student.lastName}`
+      : `<span class="red-text text-darken-2">⚠ Unknown Student</span>`;
+    const studentGrade = student ? formatGrade(student.grade) || 'N/A' : '—';
+    const rowStyle = !student ? 'background-color: #ffebee;' : '';
+
     return `
-      <td>${student.firstName} ${student.lastName}</td>
-      <td>${formatGrade(student.grade) || 'N/A'}</td>
-      <td>${enrollment.classTitle || 'N/A'}</td>
-      <td>${this.#formatDateTime(enrollment.createdAt) || 'N/A'}</td>
+      <td style="${rowStyle}">${studentName}</td>
+      <td style="${rowStyle}">${studentGrade}</td>
+      <td style="${rowStyle}">${enrollment.classTitle || 'N/A'}</td>
+      <td style="${rowStyle}">${this.#formatDateTime(enrollment.createdAt) || 'N/A'}</td>
     `;
   }
 

@@ -157,9 +157,13 @@ export class AdminRegistrationForm {
           M.toast({ html: RegistrationFormText.SUCCESS_CREATED });
         } catch (error) {
           console.error('Error creating registration:', error);
-          M.toast({
-            html: `${RegistrationFormText.ERROR_CREATE}: ${error.message}`,
-          });
+          if (error.type === 'conflict') {
+            this.#showConflictModal(error.message);
+          } else {
+            M.toast({
+              html: `${RegistrationFormText.ERROR_CREATE}: ${error.message}`,
+            });
+          }
         } finally {
           this.#setAdminRegistrationLoading(false);
         }
@@ -470,5 +474,49 @@ export class AdminRegistrationForm {
       selectorSection.style.display = 'none';
     }
     this._selectedRegistrationToReplace = null;
+  }
+
+  /**
+   * Show conflict error modal with refresh on acknowledge
+   */
+  #showConflictModal(message) {
+    // Parse conflict messages from the error
+    const conflicts = message
+      .replace('Registration conflicts detected: ', '')
+      .split('; ')
+      .map(c => `<li>${c}</li>`)
+      .join('');
+
+    const modalHtml = `
+      <div id="conflict-error-modal" class="modal">
+        <div class="modal-content">
+          <h5><i class="material-icons left red-text">warning</i>Registration Conflict</h5>
+          <p>This registration could not be created due to the following conflicts:</p>
+          <ul class="browser-default">${conflicts}</ul>
+        </div>
+        <div class="modal-footer">
+          <a href="#!" class="modal-close waves-effect waves-green btn" id="conflict-modal-ok">OK</a>
+        </div>
+      </div>
+    `;
+
+    // Remove existing modal if present
+    const existingModal = document.getElementById('conflict-error-modal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+
+    // Add modal to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Initialize and open modal
+    const modalElement = document.getElementById('conflict-error-modal');
+    const modalInstance = M.Modal.init(modalElement, {
+      dismissible: false,
+      onCloseEnd: () => {
+        window.location.reload();
+      },
+    });
+    modalInstance.open();
   }
 }

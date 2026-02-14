@@ -255,9 +255,15 @@ export class AdminMasterScheduleTab extends BaseTab {
       return studentId === studentIdToFind;
     });
 
-    if (!instructor || !student) {
-      console.warn(`Instructor or student not found for registration: ${registration.id}`);
-      return '';
+    // Handle orphaned registrations (student or instructor deleted but registration remains)
+    const isOrphaned = !instructor || !student;
+    if (isOrphaned) {
+      console.warn(`Orphaned registration: ${registration.id}`, {
+        studentIdToFind,
+        instructorIdToFind,
+        studentFound: !!student,
+        instructorFound: !!instructor,
+      });
     }
 
     // Build recurring cell (only in dev/staging)
@@ -326,22 +332,34 @@ export class AdminMasterScheduleTab extends BaseTab {
         ? registration.classTitle || 'N/A'
         : registration.instrument || 'N/A';
 
+    // Display names - use placeholders for orphaned records
+    const studentName = student
+      ? `${student.firstName} ${student.lastName}`
+      : `<span class="red-text text-darken-2" title="Student ID: ${studentIdToFind}">⚠ Unknown Student</span>`;
+    const studentGrade = student ? formatGrade(student.grade) || 'N/A' : '—';
+    const instructorName = instructor
+      ? `${instructor.firstName} ${instructor.lastName}`
+      : `<span class="red-text text-darken-2" title="Instructor ID: ${instructorIdToFind}">⚠ Unknown Instructor</span>`;
+
+    // Add visual indicator for orphaned rows
+    const rowStyle = isOrphaned ? 'background-color: #ffebee;' : '';
+
     return `
       ${recurringCell}
-      <td>${registration.day}</td>
-      <td>${formatTime(registration.startTime) || 'N/A'}</td>
-      <td>${registration.length || 'N/A'} min</td>
-      <td>${student.firstName} ${student.lastName}</td>
-      <td>${formatGrade(student.grade) || 'N/A'}</td>
-      <td>${instructor.firstName} ${instructor.lastName}</td>
-      <td>${instrumentOrClass}</td>
+      <td style="${rowStyle}">${registration.day}</td>
+      <td style="${rowStyle}">${formatTime(registration.startTime) || 'N/A'}</td>
+      <td style="${rowStyle}">${registration.length || 'N/A'} min</td>
+      <td style="${rowStyle}">${studentName}</td>
+      <td style="${rowStyle}">${studentGrade}</td>
+      <td style="${rowStyle}">${instructorName}</td>
+      <td style="${rowStyle}">${instrumentOrClass}</td>
       ${intentCell}
-      <td>
-        <button type="button" class="btn-flat" style="padding: 0; min-width: 0; background: none; border: none; cursor: pointer;" data-registration-id="${registrationId}">
-          <i class="material-icons copy-parent-emails-table-icon gray-text text-darken-4">email</i>
+      <td style="${rowStyle}">
+        <button type="button" class="btn-flat" style="padding: 0; min-width: 0; background: none; border: none; cursor: pointer;" data-registration-id="${registrationId}" ${isOrphaned ? 'disabled title="Cannot email - student/instructor not found"' : ''}>
+          <i class="material-icons copy-parent-emails-table-icon ${isOrphaned ? 'grey-text' : 'gray-text text-darken-4'}">email</i>
         </button>
       </td>
-      <td>
+      <td style="${rowStyle}">
         <button type="button" class="btn-flat" style="padding: 0; min-width: 0; background: none; border: none; cursor: pointer;" data-registration-id="${registrationId}">
           <i class="material-icons remove-registration-table-icon red-text text-darken-4">delete</i>
         </button>

@@ -1564,63 +1564,8 @@ export class ParentRegistrationForm {
         }
       }
     } else if (!hasACapacityDefined || classCapacity > 0) {
-      // Class has space (or assume unlimited capacity), now check for conflicts
-
-      // Get current student
-      const studentSelect = document.getElementById('parent-student-select');
-      const studentId = studentSelect?.value;
-
-      if (studentId) {
-        // Check for duplicate enrollment
-        if (this.#checkStudentClassDuplicate(studentId, classId)) {
-          showErrorMessage(
-            'parent-class-error-message',
-            'Student is already enrolled in this class.'
-          );
-          if (registerButton) {
-            registerButton.disabled = true;
-            registerButton.style.opacity = '0.6';
-
-            // Reset button text when disabled
-            const buttonTextElement = registerButton.querySelector('b');
-            if (buttonTextElement) {
-              buttonTextElement.textContent = 'Register for Class';
-            }
-          }
-          return;
-        }
-
-        // Check for time conflicts
-        if (selectedClass.day && selectedClass.startTime && selectedClass.length) {
-          const conflictCheck = this.#checkStudentTimeConflict(
-            studentId,
-            selectedClass.day,
-            selectedClass.startTime,
-            selectedClass.length
-          );
-
-          if (conflictCheck.hasConflict) {
-            const conflict = conflictCheck.conflictDetails;
-            const conflictMessage =
-              conflict.type === RegistrationType.PRIVATE
-                ? `This class conflicts with an existing ${conflict.instrument} lesson with ${conflict.instructorName} on ${conflict.day} at ${conflict.startTime}.`
-                : `This class conflicts with existing class "${conflict.className}" on ${conflict.day} at ${conflict.startTime}.`;
-
-            showErrorMessage('parent-class-error-message', conflictMessage);
-            if (registerButton) {
-              registerButton.disabled = true;
-              registerButton.style.opacity = '0.6';
-
-              // Reset button text when disabled
-              const buttonTextElement = registerButton.querySelector('b');
-              if (buttonTextElement) {
-                buttonTextElement.textContent = 'Register for Class';
-              }
-            }
-            return;
-          }
-        }
-      }
+      // Class has space (or assume unlimited capacity)
+      // Duplicate and time conflict checking is handled server-side by RegistrationConflictService
 
       // Check if this is a special waitlist class (Rock Band classes)
       const isWaitlistClass = ClassManager.isRockBandClass(classId);
@@ -2145,7 +2090,11 @@ export class ParentRegistrationForm {
             M.toast({ html: 'Registration created successfully!' });
           } catch (error) {
             console.error('Error creating registration:', error);
-            M.toast({ html: `Error creating registration: ${error.message}` });
+            if (error.type === 'conflict') {
+              this.#showConflictModal(error.message);
+            } else {
+              M.toast({ html: `Error creating registration: ${error.message}` });
+            }
           } finally {
             this.#setButtonLoading(submitButton, false);
           }
@@ -2198,7 +2147,11 @@ export class ParentRegistrationForm {
             });
           } catch (error) {
             console.error('Error creating group registration:', error);
-            M.toast({ html: `Error creating group registration: ${error.message}` });
+            if (error.type === 'conflict') {
+              this.#showConflictModal(error.message);
+            } else {
+              M.toast({ html: `Error creating group registration: ${error.message}` });
+            }
           } finally {
             this.#setButtonLoading(confirmButton, false);
           }
@@ -2361,225 +2314,6 @@ export class ParentRegistrationForm {
   }
 
   /**
-   * Check if a student has a time conflict with existing registrations
-   * @param {string} studentId - Student ID to check
-   * @param {string} day - Day name (e.g., 'Monday')
-   * @param {string} startTime - Start time (e.g., '14:30')
-   * @param {number} lengthMinutes - Lesson length in minutes
-   * @returns {object} Conflict result with hasConflict boolean and conflictDetails
-   */
-  #checkStudentTimeConflict(studentId, day, startTime, lengthMinutes) {
-    if (!studentId || !day || !startTime || !lengthMinutes) {
-      console.warn('Invalid parameters for conflict check:', {
-        studentId,
-        day,
-        startTime,
-        lengthMinutes,
-      });
-      return { hasConflict: false, conflictDetails: null };
-    }
-
-    // Convert start time to minutes since midnight
-    const startMinutes = parseTime(startTime);
-    const endMinutes = startMinutes + lengthMinutes;
-
-    console.log(
-      `Checking time conflicts for student ${studentId} on ${day} from ${startTime} (${startMinutes}min) for ${lengthMinutes}min`
-    );
-
-    // Check against registrations being created/modified
-    // During enrollment periods, check ONLY next trimester (exclude the one being modified)
-    // Outside enrollment periods, check current trimester
-    const registrationsToCheck = this._isEnrollmentPeriodActive()
-      ? this.nextTrimesterRegistrations || []
-      : this.registrations;
-
-    const studentRegistrations = registrationsToCheck.filter(reg => {
-      const regStudentId = typeof reg.studentId === 'object' ? reg.studentId.value : reg.studentId;
-      const regId = typeof reg.id === 'object' ? reg.id.value : reg.id;
-
-      // Exclude the registration being modified
-      if (this._selectedPreviousRegistrationId && regId === this._selectedPreviousRegistrationId) {
-        console.log(`⏭️  Skipping registration being modified: ${regId}`);
-        return false;
-      }
-
-      return regStudentId === studentId;
-    });
-
-    console.log(
-      `Found ${studentRegistrations.length} existing registrations for student:`,
-      studentRegistrations
-    );
-
-    for (const registration of studentRegistrations) {
-      // Check day conflict
-      const regDay = registration.day;
-      if (regDay !== day) {
-        continue; // Different day, no conflict
-      }
-
-      // For waitlist classes (Rock Band), use special conflict times instead of actual class times
-      let regStartMinutes, regLengthMinutes, regEndMinutes;
-      const regStartTime = registration.startTime;
-
-      if (ClassManager.isRockBandClass(registration.classId)) {
-        // Use special waitlist class times for conflict checking
-        if (regDay === 'Monday') {
-          regStartMinutes = 15 * 60; // 15:00 (3:00 PM)
-          regLengthMinutes = 120; // 2 hours
-        } else if (regDay === 'Friday') {
-          regStartMinutes = 15 * 60; // 15:00 (3:00 PM)
-          regLengthMinutes = 60; // 1 hour
-        } else {
-          // If waitlist class is on other days, skip conflict checking
-          continue;
-        }
-        regEndMinutes = regStartMinutes + regLengthMinutes;
-        console.log(
-          `🎸 Waitlist class detected - using special conflict times: ${regDay} ${formatTimeFromMinutes(regStartMinutes)}-${formatTimeFromMinutes(regEndMinutes)}`
-        );
-      } else {
-        // Parse registration time and calculate end time for regular classes
-        if (!regStartTime) {
-          console.warn('Registration missing start time:', registration);
-          continue;
-        }
-
-        regStartMinutes = parseTime(regStartTime);
-        regLengthMinutes = registration.length || 30; // Default to 30 if not specified
-        regEndMinutes = regStartMinutes + regLengthMinutes;
-      }
-
-      console.log(
-        `Comparing with existing: ${regDay} ${regStartTime} (${regStartMinutes}-${regEndMinutes}min) vs new: ${day} ${startTime} (${startMinutes}-${endMinutes}min)`
-      );
-
-      // Check for time overlap
-      const hasOverlap = startMinutes < regEndMinutes && endMinutes > regStartMinutes;
-
-      if (hasOverlap) {
-        const conflictType = registration.registrationType || 'unknown';
-
-        // Format the time properly for display
-        let formattedStartTime;
-        if (ClassManager.isRockBandClass(registration.classId)) {
-          // For waitlist classes, show the special conflict time instead of actual class time
-          formattedStartTime = formatDisplayTime(formatTimeFromMinutes(regStartMinutes));
-        } else {
-          formattedStartTime = formatDisplayTime(regStartTime);
-        }
-
-        // Get instructor name from the instructor object if available
-        let instructorName = 'Unknown';
-        if (
-          registration.instructor &&
-          registration.instructor.firstName &&
-          registration.instructor.lastName
-        ) {
-          instructorName = `${registration.instructor.firstName} ${registration.instructor.lastName}`;
-        } else if (registration.instructorName) {
-          instructorName = registration.instructorName;
-        }
-
-        // Get instrument for private lessons
-        let instrument = 'Unknown';
-        if (registration.instrument) {
-          instrument = registration.instrument;
-        }
-
-        // Get class name - look up from classes array if we have a classId
-        let className = 'Unknown';
-
-        // Debug: Log the registration object to see what properties are available
-        console.log('🔍 Debug registration object for class name lookup:', {
-          classId: registration.classId,
-          classTitle: registration.classTitle,
-          class: registration.class,
-          registrationType: registration.registrationType,
-          allKeys: Object.keys(registration),
-        });
-
-        // Try classTitle first (this is the proper property for group classes)
-        if (registration.classTitle) {
-          className = registration.classTitle;
-          console.log('✅ Used registration.classTitle:', className);
-        } else if (registration.classId) {
-          const regClassId =
-            typeof registration.classId === 'object'
-              ? registration.classId.value
-              : registration.classId;
-          console.log('🔍 Looking for class with ID:', regClassId);
-          const classObj = this.classes.find(cls => cls.id === regClassId);
-          if (classObj) {
-            className = formatClassNameWithGradeCorrection(classObj);
-            console.log('✅ Found class object, formatted name:', className);
-          } else {
-            console.log('❌ No class found with ID:', regClassId);
-            console.log(
-              '📋 Available classes:',
-              this.classes.map(cls => ({ id: cls.id, title: cls.title || cls.instrument }))
-            );
-          }
-        } else if (registration.class) {
-          // Try direct class object property
-          className = formatClassNameWithGradeCorrection(registration.class);
-          console.log('✅ Used registration.class, formatted name:', className);
-        } else {
-          console.log('❌ No class information found in registration');
-        }
-
-        const conflictDetails = {
-          type: conflictType,
-          day: regDay,
-          startTime: formattedStartTime,
-          length: regLengthMinutes,
-          className: className,
-          instructorName: instructorName,
-          instrument: instrument,
-        };
-
-        console.log('Time conflict detected:', conflictDetails);
-        return { hasConflict: true, conflictDetails };
-      }
-    }
-
-    console.log('No time conflicts found');
-    return { hasConflict: false, conflictDetails: null };
-  }
-
-  /**
-   * Check if a student is already enrolled in a specific class
-   * @param {string} studentId - Student ID to check
-   * @param {string} classId - Class ID to check
-   * @returns {boolean} True if student is already enrolled
-   */
-  #checkStudentClassDuplicate(studentId, classId) {
-    if (!studentId || !classId) {
-      return false;
-    }
-
-    // During enrollment periods, check ONLY next trimester registrations
-    // Outside enrollment periods, check current trimester
-    const registrationsToCheck = this._isEnrollmentPeriodActive()
-      ? this.nextTrimesterRegistrations || []
-      : this.registrations;
-
-    const existingEnrollment = registrationsToCheck.find(reg => {
-      const regStudentId = typeof reg.studentId === 'object' ? reg.studentId.value : reg.studentId;
-      const regClassId = typeof reg.classId === 'object' ? reg.classId.value : reg.classId;
-      return regStudentId === studentId && regClassId === classId;
-    });
-
-    if (existingEnrollment) {
-      console.log('Duplicate class enrollment detected:', existingEnrollment);
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
    * Validate registration data
    */
   #validateRegistration() {
@@ -2660,29 +2394,11 @@ export class ParentRegistrationForm {
       return false;
     }
 
-    // Check for time conflicts with existing registrations
-    const dayName =
-      this.selectedLesson.day.charAt(0).toUpperCase() + this.selectedLesson.day.slice(1);
-    const conflictCheck = this.#checkStudentTimeConflict(
-      studentId,
-      dayName,
-      this.selectedLesson.time,
-      this.selectedLesson.length
-    );
-
-    if (conflictCheck.hasConflict) {
-      const conflict = conflictCheck.conflictDetails;
-      const conflictMessage =
-        conflict.type === RegistrationType.GROUP
-          ? `This lesson time conflicts with the student's existing class "${conflict.className}" on ${conflict.day} at ${conflict.startTime}.`
-          : `This lesson time conflicts with the student's existing lesson on ${conflict.day} at ${conflict.startTime} with ${conflict.instructorName}.`;
-
-      console.log('Validation failed: Time conflict detected', conflict);
-      M.toast({ html: conflictMessage });
-      return false;
-    }
+    // Time conflict checking is handled server-side by RegistrationConflictService
 
     // Check bus time restrictions for Late Bus transportation
+    const dayName =
+      this.selectedLesson.day.charAt(0).toUpperCase() + this.selectedLesson.day.slice(1);
     const transportationTypeRadio = document.querySelector(
       'input[name="parent-transportation-type"]:checked'
     );
@@ -2735,53 +2451,15 @@ export class ParentRegistrationForm {
       return false;
     }
 
-    // Check for duplicate class enrollment
-    if (this.#checkStudentClassDuplicate(studentId, classId)) {
-      M.toast({ html: 'Student is already enrolled in this class.' });
-      return false;
-    }
+    // Duplicate and time conflict checking is handled server-side by RegistrationConflictService
 
-    // Check for time conflicts with existing registrations
-    // First, get the class details to find the schedule
+    // Get the class details for bus validation
     const selectedClass = this.classes.find(cls => {
       const clsId = typeof cls.id === 'object' ? cls.id.value : cls.id;
       return clsId === classId;
     });
 
     if (selectedClass && selectedClass.day && selectedClass.startTime && selectedClass.length) {
-      // For waitlist classes (Rock Band), use special conflict times
-      const conflictDay = selectedClass.day;
-      let conflictStartTime = selectedClass.startTime;
-      let conflictLength = selectedClass.length;
-
-      if (ClassManager.isRockBandClass(classId)) {
-        // Override with special waitlist class conflict times
-        conflictStartTime = '15:00';
-        conflictLength = 120; // 2 hours for Monday, 1 hour for Friday
-        console.log(
-          `🎸 Waitlist class conflict check using special times: ${conflictDay} ${conflictStartTime} for ${conflictLength} minutes`
-        );
-      }
-
-      const conflictCheck = this.#checkStudentTimeConflict(
-        studentId,
-        conflictDay,
-        conflictStartTime,
-        conflictLength
-      );
-
-      if (conflictCheck.hasConflict) {
-        const conflict = conflictCheck.conflictDetails;
-        const conflictMessage =
-          conflict.type === 'PRIVATE'
-            ? `This class time conflicts with the student's existing lesson on ${conflict.day} at ${conflict.startTime} with ${conflict.instructorName}.`
-            : `This class time conflicts with the student's existing class "${conflict.className}" on ${conflict.day} at ${conflict.startTime}.`;
-
-        console.log('Group validation failed: Time conflict detected', conflict);
-        M.toast({ html: conflictMessage });
-        return false;
-      }
-
       // Check bus time restrictions for Late Bus transportation
       const transportationTypeRadio = document.querySelector(
         'input[name="parent-group-transportation-type"]:checked'
@@ -3727,5 +3405,49 @@ export class ParentRegistrationForm {
     }
 
     return false;
+  }
+
+  /**
+   * Show conflict error modal with refresh on acknowledge
+   */
+  #showConflictModal(message) {
+    // Parse conflict messages from the error
+    const conflicts = message
+      .replace('Registration conflicts detected: ', '')
+      .split('; ')
+      .map(c => `<li>${c}</li>`)
+      .join('');
+
+    const modalHtml = `
+      <div id="conflict-error-modal" class="modal">
+        <div class="modal-content">
+          <h5><i class="material-icons left red-text">warning</i>Registration Conflict</h5>
+          <p>This registration could not be created due to the following conflicts:</p>
+          <ul class="browser-default">${conflicts}</ul>
+        </div>
+        <div class="modal-footer">
+          <a href="#!" class="modal-close waves-effect waves-green btn" id="conflict-modal-ok">OK</a>
+        </div>
+      </div>
+    `;
+
+    // Remove existing modal if present
+    const existingModal = document.getElementById('conflict-error-modal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+
+    // Add modal to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Initialize and open modal
+    const modalElement = document.getElementById('conflict-error-modal');
+    const modalInstance = M.Modal.init(modalElement, {
+      dismissible: false,
+      onCloseEnd: () => {
+        window.location.reload();
+      },
+    });
+    modalInstance.open();
   }
 }

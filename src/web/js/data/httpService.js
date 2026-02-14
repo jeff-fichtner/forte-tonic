@@ -222,7 +222,22 @@ export class HttpService {
           window.location.href = '/auth/google';
           return;
         }
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+
+        // Try to parse error response as JSON to get error type
+        let errorData = null;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          // Not JSON, use text as-is
+        }
+
+        const error = new Error(
+          errorData?.error?.message || `HTTP ${response.status}: ${errorText}`
+        );
+        error.status = response.status;
+        error.type = errorData?.error?.type || null;
+        error.code = errorData?.error?.code || null;
+        throw error;
       }
 
       const responseText = await response.text();
