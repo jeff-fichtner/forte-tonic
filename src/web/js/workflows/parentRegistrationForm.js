@@ -226,6 +226,58 @@ export class ParentRegistrationForm {
   }
 
   /**
+   * Get the currently selected student's grade
+   * @returns {number|null} Student grade (0-8) or null if no student selected
+   */
+  #getSelectedStudentGrade() {
+    const studentSelect = document.getElementById('parent-student-select');
+    const selectedStudentId = studentSelect?.value;
+
+    if (!selectedStudentId) {
+      return null;
+    }
+
+    const selectedStudent = this.students.find(s => {
+      const studentId = s.id?.value || s.id;
+      return studentId && studentId.toString() === selectedStudentId.toString();
+    });
+
+    return selectedStudent?.grade ?? null;
+  }
+
+  /**
+   * Check if an instructor can teach a student of the given grade
+   * @param {object} instructor - Instructor object with gradeRange
+   * @param {number|null} studentGrade - Student's grade (0-8) or null
+   * @returns {boolean} True if instructor can teach this grade
+   */
+  #isInstructorGradeEligible(instructor, studentGrade) {
+    // If no student grade, allow all instructors
+    if (studentGrade === null || studentGrade === undefined) {
+      return true;
+    }
+
+    // If instructor has no grade range set, allow all grades
+    const minGrade = instructor.gradeRange?.minimum;
+    const maxGrade = instructor.gradeRange?.maximum;
+
+    if (
+      minGrade === null ||
+      minGrade === undefined ||
+      maxGrade === null ||
+      maxGrade === undefined
+    ) {
+      return true;
+    }
+
+    const gradeNum = Number(studentGrade);
+    const minNum = Number(minGrade);
+    const maxNum = Number(maxGrade);
+
+    return gradeNum >= minNum && gradeNum <= maxNum;
+  }
+
+  /**
    * Calculate available slots for a day considering existing registrations
    * @param {number} startMinutes - Day start time in minutes
    * @param {number} endMinutes - Day end time in minutes
@@ -267,8 +319,11 @@ export class ParentRegistrationForm {
       availability[day] = 0;
     });
 
-    // Filter instructors based only on selected instrument (cascading)
-    let instructorsToUse = this.instructors;
+    // Filter instructors based on selected instrument and student grade (cascading)
+    const studentGrade = this.#getSelectedStudentGrade();
+    let instructorsToUse = this.instructors.filter(instructor =>
+      this.#isInstructorGradeEligible(instructor, studentGrade)
+    );
 
     if (selectedInstrument && selectedInstrument !== 'all') {
       instructorsToUse = instructorsToUse.filter(instructor => {
@@ -355,8 +410,11 @@ export class ParentRegistrationForm {
       friday: 4,
     };
 
-    // Filter instructors based only on selected instrument (cascading)
-    let instructorsToUse = this.instructors;
+    // Filter instructors based on selected instrument and student grade (cascading)
+    const studentGrade = this.#getSelectedStudentGrade();
+    let instructorsToUse = this.instructors.filter(instructor =>
+      this.#isInstructorGradeEligible(instructor, studentGrade)
+    );
 
     if (selectedInstrument && selectedInstrument !== 'all') {
       instructorsToUse = instructorsToUse.filter(instructor => {
@@ -453,8 +511,11 @@ export class ParentRegistrationForm {
       friday: 4,
     };
 
-    // Filter instructors based only on selected instrument (cascading)
-    let instructorsToUse = this.instructors;
+    // Filter instructors based on selected instrument and student grade (cascading)
+    const studentGrade = this.#getSelectedStudentGrade();
+    let instructorsToUse = this.instructors.filter(instructor =>
+      this.#isInstructorGradeEligible(instructor, studentGrade)
+    );
 
     if (selectedInstrument && selectedInstrument !== 'all') {
       instructorsToUse = instructorsToUse.filter(instructor => {
@@ -615,8 +676,13 @@ export class ParentRegistrationForm {
     );
     instructorContainer.appendChild(allChip);
 
-    // Create individual instructor chips
-    this.instructors.forEach(instructor => {
+    // Create individual instructor chips (filtered by student grade)
+    const studentGrade = this.#getSelectedStudentGrade();
+    const eligibleInstructors = this.instructors.filter(instructor =>
+      this.#isInstructorGradeEligible(instructor, studentGrade)
+    );
+
+    eligibleInstructors.forEach(instructor => {
       const slots = instructorAvailability[instructor.id] || 0;
       const chipText = `${instructor.firstName} ${instructor.lastName} (${slots} slots)`;
       const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
@@ -749,8 +815,11 @@ export class ParentRegistrationForm {
       friday: 4,
     };
 
-    // Filter instructors based on selected instructor
-    let instructorsToUse = this.instructors;
+    // Filter instructors based on selected instructor and student grade
+    const studentGrade = this.#getSelectedStudentGrade();
+    let instructorsToUse = this.instructors.filter(instructor =>
+      this.#isInstructorGradeEligible(instructor, studentGrade)
+    );
     if (selectedInstructor && selectedInstructor !== 'all') {
       instructorsToUse = instructorsToUse.filter(
         instructor => instructor.id === selectedInstructor
@@ -939,8 +1008,14 @@ export class ParentRegistrationForm {
     const existingCards = timeslotGrid.querySelectorAll('.instructor-card');
     existingCards.forEach(card => card.remove());
 
-    // Generate cards for each instructor
-    this.instructors.forEach(instructor => {
+    // Filter instructors by student grade eligibility
+    const studentGrade = this.#getSelectedStudentGrade();
+    const eligibleInstructors = this.instructors.filter(instructor =>
+      this.#isInstructorGradeEligible(instructor, studentGrade)
+    );
+
+    // Generate cards for each eligible instructor
+    eligibleInstructors.forEach(instructor => {
       const timeSlots = this.#generateInstructorTimeSlots(instructor);
       if (timeSlots.length > 0) {
         const card = this.#createInstructorCard(instructor, timeSlots);
@@ -1298,6 +1373,14 @@ export class ParentRegistrationForm {
               this.#handleClassSelection(classSelect.value);
             }
           }
+
+          // Regenerate filter chips and time slots based on new student's grade
+          this.#generateInstrumentChips();
+          this.#generateDayChips();
+          this.#generateLengthChips();
+          this.#generateInstructorChips();
+          this.#generateTimeSlots();
+          this.#attachFilterChipListeners();
 
           // Clear any selected time slots when student changes
           this.#clearTimeSlotSelection();
@@ -1753,8 +1836,11 @@ export class ParentRegistrationForm {
     const existingCards = timeslotGrid.querySelectorAll('.instructor-card');
     existingCards.forEach(card => card.remove());
 
-    // Determine which instructors to include
-    let instructorsToInclude = this.instructors;
+    // Determine which instructors to include (filter by student grade first)
+    const studentGrade = this.#getSelectedStudentGrade();
+    let instructorsToInclude = this.instructors.filter(instructor =>
+      this.#isInstructorGradeEligible(instructor, studentGrade)
+    );
 
     // Filter by selected instructor
     if (selectedInstructor !== 'all') {
