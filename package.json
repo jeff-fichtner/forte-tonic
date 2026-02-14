@@ -42,7 +42,8 @@
     "mig:run": "node scripts/migrations/prod-to-staging-full.js run",
     "mig:apply": "node scripts/migrations/prod-to-staging-full.js apply",
     "mig:commit": "node scripts/migrations/prod-to-staging-full.js commit",
-    "mig:unapply": "node scripts/migrations/prod-to-staging-full.js unapply"
+    "mig:unapply": "node scripts/migrations/prod-to-staging-full.js unapply",
+    "mig:all": "node scripts/migrations/prod-to-staging-full.js run; node scripts/migrations/prod-to-staging-full.js apply; node scripts/migrations/prod-to-staging-full.js commit"
   },
   "dependencies": {
     "cors": "^2.8.5",

@@ -753,6 +753,24 @@ class FullDatabaseMigration {
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   }
 
+  /**
+   * Execute an async function with retry on rate limit errors.
+   * Waits 60 seconds and retries once if a rate limit error occurs.
+   */
+  async withRateLimitRetry(fn, operationName = 'operation') {
+    try {
+      return await fn();
+    } catch (error) {
+      if (error.message && error.message.includes('Quota exceeded') && error.message.includes('Write requests')) {
+        this.logger.log(`   ⏳ Rate limit hit during ${operationName}, waiting 60 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 60000));
+        this.logger.log(`   🔄 Retrying ${operationName}...`);
+        return await fn();
+      }
+      throw error;
+    }
+  }
+
   async writeAllSheets() {
     this.logger.log('\n📤 Writing ALL MIGRATION_* sheets to staging...');
 
@@ -764,12 +782,15 @@ class FullDatabaseMigration {
     for (const { working } of this.sheetsToMigrate) {
       const existingSheet = spreadsheet.data.sheets.find(s => s.properties.title === working);
       if (existingSheet) {
-        await this.stagingSheets.spreadsheets.batchUpdate({
-          spreadsheetId: this.stagingSpreadsheetId,
-          requestBody: {
-            requests: [{ deleteSheet: { sheetId: existingSheet.properties.sheetId } }],
-          },
-        });
+        await this.withRateLimitRetry(
+          () => this.stagingSheets.spreadsheets.batchUpdate({
+            spreadsheetId: this.stagingSpreadsheetId,
+            requestBody: {
+              requests: [{ deleteSheet: { sheetId: existingSheet.properties.sheetId } }],
+            },
+          }),
+          `deleteSheet(${working})`
+        );
         this.logger.log(`   🗑️  Deleted previous ${working}`);
       }
     }
@@ -805,12 +826,15 @@ class FullDatabaseMigration {
     const rows = data.map(obj => headers.map(header => obj[header] || ''));
     const values = [headers, ...rows];
 
-    await this.stagingSheets.spreadsheets.values.update({
-      spreadsheetId: this.stagingSpreadsheetId,
-      range: `${sheetName}!A1`,
-      valueInputOption: 'RAW',
-      requestBody: { values },
-    });
+    await this.withRateLimitRetry(
+      () => this.stagingSheets.spreadsheets.values.update({
+        spreadsheetId: this.stagingSpreadsheetId,
+        range: `${sheetName}!A1`,
+        valueInputOption: 'RAW',
+        requestBody: { values },
+      }),
+      `writeSheetData(${sheetName})`
+    );
   }
 
   async writeSheetDataRaw(sheetName, rows) {
@@ -820,12 +844,15 @@ class FullDatabaseMigration {
     }
 
     await this.ensureSheetExists(sheetName);
-    await this.stagingSheets.spreadsheets.values.update({
-      spreadsheetId: this.stagingSpreadsheetId,
-      range: `${sheetName}!A1`,
-      valueInputOption: 'RAW',
-      requestBody: { values: rows },
-    });
+    await this.withRateLimitRetry(
+      () => this.stagingSheets.spreadsheets.values.update({
+        spreadsheetId: this.stagingSpreadsheetId,
+        range: `${sheetName}!A1`,
+        valueInputOption: 'RAW',
+        requestBody: { values: rows },
+      }),
+      `writeSheetDataRaw(${sheetName})`
+    );
   }
 
   async ensureSheetExists(sheetName) {
@@ -836,12 +863,15 @@ class FullDatabaseMigration {
     const sheetExists = spreadsheet.data.sheets.some(s => s.properties.title === sheetName);
 
     if (!sheetExists) {
-      await this.stagingSheets.spreadsheets.batchUpdate({
-        spreadsheetId: this.stagingSpreadsheetId,
-        requestBody: {
-          requests: [{ addSheet: { properties: { title: sheetName } } }],
-        },
-      });
+      await this.withRateLimitRetry(
+        () => this.stagingSheets.spreadsheets.batchUpdate({
+          spreadsheetId: this.stagingSpreadsheetId,
+          requestBody: {
+            requests: [{ addSheet: { properties: { title: sheetName } } }],
+          },
+        }),
+        `ensureSheetExists(${sheetName})`
+      );
     }
   }
 
@@ -855,12 +885,15 @@ class FullDatabaseMigration {
       throw new Error(`Sheet ${sheetName} not found`);
     }
 
-    await this.stagingSheets.spreadsheets.batchUpdate({
-      spreadsheetId: this.stagingSpreadsheetId,
-      requestBody: {
-        requests: [{ deleteSheet: { sheetId: sheet.properties.sheetId } }],
-      },
-    });
+    await this.withRateLimitRetry(
+      () => this.stagingSheets.spreadsheets.batchUpdate({
+        spreadsheetId: this.stagingSpreadsheetId,
+        requestBody: {
+          requests: [{ deleteSheet: { sheetId: sheet.properties.sheetId } }],
+        },
+      }),
+      `deleteSheet(${sheetName})`
+    );
   }
 
   async renameSheet(oldName, newName) {
@@ -873,19 +906,22 @@ class FullDatabaseMigration {
       throw new Error(`Sheet ${oldName} not found`);
     }
 
-    await this.stagingSheets.spreadsheets.batchUpdate({
-      spreadsheetId: this.stagingSpreadsheetId,
-      requestBody: {
-        requests: [
-          {
-            updateSheetProperties: {
-              properties: { sheetId: sheet.properties.sheetId, title: newName },
-              fields: 'title',
+    await this.withRateLimitRetry(
+      () => this.stagingSheets.spreadsheets.batchUpdate({
+        spreadsheetId: this.stagingSpreadsheetId,
+        requestBody: {
+          requests: [
+            {
+              updateSheetProperties: {
+                properties: { sheetId: sheet.properties.sheetId, title: newName },
+                fields: 'title',
+              },
             },
-          },
-        ],
-      },
-    });
+          ],
+        },
+      }),
+      `renameSheet(${oldName} → ${newName})`
+    );
   }
 
   async cleanupMappingFiles() {
