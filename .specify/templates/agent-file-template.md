@@ -1,3 +1,6 @@
+<!-- MANUAL ADDITIONS START -->
+<!-- MANUAL ADDITIONS END -->
+
 # [PROJECT NAME] Development Guidelines
 
 Auto-generated from all feature plans. Last updated: [DATE]
@@ -23,6 +26,3 @@ Auto-generated from all feature plans. Last updated: [DATE]
 ## Recent Changes
 
 [LAST 3 FEATURES AND WHAT THEY ADDED]
-
-<!-- MANUAL ADDITIONS START -->
-<!-- MANUAL ADDITIONS END -->
