@@ -13,3 +13,10 @@ All development on this project is governed by the [Tonic Constitution](../.spec
 # currentDate
 Today's date is 2026-02-18.
 <!-- MANUAL ADDITIONS END -->
+
+## Active Technologies
+- TypeScript 5.x targeting ES2022, running on Node.js (ESM) + Express 4, Google Sheets API v4, tsx (runtime), ts-jest (testing), typescript-eslint (linting) (002-typescript-migration)
+- Google Sheets API v4 (unchanged) (002-typescript-migration)
+
+## Recent Changes
+- 002-typescript-migration: Added TypeScript 5.x targeting ES2022, running on Node.js (ESM) + Express 4, Google Sheets API v4, tsx (runtime), ts-jest (testing), typescript-eslint (linting)
