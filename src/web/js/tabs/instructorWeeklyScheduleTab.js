@@ -58,7 +58,7 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
     const result = await response.json();
 
     // Unwrap the data from { success: true, data: {...} } envelope
-    const data = result.data || result;
+    const data = result.data;
 
     // Validate response
     if (!data.registrations || !data.students || !data.instructors || !data.classes) {
@@ -201,9 +201,7 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
     const student = this.findStudent(enrollment.studentId);
 
     if (!instructor || !student) {
-      console.warn(
-        `Instructor or student not found for enrollment: ${enrollment.id?.value || enrollment.id}`
-      );
+      console.warn(`Instructor or student not found for enrollment: ${enrollment.id}`);
       return '';
     }
 
@@ -222,7 +220,7 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
       <td>${instructor.firstName} ${instructor.lastName}</td>
       <td>${instrumentOrClass}</td>
       <td>
-        <button type="button" class="btn-flat" style="padding: 0; min-width: 0; background: none; border: none; cursor: pointer;" data-registration-id="${enrollment.id?.value || enrollment.id}">
+        <button type="button" class="btn-flat" style="padding: 0; min-width: 0; background: none; border: none; cursor: pointer;" data-registration-id="${enrollment.id}">
           <i class="material-icons copy-emails-table-icon gray-text text-darken-4">email</i>
         </button>
       </td>
@@ -248,13 +246,11 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
     if (!registrationId) return;
 
     // Find the enrollment by ID
-    const currentEnrollment = this.data.registrations.find(
-      e => (e.id?.value || e.id) === registrationId
-    );
+    const currentEnrollment = this.data.registrations.find(e => e.id === registrationId);
     if (!currentEnrollment) return;
 
     // For instructor view: show parent emails
-    const studentIdToFind = currentEnrollment.studentId?.value || currentEnrollment.studentId;
+    const studentIdToFind = currentEnrollment.studentId;
     const student = this.findStudent(studentIdToFind);
 
     if (student && student.parentEmails && student.parentEmails.trim()) {

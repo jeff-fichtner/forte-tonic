@@ -413,10 +413,8 @@ export class AdminRegistrationForm {
     // Filter registrations for selected student that have linkedPreviousRegistrationId
     // These are registrations created from reenrollment intent that can be modified
     const studentRegistrations = this.trimesterRegistrations.filter(reg => {
-      const regStudentId = reg.studentId?.value || reg.studentId;
-      const hasLinkedPrevious = !!(
-        reg.linkedPreviousRegistrationId?.value || reg.linkedPreviousRegistrationId
-      );
+      const regStudentId = reg.studentId;
+      const hasLinkedPrevious = !!reg.linkedPreviousRegistrationId;
       return regStudentId === selectedStudentId && hasLinkedPrevious;
     });
 
@@ -432,24 +430,20 @@ export class AdminRegistrationForm {
     // Populate dropdown with existing registrations
     studentRegistrations.forEach(registration => {
       const option = document.createElement('option');
-      option.value = registration.id?.value || registration.id;
+      option.value = registration.id;
 
       // Build descriptive label
       let label = '';
-      const regType = registration.registrationType?.value || registration.registrationType;
+      const regType = registration.registrationType;
       if (regType === 'private') {
-        const instrument = registration.instrument?.value || registration.instrument || 'Lesson';
-        const day = registration.day?.value || registration.day || '';
-        const time = registration.startTime?.value || registration.startTime || '';
-        const instructor = this.instructors.find(
-          i =>
-            (i.id?.value || i.id) ===
-            (registration.instructorId?.value || registration.instructorId)
-        );
+        const instrument = registration.instrument || 'Lesson';
+        const day = registration.day || '';
+        const time = registration.startTime || '';
+        const instructor = this.instructors.find(i => i.id === registration.instructorId);
         const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : '';
         label = `${instrument} - ${day} ${time} with ${instructorName}`;
       } else if (regType === 'group') {
-        const classTitle = registration.classTitle?.value || registration.classTitle || 'Class';
+        const classTitle = registration.classTitle || 'Class';
         label = `${classTitle}`;
       } else {
         label = `Registration ${option.value}`;

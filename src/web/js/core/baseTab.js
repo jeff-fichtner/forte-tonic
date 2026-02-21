@@ -324,9 +324,9 @@ export class BaseTab {
   findStudent(studentId) {
     if (!this.data?.students) return undefined;
 
-    const idToFind = studentId?.value || studentId;
+    const idToFind = studentId;
     return this.data.students.find(student => {
-      const id = student.id?.value || student.id;
+      const id = student.id;
       return id === idToFind;
     });
   }
@@ -340,9 +340,9 @@ export class BaseTab {
   findInstructor(instructorId) {
     if (!this.data?.instructors) return undefined;
 
-    const idToFind = instructorId?.value || instructorId;
+    const idToFind = instructorId;
     return this.data.instructors.find(instructor => {
-      const id = instructor.id?.value || instructor.id;
+      const id = instructor.id;
       return id === idToFind;
     });
   }

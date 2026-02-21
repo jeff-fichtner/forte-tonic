@@ -8,7 +8,6 @@
 import crypto from 'crypto';
 import { BaseRepository } from './baseRepository.js';
 import { Registration } from '../models/shared/registration.js';
-import { RegistrationId } from '../utils/values/registrationId.js';
 import { UuidUtility } from '../utils/uuidUtility.js';
 import { isValidTrimester } from '../utils/values/trimester.js';
 
@@ -29,8 +28,6 @@ export class RegistrationRepository extends BaseRepository {
    */
   async getById(id) {
     try {
-      const registrationId = typeof id === 'string' ? new RegistrationId(id) : id;
-
       // Registrations are stored in trimester-specific sheets, so we need to search all three
       const tables = ['registrations_fall', 'registrations_winter', 'registrations_spring'];
 
@@ -48,9 +45,7 @@ export class RegistrationRepository extends BaseRepository {
 
         // Filter out null values and find registration by UUID
         const validRegistrations = allRegistrations.filter(reg => reg !== null);
-        const registration = validRegistrations.find(
-          reg => reg.id.getValue() === registrationId.getValue()
-        );
+        const registration = validRegistrations.find(reg => reg.id === id);
 
         if (registration) {
           return registration;
@@ -91,9 +86,7 @@ export class RegistrationRepository extends BaseRepository {
       }
 
       // Filter registrations by student ID
-      return allRegistrations.filter(
-        reg => reg.studentId && reg.studentId.getValue() === studentId
-      );
+      return allRegistrations.filter(reg => reg.studentId === studentId);
     } catch (error) {
       this.logger.error('Error getting registrations by student ID:', error);
       throw error;
@@ -127,9 +120,7 @@ export class RegistrationRepository extends BaseRepository {
       }
 
       // Filter registrations by instructor ID
-      return allRegistrations.filter(
-        reg => reg.instructorId && reg.instructorId.getValue() === instructorId
-      );
+      return allRegistrations.filter(reg => reg.instructorId === instructorId);
     } catch (error) {
       this.logger.error('Error getting registrations by instructor ID:', error);
       throw error;
@@ -322,8 +313,7 @@ export class RegistrationRepository extends BaseRepository {
         isWaitlistClass: registrationData.isWaitlistClass, // Pass flag for validation
       });
 
-      // Use the new appendRecordv2 method that handles direct Google Sheets append and audit
-      await this.dbClient.appendRecordv2(tableName, registration, registrationData.createdBy);
+      await this.dbClient.appendRecord(tableName, registration, registrationData.createdBy);
       // Cache cleared automatically by dbClient
 
       return registration;
@@ -345,18 +335,16 @@ export class RegistrationRepository extends BaseRepository {
       // Get current trimester table name from period service
       const currentTable = await this.periodService.getCurrentTrimesterTable();
 
-      const registrationId = typeof id === 'string' ? new RegistrationId(id) : id;
-
       // First verify the registration exists using cached data
-      const registration = await this.getById(registrationId);
+      const registration = await this.getById(id);
       if (!registration) {
-        throw new Error(`Registration with ID ${registrationId.getValue()} not found`);
+        throw new Error(`Registration with ID ${id} not found`);
       }
 
       this.logger.info(`🗑️ Deleting registration from table: ${currentTable}`);
 
       // Use the database client's deleteRecord method which handles audit trails and proper deletion
-      await this.dbClient.deleteRecord(currentTable, registrationId.getValue(), userId);
+      await this.dbClient.deleteRecord(currentTable, id, userId);
       // Cache cleared automatically by dbClient
 
       return true;
@@ -393,7 +381,7 @@ export class RegistrationRepository extends BaseRepository {
     const registrations = await this.getRegistrations();
 
     // Find the registration - if not found, user doesn't have access or it doesn't exist
-    const registration = registrations.find(r => (r.id.value || r.id) === registrationId);
+    const registration = registrations.find(r => r.id === registrationId);
 
     if (!registration) {
       throw new Error('Registration not found');
@@ -419,9 +407,7 @@ export class RegistrationRepository extends BaseRepository {
         }
       });
 
-      const found = allRegistrations.find(
-        reg => reg && (reg.id.value || reg.id) === registrationId
-      );
+      const found = allRegistrations.find(reg => reg && reg.id === registrationId);
 
       if (found) {
         targetSheet = table;
@@ -437,9 +423,9 @@ export class RegistrationRepository extends BaseRepository {
     await this.dbClient.updateRecord(
       targetSheet,
       {
-        id: registration.id.value || registration.id,
-        studentId: registration.studentId.value || registration.studentId,
-        instructorId: registration.instructorId.value || registration.instructorId,
+        id: registration.id,
+        studentId: registration.studentId,
+        instructorId: registration.instructorId,
         day: registration.day,
         startTime: registration.startTime,
         length: registration.length,
@@ -556,8 +542,7 @@ export class RegistrationRepository extends BaseRepository {
           })(),
       });
 
-      // Write to specific table (appendRecordv2 handles audit automatically)
-      await this.dbClient.appendRecordv2(tableName, registration, registrationData.createdBy);
+      await this.dbClient.appendRecord(tableName, registration, registrationData.createdBy);
       // Cache cleared automatically by dbClient
 
       this.logger.info(`✅ Created registration in ${tableName}: ${registrationId}`);
@@ -576,16 +561,11 @@ export class RegistrationRepository extends BaseRepository {
    */
   async findByIdInTable(tableName, id) {
     try {
-      const registrationId = typeof id === 'string' ? new RegistrationId(id) : id;
-
       // Get all registrations from the specified table
       const registrations = await this.getFromTable(tableName);
 
       // Find the registration with matching ID
-      const registration = registrations.find(reg => {
-        const regId = reg.id?.value || reg.id;
-        return regId === registrationId.getValue();
-      });
+      const registration = registrations.find(reg => reg.id === id);
 
       return registration || null;
     } catch (error) {
@@ -607,20 +587,16 @@ export class RegistrationRepository extends BaseRepository {
         throw new Error('userId is required for audit trail');
       }
 
-      const registrationId = typeof id === 'string' ? new RegistrationId(id) : id;
-
       // First verify the registration exists
-      const registration = await this.findByIdInTable(tableName, registrationId);
+      const registration = await this.findByIdInTable(tableName, id);
       if (!registration) {
-        throw new Error(
-          `Registration with ID ${registrationId.getValue()} not found in table ${tableName}`
-        );
+        throw new Error(`Registration with ID ${id} not found in table ${tableName}`);
       }
 
       this.logger.info(`🗑️ Deleting registration from table: ${tableName}`);
 
       // Use the database client's deleteRecord method which handles audit trails and proper deletion
-      await this.dbClient.deleteRecord(tableName, registrationId.getValue(), userId);
+      await this.dbClient.deleteRecord(tableName, id, userId);
       // Cache cleared automatically by dbClient
 
       return true;

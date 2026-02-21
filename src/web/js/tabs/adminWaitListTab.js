@@ -111,7 +111,7 @@ export class AdminWaitListTab extends BaseTab {
     const result = await response.json();
 
     // Unwrap the data from { success: true, data: {...} } envelope
-    const data = result.data || result;
+    const data = result.data;
 
     // Validate response
     if (!data.registrations || !data.students) {
@@ -177,11 +177,11 @@ export class AdminWaitListTab extends BaseTab {
     const showRecurringColumn = window.TONIC_ENV?.isDevelopment;
 
     // Extract primitive values for comparison
-    const studentIdToFind = registration.studentId?.value || registration.studentId;
+    const studentIdToFind = registration.studentId;
 
     // Find student
     const student = this.data.students.find(x => {
-      const studentId = x.id?.value || x.id;
+      const studentId = x.id;
       return studentId === studentIdToFind;
     });
 
@@ -193,10 +193,7 @@ export class AdminWaitListTab extends BaseTab {
     // Build recurring cell (only in dev/staging)
     let recurringCell = '';
     if (showRecurringColumn) {
-      const hasLinkedPrevious = !!(
-        registration.linkedPreviousRegistrationId?.value ||
-        registration.linkedPreviousRegistrationId
-      );
+      const hasLinkedPrevious = !!registration.linkedPreviousRegistrationId;
 
       if (hasLinkedPrevious) {
         recurringCell = `<td style="text-align: center;">
@@ -207,7 +204,7 @@ export class AdminWaitListTab extends BaseTab {
       }
     }
 
-    const registrationId = registration.id?.value || registration.id;
+    const registrationId = registration.id;
 
     return `
       ${recurringCell}
@@ -249,18 +246,16 @@ export class AdminWaitListTab extends BaseTab {
     if (!registrationId) return;
 
     // Find the registration by ID in the registrations
-    const currentRegistration = this.data.registrations.find(
-      r => (r.id?.value || r.id) === registrationId
-    );
+    const currentRegistration = this.data.registrations.find(r => r.id === registrationId);
     if (!currentRegistration) return;
 
     if (isCopy) {
       // Get the student ID from the current registration
-      const studentIdToFind = currentRegistration.studentId?.value || currentRegistration.studentId;
+      const studentIdToFind = currentRegistration.studentId;
 
       // Find the full student object with parent emails
       const fullStudent = this.data.students.find(x => {
-        const studentId = x.id?.value || x.id;
+        const studentId = x.id;
         return studentId === studentIdToFind;
       });
 
@@ -275,7 +270,7 @@ export class AdminWaitListTab extends BaseTab {
     }
 
     if (isDelete) {
-      const idToDelete = currentRegistration.id?.value || currentRegistration.id;
+      const idToDelete = currentRegistration.id;
       await this.#deleteRegistration(idToDelete);
       return;
     }

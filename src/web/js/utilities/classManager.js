@@ -20,7 +20,7 @@ class ClassManager {
    */
   static isRockBandClass(classId) {
     // Handle both direct string values and objects with .value property
-    const id = classId?.value || classId;
+    const id = classId;
 
     // If no classId provided, it's not a Rock Band class
     if (!id) {

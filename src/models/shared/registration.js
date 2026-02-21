@@ -5,53 +5,20 @@
  * Simplified registration model without audit fields
  */
 
-import { RegistrationId } from '../../utils/values/registrationId.js';
-import { StudentId } from '../../utils/values/studentId.js';
-import { InstructorId } from '../../utils/values/instructorId.js';
-import { LessonTime } from '../../utils/values/lessonTime.js';
+import { UuidUtility } from '../../utils/uuidUtility.js';
 
-// Day names constant for schedule generation
-// Defined locally to avoid import issues when this shared model is loaded in the browser
 const DayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-// Helper function to extract string values from various data types
-function extractStringValue(value) {
-  if (value === null || value === undefined) {
-    return value;
-  }
-
-  if (typeof value === 'string') {
-    return value;
-  }
-
-  if (typeof value === 'object') {
-    // If it's an object, it might have an id, value, or _value property
-    if (value.id) return String(value.id);
-    if (value.value) return String(value.value);
-    if (value._value) return String(value._value);
-    if (value.uuid) return String(value.uuid);
-
-    // If it's an array, take the first element
-    if (Array.isArray(value) && value.length > 0) {
-      return String(value[0]);
-    }
-
-    return String(value); // This will produce "[object Object]"
-  }
-
-  return String(value);
-}
 
 export class Registration {
   constructor(data) {
     this.#validateConstructorData(data);
 
-    // UUID primary key (new)
-    this.id = new RegistrationId(data.id);
+    // UUID primary key
+    this.id = data.id || UuidUtility.generateUuid();
 
     // Core relationship fields
-    this.studentId = new StudentId(data.studentId);
-    this.instructorId = new InstructorId(data.instructorId);
+    this.studentId = data.studentId;
+    this.instructorId = data.instructorId;
 
     // Scheduling fields
     this.day = data.day;
@@ -154,42 +121,6 @@ export class Registration {
   }
 
   /**
-   * Check if registration is for a private lesson
-   */
-  isPrivateLesson() {
-    return this.registrationType === 'private';
-  }
-
-  /**
-   * Check if registration is for a group class
-   */
-  isGroupClass() {
-    return this.registrationType === 'group';
-  }
-
-  /**
-   * Get lesson duration in minutes
-   */
-  getDurationMinutes() {
-    return this.length;
-  }
-
-  /**
-   * Get formatted lesson time
-   */
-  getFormattedTime() {
-    const time = this.startTime;
-    if (time.includes(':')) {
-      const [hours, minutes] = time.split(':');
-      const hour = parseInt(hours);
-      const ampm = hour >= 12 ? 'PM' : 'AM';
-      const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-      return `${displayHour}:${minutes} ${ampm}`;
-    }
-    return time;
-  }
-
-  /**
    * Update reenrollment intent for this registration
    * @param {string} intent - One of: 'keep', 'drop', 'change'
    * @param {string} submittedBy - Email or identifier of who submitted
@@ -267,15 +198,7 @@ export class Registration {
    * @returns {Registration} Registration instance
    */
   static fromApiData(data) {
-    // Handle ID fields that might be objects or other types
-    const processedData = {
-      ...data,
-      id: extractStringValue(data.id),
-      studentId: extractStringValue(data.studentId),
-      instructorId: extractStringValue(data.instructorId),
-    };
-
-    return new Registration(processedData);
+    return new Registration(data);
   }
 
   /**
@@ -283,9 +206,9 @@ export class Registration {
    */
   toDatabaseRow() {
     return [
-      this.id.getValue(),
-      this.studentId.value,
-      this.instructorId.value,
+      this.id,
+      this.studentId,
+      this.instructorId,
       this.day,
       this.startTime,
       this.length.toString(),
@@ -307,28 +230,15 @@ export class Registration {
   }
 
   /**
-   * Convert Registration entity to plain data object for persistence
+   * Converts the registration to a plain object for API responses
+   * This method is automatically called by JSON.stringify() and Express res.json()
+   * @returns {object} Plain object representation
    */
-  toDataObject() {
-    // Helper function to safely extract values from value objects or plain values
-    const extractValue = valueOrObject => {
-      if (!valueOrObject) return null;
-      if (typeof valueOrObject === 'string' || typeof valueOrObject === 'number') {
-        return valueOrObject;
-      }
-      if (valueOrObject.getValue && typeof valueOrObject.getValue === 'function') {
-        return valueOrObject.getValue();
-      }
-      if (valueOrObject.value !== undefined) {
-        return valueOrObject.value;
-      }
-      return String(valueOrObject);
-    };
-
+  toJSON() {
     return {
-      id: extractValue(this.id),
-      studentId: extractValue(this.studentId),
-      instructorId: extractValue(this.instructorId),
+      id: this.id,
+      studentId: this.studentId,
+      instructorId: this.instructorId,
       day: this.day,
       startTime: this.startTime,
       length: this.length,
@@ -348,15 +258,6 @@ export class Registration {
       linkedPreviousRegistrationId: this.linkedPreviousRegistrationId,
       isWaitlistClass: this.isWaitlistClass,
     };
-  }
-
-  /**
-   * Converts the registration to a plain object for API responses
-   * This method is automatically called by JSON.stringify() and Express res.json()
-   * @returns {object} Plain object representation
-   */
-  toJSON() {
-    return this.toDataObject();
   }
 
   /**
@@ -411,17 +312,13 @@ export class Registration {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    // Create LessonTime value object for this registration
-    const lessonTime = new LessonTime(this.startTime, this.length);
-
     // Generate lesson dates
     for (let i = 0; i < numberOfLessons; i++) {
       lessons.push({
         lessonNumber: i + 1,
         date: new Date(currentDate),
-        startTime: lessonTime.startTime,
-        length: lessonTime.durationMinutes,
-        expectedEndTime: lessonTime.endTime,
+        startTime: this.startTime,
+        length: this.length,
       });
 
       // Move to next week

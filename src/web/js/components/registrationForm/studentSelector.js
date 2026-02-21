@@ -92,9 +92,7 @@ export class StudentSelector {
   getSelectedStudentId() {
     if (!this.selectedStudent) return null;
 
-    // Handle case where ID might be an object with a value property
-    const id = this.selectedStudent.id;
-    return typeof id === 'object' ? id.value : id;
+    return this.selectedStudent.id;
   }
 
   /**

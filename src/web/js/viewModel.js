@@ -222,7 +222,7 @@ export class ViewModel {
         // This is critical to prevent the old registration from persisting in the UI
         if (isEnrollmentPeriod && !isAdmin && this.nextTrimesterRegistrations) {
           const oldRegIndex = this.nextTrimesterRegistrations.findIndex(reg => {
-            const regId = reg.id?.value || reg.id;
+            const regId = reg.id;
             return regId === data.replaceRegistrationId;
           });
 
@@ -231,7 +231,7 @@ export class ViewModel {
           }
         } else {
           const oldRegIndex = this.registrations.findIndex(reg => {
-            const regId = reg.id?.value || reg.id;
+            const regId = reg.id;
             return regId === data.replaceRegistrationId;
           });
 
@@ -260,29 +260,28 @@ export class ViewModel {
 
     if (!newRegistration.student) {
       newRegistration.student = studentsLookup.find(x => {
-        const studentId = x.id?.value || x.id;
-        const registrationStudentId = newRegistration.studentId?.value || newRegistration.studentId;
+        const studentId = x.id;
+        const registrationStudentId = newRegistration.studentId;
         return studentId === registrationStudentId;
       });
 
       if (!newRegistration.student && studentsLookup.length > 0) {
         console.warn(
-          `❌ Student not found for new registration with studentId "${newRegistration.studentId?.value || newRegistration.studentId}"`
+          `❌ Student not found for new registration with studentId "${newRegistration.studentId}"`
         );
       }
     }
 
     if (!newRegistration.instructor) {
       newRegistration.instructor = instructorsLookup.find(x => {
-        const instructorId = x.id?.value || x.id;
-        const registrationInstructorId =
-          newRegistration.instructorId?.value || newRegistration.instructorId;
+        const instructorId = x.id;
+        const registrationInstructorId = newRegistration.instructorId;
         return instructorId === registrationInstructorId;
       });
 
       if (!newRegistration.instructor && instructorsLookup.length > 0) {
         console.warn(
-          `❌ Instructor not found for new registration with instructorId "${newRegistration.instructorId?.value || newRegistration.instructorId}"`
+          `❌ Instructor not found for new registration with instructorId "${newRegistration.instructorId}"`
         );
       }
     }
@@ -463,7 +462,7 @@ export class ViewModel {
 
       // Tabs handle their own data refresh - ParentWeeklyScheduleTab will reload fresh data
       M.toast({ html: 'Intent submitted successfully.' });
-      return result;
+      return result.data;
     } catch (error) {
       console.error('Error submitting intent:', error);
       M.toast({ html: error.message || 'Error submitting intent.' });

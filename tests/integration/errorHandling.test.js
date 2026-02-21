@@ -187,7 +187,7 @@ describe('Standardized Error Handling Integration Tests', () => {
   });
 
   describe('UserController.authenticateByAccessCode', () => {
-    test('should return null for invalid access code (backward compatibility)', async () => {
+    test('should return null data for invalid access code', async () => {
       const response = await request(app)
         .post('/api/authenticateByAccessCode')
         .send({
@@ -196,8 +196,9 @@ describe('Standardized Error Handling Integration Tests', () => {
         })
         .expect(200);
 
-      // Frontend expects null for failed authentication
-      expect(response.body).toBeNull();
+      // Response wrapped in envelope, data is null for failed authentication
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data).toBeNull();
     });
 
     test('should return 400 with standardized error for missing access code', async () => {
@@ -217,7 +218,7 @@ describe('Standardized Error Handling Integration Tests', () => {
       expect(response.body.error).toHaveProperty('code', 'VALIDATION_ERROR');
     });
 
-    test('should return null for valid access code with no match', async () => {
+    test('should return null data for valid access code with no match', async () => {
       const response = await request(app)
         .post('/api/authenticateByAccessCode')
         .send({
@@ -226,8 +227,9 @@ describe('Standardized Error Handling Integration Tests', () => {
         })
         .expect(200);
 
-      // Mock returns null for all lookups
-      expect(response.body).toBeNull();
+      // Mock returns null for all lookups, wrapped in envelope
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data).toBeNull();
     });
   });
 
@@ -244,15 +246,16 @@ describe('Standardized Error Handling Integration Tests', () => {
       // So frontend code receives: { status: 'healthy', ... } directly
     });
 
-    test('authentication endpoint returns raw response (not wrapped for compatibility)', async () => {
+    test('authentication endpoint returns wrapped response', async () => {
       const response = await request(app).post('/api/authenticateByAccessCode').send({
         accessCode: '999999',
         loginType: 'employee',
       });
 
-      // Should be null (raw response), NOT { success: true, data: null }
-      // This is for backward compatibility with frontend null check
-      expect(response.body).toBeNull();
+      // All endpoints now use standardized envelope format
+      // Frontend HttpService auto-unwraps { success, data } envelope
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data).toBeNull();
     });
 
     test('error responses should use standardized format', async () => {

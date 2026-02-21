@@ -59,26 +59,19 @@ describe('UserRepository', () => {
       );
       expect(result).toHaveLength(2);
       expect(result[0]).toBeInstanceOf(Admin);
-      expect(result[0]).toEqual(
-        expect.objectContaining({
-          id: 'admin-1',
-          email: 'admin1@test.com',
-          lastName: 'Smith',
-          firstName: 'John',
-          phoneNumber: '555-1234',
-          role: null,
-          displayEmail: null,
-          displayPhone: null,
-          isDirector: false,
-          fullName: 'John Smith',
-          displayName: 'John Smith (Admin)',
-          isActive: true,
-          isSuperAdmin: false,
-          permissions: [],
-          lastLoginDate: null,
-          daysSinceLastLogin: null,
-        })
-      );
+      expect(result[0].toJSON()).toMatchObject({
+        id: 'admin-1',
+        email: 'admin1@test.com',
+        lastName: 'Smith',
+        firstName: 'John',
+        phone: '555-1234',
+        role: null,
+        displayEmail: null,
+        displayPhone: null,
+        isDirector: false,
+        fullName: 'John Smith',
+        displayName: 'John Smith (Admin)',
+      });
     });
 
     test('should handle empty result', async () => {
@@ -310,26 +303,19 @@ describe('UserRepository', () => {
       const result = await repository.getAdminByEmail('admin@test.com');
 
       expect(result).toBeInstanceOf(Admin);
-      expect(result).toEqual(
-        expect.objectContaining({
-          id: 'admin-1',
-          email: 'admin@test.com',
-          lastName: 'Smith',
-          firstName: 'John',
-          phoneNumber: '555-1234',
-          role: null,
-          displayEmail: null,
-          displayPhone: null,
-          isDirector: false,
-          fullName: 'John Smith',
-          displayName: 'John Smith (Admin)',
-          isActive: true,
-          isSuperAdmin: false,
-          permissions: [],
-          lastLoginDate: null,
-          daysSinceLastLogin: null,
-        })
-      );
+      expect(result.toJSON()).toMatchObject({
+        id: 'admin-1',
+        email: 'admin@test.com',
+        lastName: 'Smith',
+        firstName: 'John',
+        phone: '555-1234',
+        role: null,
+        displayEmail: null,
+        displayPhone: null,
+        isDirector: false,
+        fullName: 'John Smith',
+        displayName: 'John Smith (Admin)',
+      });
     });
 
     test('should return undefined when admin not found', async () => {

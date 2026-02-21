@@ -203,9 +203,9 @@ export class RegistrationApplicationService extends BaseService {
       );
 
       // Step 7: Persist the registration
-      const registrationDataObject = registrationEntity.toDataObject();
-      this.logger.info('📊 Registration data object before persistence:', registrationDataObject);
-      this.logger.info(`🔍 isWaitlistClass flag: ${registrationDataObject.isWaitlistClass}`);
+      const serializedRegistration = registrationEntity.toJSON();
+      this.logger.info('📊 Registration data before persistence:', serializedRegistration);
+      this.logger.info(`🔍 isWaitlistClass flag: ${serializedRegistration.isWaitlistClass}`);
 
       // Determine target trimester - caller must always provide explicit trimester
       // For admins: use their specified trimester
@@ -221,7 +221,7 @@ export class RegistrationApplicationService extends BaseService {
       this.logger.info(`🎯 Registration target trimester: ${targetTrimester}, isAdmin: ${isAdmin}`);
 
       const persistedRegistration = await this.registrationRepository.create(
-        registrationDataObject,
+        serializedRegistration,
         targetTrimester
       );
 
@@ -300,8 +300,8 @@ export class RegistrationApplicationService extends BaseService {
 
       // Get student and instructor for audit logging
       const [student, instructor] = await Promise.all([
-        this.userRepository.getStudentById(registration.studentId.value),
-        this.userRepository.getInstructorById(registration.instructorId.value),
+        this.userRepository.getStudentById(registration.studentId),
+        this.userRepository.getInstructorById(registration.instructorId),
       ]);
 
       // Audit logging
@@ -326,22 +326,20 @@ export class RegistrationApplicationService extends BaseService {
    */
   async getRegistrationDetails(registrationId) {
     try {
-      const registrationData = await this.registrationRepository.findById(registrationId);
-      if (!registrationData) {
+      const registration = await this.registrationRepository.findById(registrationId);
+      if (!registration) {
         throw new Error(`Registration not found: ${registrationId}`);
       }
 
-      const registration = Registration.fromDataObject(registrationData);
-
       // Get related entities
       const [student, instructor, groupClass] = await Promise.all([
-        this.userRepository.getStudentById(registration.studentId.value),
-        this.userRepository.getInstructorById(registration.instructorId.value),
+        this.userRepository.getStudentById(registration.studentId),
+        this.userRepository.getInstructorById(registration.instructorId),
         registration.classId ? this.programRepository.getClassById(registration.classId) : null,
       ]);
 
       return {
-        registration: registration.toDataObject(),
+        registration,
         student,
         instructor,
         groupClass,
@@ -366,14 +364,11 @@ export class RegistrationApplicationService extends BaseService {
       const registrations = await this.registrationRepository.findByStudentId(studentId);
 
       const enrichedRegistrations = await Promise.all(
-        registrations.map(async regData => {
-          const registration = Registration.fromDataObject(regData);
-          const instructor = await this.userRepository.getInstructorById(
-            registration.instructorId.value
-          );
+        registrations.map(async registration => {
+          const instructor = await this.userRepository.getInstructorById(registration.instructorId);
 
           return {
-            ...registration.toDataObject(),
+            ...registration.toJSON(),
             instructor,
             nextLessonDate: registration.getNextLessonDate(),
             canModify: registration.canBeModified(),

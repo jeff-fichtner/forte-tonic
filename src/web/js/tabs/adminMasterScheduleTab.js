@@ -66,7 +66,7 @@ export class AdminMasterScheduleTab extends BaseTab {
     const result = await response.json();
 
     // Unwrap the data from { success: true, data: {...} } envelope
-    const data = result.data || result;
+    const data = result.data;
 
     console.log('[Master Schedule] API response received:', {
       registrationsCount: data.registrations?.length,
@@ -81,7 +81,7 @@ export class AdminMasterScheduleTab extends BaseTab {
       console.log(
         '[Master Schedule] Sample API registrations:',
         sampleRegs.map(r => ({
-          id: r.id?.value || r.id,
+          id: r.id,
           classTitle: r.classTitle,
           instrument: r.instrument,
           isWaitlistClass: r.isWaitlistClass,
@@ -121,7 +121,7 @@ export class AdminMasterScheduleTab extends BaseTab {
       console.log(
         '[Master Schedule] Sample registrations:',
         sampleRegs.map(r => ({
-          id: r.id?.value || r.id,
+          id: r.id,
           classTitle: r.classTitle,
           instrument: r.instrument,
           isWaitlistClass: r.isWaitlistClass,
@@ -242,16 +242,16 @@ export class AdminMasterScheduleTab extends BaseTab {
     const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
 
     // Extract primitive values for comparison
-    const instructorIdToFind = registration.instructorId?.value || registration.instructorId;
-    const studentIdToFind = registration.studentId?.value || registration.studentId;
+    const instructorIdToFind = registration.instructorId;
+    const studentIdToFind = registration.studentId;
 
     // Find instructor and student
     const instructor = this.data.instructors.find(x => {
-      const id = x.id?.value || x.id;
+      const id = x.id;
       return id === instructorIdToFind;
     });
     const student = this.data.students.find(x => {
-      const studentId = x.id?.value || x.id;
+      const studentId = x.id;
       return studentId === studentIdToFind;
     });
 
@@ -269,10 +269,7 @@ export class AdminMasterScheduleTab extends BaseTab {
     // Build recurring cell (only in dev/staging)
     let recurringCell = '';
     if (showRecurringColumn) {
-      const hasLinkedPrevious = !!(
-        registration.linkedPreviousRegistrationId?.value ||
-        registration.linkedPreviousRegistrationId
-      );
+      const hasLinkedPrevious = !!registration.linkedPreviousRegistrationId;
 
       if (hasLinkedPrevious) {
         recurringCell = `<td style="text-align: center;">
@@ -326,7 +323,7 @@ export class AdminMasterScheduleTab extends BaseTab {
       }
     }
 
-    const registrationId = registration.id?.value || registration.id;
+    const registrationId = registration.id;
     const instrumentOrClass =
       registration.registrationType === RegistrationType.GROUP
         ? registration.classTitle || 'N/A'
@@ -388,18 +385,16 @@ export class AdminMasterScheduleTab extends BaseTab {
     if (!registrationId) return;
 
     // Find the registration by ID
-    const currentRegistration = this.data.registrations.find(
-      r => (r.id?.value || r.id) === registrationId
-    );
+    const currentRegistration = this.data.registrations.find(r => r.id === registrationId);
     if (!currentRegistration) return;
 
     if (isCopy) {
       // Get the student ID from the current registration
-      const studentIdToFind = currentRegistration.studentId?.value || currentRegistration.studentId;
+      const studentIdToFind = currentRegistration.studentId;
 
       // Find the full student object with parent emails
       const fullStudent = this.data.students.find(x => {
-        const studentId = x.id?.value || x.id;
+        const studentId = x.id;
         return studentId === studentIdToFind;
       });
 
@@ -414,7 +409,7 @@ export class AdminMasterScheduleTab extends BaseTab {
     }
 
     if (isDelete) {
-      const idToDelete = currentRegistration.id?.value || currentRegistration.id;
+      const idToDelete = currentRegistration.id;
       await this.#deleteRegistration(idToDelete);
       return;
     }
@@ -448,16 +443,14 @@ export class AdminMasterScheduleTab extends BaseTab {
     // If no filters selected for a category, show all
     const instructorMatch =
       selectedInstructors.length === 0 ||
-      selectedInstructors.includes(
-        String(registration.instructorId?.value || registration.instructorId)
-      );
+      selectedInstructors.includes(String(registration.instructorId));
 
     const dayMatch = selectedDays.length === 0 || selectedDays.includes(registration.day || '');
 
     // Get student grade for filtering
-    const studentIdToFind = registration.studentId?.value || registration.studentId;
+    const studentIdToFind = registration.studentId;
     const student = this.data.students.find(x => {
-      const studentId = x.id?.value || x.id;
+      const studentId = x.id;
       return studentId === studentIdToFind;
     });
     const studentGrade = student?.grade || '';
@@ -491,13 +484,11 @@ export class AdminMasterScheduleTab extends BaseTab {
       }
 
       // Get unique instructor IDs from registrations
-      const instructorIds = [
-        ...new Set(registrations.map(reg => reg.instructorId?.value || reg.instructorId)),
-      ];
+      const instructorIds = [...new Set(registrations.map(reg => reg.instructorId))];
 
       // Create options for each instructor
       instructorIds
-        .map(id => this.data.instructors.find(i => (i.id?.value || i.id) === id))
+        .map(id => this.data.instructors.find(i => i.id === id))
         .filter(Boolean)
         .sort((a, b) => {
           const lastNameA = a.lastName || '';
@@ -506,7 +497,7 @@ export class AdminMasterScheduleTab extends BaseTab {
         })
         .forEach(instructor => {
           const option = document.createElement('option');
-          option.value = instructor.id?.value || instructor.id;
+          option.value = instructor.id;
           option.textContent = `${instructor.firstName} ${instructor.lastName}`;
           instructorSelect.appendChild(option);
         });
@@ -566,9 +557,9 @@ export class AdminMasterScheduleTab extends BaseTab {
       }
 
       // Get unique grades from students who have registrations
-      const registeredStudentIds = registrations.map(reg => reg.studentId?.value || reg.studentId);
+      const registeredStudentIds = registrations.map(reg => reg.studentId);
       const registeredStudents = this.data.students.filter(student =>
-        registeredStudentIds.includes(student.id?.value || student.id)
+        registeredStudentIds.includes(student.id)
       );
       const uniqueGrades = [...new Set(registeredStudents.map(student => student.grade))];
       // Sort grades numerically and filter out null/undefined values
@@ -686,7 +677,7 @@ export class AdminMasterScheduleTab extends BaseTab {
 
       if (isWaitlist) {
         console.log('[Master Schedule] Filtering out waitlist registration:', {
-          id: reg.id?.value || reg.id,
+          id: reg.id,
           classTitle: reg.classTitle,
           isWaitlistClass: reg.isWaitlistClass,
           registrationType: reg.registrationType,

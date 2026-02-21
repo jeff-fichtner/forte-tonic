@@ -4,44 +4,26 @@ import { DateHelpers } from '../../utils/nativeDateTimeHelpers.js';
  * Class model - unified for both backend and frontend use
  *
  * Database fields (persisted in Classes sheet):
- * - id, instructorId, day, startTime, length, endTime, instrument, title, size, minimumGrade, maximumGrade
- *
- * Computed/business logic properties (NOT in database):
- * - roomId, description, isActive
- *   These are used for business logic but not persisted
+ * - id, instructorId, day, startTime, length, endTime, instrument, title, size, minimumGrade, maximumGrade, isRestricted
  */
 export class Class {
   /**
-   * Creates a Class instance with required fields
-   * @param {string} id - Class ID
-   * @param {string} instructorId - Instructor ID
-   * @param {string} day - Day of week
-   * @param {Date|string} startTime - Start time
-   * @param {number} length - Length in minutes
-   * @param {Date|string} endTime - End time
-   * @param {string} instrument - Instrument
-   * @param {string} title - Class title
-   * @param {object} [options={}] - Optional properties
+   * Creates a Class instance
+   * @param {object} data - Class data object
    */
-  constructor(id, instructorId, day, startTime, length, endTime, instrument, title, options = {}) {
-    // Required fields
-    this.id = id;
-    this.instructorId = instructorId;
-    this.day = day;
-    this.startTime = startTime;
-    this.length = length;
-    this.endTime = endTime;
-    this.instrument = instrument;
-    this.title = title;
-
-    // Optional properties with defaults
-    this.size = options.size || null;
-    this.minimumGrade = options.minimumGrade || null;
-    this.maximumGrade = options.maximumGrade || null;
-    this.isRestricted = options.isRestricted || null;
-    this.roomId = options.roomId || null;
-    this.description = options.description || null;
-    this.isActive = options.isActive !== false;
+  constructor(data) {
+    this.id = data.id;
+    this.instructorId = data.instructorId;
+    this.day = data.day;
+    this.startTime = data.startTime;
+    this.length = data.length;
+    this.endTime = data.endTime;
+    this.instrument = data.instrument;
+    this.title = data.title;
+    this.size = data.size || null;
+    this.minimumGrade = data.minimumGrade || null;
+    this.maximumGrade = data.maximumGrade || null;
+    this.isRestricted = data.isRestricted || null;
   }
 
   /**
@@ -76,79 +58,19 @@ export class Class {
     // Ensure length is parsed as a number (duration in minutes)
     const processedLength = parseInt(length) || 0;
 
-    return new Class(
+    return new Class({
       id,
       instructorId,
       day,
-      processedStartTime,
-      processedLength,
-      processedEndTime,
-      instrument,
-      title,
-      {
-        size,
-        minimumGrade,
-        maximumGrade,
-        isRestricted,
-        roomId: null,
-        description: null,
-        isActive: true,
-      }
-    );
-  }
-
-  /**
-   * Factory method for creating from API/web data (object with properties)
-   * @param {object} data - API data object
-   * @returns {Class} Class instance
-   */
-  static fromApiData(data) {
-    const {
-      id,
-      instructorId,
-      day,
-      startTime,
-      length,
-      endTime,
+      startTime: processedStartTime,
+      length: processedLength,
+      endTime: processedEndTime,
       instrument,
       title,
       size,
       minimumGrade,
       maximumGrade,
       isRestricted,
-      roomId,
-      description,
-      isActive,
-    } = data;
-
-    return new Class(id, instructorId, day, startTime, length, endTime, instrument, title, {
-      size,
-      minimumGrade,
-      maximumGrade,
-      isRestricted,
-      roomId,
-      description,
-      isActive,
-    });
-  }
-
-  /**
-   * Factory method for creating new classes
-   * @param {string} instructorId - Instructor ID
-   * @param {string} day - Day of week
-   * @param {Date|string} startTime - Start time
-   * @param {number} length - Length in minutes
-   * @param {Date|string} endTime - End time
-   * @param {string} instrument - Instrument
-   * @param {string} title - Class title
-   * @param {object} [options={}] - Additional options
-   * @returns {Class} New class instance
-   */
-  static create(instructorId, day, startTime, length, endTime, instrument, title, options = {}) {
-    const id = options.id || `class_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    return new Class(id, instructorId, day, startTime, length, endTime, instrument, title, {
-      ...options,
-      isActive: true,
     });
   }
 
@@ -288,50 +210,11 @@ export class Class {
   }
 
   /**
-   * Converts grade to number for comparison
-   * @param {string|number} grade - Grade to convert (0-8)
-   * @returns {number} Numeric grade value
-   */
-  gradeToNumber(grade) {
-    return Number(grade);
-  }
-
-  /**
    * Gets the time slot as a string
    * @returns {string} Time slot description
    */
   get timeSlot() {
     return `${this.day} ${this.formattedStartTime} - ${this.formattedEndTime}`;
-  }
-
-  /**
-   * Validates if the class object has required fields
-   * @returns {object} Validation result with isValid boolean and errors array
-   */
-  validate() {
-    const errors = [];
-
-    if (!this.title) errors.push('Class title is required');
-    if (!this.instructorId) errors.push('Instructor is required');
-    if (!this.day) errors.push('Day is required');
-    if (!this.startTime) errors.push('Start time is required');
-    if (!this.instrument) errors.push('Instrument is required');
-    if (!this.minimumGrade) errors.push('Minimum grade is required');
-    if (!this.maximumGrade) errors.push('Maximum grade is required');
-
-    // Validate grade range
-    if (this.minimumGrade && this.maximumGrade) {
-      const minNum = this.gradeToNumber(this.minimumGrade);
-      const maxNum = this.gradeToNumber(this.maximumGrade);
-      if (minNum > maxNum) {
-        errors.push('Minimum grade cannot be higher than maximum grade');
-      }
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-    };
   }
 
   /**
@@ -352,9 +235,6 @@ export class Class {
       minimumGrade: this.minimumGrade,
       maximumGrade: this.maximumGrade,
       isRestricted: this.isRestricted,
-      roomId: this.roomId,
-      description: this.description,
-      isActive: this.isActive,
       formattedStartTime: this.formattedStartTime,
       formattedEndTime: this.formattedEndTime,
       formattedMinimumGrade: this.formattedMinimumGrade,

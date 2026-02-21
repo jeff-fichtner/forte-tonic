@@ -329,16 +329,12 @@ describe('Server Integration Tests', () => {
       test('should test Google Sheets connection', async () => {
         const response = await request(app).post('/api/testConnection').expect(200);
 
-        let result;
-        try {
-          result = JSON.parse(JSON.parse(response.text));
-        } catch {
-          result = JSON.parse(response.text);
-        }
-        expect(result).toHaveProperty('success', true);
-        expect(result).toHaveProperty('spreadsheetTitle', 'Test Spreadsheet');
-        expect(result).toHaveProperty('availableSheets');
-        expect(Array.isArray(result.availableSheets)).toBe(true);
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('data');
+        expect(response.body.data).toHaveProperty('success', true);
+        expect(response.body.data).toHaveProperty('spreadsheetTitle', 'Test Spreadsheet');
+        expect(response.body.data).toHaveProperty('availableSheets');
+        expect(Array.isArray(response.body.data.availableSheets)).toBe(true);
       });
     });
 
@@ -349,14 +345,10 @@ describe('Server Integration Tests', () => {
           .send({ sheetName: 'Students' })
           .expect(200);
 
-        let result;
-        try {
-          result = JSON.parse(JSON.parse(response.text));
-        } catch {
-          result = JSON.parse(response.text);
-        }
-        expect(result).toHaveProperty('success', true);
-        expect(result).toHaveProperty('sheetName', 'Students');
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('data');
+        expect(response.body.data).toHaveProperty('success', true);
+        expect(response.body.data).toHaveProperty('sheetName', 'Students');
       });
     });
 
@@ -387,12 +379,9 @@ describe('Server Integration Tests', () => {
           .send({ accessCode: '123456' })
           .expect(200);
 
-        let user;
-        try {
-          user = JSON.parse(JSON.parse(response.text));
-        } catch {
-          user = JSON.parse(response.text);
-        }
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body).toHaveProperty('data');
+        const user = response.body.data;
 
         expect(user).toHaveProperty('email', 'admin@test.com');
         expect(user).toHaveProperty('admin');
@@ -413,7 +402,8 @@ describe('Server Integration Tests', () => {
           .send({ accessCode: '999999' })
           .expect(200);
 
-        expect(response.text).toBe('null');
+        expect(response.body).toHaveProperty('success', true);
+        expect(response.body.data).toBeNull();
       });
     });
   });

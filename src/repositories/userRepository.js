@@ -71,11 +71,7 @@ export class UserRepository extends BaseRepository {
    */
   async getInstructorById(id) {
     const instructors = await this.getInstructors();
-    const searchId = typeof id === 'object' && id.value ? id.value : id;
-    return instructors.find(x => {
-      const instructorId = typeof x.id === 'object' && x.id.value ? x.id.value : x.id;
-      return instructorId === searchId;
-    });
+    return instructors.find(x => x.id === id);
   }
 
   /**
@@ -125,13 +121,11 @@ export class UserRepository extends BaseRepository {
 
       const parentEmails = [parent1?.email, parent2?.email].filter(Boolean).join(', ');
 
-      // Get student data - handle both Student instances and plain objects
-      const studentData =
-        typeof student.toDataObject === 'function' ? student.toDataObject() : { ...student };
-
       // Create a new student with parent emails populated
       const enrichedStudent = new Student({
-        ...studentData,
+        ...student,
+        firstName: student._firstName,
+        lastName: student._lastName,
         parentEmails,
       });
 
@@ -159,11 +153,7 @@ export class UserRepository extends BaseRepository {
    */
   async getStudentById(id) {
     const students = await this.getStudents();
-    const searchId = typeof id === 'object' && id.value ? id.value : id;
-    return students.find(x => {
-      const studentId = typeof x.id === 'object' && x.id.value ? x.id.value : x.id;
-      return studentId === searchId;
-    });
+    return students.find(x => x.id === id);
   }
 
   /**

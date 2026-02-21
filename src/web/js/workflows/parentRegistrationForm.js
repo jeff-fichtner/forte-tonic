@@ -238,7 +238,7 @@ export class ParentRegistrationForm {
     }
 
     const selectedStudent = this.students.find(s => {
-      const studentId = s.id?.value || s.id;
+      const studentId = s.id;
       return studentId && studentId.toString() === selectedStudentId.toString();
     });
 
@@ -363,7 +363,7 @@ export class ParentRegistrationForm {
             : this.registrations;
 
           const existingRegistrations = registrationsToCheck.filter(reg => {
-            const regInstructorId = reg.instructorId?.value || reg.instructorId;
+            const regInstructorId = reg.instructorId;
             return (
               regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day)
             );
@@ -460,7 +460,7 @@ export class ParentRegistrationForm {
             : this.registrations;
 
           const existingRegistrations = registrationsToCheck.filter(reg => {
-            const regInstructorId = reg.instructorId?.value || reg.instructorId;
+            const regInstructorId = reg.instructorId;
             return (
               regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day)
             );
@@ -566,7 +566,7 @@ export class ParentRegistrationForm {
             : this.registrations;
 
           const existingRegistrations = registrationsToCheck.filter(reg => {
-            const regInstructorId = reg.instructorId?.value || reg.instructorId;
+            const regInstructorId = reg.instructorId;
             return (
               regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day)
             );
@@ -887,7 +887,7 @@ export class ParentRegistrationForm {
             : this.registrations;
 
           const existingRegistrations = registrationsToCheck.filter(reg => {
-            const regInstructorId = reg.instructorId?.value || reg.instructorId;
+            const regInstructorId = reg.instructorId;
             return (
               regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day)
             );
@@ -1089,7 +1089,7 @@ export class ParentRegistrationForm {
         : this.registrations;
 
       const existingRegistrations = registrationsToCheck.filter(reg => {
-        const regInstructorId = reg.instructorId?.value || reg.instructorId;
+        const regInstructorId = reg.instructorId;
         return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
       });
 
@@ -1153,8 +1153,7 @@ export class ParentRegistrationForm {
     }
 
     return registrations.filter(reg => {
-      const regId = typeof reg.id === 'object' ? reg.id.value : reg.id;
-      return regId !== this._selectedPreviousRegistrationId;
+      return reg.id !== this._selectedPreviousRegistrationId;
     });
   }
 
@@ -1487,7 +1486,7 @@ export class ParentRegistrationForm {
     // Get the selected student to access their grade
     const selectedStudent = this.students.find(s => {
       // Handle both plain string IDs and value objects
-      const studentId = s.id?.value || s.id;
+      const studentId = s.id;
       return studentId && studentId.toString() === selectedStudentId.toString();
     });
     const studentGrade = selectedStudent?.grade;
@@ -1618,7 +1617,7 @@ export class ParentRegistrationForm {
       : this.registrations;
 
     const currentRegistrations = registrationsToCheck.filter(reg => {
-      const regClassId = reg.classId?.value || reg.classId;
+      const regClassId = reg.classId;
       return regClassId === classId;
     });
 
@@ -2013,7 +2012,7 @@ export class ParentRegistrationForm {
         : this.registrations;
 
       const existingRegistrations = registrationsToCheck.filter(reg => {
-        const regInstructorId = reg.instructorId?.value || reg.instructorId;
+        const regInstructorId = reg.instructorId;
         return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
       });
 
@@ -2540,10 +2539,7 @@ export class ParentRegistrationForm {
     // Duplicate and time conflict checking is handled server-side by RegistrationConflictService
 
     // Get the class details for bus validation
-    const selectedClass = this.classes.find(cls => {
-      const clsId = typeof cls.id === 'object' ? cls.id.value : cls.id;
-      return clsId === classId;
-    });
+    const selectedClass = this.classes.find(cls => cls.id === classId);
 
     if (selectedClass && selectedClass.day && selectedClass.startTime && selectedClass.length) {
       // Check bus time restrictions for Late Bus transportation
@@ -3312,10 +3308,8 @@ export class ParentRegistrationForm {
     // These are registrations that were created from intent (keep/change) and can be modified once
     const studentRegistrations = selectedStudentId
       ? this.nextTrimesterRegistrations.filter(reg => {
-          const matchesStudent = (reg.studentId?.value || reg.studentId) === selectedStudentId;
-          const hasLinkedPrevious = !!(
-            reg.linkedPreviousRegistrationId?.value || reg.linkedPreviousRegistrationId
-          );
+          const matchesStudent = reg.studentId === selectedStudentId;
+          const hasLinkedPrevious = !!reg.linkedPreviousRegistrationId;
           return matchesStudent && hasLinkedPrevious;
         })
       : [];
@@ -3329,7 +3323,7 @@ export class ParentRegistrationForm {
     // Populate dropdown with existing next trimester registrations that can be modified
     studentRegistrations.forEach(registration => {
       const option = document.createElement('option');
-      option.value = registration.id?.value || registration.id;
+      option.value = registration.id;
 
       // Build descriptive label
       let label = '';
@@ -3337,11 +3331,7 @@ export class ParentRegistrationForm {
         const instrument = registration.instrument || 'Lesson';
         const day = registration.day || '';
         const time = registration.startTime || '';
-        const instructor = this.instructors.find(
-          i =>
-            (i.id?.value || i.id) ===
-            (registration.instructorId?.value || registration.instructorId)
-        );
+        const instructor = this.instructors.find(i => i.id === registration.instructorId);
         const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : '';
         label = `Modify: ${instrument} - ${day} ${time} with ${instructorName}`;
       } else if (registration.registrationType === 'group') {

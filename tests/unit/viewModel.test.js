@@ -1,6 +1,4 @@
 import { jest } from '@jest/globals';
-import { StudentId } from '../../src/utils/values/studentId.js';
-import { InstructorId } from '../../src/utils/values/instructorId.js';
 import { RegistrationType } from '../../src/utils/values/registrationType.js';
 
 // Mock the problematic imports
@@ -73,7 +71,6 @@ describe('ViewModel ID Comparison Logic', () => {
   let mockRegistrations;
 
   beforeEach(() => {
-    // Create mock data with proper value objects
     mockStudents = [
       {
         id: '12345',
@@ -112,27 +109,26 @@ describe('ViewModel ID Comparison Logic', () => {
       },
     ];
 
-    // Create mock registrations with value objects
     mockRegistrations = [
       {
         id: '131509_TEACHER1@EMAIL.COM_Monday_17:15',
-        studentId: new StudentId('12345'),
-        instructorId: new InstructorId('TEACHER1@EMAIL.COM'),
+        studentId: '12345',
+        instructorId: 'TEACHER1@EMAIL.COM',
         day: 'Monday',
         formattedStartTime: '17:15',
         length: 30,
-        registrationType: RegistrationType.INDIVIDUAL,
+        registrationType: RegistrationType.PRIVATE,
         instrument: 'Piano',
-        student: null, // Will be populated by viewModel
+        student: null,
       },
       {
         id: '131510_TEACHER2@EMAIL.COM_Tuesday_10:00',
-        studentId: new StudentId('67890'),
-        instructorId: new InstructorId('TEACHER2@EMAIL.COM'),
+        studentId: '67890',
+        instructorId: 'TEACHER2@EMAIL.COM',
         day: 'Tuesday',
         formattedStartTime: '10:00',
         length: 45,
-        registrationType: RegistrationType.INDIVIDUAL,
+        registrationType: RegistrationType.PRIVATE,
         instrument: 'Guitar',
         student: null,
       },
@@ -144,12 +140,11 @@ describe('ViewModel ID Comparison Logic', () => {
   });
 
   describe('Registration and Student/Instructor ID Matching', () => {
-    test('should find instructor and student for valid registration with value object IDs', () => {
+    test('should find instructor and student for valid registration', () => {
       const registration = mockRegistrations[0];
 
-      // This is the CORRECT way after our fix
-      const instructor = mockInstructors.find(x => x.id === registration.instructorId.value);
-      const student = mockStudents.find(x => x.id === registration.studentId.value);
+      const instructor = mockInstructors.find(x => x.id === registration.instructorId);
+      const student = mockStudents.find(x => x.id === registration.studentId);
 
       expect(instructor).toBeDefined();
       expect(student).toBeDefined();
@@ -157,35 +152,22 @@ describe('ViewModel ID Comparison Logic', () => {
       expect(student.id).toBe('12345');
     });
 
-    test('should not find instructor/student when using registration IDs without .value (the bug we fixed)', () => {
-      const registration = mockRegistrations[0];
-
-      // This is the INCORRECT way that was causing the bug
-      const instructor = mockInstructors.find(x => x.id === registration.instructorId);
-      const student = mockStudents.find(x => x.id === registration.studentId);
-
-      expect(instructor).toBeUndefined();
-      expect(student).toBeUndefined();
-    });
-
     test('should handle missing instructor gracefully', () => {
       const registrationWithMissingInstructor = {
         id: 'test_missing_instructor',
-        studentId: new StudentId('12345'),
-        instructorId: new InstructorId('MISSING_TEACHER'),
+        studentId: '12345',
+        instructorId: 'MISSING_TEACHER',
         day: 'Wednesday',
         formattedStartTime: '14:00',
         length: 30,
-        registrationType: RegistrationType.INDIVIDUAL,
+        registrationType: RegistrationType.PRIVATE,
         instrument: 'Piano',
       };
 
       const instructor = mockInstructors.find(
-        x => x.id === registrationWithMissingInstructor.instructorId.value
+        x => x.id === registrationWithMissingInstructor.instructorId
       );
-      const student = mockStudents.find(
-        x => x.id === registrationWithMissingInstructor.studentId.value
-      );
+      const student = mockStudents.find(x => x.id === registrationWithMissingInstructor.studentId);
 
       expect(instructor).toBeUndefined();
       expect(student).toBeDefined();
@@ -194,21 +176,19 @@ describe('ViewModel ID Comparison Logic', () => {
     test('should handle missing student gracefully', () => {
       const registrationWithMissingStudent = {
         id: 'test_missing_student',
-        studentId: new StudentId('99999'),
-        instructorId: new InstructorId('TEACHER1@EMAIL.COM'),
+        studentId: '99999',
+        instructorId: 'TEACHER1@EMAIL.COM',
         day: 'Wednesday',
         formattedStartTime: '14:00',
         length: 30,
-        registrationType: RegistrationType.INDIVIDUAL,
+        registrationType: RegistrationType.PRIVATE,
         instrument: 'Piano',
       };
 
       const instructor = mockInstructors.find(
-        x => x.id === registrationWithMissingStudent.instructorId.value
+        x => x.id === registrationWithMissingStudent.instructorId
       );
-      const student = mockStudents.find(
-        x => x.id === registrationWithMissingStudent.studentId.value
-      );
+      const student = mockStudents.find(x => x.id === registrationWithMissingStudent.studentId);
 
       expect(instructor).toBeDefined();
       expect(student).toBeUndefined();
@@ -216,11 +196,10 @@ describe('ViewModel ID Comparison Logic', () => {
   });
 
   describe('Student Association in Registration Mapping', () => {
-    test('should populate student property using .value from studentId (correct approach)', () => {
-      // Simulate the CORRECT mapping logic from the viewModel after our fix
+    test('should populate student property using plain string studentId', () => {
       const mappedRegistrations = mockRegistrations.map(registration => {
         if (!registration.student) {
-          registration.student = mockStudents.find(x => x.id === registration.studentId.value);
+          registration.student = mockStudents.find(x => x.id === registration.studentId);
         }
         return registration;
       });
@@ -230,82 +209,44 @@ describe('ViewModel ID Comparison Logic', () => {
       expect(mappedRegistrations[1].student).toBeDefined();
       expect(mappedRegistrations[1].student.id).toBe('67890');
     });
-
-    test('should not populate student property when using studentId without .value (the old buggy logic)', () => {
-      // Simulate the old INCORRECT logic that was causing the bug
-      const mappedRegistrations = mockRegistrations.map(registration => {
-        if (!registration.student) {
-          registration.student = mockStudents.find(x => x.id === registration.studentId);
-        }
-        return registration;
-      });
-
-      expect(mappedRegistrations[0].student).toBeUndefined();
-      expect(mappedRegistrations[1].student).toBeUndefined();
-    });
   });
 
   describe('Filtering Logic', () => {
     test('should filter registrations by student ID correctly', () => {
       const targetStudentId = '12345';
 
-      // CORRECT filtering using .value (after our fix)
-      const correctFilteredRegistrations = mockRegistrations.filter(
-        x => x.studentId.value === targetStudentId
-      );
+      const filteredRegistrations = mockRegistrations.filter(x => x.studentId === targetStudentId);
 
-      // INCORRECT filtering without .value (the bug we fixed)
-      const incorrectFilteredRegistrations = mockRegistrations.filter(
-        x => x.studentId === targetStudentId
-      );
-
-      expect(correctFilteredRegistrations).toHaveLength(1);
-      expect(correctFilteredRegistrations[0].id).toBe('131509_TEACHER1@EMAIL.COM_Monday_17:15');
-      expect(incorrectFilteredRegistrations).toHaveLength(0);
+      expect(filteredRegistrations).toHaveLength(1);
+      expect(filteredRegistrations[0].id).toBe('131509_TEACHER1@EMAIL.COM_Monday_17:15');
     });
 
     test('should filter instructors by registration correctly', () => {
       const targetInstructorId = 'TEACHER1@EMAIL.COM';
 
-      // CORRECT filtering using .value (after our fix)
       const hasRegistrations = mockRegistrations.some(
-        registration => registration.instructorId.value === targetInstructorId
-      );
-
-      // INCORRECT filtering without .value (the bug we fixed)
-      const hasRegistrationsIncorrect = mockRegistrations.some(
         registration => registration.instructorId === targetInstructorId
       );
 
       expect(hasRegistrations).toBe(true);
-      expect(hasRegistrationsIncorrect).toBe(false);
     });
   });
 
-  describe('Value Object Properties', () => {
-    test('should have StudentId and InstructorId as value objects', () => {
+  describe('Plain String ID Properties', () => {
+    test('should have plain string IDs', () => {
       const registration = mockRegistrations[0];
 
-      expect(registration.studentId).toBeInstanceOf(StudentId);
-      expect(registration.instructorId).toBeInstanceOf(InstructorId);
-      expect(registration.studentId.value).toBe('12345');
-      expect(registration.instructorId.value).toBe('TEACHER1@EMAIL.COM');
+      expect(typeof registration.studentId).toBe('string');
+      expect(typeof registration.instructorId).toBe('string');
+      expect(registration.studentId).toBe('12345');
+      expect(registration.instructorId).toBe('TEACHER1@EMAIL.COM');
     });
 
-    test('should be able to compare value objects using equals method', () => {
-      const registration = mockRegistrations[0];
-      const sameStudentId = new StudentId('12345');
-      const differentStudentId = new StudentId('67890');
-
-      expect(registration.studentId.equals(sameStudentId)).toBe(true);
-      expect(registration.studentId.equals(differentStudentId)).toBe(false);
-    });
-
-    test('should convert value objects to string properly', () => {
+    test('should compare IDs directly with ===', () => {
       const registration = mockRegistrations[0];
 
-      expect(registration.studentId.toString()).toBe('12345');
-      expect(registration.instructorId.toString()).toBe('TEACHER1@EMAIL.COM');
+      expect(registration.studentId === '12345').toBe(true);
+      expect(registration.instructorId === 'TEACHER1@EMAIL.COM').toBe(true);
     });
   });
 
@@ -313,20 +254,19 @@ describe('ViewModel ID Comparison Logic', () => {
     test('should return empty string when instructor or student not found', () => {
       const registrationWithInvalidIds = {
         id: '131509_TEACHER1@EMAIL.COM_Monday_17:15',
-        studentId: new StudentId('999999'), // Invalid student ID
-        instructorId: new InstructorId('INVALID_TEACHER'), // Invalid instructor ID
+        studentId: '999999',
+        instructorId: 'INVALID_TEACHER',
         day: 'Monday',
         formattedStartTime: '17:15',
         length: 30,
-        registrationType: RegistrationType.INDIVIDUAL,
+        registrationType: RegistrationType.PRIVATE,
         instrument: 'Piano',
       };
 
-      // Simulate the table row generation logic from viewModel
       const instructor = mockInstructors.find(
-        x => x.id === registrationWithInvalidIds.instructorId.value
+        x => x.id === registrationWithInvalidIds.instructorId
       );
-      const student = mockStudents.find(x => x.id === registrationWithInvalidIds.studentId.value);
+      const student = mockStudents.find(x => x.id === registrationWithInvalidIds.studentId);
 
       let result;
       if (!instructor || !student) {
@@ -344,9 +284,8 @@ describe('ViewModel ID Comparison Logic', () => {
     test('should generate proper table row when instructor and student are found', () => {
       const registration = mockRegistrations[0];
 
-      // Simulate the table row generation logic from viewModel
-      const instructor = mockInstructors.find(x => x.id === registration.instructorId.value);
-      const student = mockStudents.find(x => x.id === registration.studentId.value);
+      const instructor = mockInstructors.find(x => x.id === registration.instructorId);
+      const student = mockStudents.find(x => x.id === registration.studentId);
 
       let result;
       if (!instructor || !student) {
@@ -357,78 +296,6 @@ describe('ViewModel ID Comparison Logic', () => {
       }
 
       expect(result).toBe('<td>Monday</td><td>John</td><td>Alice</td>');
-    });
-  });
-
-  describe('Error Handling and Logging', () => {
-    test('should log warning when instructor or student not found', () => {
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-
-      const registrationWithInvalidIds = {
-        id: 'invalid_registration',
-        studentId: new StudentId('999999'),
-        instructorId: new InstructorId('INVALID_TEACHER'),
-        day: 'Monday',
-        formattedStartTime: '10:00',
-        length: 30,
-      };
-
-      const instructor = mockInstructors.find(
-        x => x.id === registrationWithInvalidIds.instructorId.value
-      );
-      const student = mockStudents.find(x => x.id === registrationWithInvalidIds.studentId.value);
-
-      if (!instructor || !student) {
-        console.warn(
-          `Instructor or student not found for registration: ${registrationWithInvalidIds.id}`
-        );
-      }
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Instructor or student not found for registration: invalid_registration'
-      );
-
-      consoleSpy.mockRestore();
-    });
-
-    test('should log correct registration ID in error message format', () => {
-      const originalErrorRegistrationId = '131509_TEACHER1@EMAIL.COM_Monday_17:15';
-
-      // This tests that our error message format matches the original error
-      expect(originalErrorRegistrationId).toMatch(/^\d+_[^_]+@[^_]+_[^_]+_\d+:\d+$/);
-    });
-  });
-
-  describe('Value Object vs Primitive Comparison Validation', () => {
-    test('should demonstrate the exact bug that was happening', () => {
-      const registration = mockRegistrations[0];
-
-      // The bug: comparing value object with primitive
-      expect(registration.studentId === '12345').toBe(false);
-      expect(registration.instructorId === 'TEACHER1@EMAIL.COM').toBe(false);
-
-      // The fix: accessing the .value property
-      expect(registration.studentId.value === '12345').toBe(true);
-      expect(registration.instructorId.value === 'TEACHER1@EMAIL.COM').toBe(true);
-    });
-
-    test('should verify that direct comparison with find() fails', () => {
-      const registration = mockRegistrations[0];
-
-      // This would fail (the bug)
-      const failedInstructorFind = mockInstructors.find(x => x.id === registration.instructorId);
-      const failedStudentFind = mockStudents.find(x => x.id === registration.studentId);
-
-      // This works (the fix)
-      const successfulInstructorFind = mockInstructors.find(
-        x => x.id === registration.instructorId.value
-      );
-      const successfulStudentFind = mockStudents.find(x => x.id === registration.studentId.value);
-
-      expect(failedInstructorFind).toBeUndefined();
-      expect(failedStudentFind).toBeUndefined();
-      expect(successfulInstructorFind).toBeDefined();
-      expect(successfulStudentFind).toBeDefined();
     });
   });
 });

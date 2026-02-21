@@ -6,8 +6,6 @@
  * and application services for business logic coordination.
  */
 
-import { UserTransformService } from '../services/userTransformService.js';
-import { getAuthenticatedUserEmail } from '../middleware/auth.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
 import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
 import { AppConfigurationResponse } from '../models/shared/responses/appConfigurationResponse.js';
@@ -151,9 +149,8 @@ export class UserController {
     try {
       const userRepository = serviceContainer.get('userRepository');
       const data = await userRepository.getAdmins();
-      const transformedData = UserTransformService.transformArray(data, 'admin');
 
-      successResponse(res, transformedData, {
+      successResponse(res, data, {
         req,
         startTime,
         context: { controller: 'UserController', method: 'getAdmins' },
@@ -180,8 +177,6 @@ export class UserController {
       // Force refresh to get latest data from spreadsheet
       const data = await userRepository.getInstructors();
 
-      // The data is already transformed by Instructor.fromDatabaseRow
-      // No need to transform again with UserTransformService
       successResponse(res, data, {
         req,
         startTime,
@@ -206,9 +201,8 @@ export class UserController {
     try {
       const userRepository = serviceContainer.get('userRepository');
       const data = await userRepository.getStudents();
-      const transformedData = UserTransformService.transformArray(data, 'student');
 
-      successResponse(res, transformedData, {
+      successResponse(res, data, {
         req,
         startTime,
         context: { controller: 'UserController', method: 'getStudents' },
@@ -222,143 +216,6 @@ export class UserController {
       });
     }
   }
-
-  /**
-   * Get detailed student information using application service
-   */
-  static async getStudentDetails(req, res) {
-    const startTime = Date.now();
-
-    try {
-      const { studentId } = req.params;
-      const studentApplicationService = serviceContainer.get('studentApplicationService');
-
-      const details = await studentApplicationService.getStudentDetails(studentId);
-
-      successResponse(res, details, {
-        req,
-        startTime,
-        context: {
-          controller: 'UserController',
-          method: 'getStudentDetails',
-          studentId: req.params.studentId,
-        },
-      });
-    } catch (error) {
-      logger.error('Error getting student details:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'UserController', method: 'getStudentDetails' },
-      });
-    }
-  }
-
-  /**
-   * Update student profile using application service
-   */
-  static async updateStudent(req, res) {
-    const startTime = Date.now();
-
-    try {
-      const { studentId } = req.params;
-      const updates = req.body;
-      const userId = getAuthenticatedUserEmail(req);
-
-      const studentApplicationService = serviceContainer.get('studentApplicationService');
-
-      const result = await studentApplicationService.updateStudentProfile(
-        studentId,
-        updates,
-        userId
-      );
-
-      successResponse(res, result, {
-        message: 'Student profile updated successfully',
-        req,
-        startTime,
-        context: {
-          controller: 'UserController',
-          method: 'updateStudent',
-          studentId: req.params.studentId,
-        },
-      });
-    } catch (error) {
-      logger.error('Error updating student:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'UserController', method: 'updateStudent' },
-      });
-    }
-  }
-
-  /**
-   * Enroll a new student using application service
-   */
-  static async enrollStudent(req, res) {
-    const startTime = Date.now();
-
-    try {
-      const studentData = req.body;
-      const userId = getAuthenticatedUserEmail(req);
-
-      const studentApplicationService = serviceContainer.get('studentApplicationService');
-
-      const result = await studentApplicationService.enrollStudent(studentData, userId);
-
-      successResponse(res, result, {
-        message: 'Student enrolled successfully',
-        statusCode: 201,
-        req,
-        startTime,
-        context: { controller: 'UserController', method: 'enrollStudent' },
-      });
-    } catch (error) {
-      logger.error('Error enrolling student:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'UserController', method: 'enrollStudent' },
-      });
-    }
-  }
-
-  /**
-   * Generate student progress report
-   */
-  static async getStudentProgressReport(req, res) {
-    const startTime = Date.now();
-
-    try {
-      const { studentId } = req.params;
-
-      const studentApplicationService = serviceContainer.get('studentApplicationService');
-
-      const report = await studentApplicationService.generateProgressReport(studentId);
-
-      successResponse(res, report, {
-        req,
-        startTime,
-        context: {
-          controller: 'UserController',
-          method: 'getStudentProgressReport',
-          studentId: req.params.studentId,
-        },
-      });
-    } catch (error) {
-      logger.error('Error generating progress report:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'UserController', method: 'getStudentProgressReport' },
-      });
-    }
-  }
-
-  /**
-   * Private method: Get parent emails for a student
-   */
 
   /**
    * Authenticate user by access code
@@ -414,13 +271,15 @@ export class UserController {
         }
       }
 
-      // If no match found, return null (frontend expects this)
+      // If no match found, return null data
       if (!admin && !instructor && !parent) {
         logger.info(`Authentication failed for ${loginType} login with value: ${accessCode}`);
 
-        // IMPORTANT: Return raw null (not wrapped) for backward compatibility
-        // Frontend checks: authenticatedUser !== null
-        return res.json(null);
+        return successResponse(res, null, {
+          req,
+          startTime,
+          context: { controller: 'UserController', method: 'authenticateByAccessCode' },
+        });
       }
 
       // Create AuthenticatedUserResponse with the matched user
@@ -437,8 +296,11 @@ export class UserController {
         parent: !!parent,
       });
 
-      // Return raw authenticated user (not wrapped) for backward compatibility
-      res.json(authenticatedUser);
+      successResponse(res, authenticatedUser, {
+        req,
+        startTime,
+        context: { controller: 'UserController', method: 'authenticateByAccessCode' },
+      });
     } catch (error) {
       logger.error('Error authenticating by access code:', error);
 
@@ -473,9 +335,7 @@ export class UserController {
         throw new NotFoundError('Admin not found with provided access code');
       }
 
-      const transformedData = UserTransformService.transform(admin, 'admin');
-
-      successResponse(res, transformedData, {
+      successResponse(res, admin, {
         req,
         startTime,
         context: { controller: 'UserController', method: 'getAdminByAccessCode' },
@@ -511,9 +371,7 @@ export class UserController {
         throw new NotFoundError('Instructor not found with provided access code');
       }
 
-      const transformedData = UserTransformService.transform(instructor, 'instructor');
-
-      successResponse(res, transformedData, {
+      successResponse(res, instructor, {
         req,
         startTime,
         context: { controller: 'UserController', method: 'getInstructorByAccessCode' },
@@ -549,9 +407,7 @@ export class UserController {
         throw new NotFoundError('Parent not found with provided access code');
       }
 
-      const transformedData = UserTransformService.transform(parent, 'parent');
-
-      successResponse(res, transformedData, {
+      successResponse(res, parent, {
         req,
         startTime,
         context: { controller: 'UserController', method: 'getParentByAccessCode' },
@@ -583,12 +439,9 @@ export class UserController {
         userRepository.getInstructors(),
       ]);
 
-      // Transform data for frontend
-      const transformedAdmins = UserTransformService.transformArray(admins, 'admin');
-
       const responseData = {
-        admins: transformedAdmins,
-        instructors: instructors.map(i => i.toDataObject()),
+        admins,
+        instructors,
       };
 
       successResponse(res, responseData, {
@@ -675,20 +528,12 @@ export class UserController {
         student => student.parent1Id === parentId || student.parent2Id === parentId
       );
 
-      // Extract student ID values for comparison (handle both value objects and plain strings)
-      const parentStudentIds = parentStudents.map(s => {
-        const id = s.id;
-        return typeof id === 'object' && id.value ? id.value : id;
-      });
+      const parentStudentIds = parentStudents.map(s => s.id);
 
       // Filter registrations for parent's children
-      const parentRegistrations = allRegistrations.filter(reg => {
-        const regStudentId =
-          typeof reg.studentId === 'object' && reg.studentId.value
-            ? reg.studentId.value
-            : reg.studentId;
-        return parentStudentIds.includes(regStudentId);
-      });
+      const parentRegistrations = allRegistrations.filter(reg =>
+        parentStudentIds.includes(reg.studentId)
+      );
 
       // Get unique instructor IDs from parent's registrations
       const instructorIds = [
@@ -696,27 +541,13 @@ export class UserController {
       ];
 
       // Filter instructors to only include those teaching this parent's children
-      // Need to handle both string IDs and InstructorId value objects
-      const relevantInstructors = instructors.filter(instructor => {
-        const instructorId =
-          typeof instructor.id === 'object' && instructor.id.value
-            ? instructor.id.value
-            : instructor.id;
-        return instructorIds.some(regInstructorId => {
-          const regId =
-            typeof regInstructorId === 'object' && regInstructorId.value
-              ? regInstructorId.value
-              : regInstructorId;
-          return instructorId === regId;
-        });
-      });
-
-      // Transform data for frontend
-      const transformedAdmins = UserTransformService.transformArray(admins, 'admin');
+      const relevantInstructors = instructors.filter(instructor =>
+        instructorIds.includes(instructor.id)
+      );
 
       const responseData = {
-        admins: transformedAdmins,
-        instructors: relevantInstructors.map(i => i.toDataObject()),
+        admins,
+        instructors: relevantInstructors,
       };
 
       successResponse(res, responseData, {

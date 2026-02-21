@@ -4,8 +4,6 @@
 
 import { RegistrationConflictService } from '../../../src/services/registrationConflictService.js';
 import { RegistrationType } from '../../../src/utils/values/registrationType.js';
-import { StudentId } from '../../../src/utils/values/studentId.js';
-import { InstructorId } from '../../../src/utils/values/instructorId.js';
 
 describe('RegistrationConflictService', () => {
   // ============================================================
@@ -24,8 +22,8 @@ describe('RegistrationConflictService', () => {
 
         const existingRegistrations = [
           {
-            studentId: new StudentId('student-123'),
-            instructorId: new InstructorId('instructor-456'),
+            studentId: 'student-123',
+            instructorId: 'instructor-456',
             day: 'Monday',
             startTime: '14:00',
           },
@@ -51,8 +49,8 @@ describe('RegistrationConflictService', () => {
 
         const existingRegistrations = [
           {
-            studentId: new StudentId('student-123'),
-            instructorId: new InstructorId('instructor-456'),
+            studentId: 'student-123',
+            instructorId: 'instructor-456',
             day: 'Monday',
             startTime: '15:00', // Different time
           },
@@ -77,8 +75,8 @@ describe('RegistrationConflictService', () => {
 
         const existingRegistrations = [
           {
-            studentId: new StudentId('student-123'),
-            instructorId: new InstructorId('instructor-999'), // Different instructor
+            studentId: 'student-123',
+            instructorId: 'instructor-999', // Different instructor
             day: 'Monday',
             startTime: '14:00',
           },
@@ -103,8 +101,8 @@ describe('RegistrationConflictService', () => {
 
         const existingRegistrations = [
           {
-            studentId: new StudentId('student-999'), // Different student
-            instructorId: new InstructorId('instructor-456'),
+            studentId: 'student-999', // Different student
+            instructorId: 'instructor-456',
             day: 'Monday',
             startTime: '14:00',
           },
@@ -129,8 +127,8 @@ describe('RegistrationConflictService', () => {
 
         const existingRegistrations = [
           {
-            studentId: new StudentId('student-123'),
-            instructorId: new InstructorId('instructor-456'),
+            studentId: 'student-123',
+            instructorId: 'instructor-456',
             day: 'Tuesday', // Different day
             startTime: '14:00',
           },
@@ -155,7 +153,7 @@ describe('RegistrationConflictService', () => {
 
         const existingRegistrations = [
           {
-            studentId: new StudentId('student-123'),
+            studentId: 'student-123',
             classId: 'class-789',
           },
         ];
@@ -178,7 +176,7 @@ describe('RegistrationConflictService', () => {
 
         const existingRegistrations = [
           {
-            studentId: new StudentId('student-123'),
+            studentId: 'student-123',
             classId: 'class-999', // Different class
           },
         ];
@@ -200,7 +198,7 @@ describe('RegistrationConflictService', () => {
 
         const existingRegistrations = [
           {
-            studentId: new StudentId('student-999'), // Different student
+            studentId: 'student-999', // Different student
             classId: 'class-789',
           },
         ];
@@ -253,8 +251,8 @@ describe('RegistrationConflictService', () => {
 
         const existingRegistrations = [
           {
-            studentId: new StudentId('student-123'),
-            instructorId: new InstructorId('instructor-456'),
+            studentId: 'student-123',
+            instructorId: 'instructor-456',
             day: 'Monday',
             startTime: '14:00',
           },
@@ -285,7 +283,7 @@ describe('RegistrationConflictService', () => {
 
       const existingRegistrations = [
         {
-          studentId: new StudentId('student-123'),
+          studentId: 'student-123',
           day: 'Monday',
           startTime: '14:15', // Overlaps with 14:00-14:30
           length: 30,
@@ -311,7 +309,7 @@ describe('RegistrationConflictService', () => {
 
       const existingRegistrations = [
         {
-          studentId: new StudentId('student-123'),
+          studentId: 'student-123',
           day: 'Monday',
           startTime: '14:30', // Starts exactly when new one ends
           length: 30,
@@ -336,7 +334,7 @@ describe('RegistrationConflictService', () => {
 
       const existingRegistrations = [
         {
-          studentId: new StudentId('student-123'),
+          studentId: 'student-123',
           day: 'Monday',
           startTime: '15:00', // Well after 14:00-14:30
           length: 30,
@@ -361,7 +359,7 @@ describe('RegistrationConflictService', () => {
 
       const existingRegistrations = [
         {
-          studentId: new StudentId('student-123'),
+          studentId: 'student-123',
           day: 'Tuesday', // Different day
           startTime: '14:00',
           length: 30,
@@ -386,7 +384,7 @@ describe('RegistrationConflictService', () => {
 
       const existingRegistrations = [
         {
-          studentId: new StudentId('student-999'), // Different student
+          studentId: 'student-999', // Different student
           day: 'Monday',
           startTime: '14:00',
           length: 30,
@@ -411,7 +409,7 @@ describe('RegistrationConflictService', () => {
 
       const existingRegistrations = [
         {
-          studentId: new StudentId('student-123'),
+          studentId: 'student-123',
           day: 'Monday',
           startTime: '14:00',
           length: 60, // 14:00-15:00 contains the new lesson
@@ -437,7 +435,7 @@ describe('RegistrationConflictService', () => {
 
       const existingRegistrations = [
         {
-          studentId: new StudentId('student-123'),
+          studentId: 'student-123',
           day: 'Monday',
           startTime: '14:15',
           length: 15, // 14:15-14:30 is contained within new
@@ -468,7 +466,7 @@ describe('RegistrationConflictService', () => {
 
       const existingRegistrations = [
         {
-          instructorId: new InstructorId('instructor-456'),
+          instructorId: 'instructor-456',
           day: 'Monday',
           startTime: '14:15', // Overlaps
           length: 30,
@@ -494,7 +492,7 @@ describe('RegistrationConflictService', () => {
 
       const existingRegistrations = [
         {
-          instructorId: new InstructorId('instructor-456'),
+          instructorId: 'instructor-456',
           day: 'Monday',
           startTime: '14:30', // Starts exactly when new one ends
           length: 30,
@@ -519,7 +517,7 @@ describe('RegistrationConflictService', () => {
 
       const existingRegistrations = [
         {
-          instructorId: new InstructorId('instructor-456'),
+          instructorId: 'instructor-456',
           day: 'Monday',
           startTime: '15:00',
           length: 30,
@@ -544,7 +542,7 @@ describe('RegistrationConflictService', () => {
 
       const existingRegistrations = [
         {
-          instructorId: new InstructorId('instructor-456'),
+          instructorId: 'instructor-456',
           day: 'Tuesday', // Different day
           startTime: '14:00',
           length: 30,
@@ -569,7 +567,7 @@ describe('RegistrationConflictService', () => {
 
       const existingRegistrations = [
         {
-          instructorId: new InstructorId('instructor-999'), // Different instructor
+          instructorId: 'instructor-999', // Different instructor
           day: 'Monday',
           startTime: '14:00',
           length: 30,
@@ -841,8 +839,8 @@ describe('RegistrationConflictService', () => {
 
         const existingRegistrations = [
           {
-            studentId: new StudentId('student-999'), // Different student
-            instructorId: new InstructorId('instructor-456'), // Same instructor
+            studentId: 'student-999', // Different student
+            instructorId: 'instructor-456', // Same instructor
             day: 'Monday',
             startTime: '14:00', // Same time
             length: 30,
@@ -871,8 +869,8 @@ describe('RegistrationConflictService', () => {
 
         const existingRegistrations = [
           {
-            studentId: new StudentId('student-123'), // Same student
-            instructorId: new InstructorId('instructor-999'), // Different instructor
+            studentId: 'student-123', // Same student
+            instructorId: 'instructor-999', // Different instructor
             day: 'Monday',
             startTime: '14:00', // Same time
             length: 30,
@@ -901,8 +899,8 @@ describe('RegistrationConflictService', () => {
 
         const existingRegistrations = [
           {
-            studentId: new StudentId('student-123'),
-            instructorId: new InstructorId('instructor-456'),
+            studentId: 'student-123',
+            instructorId: 'instructor-456',
             day: 'Monday',
             startTime: '14:00',
             length: 30,
@@ -932,8 +930,8 @@ describe('RegistrationConflictService', () => {
 
         const existingRegistrations = [
           {
-            studentId: new StudentId('student-999'),
-            instructorId: new InstructorId('instructor-999'),
+            studentId: 'student-999',
+            instructorId: 'instructor-999',
             day: 'Tuesday',
             startTime: '10:00',
             length: 30,
@@ -960,7 +958,7 @@ describe('RegistrationConflictService', () => {
 
         const existingRegistrations = [
           {
-            studentId: new StudentId('student-123'),
+            studentId: 'student-123',
             classId: 'class-789',
           },
         ];
@@ -1037,8 +1035,8 @@ describe('RegistrationConflictService', () => {
         // Group registrations now check student schedule conflicts
         const existingRegistrations = [
           {
-            studentId: new StudentId('student-123'),
-            instructorId: new InstructorId('instructor-456'),
+            studentId: 'student-123',
+            instructorId: 'instructor-456',
             day: 'Monday',
             startTime: '14:00',
             length: 30,
@@ -1090,8 +1088,8 @@ describe('RegistrationConflictService', () => {
 
         const existingRegistrations = [
           {
-            studentId: new StudentId('student-123'),
-            instructorId: new InstructorId('instructor-456'),
+            studentId: 'student-123',
+            instructorId: 'instructor-456',
             day: 'Monday',
             startTime: '14:00',
             length: undefined,

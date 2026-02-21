@@ -12,7 +12,6 @@
 // Import Jest testing utilities instead of Vitest
 import { jest } from '@jest/globals';
 import { RegistrationRepository } from '../../../src/repositories/registrationRepository.js';
-import { RegistrationId } from '../../../src/utils/values/registrationId.js';
 
 describe('RegistrationRepository - Delete Functionality', () => {
   let repository;
@@ -68,7 +67,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
   describe('delete method', () => {
     const testRegistrationId = 'da8ca6c8-7626-40c3-9173-319f15effaea';
     const mockRegistration = {
-      id: new RegistrationId(testRegistrationId),
+      id: testRegistrationId,
       studentId: 'student-id',
       instructorId: 'instructor-id',
       day: 'Monday',
@@ -104,7 +103,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
       expect(result).toBe(true);
 
       // Verify getById was called to check existence
-      expect(repository.getById).toHaveBeenCalledWith(expect.any(RegistrationId));
+      expect(repository.getById).toHaveBeenCalledWith(testRegistrationId);
 
       // Verify deleteRecord was called with correct parameters
       expect(mockDbClient.deleteRecord).toHaveBeenCalledWith(
@@ -121,16 +120,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
 
       await repository.delete(testRegistrationId, 'test-user-id');
 
-      expect(repository.getById).toHaveBeenCalledWith(expect.any(RegistrationId));
-    });
-
-    test('should handle RegistrationId object parameter', async () => {
-      const registrationIdObj = new RegistrationId(testRegistrationId);
-      repository.getById = jest.fn().mockResolvedValue(mockRegistration);
-
-      await repository.delete(registrationIdObj, 'test-user-id');
-
-      expect(repository.getById).toHaveBeenCalledWith(registrationIdObj);
+      expect(repository.getById).toHaveBeenCalledWith(testRegistrationId);
     });
 
     test('should throw error if registration does not exist', async () => {
@@ -211,7 +201,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
 
       // Mock a realistic scenario
       repository.getById = jest.fn().mockResolvedValue({
-        id: new RegistrationId(testId),
+        id: testId,
         studentId: 'student-123',
         instructorId: 'instructor-456',
       });
@@ -328,14 +318,13 @@ describe('RegistrationRepository - Delete Functionality', () => {
         createdBy: 'test-user@example.com',
       };
 
-      mockDbClient.appendRecordv2 = jest.fn().mockResolvedValue(true);
+      mockDbClient.appendRecord = jest.fn().mockResolvedValue(true);
 
       const result = await repository.createInTable('registrations_winter', registrationData);
 
       expect(result).toBeDefined();
-      // studentId is wrapped in value object, check the value property
-      expect(result.studentId.value || result.studentId).toBe('student-1');
-      expect(mockDbClient.appendRecordv2).toHaveBeenCalledWith(
+      expect(result.studentId).toBe('student-1');
+      expect(mockDbClient.appendRecord).toHaveBeenCalledWith(
         'registrations_winter',
         expect.any(Object),
         'test-user@example.com'
@@ -369,16 +358,14 @@ describe('RegistrationRepository - Delete Functionality', () => {
         createdBy: 'test-user@example.com',
       };
 
-      mockDbClient.appendRecordv2 = jest.fn().mockResolvedValue(true);
+      mockDbClient.appendRecord = jest.fn().mockResolvedValue(true);
       repository.clearCache = jest.fn();
 
       const result = await repository.createInTable('registrations_spring', registrationData);
 
       expect(result.id).toBeDefined();
-      // ID can be either a string or value object
-      const idValue = result.id.value || result.id;
-      expect(typeof idValue).toBe('string');
-      expect(idValue).toMatch(/^[0-9a-f-]{36}$/); // UUID format
+      expect(typeof result.id).toBe('string');
+      expect(result.id).toMatch(/^[0-9a-f-]{36}$/); // UUID format
     });
 
     test('should accept linkedPreviousRegistrationId without error', async () => {
@@ -393,7 +380,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
         createdBy: 'test-user@example.com',
       };
 
-      mockDbClient.appendRecordv2 = jest.fn().mockResolvedValue(true);
+      mockDbClient.appendRecord = jest.fn().mockResolvedValue(true);
       repository.clearCache = jest.fn();
 
       const result = await repository.createInTable('registrations_fall', registrationData);

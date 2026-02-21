@@ -37,7 +37,7 @@ export class EmployeeDirectoryTab extends BaseTab {
     const result = await response.json();
 
     // Unwrap the data from { success: true, data: {...} } envelope
-    const data = result.data || result;
+    const data = result.data;
 
     // Validate response
     if (!data.admins || !data.instructors) {
@@ -144,7 +144,7 @@ export class EmployeeDirectoryTab extends BaseTab {
       id: admin.id,
       fullName: admin.fullName,
       email: admin.email,
-      phone: formatPhone(admin.phoneNumber),
+      phone: formatPhone(admin.phone),
       roles: admin.role ? [admin.role] : [],
     }));
   }
@@ -159,7 +159,7 @@ export class EmployeeDirectoryTab extends BaseTab {
     const instruments = instructor.specialties || [];
     const instrumentsText = instruments.length > 0 ? instruments.join(', ') : 'Instructor';
 
-    const rawPhone = instructor.phoneNumber || instructor.phone || '';
+    const rawPhone = instructor.phone || '';
     const formattedPhone = rawPhone && !obscurePhone ? formatPhone(rawPhone) : '';
 
     return {

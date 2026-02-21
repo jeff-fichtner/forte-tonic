@@ -153,7 +153,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     }
 
     const result = await response.json();
-    const data = result.data || result;
+    const data = result.data;
 
     // Validate response
     if (!data.registrations || !data.students || !data.instructors || !data.classes) {
@@ -170,7 +170,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
   #mergeUnique(array, idField) {
     const seen = new Set();
     return array.filter(item => {
-      const id = item[idField]?.value || item[idField];
+      const id = item[idField];
       if (seen.has(id)) {
         return false;
       }
@@ -232,10 +232,10 @@ export class ParentWeeklyScheduleTab extends BaseTab {
 
     // Separate regular registrations from wait list (Rock Band)
     const regularRegistrations = registrations.filter(
-      reg => !rockBandClassIds.includes(reg.classId?.value || reg.classId)
+      reg => !rockBandClassIds.includes(reg.classId)
     );
     const waitListRegistrations = registrations.filter(reg =>
-      rockBandClassIds.includes(reg.classId?.value || reg.classId)
+      rockBandClassIds.includes(reg.classId)
     );
 
     // Render regular schedule section using trimesterData directly
@@ -281,9 +281,9 @@ export class ParentWeeklyScheduleTab extends BaseTab {
 
     // Get parent's students from this trimester's data who have registrations
     const studentsWithRegistrations = trimesterData.students.filter(student => {
-      const studentId = student.id?.value || student.id;
+      const studentId = student.id;
       return registrations.some(reg => {
-        const regStudentId = reg.studentId?.value || reg.studentId;
+        const regStudentId = reg.studentId;
         return regStudentId === studentId;
       });
     });
@@ -297,7 +297,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
 
     // Create a table for each student
     studentsWithRegistrations.forEach(student => {
-      const studentId = student.id?.value || student.id;
+      const studentId = student.id;
 
       // Create a container for each student's table with padding
       const studentContainer = document.createElement('div');
@@ -320,7 +320,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
 
       // Filter and sort registrations for this student
       const studentRegistrations = registrations.filter(reg => {
-        const regStudentId = reg.studentId?.value || reg.studentId;
+        const regStudentId = reg.studentId;
         return regStudentId === studentId;
       });
       const sortedRegistrations = this.#sortRegistrations(studentRegistrations);
@@ -436,16 +436,16 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    */
   #buildScheduleTableRow(enrollment, trimesterData) {
     // Find instructor and student from trimesterData
-    const instructorId = enrollment.instructorId?.value || enrollment.instructorId;
-    const studentId = enrollment.studentId?.value || enrollment.studentId;
+    const instructorId = enrollment.instructorId;
+    const studentId = enrollment.studentId;
 
-    const instructor = trimesterData.instructors.find(i => (i.id?.value || i.id) === instructorId);
-    const student = trimesterData.students.find(s => (s.id?.value || s.id) === studentId);
+    const instructor = trimesterData.instructors.find(i => i.id === instructorId);
+    const student = trimesterData.students.find(s => s.id === studentId);
 
     // Handle orphaned enrollments (student or instructor deleted but enrollment remains)
     const isOrphaned = !instructor || !student;
     if (isOrphaned) {
-      console.warn(`Orphaned enrollment: ${enrollment.id?.value || enrollment.id}`, {
+      console.warn(`Orphaned enrollment: ${enrollment.id}`, {
         studentId,
         instructorId,
         studentFound: !!student,
@@ -465,7 +465,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
 
     let intentCell = '';
     if (isIntentPeriod) {
-      const enrollmentId = enrollment.id?.value || enrollment.id;
+      const enrollmentId = enrollment.id;
       const intentValue = enrollment.reenrollmentIntent;
 
       // Show dropdown for selecting intent
@@ -509,7 +509,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       <td style="${rowStyle}">${instrumentOrClass}</td>
       ${intentCell}
       <td style="${rowStyle}">
-        <button type="button" class="btn-flat" style="padding: 0; min-width: 0; background: none; border: none; cursor: pointer;" data-registration-id="${enrollment.id?.value || enrollment.id}" ${isOrphaned ? 'disabled' : ''}>
+        <button type="button" class="btn-flat" style="padding: 0; min-width: 0; background: none; border: none; cursor: pointer;" data-registration-id="${enrollment.id}" ${isOrphaned ? 'disabled' : ''}>
           <i class="material-icons copy-emails-table-icon ${isOrphaned ? 'grey-text' : 'gray-text text-darken-4'}">email</i>
         </button>
       </td>
@@ -522,14 +522,11 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    */
   #buildWaitListTableRow(enrollment, trimesterData) {
     // Find student from trimesterData
-    const studentId = enrollment.studentId?.value || enrollment.studentId;
-    const student = trimesterData.students.find(s => (s.id?.value || s.id) === studentId);
+    const studentId = enrollment.studentId;
+    const student = trimesterData.students.find(s => s.id === studentId);
 
     if (!student) {
-      console.warn(
-        `Student not found for wait list enrollment: ${enrollment.id?.value || enrollment.id}`,
-        { studentId }
-      );
+      console.warn(`Student not found for wait list enrollment: ${enrollment.id}`, { studentId });
     }
 
     const studentName = student
@@ -566,21 +563,20 @@ export class ParentWeeklyScheduleTab extends BaseTab {
 
     // Find the enrollment by ID - search in both current and next trimester data
     let currentEnrollment = this.data.currentTrimester.data.registrations.find(
-      e => (e.id?.value || e.id) === registrationId
+      e => e.id === registrationId
     );
 
     // If not found in current trimester, check next trimester (if it exists)
     if (!currentEnrollment && this.data.nextTrimester) {
       currentEnrollment = this.data.nextTrimester.data.registrations.find(
-        e => (e.id?.value || e.id) === registrationId
+        e => e.id === registrationId
       );
     }
 
     if (!currentEnrollment) return;
 
     // For parent view: show instructor emails
-    const instructorIdToFind =
-      currentEnrollment.instructorId?.value || currentEnrollment.instructorId;
+    const instructorIdToFind = currentEnrollment.instructorId;
     const instructor = this.findInstructor(instructorIdToFind);
 
     if (instructor && instructor.email && instructor.email.trim()) {

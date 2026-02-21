@@ -112,8 +112,11 @@ export class SystemController {
 
       logger.info('Connection test result:', testResult);
 
-      // Return raw data for backward compatibility
-      res.json(testResult);
+      successResponse(res, testResult, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'testConnection' },
+      });
     } catch (error) {
       logger.error('Error testing Google Sheets connection:', error);
       errorResponse(res, error, {
@@ -158,8 +161,11 @@ export class SystemController {
 
       logger.info('Sheet data test result:', testResult);
 
-      // Return raw data for backward compatibility
-      res.json(testResult);
+      successResponse(res, testResult, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'testSheetData' },
+      });
     } catch (error) {
       logger.error('Error testing sheet data retrieval:', error);
       errorResponse(res, error, {
@@ -204,14 +210,18 @@ export class SystemController {
       const adminName = validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName;
       logger.info(`🧹 All caches cleared by admin: ${adminName}`);
 
-      const cacheData = {
-        success: true,
-        message: 'All caches cleared successfully',
-        clearedBy: adminName,
-      };
-
-      // Return raw data for backward compatibility
-      res.json(cacheData);
+      successResponse(
+        res,
+        {
+          message: 'All caches cleared successfully',
+          clearedBy: adminName,
+        },
+        {
+          req,
+          startTime,
+          context: { controller: 'SystemController', method: 'clearCache' },
+        }
+      );
     } catch (error) {
       logger.error('Error clearing cache:', error);
       errorResponse(res, error, {
@@ -231,13 +241,11 @@ export class SystemController {
     try {
       const appConfig = configService.getApplicationConfig();
 
-      const configData = {
-        success: true,
-        config: appConfig,
-      };
-
-      // Return raw data for backward compatibility
-      res.json(configData);
+      successResponse(res, appConfig, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'getApplicationConfig' },
+      });
     } catch (error) {
       logger.error('Error getting application config:', error);
       errorResponse(res, error, {

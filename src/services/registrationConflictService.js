@@ -9,16 +9,6 @@ import { DateHelpers } from '../utils/nativeDateTimeHelpers.js';
 
 const logger = getLogger();
 
-/**
- * Extracts string value from a value object or plain value.
- * Handles InstructorId, StudentId, and other value objects that have a .value property.
- */
-function extractValue(val) {
-  if (val === null || val === undefined) return val;
-  if (typeof val === 'object' && val.value !== undefined) return val.value;
-  return val;
-}
-
 export class RegistrationConflictService {
   /**
    * Checks for registration conflicts
@@ -34,8 +24,8 @@ export class RegistrationConflictService {
 
     logger.info('========== CONFLICT CHECK START ==========');
     logger.info('New registration:', {
-      studentId: extractValue(newRegistration.studentId),
-      instructorId: extractValue(newRegistration.instructorId),
+      studentId: newRegistration.studentId,
+      instructorId: newRegistration.instructorId,
       day: newRegistration.day,
       startTime: newRegistration.startTime,
       length: newRegistration.length,
@@ -120,16 +110,16 @@ export class RegistrationConflictService {
   static checkDuplicateRegistration(newRegistration, existingRegistrations) {
     logger.info('--- Checking for DUPLICATE registration ---');
 
-    const newStudentId = extractValue(newRegistration.studentId);
-    const newInstructorId = extractValue(newRegistration.instructorId);
+    const newStudentId = newRegistration.studentId;
+    const newInstructorId = newRegistration.instructorId;
 
     logger.info(
       `New reg: studentId=${newStudentId}, instructorId=${newInstructorId}, day=${newRegistration.day}, startTime=${newRegistration.startTime}, classId=${newRegistration.classId}`
     );
 
     const existing = existingRegistrations.find((reg, index) => {
-      const regStudentId = extractValue(reg.studentId);
-      const regInstructorId = extractValue(reg.instructorId);
+      const regStudentId = reg.studentId;
+      const regInstructorId = reg.instructorId;
 
       if (newRegistration.registrationType === RegistrationType.GROUP) {
         // Group: classId + studentId
@@ -163,7 +153,7 @@ export class RegistrationConflictService {
     });
 
     if (existing) {
-      logger.info(`DUPLICATE FOUND: existingId=${extractValue(existing.id)}`);
+      logger.info(`DUPLICATE FOUND: existingId=${existing.id}`);
       return {
         type: 'duplicate',
         message: 'Student is already registered for this class/lesson',
@@ -210,13 +200,13 @@ export class RegistrationConflictService {
   static checkStudentScheduleConflict(newRegistration, existingRegistrations) {
     logger.info('--- Checking for STUDENT SCHEDULE conflict ---');
 
-    const newStudentId = extractValue(newRegistration.studentId);
+    const newStudentId = newRegistration.studentId;
     logger.info(
       `New reg: studentId=${newStudentId}, day=${newRegistration.day}, startTime=${newRegistration.startTime}, length=${newRegistration.length}`
     );
 
     const conflict = existingRegistrations.find((reg, index) => {
-      const regStudentId = extractValue(reg.studentId);
+      const regStudentId = reg.studentId;
       const studentMatch = regStudentId === newStudentId;
       const dayMatch = reg.day === newRegistration.day;
 
@@ -237,7 +227,7 @@ export class RegistrationConflictService {
     });
 
     if (conflict) {
-      logger.info(`STUDENT SCHEDULE CONFLICT FOUND: conflictingId=${extractValue(conflict.id)}`);
+      logger.info(`STUDENT SCHEDULE CONFLICT FOUND: conflictingId=${conflict.id}`);
       return {
         type: 'student_schedule',
         message: `Student has conflicting lesson on ${conflict.day} at ${DateHelpers.convertTo12HourFormat(conflict.startTime)}`,
@@ -258,13 +248,13 @@ export class RegistrationConflictService {
   static checkInstructorScheduleConflict(newRegistration, existingRegistrations) {
     logger.info('--- Checking for INSTRUCTOR SCHEDULE conflict ---');
 
-    const newInstructorId = extractValue(newRegistration.instructorId);
+    const newInstructorId = newRegistration.instructorId;
     logger.info(
       `New reg: instructorId=${newInstructorId}, day=${newRegistration.day}, startTime=${newRegistration.startTime}, length=${newRegistration.length}`
     );
 
     const conflict = existingRegistrations.find((reg, index) => {
-      const regInstructorId = extractValue(reg.instructorId);
+      const regInstructorId = reg.instructorId;
       const instructorMatch = regInstructorId === newInstructorId;
       const dayMatch = reg.day === newRegistration.day;
 
@@ -285,7 +275,7 @@ export class RegistrationConflictService {
     });
 
     if (conflict) {
-      logger.info(`INSTRUCTOR SCHEDULE CONFLICT FOUND: conflictingId=${extractValue(conflict.id)}`);
+      logger.info(`INSTRUCTOR SCHEDULE CONFLICT FOUND: conflictingId=${conflict.id}`);
       return {
         type: 'instructor_schedule',
         message: `Instructor has conflicting lesson on ${conflict.day} at ${DateHelpers.convertTo12HourFormat(conflict.startTime)}`,

@@ -199,205 +199,6 @@ export class RegistrationController {
   }
 
   /**
-   * Update registration using application service
-   */
-  static async updateRegistration(req, res) {
-    const startTime = Date.now();
-
-    try {
-      const { registrationId } = req.params;
-      const updates = req.body;
-      const userId = getAuthenticatedUserEmail(req);
-
-      const registrationApplicationService = serviceContainer.get('registrationApplicationService');
-
-      const result = await registrationApplicationService.updateRegistration(
-        registrationId,
-        updates,
-        userId
-      );
-
-      successResponse(res, result, {
-        message: 'Registration updated successfully',
-        req,
-        startTime,
-        context: { controller: 'RegistrationController', method: 'updateRegistration' },
-      });
-    } catch (error) {
-      logger.error('Error updating registration:', {
-        error: error.message,
-        stack: error.stack,
-        registrationId: req.params?.registrationId,
-        updates: req.body,
-      });
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: {
-          controller: 'RegistrationController',
-          method: 'updateRegistration',
-          registrationId: req.params?.registrationId,
-        },
-        includeRequestData: true,
-      });
-    }
-  }
-
-  /**
-   * Cancel registration using application service
-   */
-  static async cancelRegistration(req, res) {
-    const startTime = Date.now();
-
-    try {
-      const { registrationId } = req.params;
-      const { reason } = req.body;
-
-      // Get the authenticated user's email for audit purposes
-      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
-
-      logger.info('🎯 Registration cancellation request received:', {
-        registrationId,
-        reason,
-        authenticatedUser: authenticatedUserEmail,
-      });
-
-      const registrationApplicationService = serviceContainer.get('registrationApplicationService');
-
-      const result = await registrationApplicationService.cancelRegistration(
-        registrationId,
-        reason,
-        authenticatedUserEmail
-      );
-
-      successResponse(res, result, {
-        message: 'Registration cancelled successfully',
-        req,
-        startTime,
-        context: { controller: 'RegistrationController', method: 'cancelRegistration' },
-      });
-    } catch (error) {
-      logger.error('Error cancelling registration:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'RegistrationController', method: 'cancelRegistration' },
-      });
-    }
-  }
-
-  /**
-   * Validate registration for conflicts and eligibility
-   */
-  static async validateRegistration(req, res) {
-    const startTime = Date.now();
-
-    try {
-      const registrationData = req.body;
-
-      const registrationApplicationService = serviceContainer.get('registrationApplicationService');
-
-      const validation =
-        await registrationApplicationService.validateRegistration(registrationData);
-
-      successResponse(res, validation, {
-        req,
-        startTime,
-        context: { controller: 'RegistrationController', method: 'validateRegistration' },
-      });
-    } catch (error) {
-      logger.error('Error validating registration:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'RegistrationController', method: 'validateRegistration' },
-      });
-    }
-  }
-
-  /**
-   * Get registration conflicts for a student
-   */
-  static async getRegistrationConflicts(req, res) {
-    const startTime = Date.now();
-
-    try {
-      const { studentId } = req.params;
-
-      const registrationApplicationService = serviceContainer.get('registrationApplicationService');
-
-      const conflicts = await registrationApplicationService.getStudentConflicts(studentId);
-
-      successResponse(res, conflicts, {
-        req,
-        startTime,
-        context: {
-          controller: 'RegistrationController',
-          method: 'getRegistrationConflicts',
-          studentId: req.params.studentId,
-        },
-      });
-    } catch (error) {
-      logger.error('Error getting registration conflicts:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'RegistrationController', method: 'getRegistrationConflicts' },
-      });
-    }
-  }
-
-  /**
-   * Register student (legacy endpoint for backward compatibility)
-   */
-  static async register(req, res) {
-    const startTime = Date.now();
-
-    try {
-      const { studentId, classId, instructorId, registrationType } = req.body;
-
-      // Get the authenticated user's email for audit purposes
-      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
-
-      if (!studentId || !registrationType) {
-        throw new ValidationError('Missing required fields');
-      }
-
-      const registrationData = {
-        studentId,
-        classId,
-        instructorId,
-        registrationType,
-        schoolYear: '2025-2026',
-        trimester: 'Fall',
-      };
-
-      const registrationApplicationService = serviceContainer.get('registrationApplicationService');
-      const isAdmin = req.currentUser?.admin !== undefined;
-      const result = await registrationApplicationService.processRegistration(
-        registrationData,
-        authenticatedUserEmail,
-        { isAdmin }
-      );
-
-      successResponse(res, result.registration, {
-        message: 'Registration created successfully',
-        statusCode: 201,
-        req,
-        startTime,
-        context: { controller: 'RegistrationController', method: 'register (legacy)', studentId },
-      });
-    } catch (error) {
-      logger.error('Error registering student:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'RegistrationController', method: 'register (legacy)' },
-      });
-    }
-  }
-
-  /**
    * Delete registration (REST DELETE endpoint)
    */
   static async deleteRegistration(req, res) {
@@ -662,7 +463,7 @@ export class RegistrationController {
         const currentTable = await periodService.getCurrentTrimesterTable();
         const currentRegistrations = await registrationRepository.getFromTable(currentTable);
         const hasActiveRegistrations = currentRegistrations.some(
-          reg => (reg.studentId?.value || reg.studentId) === requestData.studentId
+          reg => reg.studentId === requestData.studentId
         );
 
         const canAccess = await periodService.canAccessNextTrimester(hasActiveRegistrations);
@@ -682,9 +483,7 @@ export class RegistrationController {
         { isAdmin }
       );
 
-      logger.info(
-        `✅ Created next trimester registration: ${result.registration.id?.value || result.registration.id}`
-      );
+      logger.info(`✅ Created next trimester registration: ${result.registration.id}`);
 
       successResponse(res, result.registration, {
         message: 'Next trimester registration created successfully',
@@ -933,26 +732,24 @@ export class RegistrationController {
 
       // Filter registrations to only include Rock Band classes (wait list)
       const waitListRegistrations = allRegistrations.filter(registration => {
-        const classId = registration.classId?.value || registration.classId;
+        const classId = registration.classId;
         return rockBandClassIds.includes(classId);
       });
 
       // Get unique student IDs from wait list registrations
       const studentIdsInWaitList = [
-        ...new Set(
-          waitListRegistrations.map(reg => reg.studentId?.value || reg.studentId).filter(Boolean)
-        ),
+        ...new Set(waitListRegistrations.map(reg => reg.studentId).filter(Boolean)),
       ];
 
       // Filter students to only include those in wait list registrations
       const relevantStudents = students.filter(student => {
-        const studentId = student.id?.value || student.id;
+        const studentId = student.id;
         return studentIdsInWaitList.includes(studentId);
       });
 
       const responseData = {
         registrations: waitListRegistrations,
-        students: relevantStudents.map(s => s.toDataObject()),
+        students: relevantStudents.map(s => s),
       };
 
       successResponse(res, responseData, {
@@ -1019,8 +816,8 @@ export class RegistrationController {
 
       // Filter registrations to only include those for this instructor, excluding wait list
       const instructorRegistrations = allRegistrations.filter(registration => {
-        const regInstructorId = registration.instructorId?.value || registration.instructorId;
-        const classId = registration.classId?.value || registration.classId;
+        const regInstructorId = registration.instructorId;
+        const classId = registration.classId;
         const isInstructorMatch = regInstructorId === instructorId;
         const isNotWaitList = !rockBandClassIds.includes(classId);
         return isInstructorMatch && isNotWaitList;
@@ -1028,21 +825,19 @@ export class RegistrationController {
 
       // Get unique student IDs from instructor's registrations
       const studentIdsInSchedule = [
-        ...new Set(
-          instructorRegistrations.map(reg => reg.studentId?.value || reg.studentId).filter(Boolean)
-        ),
+        ...new Set(instructorRegistrations.map(reg => reg.studentId).filter(Boolean)),
       ];
 
       // Filter students to only include those in instructor's schedule
       const relevantStudents = students.filter(student => {
-        const studentId = student.id?.value || student.id;
+        const studentId = student.id;
         return studentIdsInSchedule.includes(studentId);
       });
 
       const responseData = {
         registrations: instructorRegistrations,
-        students: relevantStudents.map(s => s.toDataObject()),
-        instructors: instructors.map(i => i.toDataObject()), // Needed for table rendering
+        students: relevantStudents.map(s => s),
+        instructors: instructors.map(i => i), // Needed for table rendering
         classes: classes, // Needed for group class titles
       };
 
@@ -1106,35 +901,33 @@ export class RegistrationController {
 
       // Filter students by parent
       const parentStudents = students.filter(student => {
-        const parent1IdMatch = (student.parent1Id?.value || student.parent1Id) === parentId;
-        const parent2IdMatch = (student.parent2Id?.value || student.parent2Id) === parentId;
+        const parent1IdMatch = student.parent1Id === parentId;
+        const parent2IdMatch = student.parent2Id === parentId;
         return parent1IdMatch || parent2IdMatch;
       });
 
       // Get student IDs for filtering registrations
-      const studentIds = parentStudents.map(student => student.id?.value || student.id);
+      const studentIds = parentStudents.map(student => student.id);
 
       // Filter registrations by parent's students
       const parentRegistrations = allRegistrations.filter(registration => {
-        const regStudentId = registration.studentId?.value || registration.studentId;
+        const regStudentId = registration.studentId;
         return studentIds.includes(regStudentId);
       });
 
       // Get instructor IDs from parent's registrations
-      const instructorIds = [
-        ...new Set(parentRegistrations.map(reg => reg.instructorId?.value || reg.instructorId)),
-      ];
+      const instructorIds = [...new Set(parentRegistrations.map(reg => reg.instructorId))];
 
       // Filter instructors to only those teaching parent's children
       const relevantInstructors = instructors.filter(instructor => {
-        const instructorId = instructor.id?.value || instructor.id;
+        const instructorId = instructor.id;
         return instructorIds.includes(instructorId);
       });
 
       const responseData = {
         registrations: parentRegistrations,
-        students: parentStudents.map(s => s.toDataObject()),
-        instructors: relevantInstructors.map(i => i.toDataObject()),
+        students: parentStudents.map(s => s),
+        instructors: relevantInstructors.map(i => i),
         classes: classes,
       };
 
@@ -1180,8 +973,8 @@ export class RegistrationController {
 
       const responseData = {
         registrations: registrations,
-        students: students.map(s => s.toDataObject()),
-        instructors: instructors.map(i => i.toDataObject()),
+        students: students.map(s => s),
+        instructors: instructors.map(i => i),
         classes: classes,
       };
 
@@ -1244,17 +1037,17 @@ export class RegistrationController {
 
       // Filter to parent's children only
       const parentStudents = allStudents.filter(student => {
-        const parent1IdMatch = (student.parent1Id?.value || student.parent1Id) === parentId;
-        const parent2IdMatch = (student.parent2Id?.value || student.parent2Id) === parentId;
+        const parent1IdMatch = student.parent1Id === parentId;
+        const parent2IdMatch = student.parent2Id === parentId;
         return parent1IdMatch || parent2IdMatch;
       });
 
       const responseData = {
-        instructors: instructors.map(i => i.toDataObject()),
-        students: parentStudents.map(s => s.toDataObject()), // Only parent's children
+        instructors: instructors.map(i => i),
+        students: parentStudents.map(s => s), // Only parent's children
         classes: classes,
-        nextTrimesterRegistrations: nextTrimesterRegs.map(r => r.toDataObject()),
-        currentTrimesterRegistrations: currentTrimesterRegs.map(r => r.toDataObject()),
+        nextTrimesterRegistrations: nextTrimesterRegs.map(r => r),
+        currentTrimesterRegistrations: currentTrimesterRegs.map(r => r),
       };
 
       successResponse(res, responseData, {
@@ -1310,8 +1103,8 @@ export class RegistrationController {
       ]);
 
       const responseData = {
-        instructors: instructors.map(i => i.toDataObject()),
-        students: students.map(s => s.toDataObject()),
+        instructors: instructors.map(i => i),
+        students: students.map(s => s),
         classes: classes,
         registrations: registrations,
       };

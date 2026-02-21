@@ -19,7 +19,6 @@ import './components/select.js';
 import './components/table.js';
 import './workflows/adminRegistrationForm.js';
 import './workflows/parentRegistrationForm.js';
-import './data/apiClient.js';
 import './utilities/domHelpers.js';
 import './utilities/durationHelpers.js';
 import './utilities/promiseHelpers.js';
@@ -215,7 +214,8 @@ async function loadDirectorInfo() {
       return;
     }
 
-    const admins = await response.json();
+    const result = await response.json();
+    const admins = result.data;
 
     // Check if admins is null or not an array (unauthenticated user)
     if (!admins || !Array.isArray(admins)) {
@@ -233,8 +233,7 @@ async function loadDirectorInfo() {
 
       if (nameElement) nameElement.textContent = director.fullName;
       if (emailElement) emailElement.textContent = director.displayEmail || director.email;
-      if (phoneElement)
-        phoneElement.textContent = director.displayPhone || director.phoneNumber || 'N/A';
+      if (phoneElement) phoneElement.textContent = director.displayPhone || director.phone || 'N/A';
     } else {
       console.warn('No director found in admins data');
       // Leave "Loading..." text if no director found
@@ -348,8 +347,9 @@ async function initializeApplication() {
         }
 
         const result = await response.json();
-        console.log('✓ Server cache cleared successfully by:', result.clearedBy);
-        console.log('  Message:', result.message);
+        const cacheData = result.data;
+        console.log('✓ Server cache cleared successfully by:', cacheData.clearedBy);
+        console.log('  Message:', cacheData.message);
         return true;
       } catch (error) {
         console.error('✗ Error clearing server cache:', error);

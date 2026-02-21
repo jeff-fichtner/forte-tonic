@@ -46,7 +46,7 @@ export class ParentRegistrationTab extends BaseTab {
     const result = await response.json();
 
     // Unwrap the data from { success: true, data: {...} } envelope
-    const data = result.data || result;
+    const data = result.data;
 
     // Validate response
     if (

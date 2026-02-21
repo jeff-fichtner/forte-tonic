@@ -126,7 +126,7 @@ export class AttendanceRepository extends BaseRepository {
 
     const result = await this.dbClient.appendRecord(
       Keys.ATTENDANCE,
-      new AttendanceRecord(registrationId),
+      new AttendanceRecord({ registrationId }),
       createdBy
     );
     // Cache cleared automatically by dbClient
