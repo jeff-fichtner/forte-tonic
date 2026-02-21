@@ -1,0 +1,267 @@
+/**
+ * System Controller - Application layer API endpoints for system operations
+ * Handles health checks, diagnostics, and testing endpoints
+ */
+
+import { currentConfig, isProduction, isStaging, version } from '../config/environment.js';
+import type { Request, Response } from 'express';
+import { getLogger } from '../utils/logger.js';
+import { configService } from '../services/configurationService.js';
+import { successResponse, errorResponse } from '../common/responseHelpers.js';
+import { HTTP_STATUS } from '../common/errorConstants.js';
+import { ValidationError, UnauthorizedError } from '../common/errors.js';
+import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
+import type { GoogleSheetsDbClient } from '../database/googleSheetsDbClient.js';
+
+const logger = getLogger();
+
+export class SystemController {
+  /**
+   * Health check endpoint for GCP Cloud Run monitoring
+   * Always returns 200 with status details (GCP best practice)
+   * @param req - Express request object
+   * @param res - Express response object
+   */
+  static async getHealth(req: Request, res: Response): Promise<void> {
+    const startTime = Date.now();
+
+    try {
+      const healthData = {
+        status: 'healthy',
+        environment: process.env.NODE_ENV || 'development',
+        timestamp: new Date().toISOString(),
+        version: version.number,
+        versionInfo: {
+          buildDate: version.buildDate,
+          gitCommit: version.gitCommit?.substring(0, 7),
+          environment: version.environment,
+        },
+        baseUrl: currentConfig.baseUrl,
+        features: {
+          isProduction,
+          isStaging,
+          spreadsheetConfigured: !!currentConfig.spreadsheetId,
+        },
+      };
+
+      successResponse(res, healthData, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'getHealth' },
+      });
+    } catch (error) {
+      const typedError = error as Error;
+      logger.error('Error getting health status:', error);
+
+      // Always return 200 for health checks (GCP best practice)
+      // Service can respond = healthy, even if some features fail
+      successResponse(
+        res,
+        {
+          status: 'degraded',
+          error: typedError.message,
+          timestamp: new Date().toISOString(),
+        },
+        {
+          statusCode: HTTP_STATUS.OK,
+          req,
+          startTime,
+          context: {
+            controller: 'SystemController',
+            method: 'getHealth',
+            error: typedError.message,
+          },
+        }
+      );
+    }
+  }
+
+  /**
+   * Test endpoint to verify Google Sheets connectivity
+   */
+  static async testConnection(req: Request, res: Response): Promise<void> {
+    const startTime = Date.now();
+
+    try {
+      logger.info('Testing Google Sheets connection...');
+      const dbClient = req.dbClient as GoogleSheetsDbClient;
+
+      const authConfig = configService.getGoogleSheetsAuth();
+      const sheetsConfig = configService.getGoogleSheetsConfig();
+
+      logger.info('Service Account Email:', authConfig.clientEmail);
+      logger.info('Spreadsheet ID:', sheetsConfig.spreadsheetId);
+
+      // First, let's test basic authentication
+      const auth = dbClient.auth;
+      logger.info('Auth type:', auth.constructor.name);
+
+      // Try to get spreadsheet metadata (requires less permissions)
+      const spreadsheetId = dbClient.spreadsheetId;
+      const sheets = dbClient.sheets;
+
+      const response = await sheets.spreadsheets.get({
+        spreadsheetId: spreadsheetId,
+        auth: auth,
+      });
+
+      const availableSheets = (response.data.sheets || []).map(sheet => sheet.properties?.title);
+      logger.info('Available sheets:', availableSheets);
+
+      const testResult = {
+        success: true,
+        message: 'Google Sheets connection successful!',
+        spreadsheetId: response.data.spreadsheetId,
+        spreadsheetTitle: response.data.properties?.title,
+        availableSheets: availableSheets,
+        sheetCount: (response.data.sheets || []).length,
+        serviceAccountEmail: authConfig.clientEmail,
+      };
+
+      logger.info('Connection test result:', testResult);
+
+      successResponse(res, testResult, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'testConnection' },
+      });
+    } catch (error) {
+      logger.error('Error testing Google Sheets connection:', error);
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'testConnection' },
+      });
+    }
+  }
+
+  /**
+   * Test sheet data retrieval endpoint
+   */
+  static async testSheetData(req: Request, res: Response): Promise<void> {
+    const startTime = Date.now();
+
+    try {
+      const { sheetName = 'Students', range = 'A1:Z1000' } = req.body;
+      const dbClient = req.dbClient as GoogleSheetsDbClient;
+
+      logger.info(`Testing data retrieval from sheet: ${sheetName}, range: ${sheetName}!${range}`);
+
+      const spreadsheetId = dbClient.spreadsheetId;
+      const sheets = dbClient.sheets;
+      const auth = dbClient.auth;
+
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: spreadsheetId,
+        range: `${sheetName}!${range}`,
+        auth: auth,
+      });
+
+      const values = response.data.values || [];
+      const testResult = {
+        success: true,
+        sheetName: sheetName,
+        range: `${sheetName}!${range}`,
+        rowCount: values.length,
+        columnCount: values.length > 0 ? values[0].length : 0,
+        headers: values.length > 0 ? values[0] : [],
+        sampleData: values.slice(0, 2), // First 2 rows as sample
+      };
+
+      logger.info('Sheet data test result:', testResult);
+
+      successResponse(res, testResult, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'testSheetData' },
+      });
+    } catch (error) {
+      logger.error('Error testing sheet data retrieval:', error);
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'testSheetData' },
+      });
+    }
+  }
+
+  /**
+   * Admin-only cache clearing endpoint
+   */
+  static async clearCache(req: Request, res: Response): Promise<void> {
+    const startTime = Date.now();
+
+    try {
+      const { adminCode } = req.body;
+
+      if (!adminCode) {
+        throw new ValidationError('Admin code is required');
+      }
+
+      // Use dependency injection to get the same repository instances used throughout the app
+      const userRepository = serviceContainer.get('userRepository');
+
+      // Validate admin access code using the repository
+      const validAdmin = await userRepository.getAdminByAccessCode(adminCode);
+      if (!validAdmin) {
+        throw new UnauthorizedError('Invalid admin code');
+      }
+
+      // Clear cache at the database client level (single source of truth)
+      const dbClient = serviceContainer.get('databaseClient');
+      if (dbClient && typeof dbClient.clearAllCache === 'function') {
+        dbClient.clearAllCache();
+        logger.info('✅ All Google Sheets cache cleared');
+      } else {
+        logger.warn('⚠️ Database client not available or does not support cache clearing');
+      }
+
+      const adminName = validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName;
+      logger.info(`🧹 All caches cleared by admin: ${adminName}`);
+
+      successResponse(
+        res,
+        {
+          message: 'All caches cleared successfully',
+          clearedBy: adminName,
+        },
+        {
+          req,
+          startTime,
+          context: { controller: 'SystemController', method: 'clearCache' },
+        }
+      );
+    } catch (error) {
+      logger.error('Error clearing cache:', error);
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'clearCache' },
+      });
+    }
+  }
+
+  /**
+   * Get application configuration for frontend
+   */
+  static async getApplicationConfig(req: Request, res: Response): Promise<void> {
+    const startTime = Date.now();
+
+    try {
+      const appConfig = configService.getApplicationConfig();
+
+      successResponse(res, appConfig, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'getApplicationConfig' },
+      });
+    } catch (error) {
+      logger.error('Error getting application config:', error);
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'SystemController', method: 'getApplicationConfig' },
+      });
+    }
+  }
+}

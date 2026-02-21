@@ -19,19 +19,19 @@
 
 **Purpose**: Install TypeScript tooling, create configuration files, set up the compilation and runtime environment.
 
-- [ ] T001 Install TypeScript and runtime dependencies: `npm install -D typescript tsx ts-jest @types/node @types/express @types/cors @types/lodash @types/nodemailer @types/supertest typescript-eslint`
-- [ ] T002 Remove superseded Babel dependencies: `npm uninstall @babel/core @babel/preset-env babel-jest`
-- [ ] T003 Remove superseded JSDoc linting plugin: `npm uninstall eslint-plugin-jsdoc`
-- [ ] T004 Create tsconfig.json at repository root (backend config per quickstart.md)
-- [ ] T005 Create tsconfig.web.json at repository root (frontend config extending base per quickstart.md)
-- [ ] T006 Create src/types/materialize.d.ts with MaterializeCSS M namespace declarations for toast, Modal, Tooltip, FormSelect, Tabs, Sidenav
-- [ ] T007 Create src/types/global.d.ts with app-wide global declarations (ViewModel, ModalKeyboardHandler, AccessCodeManager, ClassManager on window)
-- [ ] T008 Rename and update config/eslint.config.js → config/eslint.config.ts with typescript-eslint parser and rules per quickstart.md
-- [ ] T009 Rename and update config/jest.config.js → config/jest.config.ts with ts-jest ESM preset per quickstart.md
-- [ ] T010 [P] Remove config/babel.config.js (no longer needed)
-- [ ] T011 Rename and update vite.config.js → vite.config.ts (update alias paths)
-- [ ] T012 Update package.json scripts: start → tsx, dev → nodemon --exec tsx, test → tsx test runner, add typecheck script, update format/lint globs to .ts per quickstart.md
-- [ ] T013 Verify setup: run `npx tsc --noEmit` (expect errors from missing .ts files — confirms compiler works)
+- [x] T001 Install TypeScript and runtime dependencies: `npm install -D typescript tsx ts-jest @types/node @types/express @types/cors @types/lodash @types/nodemailer @types/supertest typescript-eslint`
+- [x] T002 Remove superseded Babel dependencies: `npm uninstall @babel/core @babel/preset-env babel-jest`
+- [x] T003 Remove superseded JSDoc linting plugin: `npm uninstall eslint-plugin-jsdoc`
+- [x] T004 Create tsconfig.json at repository root (backend config per quickstart.md)
+- [x] T005 Create tsconfig.web.json at repository root (frontend config extending base per quickstart.md)
+- [x] T006 Create src/types/materialize.d.ts with MaterializeCSS M namespace declarations for toast, Modal, Tooltip, FormSelect, Tabs, Sidenav
+- [x] T007 Create src/types/global.d.ts with app-wide global declarations (ViewModel, ModalKeyboardHandler, AccessCodeManager, ClassManager on window)
+- [x] T008 Rename and update config/eslint.config.js → config/eslint.config.ts with typescript-eslint parser and rules per quickstart.md
+- [x] T009 Rename and update config/jest.config.js → config/jest.config.ts with ts-jest ESM preset per quickstart.md
+- [x] T010 [P] Remove config/babel.config.js (no longer needed)
+- [x] T011 Rename and update vite.config.js → vite.config.ts (update alias paths)
+- [x] T012 Update package.json scripts: start → tsx, dev → nodemon --exec tsx, test → tsx test runner, add typecheck script, update format/lint globs to .ts per quickstart.md
+- [x] T013 Verify setup: run `npx tsc --noEmit` (expect errors from missing .ts files — confirms compiler works)
 
 **Checkpoint**: TypeScript tooling installed, configs created. Ready to migrate source files.
 
@@ -43,54 +43,54 @@
 
 ### Constants and Enums
 
-- [ ] T014 [P] Rename and type src/models/shared/instruments.js → instruments.ts (add `as const` assertion)
-- [ ] T015 [P] Rename and type src/models/shared/lengthOptions.js → lengthOptions.ts (add `as const` assertion)
-- [ ] T016 [P] Rename and type src/constants/intentTypes.js → intentTypes.ts
-- [ ] T017 [P] Rename and type src/utils/values/dropRequestStatus.js → dropRequestStatus.ts
-- [ ] T018 [P] Rename and type src/utils/values/keys.js → keys.ts
-- [ ] T019 [P] Rename and type src/utils/values/periodType.js → periodType.ts
-- [ ] T020 [P] Rename and type src/utils/values/registrationType.js → registrationType.ts
-- [ ] T021 [P] Rename and type src/utils/values/trimester.js → trimester.ts
+- [x] T014 [P] Rename and type src/models/shared/instruments.js → instruments.ts (add `as const` assertion)
+- [x] T015 [P] Rename and type src/models/shared/lengthOptions.js → lengthOptions.ts (add `as const` assertion)
+- [x] T016 [P] Rename and type src/constants/intentTypes.js → intentTypes.ts
+- [x] T017 [P] Rename and type src/utils/values/dropRequestStatus.js → dropRequestStatus.ts
+- [x] T018 [P] Rename and type src/utils/values/keys.js → keys.ts
+- [x] T019 [P] Rename and type src/utils/values/periodType.js → periodType.ts
+- [x] T020 [P] Rename and type src/utils/values/registrationType.js → registrationType.ts
+- [x] T021 [P] Rename and type src/utils/values/trimester.js → trimester.ts
 
 ### Utility Modules
 
-- [ ] T022 [P] Rename and type src/utils/cloneUtility.js → cloneUtility.ts
-- [ ] T023 [P] Rename and type src/utils/dateHelpers.js → dateHelpers.ts
-- [ ] T024 [P] Rename and type src/utils/enhancedDateHelpers.js → enhancedDateHelpers.ts
-- [ ] T025 [P] Rename and type src/utils/helpers.js → helpers.ts
-- [ ] T026 [P] Rename and type src/utils/logger.js → logger.ts
-- [ ] T027 [P] Rename and type src/utils/nativeDateTimeHelpers.js → nativeDateTimeHelpers.ts
-- [ ] T028 [P] Rename and type src/utils/uuidUtility.js → uuidUtility.ts
-- [ ] T029 [P] Rename and type src/utils/versionHash.js → versionHash.ts
+- [x] T022 [P] Rename and type src/utils/cloneUtility.js → cloneUtility.ts
+- [x] T023 [P] Rename and type src/utils/dateHelpers.js → dateHelpers.ts
+- [x] T024 [P] Rename and type src/utils/enhancedDateHelpers.js → enhancedDateHelpers.ts
+- [x] T025 [P] Rename and type src/utils/helpers.js → helpers.ts
+- [x] T026 [P] Rename and type src/utils/logger.js → logger.ts
+- [x] T027 [P] Rename and type src/utils/nativeDateTimeHelpers.js → nativeDateTimeHelpers.ts
+- [x] T028 [P] Rename and type src/utils/uuidUtility.js → uuidUtility.ts
+- [x] T029 [P] Rename and type src/utils/versionHash.js → versionHash.ts
 
 ### Shared Model Classes (with interfaces from data-model.md)
 
-- [ ] T030 [P] Rename and type src/models/shared/student.js → student.ts (add StudentData interface, type constructor, getters, toJSON return type, fromDatabaseRow parameter/return types)
-- [ ] T031 [P] Rename and type src/models/shared/admin.js → admin.ts (add AdminData interface, type constructor, getters, toJSON, fromDatabaseRow, fromApiData)
-- [ ] T032 [P] Rename and type src/models/shared/parent.js → parent.ts (add ParentData interface, type constructor, toJSON, fromDatabaseRow, fromApiData)
-- [ ] T033 [P] Rename and type src/models/shared/instructor.js → instructor.ts (add InstructorData, DayAvailability, InstructorAvailability, GradeRange interfaces, type all methods)
-- [ ] T034 [P] Rename and type src/models/shared/room.js → room.ts (add RoomData interface, type constructor, getters, toJSON, fromDatabaseRow)
-- [ ] T035 [P] Rename and type src/models/shared/class.js → class.ts (add ClassData interface, type constructor, getters, toJSON, fromDatabaseRow)
-- [ ] T036 [P] Rename and type src/models/shared/attendanceRecord.js → attendanceRecord.ts (add AttendanceRecordData interface)
-- [ ] T037 Rename and type src/models/shared/registration.js → registration.ts (add RegistrationData, RegistrationType, ReenrollmentIntent types, type constructor, validation, toJSON, fromDatabaseRow, fromApiData, createNew, generateSchedule, toDatabaseRow)
-- [ ] T038 [P] Rename and type src/models/shared/responses/appConfigurationResponse.js → appConfigurationResponse.ts (add AppConfigurationResponseData, Period interfaces)
-- [ ] T039 [P] Rename and type src/models/shared/responses/authenticatedUserResponse.js → authenticatedUserResponse.ts (add AuthenticatedUserResponseData interface)
-- [ ] T040 Update src/models/shared/index.js → index.ts (update barrel exports, re-export interfaces)
+- [x] T030 [P] Rename and type src/models/shared/student.js → student.ts (add StudentData interface, type constructor, getters, toJSON return type, fromDatabaseRow parameter/return types)
+- [x] T031 [P] Rename and type src/models/shared/admin.js → admin.ts (add AdminData interface, type constructor, getters, toJSON, fromDatabaseRow, fromApiData)
+- [x] T032 [P] Rename and type src/models/shared/parent.js → parent.ts (add ParentData interface, type constructor, toJSON, fromDatabaseRow, fromApiData)
+- [x] T033 [P] Rename and type src/models/shared/instructor.js → instructor.ts (add InstructorData, DayAvailability, InstructorAvailability, GradeRange interfaces, type all methods)
+- [x] T034 [P] Rename and type src/models/shared/room.js → room.ts (add RoomData interface, type constructor, getters, toJSON, fromDatabaseRow)
+- [x] T035 [P] Rename and type src/models/shared/class.js → class.ts (add ClassData interface, type constructor, getters, toJSON, fromDatabaseRow)
+- [x] T036 [P] Rename and type src/models/shared/attendanceRecord.js → attendanceRecord.ts (add AttendanceRecordData interface)
+- [x] T037 Rename and type src/models/shared/registration.js → registration.ts (add RegistrationData, RegistrationType, ReenrollmentIntent types, type constructor, validation, toJSON, fromDatabaseRow, fromApiData, createNew, generateSchedule, toDatabaseRow)
+- [x] T038 [P] Rename and type src/models/shared/responses/appConfigurationResponse.js → appConfigurationResponse.ts (add AppConfigurationResponseData, Period interfaces)
+- [x] T039 [P] Rename and type src/models/shared/responses/authenticatedUserResponse.js → authenticatedUserResponse.ts (add AuthenticatedUserResponseData interface)
+- [x] T040 Update src/models/shared/index.js → index.ts (update barrel exports, re-export interfaces)
 
 ### Common Modules
 
-- [ ] T041 [P] Rename and type src/common/errorConstants.js → errorConstants.ts
-- [ ] T042 [P] Rename and type src/common/errors.js → errors.ts
-- [ ] T043 [P] Rename and type src/common/gcpLogger.js → gcpLogger.ts
-- [ ] T044 Rename and type src/common/responseHelpers.js → responseHelpers.ts (add ApiSuccessResponse, ApiErrorResponse, SuccessResponseOptions, ErrorResponseOptions types from contracts/api-responses.ts)
-- [ ] T045 [P] Rename and type src/common/errorHandling.js → errorHandling.ts
+- [x] T041 [P] Rename and type src/common/errorConstants.js → errorConstants.ts
+- [x] T042 [P] Rename and type src/common/errors.js → errors.ts
+- [x] T043 [P] Rename and type src/common/gcpLogger.js → gcpLogger.ts
+- [x] T044 Rename and type src/common/responseHelpers.js → responseHelpers.ts (add ApiSuccessResponse, ApiErrorResponse, SuccessResponseOptions, ErrorResponseOptions types from contracts/api-responses.ts)
+- [x] T045 [P] Rename and type src/common/errorHandling.js → errorHandling.ts
 
 ### Config Modules
 
-- [ ] T046 [P] Rename and type src/config/constants.js → constants.ts
-- [ ] T047 [P] Rename and type src/config/environment.js → environment.ts
+- [x] T046 [P] Rename and type src/config/constants.js → constants.ts
+- [x] T047 [P] Rename and type src/config/environment.js → environment.ts
 
-- [ ] T048 Verify foundational phase: run `npx tsc --noEmit` on models/utils/common — resolve any type errors in these files before proceeding
+- [x] T048 Verify foundational phase: run `npx tsc --noEmit` on models/utils/common — resolve any type errors in these files before proceeding
 
 **Checkpoint**: All shared types, models, utilities, and constants are TypeScript. Every downstream file can import typed models.
 

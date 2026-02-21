@@ -1,0 +1,1102 @@
+import { google, sheets_v4 } from 'googleapis';
+import { GoogleAuth } from 'google-auth-library';
+import { Keys } from '../utils/values/keys.js';
+import { RegistrationType } from '../utils/values/registrationType.js';
+import { CloneUtility } from '../utils/cloneUtility.js';
+import { UuidUtility } from '../utils/uuidUtility.js';
+import { configService, ConfigurationService } from '../services/configurationService.js';
+import { BaseService } from '../infrastructure/base/baseService.js';
+import { CacheService } from '../cache/cacheService.js';
+
+// SC-005: Throughout this file, `record/recordData as unknown as RegistrationRecord/AttendanceRecord`
+// casts bridge the generic Record<string, string> storage boundary to typed audit-record interfaces.
+interface SheetInfo {
+  sheet: string;
+  startRow: number;
+  columnMap: Record<string, number>;
+  auditSheet?: string;
+  getArchiveSheetName?: (existingSheetName: string) => string;
+}
+
+interface BatchWriteOperation {
+  range: string;
+  values: string[][];
+}
+
+interface RegistrationRecord {
+  id: string;
+  studentId: string;
+  instructorId: string;
+  day: string;
+  startTime: string;
+  length: string;
+  registrationType: string;
+  roomId: string;
+  instrument: string;
+  transportationType: string;
+  notes: string;
+  classId: string;
+  classTitle: string;
+  expectedStartDate: string;
+  createdAt: string;
+  createdBy: string;
+  reenrollmentIntent: string;
+  intentSubmittedAt: string;
+  intentSubmittedBy: string;
+  linkedPreviousRegistrationId: string;
+  [key: string]: string;
+}
+
+interface AttendanceRecord {
+  id: string;
+  registrationId: string;
+  week: string;
+  schoolYear: string;
+  trimester: string;
+  [key: string]: string;
+}
+
+interface Appendable {
+  toDatabaseRow?: () => string[];
+  id?: string;
+}
+
+/**
+ * GoogleSheetsDbClient - Thin wrapper around Google Sheets API
+ * Consolidated from multiple client versions for better maintainability
+ * Implements caching at the data access layer to minimize Google Sheets API calls
+ */
+export class GoogleSheetsDbClient extends BaseService {
+  cacheService: CacheService | null;
+  cacheTtl: number;
+  auth: GoogleAuth;
+  sheets: sheets_v4.Sheets;
+  spreadsheetId: string;
+  workingSheetInfo: Record<string, SheetInfo>;
+
+  /**
+   * Initialize the Google Sheets client
+   */
+  constructor(
+    configurationService: ConfigurationService = configService,
+    cacheService: CacheService | null = null
+  ) {
+    super(configurationService); // Initialize logger via BaseService
+
+    // Store cache service reference
+    this.cacheService = cacheService;
+    this.cacheTtl = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+    // Get authentication configuration from config service
+    const authConfig = this.configService.getGoogleSheetsAuth();
+    const sheetsConfig = this.configService.getGoogleSheetsConfig();
+
+    // Validate authentication configuration
+    if (!authConfig.clientEmail || !authConfig.privateKey) {
+      throw new Error('Google Sheets authentication configuration is incomplete');
+    }
+
+    this.auth = new google.auth.GoogleAuth({
+      credentials: {
+        client_email: authConfig.clientEmail,
+        private_key: authConfig.privateKey,
+      },
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+
+    this.sheets = google.sheets({ version: 'v4', auth: this.auth });
+
+    // Get spreadsheet ID from config service
+    this.spreadsheetId = sheetsConfig.spreadsheetId!;
+
+    if (!this.spreadsheetId) {
+      throw new Error(
+        'Spreadsheet ID is required. Please set WORKING_SPREADSHEET_ID environment variable.'
+      );
+    }
+
+    this.logger.log('GoogleSheetsDbClient initialized successfully');
+
+    // Initialize sheet info structure
+    this.workingSheetInfo = {
+      [Keys.ADMINS]: {
+        sheet: Keys.ADMINS,
+        startRow: 2,
+        columnMap: {
+          id: 0,
+          email: 1,
+          lastName: 2,
+          firstName: 3,
+          phone: 4,
+          accessCode: 5,
+          role: 6,
+          displayEmail: 7,
+          displayPhone: 8,
+          isDirector: 9,
+        },
+      },
+      [Keys.INSTRUCTORS]: {
+        sheet: Keys.INSTRUCTORS,
+        startRow: 2,
+        columnMap: {
+          id: 0,
+          email: 1,
+          lastName: 2,
+          firstName: 3,
+          phone: 4,
+          isDeactivated: 5,
+          minimumGrade: 6,
+          maximumGrade: 7,
+          instrument1: 8,
+          instrument2: 9,
+          instrument3: 10,
+          instrument4: 11,
+          isAvailableMonday: 12,
+          mondayStartTime: 13,
+          mondayEndTime: 14,
+          mondayRoomId: 15,
+          isAvailableTuesday: 16,
+          tuesdayStartTime: 17,
+          tuesdayEndTime: 18,
+          tuesdayRoomId: 19,
+          isAvailableWednesday: 20,
+          wednesdayStartTime: 21,
+          wednesdayEndTime: 22,
+          wednesdayRoomId: 23,
+          isAvailableThursday: 24,
+          thursdayStartTime: 25,
+          thursdayEndTime: 26,
+          thursdayRoomId: 27,
+          isAvailableFriday: 28,
+          fridayStartTime: 29,
+          fridayEndTime: 30,
+          fridayRoomId: 31,
+          accessCode: 32,
+          displayEmail: 33,
+          displayPhone: 34,
+        },
+      },
+      [Keys.PARENTS]: {
+        sheet: Keys.PARENTS,
+        startRow: 2,
+        columnMap: {
+          id: 0, // Id
+          email: 1, // Email
+          lastName: 2, // LastName
+          firstName: 3, // FirstName
+          phone: 4, // Phone
+          accessCode: 5, // AccessCode
+        },
+      },
+      [Keys.STUDENTS]: {
+        sheet: Keys.STUDENTS,
+        startRow: 2,
+        columnMap: {
+          id: 0, // Id
+          lastName: 1, // LastName (was Column C, now Column B after StudentId deletion)
+          firstName: 2, // FirstName (was Column D, now Column C after StudentId deletion)
+          lastNickname: 3, // LastNickname (was Column E, now Column D after StudentId deletion)
+          firstNickname: 4, // FirstNickname (was Column F, now Column E after StudentId deletion)
+          grade: 5, // Grade (was Column G, now Column F after StudentId deletion)
+          parent1Id: 6, // Parent1Id (was Column H, now Column G after StudentId deletion)
+          parent2Id: 7, // Parent2Id (was Column I, now Column H after StudentId deletion)
+        },
+      },
+      [Keys.CLASSES]: {
+        sheet: Keys.CLASSES,
+        startRow: 2,
+        columnMap: {
+          id: 0, // Id
+          instructorId: 1, // InstructorId
+          day: 2, // Day
+          startTime: 3, // StartTime
+          length: 4, // Length
+          endTime: 5, // EndTime
+          instrument: 6, // Instrument
+          title: 7, // Title
+          size: 8, // Size
+          minimumGrade: 9, // MinimumGrade
+          maximumGrade: 10, // MaximumGrade
+          isRestricted: 11, // isRestricted
+        },
+      },
+      [Keys.ROOMS]: {
+        sheet: Keys.ROOMS,
+        startRow: 2,
+        columnMap: {
+          id: 0,
+          name: 1,
+        },
+      },
+      // Fall trimester registrations
+      registrations_fall: {
+        sheet: 'registrations_fall',
+        startRow: 2,
+        auditSheet: 'registrations_fall_audit',
+        columnMap: {
+          id: 0, // Id
+          studentId: 1, // StudentId
+          instructorId: 2, // InstructorId
+          day: 3, // Day
+          startTime: 4, // StartTime
+          length: 5, // Length
+          registrationType: 6, // RegistrationType
+          roomId: 7, // RoomId
+          instrument: 8, // Instrument
+          transportationType: 9, // TransportationType
+          notes: 10, // Notes
+          classId: 11, // ClassId
+          classTitle: 12, // ClassTitle
+          expectedStartDate: 13, // ExpectedStartDate
+          createdAt: 14, // CreatedAt
+          createdBy: 15, // CreatedBy
+          reenrollmentIntent: 16, // reenrollmentIntent
+          intentSubmittedAt: 17, // intentSubmittedAt
+          intentSubmittedBy: 18, // intentSubmittedBy
+          linkedPreviousRegistrationId: 19, // linkedPreviousRegistrationId
+        },
+      },
+      // Winter trimester registrations
+      registrations_winter: {
+        sheet: 'registrations_winter',
+        startRow: 2,
+        auditSheet: 'registrations_winter_audit',
+        columnMap: {
+          id: 0,
+          studentId: 1,
+          instructorId: 2,
+          day: 3,
+          startTime: 4,
+          length: 5,
+          registrationType: 6,
+          roomId: 7,
+          instrument: 8,
+          transportationType: 9,
+          notes: 10,
+          classId: 11,
+          classTitle: 12,
+          expectedStartDate: 13,
+          createdAt: 14,
+          createdBy: 15,
+          reenrollmentIntent: 16,
+          intentSubmittedAt: 17,
+          intentSubmittedBy: 18,
+          linkedPreviousRegistrationId: 19,
+        },
+      },
+      // Spring trimester registrations
+      registrations_spring: {
+        sheet: 'registrations_spring',
+        startRow: 2,
+        auditSheet: 'registrations_spring_audit',
+        columnMap: {
+          id: 0,
+          studentId: 1,
+          instructorId: 2,
+          day: 3,
+          startTime: 4,
+          length: 5,
+          registrationType: 6,
+          roomId: 7,
+          instrument: 8,
+          transportationType: 9,
+          notes: 10,
+          classId: 11,
+          classTitle: 12,
+          expectedStartDate: 13,
+          createdAt: 14,
+          createdBy: 15,
+          reenrollmentIntent: 16,
+          intentSubmittedAt: 17,
+          intentSubmittedBy: 18,
+          linkedPreviousRegistrationId: 19,
+        },
+      },
+      // Fall trimester audit
+      registrations_fall_audit: {
+        sheet: 'registrations_fall_audit',
+        startRow: 2,
+        columnMap: {
+          id: 0, // Id (unique GUID for audit record)
+          registrationId: 1, // RegistrationId (ID from the original registration record)
+          studentId: 2, // StudentId
+          instructorId: 3, // InstructorId
+          day: 4, // Day
+          startTime: 5, // StartTime
+          length: 6, // Length
+          registrationType: 7, // RegistrationType
+          roomId: 8, // RoomId
+          instrument: 9, // Instrument
+          transportationType: 10, // TransportationType
+          notes: 11, // Notes
+          classId: 12, // ClassId
+          classTitle: 13, // ClassTitle
+          expectedStartDate: 14, // ExpectedStartDate
+          createdAt: 15, // CreatedAt
+          createdBy: 16, // CreatedBy
+          isDeleted: 17, // IsDeleted
+          deletedAt: 18, // DeletedAt
+          deletedBy: 19, // DeletedBy
+          reenrollmentIntent: 20, // reenrollmentIntent
+          intentSubmittedAt: 21, // intentSubmittedAt
+          intentSubmittedBy: 22, // intentSubmittedBy
+          updatedAt: 23, // updatedAt
+          updatedBy: 24, // updatedBy
+          linkedPreviousRegistrationId: 25, // linkedPreviousRegistrationId
+        },
+      },
+      // Winter trimester audit
+      registrations_winter_audit: {
+        sheet: 'registrations_winter_audit',
+        startRow: 2,
+        columnMap: {
+          id: 0, // Id (unique GUID for audit record)
+          registrationId: 1, // RegistrationId (ID from the original registration record)
+          studentId: 2, // StudentId
+          instructorId: 3, // InstructorId
+          day: 4, // Day
+          startTime: 5, // StartTime
+          length: 6, // Length
+          registrationType: 7, // RegistrationType
+          roomId: 8, // RoomId
+          instrument: 9, // Instrument
+          transportationType: 10, // TransportationType
+          notes: 11, // Notes
+          classId: 12, // ClassId
+          classTitle: 13, // ClassTitle
+          expectedStartDate: 14, // ExpectedStartDate
+          createdAt: 15, // CreatedAt
+          createdBy: 16, // CreatedBy
+          isDeleted: 17, // IsDeleted
+          deletedAt: 18, // DeletedAt
+          deletedBy: 19, // DeletedBy
+          reenrollmentIntent: 20, // reenrollmentIntent
+          intentSubmittedAt: 21, // intentSubmittedAt
+          intentSubmittedBy: 22, // intentSubmittedBy
+          updatedAt: 23, // updatedAt
+          updatedBy: 24, // updatedBy
+          linkedPreviousRegistrationId: 25, // linkedPreviousRegistrationId
+        },
+      },
+      // Spring trimester audit
+      registrations_spring_audit: {
+        sheet: 'registrations_spring_audit',
+        startRow: 2,
+        columnMap: {
+          id: 0, // Id (unique GUID for audit record)
+          registrationId: 1, // RegistrationId (ID from the original registration record)
+          studentId: 2, // StudentId
+          instructorId: 3, // InstructorId
+          day: 4, // Day
+          startTime: 5, // StartTime
+          length: 6, // Length
+          registrationType: 7, // RegistrationType
+          roomId: 8, // RoomId
+          instrument: 9, // Instrument
+          transportationType: 10, // TransportationType
+          notes: 11, // Notes
+          classId: 12, // ClassId
+          classTitle: 13, // ClassTitle
+          expectedStartDate: 14, // ExpectedStartDate
+          createdAt: 15, // CreatedAt
+          createdBy: 16, // CreatedBy
+          isDeleted: 17, // IsDeleted
+          deletedAt: 18, // DeletedAt
+          deletedBy: 19, // DeletedBy
+          reenrollmentIntent: 20, // reenrollmentIntent
+          intentSubmittedAt: 21, // intentSubmittedAt
+          intentSubmittedBy: 22, // intentSubmittedBy
+          updatedAt: 23, // updatedAt
+          updatedBy: 24, // updatedBy
+          linkedPreviousRegistrationId: 25, // linkedPreviousRegistrationId
+        },
+      },
+      [Keys.REGISTRATIONSAUDIT]: {
+        sheet: Keys.REGISTRATIONSAUDIT,
+        startRow: 2,
+        columnMap: {
+          id: 0, // Id (unique GUID for audit record)
+          registrationId: 1, // RegistrationId (ID from the original registration record)
+          studentId: 2, // StudentId
+          instructorId: 3, // InstructorId
+          day: 4, // Day
+          startTime: 5, // StartTime
+          length: 6, // Length
+          registrationType: 7, // RegistrationType
+          roomId: 8, // RoomId
+          instrument: 9, // Instrument
+          transportationType: 10, // TransportationType
+          notes: 11, // Notes
+          classId: 12, // ClassId
+          classTitle: 13, // ClassTitle
+          expectedStartDate: 14, // ExpectedStartDate
+          createdAt: 15, // CreatedAt
+          createdBy: 16, // CreatedBy
+          isDeleted: 17, // IsDeleted
+          deletedAt: 18, // DeletedAt
+          deletedBy: 19, // DeletedBy
+          reenrollmentIntent: 20, // reenrollmentIntent
+          intentSubmittedAt: 21, // intentSubmittedAt
+          intentSubmittedBy: 22, // intentSubmittedBy
+          updatedAt: 23, // updatedAt
+          updatedBy: 24, // updatedBy
+        },
+      },
+      [Keys.ATTENDANCE]: {
+        sheet: Keys.ATTENDANCE,
+        startRow: 2,
+        columnMap: {
+          id: 0,
+          registrationId: 1,
+          week: 2,
+          schoolYear: 3,
+          trimester: 4,
+          recordedBy: 5,
+          recordedAt: 6,
+        },
+        auditSheet: Keys.ATTENDANCEAUDIT,
+        getArchiveSheetName: (existingSheetName: string): string =>
+          `${existingSheetName}_archive_${new Date().toISOString().slice(0, 10)}`,
+      },
+      [Keys.ATTENDANCEAUDIT]: {
+        sheet: Keys.ATTENDANCEAUDIT,
+        startRow: 2,
+        columnMap: {
+          id: 0,
+          action: 1,
+          attendanceId: 2,
+          registrationId: 3,
+          week: 4,
+          schoolYear: 5,
+          trimester: 6,
+          performedBy: 7,
+          performedAt: 8,
+        },
+      },
+      [Keys.PERIODS]: {
+        sheet: Keys.PERIODS,
+        startRow: 2,
+        columnMap: {
+          trimester: 0,
+          periodType: 1,
+          startDate: 2,
+        },
+      },
+      drop_requests: {
+        sheet: 'drop_requests',
+        startRow: 2,
+        columnMap: {
+          id: 0, // UUID primary key
+          registrationId: 1, // UUID FK to registrations
+          parentId: 2, // UUID FK to parents
+          trimester: 3, // fall|winter|spring
+          reason: 4, // Text explanation from parent
+          requestedAt: 5, // ISO date string
+          status: 6, // pending|approved|rejected
+          reviewedBy: 7, // Admin email (nullable)
+          reviewedAt: 8, // ISO date string (nullable)
+          adminNotes: 9, // Admin comments (nullable)
+        },
+      },
+    };
+  }
+
+  /**
+   * Batch load multiple sheets in parallel for better performance
+   */
+  async getAllDataParallel<T = Record<string, string>>(
+    sheetKeys: string[],
+    mapFunctions: Record<string, (row: string[]) => T> = {}
+  ): Promise<Record<string, T[]>> {
+    const startTime = Date.now();
+
+    try {
+      // Load all requested sheets in parallel
+      const promises = sheetKeys.map(async (sheetKey: string) => {
+        const mapFunc = mapFunctions[sheetKey] || ((row: string[]): T => row as unknown as T); // SC-005: raw Sheets row → typed model
+        const data = await this.getAllRecords(sheetKey, mapFunc);
+        return { sheetKey, data };
+      });
+
+      const results = await Promise.all(promises);
+      const endTime = Date.now();
+
+      this.logger.log(
+        '🚀',
+        `Parallel batch load of ${sheetKeys.length} sheets completed in ${endTime - startTime}ms`
+      );
+
+      // Convert to object format
+      const dataMap: Record<string, T[]> = {};
+      results.forEach(({ sheetKey, data }) => {
+        dataMap[sheetKey] = data;
+      });
+
+      return dataMap;
+    } catch (error) {
+      this.logger.error('❌ Batch load failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Enhanced batch operations for writes
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async batchWrite(operations: BatchWriteOperation[]): Promise<any> { // Google Sheets API boundary
+    const batchRequest = {
+      spreadsheetId: this.spreadsheetId,
+      resource: {
+        valueInputOption: 'RAW',
+        data: operations.map((op: BatchWriteOperation) => ({
+          range: op.range,
+          values: op.values,
+        })),
+      },
+    };
+
+    const startTime = Date.now();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const response: any = await this.sheets.spreadsheets.values.batchUpdate(batchRequest); // Google Sheets API boundary
+    const endTime = Date.now();
+
+    this.logger.log(
+      '📝',
+      `Batch write of ${operations.length} operations completed in ${endTime - startTime}ms`
+    );
+
+    return response;
+  }
+
+  /**
+   * Get all records from a sheet using an open-ended range for optimal performance
+   * Google Sheets API will automatically return only populated rows
+   * Implements caching to minimize API calls
+   */
+  async getAllRecords<T>(sheetKey: string, mapFunc: (row: string[]) => T): Promise<T[]> {
+    try {
+      const sheetInfo = this.workingSheetInfo[sheetKey];
+
+      if (!sheetInfo) {
+        throw new Error(`Sheet info not found for key: ${sheetKey}`);
+      }
+
+      const spreadsheetId = this.spreadsheetId;
+
+      // Calculate the last column needed based on columnMap
+      const maxColumnIndex = Math.max(...Object.values(sheetInfo.columnMap));
+
+      // Convert column index to Excel-style column letter (A, B, ..., Z, AA, AB, ...)
+      const getColumnLetter = (index: number): string => {
+        let letter = '';
+        let num = index;
+        while (num >= 0) {
+          letter = String.fromCharCode((num % 26) + 65) + letter;
+          num = Math.floor(num / 26) - 1;
+        }
+        return letter;
+      };
+
+      const lastColumn = getColumnLetter(maxColumnIndex);
+      const range = `${sheetInfo.sheet}!A${sheetInfo.startRow}:${lastColumn}`;
+
+      // Generate cache key based on spreadsheet ID and range
+      const cacheKey = `sheets:${spreadsheetId}:${range}`;
+
+      // CRITICAL: Periods should NEVER be cached as they control time-sensitive application behavior
+      const shouldCache = sheetKey !== Keys.PERIODS;
+
+      // Check cache if available and caching is allowed for this sheet
+      if (this.cacheService && shouldCache) {
+        const cached = this.cacheService.get(cacheKey) as string[][] | null;
+        if (cached) {
+          this.logger.info(`📦 Cache hit for ${sheetKey}`);
+          // Apply mapFunc to cached rows
+          return cached
+            .map((row: string[]) => mapFunc(row))
+            .filter((item: T): item is NonNullable<T> => item !== null && item !== undefined);
+        }
+      }
+
+      // Cache miss - fetch from Google Sheets API
+      this.logger.info(`🌐 API call for ${sheetKey}`);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const response: any = await this.sheets.spreadsheets.values.get({ // Google Sheets API boundary
+        spreadsheetId: spreadsheetId,
+        range: range,
+      });
+
+      const rows: string[][] = response.data.values || [];
+
+      // Store raw rows in cache if available and caching is allowed for this sheet
+      if (this.cacheService && shouldCache) {
+        this.cacheService.set(cacheKey, rows, this.cacheTtl);
+      }
+
+      return rows.map((row: string[]) => mapFunc(row)).filter((item: T): item is NonNullable<T> => item !== null && item !== undefined);
+    } catch (error) {
+      this.logger.error(`Error getting data from sheet ${sheetKey}:`, (error as Error).message);
+      throw error;
+    }
+  }
+
+  /** Find records in a sheet where a column matches a value */
+  async getFromSheetByColumnValue(
+    sheetKey: string,
+    columnName: string,
+    value: string
+  ): Promise<Record<string, string>[]> {
+    const sheetInfo = this.workingSheetInfo[sheetKey];
+    const allData = await this.getAllRecords(sheetKey, (row: string[]) =>
+      this.#convertRowToObject(row, sheetInfo.columnMap)
+    );
+    return allData.filter((item: Record<string, string>) => item[columnName] === value);
+  }
+
+  /** Find a single record in a sheet by column value */
+  async getFromSheetByColumnValueSingle(
+    sheetKey: string,
+    columnName: string,
+    value: string
+  ): Promise<Record<string, string> | null> {
+    const results = await this.getFromSheetByColumnValue(sheetKey, columnName, value);
+    return results.length > 0 ? results[0] : null;
+  }
+
+  /**
+   * Append a record to a sheet with optional audit trail
+   */
+  async appendRecord(
+    sheetKey: string,
+    record: Appendable,
+    createdBy: string
+  ): Promise<Appendable> {
+    try {
+      const sheetInfo = this.workingSheetInfo[sheetKey];
+
+      if (!sheetInfo) {
+        throw new Error(`Sheet info not found for key: ${sheetKey}`);
+      }
+
+      // Convert record to row: prefer toDatabaseRow() when available, fall back to column map
+      const row = record.toDatabaseRow
+        ? record.toDatabaseRow()
+        : this.#convertObjectToRow(record as Record<string, string>, sheetInfo.columnMap);
+
+      // Append directly to spreadsheet using RAW to preserve data types
+      await this.sheets.spreadsheets.values.append({
+        spreadsheetId: this.spreadsheetId,
+        range: `${sheetInfo.sheet}!A:A`,
+        valueInputOption: 'RAW',
+        requestBody: {
+          values: [row],
+        },
+      });
+
+      // Add audit record if configured
+      const { auditSheet } = sheetInfo;
+
+      if (auditSheet) {
+        let auditRecord: Record<string, string | boolean>;
+        if (sheetKey === Keys.REGISTRATIONS || sheetKey.startsWith('registrations_')) {
+          auditRecord = this.#createRegistrationAuditRecord(
+            record as unknown as RegistrationRecord,
+            createdBy,
+            false
+          );
+        } else if (sheetKey === Keys.ATTENDANCE || sheetKey === 'attendance') {
+          auditRecord = this.#createAttendanceAuditRecord(
+            record as unknown as AttendanceRecord,
+            createdBy,
+            false
+          );
+        } else {
+          throw new Error(`No audit record creator defined for sheet: ${sheetKey}`);
+        }
+        await this.insertIntoSheet(auditSheet, auditRecord);
+      }
+
+      // Clear cache after successful write
+      this.clearSheetCache(sheetKey);
+
+      return record;
+    } catch (error) {
+      this.logger.error(`Error appending record to sheet ${sheetKey}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Insert data into sheet
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async insertIntoSheet(sheetKey: string, data: Record<string, any>): Promise<any> { // Google Sheets API boundary
+    try {
+      const sheetInfo = this.workingSheetInfo[sheetKey];
+      if (!sheetInfo) {
+        throw new Error(`Sheet info not found for key: ${sheetKey}`);
+      }
+
+      const spreadsheetId = this.spreadsheetId;
+
+      // Convert object to array based on column map
+      const row = this.#convertObjectToRow(data, sheetInfo.columnMap);
+
+      const response = await this.sheets.spreadsheets.values.append({
+        spreadsheetId: spreadsheetId,
+        range: `${sheetInfo.sheet}!A:A`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [row],
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Error inserting data into sheet ${sheetKey}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update record
+   */
+  async updateRecord(
+    sheetKey: string,
+    record: Record<string, unknown>,
+    updatedBy: string
+  ): Promise<void> {
+    try {
+      const sheetInfo = this.workingSheetInfo[sheetKey];
+      if (!sheetInfo) {
+        throw new Error(`Sheet info not found for key: ${sheetKey}`);
+      }
+
+      // Find the row to update
+      const allData = await this.getAllRecords(sheetKey, (row: string[]) =>
+        this.#convertRowToObject(row, sheetInfo.columnMap)
+      );
+      const rowIndex = allData.findIndex(
+        (row: Record<string, string>) => row.id === String(record.id || '')
+      );
+
+      if (rowIndex === -1) {
+        this.logger.debug(`Record with ID ${record.id} not found in ${sheetKey}.`);
+        return;
+      }
+
+      await this.updateInSheet(sheetKey, rowIndex, record);
+      this.logger.debug(`Record with ID ${record.id} updated in ${sheetKey}.`);
+
+      // Create audit record if this is a registration update
+      if (sheetKey === Keys.REGISTRATIONS && sheetInfo.auditSheet) {
+        const auditRecord = this.#createRegistrationAuditRecord(
+          record as unknown as RegistrationRecord,
+          updatedBy,
+          false
+        );
+        await this.insertIntoSheet(sheetInfo.auditSheet, auditRecord);
+        this.logger.debug(`Audit record created for registration update: ${record.id}`);
+      }
+
+      // Clear cache after successful write
+      this.clearSheetCache(sheetKey);
+    } catch (error) {
+      this.logger.error(`Error updating record in sheet ${sheetKey}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update data in sheet
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async updateInSheet(sheetKey: string, rowIndex: number, data: Record<string, unknown>): Promise<any> { // Google Sheets API boundary
+    try {
+      const sheetInfo = this.workingSheetInfo[sheetKey];
+      if (!sheetInfo) {
+        throw new Error(`Sheet info not found for key: ${sheetKey}`);
+      }
+
+      const spreadsheetId = this.spreadsheetId;
+
+      const row = this.#convertObjectToRow(data, sheetInfo.columnMap);
+      const actualRowIndex = sheetInfo.startRow + rowIndex;
+
+      const response = await this.sheets.spreadsheets.values.update({
+        spreadsheetId: spreadsheetId,
+        range: `${sheetInfo.sheet}!A${actualRowIndex}:Z${actualRowIndex}`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [row],
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Error updating data in sheet ${sheetKey}:`, error);
+      throw error;
+    }
+  }
+
+  /** Delete a record by ID with optional audit trail */
+  async deleteRecord(sheetKey: string, recordId: string, deletedBy: string): Promise<void> {
+    try {
+      const sheetInfo = this.workingSheetInfo[sheetKey];
+      const { auditSheet } = sheetInfo;
+
+      // Find the record first
+      const allData = await this.getAllRecords(sheetKey, (row: string[]) =>
+        this.#convertRowToObject(row, sheetInfo.columnMap)
+      );
+      const rowIndex = allData.findIndex((row: Record<string, string>) => row.id === recordId);
+
+      if (rowIndex === -1) {
+        this.logger.debug(`Record with ID ${recordId} not found in ${sheetKey}.`);
+        return;
+      }
+
+      const recordData = allData[rowIndex];
+      await this.deleteFromSheet(sheetKey, rowIndex);
+
+      if (auditSheet) {
+        let auditRecord: Record<string, string | boolean>;
+        if (sheetKey.startsWith('registrations_')) {
+          auditRecord = this.#createRegistrationAuditRecord(
+            recordData as unknown as RegistrationRecord,
+            deletedBy,
+            true
+          );
+        } else if (sheetKey === Keys.ATTENDANCE) {
+          auditRecord = this.#createAttendanceAuditRecord(
+            recordData as unknown as AttendanceRecord,
+            deletedBy,
+            true
+          );
+        } else {
+          throw new Error(`No audit record creator defined for sheet: ${sheetKey}`);
+        }
+        await this.insertIntoSheet(auditSheet, auditRecord);
+      } else {
+        this.logger.debug(`No audit sheet defined for ${sheetKey}. Skipping audit logging.`);
+      }
+
+      // Clear cache after successful write
+      this.clearSheetCache(sheetKey);
+
+      this.logger.debug(`Record with ID ${recordId} deleted from ${sheetKey}.`);
+    } catch (error) {
+      this.logger.error(`Error deleting record from sheet ${sheetKey}:`, error);
+      throw error;
+    }
+  }
+
+  /** Delete a row from a sheet by index */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async deleteFromSheet(sheetKey: string, rowIndex: number): Promise<any> { // Google Sheets API boundary
+    try {
+      const sheetInfo = this.workingSheetInfo[sheetKey];
+      if (!sheetInfo) {
+        throw new Error(`Sheet info not found for key: ${sheetKey}`);
+      }
+
+      const spreadsheetId = this.spreadsheetId;
+
+      // Get sheet ID first
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const spreadsheet: any = await this.sheets.spreadsheets.get({ // Google Sheets API boundary
+        spreadsheetId: spreadsheetId,
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sheet = spreadsheet.data.sheets.find((s: any) => s.properties.title === sheetInfo.sheet); // Google Sheets API boundary
+      if (!sheet) {
+        throw new Error(`Sheet not found: ${sheetInfo.sheet}`);
+      }
+
+      const actualRowIndex = sheetInfo.startRow + rowIndex;
+
+      const response = await this.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: spreadsheetId,
+        requestBody: {
+          requests: [
+            {
+              deleteDimension: {
+                range: {
+                  sheetId: sheet.properties.sheetId,
+                  dimension: 'ROWS',
+                  startIndex: actualRowIndex - 1,
+                  endIndex: actualRowIndex,
+                },
+              },
+            },
+          ],
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Error deleting row from sheet ${sheetKey}:`, error);
+      throw error;
+    }
+  }
+
+  /** Archive a sheet (stub — not yet implemented) */
+  async archiveSheet(sheetKey: string): Promise<void> {
+    // This would require more complex sheet manipulation - implementing basic version
+    this.logger.info(`Archive functionality for ${sheetKey} needs to be implemented`);
+    // Implementation would involve creating new sheet, copying data, etc.
+  }
+
+  /**
+   * Convert a single row array to an object using the column map
+   */
+  #convertRowToObject(row: string[], columnMap: Record<string, number>): Record<string, string> {
+    const obj: Record<string, string> = {};
+    Object.keys(columnMap).forEach((key: string) => {
+      const columnIndex = columnMap[key];
+      obj[key] = row[columnIndex] || '';
+    });
+    return obj;
+  }
+
+  /** Convert an object to a row array using the column map */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  #convertObjectToRow(obj: Record<string, any>, columnMap: Record<string, number>): string[] { // Google Sheets API boundary
+    const maxColumn = Math.max(...Object.values(columnMap));
+    const row: string[] = new Array(maxColumn + 1).fill('');
+
+    Object.keys(columnMap).forEach((key: string) => {
+      const columnIndex = columnMap[key];
+      row[columnIndex] = obj[key] || '';
+    });
+
+    return row;
+  }
+
+  /** Get the highest numeric ID in a sheet */
+  async getMaxIdFromSheet(sheetKey: string): Promise<number> {
+    try {
+      const sheetInfo = this.workingSheetInfo[sheetKey];
+      const allData = await this.getAllRecords(sheetKey, (row: string[]) =>
+        this.#convertRowToObject(row, sheetInfo.columnMap)
+      );
+      if (allData.length === 0) return 0;
+
+      const ids = allData.map((item: Record<string, string>) => parseInt(item.id)).filter((id: number) => !isNaN(id));
+      return ids.length > 0 ? Math.max(...ids) : 0;
+    } catch (error) {
+      this.logger.error(`Error getting max ID from sheet ${sheetKey}:`, error);
+      return 0;
+    }
+  }
+
+  /**
+   * Create a registration audit record with proper schema
+   */
+  #createRegistrationAuditRecord(
+    registrationRecord: RegistrationRecord,
+    performedBy: string,
+    isDeleted: boolean = false
+  ): Record<string, string | boolean> {
+    const now = new Date().toISOString();
+
+    return {
+      id: UuidUtility.generateUuid(), // New unique GUID for audit record
+      registrationId: registrationRecord.id,
+      studentId: registrationRecord.studentId,
+      instructorId: registrationRecord.instructorId,
+      day: registrationRecord.day,
+      startTime: registrationRecord.startTime,
+      length: registrationRecord.length,
+      registrationType: registrationRecord.registrationType,
+      roomId: registrationRecord.roomId,
+      instrument: registrationRecord.instrument,
+      transportationType: registrationRecord.transportationType,
+      notes: registrationRecord.notes,
+      classId: registrationRecord.classId,
+      classTitle: registrationRecord.classTitle,
+      expectedStartDate: registrationRecord.expectedStartDate,
+      createdAt: registrationRecord.createdAt,
+      createdBy: registrationRecord.createdBy,
+      isDeleted: isDeleted,
+      deletedAt: isDeleted ? now : '',
+      deletedBy: isDeleted ? performedBy : '',
+      reenrollmentIntent: registrationRecord.reenrollmentIntent,
+      intentSubmittedAt: registrationRecord.intentSubmittedAt,
+      intentSubmittedBy: registrationRecord.intentSubmittedBy,
+      linkedPreviousRegistrationId: registrationRecord.linkedPreviousRegistrationId,
+      updatedAt: now,
+      updatedBy: performedBy,
+    };
+  }
+
+  /**
+   * Create an attendance audit record with proper schema
+   */
+  #createAttendanceAuditRecord(
+    attendanceRecord: AttendanceRecord,
+    performedBy: string,
+    isDeleted: boolean = false
+  ): Record<string, string> {
+    const now = new Date().toISOString();
+
+    return {
+      id: UuidUtility.generateUuid(), // New unique GUID for audit record
+      action: isDeleted ? 'DELETE' : 'CREATE',
+      attendanceId: attendanceRecord.id,
+      registrationId: attendanceRecord.registrationId,
+      week: attendanceRecord.week,
+      schoolYear: attendanceRecord.schoolYear,
+      trimester: attendanceRecord.trimester,
+      performedBy: performedBy,
+      performedAt: now,
+    };
+  }
+
+  /**
+   * Clear cache for a specific sheet
+   * Called after write operations to invalidate stale cache entries
+   */
+  clearSheetCache(sheetKey: string): void {
+    if (!this.cacheService) {
+      return;
+    }
+
+    const sheetInfo = this.workingSheetInfo[sheetKey];
+    if (!sheetInfo) {
+      return;
+    }
+
+    // Build the same cache key format used in getAllRecords
+    const maxColumnIndex = Math.max(...Object.values(sheetInfo.columnMap));
+    const getColumnLetter = (index: number): string => {
+      let letter = '';
+      let num = index;
+      while (num >= 0) {
+        letter = String.fromCharCode((num % 26) + 65) + letter;
+        num = Math.floor(num / 26) - 1;
+      }
+      return letter;
+    };
+    const lastColumn = getColumnLetter(maxColumnIndex);
+    const range = `${sheetInfo.sheet}!A${sheetInfo.startRow}:${lastColumn}`;
+    const cacheKey = `sheets:${this.spreadsheetId}:${range}`;
+
+    this.cacheService.delete(cacheKey);
+    this.logger.info(`🧹 Cache cleared for ${sheetKey}`);
+  }
+
+  /**
+   * Clear all cache entries
+   * Used by manual cache clear operations
+   */
+  clearAllCache(): void {
+    if (!this.cacheService) {
+      return;
+    }
+
+    this.cacheService.clear();
+    this.logger.info('🧹 All Google Sheets cache cleared');
+  }
+}

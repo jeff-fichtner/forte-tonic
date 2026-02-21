@@ -1,0 +1,250 @@
+/**
+ * Attendance Controller - Application layer API endpoints for attendance management
+ * Handles attendance recording, removal, and summary reporting
+ */
+
+import { getAuthenticatedUserEmail } from '../middleware/auth.js';
+import type { Request, Response } from 'express';
+import { getLogger } from '../utils/logger.js';
+import { successResponse, errorResponse } from '../common/responseHelpers.js';
+import { ValidationError, ConflictError } from '../common/errors.js';
+import type { AttendanceRepository } from '../repositories/attendanceRepository.js';
+
+const logger = getLogger();
+
+export class AttendanceController {
+  /**
+   * Mark Attendance - New Repository Pattern
+   */
+  static async markAttendance(req: Request, res: Response): Promise<void> {
+    const startTime = Date.now();
+
+    try {
+      const { registrationId, week, schoolYear, trimester } = req.body;
+      const attendanceRepository = req.attendanceRepository!;
+
+      // Get the authenticated user's email for audit purposes
+      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
+
+      // Validation
+      if (!registrationId || !week) {
+        throw new ValidationError('Missing required fields: registrationId, week');
+      }
+
+      // Validate required fields
+      if (!schoolYear) {
+        throw new ValidationError('schoolYear is required');
+      }
+      if (!trimester) {
+        throw new ValidationError('trimester is required');
+      }
+
+      // Check if attendance already exists
+      const existingAttendance = await attendanceRepository.hasAttendance(
+        registrationId,
+        week,
+        schoolYear,
+        trimester
+      );
+
+      if (existingAttendance) {
+        throw new ConflictError('Attendance already recorded for this registration and week');
+      }
+
+      // Create attendance record
+      const attendanceData = {
+        registrationId,
+        week: parseInt(week),
+        schoolYear,
+        trimester,
+        recordedBy: authenticatedUserEmail,
+        recordedAt: new Date().toISOString(),
+      };
+
+      const savedAttendance = await attendanceRepository.create(attendanceData, authenticatedUserEmail);
+
+      successResponse(
+        res,
+        {
+          id: savedAttendance.id,
+          registrationId: savedAttendance.registrationId,
+          week: savedAttendance.week,
+          schoolYear: savedAttendance.schoolYear,
+          trimester: savedAttendance.trimester,
+          recordedAt: savedAttendance.recordedAt,
+        },
+        {
+          message: 'Attendance recorded successfully',
+          req,
+          startTime,
+          context: {
+            controller: 'AttendanceController',
+            method: 'markAttendance',
+            registrationId,
+            week,
+          },
+        }
+      );
+    } catch (error) {
+      const typedError = error as Error;
+      logger.error('Error recording attendance:', {
+        error: typedError.message,
+        stack: typedError.stack,
+        requestData: {
+          registrationId: req.body?.registrationId,
+          week: req.body?.week,
+          schoolYear: req.body?.schoolYear,
+          trimester: req.body?.trimester,
+        },
+      });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: {
+          controller: 'AttendanceController',
+          method: 'markAttendance',
+          registrationId: req.body?.registrationId,
+          week: req.body?.week,
+        },
+        includeRequestData: true,
+      });
+    }
+  }
+
+  /**
+   * Get Attendance Summary
+   */
+  static async getAttendanceSummary(req: Request, res: Response): Promise<void> {
+    const startTime = Date.now();
+
+    try {
+      const registrationId = String(req.params.registrationId ?? '');
+      const rawSchoolYear = req.query.schoolYear;
+      const rawTrimester = req.query.trimester;
+      const schoolYear = Array.isArray(rawSchoolYear)
+        ? String(rawSchoolYear[0] ?? '2025-2026')
+        : String(rawSchoolYear ?? '2025-2026');
+      const trimester = Array.isArray(rawTrimester)
+        ? String(rawTrimester[0] ?? 'Fall')
+        : String(rawTrimester ?? 'Fall');
+      const attendanceRepository = req.attendanceRepository!;
+
+      const summary = await attendanceRepository.getAttendanceSummary(
+        registrationId,
+        schoolYear,
+        trimester
+      );
+
+      successResponse(res, summary, {
+        req,
+        startTime,
+        context: {
+          controller: 'AttendanceController',
+          method: 'getAttendanceSummary',
+          registrationId,
+        },
+      });
+    } catch (error) {
+      logger.error('Error getting attendance summary:', error);
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: { controller: 'AttendanceController', method: 'getAttendanceSummary' },
+      });
+    }
+  }
+
+  /**
+   * Record attendance
+   */
+  static async recordAttendance(req: Request, res: Response): Promise<void> {
+    const startTime = Date.now();
+
+    try {
+      const data = req.body;
+      const attendanceRepository = req.attendanceRepository!;
+
+      // Get the authenticated user's email for audit purposes
+      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
+
+      const attendanceRecord = await attendanceRepository.recordAttendance(
+        data.registrationId,
+        authenticatedUserEmail
+      );
+
+      successResponse(res, attendanceRecord, {
+        req,
+        startTime,
+        context: {
+          controller: 'AttendanceController',
+          method: 'recordAttendance',
+          registrationId: data.registrationId,
+        },
+      });
+    } catch (error) {
+      const typedError = error as Error;
+      logger.error('Error recording attendance:', {
+        error: typedError.message,
+        stack: typedError.stack,
+        registrationId: req.body?.registrationId,
+      });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: {
+          controller: 'AttendanceController',
+          method: 'recordAttendance',
+          registrationId: req.body?.registrationId,
+        },
+        includeRequestData: true,
+      });
+    }
+  }
+
+  /**
+   * Remove attendance
+   */
+  static async removeAttendance(req: Request, res: Response): Promise<void> {
+    const startTime = Date.now();
+
+    try {
+      const data = req.body;
+      const attendanceRepository = req.attendanceRepository!;
+
+      // Get the authenticated user's email for audit purposes
+      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
+
+      const success = await attendanceRepository.removeAttendance(
+        data.registrationId,
+        authenticatedUserEmail
+      );
+
+      successResponse(res, success, {
+        req,
+        startTime,
+        context: {
+          controller: 'AttendanceController',
+          method: 'removeAttendance',
+          registrationId: data.registrationId,
+        },
+      });
+    } catch (error) {
+      const typedError = error as Error;
+      logger.error('Error removing attendance:', {
+        error: typedError.message,
+        stack: typedError.stack,
+        registrationId: req.body?.registrationId,
+      });
+      errorResponse(res, error, {
+        req,
+        startTime,
+        context: {
+          controller: 'AttendanceController',
+          method: 'removeAttendance',
+          registrationId: req.body?.registrationId,
+        },
+        includeRequestData: true,
+      });
+    }
+  }
+}

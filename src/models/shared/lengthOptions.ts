@@ -1,0 +1,7 @@
+export const LengthOptions = {
+  THIRTY_MINUTES: 30,
+  FORTY_FIVE_MINUTES: 45,
+  SIXTY_MINUTES: 60,
+} as const;
+
+export type LengthOption = (typeof LengthOptions)[keyof typeof LengthOptions];
