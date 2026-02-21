@@ -17,6 +17,8 @@ Today's date is 2026-02-18.
 ## Active Technologies
 - TypeScript 5.x targeting ES2022, running on Node.js (ESM) + Express 4, Google Sheets API v4, tsx (runtime), ts-jest (testing), typescript-eslint (linting) (002-typescript-migration)
 - Google Sheets API v4 (unchanged) (002-typescript-migration)
+- TypeScript 5.x targeting ES2022 + Express 4, Google Sheets API v4, googleapis (003-db-layer-simplification)
+- Google Sheets (single spreadsheet, column-index mapped) (003-db-layer-simplification)
 
 ## Recent Changes
 - 002-typescript-migration: Added TypeScript 5.x targeting ES2022, running on Node.js (ESM) + Express 4, Google Sheets API v4, tsx (runtime), ts-jest (testing), typescript-eslint (linting)
