@@ -21,6 +21,8 @@ Today's date is 2026-02-18.
 - Google Sheets (single spreadsheet, column-index mapped) (003-db-layer-simplification)
 - TypeScript 5.x targeting ES2022, Node.js ESM + Express 4, Google Sheets API v4 (004-service-layer-cleanup)
 - Google Sheets (single spreadsheet, column-index mapped, 5-min in-memory cache) (004-service-layer-cleanup)
+- TypeScript 5.x targeting ES2022 + Jest 29.x, ts-jest (ESM preset), supertest 7.x, @jest/globals (006-backend-test-coverage)
+- N/A (all tests mock the Google Sheets layer) (006-backend-test-coverage)
 
 ## Recent Changes
 - 002-typescript-migration: Added TypeScript 5.x targeting ES2022, running on Node.js (ESM) + Express 4, Google Sheets API v4, tsx (runtime), ts-jest (testing), typescript-eslint (linting)
