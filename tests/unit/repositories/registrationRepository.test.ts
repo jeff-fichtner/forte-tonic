@@ -36,6 +36,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
       spreadsheetId: 'test-spreadsheet-id',
       sheets: mockSheets,
       deleteRecord: jest.fn().mockResolvedValue(true),
+      insertIntoSheet: jest.fn().mockResolvedValue(true),
     };
 
     // Create mock config service

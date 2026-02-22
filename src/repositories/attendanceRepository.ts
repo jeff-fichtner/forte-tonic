@@ -3,8 +3,8 @@
  */
 
 import { BaseRepository } from './baseRepository.js';
-import type { ModelClass } from './baseRepository.js';
 import { AttendanceRecord } from '../models/shared/attendanceRecord.js';
+import { UuidUtility } from '../utils/uuidUtility.js';
 import { Keys } from '../utils/values/keys.js';
 import type { GoogleSheetsDbClient } from '../database/googleSheetsDbClient.js';
 import type { ConfigurationService } from '../services/configurationService.js';
@@ -45,10 +45,33 @@ export class AttendanceRepository extends BaseRepository<AttendanceRecord> {
   constructor(dbClient?: GoogleSheetsDbClient, configService?: ConfigurationService) {
     super(
       Keys.ATTENDANCE,
-      AttendanceRecord as unknown as ModelClass<AttendanceRecord>, // SC-005: class constructor → generic ModelClass interface
+      (record) => AttendanceRecord.fromDatabaseRow(record),
       dbClient || null,
       configService
     );
+  }
+
+  /**
+   * Write an attendance audit record to the audit sheet.
+   * Moved from DB client to repository (US4) — domain logic belongs in the repository layer.
+   */
+  async #writeAuditRecord(
+    attendanceRecord: AttendanceRecord,
+    performedBy: string,
+    isDeleted: boolean = false
+  ): Promise<void> {
+    const auditRecord: Record<string, unknown> = {
+      id: UuidUtility.generateUuid(),
+      action: isDeleted ? 'DELETE' : 'CREATE',
+      attendanceId: attendanceRecord.id,
+      registrationId: attendanceRecord.registrationId,
+      week: attendanceRecord.week,
+      schoolYear: attendanceRecord.schoolYear,
+      trimester: attendanceRecord.trimester,
+      performedBy,
+      performedAt: new Date().toISOString(),
+    };
+    await this.dbClient.insertIntoSheet(Keys.ATTENDANCEAUDIT, auditRecord);
   }
 
   /**
@@ -94,6 +117,9 @@ export class AttendanceRepository extends BaseRepository<AttendanceRecord> {
         attendanceData as unknown as Record<string, unknown>, // SC-005: typed model → generic storage API
         attendanceData.recordedBy
       );
+
+      // Write audit record
+      await this.#writeAuditRecord(created, attendanceData.recordedBy);
 
       this.logger.info('✅ Attendance recorded with ID:', created.id);
       return created;
@@ -185,13 +211,17 @@ export class AttendanceRepository extends BaseRepository<AttendanceRecord> {
       return existingAttendance[0];
     }
 
-    const result = await this.dbClient.appendRecord(
+    const attendanceRecord = new AttendanceRecord({ registrationId });
+    await this.dbClient.appendRecord(
       Keys.ATTENDANCE,
-      new AttendanceRecord({ registrationId }) as unknown as Record<string, unknown>, // SC-005: typed model → generic storage API
+      attendanceRecord as unknown as Record<string, unknown>, // SC-005: typed model → generic storage API
       createdBy
     );
 
-    return result as unknown as AttendanceRecord; // SC-005: raw Sheets row → typed model
+    // Write audit record
+    await this.#writeAuditRecord(attendanceRecord, createdBy);
+
+    return attendanceRecord;
   }
 
   /**
@@ -209,7 +239,11 @@ export class AttendanceRepository extends BaseRepository<AttendanceRecord> {
       return true;
     }
 
+    const recordToDelete = existingAttendance[0];
     await this.dbClient.deleteRecord(Keys.ATTENDANCE, registrationId, deletedBy);
+
+    // Write audit record with DELETE action
+    await this.#writeAuditRecord(recordToDelete, deletedBy, true);
 
     return true;
   }

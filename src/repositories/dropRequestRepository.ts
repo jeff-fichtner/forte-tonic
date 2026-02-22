@@ -22,17 +22,12 @@ export type { DropRequestData, DropRequestJSON } from '../models/shared/dropRequ
  * Repository for drop requests
  */
 export class DropRequestRepository extends BaseRepository<DropRequest> {
-  skipCache: boolean;
-
   /**
    * @param dbClient - Database client instance
    * @param configService - Configuration service for logger initialization
    */
   constructor(dbClient?: GoogleSheetsDbClient, configService?: ConfigurationService) {
-    super('drop_requests', DropRequest, dbClient, configService);
-
-    // Skip cache for drop requests - they change frequently during active periods
-    this.skipCache = true;
+    super('drop_requests', (record) => DropRequest.fromDatabaseRow(record), dbClient, configService);
   }
 
   /**
@@ -67,8 +62,8 @@ export class DropRequestRepository extends BaseRepository<DropRequest> {
     try {
       this.logger.info(`🔍 Finding drop request by ID: ${id}`);
 
-      const allRequests = await this.dbClient.getAllRecords('drop_requests', (row: string[]) =>
-        DropRequest.fromDatabaseRow(row)
+      const allRequests = await this.dbClient.getAllRecords('drop_requests', (record: Record<string, string>) =>
+        DropRequest.fromDatabaseRow(record)
       );
 
       const request = allRequests.find((req: DropRequest) => req.id === id);
@@ -88,8 +83,8 @@ export class DropRequestRepository extends BaseRepository<DropRequest> {
     try {
       this.logger.info(`🔍 Finding drop requests for parent: ${parentId}`);
 
-      const allRequests = await this.dbClient.getAllRecords('drop_requests', (row: string[]) =>
-        DropRequest.fromDatabaseRow(row)
+      const allRequests = await this.dbClient.getAllRecords('drop_requests', (record: Record<string, string>) =>
+        DropRequest.fromDatabaseRow(record)
       );
 
       return allRequests.filter((req: DropRequest) => req.parentId === parentId);
@@ -108,8 +103,8 @@ export class DropRequestRepository extends BaseRepository<DropRequest> {
     try {
       this.logger.info(`🔍 Finding drop requests with status: ${status}`);
 
-      const allRequests = await this.dbClient.getAllRecords('drop_requests', (row: string[]) =>
-        DropRequest.fromDatabaseRow(row)
+      const allRequests = await this.dbClient.getAllRecords('drop_requests', (record: Record<string, string>) =>
+        DropRequest.fromDatabaseRow(record)
       );
 
       return allRequests.filter((req: DropRequest) => req.status === status);
@@ -129,8 +124,8 @@ export class DropRequestRepository extends BaseRepository<DropRequest> {
     try {
       this.logger.info(`🔍 Finding drop request for registration: ${registrationId}`);
 
-      const allRequests = await this.dbClient.getAllRecords('drop_requests', (row: string[]) =>
-        DropRequest.fromDatabaseRow(row)
+      const allRequests = await this.dbClient.getAllRecords('drop_requests', (record: Record<string, string>) =>
+        DropRequest.fromDatabaseRow(record)
       );
 
       const request = allRequests.find((req: DropRequest) => req.registrationId === registrationId);
@@ -187,8 +182,8 @@ export class DropRequestRepository extends BaseRepository<DropRequest> {
     try {
       this.logger.info('📋 Finding all drop requests');
 
-      const allRequests = await this.dbClient.getAllRecords('drop_requests', (row: string[]) =>
-        DropRequest.fromDatabaseRow(row)
+      const allRequests = await this.dbClient.getAllRecords('drop_requests', (record: Record<string, string>) =>
+        DropRequest.fromDatabaseRow(record)
       );
 
       this.logger.info(`✅ Found ${allRequests.length} drop requests`);

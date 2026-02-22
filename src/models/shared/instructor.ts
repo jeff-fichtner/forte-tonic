@@ -4,7 +4,7 @@
  */
 
 export interface DayAvailability {
-  isAvailable: string;
+  isAvailable: boolean;
   startTime: string;
   endTime: string;
   roomId: string;
@@ -57,6 +57,19 @@ export interface InstructorJSON {
 }
 
 export class Instructor {
+  /** Column schema: positional order of fields in the instructors spreadsheet */
+  static readonly columns = [
+    'id', 'email', 'lastName', 'firstName', 'phone', 'isDeactivated',
+    'minimumGrade', 'maximumGrade',
+    'instrument1', 'instrument2', 'instrument3', 'instrument4',
+    'isAvailableMonday', 'mondayStartTime', 'mondayEndTime', 'mondayRoomId',
+    'isAvailableTuesday', 'tuesdayStartTime', 'tuesdayEndTime', 'tuesdayRoomId',
+    'isAvailableWednesday', 'wednesdayStartTime', 'wednesdayEndTime', 'wednesdayRoomId',
+    'isAvailableThursday', 'thursdayStartTime', 'thursdayEndTime', 'thursdayRoomId',
+    'isAvailableFriday', 'fridayStartTime', 'fridayEndTime', 'fridayRoomId',
+    'accessCode', 'displayEmail', 'displayPhone',
+  ] as const;
+
   id: string;
   email: string | null;
   lastName: string | null;
@@ -115,97 +128,25 @@ export class Instructor {
   }
 
   /**
-   * Factory method for creating from database row data (positional parameters)
+   * Factory method for creating from database record (named fields, pre-transformed by DB client).
+   * DB client transforms produce: isActive (boolean), specialties (string[]),
+   * availability (InstructorAvailability), gradeRange (GradeRange).
    */
-  static fromDatabaseRow(row: string[]): Instructor {
-    const [
-      id,
-      email,
-      lastName,
-      firstName,
-      phone,
-      isDeactivated, // Position 5
-      minimumGrade, // Position 6
-      maximumGrade, // Position 7
-      instrument1, // Position 8
-      instrument2, // Position 9
-      instrument3, // Position 10
-      instrument4, // Position 11
-      isAvailableMonday,
-      mondayStartTime,
-      mondayEndTime,
-      mondayRoomId,
-      isAvailableTuesday,
-      tuesdayStartTime,
-      tuesdayEndTime,
-      tuesdayRoomId,
-      isAvailableWednesday,
-      wednesdayStartTime,
-      wednesdayEndTime,
-      wednesdayRoomId,
-      isAvailableThursday,
-      thursdayStartTime,
-      thursdayEndTime,
-      thursdayRoomId,
-      isAvailableFriday,
-      fridayStartTime,
-      fridayEndTime,
-      fridayRoomId,
-      accessCode, // Position 32 - access code for authentication
-      displayEmail, // Position 33 - public display email
-      displayPhone, // Position 34 - public display phone
-    ] = row;
-
-    const specialties = [instrument1, instrument2, instrument3, instrument4].filter(Boolean);
-
-    const availability: InstructorAvailability = {
-      monday: {
-        isAvailable: isAvailableMonday,
-        startTime: mondayStartTime,
-        endTime: mondayEndTime,
-        roomId: mondayRoomId,
-      },
-      tuesday: {
-        isAvailable: isAvailableTuesday,
-        startTime: tuesdayStartTime,
-        endTime: tuesdayEndTime,
-        roomId: tuesdayRoomId,
-      },
-      wednesday: {
-        isAvailable: isAvailableWednesday,
-        startTime: wednesdayStartTime,
-        endTime: wednesdayEndTime,
-        roomId: wednesdayRoomId,
-      },
-      thursday: {
-        isAvailable: isAvailableThursday,
-        startTime: thursdayStartTime,
-        endTime: thursdayEndTime,
-        roomId: thursdayRoomId,
-      },
-      friday: {
-        isAvailable: isAvailableFriday,
-        startTime: fridayStartTime,
-        endTime: fridayEndTime,
-        roomId: fridayRoomId,
-      },
-    };
-
-    const gradeRange: GradeRange = { minimum: minimumGrade, maximum: maximumGrade };
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  static fromDatabaseRow(record: Record<string, any>): Instructor { // SC-005: transforms produce nested objects
     return new Instructor({
-      id,
-      email,
-      lastName,
-      firstName,
-      phoneNumber: phone,
-      accessCode, // Add access code back
-      displayEmail,
-      displayPhone,
-      specialties,
-      isActive: !isDeactivated,
-      availability,
-      gradeRange,
+      id: record.id,
+      email: record.email,
+      lastName: record.lastName,
+      firstName: record.firstName,
+      phoneNumber: record.phone,
+      accessCode: record.accessCode,
+      displayEmail: record.displayEmail,
+      displayPhone: record.displayPhone,
+      specialties: record.specialties,
+      isActive: record.isActive,
+      availability: record.availability,
+      gradeRange: record.gradeRange,
       role: 'instructor',
     });
   }

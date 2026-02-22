@@ -28,7 +28,7 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    */
   async getAdmins(): Promise<Admin[]> {
     this.logger.info(`📋 Loading ${Keys.ADMINS}`);
-    const admins = await this.dbClient.getAllRecords(Keys.ADMINS, (x: string[]) => Admin.fromDatabaseRow(x));
+    const admins = await this.dbClient.getAllRecords(Keys.ADMINS, (record: Record<string, string>) => Admin.fromDatabaseRow(record));
 
     this.logger.info(`✅ Found ${admins.length} ${Keys.ADMINS}`);
     return admins;
@@ -56,8 +56,8 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    */
   async getInstructors(): Promise<Instructor[]> {
     this.logger.info(`📋 Loading ${Keys.INSTRUCTORS}`);
-    const allInstructors = await this.dbClient.getAllRecords(Keys.INSTRUCTORS, (x: string[]) =>
-      Instructor.fromDatabaseRow(x)
+    const allInstructors = await this.dbClient.getAllRecords(Keys.INSTRUCTORS, (record: Record<string, string>) =>
+      Instructor.fromDatabaseRow(record)
     );
     const instructors = allInstructors.filter((x: Instructor) => x.isActive);
 
@@ -102,8 +102,8 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
     this.logger.info(`📋 Loading ${Keys.STUDENTS}`);
 
     // First, get the basic student data
-    const students: Student[] = await this.dbClient.getAllRecords(Keys.STUDENTS, (x: string[]) =>
-      Student.fromDatabaseRow(x)
+    const students: Student[] = await this.dbClient.getAllRecords(Keys.STUDENTS, (record: Record<string, string>) =>
+      Student.fromDatabaseRow(record)
     );
 
     // Then, enrich with parent emails
@@ -155,7 +155,7 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    */
   async getParents(): Promise<Parent[]> {
     this.logger.info(`📋 Loading ${Keys.PARENTS}`);
-    const parents = await this.dbClient.getAllRecords(Keys.PARENTS, (x: string[]) => Parent.fromDatabaseRow(x));
+    const parents = await this.dbClient.getAllRecords(Keys.PARENTS, (record: Record<string, string>) => Parent.fromDatabaseRow(record));
 
     this.logger.info(`✅ Found ${parents.length} ${Keys.PARENTS}`);
     return parents;
@@ -193,7 +193,7 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    */
   async getRooms(): Promise<Room[]> {
     this.logger.info(`📋 Loading ${Keys.ROOMS}`);
-    const rooms = await this.dbClient.getAllRecords(Keys.ROOMS, (x: string[]) => Room.fromDatabaseRow(x));
+    const rooms = await this.dbClient.getAllRecords(Keys.ROOMS, (record: Record<string, string>) => Room.fromDatabaseRow(record));
 
     this.logger.info(`✅ Found ${rooms.length} ${Keys.ROOMS}`);
     return rooms;

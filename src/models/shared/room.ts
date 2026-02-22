@@ -23,6 +23,9 @@ export interface RoomJSON {
 }
 
 export class Room {
+  /** Column schema: positional order of fields in the rooms spreadsheet */
+  static readonly columns = ['id', 'name', 'altName', 'includeRoomId'] as const;
+
   id: string;
   name: string;
   altName: string | null;
@@ -39,12 +42,12 @@ export class Room {
   }
 
   /**
-   * Factory method for creating from database row data (positional parameters)
+   * Factory method for creating from database record (named fields, pre-transformed by DB client).
+   * DB client transforms produce: includeRoomId (boolean).
    */
-  static fromDatabaseRow(row: string[]): Room {
-    const [id, name, altName, includeRoomId] = row;
-
-    return new Room({ id, name, altName, includeRoomId: !!includeRoomId });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  static fromDatabaseRow(record: Record<string, any>): Room { // SC-005: transforms produce boolean
+    return new Room({ id: record.id, name: record.name, altName: record.altName, includeRoomId: record.includeRoomId });
   }
 
   /**

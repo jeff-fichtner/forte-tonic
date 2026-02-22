@@ -31,6 +31,18 @@ export interface AttendanceRecordJSON {
 }
 
 export class AttendanceRecord {
+  /** Column schema: positional order of fields in the attendance spreadsheet */
+  static readonly columns = [
+    'id', 'registrationId', 'week', 'schoolYear', 'trimester',
+    'attended', 'notes', 'recordedBy', 'recordedAt', 'createdAt', 'createdBy',
+  ] as const;
+
+  /** Column schema for attendance audit sheet */
+  static readonly auditColumns = [
+    'id', 'action', 'attendanceId', 'registrationId', 'week',
+    'schoolYear', 'trimester', 'performedBy', 'performedAt',
+  ] as const;
+
   id: string;
   registrationId: string;
   week: number;
@@ -76,35 +88,24 @@ export class AttendanceRecord {
     };
   }
 
-  toDatabaseRow(): string[] {
-    return [
-      this.id,
-      this.registrationId,
-      String(this.week),
-      this.schoolYear,
-      this.trimester,
-      String(this.attended),
-      this.notes,
-      this.recordedBy,
-      this.recordedAt,
-      this.createdAt,
-      this.createdBy,
-    ];
-  }
-
-  static fromDatabaseRow(row: string[]): AttendanceRecord {
+  /**
+   * Factory method for creating from database record (named fields, pre-transformed by DB client).
+   * DB client transforms produce: week (number), attended (boolean).
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  static fromDatabaseRow(record: Record<string, any>): AttendanceRecord { // SC-005: transforms produce number/boolean
     return new AttendanceRecord({
-      id: row[0],
-      registrationId: row[1] || '',
-      week: Number(row[2] || 0),
-      schoolYear: row[3] || '',
-      trimester: row[4] || '',
-      attended: row[5] ? row[5].toLowerCase() === 'true' : true,
-      notes: row[6] || '',
-      recordedBy: row[7] || '',
-      recordedAt: row[8] || '',
-      createdAt: row[9] || '',
-      createdBy: row[10] || '',
+      id: record.id,
+      registrationId: record.registrationId || '',
+      week: record.week,
+      schoolYear: record.schoolYear || '',
+      trimester: record.trimester || '',
+      attended: record.attended,
+      notes: record.notes || '',
+      recordedBy: record.recordedBy || '',
+      recordedAt: record.recordedAt || '',
+      createdAt: record.createdAt || '',
+      createdBy: record.createdBy || '',
     });
   }
 }

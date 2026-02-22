@@ -24,12 +24,13 @@ function restoreTime() {
   jest.useRealTimers();
 }
 
-// Test data constants
-const PERIOD_FALL_INTENT = ['fall', 'intent', '2025-01-15'];
-const PERIOD_FALL_PRIORITY = ['fall', 'priorityEnrollment', '2025-02-01'];
-const PERIOD_FALL_OPEN = ['fall', 'openEnrollment', '2025-02-15'];
-const PERIOD_WINTER_INTENT = ['winter', 'intent', '2025-03-01'];
-const PERIOD_WINTER_PRIORITY = ['winter', 'priorityEnrollment', '2025-04-01'];
+// Test data constants — post-transform records matching what DB client produces
+// (trimester: lowercased, startDate: Date | null)
+const PERIOD_FALL_INTENT = { trimester: 'fall', periodType: 'intent', startDate: new Date('2025-01-15') };
+const PERIOD_FALL_PRIORITY = { trimester: 'fall', periodType: 'priorityEnrollment', startDate: new Date('2025-02-01') };
+const PERIOD_FALL_OPEN = { trimester: 'fall', periodType: 'openEnrollment', startDate: new Date('2025-02-15') };
+const PERIOD_WINTER_INTENT = { trimester: 'winter', periodType: 'intent', startDate: new Date('2025-03-01') };
+const PERIOD_WINTER_PRIORITY = { trimester: 'winter', periodType: 'priorityEnrollment', startDate: new Date('2025-04-01') };
 
 describe('PeriodService', () => {
   afterEach(() => {
@@ -76,7 +77,7 @@ describe('PeriodService', () => {
     test('should handle invalid date strings gracefully', async () => {
       mockCurrentDate('2025-02-15');
       const { service } = createPeriodService([
-        ['Fall', 'intent', 'invalid-date'], // Invalid date
+        { trimester: 'fall', periodType: 'intent', startDate: null }, // Invalid date → null after transform
         PERIOD_FALL_PRIORITY, // Valid date
       ]);
 
@@ -89,7 +90,7 @@ describe('PeriodService', () => {
     test('should filter out periods with missing startDate', async () => {
       mockCurrentDate('2025-02-15');
       const { service } = createPeriodService([
-        ['Fall', 'intent', null], // No start date
+        { trimester: 'fall', periodType: 'intent', startDate: null }, // No start date → null after transform
         PERIOD_FALL_PRIORITY,
       ]);
 
@@ -110,10 +111,10 @@ describe('PeriodService', () => {
 
     test('should handle periods with same startDate', async () => {
       mockCurrentDate('2025-02-15');
-      const sameDate = '2025-02-01';
+      const sameDate = new Date('2025-02-01');
       const { service } = createPeriodService([
-        ['Fall', 'intent', sameDate],
-        ['Fall', 'priorityEnrollment', sameDate],
+        { trimester: 'fall', periodType: 'intent', startDate: sameDate },
+        { trimester: 'fall', periodType: 'priorityEnrollment', startDate: sameDate },
       ]);
 
       const result = await service.getCurrentPeriod();
@@ -126,8 +127,8 @@ describe('PeriodService', () => {
     test('should handle Date objects in addition to date strings', async () => {
       mockCurrentDate('2025-02-15');
       const { service } = createPeriodService([
-        ['Fall', 'intent', new Date('2025-01-15')],
-        ['Fall', 'priorityEnrollment', '2025-02-01'], // String
+        { trimester: 'fall', periodType: 'intent', startDate: new Date('2025-01-15') },
+        { trimester: 'fall', periodType: 'priorityEnrollment', startDate: new Date('2025-02-01') },
       ]);
 
       const result = await service.getCurrentPeriod();
@@ -170,7 +171,7 @@ describe('PeriodService', () => {
 
     test('should return false when no current period has started', async () => {
       mockCurrentDate('2025-01-01');
-      const { service } = createPeriodService([['Fall', 'intent', '2025-12-15']]);
+      const { service } = createPeriodService([{ trimester: 'fall', periodType: 'intent', startDate: new Date('2025-12-15') }]);
 
       const result = await service.isIntentPeriodActive();
 
@@ -278,7 +279,7 @@ describe('PeriodService', () => {
 
     test('should return registrations_spring for Spring trimester', async () => {
       mockCurrentDate('2025-06-15');
-      const { service } = createPeriodService([['Spring', 'priorityEnrollment', '2025-06-01']]);
+      const { service } = createPeriodService([{ trimester: 'spring', periodType: 'priorityEnrollment', startDate: new Date('2025-06-01') }]);
 
       const result = await service.getCurrentTrimesterTable();
 
@@ -287,14 +288,14 @@ describe('PeriodService', () => {
 
     test('should throw error when no active period', async () => {
       mockCurrentDate('2025-01-01');
-      const { service } = createPeriodService([['Fall', 'intent', '2025-12-15']]);
+      const { service } = createPeriodService([{ trimester: 'fall', periodType: 'intent', startDate: new Date('2025-12-15') }]);
 
       await expect(service.getCurrentTrimesterTable()).rejects.toThrow('No active period found');
     });
 
     test('should lowercase trimester name in table name', async () => {
       mockCurrentDate('2025-02-15');
-      const { service } = createPeriodService([['FALL', 'priorityEnrollment', '2025-02-01']]);
+      const { service } = createPeriodService([{ trimester: 'fall', periodType: 'priorityEnrollment', startDate: new Date('2025-02-01') }]);
 
       const result = await service.getCurrentTrimesterTable();
 
@@ -303,7 +304,7 @@ describe('PeriodService', () => {
 
     test('should handle trimester with mixed case', async () => {
       mockCurrentDate('2025-02-15');
-      const { service } = createPeriodService([['FaLl', 'priorityEnrollment', '2025-02-01']]);
+      const { service } = createPeriodService([{ trimester: 'fall', periodType: 'priorityEnrollment', startDate: new Date('2025-02-01') }]);
 
       const result = await service.getCurrentTrimesterTable();
 
@@ -316,7 +317,7 @@ describe('PeriodService', () => {
       mockCurrentDate('2025-02-15');
       const { service } = createPeriodService([
         PERIOD_FALL_PRIORITY,
-        ['Winter', 'openEnrollment', '2025-03-01'],
+        { trimester: 'winter', periodType: 'openEnrollment', startDate: new Date('2025-03-01') },
       ]);
 
       const result = await service.getNextTrimester();
@@ -337,7 +338,7 @@ describe('PeriodService', () => {
       mockCurrentDate('2025-02-01');
       const { service } = createPeriodService([
         PERIOD_FALL_INTENT,
-        ['Winter', 'priorityEnrollment', '2025-03-01'],
+        { trimester: 'winter', periodType: 'priorityEnrollment', startDate: new Date('2025-03-01') },
       ]);
 
       const result = await service.getNextTrimester();
@@ -347,7 +348,7 @@ describe('PeriodService', () => {
 
     test('should return next period trimester when before all periods', async () => {
       mockCurrentDate('2025-01-01');
-      const { service } = createPeriodService([['Fall', 'intent', '2025-12-15']]);
+      const { service } = createPeriodService([{ trimester: 'fall', periodType: 'intent', startDate: new Date('2025-12-15') }]);
 
       const result = await service.getNextTrimester();
 
@@ -368,7 +369,7 @@ describe('PeriodService', () => {
 
     test('should return null when no current period', async () => {
       mockCurrentDate('2025-01-01');
-      const { service } = createPeriodService([['Fall', 'intent', '2025-12-15']]);
+      const { service } = createPeriodService([{ trimester: 'fall', periodType: 'intent', startDate: new Date('2025-12-15') }]);
 
       const result = await service.getCurrentTrimester();
 
@@ -419,7 +420,7 @@ describe('PeriodService', () => {
 
     test('should return false when no current period', async () => {
       mockCurrentDate('2025-01-01');
-      const { service } = createPeriodService([['Fall', 'intent', '2025-12-15']]);
+      const { service } = createPeriodService([{ trimester: 'fall', periodType: 'intent', startDate: new Date('2025-12-15') }]);
 
       const result = await service.canAccessNextTrimester(true);
 
@@ -428,7 +429,7 @@ describe('PeriodService', () => {
 
     test('should return false during registration period', async () => {
       mockCurrentDate('2025-03-01');
-      const { service } = createPeriodService([['Fall', 'registration', '2025-03-01']]);
+      const { service } = createPeriodService([{ trimester: 'fall', periodType: 'registration', startDate: new Date('2025-03-01') }]);
 
       const result = await service.canAccessNextTrimester(true);
 

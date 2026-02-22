@@ -15,11 +15,9 @@ export interface IRepository<T> {
   findById(id: string): Promise<T | null>;
 }
 
-export interface ModelClass<T> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- SC-005: Generic constructor bridge between raw Sheets data and typed models
-  new (data: any): T;
-  fromDatabaseRow?(row: string[]): T | null;
-}
+/** Function that converts a transformed DB record into a model instance */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- SC-005: field transforms produce mixed types
+export type RecordMapper<T> = (record: Record<string, any>) => T | null;
 
 /**
  * Abstract base repository with standardized data access
@@ -30,18 +28,18 @@ export class BaseRepository<T extends object>
   implements IRepository<T>
 {
   entityName: string;
-  modelClass: ModelClass<T> | null;
   dbClient: GoogleSheetsDbClient;
+  protected mapRecord: RecordMapper<T> | null;
 
   constructor(
     entityName: string,
-    modelClass: ModelClass<T> | null,
+    mapRecord: RecordMapper<T> | null,
     dbClient: GoogleSheetsDbClient | null = null,
     configService?: ConfigurationService
   ) {
     super(configService);
     this.entityName = entityName;
-    this.modelClass = modelClass;
+    this.mapRecord = mapRecord;
     this.dbClient = dbClient || new GoogleSheetsDbClient(configService);
   }
 
@@ -94,14 +92,16 @@ export class BaseRepository<T extends object>
       const data = dataWithOptionalToJson.toJSON ? dataWithOptionalToJson.toJSON() : entityData;
       data.id = id;
 
-      const updated = await this.dbClient.updateRecord(
+      await this.dbClient.updateRecord(
         this.entityName,
         data as Record<string, unknown>,
         ''
       );
 
       this.logger.info(`✅ Updated ${this.entityName} with ID:`, id);
-      return this.convertToModel(updated as unknown as Record<string, unknown>); // SC-005: typed model → generic storage API
+
+      // Re-fetch the updated record to return the current state
+      return this.findById(id);
     } catch (error) {
       this.logger.error(`❌ Error updating ${this.entityName}:`, error);
       throw new Error(`Failed to update ${this.entityName}: ${(error as Error).message}`);
@@ -116,11 +116,11 @@ export class BaseRepository<T extends object>
       return null;
     }
 
-    if (!this.modelClass) {
+    if (!this.mapRecord) {
       return data as T;
     }
 
-    return new this.modelClass(data);
+    return this.mapRecord(data);
   }
 
   /**
@@ -131,13 +131,12 @@ export class BaseRepository<T extends object>
     try {
       this.logger.info(`📋 Finding all ${this.entityName}s`);
 
-      const records = await this.dbClient.getAllRecords(this.entityName, (row: string[]) => {
-        if (this.modelClass?.fromDatabaseRow) {
-          return this.modelClass.fromDatabaseRow(row);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const records = await this.dbClient.getAllRecords(this.entityName, (record: Record<string, any>) => { // SC-005: field transforms produce mixed types
+        if (this.mapRecord) {
+          return this.mapRecord(record);
         }
-
-        const fallback = this.convertToModel({ row });
-      return fallback;
+        return record as T;
       });
 
       this.logger.info(`✅ Found ${records.length} ${this.entityName}s`);

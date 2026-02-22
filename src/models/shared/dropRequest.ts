@@ -31,6 +31,12 @@ export interface DropRequestJSON {
 }
 
 export class DropRequest {
+  /** Column schema: positional order of fields in the drop_requests spreadsheet */
+  static readonly columns = [
+    'id', 'registrationId', 'parentId', 'trimester', 'reason',
+    'requestedAt', 'status', 'reviewedBy', 'reviewedAt', 'adminNotes',
+  ] as const;
+
   id: string;
   registrationId: string;
   parentId: string;
@@ -73,17 +79,17 @@ export class DropRequest {
   /**
    * Create from database row
    */
-  static fromDatabaseRow(row: string[]): DropRequest {
+  static fromDatabaseRow(record: Record<string, string>): DropRequest {
     return new DropRequest({
-      id: row[0],
-      registrationId: row[1],
-      parentId: row[2],
-      reason: row[3],
-      requestedAt: row[4],
-      status: row[5],
-      reviewedBy: row[6] || null,
-      reviewedAt: row[7] || null,
-      adminNotes: row[8] || null,
+      id: record.id,
+      registrationId: record.registrationId,
+      parentId: record.parentId,
+      reason: record.reason,
+      requestedAt: record.requestedAt,
+      status: record.status,
+      reviewedBy: record.reviewedBy || null,
+      reviewedAt: record.reviewedAt || null,
+      adminNotes: record.adminNotes || null,
     });
   }
 }

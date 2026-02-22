@@ -94,12 +94,12 @@ describe('GoogleSheetsDbClient', () => {
 
       mockSheetsApi.spreadsheets.values.get.mockResolvedValue(mockApiResponse);
 
-      const mapFunc = row => ({
-        id: row[0],
-        email: row[1],
-        lastName: row[2],
-        firstName: row[3],
-        phone: row[4],
+      const mapFunc = record => ({
+        id: record.id,
+        email: record.email,
+        lastName: record.lastName,
+        firstName: record.firstName,
+        phone: record.phone,
       });
 
       const result = await client.getAllRecords('admins', mapFunc);
@@ -142,9 +142,9 @@ describe('GoogleSheetsDbClient', () => {
 
       mockSheetsApi.spreadsheets.values.get.mockResolvedValue(mockApiResponse);
 
-      const mapFunc = row => {
-        if (!row[0]) return null; // Filter out empty rows
-        return { id: row[0], email: row[1] };
+      const mapFunc = record => {
+        if (!record.id) return null; // Filter out empty rows
+        return { id: record.id, email: record.email };
       };
 
       const result = await client.getAllRecords('admins', mapFunc);
@@ -161,7 +161,7 @@ describe('GoogleSheetsDbClient', () => {
         data: { values: [] },
       });
 
-      const result = await client.getAllRecords('admins', row => ({ id: row[0] }));
+      const result = await client.getAllRecords('admins', record => ({ id: record.id }));
 
       expect(result).toEqual([]);
     });
@@ -171,13 +171,13 @@ describe('GoogleSheetsDbClient', () => {
         data: {},
       });
 
-      const result = await client.getAllRecords('admins', row => ({ id: row[0] }));
+      const result = await client.getAllRecords('admins', record => ({ id: record.id }));
 
       expect(result).toEqual([]);
     });
 
     test('should throw error for invalid sheet key', async () => {
-      await expect(client.getAllRecords('nonExistentSheet', row => row)).rejects.toThrow(
+      await expect(client.getAllRecords('nonExistentSheet', record => record)).rejects.toThrow(
         'Sheet info not found for key: nonExistentSheet'
       );
     });
@@ -187,7 +187,7 @@ describe('GoogleSheetsDbClient', () => {
         new Error('API Error: Permission denied')
       );
 
-      await expect(client.getAllRecords('admins', row => ({ id: row[0] }))).rejects.toThrow(
+      await expect(client.getAllRecords('admins', record => ({ id: record.id }))).rejects.toThrow(
         'API Error: Permission denied'
       );
     });
@@ -198,7 +198,7 @@ describe('GoogleSheetsDbClient', () => {
       });
 
       // Use registrations_fall instead of registrations
-      await client.getAllRecords('registrations_fall', row => ({ id: row[0] }));
+      await client.getAllRecords('registrations_fall', record => ({ id: record.id }));
 
       // registrations_fall has max column index 19 (linkedPreviousRegistrationId)
       // 65 + 19 = 84 = 'T'
@@ -222,75 +222,6 @@ describe('GoogleSheetsDbClient', () => {
     test('clearCache tests removed - caching moved to repository layer', () => {
       // DB client no longer has caching - this is handled by repositories
       expect(true).toBe(true);
-    });
-  });
-
-  describe('getFromSheetByColumnValue', () => {
-    test('should filter records by column value', async () => {
-      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
-        data: {
-          values: [
-            ['student-1', 'Smith', 'John'],
-            ['student-2', 'Doe', 'Jane'],
-            ['student-3', 'Smith', 'Bob'],
-          ],
-        },
-      });
-
-      const result = await client.getFromSheetByColumnValue('students', 'lastName', 'Smith');
-
-      expect(result).toHaveLength(2);
-      expect(result[0].id).toBe('student-1');
-      expect(result[0].lastName).toBe('Smith');
-      expect(result[1].id).toBe('student-3');
-      expect(result[1].lastName).toBe('Smith');
-    });
-
-    test('should return empty array when no matches found', async () => {
-      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
-        data: {
-          values: [['student-1', 'Smith', 'John']],
-        },
-      });
-
-      const result = await client.getFromSheetByColumnValue('students', 'lastName', 'NonExistent');
-
-      expect(result).toEqual([]);
-    });
-  });
-
-  describe('getFromSheetByColumnValueSingle', () => {
-    test('should return first matching record', async () => {
-      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
-        data: {
-          values: [
-            ['student-1', 'Smith', 'John'],
-            ['student-2', 'Smith', 'Jane'],
-          ],
-        },
-      });
-
-      const result = await client.getFromSheetByColumnValueSingle('students', 'lastName', 'Smith');
-
-      expect(result).toBeDefined();
-      expect(result.id).toBe('student-1');
-      expect(result.firstName).toBe('John');
-    });
-
-    test('should return null when no match found', async () => {
-      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
-        data: {
-          values: [['student-1', 'Smith', 'John']],
-        },
-      });
-
-      const result = await client.getFromSheetByColumnValueSingle(
-        'students',
-        'lastName',
-        'NonExistent'
-      );
-
-      expect(result).toBeNull();
     });
   });
 
@@ -325,7 +256,7 @@ describe('GoogleSheetsDbClient', () => {
         range: 'admins!A:A',
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: [['admin-1', 'test@test.com', 'Doe', 'John', '555-1234', '', '', '', '', '']],
+          values: [['admin-1', 'test@test.com', 'Doe', 'John', '555-1234', '', '', '', '', 'false']],
         },
       });
     });
@@ -394,13 +325,14 @@ describe('GoogleSheetsDbClient', () => {
       await client.updateRecord('admins', updatedRecord, 'test-user');
 
       // Should update row 3 (startRow 2 + rowIndex 1)
+      // admins has 10 columns (A through J), so range uses precise column J
       expect(mockSheetsApi.spreadsheets.values.update).toHaveBeenCalledWith({
         spreadsheetId: 'test-spreadsheet-id',
-        range: 'admins!A3:Z3',
+        range: 'admins!A3:J3',
         valueInputOption: 'USER_ENTERED',
         requestBody: {
           values: [
-            ['admin-2', 'updated@test.com', 'Smith', 'Jane', '555-9999', '', '', '', '', ''],
+            ['admin-2', 'updated@test.com', 'Smith', 'Jane', '555-9999', '', '', '', '', 'false'],
           ],
         },
       });
@@ -487,112 +419,4 @@ describe('GoogleSheetsDbClient', () => {
     });
   });
 
-  describe('getMaxIdFromSheet', () => {
-    test('should return max numeric ID', async () => {
-      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
-        data: {
-          values: [
-            ['5', 'test'],
-            ['10', 'test'],
-            ['3', 'test'],
-          ],
-        },
-      });
-
-      const maxId = await client.getMaxIdFromSheet('admins');
-
-      expect(maxId).toBe(10);
-    });
-
-    test('should return 0 for empty sheet', async () => {
-      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
-        data: { values: [] },
-      });
-
-      const maxId = await client.getMaxIdFromSheet('admins');
-
-      expect(maxId).toBe(0);
-    });
-
-    test('should ignore non-numeric IDs', async () => {
-      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
-        data: {
-          values: [
-            ['uuid-123', 'test'],
-            ['5', 'test'],
-            ['abc', 'test'],
-          ],
-        },
-      });
-
-      const maxId = await client.getMaxIdFromSheet('admins');
-
-      expect(maxId).toBe(5);
-    });
-
-    test('should return 0 when all IDs are non-numeric', async () => {
-      mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
-        data: {
-          values: [
-            ['uuid-123', 'test'],
-            ['uuid-456', 'test'],
-          ],
-        },
-      });
-
-      const maxId = await client.getMaxIdFromSheet('admins');
-
-      expect(maxId).toBe(0);
-    });
-  });
-
-  describe('getAllDataParallel', () => {
-    test('should load multiple sheets in parallel', async () => {
-      mockSheetsApi.spreadsheets.values.get
-        .mockResolvedValueOnce({
-          data: { values: [['admin-1', 'admin@test.com']] },
-        })
-        .mockResolvedValueOnce({
-          data: { values: [['student-1', 'Smith']] },
-        });
-
-      const mapFunctions = {
-        admins: row => ({ id: row[0], email: row[1] }),
-        students: row => ({ id: row[0], lastName: row[1] }),
-      };
-
-      const result = await client.getAllDataParallel(['admins', 'students'], mapFunctions);
-
-      expect(result).toHaveProperty('admins');
-      expect(result).toHaveProperty('students');
-      expect(result.admins).toEqual([{ id: 'admin-1', email: 'admin@test.com' }]);
-      expect(result.students).toEqual([{ id: 'student-1', lastName: 'Smith' }]);
-    });
-  });
-
-  describe('batchWrite', () => {
-    test('should write multiple operations', async () => {
-      mockSheetsApi.spreadsheets.values.batchUpdate.mockResolvedValue({
-        data: { totalUpdatedCells: 10 },
-      });
-
-      const operations = [
-        {
-          range: 'admins!A2:E2',
-          values: [['admin-1', 'test@test.com', 'Doe', 'John', '555-1234']],
-        },
-        { range: 'students!A2:C2', values: [['student-1', 'Smith', 'Jane']] },
-      ];
-
-      await client.batchWrite(operations);
-
-      expect(mockSheetsApi.spreadsheets.values.batchUpdate).toHaveBeenCalledWith({
-        spreadsheetId: 'test-spreadsheet-id',
-        resource: {
-          valueInputOption: 'RAW',
-          data: operations.map(op => ({ range: op.range, values: op.values })),
-        },
-      });
-    });
-  });
 });

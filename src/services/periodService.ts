@@ -4,6 +4,9 @@ import { TRIMESTER_SEQUENCE } from '../utils/values/trimester.js';
 import type { GoogleSheetsDbClient } from '../database/googleSheetsDbClient.js';
 import type { ConfigurationService } from './configurationService.js';
 
+/** Column schema for the periods sheet (not a model class, so defined here) */
+export const PERIOD_COLUMNS = ['trimester', 'periodType', 'startDate'] as const;
+
 export interface Period {
   trimester: string | null;
   periodType: string;
@@ -23,28 +26,19 @@ export class PeriodService extends BaseService {
   }
 
   /**
-   * Parse a period row from the database into a period object
-   * @param row - Database row [trimester, periodType, startDate]
+   * Parse a period record from the database into a period object.
+   * DB client transforms produce: trimester (lowercase string | null), startDate (Date | null).
+   * @param record - Pre-transformed database record
    * @returns Period object or null if invalid
    */
-  _parsePeriodRow(row: string[]): Period | null {
-    if (!row || !row[0]) return null;
-
-    // Parse startDate - handle both date objects and text strings
-    let startDate: Date | null = null;
-    if (row[2]) {
-      // Try to parse as date - works for both Date objects and date strings
-      const parsedDate = new Date(row[2]);
-      // Check if valid date
-      if (!isNaN(parsedDate.getTime())) {
-        startDate = parsedDate;
-      }
-    }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  _parsePeriodRow(record: Record<string, any>): Period | null { // SC-005: transforms produce Date | null
+    if (!record || !record.trimester) return null;
 
     return {
-      trimester: row[0] ? row[0].toLowerCase() : null,
-      periodType: row[1],
-      startDate: startDate,
+      trimester: record.trimester,
+      periodType: record.periodType,
+      startDate: record.startDate,
     };
   }
 
@@ -53,7 +47,8 @@ export class PeriodService extends BaseService {
    * @returns Array of period objects
    */
   async _getAllPeriods(): Promise<(Period | null)[]> {
-    return await this.dbClient.getAllRecords('periods', (row: string[]) => this._parsePeriodRow(row));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return await this.dbClient.getAllRecords('periods', (record: Record<string, any>) => this._parsePeriodRow(record));
   }
 
   /**

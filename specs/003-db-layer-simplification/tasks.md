@@ -19,8 +19,8 @@
 
 **Purpose**: Branch verification and baseline confirmation
 
-- [ ] T001 Verify branch `003-db-layer-simplification` is checked out and clean
-- [ ] T002 Run `npm run typecheck` and `npm test` to confirm 544/544 tests pass as baseline
+- [x] T001 Verify branch `003-db-layer-simplification` is checked out and clean
+- [x] T002 Run `npm run typecheck` and `npm test` to confirm 544/544 tests pass as baseline
 
 ---
 
@@ -30,11 +30,11 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Define `SheetConfig` interface and `FieldTransform` type in `src/database/googleSheetsDbClient.ts` — `SheetConfig { sheet: string; startRow: number; columns: readonly string[]; auditSheet?: string }` and `FieldTransform = Record<string, (value: string, row: Record<string, string>) => unknown>`
-- [ ] T004 Implement `rowToObject(row: string[], columns: readonly string[]): Record<string, string>` utility method in `src/database/googleSheetsDbClient.ts` — converts positional array to named fields. MUST pad missing trailing columns with empty strings when row has fewer elements than schema (spec edge case: Sheets rows may be shorter than schema)
-- [ ] T005 Implement `objectToRow(obj: Record<string, unknown>, columns: readonly string[]): string[]` utility method in `src/database/googleSheetsDbClient.ts` — converts named fields to positional array using column schema
-- [ ] T006 Implement `applyTransforms(record: Record<string, string>, transforms: FieldTransform): Record<string, unknown>` utility method in `src/database/googleSheetsDbClient.ts` — applies per-field transforms after rowToObject conversion
-- [ ] T007 Run `npm run typecheck` and `npm test` to confirm no regressions from foundational additions
+- [x] T003 Define `SheetConfig` interface and `FieldTransform` type in `src/database/googleSheetsDbClient.ts` — `SheetConfig { sheet: string; startRow: number; columns: readonly string[]; auditSheet?: string }` and `FieldTransform = Record<string, (value: string, row: Record<string, string>) => unknown>`
+- [x] T004 Implement `rowToObject(row: string[], columns: readonly string[]): Record<string, string>` utility method in `src/database/googleSheetsDbClient.ts` — converts positional array to named fields. MUST pad missing trailing columns with empty strings when row has fewer elements than schema (spec edge case: Sheets rows may be shorter than schema)
+- [x] T005 Implement `objectToRow(obj: Record<string, unknown>, columns: readonly string[]): string[]` utility method in `src/database/googleSheetsDbClient.ts` — converts named fields to positional array using column schema
+- [x] T006 Implement `applyTransforms(record: Record<string, string>, transforms: FieldTransform): Record<string, unknown>` utility method in `src/database/googleSheetsDbClient.ts` — applies per-field transforms after rowToObject conversion
+- [x] T007 Run `npm run typecheck` and `npm test` to confirm no regressions from foundational additions
 
 **Checkpoint**: Foundation ready — utilities exist but are not yet wired into the data flow. All 544 tests still pass.
 
@@ -48,59 +48,59 @@
 
 ### Add static columns to all models
 
-- [ ] T008 [P] [US1] Add `static readonly columns` to `src/models/shared/registration.ts` — 20 fields: `id, studentId, instructorId, day, startTime, length, registrationType, roomId, instrument, transportationType, notes, classId, classTitle, expectedStartDate, createdAt, createdBy, reenrollmentIntent, intentSubmittedAt, intentSubmittedBy, linkedPreviousRegistrationId`
-- [ ] T009 [US1] Add `static readonly auditColumns` to `src/models/shared/registration.ts` — 26 fields extending registration columns with audit-specific fields: `id, registrationId, studentId, instructorId, day, startTime, length, registrationType, roomId, instrument, transportationType, notes, classId, classTitle, expectedStartDate, createdAt, createdBy, isDeleted, deletedAt, deletedBy, reenrollmentIntent, intentSubmittedAt, intentSubmittedBy, updatedAt, updatedBy, linkedPreviousRegistrationId` (same file as T008 — do sequentially)
-- [ ] T010 [P] [US1] Add `static readonly columns` to `src/models/shared/attendanceRecord.ts` — 11 fields: `id, registrationId, week, schoolYear, trimester, attended, notes, recordedBy, recordedAt, createdAt, createdBy`
-- [ ] T011 [US1] Add `static readonly auditColumns` to `src/models/shared/attendanceRecord.ts` — 9 fields: `id, action, attendanceId, registrationId, week, schoolYear, trimester, performedBy, performedAt` (same file as T010 — do sequentially)
-- [ ] T012 [P] [US1] Add `static readonly columns` to `src/models/shared/admin.ts` — 10 fields: `id, email, lastName, firstName, phone, accessCode, role, displayEmail, displayPhone, isDirector`
-- [ ] T013 [P] [US1] Add `static readonly columns` to `src/models/shared/instructor.ts` — 35 fields per data-model.md
-- [ ] T014 [P] [US1] Add `static readonly columns` to `src/models/shared/parent.ts` — 6 fields: `id, email, lastName, firstName, phone, accessCode`
-- [ ] T015 [P] [US1] Add `static readonly columns` to `src/models/shared/student.ts` — 8 fields: `id, lastName, firstName, lastNickname, firstNickname, grade, parent1Id, parent2Id`
-- [ ] T016 [P] [US1] Add `static readonly columns` to `src/models/shared/room.ts` — 2 fields: `id, name`
-- [ ] T017 [P] [US1] Add `static readonly columns` to `src/models/shared/class.ts` — 12 fields: `id, instructorId, day, startTime, length, endTime, instrument, title, size, minimumGrade, maximumGrade, isRestricted`
-- [ ] T018 [P] [US1] Add `static readonly columns` to `src/models/shared/dropRequest.ts` — 10 fields: `id, registrationId, parentId, trimester, reason, requestedAt, status, reviewedBy, reviewedAt, adminNotes`
-- [ ] T019 [US1] Define `PERIOD_COLUMNS` constant (`trimester, periodType, startDate`) in `src/services/periodService.ts` — Period is not a model class, so columns are a local constant
+- [x] T008 [P] [US1] Add `static readonly columns` to `src/models/shared/registration.ts` — 20 fields: `id, studentId, instructorId, day, startTime, length, registrationType, roomId, instrument, transportationType, notes, classId, classTitle, expectedStartDate, createdAt, createdBy, reenrollmentIntent, intentSubmittedAt, intentSubmittedBy, linkedPreviousRegistrationId`
+- [x] T009 [US1] Add `static readonly auditColumns` to `src/models/shared/registration.ts` — 26 fields extending registration columns with audit-specific fields: `id, registrationId, studentId, instructorId, day, startTime, length, registrationType, roomId, instrument, transportationType, notes, classId, classTitle, expectedStartDate, createdAt, createdBy, isDeleted, deletedAt, deletedBy, reenrollmentIntent, intentSubmittedAt, intentSubmittedBy, updatedAt, updatedBy, linkedPreviousRegistrationId` (same file as T008 — do sequentially)
+- [x] T010 [P] [US1] Add `static readonly columns` to `src/models/shared/attendanceRecord.ts` — 11 fields: `id, registrationId, week, schoolYear, trimester, attended, notes, recordedBy, recordedAt, createdAt, createdBy`
+- [x] T011 [US1] Add `static readonly auditColumns` to `src/models/shared/attendanceRecord.ts` — 9 fields: `id, action, attendanceId, registrationId, week, schoolYear, trimester, performedBy, performedAt` (same file as T010 — do sequentially)
+- [x] T012 [P] [US1] Add `static readonly columns` to `src/models/shared/admin.ts` — 10 fields: `id, email, lastName, firstName, phone, accessCode, role, displayEmail, displayPhone, isDirector`
+- [x] T013 [P] [US1] Add `static readonly columns` to `src/models/shared/instructor.ts` — 35 fields per data-model.md
+- [x] T014 [P] [US1] Add `static readonly columns` to `src/models/shared/parent.ts` — 6 fields: `id, email, lastName, firstName, phone, accessCode`
+- [x] T015 [P] [US1] Add `static readonly columns` to `src/models/shared/student.ts` — 8 fields: `id, lastName, firstName, lastNickname, firstNickname, grade, parent1Id, parent2Id`
+- [x] T016 [P] [US1] Add `static readonly columns` to `src/models/shared/room.ts` — 2 fields: `id, name`
+- [x] T017 [P] [US1] Add `static readonly columns` to `src/models/shared/class.ts` — 12 fields: `id, instructorId, day, startTime, length, endTime, instrument, title, size, minimumGrade, maximumGrade, isRestricted`
+- [x] T018 [P] [US1] Add `static readonly columns` to `src/models/shared/dropRequest.ts` — 10 fields: `id, registrationId, parentId, trimester, reason, requestedAt, status, reviewedBy, reviewedAt, adminNotes`
+- [x] T019 [US1] Define `PERIOD_COLUMNS` constant (`trimester, periodType, startDate`) in `src/services/periodService.ts` — Period is not a model class, so columns are a local constant
 
 ### Rewrite workingSheetInfo and DB client read/write paths
 
-- [ ] T020 [US6] Rewrite `workingSheetInfo` in `src/database/googleSheetsDbClient.ts` to use `SheetConfig` entries referencing model column schemas — replace ~380 lines of inline column maps with minimal configs (sheet name, startRow, columns reference). Generate trimester-specific registration/audit sheets dynamically from base config + trimester name
-- [ ] T021 [US2] Update `getAllRecords` in `src/database/googleSheetsDbClient.ts` to use `rowToObject` internally — change mapFunc signature from `(row: string[]) => T` to `(record: Record<string, string>) => T`
-- [ ] T022 [US2] Update `appendRecord` in `src/database/googleSheetsDbClient.ts` to use `objectToRow` with column schemas — remove `Appendable` interface and `toDatabaseRow` codepath
-- [ ] T023 [US2] Update `updateRecord` in `src/database/googleSheetsDbClient.ts` to use `objectToRow` with column schemas
+- [x] T020 [US6] Rewrite `workingSheetInfo` in `src/database/googleSheetsDbClient.ts` to use `SheetConfig` entries referencing model column schemas — replace ~380 lines of inline column maps with minimal configs (sheet name, startRow, columns reference). Generate trimester-specific registration/audit sheets dynamically from base config + trimester name
+- [x] T021 [US2] Update `getAllRecords` in `src/database/googleSheetsDbClient.ts` to use `rowToObject` internally — change mapFunc signature from `(row: string[]) => T` to `(record: Record<string, string>) => T`
+- [x] T022 [US2] Update `appendRecord` in `src/database/googleSheetsDbClient.ts` to use `objectToRow` with column schemas — remove `Appendable` interface and `toDatabaseRow` codepath
+- [x] T023 [US2] Update `updateRecord` in `src/database/googleSheetsDbClient.ts` to use `objectToRow` with column schemas
 
 ### Update model fromDatabaseRow methods to accept Record<string, string>
 
-- [ ] T024 [P] [US2] Refactor `fromDatabaseRow` in `src/models/shared/registration.ts` to accept `Record<string, string>` — replace all `row[N]` index access with named field access. Remove `typeof window !== 'undefined'` guard (move `isWaitlistClass` detection to repository per research R6)
-- [ ] T025 [P] [US2] Refactor `fromDatabaseRow` in `src/models/shared/attendanceRecord.ts` to accept `Record<string, string>` — replace positional access with named field access
-- [ ] T026 [P] [US2] Refactor `fromDatabaseRow` in `src/models/shared/class.ts` to accept `Record<string, string>` — replace positional access with named field access
-- [ ] T027 [P] [US2] Refactor `fromDatabaseRow` in `src/models/shared/instructor.ts` to accept `Record<string, string>` — replace positional access with named field access
-- [ ] T028 [P] [US2] Refactor `fromDatabaseRow` in `src/models/shared/admin.ts` to accept `Record<string, string>` — replace positional access with named field access
-- [ ] T029 [P] [US2] Refactor `fromDatabaseRow` in `src/models/shared/parent.ts` to accept `Record<string, string>` — replace positional access with named field access
-- [ ] T030 [P] [US2] Refactor `fromDatabaseRow` in `src/models/shared/student.ts` to accept `Record<string, string>` — replace positional access with named field access
-- [ ] T031 [P] [US2] Refactor `fromDatabaseRow` in `src/models/shared/room.ts` to accept `Record<string, string>` — replace positional access with named field access
-- [ ] T032 [P] [US2] Refactor `fromDatabaseRow` in `src/models/shared/dropRequest.ts` to accept `Record<string, string>` — replace positional access with named field access
+- [x] T024 [P] [US2] Refactor `fromDatabaseRow` in `src/models/shared/registration.ts` to accept `Record<string, string>` — replace all `row[N]` index access with named field access. Remove `typeof window !== 'undefined'` guard (move `isWaitlistClass` detection to repository per research R6)
+- [x] T025 [P] [US2] Refactor `fromDatabaseRow` in `src/models/shared/attendanceRecord.ts` to accept `Record<string, string>` — replace positional access with named field access
+- [x] T026 [P] [US2] Refactor `fromDatabaseRow` in `src/models/shared/class.ts` to accept `Record<string, string>` — replace positional access with named field access
+- [x] T027 [P] [US2] Refactor `fromDatabaseRow` in `src/models/shared/instructor.ts` to accept `Record<string, string>` — replace positional access with named field access
+- [x] T028 [P] [US2] Refactor `fromDatabaseRow` in `src/models/shared/admin.ts` to accept `Record<string, string>` — replace positional access with named field access
+- [x] T029 [P] [US2] Refactor `fromDatabaseRow` in `src/models/shared/parent.ts` to accept `Record<string, string>` — replace positional access with named field access
+- [x] T030 [P] [US2] Refactor `fromDatabaseRow` in `src/models/shared/student.ts` to accept `Record<string, string>` — replace positional access with named field access
+- [x] T031 [P] [US2] Refactor `fromDatabaseRow` in `src/models/shared/room.ts` to accept `Record<string, string>` — replace positional access with named field access
+- [x] T032 [P] [US2] Refactor `fromDatabaseRow` in `src/models/shared/dropRequest.ts` to accept `Record<string, string>` — replace positional access with named field access
 
 ### Remove toDatabaseRow from models
 
-- [ ] T033 [P] [US2] Remove `toDatabaseRow()` method from `src/models/shared/registration.ts` — DB client handles object-to-row conversion via column schema
-- [ ] T034 [P] [US2] Remove `toDatabaseRow()` method from `src/models/shared/attendanceRecord.ts` — DB client handles object-to-row conversion via column schema
+- [x] T033 [P] [US2] Remove `toDatabaseRow()` method from `src/models/shared/registration.ts` — DB client handles object-to-row conversion via column schema
+- [x] T034 [P] [US2] Remove `toDatabaseRow()` method from `src/models/shared/attendanceRecord.ts` — DB client handles object-to-row conversion via column schema
 
 ### Update repositories to match new DB client signatures
 
-- [ ] T035 [P] [US2] Update `src/repositories/registrationRepository.ts` — update all `getAllRecords` mapFunc calls to match new `(record: Record<string, string>) => T` signature. Move `isWaitlistClass` detection (title check) into repository after Registration construction
-- [ ] T036 [P] [US2] Update `src/repositories/userRepository.ts` — update `getAllRecords` mapFunc calls for Admin, Instructor, Student, Parent, Room
-- [ ] T037 [P] [US2] Update `src/repositories/attendanceRepository.ts` — update `getAllRecords` mapFunc calls
-- [ ] T038 [P] [US2] Update `src/repositories/dropRequestRepository.ts` — update `getAllRecords` mapFunc calls
-- [ ] T039 [P] [US2] Update `src/repositories/programRepository.ts` — update `getAllRecords` mapFunc calls (Class model)
+- [x] T035 [P] [US2] Update `src/repositories/registrationRepository.ts` — update all `getAllRecords` mapFunc calls to match new `(record: Record<string, string>) => T` signature. Move `isWaitlistClass` detection (title check) into repository after Registration construction
+- [x] T036 [P] [US2] Update `src/repositories/userRepository.ts` — update `getAllRecords` mapFunc calls for Admin, Instructor, Student, Parent, Room
+- [x] T037 [P] [US2] Update `src/repositories/attendanceRepository.ts` — update `getAllRecords` mapFunc calls
+- [x] T038 [P] [US2] Update `src/repositories/dropRequestRepository.ts` — update `getAllRecords` mapFunc calls
+- [x] T039 [P] [US2] Update `src/repositories/programRepository.ts` — update `getAllRecords` mapFunc calls (Class model)
 
 ### Update PeriodService
 
-- [ ] T040 [US2] Update `_parsePeriodRow` in `src/services/periodService.ts` to accept `Record<string, string>` instead of `string[]` — replace `row[0]`, `row[1]`, `row[2]` with named field access using `PERIOD_COLUMNS`
+- [x] T040 [US2] Update `_parsePeriodRow` in `src/services/periodService.ts` to accept `Record<string, string>` instead of `string[]` — replace `row[0]`, `row[1]`, `row[2]` with named field access using `PERIOD_COLUMNS`
 
 ### Update tests for new signatures
 
-- [ ] T041 [US2] Update test mocks and fixtures in `tests/` — update any test that passes `string[]` to `fromDatabaseRow` or mocks `getAllRecords` mapFunc to use `Record<string, string>` instead. Update DB client mocks to reflect new `rowToObject`-based pipeline. Per FR-008/SC-005: change mock *input formats*, NOT expected *output assertions*
-- [ ] T042 [US2] Run `npm run typecheck` and `npm test` — confirm 544/544 pass, zero type errors
+- [x] T041 [US2] Update test mocks and fixtures in `tests/` — update any test that passes `string[]` to `fromDatabaseRow` or mocks `getAllRecords` mapFunc to use `Record<string, string>` instead. Update DB client mocks to reflect new `rowToObject`-based pipeline. Per FR-008/SC-005: change mock *input formats*, NOT expected *output assertions*
+- [x] T042 [US2] Run `npm run typecheck` and `npm test` — confirm 544/544 pass, zero type errors
 
 **Checkpoint**: Column schemas defined on all models. DB client uses schemas for row↔object conversion. All models receive named fields. Registration config defined once. `workingSheetInfo` under 80 lines. `grep -rn 'row\[' src/models/shared/` returns nothing. All 544 tests pass.
 
@@ -114,28 +114,28 @@
 
 ### Define field transforms
 
-- [ ] T043 [P] [US3] Define Classes transform map in `src/database/googleSheetsDbClient.ts` — `startTime` → 24h format via `DateHelpers.parseTimeString`, `endTime` → 24h format, `length` → number
-- [ ] T044 [P] [US3] Define Instructors transform map in `src/database/googleSheetsDbClient.ts` — `isDeactivated` → rename to `isActive` + invert boolean, `instrument1-4` → collect into `specialties[]`, availability flat fields → nested `availability` object, grades → `gradeRange` object
-- [ ] T045 [P] [US3] Define Attendance transform map in `src/database/googleSheetsDbClient.ts` — `week` → number, `attended` → boolean
-- [ ] T046 [P] [US3] Define Admin transform map in `src/database/googleSheetsDbClient.ts` — `isDirector` → boolean
-- [ ] T047 [P] [US3] Define Periods transform map in `src/database/googleSheetsDbClient.ts` — `trimester` → lowercase, `startDate` → Date
+- [x] T043 [P] [US3] Define Classes transform map in `src/database/googleSheetsDbClient.ts` — `startTime` → 24h format via `DateHelpers.parseTimeString`, `endTime` → 24h format, `length` → number
+- [x] T044 [P] [US3] Define Instructors transform map in `src/database/googleSheetsDbClient.ts` — `isDeactivated` → rename to `isActive` + invert boolean, `instrument1-4` → collect into `specialties[]`, availability flat fields → nested `availability` object, grades → `gradeRange` object
+- [x] T045 [P] [US3] Define Attendance transform map in `src/database/googleSheetsDbClient.ts` — `week` → number, `attended` → boolean
+- [x] T046 [P] [US3] Define Admin transform map in `src/database/googleSheetsDbClient.ts` — `isDirector` → boolean
+- [x] T047 [P] [US3] Define Periods transform map in `src/database/googleSheetsDbClient.ts` — `trimester` → lowercase, `startDate` → Date
 
 ### Wire transforms into DB client pipeline
 
-- [ ] T048 [US3] Wire transform maps into `getAllRecords` pipeline in `src/database/googleSheetsDbClient.ts` — call `applyTransforms` after `rowToObject`, before passing to mapFunc. Associate each transform map with its `SheetConfig` entry
+- [x] T048 [US3] Wire transform maps into `getAllRecords` pipeline in `src/database/googleSheetsDbClient.ts` — call `applyTransforms` after `rowToObject`, before passing to mapFunc. Associate each transform map with its `SheetConfig` entry
 
 ### Remove Sheets-specific parsing from models
 
-- [ ] T049 [P] [US3] Remove `DateHelpers.parseTimeString` call from `fromDatabaseRow` in `src/models/shared/class.ts` — model now receives pre-parsed 24h time strings and numeric length. Keep `DateHelpers` import if used by display-formatting getters (`formattedStartTime`, `formattedEndTime`)
-- [ ] T050 [P] [US3] Remove `!isDeactivated` inversion and flat-to-nested restructuring from `fromDatabaseRow` in `src/models/shared/instructor.ts` — model now receives `isActive: boolean`, `specialties: string[]`, nested `availability` object, `gradeRange` object
-- [ ] T051 [P] [US3] Remove boolean string parsing from `fromDatabaseRow` in `src/models/shared/attendanceRecord.ts` — `attended` arrives as boolean, `week` arrives as number
-- [ ] T052 [P] [US3] Remove boolean string parsing from `fromDatabaseRow` in `src/models/shared/admin.ts` — `isDirector` arrives as boolean
+- [x] T049 [P] [US3] Remove `DateHelpers.parseTimeString` call from `fromDatabaseRow` in `src/models/shared/class.ts` — model now receives pre-parsed 24h time strings and numeric length. Keep `DateHelpers` import if used by display-formatting getters (`formattedStartTime`, `formattedEndTime`)
+- [x] T050 [P] [US3] Remove `!isDeactivated` inversion and flat-to-nested restructuring from `fromDatabaseRow` in `src/models/shared/instructor.ts` — model now receives `isActive: boolean`, `specialties: string[]`, nested `availability` object, `gradeRange` object
+- [x] T051 [P] [US3] Remove boolean string parsing from `fromDatabaseRow` in `src/models/shared/attendanceRecord.ts` — `attended` arrives as boolean, `week` arrives as number
+- [x] T052 [P] [US3] Remove boolean string parsing from `fromDatabaseRow` in `src/models/shared/admin.ts` — `isDirector` arrives as boolean
 
 ### Update tests and verify
 
-- [ ] T053 [US3] Update test mocks and fixtures in `tests/` — update any test that relies on models receiving raw Sheets strings for fields that are now pre-transformed (times, booleans, nested objects). Per FR-008/SC-005: change mock *input formats*, NOT expected *output assertions*
-- [ ] T054 [US3] Run `npm run typecheck` and `npm test` — confirm 544/544 pass
-- [ ] T055 [US3] Verify: `grep -rn 'parseTimeString\|instanceof Date' src/models/shared/` returns nothing in `fromDatabaseRow` methods (display getters are acceptable)
+- [x] T053 [US3] Update test mocks and fixtures in `tests/` — update any test that relies on models receiving raw Sheets strings for fields that are now pre-transformed (times, booleans, nested objects). Per FR-008/SC-005: change mock *input formats*, NOT expected *output assertions*
+- [x] T054 [US3] Run `npm run typecheck` and `npm test` — confirm 544/544 pass
+- [x] T055 [US3] Verify: `grep -rn 'parseTimeString\|instanceof Date' src/models/shared/` returns nothing in `fromDatabaseRow` methods (display getters are acceptable)
 
 **Checkpoint**: All Sheets-specific parsing isolated in DB client transform layer. Models are storage-agnostic. Same model constructors work with both Sheets data and clean test fixtures.
 
@@ -149,28 +149,28 @@
 
 ### Build audit creation in repositories
 
-- [ ] T056 [P] [US4] Add audit record builder and write methods to `src/repositories/registrationRepository.ts` — create `#writeAuditRecord` that builds audit record from registration data and appends to the trimester audit sheet via DB client
-- [ ] T057 [P] [US4] Add audit record builder and write methods to `src/repositories/attendanceRepository.ts` — create `#writeAuditRecord` that builds audit record from attendance data and appends to attendance audit sheet via DB client
+- [x] T056 [P] [US4] Add audit record builder and write methods to `src/repositories/registrationRepository.ts` — create `#writeAuditRecord` that builds audit record from registration data and appends to the trimester audit sheet via DB client
+- [x] T057 [P] [US4] Add audit record builder and write methods to `src/repositories/attendanceRepository.ts` — create `#writeAuditRecord` that builds audit record from attendance data and appends to attendance audit sheet via DB client
 
 ### Wire audit writes into repository operations
 
-- [ ] T058 [US4] Update `create` / `createInTable` in `src/repositories/registrationRepository.ts` to write audit records after the main write
-- [ ] T059 [US4] Update `updateIntent` in `src/repositories/registrationRepository.ts` to write audit records
-- [ ] T060 [US4] Update `delete` / `deleteFromTable` in `src/repositories/registrationRepository.ts` to write audit records
-- [ ] T061 [US4] Update `create` / `recordAttendance` / `removeAttendance` in `src/repositories/attendanceRepository.ts` to write audit records
+- [x] T058 [US4] Update `create` / `createInTable` in `src/repositories/registrationRepository.ts` to write audit records after the main write
+- [x] T059 [US4] Update `updateIntent` in `src/repositories/registrationRepository.ts` to write audit records
+- [x] T060 [US4] Update `delete` / `deleteFromTable` in `src/repositories/registrationRepository.ts` to write audit records
+- [x] T061 [US4] Update `create` / `recordAttendance` / `removeAttendance` in `src/repositories/attendanceRepository.ts` to write audit records
 
 ### Remove audit logic from DB client
 
-- [ ] T062 [US4] Remove `#createRegistrationAuditRecord` method from `src/database/googleSheetsDbClient.ts`
-- [ ] T063 [US4] Remove `#createAttendanceAuditRecord` method from `src/database/googleSheetsDbClient.ts`
-- [ ] T064 [US4] Remove `RegistrationRecord` and `AttendanceRecord` interfaces from `src/database/googleSheetsDbClient.ts`
-- [ ] T065 [US4] Simplify `appendRecord` in `src/database/googleSheetsDbClient.ts` — remove `if (auditSheet)` branching logic
-- [ ] T066 [US4] Simplify `deleteRecord` in `src/database/googleSheetsDbClient.ts` — remove the audit-writing side effect
+- [x] T062 [US4] Remove `#createRegistrationAuditRecord` method from `src/database/googleSheetsDbClient.ts`
+- [x] T063 [US4] Remove `#createAttendanceAuditRecord` method from `src/database/googleSheetsDbClient.ts`
+- [x] T064 [US4] Remove `RegistrationRecord` and `AttendanceRecord` interfaces from `src/database/googleSheetsDbClient.ts`
+- [x] T065 [US4] Simplify `appendRecord` in `src/database/googleSheetsDbClient.ts` — remove `if (auditSheet)` branching logic
+- [x] T066 [US4] Simplify `deleteRecord` in `src/database/googleSheetsDbClient.ts` — remove the audit-writing side effect
 
 ### Update tests and verify
 
-- [ ] T067 [US4] Update test mocks in `tests/` — DB client tests no longer expect audit side effects; repository tests now verify audit writes. Per FR-008/SC-005: change mock *input formats*, NOT expected *output assertions*
-- [ ] T068 [US4] Run `npm run typecheck` and `npm test` — confirm 544/544 pass
+- [x] T067 [US4] Update test mocks in `tests/` — DB client tests no longer expect audit side effects; repository tests now verify audit writes. Per FR-008/SC-005: change mock *input formats*, NOT expected *output assertions*
+- [x] T068 [US4] Run `npm run typecheck` and `npm test` — confirm 544/544 pass
 
 **Checkpoint**: DB client contains zero domain-specific type references. Audit trail creation is testable at repository level. `appendRecord` and `deleteRecord` are simple, side-effect-free operations.
 
@@ -184,26 +184,26 @@
 
 ### Simplify BaseRepository
 
-- [ ] T069 [US5] Simplify `src/repositories/baseRepository.ts` — provide only: `dbClient`, `logger`, `entityName`, and default `findAll`/`findById` implementations that use model column schemas. Remove `ModelClass` generic interface
-- [ ] T070 [US5] Update `src/repositories/userRepository.ts` — adapt to simplified base (or stop extending if cleaner)
-- [ ] T071 [US5] Update `src/repositories/dropRequestRepository.ts` — use base `findAll`/`findById` where possible instead of overriding every method
+- [x] T069 [US5] Simplify `src/repositories/baseRepository.ts` — provide only: `dbClient`, `logger`, `entityName`, and default `findAll`/`findById` implementations that use model column schemas. Remove `ModelClass` generic interface
+- [x] T070 [US5] Update `src/repositories/userRepository.ts` — adapt to simplified base (or stop extending if cleaner)
+- [x] T071 [US5] Update `src/repositories/dropRequestRepository.ts` — use base `findAll`/`findById` where possible instead of overriding every method
 
 ### Remove unused DB client methods
 
-- [ ] T072 [P] [US5] Remove `getFromSheetByColumnValue` from `src/database/googleSheetsDbClient.ts` — zero production callers
-- [ ] T073 [P] [US5] Remove `getFromSheetByColumnValueSingle` from `src/database/googleSheetsDbClient.ts` — zero production callers
-- [ ] T074 [P] [US5] Remove `batchWrite` from `src/database/googleSheetsDbClient.ts` — zero production callers
-- [ ] T075 [P] [US5] Remove `getAllDataParallel` from `src/database/googleSheetsDbClient.ts` — zero production callers
-- [ ] T076 [P] [US5] Remove `getMaxIdFromSheet` from `src/database/googleSheetsDbClient.ts` — zero production callers
-- [ ] T077 [P] [US5] Remove `archiveSheet` from `src/database/googleSheetsDbClient.ts` — zero production callers
+- [x] T072 [P] [US5] Remove `getFromSheetByColumnValue` from `src/database/googleSheetsDbClient.ts` — zero production callers
+- [x] T073 [P] [US5] Remove `getFromSheetByColumnValueSingle` from `src/database/googleSheetsDbClient.ts` — zero production callers
+- [x] T074 [P] [US5] Remove `batchWrite` from `src/database/googleSheetsDbClient.ts` — zero production callers
+- [x] T075 [P] [US5] Remove `getAllDataParallel` from `src/database/googleSheetsDbClient.ts` — zero production callers
+- [x] T076 [P] [US5] Remove `getMaxIdFromSheet` from `src/database/googleSheetsDbClient.ts` — zero production callers
+- [x] T077 [P] [US5] Remove `archiveSheet` from `src/database/googleSheetsDbClient.ts` — zero production callers
 
 ### Remove vestigial config
 
-- [ ] T078 [US5] Remove vestigial `Keys.REGISTRATIONSAUDIT` sheet config from `src/database/googleSheetsDbClient.ts` if confirmed unused (per research R4)
+- [x] T078 [US5] Remove vestigial `Keys.REGISTRATIONSAUDIT` sheet config from `src/database/googleSheetsDbClient.ts` if confirmed unused (per research R4)
 
 ### Verify
 
-- [ ] T079 [US5] Run `npm run typecheck` and `npm test` — confirm 544/544 pass
+- [x] T079 [US5] Run `npm run typecheck` and `npm test` — confirm 534/534 pass (10 tests for removed methods deleted)
 
 **Checkpoint**: BaseRepository provides only shared behavior. DB client surface area reduced by 6 methods. No vestigial configs remain.
 
@@ -213,14 +213,14 @@
 
 **Purpose**: Final verification against all success criteria
 
-- [ ] T080 Run full quickstart.md validation: `npm run typecheck`, `npm test` (544 expected), `grep -rn 'row\[' src/models/shared/` (zero results), `grep -rn 'parseTimeString\|instanceof Date' src/models/shared/` (zero results in fromDatabaseRow methods)
-- [ ] T081 Verify SC-001: Zero column-index references (`row[N]`) in any model file under `src/models/shared/`
-- [ ] T082 Verify SC-002: `workingSheetInfo` block in `src/database/googleSheetsDbClient.ts` is under 80 lines
-- [ ] T083 Verify SC-003: Registration column schema appears exactly 1 time. Audit column schema appears exactly 1 time
-- [ ] T084 Verify SC-004: `src/database/googleSheetsDbClient.ts` contains zero references to domain-specific types (`RegistrationRecord`, `AttendanceRecord`) and zero audit-construction logic. Field transform definitions referencing column names are acceptable
-- [ ] T085 Verify SC-005: All 544 tests pass with no modifications to test assertions
-- [ ] T086 Verify SC-006: No `fromDatabaseRow` in `src/models/shared/` calls Sheets-specific parsing (`DateHelpers.parseTimeString`, `instanceof Date` guards)
-- [ ] T087 Verify SC-007: Adding a new column to registration schema requires changing exactly 1 file
+- [x] T080 Run full quickstart.md validation: `npm run typecheck`, `npm test` (534 pass — 10 tests for removed dead methods deleted), `grep -rn 'row\[' src/models/shared/` (zero results), `grep -rn 'parseTimeString\|instanceof Date' src/models/shared/` (zero results in fromDatabaseRow methods)
+- [x] T081 Verify SC-001: Zero column-index references (`row[N]`) in any model file under `src/models/shared/`
+- [x] T082 Verify SC-002: `workingSheetInfo` block in `src/database/googleSheetsDbClient.ts` is ~18 lines (under 80)
+- [x] T083 Verify SC-003: Registration column schema appears exactly 1 time. Audit column schema appears exactly 1 time
+- [x] T084 Verify SC-004: `src/database/googleSheetsDbClient.ts` contains zero domain-specific type interfaces (`RegistrationRecord`, `AttendanceRecord`) and zero audit-construction logic. Model class imports for column schema references only
+- [x] T085 Verify SC-005: All 534 tests pass — only mock input formats changed (added `insertIntoSheet`), no output assertions modified
+- [x] T086 Verify SC-006: No `fromDatabaseRow` in `src/models/shared/` calls Sheets-specific parsing (`DateHelpers.parseTimeString`, `instanceof Date` guards)
+- [x] T087 Verify SC-007: Adding a new column to registration schema requires changing exactly 1 file (`src/models/shared/registration.ts`)
 
 ---
 

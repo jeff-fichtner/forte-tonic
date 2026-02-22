@@ -25,6 +25,11 @@ export interface ParentJSON {
 }
 
 export class Parent {
+  /** Column schema: positional order of fields in the parents spreadsheet */
+  static readonly columns = [
+    'id', 'email', 'lastName', 'firstName', 'phone', 'accessCode',
+  ] as const;
+
   id: string;
   email: string;
   lastName: string;
@@ -47,10 +52,15 @@ export class Parent {
   /**
    * Factory method for creating from database row data (positional parameters)
    */
-  static fromDatabaseRow(row: string[]): Parent {
-    const [id, email, lastName, firstName, phone, accessCode] = row;
-
-    return new Parent({ id, email, lastName, firstName, phone, accessCode });
+  static fromDatabaseRow(record: Record<string, string>): Parent {
+    return new Parent({
+      id: record.id,
+      email: record.email,
+      lastName: record.lastName,
+      firstName: record.firstName,
+      phone: record.phone,
+      accessCode: record.accessCode,
+    });
   }
 
   /**

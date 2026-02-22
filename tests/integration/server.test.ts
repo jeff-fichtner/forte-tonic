@@ -60,7 +60,6 @@ jest.unstable_mockModule('../../src/database/googleSheetsDbClient.js', () => ({
     appendRecord: jest.fn().mockResolvedValue(true),
     updateRecord: jest.fn().mockResolvedValue(true),
     deleteRecord: jest.fn().mockResolvedValue(true),
-    getFromSheetByColumnValue: jest.fn().mockResolvedValue([]),
   })),
 }));
 

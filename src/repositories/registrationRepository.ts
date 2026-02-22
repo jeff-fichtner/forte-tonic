@@ -8,7 +8,7 @@
 import crypto from 'crypto';
 import { BaseRepository } from './baseRepository.js';
 import { Registration } from '../models/shared/registration.js';
-import type { RegistrationData } from '../models/shared/registration.js';
+import type { RegistrationData, RegistrationJSON } from '../models/shared/registration.js';
 import { UuidUtility } from '../utils/uuidUtility.js';
 import { isValidTrimester } from '../utils/values/trimester.js';
 import type { GoogleSheetsDbClient } from '../database/googleSheetsDbClient.js';
@@ -30,7 +30,7 @@ export class RegistrationRepository extends BaseRepository<Registration> {
     configService: ConfigurationService,
     periodService: PeriodService
   ) {
-    super('registrations', Registration, dbClient, configService);
+    super('registrations', (record) => Registration.fromDatabaseRow(record), dbClient, configService);
     this.periodService = periodService;
   }
 
@@ -42,12 +42,12 @@ export class RegistrationRepository extends BaseRepository<Registration> {
     try {
       // Registrations are stored in trimester-specific sheets, so we need to search all three
       for (const table of REGISTRATION_TABLES) {
-        const allRegistrations = await this.dbClient.getAllRecords(table, (row: string[]) => {
-          if (!row || !row[0]) {
+        const allRegistrations = await this.dbClient.getAllRecords(table, (record: Record<string, string>) => {
+          if (!record || !record.id) {
             return null;
           }
           try {
-            return Registration.fromDatabaseRow(row);
+            return Registration.fromDatabaseRow(record);
           } catch {
             return null;
           }
@@ -80,12 +80,12 @@ export class RegistrationRepository extends BaseRepository<Registration> {
       const allRegistrations: Registration[] = [];
 
       for (const table of REGISTRATION_TABLES) {
-        const tableRegistrations = await this.dbClient.getAllRecords(table, (row: string[]) => {
-          if (!row || !row[0]) {
+        const tableRegistrations = await this.dbClient.getAllRecords(table, (record: Record<string, string>) => {
+          if (!record || !record.id) {
             return null;
           }
           try {
-            return Registration.fromDatabaseRow(row);
+            return Registration.fromDatabaseRow(record);
           } catch {
             return null;
           }
@@ -115,12 +115,12 @@ export class RegistrationRepository extends BaseRepository<Registration> {
       const allRegistrations: Registration[] = [];
 
       for (const table of REGISTRATION_TABLES) {
-        const tableRegistrations = await this.dbClient.getAllRecords(table, (row: string[]) => {
-          if (!row || !row[0]) {
+        const tableRegistrations = await this.dbClient.getAllRecords(table, (record: Record<string, string>) => {
+          if (!record || !record.id) {
             return null;
           }
           try {
-            return Registration.fromDatabaseRow(row);
+            return Registration.fromDatabaseRow(record);
           } catch {
             return null;
           }
@@ -153,18 +153,18 @@ export class RegistrationRepository extends BaseRepository<Registration> {
       this.logger.info(`📋 Getting active registrations from table: ${currentTable}`);
 
       // Get all registrations from database
-      const allRegistrations = await this.dbClient.getAllRecords(currentTable, (row: string[]) => {
-        // Skip empty rows
-        if (!row || !row[0]) {
+      const allRegistrations = await this.dbClient.getAllRecords(currentTable, (record: Record<string, string>) => {
+        // Skip empty records
+        if (!record || !record.id) {
           return null;
         }
 
         try {
-          return Registration.fromDatabaseRow(row);
+          return Registration.fromDatabaseRow(record);
         } catch (error) {
           this.logger.warn(
             'Skipping invalid registration row:',
-            row[0],
+            record.id,
             (error as Error).message
           );
           return null;
@@ -217,16 +217,16 @@ export class RegistrationRepository extends BaseRepository<Registration> {
       this.logger.info(`📋 Getting registrations from table: ${tableName}`);
 
       // Get all registrations from database
-      const allRegistrations = await this.dbClient.getAllRecords(tableName, (row: string[]) => {
-        // Skip empty rows
-        if (!row || !row[0]) {
+      const allRegistrations = await this.dbClient.getAllRecords(tableName, (record: Record<string, string>) => {
+        // Skip empty records
+        if (!record || !record.id) {
           return null;
         }
 
         try {
-          return Registration.fromDatabaseRow(row);
+          return Registration.fromDatabaseRow(record);
         } catch (error) {
-          this.logger.error(`Error parsing registration row: ${JSON.stringify(row)}`, error);
+          this.logger.error(`Error parsing registration record: ${record.id}`, error);
           return null;
         }
       });
@@ -331,7 +331,11 @@ export class RegistrationRepository extends BaseRepository<Registration> {
         isWaitlistClass: data.isWaitlistClass,
       });
 
-      await this.dbClient.appendRecord(tableName, registration, data.createdBy || '');
+      await this.dbClient.appendRecord(tableName, registration.toJSON() as unknown as Record<string, unknown>, data.createdBy || ''); // SC-005: typed model → generic storage API
+
+      // Write audit record
+      const auditSheet = `${tableName}_audit`;
+      await this.#writeAuditRecord(registration, data.createdBy || '', auditSheet);
 
       return registration;
     } catch (error) {
@@ -360,14 +364,59 @@ export class RegistrationRepository extends BaseRepository<Registration> {
 
       this.logger.info(`🗑️ Deleting registration from table: ${currentTable}`);
 
-      // Use the database client's deleteRecord method which handles audit trails and proper deletion
       await this.dbClient.deleteRecord(currentTable, id, userId);
+
+      // Write audit record with isDeleted flag
+      const auditSheet = `${currentTable}_audit`;
+      await this.#writeAuditRecord(registration, userId, auditSheet, true);
 
       return true;
     } catch (error) {
       this.logger.error('Error deleting registration:', error);
       throw error;
     }
+  }
+
+  /**
+   * Write a registration audit record to the corresponding audit sheet.
+   * Moved from DB client to repository (US4) — domain logic belongs in the repository layer.
+   */
+  async #writeAuditRecord(
+    registration: Registration | RegistrationJSON,
+    performedBy: string,
+    auditSheet: string,
+    isDeleted: boolean = false
+  ): Promise<void> {
+    const now = new Date().toISOString();
+    const auditRecord: Record<string, unknown> = {
+      id: UuidUtility.generateUuid(),
+      registrationId: registration.id,
+      studentId: registration.studentId,
+      instructorId: registration.instructorId,
+      day: registration.day,
+      startTime: registration.startTime,
+      length: registration.length,
+      registrationType: registration.registrationType,
+      roomId: registration.roomId,
+      instrument: registration.instrument,
+      transportationType: registration.transportationType,
+      notes: registration.notes,
+      classId: registration.classId,
+      classTitle: registration.classTitle,
+      expectedStartDate: registration.expectedStartDate,
+      createdAt: registration.createdAt,
+      createdBy: registration.createdBy,
+      isDeleted,
+      deletedAt: isDeleted ? now : '',
+      deletedBy: isDeleted ? performedBy : '',
+      reenrollmentIntent: registration.reenrollmentIntent,
+      intentSubmittedAt: registration.intentSubmittedAt,
+      intentSubmittedBy: registration.intentSubmittedBy,
+      updatedAt: now,
+      updatedBy: performedBy,
+      linkedPreviousRegistrationId: registration.linkedPreviousRegistrationId,
+    };
+    await this.dbClient.insertIntoSheet(auditSheet, auditRecord);
   }
 
   /**
@@ -415,12 +464,12 @@ export class RegistrationRepository extends BaseRepository<Registration> {
     let targetSheet: string | null = null;
 
     for (const table of REGISTRATION_TABLES) {
-      const allRegistrations = await this.dbClient.getAllRecords(table, (row: string[]) => {
-        if (!row || !row[0]) {
+      const allRegistrations = await this.dbClient.getAllRecords(table, (record: Record<string, string>) => {
+        if (!record || !record.id) {
           return null;
         }
         try {
-          return Registration.fromDatabaseRow(row);
+          return Registration.fromDatabaseRow(record);
         } catch {
           return null;
         }
@@ -465,6 +514,10 @@ export class RegistrationRepository extends BaseRepository<Registration> {
       submittedBy
     );
 
+    // Write audit record for intent update
+    const auditSheet = `${targetSheet}_audit`;
+    await this.#writeAuditRecord(registration, submittedBy, auditSheet);
+
     return registration;
   }
 
@@ -493,17 +546,17 @@ export class RegistrationRepository extends BaseRepository<Registration> {
     try {
       this.logger.info(`📋 Getting registrations from table: ${tableName}`);
 
-      const allRegistrations = await this.dbClient.getAllRecords(tableName, (row: string[]) => {
-        // Skip empty rows
-        if (!row || !row[0]) {
+      const allRegistrations = await this.dbClient.getAllRecords(tableName, (record: Record<string, string>) => {
+        // Skip empty records
+        if (!record || !record.id) {
           return null;
         }
 
         try {
-          return Registration.fromDatabaseRow(row);
+          return Registration.fromDatabaseRow(record);
         } catch (error) {
           this.logger.warn(
-            `⚠️ Skipping invalid registration row - ID: ${row[0]}, classId: ${row[11]}, error: ${(error as Error).message}`
+            `⚠️ Skipping invalid registration record - ID: ${record.id}, classId: ${record.classId}, error: ${(error as Error).message}`
           );
           return null;
         }
@@ -560,7 +613,11 @@ export class RegistrationRepository extends BaseRepository<Registration> {
           })(),
       });
 
-      await this.dbClient.appendRecord(tableName, registration, registrationData.createdBy || '');
+      await this.dbClient.appendRecord(tableName, registration.toJSON() as unknown as Record<string, unknown>, registrationData.createdBy || ''); // SC-005: typed model → generic storage API
+
+      // Write audit record
+      const auditSheet = `${tableName}_audit`;
+      await this.#writeAuditRecord(registration, registrationData.createdBy || '', auditSheet);
 
       this.logger.info(`✅ Created registration in ${tableName}: ${registrationId}`);
       return registration;
@@ -612,8 +669,11 @@ export class RegistrationRepository extends BaseRepository<Registration> {
 
       this.logger.info(`🗑️ Deleting registration from table: ${tableName}`);
 
-      // Use the database client's deleteRecord method which handles audit trails and proper deletion
       await this.dbClient.deleteRecord(tableName, id, userId);
+
+      // Write audit record with isDeleted flag
+      const auditSheet = `${tableName}_audit`;
+      await this.#writeAuditRecord(registration, userId, auditSheet, true);
 
       return true;
     } catch (error) {

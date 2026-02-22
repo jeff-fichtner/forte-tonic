@@ -34,6 +34,12 @@ export interface StudentJSON {
 }
 
 export class Student {
+  /** Column schema: positional order of fields in the students spreadsheet */
+  static readonly columns = [
+    'id', 'lastName', 'firstName', 'lastNickname', 'firstNickname',
+    'grade', 'parent1Id', 'parent2Id',
+  ] as const;
+
   _firstName: string;
   _lastName: string;
   firstNickname: string | null;
@@ -107,18 +113,16 @@ export class Student {
   /**
    * Factory method: Create from database row
    */
-  static fromDatabaseRow(row: string[]): Student {
-    const [id, lastName, firstName, lastNickname, firstNickname, grade, parent1Id, parent2Id] = row;
-
+  static fromDatabaseRow(record: Record<string, string>): Student {
     return new Student({
-      id,
-      lastName,
-      firstName,
-      lastNickname,
-      firstNickname,
-      grade,
-      parent1Id,
-      parent2Id,
+      id: record.id,
+      lastName: record.lastName,
+      firstName: record.firstName,
+      lastNickname: record.lastNickname,
+      firstNickname: record.firstNickname,
+      grade: record.grade,
+      parent1Id: record.parent1Id,
+      parent2Id: record.parent2Id,
     });
   }
 }

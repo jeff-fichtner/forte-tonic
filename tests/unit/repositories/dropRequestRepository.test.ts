@@ -84,19 +84,20 @@ describe('DropRequestRepository', () => {
     });
 
     test('should create from database row', () => {
-      const row = [
-        'drop-123',
-        'reg-456',
-        'parent-789',
-        'Moving to a new school',
-        '2025-01-15T10:00:00Z',
-        DropRequestStatus.PENDING,
-        '',
-        '',
-        '',
-      ];
+      const record = {
+        id: 'drop-123',
+        registrationId: 'reg-456',
+        parentId: 'parent-789',
+        trimester: '',
+        reason: 'Moving to a new school',
+        requestedAt: '2025-01-15T10:00:00Z',
+        status: DropRequestStatus.PENDING,
+        reviewedBy: '',
+        reviewedAt: '',
+        adminNotes: '',
+      };
 
-      const dropRequest = DropRequest.fromDatabaseRow(row);
+      const dropRequest = DropRequest.fromDatabaseRow(record);
 
       expect(dropRequest.id).toBe('drop-123');
       expect(dropRequest.registrationId).toBe('reg-456');
@@ -110,19 +111,20 @@ describe('DropRequestRepository', () => {
     });
 
     test('should handle approved drop request from database row', () => {
-      const row = [
-        'drop-123',
-        'reg-456',
-        'parent-789',
-        'Moving to a new school',
-        '2025-01-15T10:00:00Z',
-        DropRequestStatus.APPROVED,
-        'admin@example.com',
-        '2025-01-16T14:30:00Z',
-        'Approved per parent request',
-      ];
+      const record = {
+        id: 'drop-123',
+        registrationId: 'reg-456',
+        parentId: 'parent-789',
+        trimester: '',
+        reason: 'Moving to a new school',
+        requestedAt: '2025-01-15T10:00:00Z',
+        status: DropRequestStatus.APPROVED,
+        reviewedBy: 'admin@example.com',
+        reviewedAt: '2025-01-16T14:30:00Z',
+        adminNotes: 'Approved per parent request',
+      };
 
-      const dropRequest = DropRequest.fromDatabaseRow(row);
+      const dropRequest = DropRequest.fromDatabaseRow(record);
 
       expect(dropRequest.status).toBe(DropRequestStatus.APPROVED);
       expect(dropRequest.reviewedBy).toBe('admin@example.com');
@@ -171,21 +173,22 @@ describe('DropRequestRepository', () => {
 
   describe('findById', () => {
     test('should find drop request by ID', async () => {
-      const mockRows = [
-        [
-          'drop-123',
-          'reg-456',
-          'parent-789',
-          'Test reason',
-          '2025-01-15T10:00:00Z',
-          DropRequestStatus.PENDING,
-          '',
-          '',
-          '',
-        ],
+      const mockRecords = [
+        {
+          id: 'drop-123',
+          registrationId: 'reg-456',
+          parentId: 'parent-789',
+          trimester: '',
+          reason: 'Test reason',
+          requestedAt: '2025-01-15T10:00:00Z',
+          status: DropRequestStatus.PENDING,
+          reviewedBy: '',
+          reviewedAt: '',
+          adminNotes: '',
+        },
       ];
 
-      mockDbClient.getAllRecords.mockResolvedValue(mockRows.map(DropRequest.fromDatabaseRow));
+      mockDbClient.getAllRecords.mockResolvedValue(mockRecords.map(DropRequest.fromDatabaseRow));
 
       const result = await repository.findById('drop-123');
 
@@ -213,43 +216,46 @@ describe('DropRequestRepository', () => {
 
   describe('findByParentId', () => {
     test('should find all drop requests for a parent', async () => {
-      const mockRows = [
-        [
-          'drop-123',
-          'reg-456',
-          'parent-789',
-          'Reason 1',
-          '2025-01-15T10:00:00Z',
-          DropRequestStatus.PENDING,
-          '',
-          '',
-          '',
-        ],
-        [
-          'drop-124',
-          'reg-457',
-          'parent-789',
-          'Reason 2',
-          '2025-01-16T10:00:00Z',
-          DropRequestStatus.APPROVED,
-          'admin@example.com',
-          '2025-01-17T10:00:00Z',
-          'Approved',
-        ],
-        [
-          'drop-125',
-          'reg-458',
-          'parent-999',
-          'Reason 3',
-          '2025-01-17T10:00:00Z',
-          DropRequestStatus.PENDING,
-          '',
-          '',
-          '',
-        ],
+      const mockRecords = [
+        {
+          id: 'drop-123',
+          registrationId: 'reg-456',
+          parentId: 'parent-789',
+          trimester: '',
+          reason: 'Reason 1',
+          requestedAt: '2025-01-15T10:00:00Z',
+          status: DropRequestStatus.PENDING,
+          reviewedBy: '',
+          reviewedAt: '',
+          adminNotes: '',
+        },
+        {
+          id: 'drop-124',
+          registrationId: 'reg-457',
+          parentId: 'parent-789',
+          trimester: '',
+          reason: 'Reason 2',
+          requestedAt: '2025-01-16T10:00:00Z',
+          status: DropRequestStatus.APPROVED,
+          reviewedBy: 'admin@example.com',
+          reviewedAt: '2025-01-17T10:00:00Z',
+          adminNotes: 'Approved',
+        },
+        {
+          id: 'drop-125',
+          registrationId: 'reg-458',
+          parentId: 'parent-999',
+          trimester: '',
+          reason: 'Reason 3',
+          requestedAt: '2025-01-17T10:00:00Z',
+          status: DropRequestStatus.PENDING,
+          reviewedBy: '',
+          reviewedAt: '',
+          adminNotes: '',
+        },
       ];
 
-      mockDbClient.getAllRecords.mockResolvedValue(mockRows.map(DropRequest.fromDatabaseRow));
+      mockDbClient.getAllRecords.mockResolvedValue(mockRecords.map(DropRequest.fromDatabaseRow));
 
       const results = await repository.findByParentId('parent-789');
 
@@ -269,43 +275,46 @@ describe('DropRequestRepository', () => {
 
   describe('findByStatus', () => {
     test('should find all pending drop requests', async () => {
-      const mockRows = [
-        [
-          'drop-123',
-          'reg-456',
-          'parent-789',
-          'Reason 1',
-          '2025-01-15T10:00:00Z',
-          DropRequestStatus.PENDING,
-          '',
-          '',
-          '',
-        ],
-        [
-          'drop-124',
-          'reg-457',
-          'parent-888',
-          'Reason 2',
-          '2025-01-16T10:00:00Z',
-          DropRequestStatus.APPROVED,
-          'admin@example.com',
-          '2025-01-17T10:00:00Z',
-          'Approved',
-        ],
-        [
-          'drop-125',
-          'reg-458',
-          'parent-999',
-          'Reason 3',
-          '2025-01-17T10:00:00Z',
-          DropRequestStatus.PENDING,
-          '',
-          '',
-          '',
-        ],
+      const mockRecords = [
+        {
+          id: 'drop-123',
+          registrationId: 'reg-456',
+          parentId: 'parent-789',
+          trimester: '',
+          reason: 'Reason 1',
+          requestedAt: '2025-01-15T10:00:00Z',
+          status: DropRequestStatus.PENDING,
+          reviewedBy: '',
+          reviewedAt: '',
+          adminNotes: '',
+        },
+        {
+          id: 'drop-124',
+          registrationId: 'reg-457',
+          parentId: 'parent-888',
+          trimester: '',
+          reason: 'Reason 2',
+          requestedAt: '2025-01-16T10:00:00Z',
+          status: DropRequestStatus.APPROVED,
+          reviewedBy: 'admin@example.com',
+          reviewedAt: '2025-01-17T10:00:00Z',
+          adminNotes: 'Approved',
+        },
+        {
+          id: 'drop-125',
+          registrationId: 'reg-458',
+          parentId: 'parent-999',
+          trimester: '',
+          reason: 'Reason 3',
+          requestedAt: '2025-01-17T10:00:00Z',
+          status: DropRequestStatus.PENDING,
+          reviewedBy: '',
+          reviewedAt: '',
+          adminNotes: '',
+        },
       ];
 
-      mockDbClient.getAllRecords.mockResolvedValue(mockRows.map(DropRequest.fromDatabaseRow));
+      mockDbClient.getAllRecords.mockResolvedValue(mockRecords.map(DropRequest.fromDatabaseRow));
 
       const results = await repository.findByStatus(DropRequestStatus.PENDING);
 
@@ -317,21 +326,22 @@ describe('DropRequestRepository', () => {
 
   describe('findByRegistrationId', () => {
     test('should find drop request by registration ID', async () => {
-      const mockRows = [
-        [
-          'drop-123',
-          'reg-456',
-          'parent-789',
-          'Test reason',
-          '2025-01-15T10:00:00Z',
-          DropRequestStatus.PENDING,
-          '',
-          '',
-          '',
-        ],
+      const mockRecords = [
+        {
+          id: 'drop-123',
+          registrationId: 'reg-456',
+          parentId: 'parent-789',
+          trimester: '',
+          reason: 'Test reason',
+          requestedAt: '2025-01-15T10:00:00Z',
+          status: DropRequestStatus.PENDING,
+          reviewedBy: '',
+          reviewedAt: '',
+          adminNotes: '',
+        },
       ];
 
-      mockDbClient.getAllRecords.mockResolvedValue(mockRows.map(DropRequest.fromDatabaseRow));
+      mockDbClient.getAllRecords.mockResolvedValue(mockRecords.map(DropRequest.fromDatabaseRow));
 
       const result = await repository.findByRegistrationId('reg-456');
 
@@ -412,32 +422,34 @@ describe('DropRequestRepository', () => {
 
   describe('findAll', () => {
     test('should find all drop requests', async () => {
-      const mockRows = [
-        [
-          'drop-123',
-          'reg-456',
-          'parent-789',
-          'Reason 1',
-          '2025-01-15T10:00:00Z',
-          DropRequestStatus.PENDING,
-          '',
-          '',
-          '',
-        ],
-        [
-          'drop-124',
-          'reg-457',
-          'parent-888',
-          'Reason 2',
-          '2025-01-16T10:00:00Z',
-          DropRequestStatus.APPROVED,
-          'admin@example.com',
-          '2025-01-17T10:00:00Z',
-          'Approved',
-        ],
+      const mockRecords = [
+        {
+          id: 'drop-123',
+          registrationId: 'reg-456',
+          parentId: 'parent-789',
+          trimester: '',
+          reason: 'Reason 1',
+          requestedAt: '2025-01-15T10:00:00Z',
+          status: DropRequestStatus.PENDING,
+          reviewedBy: '',
+          reviewedAt: '',
+          adminNotes: '',
+        },
+        {
+          id: 'drop-124',
+          registrationId: 'reg-457',
+          parentId: 'parent-888',
+          trimester: '',
+          reason: 'Reason 2',
+          requestedAt: '2025-01-16T10:00:00Z',
+          status: DropRequestStatus.APPROVED,
+          reviewedBy: 'admin@example.com',
+          reviewedAt: '2025-01-17T10:00:00Z',
+          adminNotes: 'Approved',
+        },
       ];
 
-      mockDbClient.getAllRecords.mockResolvedValue(mockRows.map(DropRequest.fromDatabaseRow));
+      mockDbClient.getAllRecords.mockResolvedValue(mockRecords.map(DropRequest.fromDatabaseRow));
 
       const results = await repository.findAll();
 

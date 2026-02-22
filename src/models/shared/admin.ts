@@ -38,6 +38,12 @@ export interface AdminJSON {
 }
 
 export class Admin {
+  /** Column schema: positional order of fields in the admins spreadsheet */
+  static readonly columns = [
+    'id', 'email', 'lastName', 'firstName', 'phone', 'accessCode',
+    'role', 'displayEmail', 'displayPhone', 'isDirector',
+  ] as const;
+
   id: string;
   email: string;
   lastName: string;
@@ -87,37 +93,26 @@ export class Admin {
     this.displayPhone = displayPhone || null;
     this.isDirector = isDirector || false;
 
-    this.isActive = isActive ?? false;
+    this.isActive = isActive ?? true;
   }
 
   /**
-   * Factory method for creating from database row data (positional parameters)
+   * Factory method for creating from database record (named fields, pre-transformed by DB client).
+   * DB client transforms produce: isDirector (boolean).
    */
-  static fromDatabaseRow(row: string[]): Admin {
-    const [
-      id,
-      email,
-      lastName,
-      firstName,
-      phone,
-      accessCode,
-      role,
-      displayEmail,
-      displayPhone,
-      isDirector,
-    ] = row;
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  static fromDatabaseRow(record: Record<string, any>): Admin { // SC-005: transforms produce boolean
     return new Admin({
-      id,
-      email,
-      lastName,
-      firstName,
-      phoneNumber: phone,
-      accessCode,
-      role,
-      displayEmail,
-      displayPhone,
-      isDirector: isDirector === 'TRUE' || (isDirector as unknown) === true,
+      id: record.id,
+      email: record.email,
+      lastName: record.lastName,
+      firstName: record.firstName,
+      phoneNumber: record.phone,
+      accessCode: record.accessCode,
+      role: record.role,
+      displayEmail: record.displayEmail,
+      displayPhone: record.displayPhone,
+      isDirector: record.isDirector,
     });
   }
 

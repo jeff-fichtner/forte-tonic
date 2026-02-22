@@ -11,7 +11,6 @@ describe('UserRepository', () => {
     // Create mock GoogleSheetsDbClient
     mockGoogleSheetsDbClient = {
       getAllRecords: jest.fn(),
-      getFromSheetByColumnValue: jest.fn(),
       appendRecord: jest.fn(),
       updateRecord: jest.fn(),
       deleteRecord: jest.fn(),
@@ -42,13 +41,13 @@ describe('UserRepository', () => {
   describe('getAdmins', () => {
     test('should return array of admin models', async () => {
       const mockSheetData = [
-        ['admin-1', 'admin1@test.com', 'Smith', 'John', '555-1234'],
-        ['admin-2', 'admin2@test.com', 'Doe', 'Jane', '555-5678'],
+        { id: 'admin-1', email: 'admin1@test.com', lastName: 'Smith', firstName: 'John', phone: '555-1234', accessCode: '', role: '', displayEmail: '', displayPhone: '', isDirector: '' },
+        { id: 'admin-2', email: 'admin2@test.com', lastName: 'Doe', firstName: 'Jane', phone: '555-5678', accessCode: '', role: '', displayEmail: '', displayPhone: '', isDirector: '' },
       ];
 
       // Mock getAllRecords to return admin instances
       mockGoogleSheetsDbClient.getAllRecords.mockResolvedValue(
-        mockSheetData.map(row => Admin.fromDatabaseRow(row))
+        mockSheetData.map(record => Admin.fromDatabaseRow(record))
       );
 
       const result = await repository.getAdmins();
@@ -216,8 +215,8 @@ describe('UserRepository', () => {
   describe('getParents', () => {
     test('should return array of parent models', async () => {
       const mockParents = [
-        Parent.fromDatabaseRow(['parent-1', 'parent1@test.com', 'Johnson', 'Robert', '555-1111']),
-        Parent.fromDatabaseRow(['parent-2', 'parent2@test.com', 'Davis', 'Linda', '555-2222']),
+        Parent.fromDatabaseRow({ id: 'parent-1', email: 'parent1@test.com', lastName: 'Johnson', firstName: 'Robert', phone: '555-1111', accessCode: '' }),
+        Parent.fromDatabaseRow({ id: 'parent-2', email: 'parent2@test.com', lastName: 'Davis', firstName: 'Linda', phone: '555-2222', accessCode: '' }),
       ];
 
       mockGoogleSheetsDbClient.getAllRecords.mockResolvedValue(mockParents);
@@ -252,16 +251,16 @@ describe('UserRepository', () => {
 
   describe('getStudentById', () => {
     test('should return student by id', async () => {
-      // Student.fromDatabaseRow expects an array: [id, lastName, firstName, lastNickname, firstNickname, grade, parent1Id, parent2Id]
-      const mockStudentRows = [
-        ['student-1', 'Johnson', 'Emma', '', '', '5', 'parent-1', ''],
-        ['student-2', 'Davis', 'Liam', '', '', '4', 'parent-2', ''],
+      // Student.fromDatabaseRow expects a Record with keys: id, lastName, firstName, lastNickname, firstNickname, grade, parent1Id, parent2Id
+      const mockStudentRecords = [
+        { id: 'student-1', lastName: 'Johnson', firstName: 'Emma', lastNickname: '', firstNickname: '', grade: '5', parent1Id: 'parent-1', parent2Id: '' },
+        { id: 'student-2', lastName: 'Davis', firstName: 'Liam', lastNickname: '', firstNickname: '', grade: '4', parent1Id: 'parent-2', parent2Id: '' },
       ];
 
       // Mock the db client calls
       mockGoogleSheetsDbClient.getAllRecords.mockImplementation(async (key, transformer) => {
         if (key === 'students') {
-          return mockStudentRows.map(row => transformer(row));
+          return mockStudentRecords.map(record => transformer(record));
         }
         if (key === 'parents') {
           return [];
@@ -293,13 +292,18 @@ describe('UserRepository', () => {
 
   describe('getAdminByEmail', () => {
     test('should return admin by email when found', async () => {
-      const mockAdmin = Admin.fromDatabaseRow([
-        'admin-1',
-        'admin@test.com',
-        'Smith',
-        'John',
-        '555-1234',
-      ]);
+      const mockAdmin = Admin.fromDatabaseRow({
+        id: 'admin-1',
+        email: 'admin@test.com',
+        lastName: 'Smith',
+        firstName: 'John',
+        phone: '555-1234',
+        accessCode: '',
+        role: '',
+        displayEmail: '',
+        displayPhone: '',
+        isDirector: '',
+      });
 
       mockGoogleSheetsDbClient.getAllRecords.mockResolvedValue([mockAdmin]);
 

@@ -84,6 +84,25 @@ interface ScheduleLesson {
 }
 
 export class Registration {
+  /** Column schema: positional order of fields in the registrations spreadsheet */
+  static readonly columns = [
+    'id', 'studentId', 'instructorId', 'day', 'startTime', 'length',
+    'registrationType', 'roomId', 'instrument', 'transportationType', 'notes',
+    'classId', 'classTitle', 'expectedStartDate', 'createdAt', 'createdBy',
+    'reenrollmentIntent', 'intentSubmittedAt', 'intentSubmittedBy',
+    'linkedPreviousRegistrationId',
+  ] as const;
+
+  /** Column schema for registration audit sheets */
+  static readonly auditColumns = [
+    'id', 'registrationId', 'studentId', 'instructorId', 'day', 'startTime', 'length',
+    'registrationType', 'roomId', 'instrument', 'transportationType', 'notes',
+    'classId', 'classTitle', 'expectedStartDate', 'createdAt', 'createdBy',
+    'isDeleted', 'deletedAt', 'deletedBy',
+    'reenrollmentIntent', 'intentSubmittedAt', 'intentSubmittedBy',
+    'updatedAt', 'updatedBy', 'linkedPreviousRegistrationId',
+  ] as const;
+
   id: string;
   studentId: string;
   instructorId: string;
@@ -232,88 +251,37 @@ export class Registration {
   /**
    * Create Registration from database row data
    */
-  static fromDatabaseRow(row: string[]): Registration | null {
-    // Skip empty rows
-    if (!row || !row[0] || !Array.isArray(row) || row.length === 0) {
+  static fromDatabaseRow(record: Record<string, string>): Registration | null {
+    if (!record || !record.id) {
       return null;
     }
 
     try {
-      // Map array indices to field names based on registration schema
-      // Order: Id, StudentId, InstructorId, Day, StartTime, Length, RegistrationType,
-      //        RoomId, Instrument, TransportationType, Notes, ClassId, ClassTitle,
-      //        ExpectedStartDate, CreatedAt, CreatedBy, reenrollmentIntent, intentSubmittedAt, intentSubmittedBy
-
-      // Determine if this is a waitlist class based on classId
-      // On server: This will be set based on whatever validation we can do
-      // On browser: ClassManager can check against configuration
-      const classId = row[11];
-      const classTitle = row[12];
-      let isWaitlistClass = false;
-
-      // Browser environment: use ClassManager if available
-      if (typeof window !== 'undefined' && window.ClassManager?.isRockBandClass) {
-        isWaitlistClass = window.ClassManager.isRockBandClass(classId);
-      }
-      // Server environment: check classTitle for "Waitlist" indicator
-      else {
-        isWaitlistClass = classTitle && String(classTitle).toLowerCase().includes('waitlist') ? true : false;
-      }
-
       return new Registration({
-        id: row[0] ? String(row[0]) : row[0], // Id (UUID) - ensure string
-        studentId: row[1] ? String(row[1]) : row[1], // StudentId - ensure string
-        instructorId: row[2] ? String(row[2]) : row[2], // InstructorId - ensure string
-        day: row[3], // Day
-        startTime: row[4], // StartTime
-        length: row[5], // Length
-        registrationType: row[6], // RegistrationType
-        roomId: row[7], // RoomId
-        instrument: row[8], // Instrument
-        transportationType: row[9], // TransportationType
-        notes: row[10], // Notes
-        classId: row[11], // ClassId
-        classTitle: row[12], // ClassTitle
-        expectedStartDate: row[13], // ExpectedStartDate
-        createdAt: row[14], // CreatedAt
-        createdBy: row[15], // CreatedBy
-        reenrollmentIntent: row[16] as ReenrollmentIntent, // reenrollmentIntent
-        intentSubmittedAt: row[17], // intentSubmittedAt
-        intentSubmittedBy: row[18], // intentSubmittedBy
-        linkedPreviousRegistrationId: row[19], // linkedPreviousRegistrationId
-        isWaitlistClass: isWaitlistClass, // Derived from classId for validation
+        id: record.id,
+        studentId: record.studentId,
+        instructorId: record.instructorId,
+        day: record.day,
+        startTime: record.startTime,
+        length: record.length,
+        registrationType: record.registrationType,
+        roomId: record.roomId,
+        instrument: record.instrument,
+        transportationType: record.transportationType,
+        notes: record.notes,
+        classId: record.classId,
+        classTitle: record.classTitle,
+        expectedStartDate: record.expectedStartDate,
+        createdAt: record.createdAt,
+        createdBy: record.createdBy,
+        reenrollmentIntent: record.reenrollmentIntent as ReenrollmentIntent,
+        intentSubmittedAt: record.intentSubmittedAt,
+        intentSubmittedBy: record.intentSubmittedBy,
+        linkedPreviousRegistrationId: record.linkedPreviousRegistrationId,
       });
     } catch (error) {
       return null;
     }
-  }
-
-  /**
-   * Convert to database row format (20-column schema with intent and linking)
-   */
-  toDatabaseRow(): string[] {
-    return [
-      this.id,
-      this.studentId,
-      this.instructorId,
-      this.day,
-      this.startTime,
-      this.length!.toString(),
-      this.registrationType,
-      this.roomId || '',
-      this.instrument || '',
-      this.transportationType || '',
-      this.notes || '',
-      this.classId || '',
-      this.classTitle || '',
-      this.expectedStartDate ? this.expectedStartDate.toISOString() : '',
-      this.createdAt.toISOString(),
-      this.createdBy || '',
-      this.reenrollmentIntent || '',
-      this.intentSubmittedAt ? this.intentSubmittedAt.toISOString() : '',
-      this.intentSubmittedBy || '',
-      this.linkedPreviousRegistrationId || '',
-    ];
   }
 
   /**

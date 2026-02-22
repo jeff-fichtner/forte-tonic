@@ -19,7 +19,7 @@ export interface ClassData {
   size?: string | null;
   minimumGrade?: string | null;
   maximumGrade?: string | null;
-  isRestricted?: string | null;
+  isRestricted?: boolean;
 }
 
 export interface ClassJSON {
@@ -34,7 +34,7 @@ export interface ClassJSON {
   size: string | null;
   minimumGrade: string | null;
   maximumGrade: string | null;
-  isRestricted: string | null;
+  isRestricted: boolean;
   formattedStartTime: string;
   formattedEndTime: string;
   formattedMinimumGrade: string;
@@ -46,6 +46,12 @@ export interface ClassJSON {
 }
 
 export class Class {
+  /** Column schema: positional order of fields in the classes spreadsheet */
+  static readonly columns = [
+    'id', 'instructorId', 'day', 'startTime', 'length', 'endTime',
+    'instrument', 'title', 'size', 'minimumGrade', 'maximumGrade', 'isRestricted',
+  ] as const;
+
   id: string;
   instructorId: string;
   day: string;
@@ -57,7 +63,7 @@ export class Class {
   size: string | null;
   minimumGrade: string | null;
   maximumGrade: string | null;
-  isRestricted: string | null;
+  isRestricted: boolean;
 
   /**
    * Creates a Class instance
@@ -74,52 +80,28 @@ export class Class {
     this.size = data.size || null;
     this.minimumGrade = data.minimumGrade || null;
     this.maximumGrade = data.maximumGrade || null;
-    this.isRestricted = data.isRestricted || null;
+    this.isRestricted = data.isRestricted || false;
   }
 
   /**
-   * Factory method for creating from database row data (positional parameters)
+   * Factory method for creating from database record (named fields, pre-transformed by DB client).
+   * DB client transforms produce: startTime/endTime (string), length (number), isRestricted (boolean).
    */
-  static fromDatabaseRow(row: string[]): Class {
-    const [
-      id,
-      instructorId,
-      day,
-      startTime,
-      length,
-      endTime,
-      instrument,
-      title,
-      size,
-      minimumGrade,
-      maximumGrade,
-      isRestricted,
-    ] = row;
-
-    // Process time strings with DateHelpers if available
-    const processedStartTime = DateHelpers?.parseTimeString
-      ? DateHelpers.parseTimeString(startTime).to24Hour()
-      : startTime;
-    const processedEndTime = DateHelpers?.parseTimeString
-      ? DateHelpers.parseTimeString(endTime).to24Hour()
-      : endTime;
-
-    // Ensure length is parsed as a number (duration in minutes)
-    const processedLength = parseInt(length) || 0;
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  static fromDatabaseRow(record: Record<string, any>): Class { // SC-005: transforms produce number/boolean
     return new Class({
-      id,
-      instructorId,
-      day,
-      startTime: processedStartTime,
-      length: processedLength,
-      endTime: processedEndTime,
-      instrument,
-      title,
-      size,
-      minimumGrade,
-      maximumGrade,
-      isRestricted,
+      id: record.id,
+      instructorId: record.instructorId,
+      day: record.day,
+      startTime: record.startTime,
+      length: record.length,
+      endTime: record.endTime,
+      instrument: record.instrument,
+      title: record.title,
+      size: record.size,
+      minimumGrade: record.minimumGrade,
+      maximumGrade: record.maximumGrade,
+      isRestricted: record.isRestricted,
     });
   }
 
