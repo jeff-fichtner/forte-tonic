@@ -12,7 +12,9 @@
       "Read(//Users/sherlock/dev/clients/forte/tonic/**)",
       "Bash(wc:*)",
       "Bash(bash .specify/scripts/bash/setup-plan.sh --json)",
-      "Bash(bash /Users/sherlock/dev/clients/forte/tonic/.specify/scripts/bash/update-agent-context.sh claude)"
+      "Bash(bash /Users/sherlock/dev/clients/forte/tonic/.specify/scripts/bash/update-agent-context.sh claude)",
+      "Bash(git fetch:*)",
+      "Bash(.specify/scripts/bash/create-new-feature.sh:*)"
     ]
   }
 }

@@ -46,8 +46,8 @@ As a developer, I want a single RESTful attendance resource so that there is one
 
 **Acceptance Scenarios**:
 
-1. **Given** the legacy `/recordAttendance` and `/removeAttendance` endpoints exist, **When** they are removed, **Then** all attendance operations go through `POST /attendance` and `DELETE /attendance/:id` (or equivalent consolidated pattern).
-2. **Given** the frontend currently calls the legacy endpoints, **When** the routes change, **Then** the frontend is updated to use the new endpoints and attendance tracking continues to work.
+1. **Given** the legacy `/recordAttendance` and `/removeAttendance` endpoints exist with no frontend callers, **When** they are removed, **Then** `POST /attendance` remains as the sole attendance endpoint and no functionality is lost.
+2. **Given** the legacy endpoints have no frontend callers, **When** the routes are removed, **Then** no frontend changes are needed for attendance.
 
 ---
 
@@ -82,6 +82,7 @@ As a developer, I want all routes to follow resource-based naming conventions so
 4. Consolidate attendance endpoints (`/recordAttendance`, `/removeAttendance` → unified pattern)
 5. Rename verb-based routes to resource-based patterns
 6. Remove `periodService` calls from tab endpoints that will receive explicit trimester params
+7. Move Instructor Weekly Schedule trimester from optional query param to required route param, removing the wasteful all-registrations fallback
 
 ### Out of Scope
 
