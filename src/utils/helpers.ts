@@ -18,10 +18,6 @@ export const _fetchData = <T>(dataFunction: () => T[], page: number | null | und
   return paginate(data, page, pageSize);
 };
 
-export const _respond = <T>(response: T): T => {
-  return response;
-};
-
 export const paginate = <T>(data: T[], page: number = 0, pageSize: number = 1000): PaginatedResult<T> => {
   const startIndex: number = page * pageSize;
   const endIndex: number = startIndex + pageSize;

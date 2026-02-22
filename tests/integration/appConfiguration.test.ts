@@ -33,7 +33,7 @@ const mockConfigService = {
   getBaseUrl: jest.fn().mockReturnValue('http://localhost:3001'),
   isTest: jest.fn().mockReturnValue(true),
   isDevelopment: jest.fn().mockReturnValue(false),
-  getRockBandClassIds: jest.fn().mockReturnValue([]),
+  getRockBandClassIds: jest.fn().mockReturnValue(['G015']),
   getApplicationConfig: jest.fn().mockReturnValue({
     rockBandClassIds: ['G015'],
     maintenanceMode: false,
@@ -42,17 +42,9 @@ const mockConfigService = {
   }),
 };
 
-// Create ConfigurationService class mock
-class ConfigurationServiceMock {
-  static getRockBandClassIds() {
-    return ['G015'];
-  }
-}
-
 // Mock the configuration service module
 jest.unstable_mockModule('../../src/services/configurationService.js', () => ({
   configService: mockConfigService,
-  ConfigurationService: ConfigurationServiceMock,
 }));
 
 // Mock the GoogleSheetsDbClient

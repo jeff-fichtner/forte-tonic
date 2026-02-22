@@ -1,5 +1,5 @@
-import { PeriodType } from '../constants/periodTypeConstants.js';
-import { UserType } from '../constants/userTypeConstants.js';
+import { PeriodType } from '/utils/values/periodType.js';
+import { UserType } from '/utils/values/userType.js';
 import { isEnrollmentPeriod } from '../utilities/periodHelpers.js';
 
 /**

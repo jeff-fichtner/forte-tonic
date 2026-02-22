@@ -1,4 +1,4 @@
-import { PeriodType } from '../constants/periodTypeConstants.js';
+import { PeriodType } from '/utils/values/periodType.js';
 
 /**
  * Check if the current period is an enrollment period

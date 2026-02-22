@@ -7,7 +7,7 @@ import { NavTabs } from './components/navTabs.js';
 import { formatPhone } from './utilities/phoneHelpers.js';
 import { ClassManager } from './utilities/classManager.js';
 import { INTENT_LABELS } from './constants/intentConstants.js';
-import { PeriodType } from './constants/periodTypeConstants.js';
+import { PeriodType } from '/utils/values/periodType.js';
 import { FeedbackManager } from './feedback.js';
 import { capitalize } from './utilities/formatHelpers.js';
 import { isEnrollmentPeriod } from './utilities/periodHelpers.js';

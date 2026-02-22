@@ -345,29 +345,31 @@ export class RegistrationRepository extends BaseRepository<Registration> {
   }
 
   /**
-   * Delete a registration by ID
+   * Delete a registration by ID from the specified trimester table
    */
-  async delete(id: string, userId: string): Promise<boolean> {
+  async delete(id: string, userId: string, trimester: string): Promise<boolean> {
     try {
       if (!userId) {
         throw new Error('userId is required for audit trail');
       }
-
-      // Get current trimester table name from period service
-      const currentTable = await this.periodService.getCurrentTrimesterTable();
-
-      // First verify the registration exists using cached data
-      const registration = await this.getById(id);
-      if (!registration) {
-        throw new Error(`Registration with ID ${id} not found`);
+      if (!trimester) {
+        throw new Error('trimester is required to locate the registration table');
       }
 
-      this.logger.info(`🗑️ Deleting registration from table: ${currentTable}`);
+      const tableName = `registrations_${trimester}`;
 
-      await this.dbClient.deleteRecord(currentTable, id, userId);
+      // Verify the registration exists in the target table
+      const registration = await this.findByIdInTable(tableName, id);
+      if (!registration) {
+        throw new Error(`Registration with ID ${id} not found in table ${tableName}`);
+      }
+
+      this.logger.info(`🗑️ Deleting registration from table: ${tableName}`);
+
+      await this.dbClient.deleteRecord(tableName, id, userId);
 
       // Write audit record with isDeleted flag
-      const auditSheet = `${currentTable}_audit`;
+      const auditSheet = `${tableName}_audit`;
       await this.#writeAuditRecord(registration, userId, auditSheet, true);
 
       return true;

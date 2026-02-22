@@ -67,11 +67,9 @@ interface InternalConfig {
  * Classes should depend on this service rather than directly accessing process.env.
  */
 export class ConfigurationService {
-  configOverrides: Record<string, unknown>;
   _config: InternalConfig;
 
   constructor() {
-    this.configOverrides = {};
     this._config = {
       // Google Sheets Authentication
       googleServiceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
@@ -195,13 +193,6 @@ export class ConfigurationService {
     return this._config.rockBandClassIds;
   }
 
-  static getRockBandClassIds(): string[] {
-    // Return the env variable directly for static access
-    return process.env.ROCK_BAND_CLASS_IDS
-      ? process.env.ROCK_BAND_CLASS_IDS.split(',').map(id => id.trim())
-      : [];
-  }
-
   get(key: keyof InternalConfig): InternalConfig[keyof InternalConfig] {
     return this._config[key];
   }
@@ -218,14 +209,6 @@ export class ConfigurationService {
     return this.getServerConfig().isProduction;
   }
 
-  setConfigOverrides(overrides: Record<string, unknown>): void {
-    this.configOverrides = overrides;
-  }
-
-  clearConfigOverrides(): void {
-    this.configOverrides = {};
-  }
-
   validate(): void {
     const requiredConfigs: (keyof InternalConfig)[] = ['googleServiceAccountEmail', 'googlePrivateKey', 'spreadsheetId'];
 
@@ -236,22 +219,6 @@ export class ConfigurationService {
     }
   }
 
-  getTestConfig(): Record<string, unknown> {
-    return {
-      googleServiceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      googlePrivateKey: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      spreadsheetId: process.env.WORKING_SPREADSHEET_ID,
-      port: process.env.PORT || 3000,
-      nodeEnv: process.env.NODE_ENV || 'development',
-      serviceUrl: process.env.SERVICE_URL,
-      smtpHost: process.env.SMTP_HOST || 'smtp.gmail.com',
-      smtpPort: parseInt(process.env.SMTP_PORT as string) || 587,
-      smtpSecure: process.env.SMTP_SECURE === 'true' || false,
-      smtpUser: process.env.SMTP_USER,
-      smtpPassword: process.env.SMTP_PASSWORD,
-      defaultFromAddress: process.env.DEFAULT_FROM_EMAIL || process.env.SMTP_USER,
-    };
-  }
 }
 
 // Export singleton instance

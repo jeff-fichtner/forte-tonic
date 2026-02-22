@@ -68,6 +68,25 @@ function normalizeError(error: unknown): AppError {
   return fallback;
 }
 
+// --- Request Parameter Helpers ---
+
+/**
+ * Safely convert an Express query/param value to a string.
+ * Handles arrays (takes first element), nulls, and non-string types.
+ */
+export function asString(value: unknown, fallback: string = ''): string {
+  if (Array.isArray(value)) {
+    return String(value[0] ?? fallback);
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+  return String(value);
+}
+
 // --- Helper Functions ---
 
 /**

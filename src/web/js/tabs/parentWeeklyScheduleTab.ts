@@ -2,7 +2,7 @@ import { BaseTab } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatGrade, formatTime } from '../extensions/numberExtensions.js';
 import { RegistrationType } from '../constants.js';
-import { PeriodType } from '../constants/periodTypeConstants.js';
+import { PeriodType } from '/utils/values/periodType.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { isEnrollmentPeriod } from '../utilities/periodHelpers.js';
 import { ClassManager } from '../utilities/classManager.js';

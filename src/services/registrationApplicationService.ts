@@ -369,7 +369,7 @@ export class RegistrationApplicationService extends BaseService {
       if (tableName) {
         await this.registrationRepository.deleteFromTable(tableName, registrationId, userId);
       } else {
-        await this.registrationRepository.delete(registrationId, userId);
+        throw new Error('tableName is required to determine which trimester table to delete from');
       }
 
       // Get student and instructor for audit logging
@@ -396,81 +396,73 @@ export class RegistrationApplicationService extends BaseService {
   }
 
   /**
-   * Get registrations with filtering and pagination
+   * Get registrations enriched with student, instructor, and class data.
+   * Pagination is handled by the controller layer.
    */
   async getRegistrations(
     options: RegistrationsOptions = {}
-  ): Promise<{ registrations: EnrichedRegistration[]; totalCount: number; page: number; pageSize: number }> {
+  ): Promise<EnrichedRegistration[]> {
     try {
       this.logger.info('📋 Getting registrations with options:', options);
 
       // Get registrations from repository
       const registrations = await this.registrationRepository.getRegistrations(options);
 
-      // Defensive check: if registrations is undefined or null, return empty array
-      if (!registrations) {
-        this.logger.warn('No registrations returned from repository, returning empty array');
-        return {
-          registrations: [],
-          totalCount: 0,
-          page: options.page || 1,
-          pageSize: options.pageSize || 1000,
-        };
+      if (!registrations || registrations.length === 0) {
+        return [];
       }
 
-      // Enrich registrations with student and instructor details
-      const enrichedRegistrations = await Promise.all(
-        registrations.map(async registration => {
-          const [student, instructor, groupClass] = await Promise.all([
-            this.userRepository.getStudentById(registration.studentId),
-            this.userRepository.getInstructorById(registration.instructorId),
-            registration.classId ? this.programRepository.getClassById(registration.classId) : null,
-          ]);
+      // Batch-fetch all related entities and build lookup maps
+      const [allStudents, allInstructors, allClasses] = await Promise.all([
+        this.userRepository.getStudents(),
+        this.userRepository.getInstructors(),
+        this.programRepository.getClasses(),
+      ]);
 
-          const studentData = student;
-          const instructorData = instructor;
-          const groupClassData = groupClass;
+      const studentMap = new Map(allStudents.map(s => [s.id, s]));
+      const instructorMap = new Map(allInstructors.map(i => [i.id, i]));
+      const classMap = new Map(allClasses.map(c => [c.id, c]));
 
-          return {
-            ...registration,
-            student: studentData
-              ? {
-                  id: studentData.id,
-                  firstName: studentData.firstName,
-                  lastName: studentData.lastName,
-                  email: studentData.email,
-                  grade: studentData.grade,
-                }
-              : null,
-            instructor: instructorData
-              ? {
-                  id: instructorData.id,
-                  firstName: instructorData.firstName,
-                  lastName: instructorData.lastName,
-                  email: instructorData.email,
-                }
-              : null,
-            class: groupClassData
-              ? {
-                  id: groupClassData.id,
-                  title: groupClassData.title,
-                  instrument: groupClassData.instrument,
-                  size: groupClassData.size,
-                }
-              : null,
-            isActive: true,
-          };
-        })
-      );
+      // Join in memory
+      const enrichedRegistrations = registrations.map(registration => {
+        const studentData = studentMap.get(registration.studentId);
+        const instructorData = instructorMap.get(registration.instructorId);
+        const groupClassData = registration.classId ? classMap.get(registration.classId) : undefined;
+
+        return {
+          ...registration,
+          student: studentData
+            ? {
+                id: studentData.id,
+                firstName: studentData.firstName,
+                lastName: studentData.lastName,
+                email: studentData.email,
+                grade: studentData.grade,
+              }
+            : null,
+          instructor: instructorData
+            ? {
+                id: instructorData.id,
+                firstName: instructorData.firstName,
+                lastName: instructorData.lastName,
+                email: instructorData.email,
+              }
+            : null,
+          class: groupClassData
+            ? {
+                id: groupClassData.id,
+                title: groupClassData.title,
+                instrument: groupClassData.instrument,
+                size: groupClassData.size,
+              }
+            : null,
+          isActive: true,
+        };
+      });
 
       this.logger.info(`📊 Found ${enrichedRegistrations.length} registrations`);
 
-      return {
-        registrations: enrichedRegistrations,
-        totalCount: enrichedRegistrations.length,
-        page: options.page || 1,
-        pageSize: options.pageSize || 1000,
-      };
+      return enrichedRegistrations;
     } catch (error) {
       this.logger.error('❌ Error getting registrations:', error);
       throw error;
@@ -487,7 +479,7 @@ export class RegistrationApplicationService extends BaseService {
     const errors: string[] = [];
 
     if (groupClass) {
-      const rockBandClassIds = ConfigurationService.getRockBandClassIds();
+      const rockBandClassIds = this.configService.getRockBandClassIds();
       const isWaitlistClass = groupClass.id ? rockBandClassIds.includes(groupClass.id) : false;
 
       if (!isWaitlistClass && (!groupClass.day || !groupClass.startTime || !groupClass.length)) {

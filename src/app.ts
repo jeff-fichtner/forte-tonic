@@ -98,10 +98,11 @@ app.use('/api', initializeRepositories);
 app.use('/', staticRoutes);
 app.use('/api', apiRoutes);
 
-// Serve models directory for frontend ES module imports
+// Serve shared model classes for frontend ES module imports
+// Only expose models/shared/ — not the full models/ directory
 app.use(
-  '/models',
-  express.static(path.join(__dirname, 'models'), {
+  '/models/shared',
+  express.static(path.join(__dirname, 'models', 'shared'), {
     setHeaders: (res: Response): void => {
       if (isDevelopment) {
         res.set({
@@ -117,10 +118,11 @@ app.use(
   })
 );
 
-// Serve utils directory for frontend ES module imports
+// Serve shared value constants for frontend ES module imports
+// Only expose utils/values/ (enums, constants) — not the full utils/ directory
 app.use(
-  '/utils',
-  express.static(path.join(__dirname, 'utils'), {
+  '/utils/values',
+  express.static(path.join(__dirname, 'utils', 'values'), {
     setHeaders: (res: Response): void => {
       if (isDevelopment) {
         res.set({
@@ -132,42 +134,6 @@ app.use(
         res.set('Cache-Control', 'public, max-age=31536000, immutable');
       }
       res.set('Content-Type', 'text/javascript; charset=utf-8');
-    },
-  })
-);
-
-// Serve shared models for frontend access with versioned caching
-app.use(
-  '/shared',
-  express.static(path.join(__dirname, 'shared'), {
-    setHeaders: (res: Response): void => {
-      if (isDevelopment) {
-        res.set({
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          Pragma: 'no-cache',
-          Expires: '0',
-        });
-      } else {
-        res.set('Cache-Control', 'public, max-age=31536000, immutable');
-      }
-    },
-  })
-);
-
-// Serve core utilities for frontend access with versioned caching
-app.use(
-  '/core',
-  express.static(path.join(__dirname, 'core'), {
-    setHeaders: (res: Response): void => {
-      if (isDevelopment) {
-        res.set({
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          Pragma: 'no-cache',
-          Expires: '0',
-        });
-      } else {
-        res.set('Cache-Control', 'public, max-age=31536000, immutable');
-      }
     },
   })
 );

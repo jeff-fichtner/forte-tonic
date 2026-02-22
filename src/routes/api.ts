@@ -9,7 +9,6 @@ import { SystemController } from '../controllers/systemController.js';
 import { AttendanceController } from '../controllers/attendanceController.js';
 import { FeedbackController } from '../controllers/feedbackController.js';
 import { extractPaginatedRequestData } from '../middleware/requestDataNormalizer.js';
-import { initializeRepositories } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -49,38 +48,26 @@ router.post('/auth/access-code', UserController.authenticateByAccessCode);
 // Admin diagnostic endpoints
 router.post('/admin/test-connection', SystemController.testConnection);
 router.post('/admin/test-sheet-data', SystemController.testSheetData);
-router.post('/admin/clearCache', SystemController.clearCache);
+router.post('/admin/clear-cache', SystemController.clearCache);
 
-// ===== NEW REPOSITORY-BASED ENDPOINTS =====
+// ===== REPOSITORY-BASED ENDPOINTS =====
 
 /**
  * Registration CRUD operations
  */
-router.post('/registrations', initializeRepositories, RegistrationController.createRegistration);
-router.delete(
-  '/registrations/:id',
-  initializeRepositories,
-  RegistrationController.deleteRegistration
-);
+router.post('/registrations', RegistrationController.createRegistration);
+router.delete('/registrations/:id', RegistrationController.deleteRegistration);
 
 /**
- * Mark Attendance - New Repository Pattern
+ * Attendance
  */
-router.post('/attendance', initializeRepositories, AttendanceController.markAttendance);
-
-/**
- * Get Attendance Summary
- */
+router.post('/attendance', AttendanceController.markAttendance);
 router.get('/attendance/summary/:registrationId', AttendanceController.getAttendanceSummary);
 
 /**
  * Update reenrollment intent for a registration
  */
-router.patch(
-  '/registrations/:id/intent',
-  initializeRepositories,
-  RegistrationController.updateIntent
-);
+router.patch('/registrations/:id/intent', RegistrationController.updateIntent);
 
 /**
  * Admin endpoints
@@ -91,23 +78,9 @@ router.get('/admin/trimester-data/:trimester', RegistrationController.getAdminTr
 /**
  * Next trimester registration endpoints (enrollment periods only)
  */
-router.get(
-  '/registrations/next-trimester',
-  initializeRepositories,
-  RegistrationController.getNextTrimesterRegistrations
-);
-
-router.post(
-  '/registrations/next-trimester',
-  initializeRepositories,
-  RegistrationController.createNextTrimesterRegistration
-);
-
-router.delete(
-  '/registrations/next-trimester/:id',
-  initializeRepositories,
-  RegistrationController.deleteNextTrimesterRegistration
-);
+router.get('/registrations/next-trimester', RegistrationController.getNextTrimesterRegistrations);
+router.post('/registrations/next-trimester', RegistrationController.createNextTrimesterRegistration);
+router.delete('/registrations/next-trimester/:id', RegistrationController.deleteNextTrimesterRegistration);
 
 /**
  * Feedback endpoint

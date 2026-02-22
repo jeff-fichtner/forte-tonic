@@ -231,26 +231,6 @@ export class ServiceContainer {
   }
 
   /**
-   * Create a scope with specific service overrides
-   */
-  createScope(overrides: Record<string, ServiceFactory> = {}): ServiceContainer {
-    const scope = new ServiceContainer();
-
-    // Copy all service registrations
-    for (const [name, factory] of this.services.entries()) {
-      scope.register(name, factory);
-    }
-
-    // Apply overrides
-    for (const [name, factory] of Object.entries(overrides)) {
-      scope.register(name, factory);
-    }
-
-    scope.initialized = true;
-    return scope;
-  }
-
-  /**
    * Health check for all services - simplified for MVC
    */
   async healthCheck(): Promise<HealthCheckResult> {
@@ -397,30 +377,6 @@ export class ServiceContainer {
     });
   }
 
-  /**
-   * Get service dependency graph for debugging
-   */
-  getDependencyGraph(): Record<string, Record<string, unknown>> {
-    const graph: Record<string, Record<string, unknown>> = {};
-
-    for (const serviceName of this.services.keys()) {
-      try {
-        const service = this.get(serviceName) as { constructor: { name: string } };
-        graph[serviceName] = {
-          type: service.constructor.name,
-          initialized: this.singletons.has(serviceName),
-        };
-      } catch (error) {
-        graph[serviceName] = {
-          type: 'unknown',
-          error: (error as Error).message,
-          initialized: false,
-        };
-      }
-    }
-
-    return graph;
-  }
 }
 
 // Export singleton instance

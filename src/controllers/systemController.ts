@@ -241,27 +241,4 @@ export class SystemController {
     }
   }
 
-  /**
-   * Get application configuration for frontend
-   */
-  static async getApplicationConfig(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      const appConfig = configService.getApplicationConfig();
-
-      successResponse(res, appConfig, {
-        req,
-        startTime,
-        context: { controller: 'SystemController', method: 'getApplicationConfig' },
-      });
-    } catch (error) {
-      logger.error('Error getting application config:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'SystemController', method: 'getApplicationConfig' },
-      });
-    }
-  }
 }

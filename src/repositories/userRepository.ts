@@ -93,8 +93,9 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    * and in-memory for enriched data to avoid repeated enrichment operations
    */
   async getStudents(): Promise<Student[]> {
-    // Check if we have a valid cache (enriched students)
-    if (this._enrichedStudentsCache) {
+    // Check if we have a valid cache (enriched students) — 5 min TTL matches dbClient
+    const ENRICHED_CACHE_TTL = 5 * 60 * 1000;
+    if (this._enrichedStudentsCache && this._enrichedStudentsCacheTime && (Date.now() - this._enrichedStudentsCacheTime) < ENRICHED_CACHE_TTL) {
       this.logger.info(`📦 Cache hit for enriched students`);
       return this._enrichedStudentsCache;
     }

@@ -26,12 +26,5 @@ export const FORTE_PROGRAM_PHONE: string = '(415) 945-5122';
  * organization-level contact information not tied to specific individuals.
  */
 
-/**
- * User Types
- * Used for authentication and authorization throughout the application
- */
-export const UserType = Object.freeze({
-  ADMIN: 'admin',
-  INSTRUCTOR: 'instructor',
-  PARENT: 'parent',
-} as const);
+// Re-export UserType from its canonical location in utils/values
+export { UserType } from '../utils/values/userType.js';

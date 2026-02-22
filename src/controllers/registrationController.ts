@@ -11,26 +11,13 @@ import type { Request, Response } from 'express';
 import { getLogger } from '../utils/logger.js';
 import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
 import { _fetchData } from '../utils/helpers.js';
-import { successResponse, errorResponse } from '../common/responseHelpers.js';
+import { successResponse, errorResponse, asString } from '../common/responseHelpers.js';
 import { ValidationError, UnauthorizedError, NotFoundError } from '../common/errors.js';
 import { TRIMESTER_SEQUENCE } from '../utils/values/trimester.js';
 import { INTENT_TYPES } from '../constants/intentTypes.js';
 import { UserType } from '../config/constants.js';
 
 const logger = getLogger();
-
-function asString(value: unknown, fallback: string = ''): string {
-  if (Array.isArray(value)) {
-    return String(value[0] ?? fallback);
-  }
-  if (typeof value === 'string') {
-    return value;
-  }
-  if (value === null || value === undefined) {
-    return fallback;
-  }
-  return String(value);
-}
 
 export class RegistrationController {
   /**
@@ -86,12 +73,12 @@ export class RegistrationController {
         sortOrder: request.sortOrder || 'desc',
       };
 
-      // Get registrations through application service
-      const result = await registrationApplicationService.getRegistrations(options);
+      // Get enriched registrations through application service
+      const registrations = await registrationApplicationService.getRegistrations(options);
 
-      // For backward compatibility with existing pagination format
+      // Apply pagination
       const paginatedResult = _fetchData(
-        () => result.registrations,
+        () => registrations,
         page || 0,
         pageSize || 1000
       );
@@ -100,9 +87,9 @@ export class RegistrationController {
       const legacyResult = {
         ...paginatedResult,
         domainInsights: {
-          totalActive: result.registrations.filter(r => !!r.isActive).length,
-          totalByType: RegistrationController.#groupByRegistrationType(result.registrations),
-          totalConflicts: result.registrations.filter(r => !!r.hasConflicts).length,
+          totalActive: registrations.filter(r => !!r.isActive).length,
+          totalByType: RegistrationController.#groupByRegistrationType(registrations),
+          totalConflicts: registrations.filter(r => !!r.hasConflicts).length,
         },
       };
 
@@ -666,7 +653,7 @@ export class RegistrationController {
       // Get all necessary repositories
       const registrationRepository = serviceContainer.get('registrationRepository');
       const userRepository = serviceContainer.get('userRepository');
-      const classRepository = serviceContainer.get('classRepository') as {
+      const classRepository = serviceContainer.get('programRepository') as {
         getClasses(): Promise<unknown[]>;
       };
 

@@ -203,7 +203,7 @@ export class DropRequestService extends BaseService {
 
       // 3. Delete the registration
       this.logger.info(`🗑️ Deleting registration ${dropRequest.registrationId}`);
-      await this.registrationRepository.delete(dropRequest.registrationId, adminEmail);
+      await this.registrationRepository.delete(dropRequest.registrationId, adminEmail, dropRequest.trimester);
 
       // 4. Update drop request status
       const updated = await this.dropRequestRepository.update(
@@ -285,38 +285,43 @@ export class DropRequestService extends BaseService {
         DropRequestStatus.PENDING
       );
 
-      // Enrich with related data
-      const enriched = await Promise.all(
-        pendingRequests.map(async request => {
-          try {
-            const registration = await this.registrationRepository.getById(request.registrationId);
-            if (!registration) {
-              this.logger.warn(`Registration not found for drop request ${request.id}`);
-              return {
-                ...request,
-                registration: null,
-                student: null,
-              };
-            }
+      if (pendingRequests.length === 0) {
+        return [];
+      }
 
-            const studentId = registration.studentId;
-            const student = await this.studentRepository.getStudentById(studentId);
+      // Batch-fetch all students and build a lookup map
+      const allStudents = await this.studentRepository.getStudents();
+      const studentMap = new Map(allStudents.map(s => [s.id, s]));
 
-            return {
-              ...request,
-              registration: registration,
-              student: student,
-            };
-          } catch (error) {
-            this.logger.error(`Error enriching drop request ${request.id}:`, error);
-            return {
-              ...request,
-              registration: null,
-              student: null,
-            };
-          }
-        })
-      );
+      // Batch-fetch registrations by looking up each ID from the full list
+      // (getById already scans all trimester tables; fetching all once is more efficient)
+      const registrationIds = new Set(pendingRequests.map(r => r.registrationId));
+      const registrationMap = new Map<string, Record<string, unknown>>();
+      for (const id of registrationIds) {
+        try {
+          const reg = await this.registrationRepository.getById(id);
+          if (reg) registrationMap.set(id, reg);
+        } catch (error) {
+          this.logger.warn(`Could not fetch registration ${id}:`, (error as Error).message);
+        }
+      }
+
+      // Join in memory
+      const enriched = pendingRequests.map(request => {
+        const registration = registrationMap.get(request.registrationId) || null;
+        const studentId = registration ? (registration as { studentId?: string }).studentId : null;
+        const student = studentId ? studentMap.get(studentId) || null : null;
+
+        if (!registration) {
+          this.logger.warn(`Registration not found for drop request ${request.id}`);
+        }
+
+        return {
+          ...request,
+          registration,
+          student,
+        };
+      });
 
       this.logger.info(`✅ Found ${enriched.length} pending drop requests`);
       return enriched;
@@ -338,24 +343,27 @@ export class DropRequestService extends BaseService {
 
       const requests = await this.dropRequestRepository.findByParentId(parentId);
 
-      // Enrich with registration data
-      const enriched = await Promise.all(
-        requests.map(async request => {
-          try {
-            const registration = await this.registrationRepository.getById(request.registrationId);
-            return {
-              ...request,
-              registration: registration || null,
-            };
-          } catch (error) {
-            this.logger.error(`Error enriching drop request ${request.id}:`, error);
-            return {
-              ...request,
-              registration: null,
-            };
-          }
-        })
-      );
+      if (requests.length === 0) {
+        return [];
+      }
+
+      // Batch-fetch registrations for all unique IDs
+      const registrationIds = new Set(requests.map(r => r.registrationId));
+      const registrationMap = new Map<string, Record<string, unknown>>();
+      for (const id of registrationIds) {
+        try {
+          const reg = await this.registrationRepository.getById(id);
+          if (reg) registrationMap.set(id, reg);
+        } catch (error) {
+          this.logger.warn(`Could not fetch registration ${id}:`, (error as Error).message);
+        }
+      }
+
+      // Join in memory
+      const enriched = requests.map(request => ({
+        ...request,
+        registration: registrationMap.get(request.registrationId) || null,
+      }));
 
       this.logger.info(`✅ Found ${enriched.length} drop requests for parent ${parentId}`);
       return enriched;

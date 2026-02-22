@@ -10,27 +10,14 @@ import { serviceContainer } from '../infrastructure/container/serviceContainer.j
 import type { Request, Response } from 'express';
 import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
 import { AppConfigurationResponse } from '../models/shared/responses/appConfigurationResponse.js';
-import { ConfigurationService, configService } from '../services/configurationService.js';
+import { configService } from '../services/configurationService.js';
 import { getLogger } from '../utils/logger.js';
-import { successResponse, errorResponse } from '../common/responseHelpers.js';
+import { successResponse, errorResponse, asString } from '../common/responseHelpers.js';
 import { ValidationError, NotFoundError } from '../common/errors.js';
 import { PeriodType } from '../utils/values/periodType.js';
 import { TRIMESTER_SEQUENCE, Trimester } from '../utils/values/trimester.js';
 
 const logger = getLogger();
-
-function asString(value: unknown, fallback: string = ''): string {
-  if (Array.isArray(value)) {
-    return String(value[0] ?? fallback);
-  }
-  if (typeof value === 'string') {
-    return value;
-  }
-  if (value === null || value === undefined) {
-    return fallback;
-  }
-  return String(value);
-}
 
 export class UserController {
   /**
@@ -51,7 +38,7 @@ export class UserController {
       const configurationData = {
         currentPeriod,
         nextPeriod,
-        rockBandClassIds: ConfigurationService.getRockBandClassIds(),
+        rockBandClassIds: configService.getRockBandClassIds(),
         currentTrimester: currentPeriod?.trimester,
         // Show the name of the next trimester in sequence, not the next period's trimester
         // During enrollment, the next scheduled period (e.g., open enrollment) can be the same trimester

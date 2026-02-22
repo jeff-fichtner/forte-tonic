@@ -324,7 +324,7 @@ async function initializeApplication() {
 
       try {
         console.log('🧹 Clearing server cache...');
-        const cacheData = await HttpService.post('admin/clearCache', { adminCode });
+        const cacheData = await HttpService.post('admin/clear-cache', { adminCode });
         console.log('✓ Server cache cleared successfully by:', cacheData.clearedBy);
         console.log('  Message:', cacheData.message);
         return true;

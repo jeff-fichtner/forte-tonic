@@ -40,17 +40,9 @@ const mockConfigService = {
   isDevelopment: jest.fn().mockReturnValue(false),
 };
 
-// Create ConfigurationService class mock
-class ConfigurationServiceMock {
-  static getRockBandClassIds() {
-    return ['G015'];
-  }
-}
-
 // Mock the configuration service module
 jest.unstable_mockModule('../../src/services/configurationService.js', () => ({
   configService: mockConfigService,
-  ConfigurationService: ConfigurationServiceMock,
 }));
 
 // Mock the GoogleSheetsDbClient
@@ -148,10 +140,7 @@ const mockRegistrationRepository = {
 };
 
 const mockRegistrationApplicationService = {
-  getRegistrations: jest.fn().mockResolvedValue({
-    registrations: [mockRegistration],
-    totalCount: 1,
-  }),
+  getRegistrations: jest.fn().mockResolvedValue([mockRegistration]),
   processRegistration: jest.fn().mockResolvedValue({
     registration: mockRegistration,
     warnings: [],
