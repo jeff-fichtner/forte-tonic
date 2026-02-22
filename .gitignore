@@ -166,3 +166,6 @@ build/
 .cache/
 
 *.DS_Store
+
+# Claude Code local settings (user-specific tool permissions)
+.claude/settings.json
