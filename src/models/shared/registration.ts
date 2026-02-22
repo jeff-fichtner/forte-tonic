@@ -145,8 +145,8 @@ export class Registration {
 
     if (!isWaitlistClass) {
       // All non-waitlist registrations require valid length
-      if (!parsedLength || isNaN(parsedLength)) {
-        throw new Error('length is required and must be a valid number');
+      if (isNaN(parsedLength)) {
+        throw new Error('length must be a valid number');
       }
       this.length = parsedLength;
     } else {

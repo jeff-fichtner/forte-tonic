@@ -10,17 +10,17 @@ import { BaseService } from '../infrastructure/base/baseService.js';
 import { RegistrationValidationService } from './registrationValidationService.js';
 import { RegistrationConflictService } from './registrationConflictService.js';
 import type { ConflictRegistrationData } from './registrationConflictService.js';
-import { ProgramValidationService } from './programValidationService.js';
+import { ConfigurationService } from './configurationService.js';
 import { Registration } from '../models/shared/registration.js';
 import { ConflictError } from '../common/errors.js';
 import type { RegistrationData } from '../models/shared/registration.js';
-import type { ConfigurationService } from './configurationService.js';
 import type { RegistrationRepository } from '../repositories/registrationRepository.js';
 import type { UserRepository } from '../repositories/userRepository.js';
 import type { ProgramRepository } from '../repositories/programRepository.js';
-import type { Class } from '../models/shared/class.js';
+import type { Class, ClassData } from '../models/shared/class.js';
 import type { Instructor, DayAvailability } from '../models/shared/instructor.js';
 import type { Student } from '../models/shared/student.js';
+import { DateHelpers, TonicDuration } from '../utils/nativeDateTimeHelpers.js';
 
 /**
  * Registration input from the API layer.
@@ -205,10 +205,7 @@ export class RegistrationApplicationService extends BaseService {
       );
 
       // Step 4: Program-specific validation (catalog/class rules)
-      const programValidation = ProgramValidationService.validateRegistration(
-        registrationData,
-        groupClass ?? null
-      );
+      const programValidation = this.#validateProgramRules(groupClass ?? null);
       if (!programValidation.isValid) {
         throw new Error(`Program validation failed: ${programValidation.errors.join(', ')}`);
       }
@@ -399,83 +396,6 @@ export class RegistrationApplicationService extends BaseService {
   }
 
   /**
-   * Get registration details with enriched information
-   */
-  async getRegistrationDetails(registrationId: string): Promise<Record<string, unknown>> {
-    try {
-      const registration = await this.registrationRepository.findById(registrationId);
-      if (!registration) {
-        throw new Error(`Registration not found: ${registrationId}`);
-      }
-
-      // Get related entities
-      const [student, instructor, groupClass] = await Promise.all([
-        this.userRepository.getStudentById(registration.studentId),
-        this.userRepository.getInstructorById(registration.instructorId),
-        registration.classId ? this.programRepository.getClassById(registration.classId) : null,
-      ]);
-      // SC-005: legacy methods not yet on model class
-      const registrationWithLegacyMethods = registration as unknown as {
-        getNextLessonDate(): unknown;
-        canBeModified(): unknown;
-        canBeCancelled(): unknown;
-        calculateLessonCost(): unknown;
-        requiresTransportation(): unknown;
-      };
-
-      return {
-        registration,
-        student,
-        instructor,
-        groupClass,
-        lessonSchedule: registration.generateSchedule(),
-        nextLessonDate: registrationWithLegacyMethods.getNextLessonDate(),
-        canModify: registrationWithLegacyMethods.canBeModified(),
-        cancellationInfo: registrationWithLegacyMethods.canBeCancelled(),
-        totalCost: registrationWithLegacyMethods.calculateLessonCost(),
-        requiresTransportation: registrationWithLegacyMethods.requiresTransportation(),
-      };
-    } catch (error) {
-      this.logger.error('❌ Failed to get registration details:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get registrations by student with enriched data
-   */
-  async getStudentRegistrations(studentId: string): Promise<Record<string, unknown>[]> {
-    try {
-      const registrations = await this.registrationRepository.findByStudentId(studentId);
-
-      const enrichedRegistrations = await Promise.all(
-        registrations.map(async registration => {
-          const instructor = await this.userRepository.getInstructorById(registration.instructorId);
-          // SC-005: legacy methods not yet on model class
-          const registrationWithLegacyMethods = registration as unknown as {
-            getNextLessonDate(): unknown;
-            canBeModified(): unknown;
-            calculateLessonCost(): unknown;
-          };
-
-          return {
-            ...registration.toJSON(),
-            instructor,
-            nextLessonDate: registrationWithLegacyMethods.getNextLessonDate(),
-            canModify: registrationWithLegacyMethods.canBeModified(),
-            totalCost: registrationWithLegacyMethods.calculateLessonCost(),
-          };
-        })
-      );
-
-      return enrichedRegistrations;
-    } catch (error) {
-      this.logger.error('❌ Failed to get student registrations:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Get registrations with filtering and pagination
    */
   async getRegistrations(
@@ -558,40 +478,31 @@ export class RegistrationApplicationService extends BaseService {
   }
 
   /**
-   * Parse time string (supports both "HH:MM" and "H:MM AM/PM" formats) to minutes since midnight
+   * Validate program-specific business rules for a registration.
+   * (Data format validation is handled by RegistrationValidationService)
    */
-  #parseTime(timeStr: string): number | null {
-    if (!timeStr) {
-      return null;
-    }
+  #validateProgramRules(
+    groupClass: ClassData | null
+  ): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
 
-    // Handle AM/PM format (e.g., "3:00 PM", "11:30 AM")
-    if (timeStr.includes('AM') || timeStr.includes('PM')) {
-      const [time, period] = timeStr.split(' ');
-      const [hours, minutes] = time.split(':').map(Number);
-      let hour24 = hours;
+    if (groupClass) {
+      const rockBandClassIds = ConfigurationService.getRockBandClassIds();
+      const isWaitlistClass = groupClass.id ? rockBandClassIds.includes(groupClass.id) : false;
 
-      if (period === 'PM' && hours !== 12) {
-        hour24 += 12;
-      } else if (period === 'AM' && hours === 12) {
-        hour24 = 0;
+      if (!isWaitlistClass && (!groupClass.day || !groupClass.startTime || !groupClass.length)) {
+        errors.push('Group class must have day, start time, and length');
       }
 
-      return hour24 * 60 + (minutes || 0);
+      if (!groupClass.title) {
+        errors.push('Group class title is required');
+      }
     }
 
-    // Handle 24-hour format (e.g., "15:00", "09:30")
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    return hours * 60 + (minutes || 0);
-  }
-
-  /**
-   * Helper method to format minutes since midnight back to HH:MM format
-   */
-  #formatTimeFromMinutes(minutes: number): string {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
   }
 
   /**
@@ -618,14 +529,14 @@ export class RegistrationApplicationService extends BaseService {
     }
 
     // Parse start time and calculate end time
-    const startMinutes = this.#parseTime(startTime);
-    if (startMinutes === null) {
+    if (!startTime) {
       return { isValid: true, errorMessage: null };
     }
+    const startMinutes = DateHelpers.parseTimeString(startTime).totalMinutes;
     const endMinutes = startMinutes + durationMinutes;
 
     // Convert end time back to time string for display
-    const endTimeDisplay = this.#formatTimeFromMinutes(endMinutes);
+    const endTimeDisplay = new TonicDuration(endMinutes).to24Hour();
 
     // Bus schedule restrictions
     const busDeadlines: Record<string, string> = {
@@ -642,11 +553,8 @@ export class RegistrationApplicationService extends BaseService {
       return { isValid: true, errorMessage: null };
     }
 
-    const deadlineMinutes = this.#parseTime(deadlineTime);
-    if (deadlineMinutes === null) {
-      return { isValid: true, errorMessage: null };
-    }
-    const deadlineDisplay = this.#formatTimeFromMinutes(deadlineMinutes);
+    const deadlineMinutes = DateHelpers.parseTimeString(deadlineTime).totalMinutes;
+    const deadlineDisplay = new TonicDuration(deadlineMinutes).to24Hour();
 
     if (endMinutes > deadlineMinutes) {
       const errorMessage = `Late Bus is not available for lessons ending after ${deadlineDisplay} on ${day}. This lesson ends at ${endTimeDisplay}. Please select "Late Pick Up" instead or choose a different time slot.`;

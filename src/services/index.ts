@@ -5,3 +5,4 @@
  */
 
 export { RegistrationApplicationService } from './registrationApplicationService.js';
+export { EntityQueryService } from './entityQueryService.js';

@@ -166,7 +166,7 @@ export class RegistrationConflictService {
         const isDuplicate = classMatch && studentMatch;
 
         if (classMatch || studentMatch) {
-          logger.info(
+          logger.debug(
             `  [${index}] GROUP check: classId=${reg.classId} (match=${classMatch}), studentId=${regStudentId} (match=${studentMatch}) => duplicate=${isDuplicate}`
           );
         }
@@ -181,7 +181,7 @@ export class RegistrationConflictService {
         const isDuplicate = studentMatch && instructorMatch && timeMatch && dayMatch;
 
         if (studentMatch && instructorMatch) {
-          logger.info(
+          logger.debug(
             `  [${index}] PRIVATE check: studentId=${regStudentId} (match=${studentMatch}), instructorId=${regInstructorId} (match=${instructorMatch}), day=${reg.day} (match=${dayMatch}), startTime=${reg.startTime} (match=${timeMatch}) => duplicate=${isDuplicate}`
           );
         }
@@ -201,35 +201,6 @@ export class RegistrationConflictService {
 
     logger.info('No duplicate found');
     return null;
-  }
-
-  /**
-   * Checks for schedule conflicts (student double-booked, instructor conflicts)
-   * @param newRegistration - New registration data
-   * @param existingRegistrations - Existing registrations
-   * @returns Array of schedule conflicts
-   */
-  static checkScheduleConflicts(
-    newRegistration: ConflictRegistrationData,
-    existingRegistrations: ConflictRegistrationData[]
-  ): Conflict[] {
-    const conflicts: Conflict[] = [];
-
-    // Check student schedule conflict
-    const studentConflict = this.checkStudentScheduleConflict(
-      newRegistration,
-      existingRegistrations
-    );
-    if (studentConflict) conflicts.push(studentConflict);
-
-    // Check instructor schedule conflict
-    const instructorConflict = this.checkInstructorScheduleConflict(
-      newRegistration,
-      existingRegistrations
-    );
-    if (instructorConflict) conflicts.push(instructorConflict);
-
-    return conflicts;
   }
 
   /**
@@ -261,7 +232,7 @@ export class RegistrationConflictService {
           newRegistration.startTime,
           newRegistration.length
         );
-        logger.info(
+        logger.debug(
           `  [${index}] studentId=${regStudentId} (match=${studentMatch}), day=${reg.day} (match=${dayMatch}), time=${reg.startTime}-${reg.startTime}+${reg.length}min vs ${newRegistration.startTime}+${newRegistration.length}min => overlap=${overlap}`
         );
         return overlap;
@@ -312,7 +283,7 @@ export class RegistrationConflictService {
           newRegistration.startTime,
           newRegistration.length
         );
-        logger.info(
+        logger.debug(
           `  [${index}] instructorId=${regInstructorId} (match=${instructorMatch}), day=${reg.day} (match=${dayMatch}), time=${reg.startTime}+${reg.length}min vs ${newRegistration.startTime}+${newRegistration.length}min => overlap=${overlap}`
         );
         return overlap;
@@ -349,7 +320,7 @@ export class RegistrationConflictService {
     logger.info(`classId=${newRegistration.classId}, groupClass.size=${groupClass?.size}`);
 
     const maxCapacity = groupClass?.size;
-    if (!maxCapacity) {
+    if (maxCapacity == null) {
       logger.info('No size defined on class - unlimited capacity, skipping check');
       return null; // No size defined = unlimited capacity
     }
@@ -409,26 +380,4 @@ export class RegistrationConflictService {
     return hours * 60 + minutes;
   }
 
-  /**
-   * Generates a composite registration ID
-   * @param registrationData - Registration data
-   * @returns Generated registration ID
-   */
-  static generateRegistrationId(registrationData: ConflictRegistrationData): string {
-    if (registrationData.registrationType === RegistrationType.GROUP) {
-      return `${registrationData.studentId}_${registrationData.classId}`;
-    } else {
-      return `${registrationData.studentId}_${registrationData.instructorId}_${registrationData.day}_${registrationData.startTime}`;
-    }
-  }
-
-  /**
-   * Validates that registration ID doesn't already exist
-   * @param registrationId - Registration ID to check
-   * @param existingRegistrations - Existing registrations
-   * @returns True if ID is unique
-   */
-  static isUniqueRegistrationId(registrationId: string, existingRegistrations: ConflictRegistrationData[]): boolean {
-    return !existingRegistrations.some((reg: ConflictRegistrationData) => reg.id === registrationId);
-  }
 }

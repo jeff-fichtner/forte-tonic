@@ -78,7 +78,7 @@ export class RegistrationValidationService {
     if (!registrationData.startTime) {
       errors.push('Start time is required for private lessons');
     }
-    if (!registrationData.length) {
+    if (registrationData.length == null) {
       errors.push('Lesson length is required for private lessons');
     }
     if (!registrationData.transportationType) {

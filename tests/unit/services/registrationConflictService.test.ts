@@ -683,7 +683,7 @@ describe('RegistrationConflictService', () => {
       expect(result).toBeNull();
     });
 
-    it('should allow: class with size=0 (unlimited capacity)', () => {
+    it('should detect conflict: class with size 0', () => {
       const newRegistration = {
         classId: 'class-789',
       };
@@ -698,7 +698,9 @@ describe('RegistrationConflictService', () => {
         groupClass
       );
 
-      expect(result).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result!.type).toBe('class_capacity');
+      expect(result!.maxCapacity).toBe(0);
     });
 
     it('should allow: no groupClass provided (unlimited capacity)', () => {

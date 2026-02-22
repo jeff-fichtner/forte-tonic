@@ -25,6 +25,7 @@ import { DropRequestRepository } from '../../repositories/dropRequestRepository.
 import { RegistrationApplicationService } from '../../services/registrationApplicationService.js';
 import { PeriodService } from '../../services/periodService.js';
 import { DropRequestService } from '../../services/dropRequestService.js';
+import { EntityQueryService } from '../../services/entityQueryService.js';
 
 type ServiceFactory = () => unknown;
 
@@ -58,6 +59,7 @@ interface ServiceMap {
   registrationApplicationService: RegistrationApplicationService;
   periodService: PeriodService;
   dropRequestService: DropRequestService;
+  entityQueryService: EntityQueryService;
 }
 
 export class ServiceContainer {
@@ -381,6 +383,15 @@ export class ServiceContainer {
         this.get('registrationRepository') as RegistrationRepository,
         this.get('userRepository') as UserRepository,
         this.get('periodService') as PeriodService,
+        configService
+      );
+    });
+
+    this.register('entityQueryService', () => {
+      return new EntityQueryService(
+        this.get('userRepository') as UserRepository,
+        this.get('programRepository') as ProgramRepository,
+        this.get('registrationRepository') as RegistrationRepository,
         configService
       );
     });

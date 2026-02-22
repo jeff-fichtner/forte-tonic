@@ -739,33 +739,26 @@ export class RegistrationController {
         );
       }
 
-      const registrationRepository = serviceContainer.get('registrationRepository');
-      const userRepository = serviceContainer.get('userRepository');
+      const queryService = serviceContainer.get('entityQueryService');
       const configService = serviceContainer.get('configurationService');
-
-      // Get Rock Band class IDs (wait list classes)
       const rockBandClassIds = configService.getRockBandClassIds();
 
-      // Fetch registrations for trimester and all students in parallel
       const [allRegistrations, students] = await Promise.all([
-        registrationRepository.getRegistrationsByTrimester(trimester),
-        userRepository.getStudents(),
+        queryService.getRegistrations({ trimester }),
+        queryService.getStudents(),
       ]);
 
-      // Filter registrations to only include Rock Band classes (wait list)
+      // Filter registrations to only include Rock Band classes (waitlist-specific)
       const waitListRegistrations = allRegistrations.filter(registration => {
-        const classId = registration.classId;
-        return rockBandClassIds.includes(String(classId || ''));
+        return rockBandClassIds.includes(String(registration.classId || ''));
       });
 
-      // Get unique student IDs from wait list registrations
-      const studentIdsInWaitList = [
-        ...new Set(waitListRegistrations.map(reg => reg.studentId).filter(Boolean)),
-      ];
-
       // Filter students to only include those in wait list registrations
+      const studentIdsInWaitList = new Set(
+        waitListRegistrations.map(reg => reg.studentId).filter(Boolean)
+      );
       const relevantStudents = students.filter(student => {
-        return student.id ? studentIdsInWaitList.includes(student.id) : false;
+        return student.id ? studentIdsInWaitList.has(student.id) : false;
       });
 
       const responseData = {
@@ -817,49 +810,41 @@ export class RegistrationController {
         );
       }
 
+      const queryService = serviceContainer.get('entityQueryService');
       const registrationRepository = serviceContainer.get('registrationRepository');
-      const userRepository = serviceContainer.get('userRepository');
-      const programRepository = serviceContainer.get('programRepository');
-      const configService = serviceContainer.get('configurationService');
 
-      // Get Rock Band class IDs (wait list classes)
-      const rockBandClassIds = configService.getRockBandClassIds();
+      // Fetch registrations for this instructor, excluding waitlist
+      // If trimester provided, use query service; otherwise fall back to active registrations
+      let allInstructorRegs;
+      if (trimester) {
+        allInstructorRegs = await queryService.getRegistrations({ trimester, instructorId, excludeWaitlist: true });
+      } else {
+        const allRegs = await registrationRepository.getRegistrations();
+        allInstructorRegs = allRegs.filter(r => r.instructorId === instructorId && !r.isWaitlistClass);
+      }
+      const registrations = allInstructorRegs;
 
-      // Fetch all data in parallel
-      // If trimester is provided, filter registrations by trimester
-      const [allRegistrations, students, instructors, classes] = await Promise.all([
-        trimester
-          ? registrationRepository.getRegistrationsByTrimester(trimester)
-          : registrationRepository.getRegistrations(),
-        userRepository.getStudents(),
-        userRepository.getInstructors(),
-        programRepository.getClasses(),
+      // Get student IDs from instructor's registrations
+      const studentIdsInSchedule = new Set(
+        registrations.map(reg => reg.studentId).filter(Boolean)
+      );
+
+      // Fetch remaining data in parallel
+      const [allStudents, instructors, classes] = await Promise.all([
+        queryService.getStudents(),
+        queryService.getInstructors(),
+        queryService.getClasses(),
       ]);
 
-      // Filter registrations to only include those for this instructor, excluding wait list
-      const instructorRegistrations = allRegistrations.filter(registration => {
-        const regInstructorId = registration.instructorId;
-        const classId = registration.classId;
-        const isInstructorMatch = regInstructorId === instructorId;
-        const isNotWaitList = !rockBandClassIds.includes(String(classId || ''));
-        return isInstructorMatch && isNotWaitList;
-      });
-
-      // Get unique student IDs from instructor's registrations
-      const studentIdsInSchedule = [
-        ...new Set(instructorRegistrations.map(reg => reg.studentId).filter(Boolean)),
-      ];
-
-      // Filter students to only include those in instructor's schedule
-      const relevantStudents = students.filter(student => {
-        return student.id ? studentIdsInSchedule.includes(student.id) : false;
-      });
+      const relevantStudents = allStudents.filter(student =>
+        student.id ? studentIdsInSchedule.has(student.id) : false
+      );
 
       const responseData = {
-        registrations: instructorRegistrations,
+        registrations,
         students: relevantStudents,
-        instructors: instructors, // Needed for table rendering
-        classes: classes, // Needed for group class titles
+        instructors: instructors,
+        classes: classes,
       };
 
       successResponse(res, responseData, {
@@ -908,46 +893,23 @@ export class RegistrationController {
         });
       }
 
-      const userRepository = serviceContainer.get('userRepository');
-      const registrationRepository = serviceContainer.get('registrationRepository');
-      const programRepository = serviceContainer.get('programRepository');
+      const queryService = serviceContainer.get('entityQueryService');
 
-      // Fetch all data in parallel
-      const [allRegistrations, students, instructors, classes] = await Promise.all([
-        registrationRepository.getRegistrationsByTrimester(trimester),
-        userRepository.getStudents(),
-        userRepository.getInstructors(),
-        programRepository.getClasses(),
-      ]);
-
-      // Filter students by parent
-      const parentStudents = students.filter(student => {
-        const parent1IdMatch = student.parent1Id === parentId;
-        const parent2IdMatch = student.parent2Id === parentId;
-        return parent1IdMatch || parent2IdMatch;
-      });
-
-      // Get student IDs for filtering registrations
+      // Get parent's students first (needed to scope registrations)
+      const parentStudents = await queryService.getStudents({ parentId });
       const studentIds = parentStudents
         .map(student => student.id)
         .filter((id): id is string => Boolean(id));
 
-      // Filter registrations by parent's students
-      const parentRegistrations = allRegistrations.filter(
-        registration => {
-          const regStudentId = registration.studentId || '';
-          return studentIds.includes(regStudentId);
-        }
-      );
+      // Fetch registrations scoped to parent's students, plus classes
+      const [parentRegistrations, classes] = await Promise.all([
+        queryService.getRegistrations({ trimester, studentIds }),
+        queryService.getClasses(),
+      ]);
 
-      // Get instructor IDs from parent's registrations
+      // Get instructors teaching parent's children
       const instructorIds = [...new Set(parentRegistrations.map(reg => reg.instructorId))];
-
-      // Filter instructors to only those teaching parent's children
-      const relevantInstructors = instructors.filter(instructor => {
-        const instructorId = instructor.id;
-        return instructorIds.includes(instructorId);
-      });
+      const relevantInstructors = await queryService.getInstructors({ instructorIds });
 
       const responseData = {
         registrations: parentRegistrations,
@@ -983,17 +945,13 @@ export class RegistrationController {
 
     try {
       const trimester = asString(req.params.trimester);
+      const queryService = serviceContainer.get('entityQueryService');
 
-      const userRepository = serviceContainer.get('userRepository');
-      const registrationRepository = serviceContainer.get('registrationRepository');
-      const programRepository = serviceContainer.get('programRepository');
-
-      // Fetch all data for the trimester in parallel
       const [registrations, students, instructors, classes] = await Promise.all([
-        registrationRepository.getRegistrationsByTrimester(trimester),
-        userRepository.getStudents(),
-        userRepository.getInstructors(),
-        programRepository.getClasses(),
+        queryService.getRegistrations({ trimester }),
+        queryService.getStudents(),
+        queryService.getInstructors(),
+        queryService.getClasses(),
       ]);
 
       const responseData = {
@@ -1038,38 +996,26 @@ export class RegistrationController {
         });
       }
 
-      const userRepository = serviceContainer.get('userRepository');
-      const registrationRepository = serviceContainer.get('registrationRepository');
-      const programRepository = serviceContainer.get('programRepository');
+      const queryService = serviceContainer.get('entityQueryService');
       const periodService = serviceContainer.get('periodService');
 
-      // Get current and next trimesters from period service
+      // Derive trimesters via periodService (no trimester in route)
       const currentTrimester = (await periodService.getCurrentTrimester()) || '';
-      const index = TRIMESTER_SEQUENCE.findIndex(
-        t => t.toLowerCase() === currentTrimester.toLowerCase()
-      );
-      const nextTrimester = TRIMESTER_SEQUENCE[(index + 1) % TRIMESTER_SEQUENCE.length];
+      const nextTrimester = (await periodService.getNextTrimester()) || '';
 
-      // Fetch all data in parallel
-      const [instructors, allStudents, classes, nextTrimesterRegs, currentTrimesterRegs] =
+      // Fetch parent's students + unfiltered registrations for both trimesters + instructors + classes
+      const [parentStudents, nextTrimesterRegs, currentTrimesterRegs, instructors, classes] =
         await Promise.all([
-          userRepository.getInstructors(),
-          userRepository.getStudents(),
-          programRepository.getClasses(), // Classes for next trimester
-          registrationRepository.getRegistrationsByTrimester(nextTrimester), // Next trimester registrations
-          registrationRepository.getRegistrationsByTrimester(currentTrimester), // Current trimester for recurring
+          queryService.getStudents({ parentId }),
+          queryService.getRegistrations({ trimester: nextTrimester }),
+          queryService.getRegistrations({ trimester: currentTrimester }),
+          queryService.getInstructors(),
+          queryService.getClasses(),
         ]);
-
-      // Filter to parent's children only
-      const parentStudents = allStudents.filter(student => {
-        const parent1IdMatch = student.parent1Id === parentId;
-        const parent2IdMatch = student.parent2Id === parentId;
-        return parent1IdMatch || parent2IdMatch;
-      });
 
       const responseData = {
         instructors: instructors,
-        students: parentStudents, // Only parent's children
+        students: parentStudents,
         classes: classes,
         nextTrimesterRegistrations: nextTrimesterRegs,
         currentTrimesterRegistrations: currentTrimesterRegs,
@@ -1115,16 +1061,13 @@ export class RegistrationController {
         });
       }
 
-      const userRepository = serviceContainer.get('userRepository');
-      const registrationRepository = serviceContainer.get('registrationRepository');
-      const programRepository = serviceContainer.get('programRepository');
+      const queryService = serviceContainer.get('entityQueryService');
 
-      // Fetch all data in parallel
       const [instructors, students, classes, registrations] = await Promise.all([
-        userRepository.getInstructors(),
-        userRepository.getStudents(),
-        programRepository.getClasses(),
-        registrationRepository.getRegistrationsByTrimester(trimester),
+        queryService.getInstructors(),
+        queryService.getStudents(),
+        queryService.getClasses(),
+        queryService.getRegistrations({ trimester }),
       ]);
 
       const responseData = {

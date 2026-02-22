@@ -19,8 +19,8 @@
 
 **Purpose**: Branch creation and scaffolding for new files
 
-- [ ] T001 Create and checkout branch `004-service-layer-cleanup` from `main`
-- [ ] T002 Create empty `src/services/entityQueryService.ts` with class skeleton extending `BaseService` (import from `src/infrastructure/base/baseService.ts`), constructor accepting `UserRepository`, `ProgramRepository`, `RegistrationRepository`, and `ConfigurationService`, with stub methods for `getStudents`, `getInstructors`, `getRegistrations`, `getClasses`, `getAdmins`, `getRooms` — all returning empty arrays
+- [x] T001 Create and checkout branch `004-service-layer-cleanup` from `main`
+- [x] T002 Create empty `src/services/entityQueryService.ts` with class skeleton extending `BaseService` (import from `src/infrastructure/base/baseService.ts`), constructor accepting `UserRepository`, `ProgramRepository`, `RegistrationRepository`, and `ConfigurationService`, with stub methods for `getStudents`, `getInstructors`, `getRegistrations`, `getClasses`, `getAdmins`, `getRooms` — all returning empty arrays
 
 ---
 
@@ -30,8 +30,8 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Register `EntityQueryService` in `src/infrastructure/container/serviceContainer.ts`: import EntityQueryService, add `entityQueryService: EntityQueryService` to the `ServiceMap` interface, add `this.register('entityQueryService', ...)` call in `#registerServices()` passing `this.get('userRepository')`, `this.get('programRepository')`, `this.get('registrationRepository')`, and `configService`
-- [ ] T004 Add `EntityQueryService` export to `src/services/index.ts`
+- [x] T003 Register `EntityQueryService` in `src/infrastructure/container/serviceContainer.ts`: import EntityQueryService, add `entityQueryService: EntityQueryService` to the `ServiceMap` interface, add `this.register('entityQueryService', ...)` call in `#registerServices()` passing `this.get('userRepository')`, `this.get('programRepository')`, `this.get('registrationRepository')`, and `configService`
+- [x] T004 Add `EntityQueryService` export to `src/services/index.ts`
 
 **Checkpoint**: `entityQueryService` is resolvable from the service container, `npm test` passes, `npx tsc --noEmit` passes
 
@@ -45,17 +45,17 @@
 
 ### Tests for User Story 1
 
-- [ ] T005 [US1] Create `tests/unit/entityQueryService.test.ts` with test suite covering: `getStudents()` returns all when no filters; `getStudents({ parentId })` filters by `parent1Id`/`parent2Id`; `getInstructors()` returns all when no filters; `getInstructors({ instructorIds })` filters to ID set; `getRegistrations({ trimester })` fetches by trimester; `getRegistrations({ trimester, studentIds })` filters by student ID set; `getRegistrations({ trimester, instructorId })` filters by instructor; `getRegistrations({ trimester, excludeWaitlist: true })` excludes waitlist; `getClasses()` passes through to repository; `getAdmins()` passes through to repository; `getRooms()` passes through to repository. Mock all three repositories.
+- [x] T005 [US1] Create `tests/unit/entityQueryService.test.ts` with test suite covering: `getStudents()` returns all when no filters; `getStudents({ parentId })` filters by `parent1Id`/`parent2Id`; `getInstructors()` returns all when no filters; `getInstructors({ instructorIds })` filters to ID set; `getRegistrations({ trimester })` fetches by trimester; `getRegistrations({ trimester, studentIds })` filters by student ID set; `getRegistrations({ trimester, instructorId })` filters by instructor; `getRegistrations({ trimester, excludeWaitlist: true })` excludes waitlist; `getClasses()` passes through to repository; `getAdmins()` passes through to repository; `getRooms()` passes through to repository. Mock all three repositories.
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Implement `getStudents(filters?)` in `src/services/entityQueryService.ts`: call `userRepository.getStudents()`, if `filters.parentId` provided filter where `student.parent1Id === parentId || student.parent2Id === parentId`, return result
-- [ ] T007 [US1] Implement `getInstructors(filters?)` in `src/services/entityQueryService.ts`: call `userRepository.getInstructors()`, if `filters.instructorIds` provided filter to those whose ID is in the set, return result
-- [ ] T008 [US1] Implement `getRegistrations(filters)` in `src/services/entityQueryService.ts`: call `registrationRepository.getRegistrationsByTrimester(filters.trimester)`, then apply optional filters — if `filters.studentIds` filter to matching studentIds, if `filters.instructorId` filter to matching instructorId, if `filters.excludeWaitlist` exclude registrations with waitlist status — return result
-- [ ] T009 [P] [US1] Implement `getClasses()` in `src/services/entityQueryService.ts`: call `programRepository.getClasses()` and return result
-- [ ] T010 [P] [US1] Implement `getAdmins()` in `src/services/entityQueryService.ts`: call `userRepository.getAdmins()` and return result
-- [ ] T011 [P] [US1] Implement `getRooms()` in `src/services/entityQueryService.ts`: call `userRepository.getRooms()` and return result
-- [ ] T012 [US1] Verify all unit tests in `tests/unit/entityQueryService.test.ts` pass, run `npx tsc --noEmit`
+- [x] T006 [US1] Implement `getStudents(filters?)` in `src/services/entityQueryService.ts`: call `userRepository.getStudents()`, if `filters.parentId` provided filter where `student.parent1Id === parentId || student.parent2Id === parentId`, return result
+- [x] T007 [US1] Implement `getInstructors(filters?)` in `src/services/entityQueryService.ts`: call `userRepository.getInstructors()`, if `filters.instructorIds` provided filter to those whose ID is in the set, return result
+- [x] T008 [US1] Implement `getRegistrations(filters)` in `src/services/entityQueryService.ts`: call `registrationRepository.getRegistrationsByTrimester(filters.trimester)`, then apply optional filters — if `filters.studentIds` filter to matching studentIds, if `filters.instructorId` filter to matching instructorId, if `filters.excludeWaitlist` exclude registrations with waitlist status — return result
+- [x] T009 [P] [US1] Implement `getClasses()` in `src/services/entityQueryService.ts`: call `programRepository.getClasses()` and return result
+- [x] T010 [P] [US1] Implement `getAdmins()` in `src/services/entityQueryService.ts`: call `userRepository.getAdmins()` and return result
+- [x] T011 [P] [US1] Implement `getRooms()` in `src/services/entityQueryService.ts`: call `userRepository.getRooms()` and return result
+- [x] T012 [US1] Verify all unit tests in `tests/unit/entityQueryService.test.ts` pass, run `npx tsc --noEmit`
 
 **Checkpoint**: EntityQueryService fully functional with all filter combinations tested. `npm test` passes.
 
@@ -73,27 +73,27 @@
 
 #### Admin tabs (no cross-entity filtering — parallel safe)
 
-- [ ] T013 [P] [US2] Rewire `getAdminMasterScheduleTabData` in `src/controllers/registrationController.ts` (lines ~981-1020): replace inline fetches with `queryService.getRegistrations({ trimester })`, `queryService.getStudents()`, `queryService.getInstructors()`, `queryService.getClasses()` in parallel via `Promise.all`. Response shape unchanged.
-- [ ] T014 [P] [US2] Rewire `getAdminRegistrationTabData` in `src/controllers/registrationController.ts` (lines ~1101-1151): same pattern as Admin Master Schedule — 4 parallel query service calls with `{ trimester }` filter on registrations. Response shape unchanged.
-- [ ] T015 [P] [US2] Rewire `getInstructorDirectoryTabData` in `src/controllers/userController.ts` (lines ~452-483): replace inline fetches with `queryService.getAdmins()` and `queryService.getInstructors()` in parallel. Response shape unchanged.
+- [x] T013 [P] [US2] Rewire `getAdminMasterScheduleTabData` in `src/controllers/registrationController.ts` (lines ~981-1020): replace inline fetches with `queryService.getRegistrations({ trimester })`, `queryService.getStudents()`, `queryService.getInstructors()`, `queryService.getClasses()` in parallel via `Promise.all`. Response shape unchanged.
+- [x] T014 [P] [US2] Rewire `getAdminRegistrationTabData` in `src/controllers/registrationController.ts` (lines ~1101-1151): same pattern as Admin Master Schedule — 4 parallel query service calls with `{ trimester }` filter on registrations. Response shape unchanged.
+- [x] T015 [P] [US2] Rewire `getInstructorDirectoryTabData` in `src/controllers/userController.ts` (lines ~452-483): replace inline fetches with `queryService.getAdmins()` and `queryService.getInstructors()` in parallel. Response shape unchanged.
 
 #### Admin Wait List (has waitlist-specific filtering after fetch)
 
-- [ ] T016 [US2] Rewire `getAdminWaitListTabData` in `src/controllers/registrationController.ts` (lines ~723-790): use `queryService.getRegistrations({ trimester })` then apply in-controller Rock Band class ID filter via `configService.getRockBandClassIds()` (this filter is waitlist-specific, not a general query pattern). Use `queryService.getStudents()` then filter to students with matching registrations. Response: `{ registrations, students }`.
+- [x] T016 [US2] Rewire `getAdminWaitListTabData` in `src/controllers/registrationController.ts` (lines ~723-790): use `queryService.getRegistrations({ trimester })` then apply in-controller Rock Band class ID filter via `configService.getRockBandClassIds()` (this filter is waitlist-specific, not a general query pattern). Use `queryService.getStudents()` then filter to students with matching registrations. Response: `{ registrations, students }`.
 
 #### Instructor Weekly Schedule (cross-entity: instructor → registrations → students)
 
-- [ ] T017 [US2] Rewire `getInstructorWeeklyScheduleTabData` in `src/controllers/registrationController.ts` (lines ~797-885): use `queryService.getRegistrations({ trimester, instructorId, excludeWaitlist: true })`, extract studentIds, then `queryService.getStudents()` and filter to studentIds in-controller, `queryService.getInstructors()`, `queryService.getClasses()` — parallel where possible. Response shape unchanged.
+- [x] T017 [US2] Rewire `getInstructorWeeklyScheduleTabData` in `src/controllers/registrationController.ts` (lines ~797-885): use `queryService.getRegistrations({ trimester, instructorId, excludeWaitlist: true })`, extract studentIds, then `queryService.getStudents()` and filter to studentIds in-controller, `queryService.getInstructors()`, `queryService.getClasses()` — parallel where possible. Response shape unchanged.
 
 #### Parent tabs (cross-entity: parent → students → registrations → instructors)
 
-- [ ] T018 [US2] Rewire `getParentWeeklyScheduleTabData` in `src/controllers/registrationController.ts` (lines ~893-973): use `queryService.getStudents({ parentId })`, extract studentIds, then `queryService.getRegistrations({ trimester, studentIds })`, extract instructorIds from registrations, `queryService.getInstructors({ instructorIds })`, `queryService.getClasses()`. Response shape unchanged.
-- [ ] T019 [US2] Rewire `getParentContactTabData` in `src/controllers/userController.ts` (lines ~490-594): this tab derives trimesters internally (no trimester in route). Keep `periodService.getCurrentTrimester()` and `periodService.getNextTrimester()` calls. Then use `queryService.getStudents({ parentId })`, extract studentIds, `queryService.getRegistrations({ trimester: current, studentIds })` + optional next trimester via `Promise.allSettled`, extract instructorIds, `queryService.getInstructors({ instructorIds })`, `queryService.getAdmins()`. Response returns only `{ admins, instructors }` — students/registrations are used internally for filtering but not in response.
-- [ ] T020 [US2] Rewire `getParentRegistrationTabData` in `src/controllers/registrationController.ts` (lines ~1027-1092): this tab derives trimesters internally (no trimester in route). Keep `periodService.getCurrentTrimester()` call; **replace inline `TRIMESTER_SEQUENCE` math** (lines 1048-1051) with `periodService.getNextTrimester()` (the `TRIMESTER_SEQUENCE` import stays because line 244 in `getRegistrations` still uses it). Then use `queryService.getStudents({ parentId })`, `queryService.getRegistrations({ trimester: next })`, `queryService.getRegistrations({ trimester: current })` (registrations unfiltered — matches current behavior), `queryService.getInstructors()`, `queryService.getClasses()`. Response keys: `nextTrimesterRegistrations`, `currentTrimesterRegistrations`, `students`, `instructors`, `classes`.
+- [x] T018 [US2] Rewire `getParentWeeklyScheduleTabData` in `src/controllers/registrationController.ts` (lines ~893-973): use `queryService.getStudents({ parentId })`, extract studentIds, then `queryService.getRegistrations({ trimester, studentIds })`, extract instructorIds from registrations, `queryService.getInstructors({ instructorIds })`, `queryService.getClasses()`. Response shape unchanged.
+- [x] T019 [US2] Rewire `getParentContactTabData` in `src/controllers/userController.ts` (lines ~490-594): this tab derives trimesters internally (no trimester in route). Keep `periodService.getCurrentTrimester()` and `periodService.getNextTrimester()` calls. Then use `queryService.getStudents({ parentId })`, extract studentIds, `queryService.getRegistrations({ trimester: current, studentIds })` + optional next trimester via `Promise.allSettled`, extract instructorIds, `queryService.getInstructors({ instructorIds })`, `queryService.getAdmins()`. Response returns only `{ admins, instructors }` — students/registrations are used internally for filtering but not in response.
+- [x] T020 [US2] Rewire `getParentRegistrationTabData` in `src/controllers/registrationController.ts` (lines ~1027-1092): this tab derives trimesters internally (no trimester in route). Keep `periodService.getCurrentTrimester()` call; **replace inline `TRIMESTER_SEQUENCE` math** (lines 1048-1051) with `periodService.getNextTrimester()` (the `TRIMESTER_SEQUENCE` import stays because line 244 in `getRegistrations` still uses it). Then use `queryService.getStudents({ parentId })`, `queryService.getRegistrations({ trimester: next })`, `queryService.getRegistrations({ trimester: current })` (registrations unfiltered — matches current behavior), `queryService.getInstructors()`, `queryService.getClasses()`. Response keys: `nextTrimesterRegistrations`, `currentTrimesterRegistrations`, `students`, `instructors`, `classes`.
 
 #### Verification
 
-- [ ] T021 [US2] Run full test suite (`npm test`) and typecheck (`npx tsc --noEmit`) to confirm no regressions after all 8 tab rewirings
+- [x] T021 [US2] Run full test suite (`npm test`) and typecheck (`npx tsc --noEmit`) to confirm no regressions after all 8 tab rewirings
 
 **Checkpoint**: All 8 tabs use EntityQueryService. No inline repository calls or filtering in controller tab methods. All tests pass.
 
@@ -107,15 +107,15 @@
 
 ### Implementation for User Story 3
 
-- [ ] T022 [P] [US3] Delete `src/services/authenticator.ts` (entire file — 0 production callers)
-- [ ] T023 [P] [US3] Delete `tests/unit/authenticator.test.ts` (test for deleted class)
-- [ ] T024 [US3] Remove `getRegistrationDetails()` method (lines ~404-442) from `src/services/registrationApplicationService.ts`
-- [ ] T025 [US3] Remove `getStudentRegistrations()` method (lines ~447-476) from `src/services/registrationApplicationService.ts`
-- [ ] T026 [P] [US3] Remove `checkScheduleConflicts()` method (lines ~212-233) from `src/services/registrationConflictService.ts`
-- [ ] T027 [P] [US3] Remove `generateRegistrationId()` method (lines ~417-423) from `src/services/registrationConflictService.ts`
-- [ ] T028 [P] [US3] Remove `isUniqueRegistrationId()` method (lines ~431-433) from `src/services/registrationConflictService.ts`
-- [ ] T029 [US3] Remove any remaining imports of `Authenticator` across the codebase (grep for `authenticator` in `src/` and clean up)
-- [ ] T030 [US3] Run full test suite (`npm test`) and typecheck (`npx tsc --noEmit`) to confirm no breakage
+- [x] T022 [P] [US3] Delete `src/services/authenticator.ts` (entire file — 0 production callers)
+- [x] T023 [P] [US3] Delete `tests/unit/authenticator.test.ts` (test for deleted class)
+- [x] T024 [US3] Remove `getRegistrationDetails()` method (lines ~404-442) from `src/services/registrationApplicationService.ts`
+- [x] T025 [US3] Remove `getStudentRegistrations()` method (lines ~447-476) from `src/services/registrationApplicationService.ts`
+- [x] T026 [P] [US3] Remove `checkScheduleConflicts()` method (lines ~212-233) from `src/services/registrationConflictService.ts`
+- [x] T027 [P] [US3] Remove `generateRegistrationId()` method (lines ~417-423) from `src/services/registrationConflictService.ts`
+- [x] T028 [P] [US3] Remove `isUniqueRegistrationId()` method (lines ~431-433) from `src/services/registrationConflictService.ts`
+- [x] T029 [US3] Remove any remaining imports of `Authenticator` across the codebase (grep for `authenticator` in `src/` and clean up)
+- [x] T030 [US3] Run full test suite (`npm test`) and typecheck (`npx tsc --noEmit`) to confirm no breakage
 
 **Checkpoint**: 2 files deleted, 5 dead methods removed. All tests pass. No orphaned imports.
 
@@ -129,11 +129,11 @@
 
 ### Implementation for User Story 4
 
-- [ ] T031 [US4] Copy `ProgramValidationService.validateRegistration()` logic into `src/services/registrationApplicationService.ts` as private method `#validateProgramRules(registrationData, groupClass)` returning `{ isValid: boolean; errors: string[] }`. Keep the `ConfigurationService.getRockBandClassIds()` static call unchanged.
-- [ ] T032 [US4] Update the call site in `RegistrationApplicationService` that currently calls `ProgramValidationService.validateRegistration()` to call `this.#validateProgramRules()` instead. Remove the import of `ProgramValidationService`.
-- [ ] T033 [US4] Delete `src/services/programValidationService.ts`
-- [ ] T034 [US4] Grep for any remaining imports of `ProgramValidationService` across `src/` and `tests/` and remove them
-- [ ] T035 [US4] Run full test suite (`npm test`) and typecheck (`npx tsc --noEmit`)
+- [x] T031 [US4] Copy `ProgramValidationService.validateRegistration()` logic into `src/services/registrationApplicationService.ts` as private method `#validateProgramRules(registrationData, groupClass)` returning `{ isValid: boolean; errors: string[] }`. Keep the `ConfigurationService.getRockBandClassIds()` static call unchanged.
+- [x] T032 [US4] Update the call site in `RegistrationApplicationService` that currently calls `ProgramValidationService.validateRegistration()` to call `this.#validateProgramRules()` instead. Remove the import of `ProgramValidationService`.
+- [x] T033 [US4] Delete `src/services/programValidationService.ts`
+- [x] T034 [US4] Grep for any remaining imports of `ProgramValidationService` across `src/` and `tests/` and remove them
+- [x] T035 [US4] Run full test suite (`npm test`) and typecheck (`npx tsc --noEmit`)
 
 **Checkpoint**: ProgramValidationService deleted. Validation logic preserved in RegistrationApplicationService. All tests pass.
 
@@ -147,9 +147,9 @@
 
 ### Implementation for User Story 5
 
-- [ ] T036 [P] [US5] In `src/services/registrationApplicationService.ts`, replace calls to `this.#parseTime(timeStr)` with `DateHelpers.parseTimeString(timeStr).totalMinutes` and calls to `this.#formatTimeFromMinutes(minutes)` with `new TonicDuration(minutes).to24Hour()` in `#validateBusTimeRestrictions()`. Add imports for `DateHelpers` from `src/utils/nativeDateTimeHelpers.ts` and `TonicDuration` from its source. Then delete the private `#parseTime()` and `#formatTimeFromMinutes()` methods.
-- [ ] T037 [P] [US5] In `src/services/registrationConflictService.ts`, change per-iteration `logger.info` calls inside `.find()` callbacks in `checkDuplicateRegistration()`, `checkStudentScheduleConflict()`, and `checkInstructorScheduleConflict()` to `logger.debug`. Keep method-level entry/exit banners (`=== CONFLICT CHECK START ===`, etc.) at `info`. Keep `checkClassCapacity()` count logging at `info`.
-- [ ] T038 [US5] Run full test suite (`npm test`) and typecheck (`npx tsc --noEmit`)
+- [x] T036 [P] [US5] In `src/services/registrationApplicationService.ts`, replace calls to `this.#parseTime(timeStr)` with `DateHelpers.parseTimeString(timeStr).totalMinutes` and calls to `this.#formatTimeFromMinutes(minutes)` with `new TonicDuration(minutes).to24Hour()` in `#validateBusTimeRestrictions()`. Add imports for `DateHelpers` from `src/utils/nativeDateTimeHelpers.ts` and `TonicDuration` from its source. Then delete the private `#parseTime()` and `#formatTimeFromMinutes()` methods.
+- [x] T037 [P] [US5] In `src/services/registrationConflictService.ts`, change per-iteration `logger.info` calls inside `.find()` callbacks in `checkDuplicateRegistration()`, `checkStudentScheduleConflict()`, and `checkInstructorScheduleConflict()` to `logger.debug`. Keep method-level entry/exit banners (`=== CONFLICT CHECK START ===`, etc.) at `info`. Keep `checkClassCapacity()` count logging at `info`.
+- [x] T038 [US5] Run full test suite (`npm test`) and typecheck (`npx tsc --noEmit`)
 
 **Checkpoint**: Time parsing uses shared utilities. Logging levels are appropriate. All tests pass.
 
@@ -159,10 +159,10 @@
 
 **Purpose**: Final verification across all changes
 
-- [ ] T039 Run full test suite (`npm test`) — all 534+ tests must pass
-- [ ] T040 Run typecheck (`npx tsc --noEmit`) — must pass clean
-- [ ] T041 Verify no orphaned imports or references: grep for `authenticator`, `ProgramValidationService`, `getRegistrationDetails`, `getStudentRegistrations`, `checkScheduleConflicts`, `generateRegistrationId`, `isUniqueRegistrationId` across `src/` — should return zero results (except plan/spec docs)
-- [ ] T042 Run quickstart.md validation checklist: confirm EntityQueryService unit tests pass, existing tests pass, typecheck clean
+- [x] T039 Run full test suite (`npm test`) — all 534+ tests must pass
+- [x] T040 Run typecheck (`npx tsc --noEmit`) — must pass clean
+- [x] T041 Verify no orphaned imports or references: grep for `authenticator`, `ProgramValidationService`, `getRegistrationDetails`, `getStudentRegistrations`, `checkScheduleConflicts`, `generateRegistrationId`, `isUniqueRegistrationId` across `src/` — should return zero results (except plan/spec docs)
+- [x] T042 Run quickstart.md validation checklist: confirm EntityQueryService unit tests pass, existing tests pass, typecheck clean
 
 ---
 

@@ -453,12 +453,11 @@ export class UserController {
     const startTime = Date.now();
 
     try {
-      const userRepository = serviceContainer.get('userRepository');
+      const queryService = serviceContainer.get('entityQueryService');
 
-      // Fetch only what this tab needs (admins + instructors)
       const [admins, instructors] = await Promise.all([
-        userRepository.getAdmins(),
-        userRepository.getInstructors(),
+        queryService.getAdmins(),
+        queryService.getInstructors(),
       ]);
 
       const responseData = {
@@ -506,71 +505,49 @@ export class UserController {
         );
       }
 
-      const userRepository = serviceContainer.get('userRepository');
-      const registrationRepository = serviceContainer.get('registrationRepository');
+      const queryService = serviceContainer.get('entityQueryService');
       const periodService = serviceContainer.get('periodService');
 
-      // Get current and next trimesters from period service
+      // Derive trimesters internally (no trimester in route)
       const currentTrimester = await periodService.getCurrentTrimester();
       const nextTrimester = await periodService.getNextTrimester();
 
-      // Current trimester is required - if null, this is an error
       if (!currentTrimester) {
         throw new Error('No current period found - cannot load contact data');
       }
 
-      // Build promises array - always fetch current trimester registrations
-      const promises = [
-        userRepository.getAdmins(),
-        userRepository.getStudents(),
-        userRepository.getInstructors(),
-        registrationRepository.getRegistrationsForTrimester(currentTrimester),
-      ];
-
-      // Only fetch next trimester registrations if next trimester exists
-      if (nextTrimester) {
-        promises.push(registrationRepository.getRegistrationsForTrimester(nextTrimester));
-      }
-
-      const results = await Promise.allSettled(promises);
-
-      // Extract values from settled promises
-      const admins = results[0].status === 'fulfilled' ? results[0].value : [];
-      const students: Student[] =
-        results[1].status === 'fulfilled' ? (results[1].value as Student[]) : [];
-      const instructors: Instructor[] =
-        results[2].status === 'fulfilled' ? (results[2].value as Instructor[]) : [];
-      const currentRegistrations: Registration[] =
-        results[3].status === 'fulfilled'
-          ? (results[3].value as Registration[])
-          : [];
-      const nextTrimesterRegistrations: Registration[] =
-        nextTrimester && results[4]?.status === 'fulfilled'
-          ? (results[4].value as Registration[])
-          : [];
-
-      // Combine current and next trimester registrations
-      const allRegistrations = [...currentRegistrations, ...nextTrimesterRegistrations];
-
-      // Filter students belonging to this parent (either parent1 or parent2)
-      const parentStudents = students.filter(
-        student => student.parent1Id === parentId || student.parent2Id === parentId
-      );
-
+      // Get parent's students first (needed to scope registrations)
+      const parentStudents = await queryService.getStudents({ parentId });
       const parentStudentIds = parentStudents.map(s => s.id);
 
-      // Filter registrations for parent's children
-      const parentRegistrations = allRegistrations.filter(reg => parentStudentIds.includes(reg.studentId));
+      // Fetch registrations for current + optional next trimester
+      const registrationPromises: Promise<Registration[]>[] = [
+        queryService.getRegistrations({ trimester: currentTrimester, studentIds: parentStudentIds }),
+      ];
+      if (nextTrimester) {
+        registrationPromises.push(
+          queryService.getRegistrations({ trimester: nextTrimester, studentIds: parentStudentIds })
+        );
+      }
 
-      // Get unique instructor IDs from parent's registrations
+      const registrationResults = await Promise.allSettled(registrationPromises);
+      const currentRegistrations: Registration[] =
+        registrationResults[0].status === 'fulfilled' ? registrationResults[0].value : [];
+      const nextRegistrations: Registration[] =
+        nextTrimester && registrationResults[1]?.status === 'fulfilled'
+          ? registrationResults[1].value
+          : [];
+      const allRegistrations = [...currentRegistrations, ...nextRegistrations];
+
+      // Get instructors teaching parent's children
       const instructorIds = [
-        ...new Set(parentRegistrations.map(reg => reg.instructorId).filter(Boolean)),
+        ...new Set(allRegistrations.map(reg => reg.instructorId).filter(Boolean)),
       ];
 
-      // Filter instructors to only include those teaching this parent's children
-      const relevantInstructors = instructors.filter(instructor =>
-        instructorIds.includes(instructor.id)
-      );
+      const [relevantInstructors, admins] = await Promise.all([
+        queryService.getInstructors({ instructorIds }),
+        queryService.getAdmins(),
+      ]);
 
       const responseData = {
         admins,
