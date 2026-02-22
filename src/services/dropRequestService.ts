@@ -12,6 +12,7 @@ import { PeriodType } from '../utils/values/periodType.js';
 import type { ConfigurationService } from './configurationService.js';
 import type { DropRequest, DropRequestRepository } from '../repositories/dropRequestRepository.js';
 import type { RegistrationRepository } from '../repositories/registrationRepository.js';
+import type { Registration } from '../models/shared/registration.js';
 import type { UserRepository } from '../repositories/userRepository.js';
 import type { PeriodService } from './periodService.js';
 
@@ -296,7 +297,7 @@ export class DropRequestService extends BaseService {
       // Batch-fetch registrations by looking up each ID from the full list
       // (getById already scans all trimester tables; fetching all once is more efficient)
       const registrationIds = new Set(pendingRequests.map(r => r.registrationId));
-      const registrationMap = new Map<string, Record<string, unknown>>();
+      const registrationMap = new Map<string, Registration>();
       for (const id of registrationIds) {
         try {
           const reg = await this.registrationRepository.getById(id);
@@ -309,7 +310,7 @@ export class DropRequestService extends BaseService {
       // Join in memory
       const enriched = pendingRequests.map(request => {
         const registration = registrationMap.get(request.registrationId) || null;
-        const studentId = registration ? (registration as { studentId?: string }).studentId : null;
+        const studentId = registration ? registration.studentId : null;
         const student = studentId ? studentMap.get(studentId) || null : null;
 
         if (!registration) {
@@ -349,7 +350,7 @@ export class DropRequestService extends BaseService {
 
       // Batch-fetch registrations for all unique IDs
       const registrationIds = new Set(requests.map(r => r.registrationId));
-      const registrationMap = new Map<string, Record<string, unknown>>();
+      const registrationMap = new Map<string, Registration>();
       for (const id of registrationIds) {
         try {
           const reg = await this.registrationRepository.getById(id);

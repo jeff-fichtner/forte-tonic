@@ -475,7 +475,7 @@ export class UserController {
 
     try {
       const parentId = asString(req.query.parentId);
-      const trimester = req.params.trimester;
+      const trimester = asString(req.params.trimester);
 
       if (!parentId) {
         return errorResponse(

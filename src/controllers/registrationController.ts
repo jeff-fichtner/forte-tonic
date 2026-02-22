@@ -779,7 +779,7 @@ export class RegistrationController {
 
     try {
       const instructorId = asString(req.query.instructorId);
-      const trimester = req.params.trimester;
+      const trimester = asString(req.params.trimester);
 
       if (!trimester) {
         return errorResponse(
@@ -981,7 +981,7 @@ export class RegistrationController {
 
     try {
       const parentId = asString(req.query.parentId);
-      const trimester = req.params.trimester;
+      const trimester = asString(req.params.trimester);
 
       if (!parentId) {
         return errorResponse(res, new Error('Parent ID is required'), {
@@ -1049,7 +1049,7 @@ export class RegistrationController {
     const startTime = Date.now();
 
     try {
-      const trimester = req.params.trimester;
+      const trimester = asString(req.params.trimester);
 
       if (!trimester) {
         return errorResponse(res, new Error('Trimester parameter is required'), {

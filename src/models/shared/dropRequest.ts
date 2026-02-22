@@ -10,6 +10,7 @@ export interface DropRequestData {
   id: string;
   registrationId: string;
   parentId: string;
+  trimester: string;
   reason: string;
   requestedAt: string;
   status: string;
@@ -22,6 +23,7 @@ export interface DropRequestJSON {
   id: string;
   registrationId: string;
   parentId: string;
+  trimester: string;
   reason: string;
   requestedAt: string;
   status: string;
@@ -40,6 +42,7 @@ export class DropRequest {
   id: string;
   registrationId: string;
   parentId: string;
+  trimester: string;
   reason: string;
   requestedAt: string;
   status: string;
@@ -51,6 +54,7 @@ export class DropRequest {
     this.id = data.id || UuidUtility.generateUuid();
     this.registrationId = data.registrationId || '';
     this.parentId = data.parentId || '';
+    this.trimester = data.trimester || '';
     this.reason = data.reason || '';
     this.requestedAt = data.requestedAt || new Date().toISOString();
     this.status = data.status || DropRequestStatus.PENDING;
@@ -67,6 +71,7 @@ export class DropRequest {
       id: this.id,
       registrationId: this.registrationId,
       parentId: this.parentId,
+      trimester: this.trimester,
       reason: this.reason,
       requestedAt: this.requestedAt,
       status: this.status,
@@ -84,6 +89,7 @@ export class DropRequest {
       id: record.id,
       registrationId: record.registrationId,
       parentId: record.parentId,
+      trimester: record.trimester,
       reason: record.reason,
       requestedAt: record.requestedAt,
       status: record.status,
