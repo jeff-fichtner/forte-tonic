@@ -5,7 +5,10 @@
       "Bash(ls:*)",
       "Bash(npm run typecheck:*)",
       "Bash(npx tsx:*)",
-      "Bash(.specify/scripts/bash/check-prerequisites.sh:*)"
+      "Bash(.specify/scripts/bash/check-prerequisites.sh:*)",
+      "Bash(npx jest --no-coverage)",
+      "Bash(npx jest:*)",
+      "Bash(git status:*)"
     ]
   }
 }
