@@ -785,14 +785,30 @@ export class RegistrationController {
   /**
    * Get instructor weekly schedule tab data
    * Returns registrations for instructor + associated students + instructors + classes
-   * REST: GET /api/instructor/tabs/weekly-schedule?instructorId={instructorId}&trimester={trimester}
+   * REST: GET /api/instructor/tabs/weekly-schedule/:trimester?instructorId={instructorId}
    */
   static async getInstructorWeeklyScheduleTabData(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
 
     try {
       const instructorId = asString(req.query.instructorId);
-      const trimester = asString(req.query.trimester);
+      const trimester = req.params.trimester;
+
+      if (!trimester) {
+        return errorResponse(
+          res,
+          new Error('Trimester parameter is required'),
+          {
+            req,
+            startTime,
+            context: {
+              controller: 'RegistrationController',
+              method: 'getInstructorWeeklyScheduleTabData',
+            },
+          },
+          400
+        );
+      }
 
       if (!instructorId) {
         return errorResponse(
@@ -811,18 +827,9 @@ export class RegistrationController {
       }
 
       const queryService = serviceContainer.get('entityQueryService');
-      const registrationRepository = serviceContainer.get('registrationRepository');
 
       // Fetch registrations for this instructor, excluding waitlist
-      // If trimester provided, use query service; otherwise fall back to active registrations
-      let allInstructorRegs;
-      if (trimester) {
-        allInstructorRegs = await queryService.getRegistrations({ trimester, instructorId, excludeWaitlist: true });
-      } else {
-        const allRegs = await registrationRepository.getRegistrations();
-        allInstructorRegs = allRegs.filter(r => r.instructorId === instructorId && !r.isWaitlistClass);
-      }
-      const registrations = allInstructorRegs;
+      const registrations = await queryService.getRegistrations({ trimester, instructorId, excludeWaitlist: true });
 
       // Get student IDs from instructor's registrations
       const studentIdsInSchedule = new Set(
@@ -979,14 +986,15 @@ export class RegistrationController {
 
   /**
    * Get parent registration tab data
-   * Returns instructors, parent's children, classes, next trimester registrations, current trimester registrations
-   * REST: GET /api/parent/tabs/registration?parentId=xxx
+   * Returns instructors, parent's children, classes, and registrations for the provided trimester
+   * REST: GET /api/parent/tabs/registration/:trimester?parentId=xxx
    */
   static async getParentRegistrationTabData(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
 
     try {
       const parentId = asString(req.query.parentId);
+      const trimester = req.params.trimester;
 
       if (!parentId) {
         return errorResponse(res, new Error('Parent ID is required'), {
@@ -996,19 +1004,26 @@ export class RegistrationController {
         });
       }
 
+      if (!trimester) {
+        return errorResponse(
+          res,
+          new Error('Trimester parameter is required'),
+          {
+            req,
+            startTime,
+            context: { controller: 'RegistrationController', method: 'getParentRegistrationTabData' },
+          },
+          400
+        );
+      }
+
       const queryService = serviceContainer.get('entityQueryService');
-      const periodService = serviceContainer.get('periodService');
 
-      // Derive trimesters via periodService (no trimester in route)
-      const currentTrimester = (await periodService.getCurrentTrimester()) || '';
-      const nextTrimester = (await periodService.getNextTrimester()) || '';
-
-      // Fetch parent's students + unfiltered registrations for both trimesters + instructors + classes
-      const [parentStudents, nextTrimesterRegs, currentTrimesterRegs, instructors, classes] =
+      // Fetch parent's students + registrations for the provided trimester + instructors + classes
+      const [parentStudents, registrations, instructors, classes] =
         await Promise.all([
           queryService.getStudents({ parentId }),
-          queryService.getRegistrations({ trimester: nextTrimester }),
-          queryService.getRegistrations({ trimester: currentTrimester }),
+          queryService.getRegistrations({ trimester }),
           queryService.getInstructors(),
           queryService.getClasses(),
         ]);
@@ -1017,8 +1032,7 @@ export class RegistrationController {
         instructors: instructors,
         students: parentStudents,
         classes: classes,
-        nextTrimesterRegistrations: nextTrimesterRegs,
-        currentTrimesterRegistrations: currentTrimesterRegs,
+        registrations: registrations,
       };
 
       successResponse(res, responseData, {
@@ -1042,13 +1056,13 @@ export class RegistrationController {
    * Returns all instructors, students, classes, and registrations for selected trimester
    * No scoping - admins need full dataset for registration management
    *
-   * Route: GET /api/admin/tabs/registration?trimester=fall
+   * Route: GET /api/admin/tabs/registration/:trimester
    */
   static async getAdminRegistrationTabData(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
 
     try {
-      const trimester = asString(req.query.trimester);
+      const trimester = req.params.trimester;
 
       if (!trimester) {
         return errorResponse(res, new Error('Trimester parameter is required'), {

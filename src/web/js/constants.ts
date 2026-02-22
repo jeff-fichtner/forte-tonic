@@ -84,7 +84,7 @@ export const ServerFunctions = {
   getRegistrations: 'registrations',
   getRooms: 'rooms',
   register: 'registrations',
-  authenticateByAccessCode: 'authenticateByAccessCode',
+  authenticateByAccessCode: 'auth/access-code',
   // Next trimester registration (enrollment periods only)
   getNextTrimesterRegistrations: 'registrations/next-trimester',
   createNextTrimesterRegistration: 'registrations/next-trimester',

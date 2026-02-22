@@ -1,6 +1,6 @@
 /**
  * Attendance Controller - Application layer API endpoints for attendance management
- * Handles attendance recording, removal, and summary reporting
+ * Handles attendance recording and summary reporting
  */
 
 import { getAuthenticatedUserEmail } from '../middleware/auth.js';
@@ -8,7 +8,6 @@ import type { Request, Response } from 'express';
 import { getLogger } from '../utils/logger.js';
 import { successResponse, errorResponse } from '../common/responseHelpers.js';
 import { ValidationError, ConflictError } from '../common/errors.js';
-import type { AttendanceRepository } from '../repositories/attendanceRepository.js';
 
 const logger = getLogger();
 
@@ -154,97 +153,4 @@ export class AttendanceController {
     }
   }
 
-  /**
-   * Record attendance
-   */
-  static async recordAttendance(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      const data = req.body;
-      const attendanceRepository = req.attendanceRepository!;
-
-      // Get the authenticated user's email for audit purposes
-      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
-
-      const attendanceRecord = await attendanceRepository.recordAttendance(
-        data.registrationId,
-        authenticatedUserEmail
-      );
-
-      successResponse(res, attendanceRecord, {
-        req,
-        startTime,
-        context: {
-          controller: 'AttendanceController',
-          method: 'recordAttendance',
-          registrationId: data.registrationId,
-        },
-      });
-    } catch (error) {
-      const typedError = error as Error;
-      logger.error('Error recording attendance:', {
-        error: typedError.message,
-        stack: typedError.stack,
-        registrationId: req.body?.registrationId,
-      });
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: {
-          controller: 'AttendanceController',
-          method: 'recordAttendance',
-          registrationId: req.body?.registrationId,
-        },
-        includeRequestData: true,
-      });
-    }
-  }
-
-  /**
-   * Remove attendance
-   */
-  static async removeAttendance(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      const data = req.body;
-      const attendanceRepository = req.attendanceRepository!;
-
-      // Get the authenticated user's email for audit purposes
-      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
-
-      const success = await attendanceRepository.removeAttendance(
-        data.registrationId,
-        authenticatedUserEmail
-      );
-
-      successResponse(res, success, {
-        req,
-        startTime,
-        context: {
-          controller: 'AttendanceController',
-          method: 'removeAttendance',
-          registrationId: data.registrationId,
-        },
-      });
-    } catch (error) {
-      const typedError = error as Error;
-      logger.error('Error removing attendance:', {
-        error: typedError.message,
-        stack: typedError.stack,
-        registrationId: req.body?.registrationId,
-      });
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: {
-          controller: 'AttendanceController',
-          method: 'removeAttendance',
-          registrationId: req.body?.registrationId,
-        },
-        includeRequestData: true,
-      });
-    }
-  }
 }

@@ -2,6 +2,7 @@ import { BaseTab } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatPhone } from '../utilities/phoneHelpers.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
+import { isEnrollmentPeriod } from '../utilities/periodHelpers.js';
 import { HttpService } from '../data/httpService.js';
 
 /**
@@ -25,6 +26,7 @@ export class ParentContactTab extends BaseTab {
   /**
    * Fetch contact directory data for parent
    * Returns admins + instructors teaching this parent's children
+   * Makes 2 calls during enrollment (current + next trimester), 1 during registration period
    * @param {object} sessionInfo - User session
    * @returns {Promise<object>} Directory data
    */
@@ -34,14 +36,39 @@ export class ParentContactTab extends BaseTab {
       throw new Error('No parent ID found in session');
     }
 
-    const data = await HttpService.get(`parent/tabs/contact?parentId=${parentId}`, { signal: this.getAbortSignal() });
+    const currentPeriod = window.UserSession?.getCurrentPeriod();
+    const appConfig = window.UserSession?.getAppConfig();
 
-    // Validate response
-    if (!data.admins || !data.instructors) {
+    if (!currentPeriod) {
+      throw new Error('Period information not available');
+    }
+
+    const currentTrimester = appConfig?.currentTrimester || currentPeriod.trimester;
+    const signal = this.getAbortSignal();
+
+    // Fetch current trimester data
+    const currentData = await HttpService.get(`parent/tabs/contact/${currentTrimester}?parentId=${parentId}`, { signal });
+
+    if (!currentData.admins || !currentData.instructors) {
       throw new Error('Invalid response: missing admins or instructors');
     }
 
-    return data;
+    // During enrollment periods, also fetch next trimester and merge instructor lists
+    if (isEnrollmentPeriod(currentPeriod)) {
+      const nextTrimester = appConfig?.nextTrimester || currentPeriod.trimester;
+      const nextData = await HttpService.get(`parent/tabs/contact/${nextTrimester}?parentId=${parentId}`, { signal });
+
+      // Merge instructor arrays, deduplicating by ID
+      const seenIds = new Set(currentData.instructors.map(i => i.id));
+      const uniqueNextInstructors = (nextData.instructors || []).filter(i => !seenIds.has(i.id));
+
+      return {
+        admins: currentData.admins,
+        instructors: [...currentData.instructors, ...uniqueNextInstructors],
+      };
+    }
+
+    return currentData;
   }
 
   /**

@@ -16,9 +16,6 @@ import { successResponse, errorResponse } from '../common/responseHelpers.js';
 import { ValidationError, NotFoundError } from '../common/errors.js';
 import { PeriodType } from '../utils/values/periodType.js';
 import { TRIMESTER_SEQUENCE, Trimester } from '../utils/values/trimester.js';
-import type { Student } from '../models/shared/student.js';
-import type { Instructor } from '../models/shared/instructor.js';
-import type { Registration } from '../models/shared/registration.js';
 
 const logger = getLogger();
 
@@ -484,13 +481,14 @@ export class UserController {
   /**
    * Get parent contact tab data
    * Returns admins and instructors currently teaching the parent's children
-   * REST: GET /api/parent/tabs/contact?parentId={parentId}
+   * REST: GET /api/parent/tabs/contact/:trimester?parentId={parentId}
    */
   static async getParentContactTabData(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
 
     try {
       const parentId = asString(req.query.parentId);
+      const trimester = req.params.trimester;
 
       if (!parentId) {
         return errorResponse(
@@ -505,43 +503,31 @@ export class UserController {
         );
       }
 
-      const queryService = serviceContainer.get('entityQueryService');
-      const periodService = serviceContainer.get('periodService');
-
-      // Derive trimesters internally (no trimester in route)
-      const currentTrimester = await periodService.getCurrentTrimester();
-      const nextTrimester = await periodService.getNextTrimester();
-
-      if (!currentTrimester) {
-        throw new Error('No current period found - cannot load contact data');
+      if (!trimester) {
+        return errorResponse(
+          res,
+          new Error('Trimester parameter is required'),
+          {
+            req,
+            startTime,
+            context: { controller: 'UserController', method: 'getParentContactTabData' },
+          },
+          400
+        );
       }
+
+      const queryService = serviceContainer.get('entityQueryService');
 
       // Get parent's students first (needed to scope registrations)
       const parentStudents = await queryService.getStudents({ parentId });
       const parentStudentIds = parentStudents.map(s => s.id);
 
-      // Fetch registrations for current + optional next trimester
-      const registrationPromises: Promise<Registration[]>[] = [
-        queryService.getRegistrations({ trimester: currentTrimester, studentIds: parentStudentIds }),
-      ];
-      if (nextTrimester) {
-        registrationPromises.push(
-          queryService.getRegistrations({ trimester: nextTrimester, studentIds: parentStudentIds })
-        );
-      }
-
-      const registrationResults = await Promise.allSettled(registrationPromises);
-      const currentRegistrations: Registration[] =
-        registrationResults[0].status === 'fulfilled' ? registrationResults[0].value : [];
-      const nextRegistrations: Registration[] =
-        nextTrimester && registrationResults[1]?.status === 'fulfilled'
-          ? registrationResults[1].value
-          : [];
-      const allRegistrations = [...currentRegistrations, ...nextRegistrations];
+      // Fetch registrations for the provided trimester
+      const registrations = await queryService.getRegistrations({ trimester, studentIds: parentStudentIds });
 
       // Get instructors teaching parent's children
       const instructorIds = [
-        ...new Set(allRegistrations.map(reg => reg.instructorId).filter(Boolean)),
+        ...new Set(registrations.map(reg => reg.instructorId).filter(Boolean)),
       ];
 
       const [relevantInstructors, admins] = await Promise.all([

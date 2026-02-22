@@ -45,7 +45,7 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
     const currentPeriod = window.UserSession?.getCurrentPeriod();
     const trimester = activeButton?.dataset.trimester || currentPeriod?.trimester;
 
-    const data = await HttpService.get(`instructor/tabs/weekly-schedule?instructorId=${instructorId}&trimester=${trimester}`, { signal: this.getAbortSignal() });
+    const data = await HttpService.get(`instructor/tabs/weekly-schedule/${trimester}?instructorId=${instructorId}`, { signal: this.getAbortSignal() });
 
     // Validate response
     if (!data.registrations || !data.students || !data.instructors || !data.classes) {

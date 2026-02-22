@@ -25,6 +25,7 @@ export class ParentRegistrationTab extends BaseTab {
 
   /**
    * Fetch registration form data for parent
+   * Makes 2 calls (current + next trimester) and assembles combined view
    * Returns instructors, parent's children, classes, next trimester registrations,
    * current trimester registrations
    * @param {object} sessionInfo - User session
@@ -36,20 +37,39 @@ export class ParentRegistrationTab extends BaseTab {
       throw new Error('No parent ID found in session');
     }
 
-    const data = await HttpService.get(`parent/tabs/registration?parentId=${parentId}`, { signal: this.getAbortSignal() });
+    const currentPeriod = window.UserSession?.getCurrentPeriod();
+    const appConfig = window.UserSession?.getAppConfig();
 
-    // Validate response
-    if (
-      !data.instructors ||
-      !data.students ||
-      !data.classes ||
-      !data.nextTrimesterRegistrations ||
-      !data.currentTrimesterRegistrations
-    ) {
-      throw new Error('Invalid response: missing required data');
+    if (!currentPeriod) {
+      throw new Error('Period information not available');
     }
 
-    return data;
+    const currentTrimester = appConfig?.currentTrimester || currentPeriod.trimester;
+    const nextTrimester = appConfig?.nextTrimester || currentPeriod.trimester;
+    const signal = this.getAbortSignal();
+
+    // Fetch both trimesters in parallel
+    const [currentData, nextData] = await Promise.all([
+      HttpService.get(`parent/tabs/registration/${currentTrimester}?parentId=${parentId}`, { signal }),
+      HttpService.get(`parent/tabs/registration/${nextTrimester}?parentId=${parentId}`, { signal }),
+    ]);
+
+    // Validate responses
+    if (!currentData.instructors || !currentData.students || !currentData.classes || !currentData.registrations) {
+      throw new Error('Invalid response: missing required data from current trimester');
+    }
+    if (!nextData.registrations) {
+      throw new Error('Invalid response: missing required data from next trimester');
+    }
+
+    // Assemble combined view matching the shape the form expects
+    return {
+      instructors: currentData.instructors,
+      students: currentData.students,
+      classes: currentData.classes,
+      nextTrimesterRegistrations: nextData.registrations,
+      currentTrimesterRegistrations: currentData.registrations,
+    };
   }
 
   /**

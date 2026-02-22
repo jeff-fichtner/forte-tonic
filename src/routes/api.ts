@@ -44,15 +44,11 @@ router.get('/registrations', extractPaginatedRequestData, RegistrationController
 // ===== AUTHENTICATION & ADMIN TOOLS =====
 
 // Authenticate user by access code
-router.post('/authenticateByAccessCode', UserController.authenticateByAccessCode);
+router.post('/auth/access-code', UserController.authenticateByAccessCode);
 
-// Test endpoint to verify Google Sheets connectivity
-router.post('/testConnection', SystemController.testConnection);
-
-// Test endpoint to get data from a specific sheet
-router.post('/testSheetData', SystemController.testSheetData);
-
-// Admin-only cache clear endpoint
+// Admin diagnostic endpoints
+router.post('/admin/test-connection', SystemController.testConnection);
+router.post('/admin/test-sheet-data', SystemController.testSheetData);
 router.post('/admin/clearCache', SystemController.clearCache);
 
 // ===== NEW REPOSITORY-BASED ENDPOINTS =====
@@ -114,12 +110,6 @@ router.delete(
 );
 
 /**
- * Attendance endpoints
- */
-router.post('/recordAttendance', AttendanceController.recordAttendance);
-router.post('/removeAttendance', AttendanceController.removeAttendance);
-
-/**
  * Feedback endpoint
  */
 router.post('/feedback', FeedbackController.submitFeedback);
@@ -130,20 +120,20 @@ router.post('/feedback', FeedbackController.submitFeedback);
  */
 router.get('/instructor/tabs/directory', UserController.getInstructorDirectoryTabData);
 router.get(
-  '/instructor/tabs/weekly-schedule',
+  '/instructor/tabs/weekly-schedule/:trimester',
   RegistrationController.getInstructorWeeklyScheduleTabData
 );
-router.get('/parent/tabs/contact', UserController.getParentContactTabData);
+router.get('/parent/tabs/contact/:trimester', UserController.getParentContactTabData);
 router.get(
   '/parent/tabs/weekly-schedule/:trimester',
   RegistrationController.getParentWeeklyScheduleTabData
 );
-router.get('/parent/tabs/registration', RegistrationController.getParentRegistrationTabData);
+router.get('/parent/tabs/registration/:trimester', RegistrationController.getParentRegistrationTabData);
 router.get('/admin/tabs/wait-list/:trimester', RegistrationController.getAdminWaitListTabData);
 router.get(
   '/admin/tabs/master-schedule/:trimester',
   RegistrationController.getAdminMasterScheduleTabData
 );
-router.get('/admin/tabs/registration', RegistrationController.getAdminRegistrationTabData);
+router.get('/admin/tabs/registration/:trimester', RegistrationController.getAdminRegistrationTabData);
 
 export default router;

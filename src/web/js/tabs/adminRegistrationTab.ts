@@ -43,7 +43,7 @@ export class AdminRegistrationTab extends BaseTab {
 
     this.currentTrimester = trimester;
 
-    const data = await HttpService.get(`admin/tabs/registration?trimester=${trimester}`, { signal: this.getAbortSignal() });
+    const data = await HttpService.get(`admin/tabs/registration/${trimester}`, { signal: this.getAbortSignal() });
 
     // Validate response
     if (!data.instructors || !data.students || !data.classes || !data.registrations) {

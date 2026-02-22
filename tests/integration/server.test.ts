@@ -324,9 +324,9 @@ describe('Server Integration Tests', () => {
       });
     });
 
-    describe('POST /api/testConnection', () => {
+    describe('POST /api/admin/test-connection', () => {
       test('should test Google Sheets connection', async () => {
-        const response = await request(app).post('/api/testConnection').expect(200);
+        const response = await request(app).post('/api/admin/test-connection').expect(200);
 
         expect(response.body).toHaveProperty('success', true);
         expect(response.body).toHaveProperty('data');
@@ -337,10 +337,10 @@ describe('Server Integration Tests', () => {
       });
     });
 
-    describe('POST /api/testSheetData', () => {
+    describe('POST /api/admin/test-sheet-data', () => {
       test('should test sheet data retrieval', async () => {
         const response = await request(app)
-          .post('/api/testSheetData')
+          .post('/api/admin/test-sheet-data')
           .send({ sheetName: 'Students' })
           .expect(200);
 
@@ -351,7 +351,7 @@ describe('Server Integration Tests', () => {
       });
     });
 
-    describe('POST /api/authenticateByAccessCode', () => {
+    describe('POST /api/auth/access-code', () => {
       test('should return authenticated user for valid access code', async () => {
         // Mock the repository method to return an admin for this test
         mockUserRepository.getAdminByAccessCode.mockResolvedValueOnce({
@@ -374,7 +374,7 @@ describe('Server Integration Tests', () => {
         });
 
         const response = await request(app)
-          .post('/api/authenticateByAccessCode')
+          .post('/api/auth/access-code')
           .send({ accessCode: '123456' })
           .expect(200);
 
@@ -397,7 +397,7 @@ describe('Server Integration Tests', () => {
         mockUserRepository.getParentByPhone.mockResolvedValue(null);
 
         const response = await request(app)
-          .post('/api/authenticateByAccessCode')
+          .post('/api/auth/access-code')
           .send({ accessCode: '999999' })
           .expect(200);
 

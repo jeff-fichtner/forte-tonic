@@ -189,7 +189,7 @@ describe('Standardized Error Handling Integration Tests', () => {
   describe('UserController.authenticateByAccessCode', () => {
     test('should return null data for invalid access code', async () => {
       const response = await request(app)
-        .post('/api/authenticateByAccessCode')
+        .post('/api/auth/access-code')
         .send({
           accessCode: '999999',
           loginType: 'employee',
@@ -203,7 +203,7 @@ describe('Standardized Error Handling Integration Tests', () => {
 
     test('should return 400 with standardized error for missing access code', async () => {
       const response = await request(app)
-        .post('/api/authenticateByAccessCode')
+        .post('/api/auth/access-code')
         .send({
           loginType: 'employee',
         })
@@ -220,7 +220,7 @@ describe('Standardized Error Handling Integration Tests', () => {
 
     test('should return null data for valid access code with no match', async () => {
       const response = await request(app)
-        .post('/api/authenticateByAccessCode')
+        .post('/api/auth/access-code')
         .send({
           accessCode: '654321',
           loginType: 'employee',
@@ -247,7 +247,7 @@ describe('Standardized Error Handling Integration Tests', () => {
     });
 
     test('authentication endpoint returns wrapped response', async () => {
-      const response = await request(app).post('/api/authenticateByAccessCode').send({
+      const response = await request(app).post('/api/auth/access-code').send({
         accessCode: '999999',
         loginType: 'employee',
       });
@@ -260,7 +260,7 @@ describe('Standardized Error Handling Integration Tests', () => {
 
     test('error responses should use standardized format', async () => {
       const response = await request(app)
-        .post('/api/authenticateByAccessCode')
+        .post('/api/auth/access-code')
         .send({
           loginType: 'employee',
           // Missing accessCode
