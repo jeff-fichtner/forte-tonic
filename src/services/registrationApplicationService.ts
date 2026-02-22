@@ -171,7 +171,6 @@ export class RegistrationApplicationService extends BaseService {
 
       // Step 3.5: Populate room assignment from instructor's schedule for both group and private registrations
       const dayName = registrationData.day.toLowerCase();
-      const roomIdKey = `${dayName}RoomId`;
       const instructorData = instructor;
 
       // Get room ID from instructor's availability for the specific day
@@ -183,11 +182,6 @@ export class RegistrationApplicationService extends BaseService {
         availability[dayName].roomId
       ) {
         registrationData.roomId = availability[dayName].roomId;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- SC-005: dynamic property access on typed model
-      } else if (typeof (instructorData as any)[roomIdKey] === 'string') {
-        // Fallback: try direct property access on instructor object
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- SC-005: dynamic property access on typed model
-        registrationData.roomId = (instructorData as any)[roomIdKey] as string;
       } else {
         this.logger.warn(
           `No room assignment found for instructor ${instructorData.id} on ${dayName}`

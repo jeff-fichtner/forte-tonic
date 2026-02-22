@@ -32,6 +32,12 @@ const mockErrorResponse = jest.fn();
 jest.unstable_mockModule('../../../src/common/responseHelpers.js', () => ({
   successResponse: mockSuccessResponse,
   errorResponse: mockErrorResponse,
+  asString: (value: unknown, fallback: string = '') => {
+    if (Array.isArray(value)) return String(value[0] ?? fallback);
+    if (typeof value === 'string') return value;
+    if (value === null || value === undefined) return fallback;
+    return String(value);
+  },
 }));
 
 jest.unstable_mockModule('../../../src/common/errors.js', () => ({

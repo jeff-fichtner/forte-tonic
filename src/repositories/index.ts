@@ -7,6 +7,7 @@ export { IRepository, BaseRepository } from './baseRepository.js';
 
 // Domain repositories (used via service container)
 export { AttendanceRepository } from './attendanceRepository.js';
+export { DropRequestRepository } from './dropRequestRepository.js';
 export { ProgramRepository } from './programRepository.js';
 export { RegistrationRepository } from './registrationRepository.js';
 export { UserRepository } from './userRepository.js';

@@ -66,9 +66,8 @@ export class RegistrationController {
         registrationType: request.registrationType,
         schoolYear: request.schoolYear,
         trimester: request.trimester,
-        isActive: request.isActive,
         page,
-        pageSize, // Increased to 1000
+        pageSize,
         sortBy: request.sortBy || 'registeredAt',
         sortOrder: request.sortOrder || 'desc',
       };
@@ -83,17 +82,7 @@ export class RegistrationController {
         pageSize || 1000
       );
 
-      // Enhance with domain insights
-      const legacyResult = {
-        ...paginatedResult,
-        domainInsights: {
-          totalActive: registrations.filter(r => !!r.isActive).length,
-          totalByType: RegistrationController.#groupByRegistrationType(registrations),
-          totalConflicts: registrations.filter(r => !!r.hasConflicts).length,
-        },
-      };
-
-      successResponse(res, legacyResult, {
+      successResponse(res, paginatedResult, {
         req,
         startTime,
         context: { controller: 'RegistrationController', method: 'getRegistrations' },
@@ -355,17 +344,6 @@ export class RegistrationController {
         includeRequestData: true,
       });
     }
-  }
-
-  /**
-   * Private method: Group registrations by type
-   */
-  static #groupByRegistrationType(registrations: Record<string, unknown>[]): Record<string, number> {
-    return registrations.reduce((acc: Record<string, number>, registration: Record<string, unknown>) => {
-      const type = String(registration.registrationType || 'unknown');
-      acc[type] = (acc[type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
   }
 
   /**

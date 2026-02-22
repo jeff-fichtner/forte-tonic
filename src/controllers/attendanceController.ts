@@ -6,7 +6,7 @@
 import { getAuthenticatedUserEmail } from '../middleware/auth.js';
 import type { Request, Response } from 'express';
 import { getLogger } from '../utils/logger.js';
-import { successResponse, errorResponse } from '../common/responseHelpers.js';
+import { successResponse, errorResponse, asString } from '../common/responseHelpers.js';
 import { ValidationError, ConflictError } from '../common/errors.js';
 
 const logger = getLogger();
@@ -117,15 +117,9 @@ export class AttendanceController {
     const startTime = Date.now();
 
     try {
-      const registrationId = String(req.params.registrationId ?? '');
-      const rawSchoolYear = req.query.schoolYear;
-      const rawTrimester = req.query.trimester;
-      const schoolYear = Array.isArray(rawSchoolYear)
-        ? String(rawSchoolYear[0] ?? '2025-2026')
-        : String(rawSchoolYear ?? '2025-2026');
-      const trimester = Array.isArray(rawTrimester)
-        ? String(rawTrimester[0] ?? 'Fall')
-        : String(rawTrimester ?? 'Fall');
+      const registrationId = asString(req.params.registrationId);
+      const schoolYear = asString(req.query.schoolYear, '2025-2026');
+      const trimester = asString(req.query.trimester, 'Fall');
       const attendanceRepository = req.attendanceRepository!;
 
       const summary = await attendanceRepository.getAttendanceSummary(

@@ -18,7 +18,6 @@ export interface AdminData {
   displayEmail?: string | null;
   displayPhone?: string | null;
   isDirector?: boolean;
-  isActive?: boolean;
 }
 
 export interface AdminJSON {
@@ -34,7 +33,6 @@ export interface AdminJSON {
   accessCode: string | null;
   role: string | null;
   isDirector: boolean;
-  isActive: boolean;
 }
 
 export class Admin {
@@ -54,7 +52,6 @@ export class Admin {
   displayEmail: string | null;
   displayPhone: string | null;
   isDirector: boolean;
-  isActive: boolean;
 
   /**
    * Creates an Admin API model instance
@@ -76,7 +73,6 @@ export class Admin {
       displayEmail,
       displayPhone,
       isDirector,
-      isActive,
     } = data;
 
     // Required fields
@@ -92,8 +88,6 @@ export class Admin {
     this.displayEmail = displayEmail || null;
     this.displayPhone = displayPhone || null;
     this.isDirector = isDirector || false;
-
-    this.isActive = isActive ?? true;
   }
 
   /**
@@ -154,7 +148,6 @@ export class Admin {
       accessCode: this.accessCode,
       role: this.role,
       isDirector: this.isDirector,
-      isActive: this.isActive,
     };
   }
 }

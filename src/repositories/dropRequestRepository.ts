@@ -39,11 +39,11 @@ export class DropRequestRepository extends BaseRepository<DropRequest> {
   async create(requestData: Record<string, unknown>, createdBy: string = ''): Promise<DropRequest> {
     try {
       this.logger.info(
-        `📝 Creating new drop request for registration: ${String(requestData.registrationId)}`
+        `📝 Creating new drop request for registration: ${String(requestData.registrationId)} by ${createdBy}`
       );
 
       const dropRequest = new DropRequest(requestData as Partial<DropRequestData>);
-      await this.dbClient.insertIntoSheet('drop_requests', dropRequest.toJSON());
+      await this.dbClient.appendRecord('drop_requests', { ...dropRequest.toJSON() }, createdBy);
 
       this.logger.info(`✅ Created drop request with ID: ${dropRequest.id}`);
       return dropRequest;

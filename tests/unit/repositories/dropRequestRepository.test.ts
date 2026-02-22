@@ -28,6 +28,7 @@ describe('DropRequestRepository', () => {
     mockDbClient = {
       getAllRecords: jest.fn(),
       insertIntoSheet: jest.fn(),
+      appendRecord: jest.fn(),
       updateRecord: jest.fn(),
     };
 
@@ -141,7 +142,7 @@ describe('DropRequestRepository', () => {
         reason: 'Test reason',
       };
 
-      mockDbClient.insertIntoSheet.mockResolvedValue({});
+      mockDbClient.appendRecord.mockResolvedValue({});
 
       const result = await repository.create(requestData, 'parent@example.com');
 
@@ -150,9 +151,10 @@ describe('DropRequestRepository', () => {
       expect(result.parentId).toBe('parent-456');
       expect(result.reason).toBe('Test reason');
       expect(result.status).toBe(DropRequestStatus.PENDING);
-      expect(mockDbClient.insertIntoSheet).toHaveBeenCalledWith(
+      expect(mockDbClient.appendRecord).toHaveBeenCalledWith(
         'drop_requests',
-        expect.any(Object)
+        expect.any(Object),
+        'parent@example.com'
       );
     });
 
@@ -163,7 +165,7 @@ describe('DropRequestRepository', () => {
         reason: 'Test reason',
       };
 
-      mockDbClient.insertIntoSheet.mockRejectedValue(new Error('Database error'));
+      mockDbClient.appendRecord.mockRejectedValue(new Error('Database error'));
 
       await expect(repository.create(requestData, 'parent@example.com')).rejects.toThrow(
         'Failed to create drop request'

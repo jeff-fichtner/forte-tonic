@@ -88,10 +88,15 @@ export class Student {
   }
 
   /**
-   * Get full name
+   * Get full name (getter — consistent with Parent, Admin, Instructor)
    */
-  getFullName(): string {
+  get fullName(): string {
     return `${this.firstName} ${this.lastName}`;
+  }
+
+  /** @deprecated Use fullName getter instead */
+  getFullName(): string {
+    return this.fullName;
   }
 
   toJSON(): StudentJSON {
@@ -106,7 +111,7 @@ export class Student {
       parent2Id: this.parent2Id,
       parentEmails: this.parentEmails,
       email: this.email,
-      fullName: this.getFullName(),
+      fullName: this.fullName,
     };
   }
 

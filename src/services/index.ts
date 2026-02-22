@@ -4,5 +4,6 @@
  * Exports all application services for easy importing
  */
 
-export { RegistrationApplicationService } from './registrationApplicationService.js';
+export { DropRequestService } from './dropRequestService.js';
 export { EntityQueryService } from './entityQueryService.js';
+export { RegistrationApplicationService } from './registrationApplicationService.js';

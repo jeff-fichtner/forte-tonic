@@ -69,11 +69,6 @@ export class AuthenticatedUserResponse {
   }
 
   hasPermission(permission: string): boolean {
-    if (this.admin && typeof (this.admin as unknown as Record<string, unknown>).hasPermission === 'function') { // SC-005: legacy methods not yet on model class
-      return (this.admin as unknown as { hasPermission(p: string): boolean }).hasPermission(permission); // SC-005: legacy methods not yet on model class
-    }
-
-    // Default permissions based on role
     if (this.isAdmin()) return true;
     if (this.isInstructor() && permission.startsWith('instructor_')) return true;
     if (this.isParent() && permission.startsWith('parent_')) return true;

@@ -14,7 +14,23 @@ import type { DropRequest, DropRequestRepository } from '../repositories/dropReq
 import type { RegistrationRepository } from '../repositories/registrationRepository.js';
 import type { Registration } from '../models/shared/registration.js';
 import type { UserRepository } from '../repositories/userRepository.js';
+import type { Student } from '../models/shared/student.js';
 import type { PeriodService } from './periodService.js';
+
+interface EnrichedDropRequest {
+  id: string;
+  registrationId: string;
+  parentId: string;
+  trimester: string;
+  reason: string;
+  requestedAt: string;
+  status: string;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  adminNotes: string | null;
+  registration: Registration | null;
+  student?: Student | null;
+}
 
 /**
  * Custom error classes for drop request operations
@@ -278,7 +294,7 @@ export class DropRequestService extends BaseService {
    * Get all pending drop requests (for admin view)
    * Enriches with related student and registration data
    */
-  async getPendingDropRequests(): Promise<Record<string, unknown>[]> {
+  async getPendingDropRequests(): Promise<EnrichedDropRequest[]> {
     try {
       this.logger.info('📋 Getting all pending drop requests');
 
@@ -338,7 +354,7 @@ export class DropRequestService extends BaseService {
   /**
    * Get all drop requests for a specific parent
    */
-  async getDropRequestsByParent(parentId: string): Promise<Record<string, unknown>[]> {
+  async getDropRequestsByParent(parentId: string): Promise<EnrichedDropRequest[]> {
     try {
       this.logger.info(`📋 Getting drop requests for parent ${parentId}`);
 
