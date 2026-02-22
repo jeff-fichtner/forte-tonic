@@ -111,11 +111,16 @@ describe('versionHash', () => {
   });
 
   describe('getFrontendVersionHash()', () => {
-    test('should return the same cached value on repeated calls', () => {
+    test('should return a valid 8-char hash and cache it across calls', () => {
+      // Note: the module-level cache persists across tests within this suite,
+      // so this validates caching behavior within the module's lifecycle
+      // rather than from a guaranteed-fresh state.
       const first = getFrontendVersionHash();
       const second = getFrontendVersionHash();
 
       expect(first).toBe(second);
+      expect(typeof first).toBe('string');
+      expect(first).toHaveLength(8);
     });
   });
 });

@@ -99,8 +99,7 @@ describe('AttendanceRepository', () => {
 
   beforeEach(() => {
     mockDbClient = createMockDbClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    repo = new AttendanceRepository(mockDbClient as any);
+    repo = new AttendanceRepository(mockDbClient as unknown as import('../../../src/database/googleSheetsDbClient.js').GoogleSheetsDbClient);
   });
 
   afterEach(() => {

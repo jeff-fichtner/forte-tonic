@@ -230,6 +230,11 @@ describe('AttendanceController', () => {
     });
 
     it('should use default schoolYear and trimester when query params are absent', async () => {
+      // These defaults are hardcoded in attendanceController.ts getAttendanceSummary.
+      // If the source defaults change, this test should be updated to match.
+      const DEFAULT_SCHOOL_YEAR = '2025-2026';
+      const DEFAULT_TRIMESTER = 'Fall';
+
       const req = {
         params: { registrationId: 'reg1' },
         query: {},
@@ -242,8 +247,8 @@ describe('AttendanceController', () => {
 
       expect(mockAttendanceRepo.getAttendanceSummary).toHaveBeenCalledWith(
         'reg1',
-        '2025-2026',
-        'Fall',
+        DEFAULT_SCHOOL_YEAR,
+        DEFAULT_TRIMESTER,
       );
     });
 

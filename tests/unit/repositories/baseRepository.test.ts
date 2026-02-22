@@ -90,8 +90,7 @@ describe('BaseRepository', () => {
 
   beforeEach(() => {
     mockDbClient = createMockDbClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    repo = new BaseRepository('testEntity', testMapper, mockDbClient as any);
+    repo = new BaseRepository('testEntity', testMapper, mockDbClient as unknown as import('../../../src/database/googleSheetsDbClient.js').GoogleSheetsDbClient);
   });
 
   afterEach(() => {
@@ -247,8 +246,7 @@ describe('BaseRepository', () => {
     });
 
     test('should return data as-is when mapRecord is null', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const noMapperRepo = new BaseRepository('raw', null, mockDbClient as any);
+      const noMapperRepo = new BaseRepository('raw', null, mockDbClient as unknown as import('../../../src/database/googleSheetsDbClient.js').GoogleSheetsDbClient);
       const data = { id: 'r1', arbitrary: 'field' };
 
       const result = noMapperRepo.convertToModel(data);
