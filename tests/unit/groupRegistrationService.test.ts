@@ -38,8 +38,6 @@ describe('Group Registration Service', () => {
       userRepository: mockUserRepository,
       programRepository: mockProgramRepository,
       registrationRepository: mockRegistrationRepository,
-      auditService: null,
-      emailService: null,
     });
   });
 

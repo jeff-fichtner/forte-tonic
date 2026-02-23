@@ -5,7 +5,6 @@
  * Tests for UUID generation and validation:
  * - generateUuid: produces valid UUIDv4 strings
  * - isValidUuid: validates UUIDv4 format
- * - generateMultiple: batch UUID generation
  */
 
 import { UuidUtility } from '../../../src/utils/uuidUtility.js';
@@ -41,20 +40,4 @@ describe('UuidUtility', () => {
     });
   });
 
-  describe('generateMultiple()', () => {
-    test('should return the requested number of unique valid UUIDs', () => {
-      const uuids = UuidUtility.generateMultiple(5);
-
-      expect(uuids).toHaveLength(5);
-
-      // All should be valid UUIDv4
-      for (const uuid of uuids) {
-        expect(uuid).toMatch(UUID_V4_REGEX);
-      }
-
-      // All should be unique
-      const unique = new Set(uuids);
-      expect(unique.size).toBe(5);
-    });
-  });
 });

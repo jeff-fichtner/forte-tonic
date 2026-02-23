@@ -145,14 +145,6 @@ function buildMockProgramRepository() {
   };
 }
 
-function buildMockAuditService() {
-  return {
-    logRegistrationCreated: jest.fn().mockResolvedValue(undefined),
-    logRegistrationCancelled: jest.fn().mockResolvedValue(undefined),
-    logRegistrationFailed: jest.fn().mockResolvedValue(undefined),
-  };
-}
-
 /** Minimal config service stub satisfying BaseService constructor */
 const mockConfigService = {
   getRockBandClassIds: jest.fn().mockReturnValue(['G015']),
@@ -249,7 +241,6 @@ describe('RegistrationApplicationService', () => {
   let mockRegRepo: ReturnType<typeof buildMockRegistrationRepository>;
   let mockUserRepo: ReturnType<typeof buildMockUserRepository>;
   let mockProgramRepo: ReturnType<typeof buildMockProgramRepository>;
-  let mockAudit: ReturnType<typeof buildMockAuditService>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -257,14 +248,12 @@ describe('RegistrationApplicationService', () => {
     mockRegRepo = buildMockRegistrationRepository();
     mockUserRepo = buildMockUserRepository();
     mockProgramRepo = buildMockProgramRepository();
-    mockAudit = buildMockAuditService();
 
     service = new RegistrationApplicationService(
       {
         registrationRepository: mockRegRepo,
         userRepository: mockUserRepo,
         programRepository: mockProgramRepo,
-        auditService: mockAudit,
       },
       mockConfigService as any,
     );
@@ -336,7 +325,6 @@ describe('RegistrationApplicationService', () => {
       expect(mockValidateRegistrationData).toHaveBeenCalled();
       expect(mockCheckConflicts).toHaveBeenCalled();
       expect(mockRegRepo.create).toHaveBeenCalled();
-      expect(mockAudit.logRegistrationCreated).toHaveBeenCalledWith(reg, 'user-1');
     });
 
     // ------------------------------------------------------------------
@@ -374,8 +362,6 @@ describe('RegistrationApplicationService', () => {
           'user-1',
         ),
       ).rejects.toThrow('Student is already enrolled in this class');
-
-      expect(mockAudit.logRegistrationFailed).toHaveBeenCalled();
     });
 
     // ------------------------------------------------------------------
@@ -406,7 +392,6 @@ describe('RegistrationApplicationService', () => {
       expect(result.success).toBe(true);
       expect(result.registration).toBeDefined();
       expect(mockRegRepo.create).toHaveBeenCalled();
-      expect(mockAudit.logRegistrationCreated).toHaveBeenCalled();
     });
 
     // ------------------------------------------------------------------
@@ -430,8 +415,6 @@ describe('RegistrationApplicationService', () => {
           'user-1',
         ),
       ).rejects.toThrow(/Late Bus is not available/);
-
-      expect(mockAudit.logRegistrationFailed).toHaveBeenCalled();
     });
 
     it('should allow bus transportation when lesson ends before the deadline', async () => {
@@ -743,11 +726,6 @@ describe('RegistrationApplicationService', () => {
       expect(mockRegRepo.deleteFromTable).toHaveBeenCalledWith(
         'registrations_winter',
         'reg-cancel-1',
-        'admin-user',
-      );
-      expect(mockAudit.logRegistrationCancelled).toHaveBeenCalledWith(
-        existingReg,
-        'Changed schedule',
         'admin-user',
       );
     });

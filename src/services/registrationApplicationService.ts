@@ -29,17 +29,10 @@ import { DateHelpers, TonicDuration } from '../utils/nativeDateTimeHelpers.js';
  */
 type RegistrationInput = RegistrationData & Record<string, unknown>;
 
-interface AuditServiceLike {
-  logRegistrationCreated(registration: Registration, userId: string): Promise<void>;
-  logRegistrationCancelled(registration: Registration, reason: string, userId: string): Promise<void>;
-  logRegistrationFailed(data: unknown, message: string, userId: string): Promise<void>;
-}
-
 interface RegistrationServiceDependencies {
   registrationRepository: RegistrationRepository;
   userRepository: UserRepository;
   programRepository: ProgramRepository;
-  auditService?: AuditServiceLike;
 }
 
 interface ProcessRegistrationOptions {
@@ -69,14 +62,12 @@ export class RegistrationApplicationService extends BaseService {
   registrationRepository: RegistrationRepository;
   userRepository: UserRepository;
   programRepository: ProgramRepository;
-  auditService?: AuditServiceLike;
 
   constructor(dependencies: RegistrationServiceDependencies, configService?: ConfigurationService) {
     super(configService);
     this.registrationRepository = dependencies.registrationRepository;
     this.userRepository = dependencies.userRepository;
     this.programRepository = dependencies.programRepository;
-    this.auditService = dependencies.auditService;
   }
 
   /**
@@ -284,11 +275,6 @@ export class RegistrationApplicationService extends BaseService {
         targetTrimester
       );
 
-      // Step 8: Audit logging
-      if (this.auditService) {
-        await this.auditService.logRegistrationCreated(persistedRegistration, userId);
-      }
-
       this.logger.info('✅ Registration processed successfully:', persistedRegistration.id);
 
       // Generate lesson schedule with complete registration data
@@ -318,15 +304,6 @@ export class RegistrationApplicationService extends BaseService {
       };
     } catch (error) {
       this.logger.error('❌ Registration processing failed:', error);
-
-      // Audit failure
-      if (this.auditService) {
-        await this.auditService.logRegistrationFailed(
-          registrationData,
-          (error as Error).message,
-          userId
-        );
-      }
 
       throw error;
     }
@@ -364,17 +341,6 @@ export class RegistrationApplicationService extends BaseService {
         await this.registrationRepository.deleteFromTable(tableName, registrationId, userId);
       } else {
         throw new Error('tableName is required to determine which trimester table to delete from');
-      }
-
-      // Get student and instructor for audit logging
-      await Promise.all([
-        this.userRepository.getStudentById(registration.studentId),
-        this.userRepository.getInstructorById(registration.instructorId),
-      ]);
-
-      // Audit logging
-      if (this.auditService) {
-        await this.auditService.logRegistrationCancelled(registration, reason, userId);
       }
 
       this.logger.info('✅ Registration cancelled successfully');

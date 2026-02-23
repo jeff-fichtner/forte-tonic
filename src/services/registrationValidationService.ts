@@ -161,23 +161,4 @@ export class RegistrationValidationService {
     const validLengths = [15, 30, 45, 60];
     return validLengths.includes(Number(length));
   }
-
-  /**
-   * Validates registration ID format
-   * @param registrationId - Registration ID to validate
-   * @param registrationType - Registration type
-   * @returns True if valid format
-   */
-  static isValidRegistrationId(registrationId: unknown, registrationType: unknown): boolean {
-    if (typeof registrationId !== 'string') return false;
-    if (!registrationId) return false;
-
-    if (registrationType === RegistrationType.GROUP) {
-      // Group format: studentId_classId
-      return /^.+_.+$/.test(registrationId);
-    } else {
-      // Private format: studentId_instructorId_day_startTime
-      return /^.+_.+_.+_.+$/.test(registrationId);
-    }
-  }
 }

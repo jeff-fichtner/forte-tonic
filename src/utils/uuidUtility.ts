@@ -22,16 +22,4 @@ export class UuidUtility {
     return uuidRegex.test(uuid);
   }
 
-  /**
-   * Generate multiple UUIDs at once
-   * @param count - Number of UUIDs to generate
-   * @returns Array of UUID strings
-   */
-  static generateMultiple(count: number): string[] {
-    const uuids: string[] = [];
-    for (let i = 0; i < count; i++) {
-      uuids.push(this.generateUuid());
-    }
-    return uuids;
-  }
 }
