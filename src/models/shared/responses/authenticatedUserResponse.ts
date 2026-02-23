@@ -27,22 +27,13 @@ export class AuthenticatedUserResponse {
   instructor: Instructor | null;
   parent: Parent | null;
 
-  constructor(data: AuthenticatedUserResponseData | string, admin?: Admin | null, instructor?: Instructor | null, parent?: Parent | null) {
-    if (typeof data === 'object' && data !== null) {
-      // Object destructuring constructor (web pattern)
-      const { email, admin: adminData, instructor: instructorData, parent: parentData } = data;
+  constructor(data: AuthenticatedUserResponseData) {
+    const { email, admin: adminData, instructor: instructorData, parent: parentData } = data;
 
-      this.email = email;
-      this.admin = adminData ? Admin.fromApiData(adminData) : null;
-      this.instructor = instructorData ? Instructor.fromApiData(instructorData) : null;
-      this.parent = parentData ? Parent.fromApiData(parentData) : null;
-    } else {
-      // Positional constructor (core pattern)
-      this.email = data;
-      this.admin = admin || null;
-      this.instructor = instructor || null;
-      this.parent = parent || null;
-    }
+    this.email = email;
+    this.admin = adminData ? new Admin(adminData) : null;
+    this.instructor = instructorData ? new Instructor(instructorData) : null;
+    this.parent = parentData ? new Parent(parentData) : null;
   }
 
   isAdmin(): boolean {
@@ -66,14 +57,6 @@ export class AuthenticatedUserResponse {
 
   get activeUser(): Admin | Instructor | Parent | null {
     return this.admin || this.instructor || this.parent;
-  }
-
-  hasPermission(permission: string): boolean {
-    if (this.isAdmin()) return true;
-    if (this.isInstructor() && permission.startsWith('instructor_')) return true;
-    if (this.isParent() && permission.startsWith('parent_')) return true;
-
-    return false;
   }
 
   validate(): { isValid: boolean; errors: string[] } {

@@ -217,20 +217,6 @@ export class ServiceContainer {
   }
 
   /**
-   * Check if a service is registered
-   */
-  has(serviceName: string): boolean {
-    return this.services.has(serviceName);
-  }
-
-  /**
-   * Get all registered service names
-   */
-  getServiceNames(): string[] {
-    return Array.from(this.services.keys());
-  }
-
-  /**
    * Health check for all services - simplified for MVC
    */
   async healthCheck(): Promise<HealthCheckResult> {

@@ -24,15 +24,8 @@ jest.unstable_mockModule('../../../src/services/configurationService.js', () => 
 }));
 
 // Import AFTER mocking base dependencies
-const {
-  DropRequestService,
-  DropRequestNotFoundError,
-  UnauthorizedDropRequestError,
-  InvalidPeriodError,
-  DuplicateDropRequestError,
-  RegistrationNotFoundError,
-  InvalidStatusTransitionError,
-} = await import('../../../src/services/dropRequestService.js');
+const { DropRequestService } = await import('../../../src/services/dropRequestService.js');
+const { NotFoundError, ValidationError, ForbiddenError, ConflictError } = await import('../../../src/common/errors.js');
 const { DropRequestStatus } = await import('../../../src/utils/values/dropRequestStatus.js');
 const { PeriodType } = await import('../../../src/utils/values/periodType.js');
 
@@ -135,7 +128,7 @@ describe('DropRequestService', () => {
       );
     });
 
-    test('should throw UnauthorizedDropRequestError when parent does not own student', async () => {
+    test('should throw ForbiddenError when parent does not own student', async () => {
       mocks.periodService.getCurrentPeriod.mockResolvedValue({
         periodType: PeriodType.REGISTRATION,
       });
@@ -151,20 +144,20 @@ describe('DropRequestService', () => {
 
       await expect(
         service.createDropRequest(registrationId, parentId, reason),
-      ).rejects.toThrow(UnauthorizedDropRequestError);
+      ).rejects.toThrow(ForbiddenError);
     });
 
-    test('should throw InvalidPeriodError when not in REGISTRATION period', async () => {
+    test('should throw ValidationError when not in REGISTRATION period', async () => {
       mocks.periodService.getCurrentPeriod.mockResolvedValue({
         periodType: PeriodType.INTENT,
       });
 
       await expect(
         service.createDropRequest(registrationId, parentId, reason),
-      ).rejects.toThrow(InvalidPeriodError);
+      ).rejects.toThrow(ValidationError);
     });
 
-    test('should throw DuplicateDropRequestError when pending request already exists', async () => {
+    test('should throw ConflictError when pending request already exists', async () => {
       mocks.periodService.getCurrentPeriod.mockResolvedValue({
         periodType: PeriodType.REGISTRATION,
       });
@@ -184,10 +177,10 @@ describe('DropRequestService', () => {
 
       await expect(
         service.createDropRequest(registrationId, parentId, reason),
-      ).rejects.toThrow(DuplicateDropRequestError);
+      ).rejects.toThrow(ConflictError);
     });
 
-    test('should throw RegistrationNotFoundError when registration does not exist', async () => {
+    test('should throw NotFoundError when registration does not exist', async () => {
       mocks.periodService.getCurrentPeriod.mockResolvedValue({
         periodType: PeriodType.REGISTRATION,
       });
@@ -195,7 +188,7 @@ describe('DropRequestService', () => {
 
       await expect(
         service.createDropRequest(registrationId, parentId, reason),
-      ).rejects.toThrow(RegistrationNotFoundError);
+      ).rejects.toThrow(NotFoundError);
     });
   });
 
@@ -244,15 +237,15 @@ describe('DropRequestService', () => {
       );
     });
 
-    test('should throw DropRequestNotFoundError when request does not exist', async () => {
+    test('should throw NotFoundError when request does not exist', async () => {
       mocks.dropRequestRepository.findById.mockResolvedValue(null);
 
       await expect(
         service.approveDropRequest(requestId, adminEmail, adminNotes),
-      ).rejects.toThrow(DropRequestNotFoundError);
+      ).rejects.toThrow(NotFoundError);
     });
 
-    test('should throw InvalidStatusTransitionError when request is already approved', async () => {
+    test('should throw ValidationError when request is already approved', async () => {
       mocks.dropRequestRepository.findById.mockResolvedValue({
         id: requestId,
         status: DropRequestStatus.APPROVED,
@@ -260,7 +253,7 @@ describe('DropRequestService', () => {
 
       await expect(
         service.approveDropRequest(requestId, adminEmail, adminNotes),
-      ).rejects.toThrow(InvalidStatusTransitionError);
+      ).rejects.toThrow(ValidationError);
     });
   });
 
@@ -300,7 +293,7 @@ describe('DropRequestService', () => {
       );
     });
 
-    test('should throw InvalidStatusTransitionError when request is already rejected', async () => {
+    test('should throw ValidationError when request is already rejected', async () => {
       mocks.dropRequestRepository.findById.mockResolvedValue({
         id: requestId,
         status: DropRequestStatus.REJECTED,
@@ -308,7 +301,7 @@ describe('DropRequestService', () => {
 
       await expect(
         service.rejectDropRequest(requestId, adminEmail, adminNotes),
-      ).rejects.toThrow(InvalidStatusTransitionError);
+      ).rejects.toThrow(ValidationError);
     });
   });
 
@@ -409,12 +402,12 @@ describe('DropRequestService', () => {
       expect(result).toEqual(dropRequest);
     });
 
-    test('should throw DropRequestNotFoundError when request does not exist', async () => {
+    test('should throw NotFoundError when request does not exist', async () => {
       mocks.dropRequestRepository.findById.mockResolvedValue(null);
 
       await expect(
         service.getDropRequestById('dr-nonexistent'),
-      ).rejects.toThrow(DropRequestNotFoundError);
+      ).rejects.toThrow(NotFoundError);
     });
   });
 });

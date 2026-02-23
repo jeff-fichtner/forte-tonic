@@ -131,16 +131,16 @@ jest.unstable_mockModule(
       admin: unknown;
       instructor: unknown;
       parent: unknown;
-      constructor(
-        email: string,
-        admin: unknown,
-        instructor: unknown,
-        parent: unknown
-      ) {
-        this.email = email;
-        this.admin = admin;
-        this.instructor = instructor;
-        this.parent = parent;
+      constructor(data: {
+        email: string;
+        admin?: unknown;
+        instructor?: unknown;
+        parent?: unknown;
+      }) {
+        this.email = data.email;
+        this.admin = data.admin;
+        this.instructor = data.instructor;
+        this.parent = data.parent;
       }
     },
   })

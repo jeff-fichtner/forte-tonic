@@ -268,12 +268,13 @@ export class UserController {
       }
 
       // Create AuthenticatedUserResponse with the matched user
-      const authenticatedUser = new AuthenticatedUserResponse(
-        admin?.email || instructor?.email || parent?.email || '',
+      const email = admin?.email || instructor?.email || parent?.email || '';
+      const authenticatedUser = new AuthenticatedUserResponse({
+        email,
         admin,
         instructor,
-        parent
-      );
+        parent,
+      });
 
       logger.info(`Authentication successful for ${loginType} login:`, {
         admin: !!admin,

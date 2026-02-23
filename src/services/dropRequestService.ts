@@ -9,6 +9,7 @@
 import { BaseService } from '../infrastructure/base/baseService.js';
 import { DropRequestStatus } from '../utils/values/dropRequestStatus.js';
 import { PeriodType } from '../utils/values/periodType.js';
+import { NotFoundError, ValidationError, ForbiddenError, ConflictError } from '../common/errors.js';
 import type { ConfigurationService } from './configurationService.js';
 import type { DropRequest, DropRequestRepository } from '../repositories/dropRequestRepository.js';
 import type { RegistrationRepository } from '../repositories/registrationRepository.js';
@@ -30,64 +31,6 @@ interface EnrichedDropRequest {
   adminNotes: string | null;
   registration: Registration | null;
   student?: Student | null;
-}
-
-/**
- * Custom error classes for drop request operations
- */
-export class DropRequestError extends Error {
-  statusCode: number;
-
-  constructor(message: string, statusCode: number = 400) {
-    super(message);
-    this.name = 'DropRequestError';
-    this.statusCode = statusCode;
-  }
-}
-
-export class DropRequestNotFoundError extends DropRequestError {
-  constructor(requestId: string) {
-    super(`Drop request not found: ${requestId}`, 404);
-    this.name = 'DropRequestNotFoundError';
-  }
-}
-
-export class UnauthorizedDropRequestError extends DropRequestError {
-  constructor(message: string = 'You are not authorized to access this drop request') {
-    super(message, 403);
-    this.name = 'UnauthorizedDropRequestError';
-  }
-}
-
-export class InvalidPeriodError extends DropRequestError {
-  constructor() {
-    super('Drop requests can only be submitted during active registration periods', 400);
-    this.name = 'InvalidPeriodError';
-  }
-}
-
-export class DuplicateDropRequestError extends DropRequestError {
-  constructor() {
-    super('A pending drop request already exists for this registration', 409);
-    this.name = 'DuplicateDropRequestError';
-  }
-}
-
-export class RegistrationNotFoundError extends DropRequestError {
-  constructor(registrationId: string) {
-    super(`Registration not found: ${registrationId}`, 404);
-    this.name = 'RegistrationNotFoundError';
-  }
-}
-
-export class InvalidStatusTransitionError extends DropRequestError {
-  constructor(currentStatus: string, newStatus: string) {
-    super(
-      `Invalid status transition from ${currentStatus} to ${newStatus}. Only pending requests can be approved or rejected.`,
-      400
-    );
-    this.name = 'InvalidStatusTransitionError';
-  }
 }
 
 /**
@@ -135,14 +78,14 @@ export class DropRequestService extends BaseService {
         this.logger.warn(
           `Drop request rejected: Not in registration period (current: ${currentPeriod?.periodType})`
         );
-        throw new InvalidPeriodError();
+        throw new ValidationError('Drop requests can only be submitted during active registration periods');
       }
 
       // 2. Verify registration exists
       const registration = await this.registrationRepository.getById(registrationId);
       if (!registration) {
         this.logger.warn(`Drop request rejected: Registration not found ${registrationId}`);
-        throw new RegistrationNotFoundError(registrationId);
+        throw new NotFoundError(`Registration not found: ${registrationId}`);
       }
 
       // 3. Verify parent owns the student
@@ -151,7 +94,7 @@ export class DropRequestService extends BaseService {
 
       if (!student) {
         this.logger.error(`Student not found for registration: ${studentId}`);
-        throw new DropRequestError(`Student not found: ${studentId}`, 500);
+        throw new NotFoundError(`Student not found: ${studentId}`);
       }
 
       // Check parent ownership - handle both parent1Id and parent2Id
@@ -162,7 +105,7 @@ export class DropRequestService extends BaseService {
         this.logger.warn(
           `Drop request rejected: Parent ${parentId} does not own student ${studentId}`
         );
-        throw new UnauthorizedDropRequestError();
+        throw new ForbiddenError('You are not authorized to access this drop request');
       }
 
       // 4. Check for existing pending drop request
@@ -171,7 +114,7 @@ export class DropRequestService extends BaseService {
         this.logger.warn(
           `Drop request rejected: Pending request already exists ${existingRequest.id}`
         );
-        throw new DuplicateDropRequestError();
+        throw new ConflictError('A pending drop request already exists for this registration');
       }
 
       // 5. Create the drop request
@@ -188,11 +131,11 @@ export class DropRequestService extends BaseService {
       this.logger.info(`✅ Created drop request ${dropRequest.id}`);
       return dropRequest;
     } catch (error) {
-      if (error instanceof DropRequestError) {
+      if (error instanceof NotFoundError || error instanceof ValidationError || error instanceof ForbiddenError || error instanceof ConflictError) {
         throw error;
       }
       this.logger.error('❌ Error creating drop request:', error);
-      throw new DropRequestError(`Failed to create drop request: ${(error as Error).message}`, 500);
+      throw new Error(`Failed to create drop request: ${(error as Error).message}`);
     }
   }
 
@@ -210,12 +153,12 @@ export class DropRequestService extends BaseService {
       // 1. Find the drop request
       const dropRequest = await this.dropRequestRepository.findById(requestId);
       if (!dropRequest) {
-        throw new DropRequestNotFoundError(requestId);
+        throw new NotFoundError(`Drop request not found: ${requestId}`);
       }
 
       // 2. Validate status transition
       if (dropRequest.status !== DropRequestStatus.PENDING) {
-        throw new InvalidStatusTransitionError(dropRequest.status, DropRequestStatus.APPROVED);
+        throw new ValidationError(`Invalid status transition from ${dropRequest.status} to ${DropRequestStatus.APPROVED}. Only pending requests can be approved or rejected.`);
       }
 
       // 3. Delete the registration
@@ -237,11 +180,11 @@ export class DropRequestService extends BaseService {
       this.logger.info(`✅ Approved drop request ${requestId} and deleted registration`);
       return updated;
     } catch (error) {
-      if (error instanceof DropRequestError) {
+      if (error instanceof NotFoundError || error instanceof ValidationError || error instanceof ForbiddenError || error instanceof ConflictError) {
         throw error;
       }
       this.logger.error('❌ Error approving drop request:', error);
-      throw new DropRequestError(`Failed to approve drop request: ${(error as Error).message}`, 500);
+      throw new Error(`Failed to approve drop request: ${(error as Error).message}`);
     }
   }
 
@@ -259,12 +202,12 @@ export class DropRequestService extends BaseService {
       // 1. Find the drop request
       const dropRequest = await this.dropRequestRepository.findById(requestId);
       if (!dropRequest) {
-        throw new DropRequestNotFoundError(requestId);
+        throw new NotFoundError(`Drop request not found: ${requestId}`);
       }
 
       // 2. Validate status transition
       if (dropRequest.status !== DropRequestStatus.PENDING) {
-        throw new InvalidStatusTransitionError(dropRequest.status, DropRequestStatus.REJECTED);
+        throw new ValidationError(`Invalid status transition from ${dropRequest.status} to ${DropRequestStatus.REJECTED}. Only pending requests can be approved or rejected.`);
       }
 
       // 3. Update drop request status (registration stays active)
@@ -282,11 +225,11 @@ export class DropRequestService extends BaseService {
       this.logger.info(`✅ Rejected drop request ${requestId}, registration remains active`);
       return updated;
     } catch (error) {
-      if (error instanceof DropRequestError) {
+      if (error instanceof NotFoundError || error instanceof ValidationError || error instanceof ForbiddenError || error instanceof ConflictError) {
         throw error;
       }
       this.logger.error('❌ Error rejecting drop request:', error);
-      throw new DropRequestError(`Failed to reject drop request: ${(error as Error).message}`, 500);
+      throw new Error(`Failed to reject drop request: ${(error as Error).message}`);
     }
   }
 
@@ -344,10 +287,7 @@ export class DropRequestService extends BaseService {
       return enriched;
     } catch (error) {
       this.logger.error('❌ Error getting pending drop requests:', error);
-      throw new DropRequestError(
-        `Failed to get pending drop requests: ${(error as Error).message}`,
-        500
-      );
+      throw new Error(`Failed to get pending drop requests: ${(error as Error).message}`);
     }
   }
 
@@ -386,7 +326,7 @@ export class DropRequestService extends BaseService {
       return enriched;
     } catch (error) {
       this.logger.error('❌ Error getting drop requests by parent:', error);
-      throw new DropRequestError(`Failed to get drop requests by parent: ${(error as Error).message}`, 500);
+      throw new Error(`Failed to get drop requests by parent: ${(error as Error).message}`);
     }
   }
 
@@ -399,16 +339,16 @@ export class DropRequestService extends BaseService {
 
       const dropRequest = await this.dropRequestRepository.findById(requestId);
       if (!dropRequest) {
-        throw new DropRequestNotFoundError(requestId);
+        throw new NotFoundError(`Drop request not found: ${requestId}`);
       }
 
       return dropRequest;
     } catch (error) {
-      if (error instanceof DropRequestError) {
+      if (error instanceof NotFoundError || error instanceof ValidationError || error instanceof ForbiddenError || error instanceof ConflictError) {
         throw error;
       }
       this.logger.error('❌ Error getting drop request by ID:', error);
-      throw new DropRequestError(`Failed to get drop request: ${(error as Error).message}`, 500);
+      throw new Error(`Failed to get drop request: ${(error as Error).message}`);
     }
   }
 }

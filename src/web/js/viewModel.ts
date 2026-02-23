@@ -25,7 +25,7 @@ export class ViewModel {
   async initializeAsync() {
     // Get application configuration when page first loads
     const appConfig = await HttpService.fetch(ServerFunctions.getAppConfiguration, data =>
-      AppConfigurationResponse.fromApiData(data)
+      new AppConfigurationResponse(data)
     );
 
     // Save entire app configuration in user session

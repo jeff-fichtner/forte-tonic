@@ -64,13 +64,6 @@ export class Parent {
   }
 
   /**
-   * Factory method for creating from API/web data (object with properties)
-   */
-  static fromApiData(data: ParentData): Parent {
-    return new Parent(data);
-  }
-
-  /**
    * Gets the parent's full name
    */
   get fullName(): string {

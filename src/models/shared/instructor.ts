@@ -152,13 +152,6 @@ export class Instructor {
   }
 
   /**
-   * Factory method for creating from API/web data (object with properties)
-   */
-  static fromApiData(data: InstructorData): Instructor {
-    return new Instructor(data);
-  }
-
-  /**
    * Gets the instructor's full name
    */
   get fullName(): string {

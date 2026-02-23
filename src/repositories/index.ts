@@ -3,7 +3,7 @@
  */
 
 // Base classes and patterns
-export { IRepository, BaseRepository } from './baseRepository.js';
+export { BaseRepository } from './baseRepository.js';
 
 // Domain repositories (used via service container)
 export { AttendanceRepository } from './attendanceRepository.js';

@@ -7,14 +7,6 @@ import { BaseService } from '../infrastructure/base/baseService.js';
 import { GoogleSheetsDbClient } from '../database/googleSheetsDbClient.js';
 import type { ConfigurationService } from '../services/configurationService.js';
 
-export interface IRepository<T> {
-  create(entityData: Record<string, unknown>, createdBy: string): Promise<T>;
-  update(id: string, entityData: Record<string, unknown>): Promise<T | null>;
-  findAll(options?: Record<string, unknown>): Promise<T[]>;
-  findBy(field: string, value: unknown): Promise<T[]>;
-  findById(id: string): Promise<T | null>;
-}
-
 /** Function that converts a transformed DB record into a model instance */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- SC-005: field transforms produce mixed types
 export type RecordMapper<T> = (record: Record<string, any>) => T | null;
@@ -25,7 +17,6 @@ export type RecordMapper<T> = (record: Record<string, any>) => T | null;
  */
 export class BaseRepository<T extends object>
   extends BaseService
-  implements IRepository<T>
 {
   entityName: string;
   dbClient: GoogleSheetsDbClient;

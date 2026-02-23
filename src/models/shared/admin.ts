@@ -111,13 +111,6 @@ export class Admin {
   }
 
   /**
-   * Factory method for creating from API/web data (object with properties)
-   */
-  static fromApiData(data: AdminData): Admin {
-    return new Admin(data);
-  }
-
-  /**
    * Gets the admin's full name
    */
   get fullName(): string {

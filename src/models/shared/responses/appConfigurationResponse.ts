@@ -72,22 +72,6 @@ export class AppConfigurationResponse {
     }
   }
 
-  hasCurrentPeriod(): boolean {
-    return !!this.currentPeriod;
-  }
-
-  getPeriodType(): string | null {
-    return this.currentPeriod?.periodType || null;
-  }
-
-  getTrimester(): string | null {
-    return this.currentPeriod?.trimester || null;
-  }
-
-  isMaintenanceModeEnabled(): boolean {
-    return this.maintenanceMode === true;
-  }
-
   toJSON(): AppConfigurationResponseData {
     return {
       currentPeriod: this.currentPeriod,
@@ -100,10 +84,6 @@ export class AppConfigurationResponse {
       maintenanceMode: this.maintenanceMode,
       maintenanceMessage: this.maintenanceMessage,
     };
-  }
-
-  static fromApiData(data: AppConfigurationResponseData): AppConfigurationResponse {
-    return new AppConfigurationResponse(data);
   }
 
   static empty(): AppConfigurationResponse {
