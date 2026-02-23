@@ -110,8 +110,8 @@
 
 **Purpose**: Final verification across all user stories
 
-- [ ] T025 Run full quickstart.md verification checklist from `specs/007-backend-complexity-reduction/quickstart.md`
-- [ ] T026 Verify net line count decreased: compare total TypeScript lines before and after all changes
+- [x] T025 Run full quickstart.md verification checklist from `specs/007-backend-complexity-reduction/quickstart.md`
+- [x] T026 Verify net line count decreased: compare total TypeScript lines before and after all changes
 
 ---
 
