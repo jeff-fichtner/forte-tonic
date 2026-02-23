@@ -124,6 +124,10 @@ export class ConfigurationService {
 
   /**
    * Get server configuration.
+   * Note: Overlapping env vars (PORT, NODE_ENV, SERVICE_URL, LOG_LEVEL, GOOGLE_SERVICE_ACCOUNT_EMAIL,
+   * GOOGLE_PRIVATE_KEY, WORKING_SPREADSHEET_ID) are also read by src/config/environment.ts.
+   * Both read from process.env at startup; a circular dependency (logger → configService → environment → logger)
+   * prevents direct delegation. The canonical per-environment defaults live in environment.ts.
    */
   getServerConfig(): ServerConfig {
     return {

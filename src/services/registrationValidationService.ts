@@ -11,7 +11,7 @@ import type { RegistrationData } from '../models/shared/registration.js';
  * Extended registration data that may contain optional context fields
  * not part of the core RegistrationData model (e.g., schoolYear, trimester)
  */
-type RegistrationInput = RegistrationData & Record<string, unknown>;
+export type RegistrationInput = RegistrationData & Record<string, unknown>;
 
 interface ValidationResult {
   isValid: boolean;

@@ -8,12 +8,12 @@
 
 import { BaseService } from '../infrastructure/base/baseService.js';
 import { RegistrationValidationService } from './registrationValidationService.js';
+import type { RegistrationInput } from './registrationValidationService.js';
 import { RegistrationConflictService } from './registrationConflictService.js';
 import type { ConflictRegistrationData } from './registrationConflictService.js';
 import { ConfigurationService } from './configurationService.js';
 import { Registration } from '../models/shared/registration.js';
 import { ConflictError } from '../common/errors.js';
-import type { RegistrationData } from '../models/shared/registration.js';
 import type { RegistrationRepository } from '../repositories/registrationRepository.js';
 import type { UserRepository } from '../repositories/userRepository.js';
 import type { ProgramRepository } from '../repositories/programRepository.js';
@@ -21,13 +21,6 @@ import type { Class, ClassData } from '../models/shared/class.js';
 import type { Instructor, DayAvailability } from '../models/shared/instructor.js';
 import type { Student } from '../models/shared/student.js';
 import { DateHelpers, TonicDuration } from '../utils/nativeDateTimeHelpers.js';
-
-/**
- * Registration input from the API layer.
- * Extends the core RegistrationData with optional context fields
- * (e.g., trimester, schoolYear) that are not part of the persisted model.
- */
-type RegistrationInput = RegistrationData & Record<string, unknown>;
 
 interface RegistrationServiceDependencies {
   registrationRepository: RegistrationRepository;

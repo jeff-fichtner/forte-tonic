@@ -31,6 +31,16 @@ export class DropRequestRepository extends BaseRepository<DropRequest> {
   }
 
   /**
+   * Fetch all drop request records from the database
+   * @returns Array of all drop requests
+   */
+  private async _getAllDropRequests(): Promise<DropRequest[]> {
+    return this.dbClient.getAllRecords('drop_requests', (record: Record<string, string>) =>
+      DropRequest.fromDatabaseRow(record)
+    );
+  }
+
+  /**
    * Create a new drop request
    * @param requestData - Drop request data
    * @param createdBy - User creating the request (typically parent email)
@@ -62,9 +72,7 @@ export class DropRequestRepository extends BaseRepository<DropRequest> {
     try {
       this.logger.info(`🔍 Finding drop request by ID: ${id}`);
 
-      const allRequests = await this.dbClient.getAllRecords('drop_requests', (record: Record<string, string>) =>
-        DropRequest.fromDatabaseRow(record)
-      );
+      const allRequests = await this._getAllDropRequests();
 
       const request = allRequests.find((req: DropRequest) => req.id === id);
       return request || null;
@@ -83,9 +91,7 @@ export class DropRequestRepository extends BaseRepository<DropRequest> {
     try {
       this.logger.info(`🔍 Finding drop requests for parent: ${parentId}`);
 
-      const allRequests = await this.dbClient.getAllRecords('drop_requests', (record: Record<string, string>) =>
-        DropRequest.fromDatabaseRow(record)
-      );
+      const allRequests = await this._getAllDropRequests();
 
       return allRequests.filter((req: DropRequest) => req.parentId === parentId);
     } catch (error) {
@@ -103,9 +109,7 @@ export class DropRequestRepository extends BaseRepository<DropRequest> {
     try {
       this.logger.info(`🔍 Finding drop requests with status: ${status}`);
 
-      const allRequests = await this.dbClient.getAllRecords('drop_requests', (record: Record<string, string>) =>
-        DropRequest.fromDatabaseRow(record)
-      );
+      const allRequests = await this._getAllDropRequests();
 
       return allRequests.filter((req: DropRequest) => req.status === status);
     } catch (error) {
@@ -124,9 +128,7 @@ export class DropRequestRepository extends BaseRepository<DropRequest> {
     try {
       this.logger.info(`🔍 Finding drop request for registration: ${registrationId}`);
 
-      const allRequests = await this.dbClient.getAllRecords('drop_requests', (record: Record<string, string>) =>
-        DropRequest.fromDatabaseRow(record)
-      );
+      const allRequests = await this._getAllDropRequests();
 
       const request = allRequests.find((req: DropRequest) => req.registrationId === registrationId);
       return request || null;
@@ -182,9 +184,7 @@ export class DropRequestRepository extends BaseRepository<DropRequest> {
     try {
       this.logger.info('📋 Finding all drop requests');
 
-      const allRequests = await this.dbClient.getAllRecords('drop_requests', (record: Record<string, string>) =>
-        DropRequest.fromDatabaseRow(record)
-      );
+      const allRequests = await this._getAllDropRequests();
 
       this.logger.info(`✅ Found ${allRequests.length} drop requests`);
       return allRequests;

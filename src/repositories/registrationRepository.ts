@@ -35,6 +35,27 @@ export class RegistrationRepository extends BaseRepository<Registration> {
   }
 
   /**
+   * Fetch all valid registrations from a single table.
+   * Encapsulates the getAllRecords + fromDatabaseRow + null-filter pattern.
+   */
+  private async _fetchRegistrations(tableName: string): Promise<Registration[]> {
+    const allRegistrations = await this.dbClient.getAllRecords(tableName, (record: Record<string, string>) => {
+      if (!record || !record.id) {
+        return null;
+      }
+      try {
+        return Registration.fromDatabaseRow(record);
+      } catch {
+        return null;
+      }
+    });
+
+    return (allRegistrations || []).filter(
+      (reg): reg is Registration => reg !== null
+    );
+  }
+
+  /**
    * Get registration by UUID (new format)
    * Caching is handled at the GoogleSheetsDbClient layer
    */
@@ -42,21 +63,7 @@ export class RegistrationRepository extends BaseRepository<Registration> {
     try {
       // Registrations are stored in trimester-specific sheets, so we need to search all three
       for (const table of REGISTRATION_TABLES) {
-        const allRegistrations = await this.dbClient.getAllRecords(table, (record: Record<string, string>) => {
-          if (!record || !record.id) {
-            return null;
-          }
-          try {
-            return Registration.fromDatabaseRow(record);
-          } catch {
-            return null;
-          }
-        });
-
-        // Filter out null values and find registration by UUID
-        const validRegistrations = allRegistrations.filter(
-          (reg): reg is Registration => reg !== null
-        );
+        const validRegistrations = await this._fetchRegistrations(table);
         const registration = validRegistrations.find(reg => reg.id === id);
 
         if (registration) {
@@ -80,21 +87,7 @@ export class RegistrationRepository extends BaseRepository<Registration> {
       const allRegistrations: Registration[] = [];
 
       for (const table of REGISTRATION_TABLES) {
-        const tableRegistrations = await this.dbClient.getAllRecords(table, (record: Record<string, string>) => {
-          if (!record || !record.id) {
-            return null;
-          }
-          try {
-            return Registration.fromDatabaseRow(record);
-          } catch {
-            return null;
-          }
-        });
-
-        // Filter out null values
-        const validRegistrations = tableRegistrations.filter(
-          (reg): reg is Registration => reg !== null
-        );
+        const validRegistrations = await this._fetchRegistrations(table);
         allRegistrations.push(...validRegistrations);
       }
 
@@ -115,21 +108,7 @@ export class RegistrationRepository extends BaseRepository<Registration> {
       const allRegistrations: Registration[] = [];
 
       for (const table of REGISTRATION_TABLES) {
-        const tableRegistrations = await this.dbClient.getAllRecords(table, (record: Record<string, string>) => {
-          if (!record || !record.id) {
-            return null;
-          }
-          try {
-            return Registration.fromDatabaseRow(record);
-          } catch {
-            return null;
-          }
-        });
-
-        // Filter out null values
-        const validRegistrations = tableRegistrations.filter(
-          (reg): reg is Registration => reg !== null
-        );
+        const validRegistrations = await this._fetchRegistrations(table);
         allRegistrations.push(...validRegistrations);
       }
 
@@ -152,33 +131,7 @@ export class RegistrationRepository extends BaseRepository<Registration> {
 
       this.logger.info(`📋 Getting active registrations from table: ${currentTable}`);
 
-      // Get all registrations from database
-      const allRegistrations = await this.dbClient.getAllRecords(currentTable, (record: Record<string, string>) => {
-        // Skip empty records
-        if (!record || !record.id) {
-          return null;
-        }
-
-        try {
-          return Registration.fromDatabaseRow(record);
-        } catch (error) {
-          this.logger.warn(
-            'Skipping invalid registration row:',
-            record.id,
-            (error as Error).message
-          );
-          return null;
-        }
-      });
-
-      // Handle case where allRegistrations is undefined/null
-      if (!allRegistrations) {
-        this.logger.warn('No registrations data returned from database client');
-        return [];
-      }
-
-      // Filter out null entries from skipped rows
-      const validRegistrations = allRegistrations.filter((reg): reg is Registration => reg !== null);
+      const validRegistrations = await this._fetchRegistrations(currentTable);
 
       this.logger.info(`✅ Found ${validRegistrations.length} active registrations`);
 
@@ -216,23 +169,7 @@ export class RegistrationRepository extends BaseRepository<Registration> {
       const tableName = `registrations_${trimester.toLowerCase()}`;
       this.logger.info(`📋 Getting registrations from table: ${tableName}`);
 
-      // Get all registrations from database
-      const allRegistrations = await this.dbClient.getAllRecords(tableName, (record: Record<string, string>) => {
-        // Skip empty records
-        if (!record || !record.id) {
-          return null;
-        }
-
-        try {
-          return Registration.fromDatabaseRow(record);
-        } catch (error) {
-          this.logger.error(`Error parsing registration record: ${record.id}`, error);
-          return null;
-        }
-      });
-
-      // Filter out null values from parsing errors
-      return allRegistrations.filter((reg): reg is Registration => reg !== null);
+      return await this._fetchRegistrations(tableName);
     } catch (error) {
       this.logger.error(`Error getting registrations for trimester ${trimester}:`, error);
       throw error;
@@ -466,18 +403,8 @@ export class RegistrationRepository extends BaseRepository<Registration> {
     let targetSheet: string | null = null;
 
     for (const table of REGISTRATION_TABLES) {
-      const allRegistrations = await this.dbClient.getAllRecords(table, (record: Record<string, string>) => {
-        if (!record || !record.id) {
-          return null;
-        }
-        try {
-          return Registration.fromDatabaseRow(record);
-        } catch {
-          return null;
-        }
-      });
-
-      const found = allRegistrations.find(reg => reg && reg.id === registrationId);
+      const validRegistrations = await this._fetchRegistrations(table);
+      const found = validRegistrations.find(reg => reg.id === registrationId);
 
       if (found) {
         targetSheet = table;
@@ -548,25 +475,8 @@ export class RegistrationRepository extends BaseRepository<Registration> {
     try {
       this.logger.info(`📋 Getting registrations from table: ${tableName}`);
 
-      const allRegistrations = await this.dbClient.getAllRecords(tableName, (record: Record<string, string>) => {
-        // Skip empty records
-        if (!record || !record.id) {
-          return null;
-        }
+      const validRegistrations = await this._fetchRegistrations(tableName);
 
-        try {
-          return Registration.fromDatabaseRow(record);
-        } catch (error) {
-          this.logger.warn(
-            `⚠️ Skipping invalid registration record - ID: ${record.id}, classId: ${record.classId}, error: ${(error as Error).message}`
-          );
-          return null;
-        }
-      });
-
-      const validRegistrations = (allRegistrations || []).filter(
-        (reg): reg is Registration => reg !== null
-      );
       this.logger.info(`✅ Found ${validRegistrations.length} registrations in ${tableName}`);
       return validRegistrations;
     } catch (error) {

@@ -19,7 +19,7 @@
 
 **Purpose**: Establish baseline metrics before any changes
 
-- [ ] T001 Record baseline metrics: run `npx tsc --noEmit` (0 errors), `npm test` (702 tests), `grep -r "as unknown as" src/ | wc -l` (18 casts)
+- [x] T001 Record baseline metrics: run `npx tsc --noEmit` (0 errors), `npm test` (702 tests), `grep -r "as unknown as" src/ | wc -l` (18 casts). Baseline: 25,087 TS lines
 
 ---
 
@@ -39,12 +39,12 @@
 
 ### Implementation for User Story 1
 
-- [ ] T002 [P] [US1] Extract private `_fetchRegistrations(tableName: string)` method in `src/repositories/registrationRepository.ts` that encapsulates the `getAllRecords` + `fromDatabaseRow` + null-filter pattern, then refactor all 7 methods (`getById`, `getByStudentId`, `getByInstructorId`, `getActiveRegistrations`, `getRegistrationsForTrimester`, `getFromTable`, `updateIntent`) to delegate to it
-- [ ] T003 [P] [US1] Extract private `_getAllDropRequests()` method in `src/repositories/dropRequestRepository.ts` that calls `getAllRecords('drop_requests', mapper)` once, then refactor all 5 query methods (`findById`, `findByParentId`, `findByStatus`, `findByRegistrationId`, `findAll`) to use it. Update `tests/unit/repositories/dropRequestRepository.test.ts` if mock expectations change
-- [ ] T004 [P] [US1] Export `RegistrationInput` type from `src/services/registrationValidationService.ts` and import it in `src/services/registrationApplicationService.ts`, removing the duplicate definition. Update `tests/unit/services/registrationApplicationService.test.ts` if needed
-- [ ] T005 [US1] Make `_getNextTrimester` and `_getPreviousTrimester` public methods on `PeriodService` in `src/services/periodService.ts` (add `_getPreviousTrimester` from the userController implementation with proper validation). Remove both methods from `src/controllers/userController.ts` and have the controller call `periodService.getNextTrimester()` / `periodService.getPreviousTrimester()` instead. The PeriodService version has input validation (throws on invalid trimester) which fixes the silent bug in the controller version
-- [ ] T006 [US1] Consolidate environment config: modify `src/services/configurationService.ts` `getServerConfig()` to delegate to `src/config/environment.ts` for the 7 overlapping env vars (`NODE_ENV`, `WORKING_SPREADSHEET_ID`, `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`, `PORT`, `SERVICE_URL`, `LOG_LEVEL`) instead of reading them independently
-- [ ] T007 [US1] Run `npx tsc --noEmit` and `npm test` to verify zero regressions after US1
+- [x] T002 [P] [US1] Extract private `_fetchRegistrations(tableName: string)` method in `src/repositories/registrationRepository.ts` that encapsulates the `getAllRecords` + `fromDatabaseRow` + null-filter pattern, then refactor all 7 methods (`getById`, `getByStudentId`, `getByInstructorId`, `getActiveRegistrations`, `getRegistrationsForTrimester`, `getFromTable`, `updateIntent`) to delegate to it
+- [x] T003 [P] [US1] Extract private `_getAllDropRequests()` method in `src/repositories/dropRequestRepository.ts` that calls `getAllRecords('drop_requests', mapper)` once, then refactor all 5 query methods (`findById`, `findByParentId`, `findByStatus`, `findByRegistrationId`, `findAll`) to use it. Update `tests/unit/repositories/dropRequestRepository.test.ts` if mock expectations change
+- [x] T004 [P] [US1] Export `RegistrationInput` type from `src/services/registrationValidationService.ts` and import it in `src/services/registrationApplicationService.ts`, removing the duplicate definition. Update `tests/unit/services/registrationApplicationService.test.ts` if needed
+- [x] T005 [US1] Make `_getNextTrimester` and `_getPreviousTrimester` public methods on `PeriodService` in `src/services/periodService.ts` (add `_getPreviousTrimester` from the userController implementation with proper validation). Remove both methods from `src/controllers/userController.ts` and have the controller call `periodService.getNextTrimester()` / `periodService.getPreviousTrimester()` instead. The PeriodService version has input validation (throws on invalid trimester) which fixes the silent bug in the controller version
+- [x] T006 [US1] Consolidate environment config: modify `src/services/configurationService.ts` `getServerConfig()` to delegate to `src/config/environment.ts` for the 7 overlapping env vars (`NODE_ENV`, `WORKING_SPREADSHEET_ID`, `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`, `PORT`, `SERVICE_URL`, `LOG_LEVEL`) instead of reading them independently
+- [x] T007 [US1] Run `npx tsc --noEmit` and `npm test` to verify zero regressions after US1
 
 **Checkpoint**: All duplicated patterns now have exactly one implementation. 702 tests pass.
 

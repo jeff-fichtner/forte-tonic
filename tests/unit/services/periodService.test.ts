@@ -437,45 +437,47 @@ describe('PeriodService', () => {
     });
   });
 
-  describe('_getNextTrimester', () => {
+  describe('getNextTrimesterInSequence (static)', () => {
     test('should cycle fall to winter', () => {
-      const { service } = createPeriodService([]);
-
-      const result = service._getNextTrimester('fall');
-
-      expect(result).toBe('winter');
+      expect(PeriodService.getNextTrimesterInSequence('fall')).toBe('winter');
     });
 
     test('should cycle winter to spring', () => {
-      const { service } = createPeriodService([]);
-
-      const result = service._getNextTrimester('winter');
-
-      expect(result).toBe('spring');
+      expect(PeriodService.getNextTrimesterInSequence('winter')).toBe('spring');
     });
 
     test('should cycle spring to fall', () => {
-      const { service } = createPeriodService([]);
-
-      const result = service._getNextTrimester('spring');
-
-      expect(result).toBe('fall');
+      expect(PeriodService.getNextTrimesterInSequence('spring')).toBe('fall');
     });
 
     test('should be case-insensitive for input', () => {
-      const { service } = createPeriodService([]);
-
-      expect(service._getNextTrimester('Fall')).toBe('winter');
-      expect(service._getNextTrimester('FALL')).toBe('winter');
-      expect(service._getNextTrimester('FaLl')).toBe('winter');
+      expect(PeriodService.getNextTrimesterInSequence('Fall')).toBe('winter');
+      expect(PeriodService.getNextTrimesterInSequence('FALL')).toBe('winter');
+      expect(PeriodService.getNextTrimesterInSequence('FaLl')).toBe('winter');
     });
 
     test('should throw error for invalid trimester', () => {
-      const { service } = createPeriodService([]);
+      expect(() => PeriodService.getNextTrimesterInSequence('Summer')).toThrow('Invalid trimester: Summer');
+      expect(() => PeriodService.getNextTrimesterInSequence('')).toThrow('Invalid trimester:');
+      expect(() => PeriodService.getNextTrimesterInSequence(null as unknown as string)).toThrow('Invalid trimester: null');
+    });
+  });
 
-      expect(() => service._getNextTrimester('Summer')).toThrow('Invalid trimester: Summer');
-      expect(() => service._getNextTrimester('')).toThrow('Invalid trimester:');
-      expect(() => service._getNextTrimester(null)).toThrow('Invalid trimester: null');
+  describe('getPreviousTrimesterInSequence (static)', () => {
+    test('should cycle fall to spring', () => {
+      expect(PeriodService.getPreviousTrimesterInSequence('fall')).toBe('spring');
+    });
+
+    test('should cycle winter to fall', () => {
+      expect(PeriodService.getPreviousTrimesterInSequence('winter')).toBe('fall');
+    });
+
+    test('should cycle spring to winter', () => {
+      expect(PeriodService.getPreviousTrimesterInSequence('spring')).toBe('winter');
+    });
+
+    test('should throw error for invalid trimester', () => {
+      expect(() => PeriodService.getPreviousTrimesterInSequence('Summer')).toThrow('Invalid trimester: Summer');
     });
   });
 });

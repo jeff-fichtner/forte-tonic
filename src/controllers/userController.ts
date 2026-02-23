@@ -15,7 +15,8 @@ import { getLogger } from '../utils/logger.js';
 import { successResponse, errorResponse, asString } from '../common/responseHelpers.js';
 import { ValidationError, NotFoundError } from '../common/errors.js';
 import { PeriodType } from '../utils/values/periodType.js';
-import { TRIMESTER_SEQUENCE, Trimester } from '../utils/values/trimester.js';
+import { Trimester } from '../utils/values/trimester.js';
+import { PeriodService } from '../services/periodService.js';
 
 const logger = getLogger();
 
@@ -44,7 +45,7 @@ export class UserController {
         // During enrollment, the next scheduled period (e.g., open enrollment) can be the same trimester
         // Admins expect the label to reflect the upcoming trimester (e.g., winter → spring)
         nextTrimester: currentPeriod?.trimester
-          ? UserController._getNextTrimester(currentPeriod.trimester)
+          ? PeriodService.getNextTrimesterInSequence(currentPeriod.trimester)
           : nextPeriod?.trimester,
         availableTrimesters: UserController._getAvailableTrimesters(currentPeriod),
         // Default trimester is always the current one (where active classes are happening)
@@ -75,29 +76,7 @@ export class UserController {
     }
   }
 
-  /**
-   * Get the previous trimester in the sequence
-   */
-  private static _getPreviousTrimester(currentTrimester: string): string {
-    const normalized = currentTrimester.toLowerCase();
-    const currentIndex = TRIMESTER_SEQUENCE.indexOf(
-      normalized as (typeof TRIMESTER_SEQUENCE)[number]
-    );
-    const prevIndex = (currentIndex - 1 + TRIMESTER_SEQUENCE.length) % TRIMESTER_SEQUENCE.length;
-    return TRIMESTER_SEQUENCE[prevIndex];
-  }
 
-  /**
-   * Get the next trimester in the sequence
-   */
-  private static _getNextTrimester(currentTrimester: string): string {
-    const normalized = currentTrimester.toLowerCase();
-    const currentIndex = TRIMESTER_SEQUENCE.indexOf(
-      normalized as (typeof TRIMESTER_SEQUENCE)[number]
-    );
-    const nextIndex = (currentIndex + 1) % TRIMESTER_SEQUENCE.length;
-    return TRIMESTER_SEQUENCE[nextIndex];
-  }
 
   /**
    * Determine which trimesters should be visible/accessible based on current period
@@ -127,7 +106,7 @@ export class UserController {
     // During Intent period: show previous trimester + current trimester
     // This allows viewing history from previous trimester while in intent for current
     if (currentPeriodType === PeriodType.INTENT) {
-      const previousTrimester = UserController._getPreviousTrimester(currentTrimester);
+      const previousTrimester = PeriodService.getPreviousTrimesterInSequence(currentTrimester);
       return [previousTrimester, currentTrimester];
     }
 
@@ -138,7 +117,7 @@ export class UserController {
       currentPeriodType === PeriodType.OPEN_ENROLLMENT ||
       currentPeriodType === PeriodType.REGISTRATION
     ) {
-      const nextTrimester = UserController._getNextTrimester(currentTrimester);
+      const nextTrimester = PeriodService.getNextTrimesterInSequence(currentTrimester);
       return [currentTrimester, nextTrimester];
     }
 

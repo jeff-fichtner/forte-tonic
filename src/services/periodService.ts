@@ -202,7 +202,7 @@ export class PeriodService extends BaseService {
       period.periodType === PeriodType.PRIORITY_ENROLLMENT ||
       period.periodType === PeriodType.OPEN_ENROLLMENT
     ) {
-      const nextTrimester = this._getNextTrimester(period.trimester);
+      const nextTrimester = PeriodService.getNextTrimesterInSequence(period.trimester);
       return `registrations_${nextTrimester}`;
     }
 
@@ -217,7 +217,7 @@ export class PeriodService extends BaseService {
    * @returns Next trimester name in lowercase
    * @throws If invalid trimester name
    */
-  _getNextTrimester(currentTrimester: string): string {
+  static getNextTrimesterInSequence(currentTrimester: string): string {
     if (!currentTrimester || typeof currentTrimester !== 'string') {
       throw new Error(`Invalid trimester: ${currentTrimester}`);
     }
@@ -228,6 +228,26 @@ export class PeriodService extends BaseService {
       throw new Error(`Invalid trimester: ${currentTrimester}`);
     }
     return TRIMESTER_SEQUENCE[(index + 1) % TRIMESTER_SEQUENCE.length];
+  }
+
+  /**
+   * Get the previous trimester in the annual sequence
+   * fall → spring, winter → fall, spring → winter (reverse cycles)
+   * @param currentTrimester - "fall", "winter", or "spring" (case-insensitive)
+   * @returns Previous trimester name in lowercase
+   * @throws If invalid trimester name
+   */
+  static getPreviousTrimesterInSequence(currentTrimester: string): string {
+    if (!currentTrimester || typeof currentTrimester !== 'string') {
+      throw new Error(`Invalid trimester: ${currentTrimester}`);
+    }
+    const index = TRIMESTER_SEQUENCE.findIndex(
+      t => t.toLowerCase() === currentTrimester.toLowerCase()
+    );
+    if (index === -1) {
+      throw new Error(`Invalid trimester: ${currentTrimester}`);
+    }
+    return TRIMESTER_SEQUENCE[(index - 1 + TRIMESTER_SEQUENCE.length) % TRIMESTER_SEQUENCE.length];
   }
 
   /**
