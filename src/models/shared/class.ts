@@ -111,24 +111,9 @@ export class Class {
   get formattedStartTime(): string {
     if (!this.startTime) return '';
 
-    // Check if browser environment and DurationHelpers is available
-    if (typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).DurationHelpers) { // SC-005: browser global not in Window type declaration
-      return DateHelpers.parseTimeString(this.startTime).to12Hour();
-    }
-
-    // Try fallback for environments without DurationHelpers
     try {
       return String(DateHelpers.convertTimeFormat(this.startTime, '12hour'));
-    } catch (_error) {
-      // Final fallback formatting
-      if ((this.startTime as unknown) instanceof Date) {
-        return (this.startTime as unknown as Date).toLocaleTimeString('en-US', { // SC-005: string field may be Date at runtime from Sheets API
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        });
-      }
-
+    } catch {
       return this.startTime.toString();
     }
   }
@@ -138,14 +123,6 @@ export class Class {
    */
   get formattedEndTime(): string {
     if (!this.endTime) return '';
-
-    if ((this.endTime as unknown) instanceof Date) {
-      return (this.endTime as unknown as Date).toLocaleTimeString('en-US', { // SC-005: string field may be Date at runtime from Sheets API
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      });
-    }
 
     return this.endTime.toString();
   }

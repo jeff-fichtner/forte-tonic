@@ -91,8 +91,3 @@ export class AuthenticatedUserResponse {
     };
   }
 }
-
-// Expose to window for console debugging and runtime access
-if (typeof window !== 'undefined') {
-  (window as unknown as Record<string, unknown>).AuthenticatedUserResponse = AuthenticatedUserResponse; // SC-005: browser global not in Window type declaration
-}

@@ -18,7 +18,7 @@ import type { RegistrationRepository } from '../repositories/registrationReposit
 import type { UserRepository } from '../repositories/userRepository.js';
 import type { ProgramRepository } from '../repositories/programRepository.js';
 import type { Class, ClassData } from '../models/shared/class.js';
-import type { Instructor, DayAvailability } from '../models/shared/instructor.js';
+import type { Instructor, InstructorAvailability } from '../models/shared/instructor.js';
 import type { Student } from '../models/shared/student.js';
 import { DateHelpers, TonicDuration } from '../utils/nativeDateTimeHelpers.js';
 
@@ -158,14 +158,10 @@ export class RegistrationApplicationService extends BaseService {
       const instructorData = instructor;
 
       // Get room ID from instructor's availability for the specific day
-      // SC-005: dynamic key access on fixed-key interface requires cast
-      const availability = instructorData.availability as unknown as Record<string, DayAvailability> | undefined;
-      if (
-        availability &&
-        availability[dayName] &&
-        availability[dayName].roomId
-      ) {
-        registrationData.roomId = availability[dayName].roomId;
+      const dayKey = dayName as keyof InstructorAvailability;
+      const dayAvailability = instructorData.availability?.[dayKey];
+      if (dayAvailability?.roomId) {
+        registrationData.roomId = dayAvailability.roomId;
       } else {
         this.logger.warn(
           `No room assignment found for instructor ${instructorData.id} on ${dayName}`
@@ -207,9 +203,30 @@ export class RegistrationApplicationService extends BaseService {
         }
       }
 
+      const conflictData: ConflictRegistrationData = {
+        studentId: registrationData.studentId,
+        instructorId: registrationData.instructorId,
+        day: registrationData.day,
+        startTime: registrationData.startTime,
+        length: Number(registrationData.length) || 0,
+        registrationType: registrationData.registrationType,
+        classId: registrationData.classId,
+      };
+
+      const conflictRegistrations: ConflictRegistrationData[] = existingRegistrations.map(reg => ({
+        id: reg.id,
+        studentId: reg.studentId,
+        instructorId: reg.instructorId,
+        day: reg.day,
+        startTime: reg.startTime,
+        length: reg.length ?? 0,
+        registrationType: reg.registrationType,
+        classId: reg.classId,
+      }));
+
       const conflictCheck = await RegistrationConflictService.checkConflicts(
-        registrationData as unknown as ConflictRegistrationData, // SC-005: cross-model interface narrowing
-        existingRegistrations as unknown as ConflictRegistrationData[], // SC-005: cross-model interface narrowing
+        conflictData,
+        conflictRegistrations,
         {
           skipCapacityCheck: isAdmin,
           groupClass: groupClass
@@ -262,9 +279,8 @@ export class RegistrationApplicationService extends BaseService {
 
       this.logger.info(`🎯 Registration target trimester: ${targetTrimester}, isAdmin: ${isAdmin}`);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- SC-005: typed model → generic storage API
       const persistedRegistration = await this.registrationRepository.create(
-        serializedRegistration as unknown as Record<string, unknown>,
+        { ...serializedRegistration },
         targetTrimester
       );
 

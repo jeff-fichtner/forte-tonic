@@ -15,7 +15,8 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
 
   constructor(dbClient?: GoogleSheetsDbClient, configService?: ConfigurationService) {
     // Call parent with a generic entity name since this repo manages multiple entity types
-    super('users', null, dbClient, configService);
+    // Identity mapper: this repo uses entity-specific mappers in each method, not the base class mapper
+    super('users', (record) => record as Record<string, unknown>, dbClient, configService);
 
     // Cache for enriched students to avoid re-enriching on every getStudentById call
     this._enrichedStudentsCache = null;

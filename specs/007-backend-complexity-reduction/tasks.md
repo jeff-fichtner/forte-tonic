@@ -77,13 +77,13 @@
 
 ### Implementation for User Story 3
 
-- [ ] T014 [P] [US3] Fix `toJSON()` → `Record<string, unknown>` casts: in `src/repositories/registrationRepository.ts` (lines 334, 618) and `src/repositories/dropRequestRepository.ts` (line 167), replace `obj.toJSON() as unknown as Record<string, unknown>` with `{ ...obj.toJSON() }` spread or add a `Record<string, unknown>` compatible return signature to the relevant `toJSON()` methods
-- [ ] T015 [P] [US3] Fix untyped-data → model casts: in `src/repositories/registrationRepository.ts` (line 289), `src/repositories/dropRequestRepository.ts` (line 162), and `src/repositories/attendanceRepository.ts` (lines 92, 117), improve the type flow from `getAllRecords` return type through mapper functions so that data arrives already typed, eliminating the need for `as unknown as` coercion
-- [ ] T016 [P] [US3] Fix service-layer casts in `src/services/registrationApplicationService.ts` (lines 169, 218, 219, 274): align the interface definitions for `ConflictRegistrationData`, `DayAvailability`, and the serialized registration shape so that the types match without double-casting
-- [ ] T017 [P] [US3] Fix `class.ts` Date/string mismatch: in `src/models/shared/class.ts` (lines 125, 143), change `startTime` and `endTime` property types from `Date` to `string` since the data source provides strings. Remove the `as unknown as Date` casts
-- [ ] T018 [US3] Fix constructor parameter cast in `src/controllers/userController.ts` (line 57): align the `AppConfigurationResponse` constructor parameter type with what `userController` passes, removing the `as unknown as ConstructorParameters<...>` cast
-- [ ] T019 [US3] Fix `BaseRepository.convertToModel` unsafe cast in `src/repositories/baseRepository.ts`: remove the `data as T` fallback and require a mapper function parameter (or make the existing `mapRecord` constructor parameter non-optional). Update `src/repositories/userRepository.ts` generic parameter from `BaseRepository<Record<string, unknown>>` to either remove the generic or use a meaningful type
-- [ ] T020 [US3] Run `npx tsc --noEmit` and `npm test`, then run `grep -r "as unknown as" src/ | wc -l` to verify cast count is 1 (tabController.ts only)
+- [x] T014 [P] [US3] Fix `toJSON()` → `Record<string, unknown>` casts: in `src/repositories/registrationRepository.ts` (lines 334, 618) and `src/repositories/dropRequestRepository.ts` (line 167), replace `obj.toJSON() as unknown as Record<string, unknown>` with `{ ...obj.toJSON() }` spread or add a `Record<string, unknown>` compatible return signature to the relevant `toJSON()` methods
+- [x] T015 [P] [US3] Fix untyped-data → model casts: in `src/repositories/registrationRepository.ts` (line 289), `src/repositories/dropRequestRepository.ts` (line 162), and `src/repositories/attendanceRepository.ts` (lines 92, 117), improve the type flow from `getAllRecords` return type through mapper functions so that data arrives already typed, eliminating the need for `as unknown as` coercion
+- [x] T016 [P] [US3] Fix service-layer casts in `src/services/registrationApplicationService.ts` (lines 169, 218, 219, 274): align the interface definitions for `ConflictRegistrationData`, `DayAvailability`, and the serialized registration shape so that the types match without double-casting
+- [x] T017 [P] [US3] Fix `class.ts` Date/string mismatch: in `src/models/shared/class.ts` (lines 125, 143), change `startTime` and `endTime` property types from `Date` to `string` since the data source provides strings. Remove the `as unknown as Date` casts
+- [x] T018 [US3] Fix constructor parameter cast in `src/controllers/userController.ts` (line 57): align the `AppConfigurationResponse` constructor parameter type with what `userController` passes, removing the `as unknown as ConstructorParameters<...>` cast
+- [x] T019 [US3] Fix `BaseRepository.convertToModel` unsafe cast in `src/repositories/baseRepository.ts`: remove the `data as T` fallback and require a mapper function parameter (or make the existing `mapRecord` constructor parameter non-optional). Update `src/repositories/userRepository.ts` generic parameter from `BaseRepository<Record<string, unknown>>` to either remove the generic or use a meaningful type
+- [x] T020 [US3] Run `npx tsc --noEmit` and `npm test`, then run `grep -r "as unknown as" src/ | wc -l` to verify cast count is 1 (tabController.ts only)
 
 **Checkpoint**: Type safety restored. 17 of 18 double-casts eliminated. Code compiles cleanly.
 
@@ -97,10 +97,10 @@
 
 ### Implementation for User Story 4
 
-- [ ] T021 [P] [US4] Replace hard-coded `12` in `src/repositories/attendanceRepository.ts:172` with a derived session count: use the total number of distinct scheduled session dates from the attendance records for that registration. Update `tests/unit/repositories/attendanceRepository.test.ts` to verify the calculation uses actual record count
-- [ ] T022 [P] [US4] Remove `window` global write assignments from `src/models/shared/responses/authenticatedUserResponse.ts:113-114` and `src/models/shared/responses/appConfigurationResponse.ts:125-126`. Investigate the `window` read in `src/models/shared/class.ts:115` (`DurationHelpers`) — if `DurationHelpers` is never assigned to `window`, remove the read too
-- [ ] T023 [P] [US4] Remove the `singleton` flag from `RegisterOptions` in `src/infrastructure/container/serviceContainer.ts` if all registrations use the default (true). Simplify the registration logic to always use singleton behavior
-- [ ] T024 [US4] Run `npx tsc --noEmit` and `npm test`, then run `grep -r "window" src/models/shared/ | wc -l` to verify zero `window` references in shared models
+- [x] T021 [P] [US4] Replace hard-coded `12` in `src/repositories/attendanceRepository.ts:172` with a derived session count: use the total number of distinct scheduled session dates from the attendance records for that registration. Update `tests/unit/repositories/attendanceRepository.test.ts` to verify the calculation uses actual record count
+- [x] T022 [P] [US4] Remove `window` global write assignments from `src/models/shared/responses/authenticatedUserResponse.ts:113-114` and `src/models/shared/responses/appConfigurationResponse.ts:125-126`. Investigate the `window` read in `src/models/shared/class.ts:115` (`DurationHelpers`) — if `DurationHelpers` is never assigned to `window`, remove the read too
+- [x] T023 [P] [US4] Remove the `singleton` flag from `RegisterOptions` in `src/infrastructure/container/serviceContainer.ts` if all registrations use the default (true). Simplify the registration logic to always use singleton behavior
+- [x] T024 [US4] Run `npx tsc --noEmit` and `npm test`, then run `grep -r "window" src/models/shared/ | wc -l` to verify zero `window` references in shared models
 
 **Checkpoint**: All questionable assumptions addressed. Vestigial patterns removed. Tests pass.
 

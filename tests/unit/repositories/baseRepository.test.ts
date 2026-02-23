@@ -245,13 +245,14 @@ describe('BaseRepository', () => {
       expect(result).toEqual({ id: 'c1', name: 'Converted', value: 7 });
     });
 
-    test('should return data as-is when mapRecord is null', () => {
-      const noMapperRepo = new BaseRepository('raw', null, mockDbClient as unknown as import('../../../src/database/googleSheetsDbClient.js').GoogleSheetsDbClient);
+    test('should return data as-is with identity mapper', () => {
+      const identityMapper = (record: Record<string, unknown>) => record;
+      const identityRepo = new BaseRepository('raw', identityMapper, mockDbClient as unknown as import('../../../src/database/googleSheetsDbClient.js').GoogleSheetsDbClient);
       const data = { id: 'r1', arbitrary: 'field' };
 
-      const result = noMapperRepo.convertToModel(data);
+      const result = identityRepo.convertToModel(data);
 
-      expect(result).toBe(data); // same reference — no transformation
+      expect(result).toEqual(data);
     });
 
     test('should return null when input is null', () => {

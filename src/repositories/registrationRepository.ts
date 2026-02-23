@@ -223,7 +223,7 @@ export class RegistrationRepository extends BaseRepository<Registration> {
    * @param targetTrimester - Required trimester (fall, winter, spring)
    */
   override async create(registrationData: Record<string, unknown>, targetTrimester: string): Promise<Registration> {
-    const data = registrationData as unknown as RegistrationData; // SC-005: generic Record parameter → typed model
+    const data = registrationData as RegistrationData;
     try {
       // Trimester is required - caller must explicitly specify which trimester to write to
       if (!targetTrimester) {
@@ -268,7 +268,7 @@ export class RegistrationRepository extends BaseRepository<Registration> {
         isWaitlistClass: data.isWaitlistClass,
       });
 
-      await this.dbClient.appendRecord(tableName, registration.toJSON() as unknown as Record<string, unknown>, data.createdBy || ''); // SC-005: typed model → generic storage API
+      await this.dbClient.appendRecord(tableName, { ...registration.toJSON() }, data.createdBy || '');
 
       // Write audit record
       const auditSheet = `${tableName}_audit`;
@@ -525,7 +525,7 @@ export class RegistrationRepository extends BaseRepository<Registration> {
           })(),
       });
 
-      await this.dbClient.appendRecord(tableName, registration.toJSON() as unknown as Record<string, unknown>, registrationData.createdBy || ''); // SC-005: typed model → generic storage API
+      await this.dbClient.appendRecord(tableName, { ...registration.toJSON() }, registrationData.createdBy || '');
 
       // Write audit record
       const auditSheet = `${tableName}_audit`;

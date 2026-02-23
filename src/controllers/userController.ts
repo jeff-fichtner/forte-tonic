@@ -54,9 +54,7 @@ export class UserController {
         maintenanceMessage: appConfig.maintenanceMessage,
       };
 
-      const configuration = new AppConfigurationResponse(
-        configurationData as unknown as ConstructorParameters<typeof AppConfigurationResponse>[0] // SC-005: cross-model interface narrowing
-      );
+      const configuration = new AppConfigurationResponse(configurationData);
 
       // Use standardized response format
       // HttpService will auto-unwrap { success: true, data: {...} } to just the data

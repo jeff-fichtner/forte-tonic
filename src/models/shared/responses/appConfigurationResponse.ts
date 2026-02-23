@@ -2,9 +2,10 @@ import { TRIMESTER_SEQUENCE } from '../../../utils/values/trimester.js';
 
 export interface Period {
   periodType: string;
-  trimester: string;
-  targetTrimester: string;
-  startDate: string;
+  trimester: string | null;
+  targetTrimester?: string;
+  startDate: Date | string | null;
+  isCurrentPeriod?: boolean;
 }
 
 export interface AppConfigurationResponseData {
@@ -99,9 +100,4 @@ export class AppConfigurationResponse {
       maintenanceMessage: null,
     });
   }
-}
-
-// Make AppConfigurationResponse available globally for frontend usage
-if (typeof window !== 'undefined') {
-  (window as unknown as Record<string, unknown>).AppConfigurationResponse = AppConfigurationResponse; // SC-005: browser global not in Window type declaration
 }

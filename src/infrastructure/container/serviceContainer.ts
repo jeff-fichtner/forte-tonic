@@ -29,10 +29,6 @@ import { EntityQueryService } from '../../services/entityQueryService.js';
 
 type ServiceFactory = () => unknown;
 
-interface RegisterOptions {
-  singleton?: boolean;
-}
-
 interface ServiceHealth {
   status: 'healthy' | 'unhealthy';
   type?: string;
@@ -207,13 +203,8 @@ export class ServiceContainer {
   /**
    * Register a service factory
    */
-  register(serviceName: string, factory: ServiceFactory, options: RegisterOptions = {}): void {
+  register(serviceName: string, factory: ServiceFactory): void {
     this.services.set(serviceName, factory);
-
-    if (options.singleton === false) {
-      // Remove from singletons if not a singleton
-      this.singletons.delete(serviceName);
-    }
   }
 
   /**

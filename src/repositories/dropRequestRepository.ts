@@ -161,12 +161,12 @@ export class DropRequestRepository extends BaseRepository<DropRequest> {
 
       // Merge updates
       const updated = new DropRequest({
-      ...(existing as unknown as DropRequestData), // SC-005: raw Sheets row → typed model
+        ...existing,
         ...(updateData as Partial<DropRequestData>),
-        id, // Ensure ID doesn't change
+        id,
       });
 
-      await this.dbClient.updateRecord('drop_requests', updated.toJSON() as unknown as Record<string, string>, updatedBy); // SC-005: typed model → generic storage API
+      await this.dbClient.updateRecord('drop_requests', { ...updated.toJSON() }, updatedBy);
 
       this.logger.info(`✅ Updated drop request: ${id}`);
       return updated;

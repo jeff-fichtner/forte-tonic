@@ -20,11 +20,11 @@ export class BaseRepository<T extends object>
 {
   entityName: string;
   dbClient: GoogleSheetsDbClient;
-  protected mapRecord: RecordMapper<T> | null;
+  protected mapRecord: RecordMapper<T>;
 
   constructor(
     entityName: string,
-    mapRecord: RecordMapper<T> | null,
+    mapRecord: RecordMapper<T>,
     dbClient: GoogleSheetsDbClient | null = null,
     configService?: ConfigurationService
   ) {
@@ -107,10 +107,6 @@ export class BaseRepository<T extends object>
       return null;
     }
 
-    if (!this.mapRecord) {
-      return data as T;
-    }
-
     return this.mapRecord(data);
   }
 
@@ -124,10 +120,7 @@ export class BaseRepository<T extends object>
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const records = await this.dbClient.getAllRecords(this.entityName, (record: Record<string, any>) => { // SC-005: field transforms produce mixed types
-        if (this.mapRecord) {
-          return this.mapRecord(record);
-        }
-        return record as T;
+        return this.mapRecord(record);
       });
 
       this.logger.info(`✅ Found ${records.length} ${this.entityName}s`);

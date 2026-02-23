@@ -251,29 +251,59 @@ describe('AttendanceRepository', () => {
   // -----------------------------------------------------------------------
 
   describe('getAttendanceSummary', () => {
-    test('should return summary with totalSessions, attendanceRate, and sorted records', async () => {
-      const w5 = makeAttendanceRow({
-        id: 'R1_5_2025-2026_fall',
-        registrationId: 'R1',
-        week: 5,
-        schoolYear: '2025-2026',
-        trimester: 'fall',
-      });
-      const w2 = makeAttendanceRow({
+    test('should derive attendance rate from distinct weeks across all trimester records', async () => {
+      // R1 attended weeks 2, 5, 8 in fall
+      const r1w2 = makeAttendanceRow({
         id: 'R1_2_2025-2026_fall',
         registrationId: 'R1',
         week: 2,
         schoolYear: '2025-2026',
         trimester: 'fall',
       });
-      const w8 = makeAttendanceRow({
+      const r1w5 = makeAttendanceRow({
+        id: 'R1_5_2025-2026_fall',
+        registrationId: 'R1',
+        week: 5,
+        schoolYear: '2025-2026',
+        trimester: 'fall',
+      });
+      const r1w8 = makeAttendanceRow({
         id: 'R1_8_2025-2026_fall',
         registrationId: 'R1',
         week: 8,
         schoolYear: '2025-2026',
         trimester: 'fall',
       });
-      // Different trimester — should be excluded
+      // R2 attended weeks 2, 5, 8, 10 in fall — adds week 10 to the distinct set
+      const r2w2 = makeAttendanceRow({
+        id: 'R2_2_2025-2026_fall',
+        registrationId: 'R2',
+        week: 2,
+        schoolYear: '2025-2026',
+        trimester: 'fall',
+      });
+      const r2w5 = makeAttendanceRow({
+        id: 'R2_5_2025-2026_fall',
+        registrationId: 'R2',
+        week: 5,
+        schoolYear: '2025-2026',
+        trimester: 'fall',
+      });
+      const r2w8 = makeAttendanceRow({
+        id: 'R2_8_2025-2026_fall',
+        registrationId: 'R2',
+        week: 8,
+        schoolYear: '2025-2026',
+        trimester: 'fall',
+      });
+      const r2w10 = makeAttendanceRow({
+        id: 'R2_10_2025-2026_fall',
+        registrationId: 'R2',
+        week: 10,
+        schoolYear: '2025-2026',
+        trimester: 'fall',
+      });
+      // Different trimester — should be excluded from distinct-week count
       const winterRec = makeAttendanceRow({
         id: 'R1_1_2025-2026_winter',
         registrationId: 'R1',
@@ -284,15 +314,18 @@ describe('AttendanceRepository', () => {
 
       mockDbClient.getAllRecords.mockImplementation(
         (_sheet: string, mapper: Function) =>
-          Promise.resolve([w5, w2, w8, winterRec].map((row) => mapper(row))),
+          Promise.resolve(
+            [r1w2, r1w5, r1w8, r2w2, r2w5, r2w8, r2w10, winterRec].map((row) => mapper(row)),
+          ),
       );
 
       const summary = await repo.getAttendanceSummary('R1', '2025-2026', 'fall');
 
       expect(summary.registrationId).toBe('R1');
       expect(summary.totalSessions).toBe(3);
-      // attendanceRate = (3 / 12) * 100 = 25
-      expect(summary.attendanceRate).toBe(25);
+      // Distinct fall weeks across all registrations: {2, 5, 8, 10} = 4
+      // attendanceRate = (3 / 4) * 100 = 75
+      expect(summary.attendanceRate).toBe(75);
       // Records should be sorted ascending by week
       expect(summary.records.map((r: any) => r.week)).toEqual([2, 5, 8]);
     });
@@ -308,6 +341,35 @@ describe('AttendanceRepository', () => {
       expect(summary.totalSessions).toBe(0);
       expect(summary.attendanceRate).toBe(0);
       expect(summary.records).toEqual([]);
+    });
+
+    test('should return 100% when student has records for all scheduled weeks', async () => {
+      // Only one registration with records for all weeks that exist
+      const w1 = makeAttendanceRow({
+        id: 'R1_1_2025-2026_fall',
+        registrationId: 'R1',
+        week: 1,
+        schoolYear: '2025-2026',
+        trimester: 'fall',
+      });
+      const w2 = makeAttendanceRow({
+        id: 'R1_2_2025-2026_fall',
+        registrationId: 'R1',
+        week: 2,
+        schoolYear: '2025-2026',
+        trimester: 'fall',
+      });
+
+      mockDbClient.getAllRecords.mockImplementation(
+        (_sheet: string, mapper: Function) =>
+          Promise.resolve([w1, w2].map((row) => mapper(row))),
+      );
+
+      const summary = await repo.getAttendanceSummary('R1', '2025-2026', 'fall');
+
+      expect(summary.totalSessions).toBe(2);
+      // Distinct weeks: {1, 2} = 2, student has 2 records → 100%
+      expect(summary.attendanceRate).toBe(100);
     });
   });
 

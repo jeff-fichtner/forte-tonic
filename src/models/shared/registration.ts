@@ -13,6 +13,7 @@ export type RegistrationType = 'private' | 'group';
 export type ReenrollmentIntent = 'keep' | 'drop' | 'change';
 
 export interface RegistrationData {
+  [key: string]: unknown;
   id?: string;
   studentId: string;
   instructorId: string;

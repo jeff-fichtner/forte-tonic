@@ -17,6 +17,7 @@ interface AttendanceIdData {
 }
 
 interface AttendanceCreateData {
+  [key: string]: unknown;
   id?: string;
   registrationId: string;
   week: string | number;
@@ -89,7 +90,7 @@ export class AttendanceRepository extends BaseRepository<AttendanceRecord> {
     createdBy: string
   ): Promise<AttendanceRecord> {
     try {
-      const attendanceData = entityData as unknown as AttendanceCreateData; // SC-005: raw Sheets row → typed model
+      const attendanceData = entityData as AttendanceCreateData;
       this.logger.info('📝 Recording attendance');
 
       // Check if attendance already exists
@@ -114,7 +115,7 @@ export class AttendanceRepository extends BaseRepository<AttendanceRecord> {
 
       // Save via parent
       const created = await super.create(
-        attendanceData as unknown as Record<string, unknown>, // SC-005: typed model → generic storage API
+        attendanceData,
         attendanceData.recordedBy
       );
 
@@ -166,10 +167,19 @@ export class AttendanceRepository extends BaseRepository<AttendanceRecord> {
       record => record.schoolYear === schoolYear && record.trimester === trimester
     );
 
+    // Derive total scheduled sessions from all attendance records in this trimester
+    // instead of hard-coding 12
+    const allRecords = await this.findAll();
+    const trimesterRecords = allRecords.filter(
+      record => record.schoolYear === schoolYear && record.trimester === trimester
+    );
+    const distinctWeeks = new Set(trimesterRecords.map(r => String(r.week)));
+    const totalScheduledSessions = distinctWeeks.size || filtered.length || 1;
+
     return {
       registrationId,
       totalSessions: filtered.length,
-      attendanceRate: filtered.length > 0 ? (filtered.length / 12) * 100 : 0,
+      attendanceRate: filtered.length > 0 ? (filtered.length / totalScheduledSessions) * 100 : 0,
       records: filtered.sort((a, b) => Number(a.week) - Number(b.week)),
     };
   }
