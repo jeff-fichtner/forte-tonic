@@ -9,17 +9,11 @@ import { ClassManager } from '../../utilities/classManager.js';
 import { formatClassNameWithGradeCorrection } from '../../utilities/classNameFormatter.js';
 import { formatTime } from '../../extensions/numberExtensions.js';
 
+import type { ClassLike } from '../../types/registrationTypes.js';
+
 interface SelectOption {
   value: string;
   label: string;
-}
-
-interface ClassLike {
-  id: string;
-  day?: string;
-  startTime?: string;
-  title?: string;
-  [key: string]: unknown;
 }
 
 type ClassChangeCallback = (selectedClass: ClassLike | undefined) => void;

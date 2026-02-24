@@ -5,17 +5,11 @@
 
 import { Select } from '../select.js';
 import { RegistrationFormText } from '../../constants/registrationFormConstants.js';
+import type { InstructorLike } from '../../types/registrationTypes.js';
 
 interface SelectOption {
   value: string;
   label: string;
-}
-
-interface InstructorLike {
-  id: string;
-  firstName: string | null;
-  lastName: string | null;
-  [key: string]: unknown;
 }
 
 type InstructorChangeCallback = (selectedInstructor: InstructorLike | undefined) => void;

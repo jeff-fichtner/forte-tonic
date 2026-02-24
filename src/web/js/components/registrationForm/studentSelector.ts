@@ -4,14 +4,7 @@
  */
 
 import { RegistrationFormText } from '../../constants/registrationFormConstants.js';
-
-interface StudentLike {
-  id: string;
-  firstName?: string;
-  lastName?: string;
-  getFullName?: () => string;
-  [key: string]: unknown;
-}
+import type { StudentLike } from '../../types/registrationTypes.js';
 
 type StudentSelectCallback = (selectedStudent: StudentLike | undefined) => void;
 

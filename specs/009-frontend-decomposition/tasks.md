@@ -19,8 +19,8 @@
 
 **Purpose**: Branch setup and verification of starting state
 
-- [ ] T001 Verify current build state: run `npx tsc --noEmit -p tsconfig.web.json` and `npx vite build` to confirm zero errors before any changes
-- [ ] T002 Create `src/web/js/types/` directory for shared type definitions
+- [x] T001 Verify current build state: run `npx tsc --noEmit -p tsconfig.web.json` and `npx vite build` to confirm zero errors before any changes
+- [x] T002 Create `src/web/js/types/` directory for shared type definitions
 
 **Checkpoint**: Build green, directory structure ready
 
@@ -34,10 +34,10 @@
 
 ### Implementation for User Story 1
 
-- [ ] T003 [US1] Create shared entity interfaces (InstructorLike, DaySchedule, StudentLike, ClassLike, RegistrationLike, RegistrationSubmitData, TimeSlot) in `src/web/js/types/registrationTypes.ts` — use the superset definitions from data-model.md, with the parent form's richer fields as optional properties
-- [ ] T004 [US1] Update `src/web/js/workflows/parentRegistrationForm.ts` — remove inline interface definitions, replace with imports from `src/web/js/types/registrationTypes.ts`
-- [ ] T005 [US1] Update `src/web/js/workflows/adminRegistrationForm.ts` — remove inline interface definitions, replace with imports from `src/web/js/types/registrationTypes.ts`
-- [ ] T006 [US1] Verify compilation: run `npx tsc --noEmit -p tsconfig.web.json` — zero type errors
+- [x] T003 [US1] Create shared entity interfaces (InstructorLike, DaySchedule, StudentLike, ClassLike, RegistrationLike, RegistrationSubmitData, TimeSlot) in `src/web/js/types/registrationTypes.ts` — use the superset definitions from data-model.md, with the parent form's richer fields as optional properties
+- [x] T004 [US1] Update `src/web/js/workflows/parentRegistrationForm.ts` — remove inline interface definitions, replace with imports from `src/web/js/types/registrationTypes.ts`
+- [x] T005 [US1] Update `src/web/js/workflows/adminRegistrationForm.ts` — remove inline interface definitions, replace with imports from `src/web/js/types/registrationTypes.ts`
+- [x] T006 [US1] Verify compilation: run `npx tsc --noEmit -p tsconfig.web.json` — zero type errors
 
 **Checkpoint**: Both forms import from shared types. Zero duplicated entity interfaces. Build green.
 

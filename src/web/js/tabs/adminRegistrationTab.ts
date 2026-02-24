@@ -1,6 +1,7 @@
 import { BaseTab, SessionInfo } from '../core/baseTab.js';
 import { AdminRegistrationForm } from '../workflows/adminRegistrationForm.js';
 import { HttpService } from '../data/httpService.js';
+import type { InstructorLike, StudentLike, ClassLike, RegistrationLike } from '../types/registrationTypes.js';
 
 interface RegistrationFormData extends Record<string, unknown> {
   instructors: Record<string, unknown>[];
@@ -8,12 +9,6 @@ interface RegistrationFormData extends Record<string, unknown> {
   classes: Record<string, unknown>[];
   registrations: Record<string, unknown>[];
 }
-
-// Re-type aliases matching AdminRegistrationForm's expected shapes
-type InstructorLike = Record<string, unknown> & { id: string; firstName: string | null; lastName: string | null };
-type StudentLike = Record<string, unknown> & { id: string };
-type ClassLike = Record<string, unknown> & { id: string };
-type TrimesterRegistration = Record<string, unknown> & { id: string; studentId: string };
 
 /**
  * AdminRegistrationTab - Registration form for admins
@@ -88,7 +83,7 @@ export class AdminRegistrationTab extends BaseTab {
       form.students = this.data!.students as StudentLike[];
       form.classes = this.data!.classes as ClassLike[];
       this.registrationForm.setTrimester(this.currentTrimester ?? '');
-      this.registrationForm.setTrimesterRegistrations(this.data!.registrations as TrimesterRegistration[]);
+      this.registrationForm.setTrimesterRegistrations(this.data!.registrations as RegistrationLike[]);
     } else {
       // Create new form instance
       this.registrationForm = new AdminRegistrationForm(
@@ -102,7 +97,7 @@ export class AdminRegistrationTab extends BaseTab {
 
       // Set trimester context
       this.registrationForm.setTrimester(this.currentTrimester ?? '');
-      this.registrationForm.setTrimesterRegistrations(this.data!.registrations as TrimesterRegistration[]);
+      this.registrationForm.setTrimesterRegistrations(this.data!.registrations as RegistrationLike[]);
     }
   }
 

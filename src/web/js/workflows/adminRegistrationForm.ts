@@ -18,39 +18,14 @@ import { TransportationSelector } from '../components/registrationForm/transport
 import { InstructorSelector } from '../components/registrationForm/instructorSelector.js';
 import { ClassSelector } from '../components/registrationForm/classSelector.js';
 import { LessonDetailsForm } from '../components/registrationForm/lessonDetailsForm.js';
+import type {
+  InstructorLike,
+  StudentLike,
+  ClassLike,
+  RegistrationLike,
+} from '../types/registrationTypes.js';
 
-/** Instructor shape used by this form */
-interface InstructorLike {
-  id: string;
-  firstName: string | null;
-  lastName: string | null;
-  specialties?: string[];
-  [key: string]: unknown;
-}
-
-/** Student shape used by this form */
-interface StudentLike {
-  id: string;
-  firstName?: string;
-  lastName?: string;
-  getFullName?: () => string;
-  [key: string]: unknown;
-}
-
-/** Class shape used by this form */
-interface ClassLike {
-  id: string;
-  day?: string;
-  startTime?: string;
-  length?: number;
-  title?: string;
-  instrument?: string;
-  instructorId?: string;
-  formattedName?: string;
-  [key: string]: unknown;
-}
-
-/** Registration data built for submission */
+/** Registration data built for submission (admin form allows null for some fields) */
 interface RegistrationData {
   studentId: string | null;
   registrationType: string;
@@ -64,20 +39,6 @@ interface RegistrationData {
   instrument?: string;
   replaceRegistrationId?: string;
   trimester?: string;
-}
-
-/** Shape of a trimester registration record */
-interface TrimesterRegistration {
-  id: string;
-  studentId: string;
-  registrationType?: string;
-  instrument?: string;
-  day?: string;
-  startTime?: string;
-  instructorId?: string;
-  classTitle?: string;
-  linkedPreviousRegistrationId?: string;
-  [key: string]: unknown;
 }
 
 /** Typed error from the send data function */
@@ -97,7 +58,7 @@ export class AdminRegistrationForm {
   classes: ClassLike[];
   sendDataFunction: SendDataFunction;
   selectedTrimester: string | null;
-  trimesterRegistrations: TrimesterRegistration[];
+  trimesterRegistrations: RegistrationLike[];
   _selectedRegistrationToReplace: string | null;
   studentSelector!: StudentSelector;
   registrationTypeSelector!: RegistrationTypeSelector;
@@ -142,7 +103,7 @@ export class AdminRegistrationForm {
    * Set registrations for the selected trimester
    * @param {Array} registrations - Array of registration objects for the trimester
    */
-  setTrimesterRegistrations(registrations: TrimesterRegistration[]): void {
+  setTrimesterRegistrations(registrations: RegistrationLike[]): void {
     this.trimesterRegistrations = registrations || [];
     // Render the selector if a student is already selected
     const selectedStudentId = this.studentSelector.getSelectedStudentId();
@@ -507,7 +468,7 @@ export class AdminRegistrationForm {
 
     // Filter registrations for selected student that have linkedPreviousRegistrationId
     // These are registrations created from reenrollment intent that can be modified
-    const studentRegistrations = this.trimesterRegistrations.filter((reg: TrimesterRegistration) => {
+    const studentRegistrations = this.trimesterRegistrations.filter((reg: RegistrationLike) => {
       const regStudentId = reg.studentId;
       const hasLinkedPrevious = !!reg.linkedPreviousRegistrationId;
       return regStudentId === selectedStudentId && hasLinkedPrevious;
@@ -523,7 +484,7 @@ export class AdminRegistrationForm {
     selectorSection.style.display = 'block';
 
     // Populate dropdown with existing registrations
-    studentRegistrations.forEach((registration: TrimesterRegistration) => {
+    studentRegistrations.forEach((registration: RegistrationLike) => {
       const option = document.createElement('option');
       option.value = registration.id;
 
