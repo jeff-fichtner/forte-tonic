@@ -59,10 +59,10 @@
 
 ### Step 2b: Availability Engine
 
-- [ ] T010 [US2] Extract availability calculation functions from `src/web/js/workflows/parentRegistrationForm.ts` into `src/web/js/utilities/registrationForm/availabilityEngine.ts` — extract `#isInstructorAvailableOnDay()`, `#isInstructorGradeEligible()`, `#calculateAvailableSlotsForDay()`, `#checkTimeSlotConflict()`, `#getFilteredRegistrationsForConflictCheck()`, `#generateInstructorTimeSlots()` as pure exported functions
-- [ ] T011 [US2] Consolidate the 4 near-identical cascading availability methods (`#calculateCascadingDayAvailability()`, `#calculateCascadingLengthAvailability()`, `#calculateCascadingInstructorAvailability()`, `#calculateFilteredInstrumentAvailability()`) into a single parameterized `calculateCascadingAvailability()` function with a `groupBy` dimension parameter in `src/web/js/utilities/registrationForm/availabilityEngine.ts`
-- [ ] T012 [US2] Update `src/web/js/workflows/parentRegistrationForm.ts` to import and call availability engine functions instead of inline private methods
-- [ ] T013 [US2] Verify compilation: `npx tsc --noEmit -p tsconfig.web.json` — zero errors after availability engine extraction
+- [x] T010 [US2] Extract availability calculation functions from `src/web/js/workflows/parentRegistrationForm.ts` into `src/web/js/utilities/registrationForm/availabilityEngine.ts` — extract `#isInstructorAvailableOnDay()`, `#isInstructorGradeEligible()`, `#calculateAvailableSlotsForDay()`, `#checkTimeSlotConflict()`, `#getFilteredRegistrationsForConflictCheck()`, `#generateInstructorTimeSlots()` as pure exported functions
+- [x] T011 [US2] Consolidate the 4 near-identical cascading availability methods (`#calculateCascadingDayAvailability()`, `#calculateCascadingLengthAvailability()`, `#calculateCascadingInstructorAvailability()`, `#calculateFilteredInstrumentAvailability()`) into a single parameterized `calculateCascadingAvailability()` function with a `groupBy` dimension parameter in `src/web/js/utilities/registrationForm/availabilityEngine.ts`
+- [x] T012 [US2] Update `src/web/js/workflows/parentRegistrationForm.ts` to import and call availability engine functions instead of inline private methods
+- [x] T013 [US2] Verify compilation: `npx tsc --noEmit -p tsconfig.web.json` — zero errors after availability engine extraction
 
 ### Step 2c: Cascading Filter UI
 

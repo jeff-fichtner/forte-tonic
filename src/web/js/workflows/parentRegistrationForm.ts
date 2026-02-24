@@ -41,6 +41,13 @@ import {
   createInstructorCard,
   createTimeSlotElement,
 } from '../components/registrationForm/registrationFormElements.js';
+import {
+  isInstructorGradeEligible,
+  getRegistrationDayName,
+  checkTimeSlotConflict,
+  generateInstructorTimeSlots,
+  calculateCascadingAvailability,
+} from '../utilities/registrationForm/availabilityEngine.js';
 
 export type { InstructorLike, StudentLike, ClassLike, RegistrationLike, RegistrationSubmitData };
 
@@ -141,55 +148,6 @@ export class ParentRegistrationForm {
   }
 
   /**
-   * Check if instructor is available on a specific day
-   * @param {object} instructor - Instructor object
-   * @param {string} day - Day name (e.g., 'monday')
-   * @param {object} daySchedule - Day schedule object
-   * @returns {boolean} True if available
-   */
-  #isInstructorAvailableOnDay(instructor: InstructorLike, day: string, daySchedule: DaySchedule | undefined): boolean {
-    // Check 1: Day schedule must exist
-    if (!daySchedule) {
-      return false;
-    }
-
-    // Check 2: Must be marked as available for this day
-    if (!daySchedule.isAvailable) {
-      return false;
-    }
-
-    // Check 3: Must have start time
-    if (!daySchedule.startTime) {
-      return false;
-    }
-
-    // Check 4: Must have valid end time
-    const endTime = daySchedule.endTime || '17:00';
-    if (!endTime) {
-      return false;
-    }
-
-    // Check 5: Start time must be before end time
-    const startMinutes = parseTime(daySchedule.startTime);
-    const endMinutes = parseTime(endTime);
-
-    if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
-      return false;
-    }
-
-    return true;
-  }
-
-  /**
-   * Get the proper day name format for registration comparison
-   * @param {string} day - Day name in lowercase (e.g., "monday")
-   * @returns {string} Capitalized day name (e.g., "Monday")
-   */
-  #getRegistrationDayName(day: string): string {
-    return day.charAt(0).toUpperCase() + day.slice(1);
-  }
-
-  /**
    * Get the currently selected student's grade
    * @returns {number|null} Student grade (0-8) or null if no student selected
    */
@@ -209,380 +167,6 @@ export class ParentRegistrationForm {
     const grade = selectedStudent?.grade;
     if (grade === null || grade === undefined) return null;
     return typeof grade === 'number' ? grade : Number(grade);
-  }
-
-  /**
-   * Check if an instructor can teach a student of the given grade
-   * @param {object} instructor - Instructor object with gradeRange
-   * @param {number|null} studentGrade - Student's grade (0-8) or null
-   * @returns {boolean} True if instructor can teach this grade
-   */
-  #isInstructorGradeEligible(instructor: InstructorLike, studentGrade: number | null): boolean {
-    // If no student grade, allow all instructors
-    if (studentGrade === null || studentGrade === undefined) {
-      return true;
-    }
-
-    // If instructor has no grade range set, allow all grades
-    const minGrade = instructor.gradeRange?.minimum;
-    const maxGrade = instructor.gradeRange?.maximum;
-
-    if (
-      minGrade === null ||
-      minGrade === undefined ||
-      maxGrade === null ||
-      maxGrade === undefined
-    ) {
-      return true;
-    }
-
-    const gradeNum = Number(studentGrade);
-    const minNum = Number(minGrade);
-    const maxNum = Number(maxGrade);
-
-    return gradeNum >= minNum && gradeNum <= maxNum;
-  }
-
-  /**
-   * Calculate available slots for a day considering existing registrations
-   * @param {number} startMinutes - Day start time in minutes
-   * @param {number} endMinutes - Day end time in minutes
-   * @param {Array} existingRegistrations - Existing registrations for this day
-   * @returns {number} Number of available 30-minute slots
-   */
-  #calculateAvailableSlotsForDay(startMinutes: number, endMinutes: number, existingRegistrations: RegistrationLike[]): number {
-    let availableSlots = 0;
-
-    // Check every 30-minute slot in the day
-    for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += 30) {
-      const hasConflict = this.#checkTimeSlotConflict(currentMinutes, 30, existingRegistrations);
-      if (!hasConflict) {
-        availableSlots++;
-      }
-    }
-
-    return availableSlots;
-  }
-
-  /**
-   * Calculate cascading day availability based on selected instrument
-   */
-  #calculateCascadingDayAvailability(selectedInstrument: string | null = null): Record<string, number> {
-    const availability: Record<string, number> = {};
-    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-
-    // Create day mapping for registration lookups
-    const dayMap: Record<string, number> = {
-      monday: 0,
-      tuesday: 1,
-      wednesday: 2,
-      thursday: 3,
-      friday: 4,
-    };
-
-    // Initialize all days to 0
-    days.forEach(day => {
-      availability[day] = 0;
-    });
-
-    // Filter instructors based on selected instrument and student grade (cascading)
-    const studentGrade = this.#getSelectedStudentGrade();
-    let instructorsToUse = this.instructors.filter((instructor: InstructorLike) =>
-      this.#isInstructorGradeEligible(instructor, studentGrade)
-    );
-
-    if (selectedInstrument && selectedInstrument !== 'all') {
-      instructorsToUse = instructorsToUse.filter((instructor: InstructorLike) => {
-        const instructorInstruments =
-          instructor.specialties ||
-          (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
-
-        const normalizedInstruments = Array.isArray(instructorInstruments)
-          ? instructorInstruments
-          : [instructorInstruments].filter(Boolean);
-
-        return normalizedInstruments.some(
-          (inst: string) => inst && inst.toLowerCase().includes(selectedInstrument.toLowerCase())
-        );
-      });
-    }
-
-    // Count all possible slots for each day across filtered instructors
-    instructorsToUse.forEach((instructor: InstructorLike) => {
-      days.forEach(day => {
-        const daySchedule = (instructor.availability?.[day] || instructor[day]) as DaySchedule | undefined;
-
-        if (!daySchedule || !this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
-          return; // Skip this instructor on this day
-        }
-
-        const startTime = daySchedule.startTime || '';
-        const endTime = daySchedule.endTime || '17:00';
-
-        const startMinutes = parseTime(startTime);
-        const endMinutes = parseTime(endTime);
-
-        if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
-          // Use next trimester registrations during enrollment periods, current trimester otherwise
-          const registrationsToCheck = this._isEnrollmentPeriodActive()
-            ? this.nextTrimesterRegistrations || []
-            : this.registrations;
-
-          const existingRegistrations = registrationsToCheck.filter((reg: RegistrationLike) => {
-            const regInstructorId = reg.instructorId;
-            return (
-              regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day)
-            );
-          });
-
-          // Count all possible slots for each lesson length (30min, 45min, 60min)
-          [30, 45, 60].forEach(length => {
-            for (
-              let currentMinutes = startMinutes;
-              currentMinutes < endMinutes;
-              currentMinutes += 30
-            ) {
-              if (currentMinutes + length <= endMinutes) {
-                const hasConflict = this.#checkTimeSlotConflict(
-                  currentMinutes,
-                  length,
-                  existingRegistrations
-                );
-                if (!hasConflict) {
-                  availability[day]++;
-                }
-              }
-            }
-          });
-        }
-      });
-    });
-
-    return availability;
-  }
-
-  /**
-   * Calculate cascading length availability based on selected instrument and day
-   */
-  #calculateCascadingLengthAvailability(selectedInstrument: string | null = null, selectedDay: string | null = null): Record<number, number> {
-    const availability: Record<number, number> = { 30: 0, 45: 0, 60: 0 };
-
-    // Create day mapping for registration lookups
-    const dayMap: Record<string, number> = {
-      monday: 0,
-      tuesday: 1,
-      wednesday: 2,
-      thursday: 3,
-      friday: 4,
-    };
-
-    // Filter instructors based on selected instrument and student grade (cascading)
-    const studentGrade = this.#getSelectedStudentGrade();
-    let instructorsToUse = this.instructors.filter((instructor: InstructorLike) =>
-      this.#isInstructorGradeEligible(instructor, studentGrade)
-    );
-
-    if (selectedInstrument && selectedInstrument !== 'all') {
-      instructorsToUse = instructorsToUse.filter((instructor: InstructorLike) => {
-        const instructorInstruments =
-          instructor.specialties ||
-          (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
-
-        const normalizedInstruments = Array.isArray(instructorInstruments)
-          ? instructorInstruments
-          : [instructorInstruments].filter(Boolean);
-
-        return normalizedInstruments.some(
-          (inst: string) => inst && inst.toLowerCase().includes(selectedInstrument.toLowerCase())
-        );
-      });
-    }
-
-    // Filter days based on selected day (cascading)
-    const daysToCheck =
-      selectedDay && selectedDay !== 'all'
-        ? [selectedDay]
-        : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-
-    // Count slots for each length across filtered instructors and days
-    instructorsToUse.forEach((instructor: InstructorLike) => {
-      daysToCheck.forEach(day => {
-        const daySchedule = (instructor.availability?.[day] || instructor[day]) as DaySchedule | undefined;
-
-        if (!daySchedule || !this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
-          return; // Skip this instructor on this day
-        }
-
-        const startTime = daySchedule.startTime || '';
-        const endTime = daySchedule.endTime || '17:00';
-
-        const startMinutes = parseTime(startTime);
-        const endMinutes = parseTime(endTime);
-
-        if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
-          // Use next trimester registrations during enrollment periods, current trimester otherwise
-          const registrationsToCheck = this._isEnrollmentPeriodActive()
-            ? this.nextTrimesterRegistrations || []
-            : this.registrations;
-
-          const existingRegistrations = registrationsToCheck.filter((reg: RegistrationLike) => {
-            const regInstructorId = reg.instructorId;
-            return (
-              regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day)
-            );
-          });
-
-          // Count slots for each lesson length
-          [30, 45, 60].forEach(length => {
-            for (
-              let currentMinutes = startMinutes;
-              currentMinutes < endMinutes;
-              currentMinutes += 30
-            ) {
-              if (currentMinutes + length <= endMinutes) {
-                const hasConflict = this.#checkTimeSlotConflict(
-                  currentMinutes,
-                  length,
-                  existingRegistrations
-                );
-                if (!hasConflict) {
-                  availability[length]++;
-                }
-              }
-            }
-          });
-        }
-      });
-    });
-
-    return availability;
-  }
-
-  /**
-   * Calculate cascading instructor availability based on selected instrument, day, and length
-   */
-  #calculateCascadingInstructorAvailability(
-    selectedInstrument: string | null = null,
-    selectedDay: string | null = null,
-    selectedLength: string | null = null
-  ): Record<string, number> {
-    const availability: Record<string, number> = {};
-
-    // Create day mapping for registration lookups
-    const dayMap: Record<string, number> = {
-      monday: 0,
-      tuesday: 1,
-      wednesday: 2,
-      thursday: 3,
-      friday: 4,
-    };
-
-    // Filter instructors based on selected instrument and student grade (cascading)
-    const studentGrade = this.#getSelectedStudentGrade();
-    let instructorsToUse = this.instructors.filter((instructor: InstructorLike) =>
-      this.#isInstructorGradeEligible(instructor, studentGrade)
-    );
-
-    if (selectedInstrument && selectedInstrument !== 'all') {
-      instructorsToUse = instructorsToUse.filter((instructor: InstructorLike) => {
-        const instructorInstruments =
-          instructor.specialties ||
-          (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
-
-        const normalizedInstruments = Array.isArray(instructorInstruments)
-          ? instructorInstruments
-          : [instructorInstruments].filter(Boolean);
-
-        return normalizedInstruments.some(
-          (inst: string) => inst && inst.toLowerCase().includes(selectedInstrument.toLowerCase())
-        );
-      });
-    }
-
-    // Filter days based on selected day (cascading)
-    const daysToCheck =
-      selectedDay && selectedDay !== 'all'
-        ? [selectedDay]
-        : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-
-    // Initialize instructor availability
-    instructorsToUse.forEach((instructor: InstructorLike) => {
-      availability[instructor.id] = 0;
-    });
-
-    // Count slots for each instructor based on cascading filters
-    instructorsToUse.forEach((instructor: InstructorLike) => {
-      daysToCheck.forEach(day => {
-        const daySchedule = (instructor.availability?.[day] || instructor[day]) as DaySchedule | undefined;
-
-        if (!daySchedule || !this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
-          return; // Skip this instructor on this day
-        }
-
-        const startTime = daySchedule.startTime || '';
-        const endTime = daySchedule.endTime || '17:00';
-
-        const startMinutes = parseTime(startTime);
-        const endMinutes = parseTime(endTime);
-
-        if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
-          // Use next trimester registrations during enrollment periods, current trimester otherwise
-          const registrationsToCheck = this._isEnrollmentPeriodActive()
-            ? this.nextTrimesterRegistrations || []
-            : this.registrations;
-
-          const existingRegistrations = registrationsToCheck.filter((reg: RegistrationLike) => {
-            const regInstructorId = reg.instructorId;
-            return (
-              regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day)
-            );
-          });
-
-          if (selectedLength && selectedLength !== 'all') {
-            // Count slots for specific length
-            const lengthMinutes = parseInt(selectedLength);
-            for (
-              let currentMinutes = startMinutes;
-              currentMinutes < endMinutes;
-              currentMinutes += 30
-            ) {
-              if (currentMinutes + lengthMinutes <= endMinutes) {
-                const hasConflict = this.#checkTimeSlotConflict(
-                  currentMinutes,
-                  lengthMinutes,
-                  existingRegistrations
-                );
-                if (!hasConflict) {
-                  availability[instructor.id]++;
-                }
-              }
-            }
-          } else {
-            // Count all possible slots for each lesson length (30min, 45min, 60min)
-            [30, 45, 60].forEach(length => {
-              for (
-                let currentMinutes = startMinutes;
-                currentMinutes < endMinutes;
-                currentMinutes += 30
-              ) {
-                if (currentMinutes + length <= endMinutes) {
-                  const hasConflict = this.#checkTimeSlotConflict(
-                    currentMinutes,
-                    length,
-                    existingRegistrations
-                  );
-                  if (!hasConflict) {
-                    availability[instructor.id]++;
-                  }
-                }
-              }
-            });
-          }
-        }
-      });
-    });
-
-    return availability;
   }
 
   /**
@@ -624,12 +208,22 @@ export class ParentRegistrationForm {
       (parentContainer.querySelector('.instructor-chip.active') as HTMLElement | null)?.dataset.value;
 
     // Calculate availability counts for each instructor based on cascading filters
-    const instructorAvailability = this.#calculateCascadingInstructorAvailability(
-      selectedInstrument,
-      selectedDay,
-      selectedLength
+    const instructorAvailabilityMap = calculateCascadingAvailability(
+      'instructor',
+      this.instructors,
+      this.registrations,
+      this.nextTrimesterRegistrations,
+      this.#getSelectedStudentGrade(),
+      this._selectedPreviousRegistrationId,
+      this._isEnrollmentPeriodActive(),
+      {
+        instrument: selectedInstrument,
+        day: selectedDay,
+        length: selectedLength ? parseInt(selectedLength) : undefined,
+      }
     );
-    const totalSlots = Object.values(instructorAvailability).reduce((sum: number, count: number) => sum + count, 0);
+    let totalSlots = 0;
+    instructorAvailabilityMap.forEach(v => { totalSlots += v.available; });
 
     // Create "All Instructors" chip - only default if no specific instructor is selected
     const isAllDefault = !selectedInstructor || selectedInstructor === 'all';
@@ -645,11 +239,11 @@ export class ParentRegistrationForm {
     // Create individual instructor chips (filtered by student grade)
     const studentGrade = this.#getSelectedStudentGrade();
     const eligibleInstructors = this.instructors.filter((instructor: InstructorLike) =>
-      this.#isInstructorGradeEligible(instructor, studentGrade)
+      isInstructorGradeEligible(instructor, studentGrade)
     );
 
     eligibleInstructors.forEach((instructor: InstructorLike) => {
-      const slots = instructorAvailability[instructor.id] || 0;
+      const slots = instructorAvailabilityMap.get(instructor.id)?.available || 0;
       const chipText = `${instructor.firstName} ${instructor.lastName} (${slots} slots)`;
       const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
       const chip = createFilterChip(
@@ -687,8 +281,18 @@ export class ParentRegistrationForm {
     const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value;
 
     // Calculate availability counts for each day based on selected instrument only
-    const dayAvailability = this.#calculateCascadingDayAvailability(selectedInstrument);
-    const totalSlots = Object.values(dayAvailability).reduce((sum: number, count: number) => sum + count, 0);
+    const dayAvailabilityMap = calculateCascadingAvailability(
+      'day',
+      this.instructors,
+      this.registrations,
+      this.nextTrimesterRegistrations,
+      this.#getSelectedStudentGrade(),
+      this._selectedPreviousRegistrationId,
+      this._isEnrollmentPeriodActive(),
+      { instrument: selectedInstrument }
+    );
+    let totalSlots = 0;
+    dayAvailabilityMap.forEach(v => { totalSlots += v.available; });
 
     // Create "All Days" chip - only default if no specific day is selected
     const isAllDefault = !selectedDay || selectedDay === 'all';
@@ -706,7 +310,7 @@ export class ParentRegistrationForm {
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
     days.forEach((day, index) => {
-      const slots = dayAvailability[day] || 0;
+      const slots = dayAvailabilityMap.get(day)?.available || 0;
       const chipText = `${dayNames[index]} (${slots} slots)`;
       const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
       const chip = createFilterChip('day', day, chipText, false, availability);
@@ -737,8 +341,18 @@ export class ParentRegistrationForm {
       (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value;
 
     // Calculate availability for each instrument (no upstream filters - top of cascade)
-    const instrumentAvailability = this.#calculateFilteredInstrumentAvailability(null, null, null);
-    const totalSlots = Object.values(instrumentAvailability).reduce((sum: number, count: number) => sum + count, 0);
+    const instrumentAvailabilityMap = calculateCascadingAvailability(
+      'instrument',
+      this.instructors,
+      this.registrations,
+      this.nextTrimesterRegistrations,
+      this.#getSelectedStudentGrade(),
+      this._selectedPreviousRegistrationId,
+      this._isEnrollmentPeriodActive(),
+      {}
+    );
+    let totalSlots = 0;
+    instrumentAvailabilityMap.forEach(v => { totalSlots += v.available; });
 
     // Create "All Instruments" chip - only default if no specific instrument is selected
     const isAllDefault = !selectedInstrument || selectedInstrument === 'all';
@@ -752,149 +366,14 @@ export class ParentRegistrationForm {
     instrumentContainer.appendChild(allChip);
 
     // Create individual instrument chips
-    const uniqueInstruments = Object.keys(instrumentAvailability).sort();
+    const uniqueInstruments = Array.from(instrumentAvailabilityMap.keys()).sort();
     uniqueInstruments.forEach(instrument => {
-      const slots = instrumentAvailability[instrument] || 0;
+      const slots = instrumentAvailabilityMap.get(instrument)?.available || 0;
       const chipText = `${instrument} (${slots} slots)`;
       const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
       const chip = createFilterChip('instrument', instrument, chipText, false, availability);
       instrumentContainer.appendChild(chip);
     });
-  }
-
-  /**
-   * Calculate filtered instrument availability based on selected filters
-   */
-  #calculateFilteredInstrumentAvailability(
-    selectedInstructor: string | null = null,
-    selectedDay: string | null = null,
-    selectedLength: string | null = null
-  ): Record<string, number> {
-    const availability: Record<string, number> = {};
-
-    // Create day mapping for registration lookups
-    const dayMap: Record<string, number> = {
-      monday: 0,
-      tuesday: 1,
-      wednesday: 2,
-      thursday: 3,
-      friday: 4,
-    };
-
-    // Filter instructors based on selected instructor and student grade
-    const studentGrade = this.#getSelectedStudentGrade();
-    let instructorsToUse = this.instructors.filter((instructor: InstructorLike) =>
-      this.#isInstructorGradeEligible(instructor, studentGrade)
-    );
-    if (selectedInstructor && selectedInstructor !== 'all') {
-      instructorsToUse = instructorsToUse.filter(
-        (instructor: InstructorLike) => instructor.id === selectedInstructor
-      );
-    }
-
-    // Get all possible instruments from filtered instructors
-    const instrumentsSet = new Set<string>();
-    instructorsToUse.forEach((instructor: InstructorLike) => {
-      const instructorInstruments =
-        instructor.specialties ||
-        (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
-
-      const normalizedInstruments = Array.isArray(instructorInstruments)
-        ? instructorInstruments
-        : [instructorInstruments].filter(Boolean);
-
-      normalizedInstruments.forEach(instrument => {
-        if (instrument && instrument.trim()) {
-          instrumentsSet.add(instrument.trim());
-        }
-      });
-    });
-
-    const instruments = Array.from(instrumentsSet);
-
-    // Initialize all instruments to 0
-    instruments.forEach(instrument => {
-      availability[instrument] = 0;
-    });
-
-    // Calculate availability for each instrument
-    instructorsToUse.forEach((instructor: InstructorLike) => {
-      const days =
-        selectedDay && selectedDay !== 'all'
-          ? [selectedDay]
-          : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-
-      const instructorInstruments =
-        instructor.specialties ||
-        (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
-
-      const normalizedInstruments = Array.isArray(instructorInstruments)
-        ? instructorInstruments
-        : [instructorInstruments].filter(Boolean);
-
-      days.forEach(day => {
-        const daySchedule = (instructor.availability?.[day] || instructor[day]) as DaySchedule | undefined;
-
-        if (!daySchedule || !this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
-          return;
-        }
-
-        const startTime = daySchedule.startTime || '';
-        const endTime = daySchedule.endTime || '17:00';
-
-        const startMinutes = parseTime(startTime);
-        const endMinutes = parseTime(endTime);
-
-        if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
-          const dayIndex = dayMap[day];
-          // Use next trimester registrations during enrollment periods, current trimester otherwise
-          const registrationsToCheck = this._isEnrollmentPeriodActive()
-            ? this.nextTrimesterRegistrations || []
-            : this.registrations;
-
-          const existingRegistrations = registrationsToCheck.filter((reg: RegistrationLike) => {
-            const regInstructorId = reg.instructorId;
-            return (
-              regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day)
-            );
-          });
-
-          // Add slots for each instrument this instructor teaches
-          normalizedInstruments.forEach(instrument => {
-            if (instruments.includes(instrument)) {
-              if (selectedLength && selectedLength !== 'all') {
-                const lengthMinutes = parseInt(selectedLength);
-                for (
-                  let currentMinutes = startMinutes;
-                  currentMinutes < endMinutes;
-                  currentMinutes += 30
-                ) {
-                  if (currentMinutes + lengthMinutes <= endMinutes) {
-                    const hasConflict = this.#checkTimeSlotConflict(
-                      currentMinutes,
-                      lengthMinutes,
-                      existingRegistrations
-                    );
-                    if (!hasConflict) {
-                      availability[instrument]++;
-                    }
-                  }
-                }
-              } else {
-                const availableSlots = this.#calculateAvailableSlotsForDay(
-                  startMinutes,
-                  endMinutes,
-                  existingRegistrations
-                );
-                availability[instrument] += availableSlots;
-              }
-            }
-          });
-        }
-      });
-    });
-
-    return availability;
   }
 
   /**
@@ -922,13 +401,20 @@ export class ParentRegistrationForm {
     const selectedLength = (parentContainer.querySelector('.length-chip.active') as HTMLElement | null)?.dataset.value;
 
     // Get available lesson lengths based on cascading filters
-    const availableLengths = this.#calculateCascadingLengthAvailability(
-      selectedInstrument,
-      selectedDay
+    const lengthAvailabilityMap = calculateCascadingAvailability(
+      'length',
+      this.instructors,
+      this.registrations,
+      this.nextTrimesterRegistrations,
+      this.#getSelectedStudentGrade(),
+      this._selectedPreviousRegistrationId,
+      this._isEnrollmentPeriodActive(),
+      { instrument: selectedInstrument, day: selectedDay }
     );
 
     // Calculate total slots across all lengths
-    const totalSlots = Object.values(availableLengths).reduce((sum: number, count: number) => sum + count, 0);
+    let totalSlots = 0;
+    lengthAvailabilityMap.forEach(v => { totalSlots += v.available; });
 
     // Create "All Lengths" chip - only default if no specific length is selected
     const isAllDefault = !selectedLength || selectedLength === 'all';
@@ -946,7 +432,7 @@ export class ParentRegistrationForm {
 
     // Create individual length chips
     standardLengths.forEach(length => {
-      const slots = availableLengths[length] || 0;
+      const slots = lengthAvailabilityMap.get(String(length))?.available || 0;
       const chipText = `${length} min (${slots} slots)`;
       const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
       const chip = createFilterChip(
@@ -977,12 +463,18 @@ export class ParentRegistrationForm {
     // Filter instructors by student grade eligibility
     const studentGrade = this.#getSelectedStudentGrade();
     const eligibleInstructors = this.instructors.filter((instructor: InstructorLike) =>
-      this.#isInstructorGradeEligible(instructor, studentGrade)
+      isInstructorGradeEligible(instructor, studentGrade)
     );
 
     // Generate cards for each eligible instructor
     eligibleInstructors.forEach((instructor: InstructorLike) => {
-      const timeSlots = this.#generateInstructorTimeSlots(instructor);
+      const timeSlots = generateInstructorTimeSlots(
+        instructor,
+        this.registrations,
+        this.nextTrimesterRegistrations,
+        this._selectedPreviousRegistrationId,
+        this._isEnrollmentPeriodActive()
+      );
       if (timeSlots.length > 0) {
         const card = createInstructorCard(instructor, timeSlots);
         timeslotGrid.appendChild(card);
@@ -992,168 +484,6 @@ export class ParentRegistrationForm {
     // Attach listeners after generating
     this.#attachTimeSlotListeners();
   }
-
-  /**
-   * Generate time slots for a specific instructor
-   */
-  #generateInstructorTimeSlots(instructor: InstructorLike): TimeSlot[] {
-    const timeSlots: TimeSlot[] = [];
-    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-
-    // Create day mapping for registration lookups
-    const dayMap: Record<string, number> = {
-      monday: 0,
-      tuesday: 1,
-      wednesday: 2,
-      thursday: 3,
-      friday: 4,
-    };
-
-    days.forEach((day, index) => {
-      // Enhanced availability checking
-      const daySchedule = (instructor.availability?.[day] || instructor[day]) as DaySchedule | undefined;
-
-      // Check 1: Instructor must be available on this day
-      if (!daySchedule || !daySchedule.isAvailable) {
-        return;
-      }
-
-      // Check 2: Must have valid start and end times
-      if (!daySchedule.startTime || !daySchedule.endTime) {
-        return;
-      }
-
-      const startTime = daySchedule.startTime;
-      const endTime = daySchedule.endTime;
-
-      const startMinutes = parseTime(startTime);
-      const endMinutes = parseTime(endTime);
-
-      // Check 3: Valid time window
-      if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
-        return;
-      }
-
-      // Get all instruments this instructor teaches
-      const instructorInstruments =
-        instructor.specialties ||
-        (instructor.primaryInstrument ? [instructor.primaryInstrument] : ['Piano']);
-
-      const normalizedInstruments = Array.isArray(instructorInstruments)
-        ? instructorInstruments
-        : [instructorInstruments].filter(Boolean);
-
-      // If no instruments found, default to Piano
-      const instruments = normalizedInstruments.length > 0 ? normalizedInstruments : ['Piano'];
-
-      // Get existing registrations for this instructor on this day
-      const dayIndex = dayMap[day];
-      // Use next trimester registrations during enrollment periods, current trimester otherwise
-      const registrationsToCheck = this._isEnrollmentPeriodActive()
-        ? this.nextTrimesterRegistrations || []
-        : this.registrations;
-
-      const existingRegistrations = registrationsToCheck.filter((reg: RegistrationLike) => {
-        const regInstructorId = reg.instructorId;
-        return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
-      });
-
-      // Generate potential time slots (every 30 minutes from start to end)
-      for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += 30) {
-        const currentTimeStr = formatTimeFromMinutes(currentMinutes);
-
-        // Check if this time slot conflicts with existing registrations
-        const hasConflict = this.#checkTimeSlotConflict(currentMinutes, 30, existingRegistrations);
-
-        if (hasConflict) {
-          continue;
-        }
-
-        // Generate slots for different lesson lengths
-        instruments.forEach(instrument => {
-          [30, 45, 60].forEach(length => {
-            // Check if this length would fit within instructor's available window
-            if (currentMinutes + length > endMinutes) {
-              return;
-            }
-
-            // Check if this length would conflict with existing registrations
-            const lengthConflict = this.#checkTimeSlotConflict(
-              currentMinutes,
-              length,
-              existingRegistrations
-            );
-            if (lengthConflict) {
-              return;
-            }
-
-            const slotTime = formatDisplayTime(currentTimeStr);
-
-            timeSlots.push({
-              day: day,
-              dayName: dayNames[index],
-              time: currentTimeStr,
-              timeFormatted: slotTime,
-              length: length,
-              instrument: instrument.trim(),
-              instructor: instructor,
-              instructorId: instructor.id,
-            });
-          });
-        });
-      }
-    });
-
-    return timeSlots.slice(0, 15); // Increased limit since we have better filtering
-  }
-
-  /**
-   * Filter registrations, excluding the one being modified (if any)
-   * @param {Array} registrations - Array of registrations to filter
-   * @returns {Array} Filtered registrations
-   * @private
-   */
-  #getFilteredRegistrationsForConflictCheck(registrations: RegistrationLike[]): RegistrationLike[] {
-    if (!this._selectedPreviousRegistrationId) {
-      return registrations;
-    }
-
-    return registrations.filter((reg: RegistrationLike) => {
-      return reg.id !== this._selectedPreviousRegistrationId;
-    });
-  }
-
-  /**
-   * Check if a time slot conflicts with existing registrations
-   * @param {number} slotStartMinutes - Start time in minutes since midnight
-   * @param {number} slotLengthMinutes - Length of the slot in minutes
-   * @param {Array} existingRegistrations - Array of existing registrations
-   * @returns {boolean} True if there's a conflict
-   */
-  #checkTimeSlotConflict(slotStartMinutes: number, slotLengthMinutes: number, existingRegistrations: RegistrationLike[]): boolean {
-    const slotEndMinutes = slotStartMinutes + slotLengthMinutes;
-
-    // Filter out the registration being modified
-    const filteredRegistrations =
-      this.#getFilteredRegistrationsForConflictCheck(existingRegistrations);
-
-    return filteredRegistrations.some((reg: RegistrationLike) => {
-      const regStartMinutes = parseTime(reg.startTime || '');
-      if (regStartMinutes === null) return false;
-
-      const regEndMinutes = regStartMinutes + (reg.length || 30);
-
-      // Check for any overlap: slot starts before registration ends AND slot ends after registration starts
-      const hasOverlap = slotStartMinutes < regEndMinutes && slotEndMinutes > regStartMinutes;
-
-      return hasOverlap;
-    });
-  }
-
-  /**
-   * Format time string for display
-   */
 
   /**
    * Initialize the hybrid registration interface
@@ -1742,7 +1072,7 @@ export class ParentRegistrationForm {
     // Determine which instructors to include (filter by student grade first)
     const studentGrade = this.#getSelectedStudentGrade();
     let instructorsToInclude = this.instructors.filter((instructor: InstructorLike) =>
-      this.#isInstructorGradeEligible(instructor, studentGrade)
+      isInstructorGradeEligible(instructor, studentGrade)
     );
 
     // Filter by selected instructor
@@ -1917,7 +1247,7 @@ export class ParentRegistrationForm {
 
       const existingRegistrations = registrationsToCheck.filter((reg: RegistrationLike) => {
         const regInstructorId = reg.instructorId;
-        return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
+        return regInstructorId === instructor.id && reg.day === getRegistrationDayName(day);
       });
 
       // Generate potential time slots (every 30 minutes from start to end)
@@ -1925,7 +1255,7 @@ export class ParentRegistrationForm {
         const currentTimeStr = formatTimeFromMinutes(currentMinutes);
 
         // Check if this time slot conflicts with existing registrations
-        const hasConflict = this.#checkTimeSlotConflict(currentMinutes, 30, existingRegistrations);
+        const hasConflict = checkTimeSlotConflict(currentMinutes, 30, existingRegistrations, this._selectedPreviousRegistrationId);
 
         if (hasConflict) {
           continue;
@@ -1942,10 +1272,11 @@ export class ParentRegistrationForm {
             }
 
             // Check if this length would conflict with existing registrations
-            const lengthConflict = this.#checkTimeSlotConflict(
+            const lengthConflict = checkTimeSlotConflict(
               currentMinutes,
               length,
-              existingRegistrations
+              existingRegistrations,
+              this._selectedPreviousRegistrationId
             );
             if (lengthConflict) {
               return;
