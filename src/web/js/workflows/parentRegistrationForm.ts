@@ -36,6 +36,11 @@ import type {
   RegistrationSubmitData,
   TimeSlot,
 } from '../types/registrationTypes.js';
+import {
+  createFilterChip,
+  createInstructorCard,
+  createTimeSlotElement,
+} from '../components/registrationForm/registrationFormElements.js';
 
 export type { InstructorLike, StudentLike, ClassLike, RegistrationLike, RegistrationSubmitData };
 
@@ -133,70 +138,6 @@ export class ParentRegistrationForm {
 
     // Clear any form data
     this.#clearGroupForm();
-  }
-
-  /**
-   * Create a filter chip with appropriate styling
-   */
-  #createFilterChip(type: string, value: string, text: string, isDefault: boolean = false, availability: string = 'available'): HTMLDivElement {
-    const chip = document.createElement('div');
-    chip.className = `chip ${type}-chip`;
-    chip.dataset.type = type;
-    chip.dataset.value = value;
-    chip.textContent = text;
-
-    // Apply base styles
-    const styles: Record<string, string> = {
-      padding: '8px 12px',
-      borderRadius: '16px',
-      display: 'flex',
-      alignItems: 'center',
-      border: '2px solid',
-      transition: 'all 0.3s',
-    };
-
-    // Set active state for default chips
-    if (isDefault) {
-      chip.classList.add('active', 'selected');
-      // Also add the availability class for proper deselection behavior
-      if (availability === 'available') {
-        chip.classList.add('available');
-      } else if (availability === 'limited') {
-        chip.classList.add('limited');
-      } else if (availability === 'unavailable') {
-        chip.classList.add('unavailable');
-      }
-      styles.background = '#2b68a4';
-      styles.color = 'white';
-      styles.borderColor = '#2b68a4';
-      styles.cursor = 'pointer';
-    } else {
-      // Apply availability-based styling
-      if (availability === 'unavailable') {
-        chip.classList.add('disabled', 'unavailable');
-        styles.background = '#ffebee';
-        styles.borderColor = '#f44336';
-        styles.cursor = 'not-allowed';
-        styles.opacity = '0.6';
-      } else if (availability === 'limited') {
-        chip.classList.add('limited');
-        styles.background = '#fff3e0';
-        styles.borderColor = '#ff9800';
-        styles.cursor = 'pointer';
-      } else {
-        chip.classList.add('available');
-        styles.background = '#e8f5e8';
-        styles.borderColor = '#4caf50';
-        styles.cursor = 'pointer';
-      }
-    }
-
-    // Apply inline styles
-    chip.style.cssText = Object.entries(styles)
-      .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
-      .join('; ');
-
-    return chip;
   }
 
   /**
@@ -692,7 +633,7 @@ export class ParentRegistrationForm {
 
     // Create "All Instructors" chip - only default if no specific instructor is selected
     const isAllDefault = !selectedInstructor || selectedInstructor === 'all';
-    const allChip = this.#createFilterChip(
+    const allChip = createFilterChip(
       'instructor',
       'all',
       `All Instructors (${totalSlots} slots)`,
@@ -711,7 +652,7 @@ export class ParentRegistrationForm {
       const slots = instructorAvailability[instructor.id] || 0;
       const chipText = `${instructor.firstName} ${instructor.lastName} (${slots} slots)`;
       const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
-      const chip = this.#createFilterChip(
+      const chip = createFilterChip(
         'instructor',
         instructor.id,
         chipText,
@@ -751,7 +692,7 @@ export class ParentRegistrationForm {
 
     // Create "All Days" chip - only default if no specific day is selected
     const isAllDefault = !selectedDay || selectedDay === 'all';
-    const allChip = this.#createFilterChip(
+    const allChip = createFilterChip(
       'day',
       'all',
       `All Days (${totalSlots} slots)`,
@@ -768,7 +709,7 @@ export class ParentRegistrationForm {
       const slots = dayAvailability[day] || 0;
       const chipText = `${dayNames[index]} (${slots} slots)`;
       const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
-      const chip = this.#createFilterChip('day', day, chipText, false, availability);
+      const chip = createFilterChip('day', day, chipText, false, availability);
       dayContainer.appendChild(chip);
     });
   }
@@ -801,7 +742,7 @@ export class ParentRegistrationForm {
 
     // Create "All Instruments" chip - only default if no specific instrument is selected
     const isAllDefault = !selectedInstrument || selectedInstrument === 'all';
-    const allChip = this.#createFilterChip(
+    const allChip = createFilterChip(
       'instrument',
       'all',
       `All Instruments (${totalSlots} slots)`,
@@ -816,7 +757,7 @@ export class ParentRegistrationForm {
       const slots = instrumentAvailability[instrument] || 0;
       const chipText = `${instrument} (${slots} slots)`;
       const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
-      const chip = this.#createFilterChip('instrument', instrument, chipText, false, availability);
+      const chip = createFilterChip('instrument', instrument, chipText, false, availability);
       instrumentContainer.appendChild(chip);
     });
   }
@@ -991,7 +932,7 @@ export class ParentRegistrationForm {
 
     // Create "All Lengths" chip - only default if no specific length is selected
     const isAllDefault = !selectedLength || selectedLength === 'all';
-    const allChip = this.#createFilterChip(
+    const allChip = createFilterChip(
       'length',
       'all',
       `All Lengths (${totalSlots} slots)`,
@@ -1008,7 +949,7 @@ export class ParentRegistrationForm {
       const slots = availableLengths[length] || 0;
       const chipText = `${length} min (${slots} slots)`;
       const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
-      const chip = this.#createFilterChip(
+      const chip = createFilterChip(
         'length',
         length.toString(),
         chipText,
@@ -1043,7 +984,7 @@ export class ParentRegistrationForm {
     eligibleInstructors.forEach((instructor: InstructorLike) => {
       const timeSlots = this.#generateInstructorTimeSlots(instructor);
       if (timeSlots.length > 0) {
-        const card = this.#createInstructorCard(instructor, timeSlots);
+        const card = createInstructorCard(instructor, timeSlots);
         timeslotGrid.appendChild(card);
       }
     });
@@ -1208,72 +1149,6 @@ export class ParentRegistrationForm {
 
       return hasOverlap;
     });
-  }
-
-  /**
-   * Create an instructor card with time slots
-   */
-  #createInstructorCard(instructor: InstructorLike, timeSlots: TimeSlot[]): HTMLDivElement {
-    const card = document.createElement('div');
-    card.className = 'instructor-card';
-    card.style.cssText =
-      'border: 2px solid #ddd; margin: 15px 0; padding: 20px; border-radius: 8px; transition: border-color 0.3s;';
-
-    const header = document.createElement('h6');
-    header.style.cssText =
-      'margin: 0 0 15px 0; color: #2b68a4; display: flex; align-items: center;';
-
-    // Get all instruments this instructor teaches
-    const instructorInstruments =
-      instructor.specialties ||
-      (instructor.primaryInstrument ? [instructor.primaryInstrument] : ['Piano']);
-
-    const normalizedInstruments = Array.isArray(instructorInstruments)
-      ? instructorInstruments
-      : [instructorInstruments].filter(Boolean);
-
-    const instrumentsDisplay =
-      normalizedInstruments.length > 0 ? normalizedInstruments.join(', ') : 'Piano';
-
-    header.innerHTML = `<b>${instructor.firstName} ${instructor.lastName} - ${instrumentsDisplay}</b> <span style="margin-left: 10px; font-size: 12px; background: #e8f5e8; color: #4caf50; padding: 4px 8px; border-radius: 12px;">${timeSlots.length} available</span>`;
-
-    const timeslotGrid = document.createElement('div');
-    timeslotGrid.className = 'timeslot-grid';
-    timeslotGrid.style.cssText = 'display: flex; flex-wrap: wrap; gap: 10px;';
-
-    timeSlots.forEach(slot => {
-      const timeslotElement = this.#createTimeSlotElement(slot);
-      timeslotGrid.appendChild(timeslotElement);
-    });
-
-    card.appendChild(header);
-    card.appendChild(timeslotGrid);
-
-    return card;
-  }
-
-  /**
-   * Create a time slot element
-   */
-  #createTimeSlotElement(slot: TimeSlot): HTMLDivElement {
-    const element = document.createElement('div');
-    element.className = 'timeslot available';
-    element.dataset.instructorId = slot.instructor!.id;
-    element.dataset.day = slot.day;
-    element.dataset.time = slot.time;
-    element.dataset.length = String(slot.length);
-    element.dataset.instrument = slot.instrument;
-
-    element.style.cssText =
-      'border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);';
-
-    element.innerHTML = `
-      <div style="font-weight: bold; color: #2e7d32; font-size: 14px;">${slot.dayName}</div>
-      <div style="font-weight: bold; color: #2e7d32; font-size: 16px;">${slot.timeFormatted}</div>
-      <div style="font-size: 12px; color: #666;">${slot.length}min • ${slot.instrument}</div>
-    `;
-
-    return element;
   }
 
   /**
@@ -1899,7 +1774,7 @@ export class ParentRegistrationForm {
         selectedLength
       );
       if (timeSlots.length > 0) {
-        const card = this.#createInstructorCard(instructor, timeSlots);
+        const card = createInstructorCard(instructor, timeSlots);
         timeslotGrid.appendChild(card);
       }
     });

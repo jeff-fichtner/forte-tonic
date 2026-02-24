@@ -53,9 +53,9 @@
 
 ### Step 2a: Presentation Helpers
 
-- [ ] T007 [US2] Extract presentation helper functions (`#createFilterChip()`, `#createInstructorCard()`, `#createTimeSlotElement()`) from `src/web/js/workflows/parentRegistrationForm.ts` into `src/web/js/components/registrationForm/registrationFormElements.ts` — pure element factories that take data and return DOM elements, no `this` references
-- [ ] T008 [US2] Update `src/web/js/workflows/parentRegistrationForm.ts` to import and call extracted presentation helpers instead of inline private methods
-- [ ] T009 [US2] Verify compilation: `npx tsc --noEmit -p tsconfig.web.json` — zero errors after presentation helper extraction
+- [x] T007 [US2] Extract presentation helper functions (`#createFilterChip()`, `#createInstructorCard()`, `#createTimeSlotElement()`) from `src/web/js/workflows/parentRegistrationForm.ts` into `src/web/js/components/registrationForm/registrationFormElements.ts` — pure element factories that take data and return DOM elements, no `this` references
+- [x] T008 [US2] Update `src/web/js/workflows/parentRegistrationForm.ts` to import and call extracted presentation helpers instead of inline private methods
+- [x] T009 [US2] Verify compilation: `npx tsc --noEmit -p tsconfig.web.json` — zero errors after presentation helper extraction
 
 ### Step 2b: Availability Engine
 
