@@ -5,49 +5,26 @@
 
 import { RegistrationType } from '/utils/values/registrationType.js';
 import { DomHelpers } from '../utilities/domHelpers.js';
-import { formatClassNameWithGradeCorrection } from '../utilities/classNameFormatter.js';
-import { ClassManager } from '../utilities/classManager.js';
-import { formatTime } from '../extensions/numberExtensions.js';
 import {
-  parseTime,
-  formatTimeFromMinutes,
-  formatDisplayTime,
-} from '../utilities/registrationForm/timeHelpers.js';
-import {
-  validateBusTimeRestrictions,
-  formatValidationErrors,
-} from '../utilities/registrationForm/registrationValidator.js';
-import { RegistrationFormText, BusDeadlines } from '../constants/registrationFormConstants.js';
-import {
-  getOrCreateErrorContainer,
-  showErrorMessage,
   clearErrorMessage,
-  getOrCreateInfoContainer,
-  showInfoMessage,
-  clearInfoMessage,
 } from '../utilities/registrationForm/messageDisplay.js';
-import { FORTE_PROGRAM_EMAIL } from '../constants.js';
 import type {
   InstructorLike,
-  DaySchedule,
   StudentLike,
   ClassLike,
   RegistrationLike,
   RegistrationSubmitData,
   TimeSlot,
 } from '../types/registrationTypes.js';
+import { CascadingFilterChips } from '../components/registrationForm/cascadingFilterChips.js';
+import { ParentGroupRegistration } from '../components/registrationForm/parentGroupRegistration.js';
+import { ParentPrivateSubmission } from '../components/registrationForm/parentPrivateSubmission.js';
 import {
-  createFilterChip,
-  createInstructorCard,
-  createTimeSlotElement,
-} from '../components/registrationForm/registrationFormElements.js';
-import {
-  isInstructorGradeEligible,
-  getRegistrationDayName,
-  checkTimeSlotConflict,
-  generateInstructorTimeSlots,
-  calculateCascadingAvailability,
-} from '../utilities/registrationForm/availabilityEngine.js';
+  showConfirmationModal,
+  showConflictModal,
+  setButtonLoading,
+  restorePageScrolling,
+} from '../components/registrationForm/registrationFormModals.js';
 
 export type { InstructorLike, StudentLike, ClassLike, RegistrationLike, RegistrationSubmitData };
 
@@ -65,7 +42,9 @@ export class ParentRegistrationForm {
   nextTrimesterRegistrations: RegistrationLike[];
   selectedLesson: TimeSlot | null;
   _selectedPreviousRegistrationId: string | null;
-  regenerateTimeout: ReturnType<typeof setTimeout> | undefined;
+  cascadingFilterChips: CascadingFilterChips | null;
+  groupRegistration: ParentGroupRegistration | null;
+  privateSubmission: ParentPrivateSubmission | null;
 
   /**
    * Constructor
@@ -91,6 +70,9 @@ export class ParentRegistrationForm {
     // Initialize basic properties
     this.selectedLesson = null;
     this._selectedPreviousRegistrationId = null; // Track selected registration for backward linking
+    this.cascadingFilterChips = null;
+    this.groupRegistration = null;
+    this.privateSubmission = null;
 
     // Defer complex initialization to avoid private method ordering issues
     setTimeout(() => {
@@ -134,355 +116,23 @@ export class ParentRegistrationForm {
     // Re-attach registration type dropdown listener
     this.#attachRegistrationTypeListener();
 
-    // Regenerate filter chips with new data
-    this.#generateInstrumentChips();
-    this.#generateDayChips();
-    this.#generateLengthChips();
-    this.#generateInstructorChips();
-
-    // Regenerate time slots
-    this.#generateTimeSlots();
+    // Update cascading filter chips data and refresh
+    if (this.cascadingFilterChips) {
+      this.cascadingFilterChips.updateData({
+        instructors: this.instructors,
+        registrations: this.registrations,
+        nextTrimesterRegistrations: this.nextTrimesterRegistrations,
+        selectedPreviousRegistrationId: this._selectedPreviousRegistrationId,
+        isEnrollmentPeriod: this._isEnrollmentPeriodActive(),
+        parentChildren: this.parentChildren,
+      });
+      this.cascadingFilterChips.refreshChips();
+    }
 
     // Clear any form data
-    this.#clearGroupForm();
-  }
-
-  /**
-   * Get the currently selected student's grade
-   * @returns {number|null} Student grade (0-8) or null if no student selected
-   */
-  #getSelectedStudentGrade(): number | null {
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
-    const selectedStudentId = studentSelect?.value;
-
-    if (!selectedStudentId) {
-      return null;
+    if (this.groupRegistration) {
+      this.groupRegistration.clearForm();
     }
-
-    const selectedStudent = this.students.find((s: StudentLike) => {
-      const studentId = s.id;
-      return studentId && studentId.toString() === selectedStudentId.toString();
-    });
-
-    const grade = selectedStudent?.grade;
-    if (grade === null || grade === undefined) return null;
-    return typeof grade === 'number' ? grade : Number(grade);
-  }
-
-  /**
-   * Generate instructor filter chips dynamically using cascading filters
-   */
-  #generateInstructorChips(): void {
-    // Find the instructor container specifically in parent registration
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) return;
-
-    const instructorSection = Array.from(parentContainer.querySelectorAll('.filter-section')).find(
-      section => {
-        const label = section.querySelector('label');
-        return label && label.textContent.includes('Instructors');
-      }
-    );
-
-    if (!instructorSection) {
-      console.warn('Parent instructor chip container not found');
-      return;
-    }
-
-    const instructorContainer = instructorSection.querySelector('.chip-container');
-    if (!instructorContainer) {
-      console.warn('Parent instructor chip container not found');
-      return;
-    }
-
-    // Clear existing instructor chips
-    const existingInstructorChips = instructorContainer.querySelectorAll('.instructor-chip');
-    existingInstructorChips.forEach(chip => chip.remove());
-
-    // Get current filter context - only consider upstream filters (instrument, day, length)
-    const selectedInstrument =
-      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value;
-    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value;
-    const selectedLength = (parentContainer.querySelector('.length-chip.active') as HTMLElement | null)?.dataset.value;
-    const selectedInstructor =
-      (parentContainer.querySelector('.instructor-chip.active') as HTMLElement | null)?.dataset.value;
-
-    // Calculate availability counts for each instructor based on cascading filters
-    const instructorAvailabilityMap = calculateCascadingAvailability(
-      'instructor',
-      this.instructors,
-      this.registrations,
-      this.nextTrimesterRegistrations,
-      this.#getSelectedStudentGrade(),
-      this._selectedPreviousRegistrationId,
-      this._isEnrollmentPeriodActive(),
-      {
-        instrument: selectedInstrument,
-        day: selectedDay,
-        length: selectedLength ? parseInt(selectedLength) : undefined,
-      }
-    );
-    let totalSlots = 0;
-    instructorAvailabilityMap.forEach(v => { totalSlots += v.available; });
-
-    // Create "All Instructors" chip - only default if no specific instructor is selected
-    const isAllDefault = !selectedInstructor || selectedInstructor === 'all';
-    const allChip = createFilterChip(
-      'instructor',
-      'all',
-      `All Instructors (${totalSlots} slots)`,
-      isAllDefault,
-      'available'
-    );
-    instructorContainer.appendChild(allChip);
-
-    // Create individual instructor chips (filtered by student grade)
-    const studentGrade = this.#getSelectedStudentGrade();
-    const eligibleInstructors = this.instructors.filter((instructor: InstructorLike) =>
-      isInstructorGradeEligible(instructor, studentGrade)
-    );
-
-    eligibleInstructors.forEach((instructor: InstructorLike) => {
-      const slots = instructorAvailabilityMap.get(instructor.id)?.available || 0;
-      const chipText = `${instructor.firstName} ${instructor.lastName} (${slots} slots)`;
-      const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
-      const chip = createFilterChip(
-        'instructor',
-        instructor.id,
-        chipText,
-        false,
-        availability
-      );
-      instructorContainer.appendChild(chip);
-    });
-  }
-
-  /**
-   * Generate day filter chips dynamically based on selected instrument (cascading)
-   */
-  #generateDayChips(): void {
-    // Find the day container specifically in parent registration
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) return;
-
-    const dayContainer = parentContainer.querySelector('#day-chips-container');
-    if (!dayContainer) {
-      console.warn('Parent day chip container not found');
-      return;
-    }
-
-    // Clear existing day chips
-    const existingDayChips = dayContainer.querySelectorAll('.day-chip');
-    existingDayChips.forEach(chip => chip.remove());
-
-    // Get current filter context - only consider upstream filters (instrument)
-    const selectedInstrument =
-      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value;
-    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value;
-
-    // Calculate availability counts for each day based on selected instrument only
-    const dayAvailabilityMap = calculateCascadingAvailability(
-      'day',
-      this.instructors,
-      this.registrations,
-      this.nextTrimesterRegistrations,
-      this.#getSelectedStudentGrade(),
-      this._selectedPreviousRegistrationId,
-      this._isEnrollmentPeriodActive(),
-      { instrument: selectedInstrument }
-    );
-    let totalSlots = 0;
-    dayAvailabilityMap.forEach(v => { totalSlots += v.available; });
-
-    // Create "All Days" chip - only default if no specific day is selected
-    const isAllDefault = !selectedDay || selectedDay === 'all';
-    const allChip = createFilterChip(
-      'day',
-      'all',
-      `All Days (${totalSlots} slots)`,
-      isAllDefault,
-      'available'
-    );
-    dayContainer.appendChild(allChip);
-
-    // Create individual day chips
-    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-
-    days.forEach((day, index) => {
-      const slots = dayAvailabilityMap.get(day)?.available || 0;
-      const chipText = `${dayNames[index]} (${slots} slots)`;
-      const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
-      const chip = createFilterChip('day', day, chipText, false, availability);
-      dayContainer.appendChild(chip);
-    });
-  }
-
-  /**
-   * Generate instrument filter chips dynamically (top of cascade - no upstream filters)
-   */
-  #generateInstrumentChips(): void {
-    // Find the instrument container specifically in parent registration
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) return;
-
-    const instrumentContainer = parentContainer.querySelector('#instrument-chips-container');
-    if (!instrumentContainer) {
-      console.warn('Parent instrument chip container not found');
-      return;
-    }
-
-    // Clear existing instrument chips
-    const existingInstrumentChips = instrumentContainer.querySelectorAll('.instrument-chip');
-    existingInstrumentChips.forEach(chip => chip.remove());
-
-    // Get current selection (for restoring active state)
-    const selectedInstrument =
-      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value;
-
-    // Calculate availability for each instrument (no upstream filters - top of cascade)
-    const instrumentAvailabilityMap = calculateCascadingAvailability(
-      'instrument',
-      this.instructors,
-      this.registrations,
-      this.nextTrimesterRegistrations,
-      this.#getSelectedStudentGrade(),
-      this._selectedPreviousRegistrationId,
-      this._isEnrollmentPeriodActive(),
-      {}
-    );
-    let totalSlots = 0;
-    instrumentAvailabilityMap.forEach(v => { totalSlots += v.available; });
-
-    // Create "All Instruments" chip - only default if no specific instrument is selected
-    const isAllDefault = !selectedInstrument || selectedInstrument === 'all';
-    const allChip = createFilterChip(
-      'instrument',
-      'all',
-      `All Instruments (${totalSlots} slots)`,
-      isAllDefault,
-      'available'
-    );
-    instrumentContainer.appendChild(allChip);
-
-    // Create individual instrument chips
-    const uniqueInstruments = Array.from(instrumentAvailabilityMap.keys()).sort();
-    uniqueInstruments.forEach(instrument => {
-      const slots = instrumentAvailabilityMap.get(instrument)?.available || 0;
-      const chipText = `${instrument} (${slots} slots)`;
-      const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
-      const chip = createFilterChip('instrument', instrument, chipText, false, availability);
-      instrumentContainer.appendChild(chip);
-    });
-  }
-
-  /**
-   * Generate length chips based on cascading filters (instrument and day)
-   */
-  #generateLengthChips(): void {
-    // Find the length container specifically in parent registration
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) return;
-
-    const lengthContainer = parentContainer.querySelector('#length-chips-container');
-    if (!lengthContainer) {
-      console.warn('Parent length chip container not found');
-      return;
-    }
-
-    // Clear existing length chips
-    const existingLengthChips = lengthContainer.querySelectorAll('.length-chip');
-    existingLengthChips.forEach(chip => chip.remove());
-
-    // Get current filter context - only consider upstream filters (instrument and day)
-    const selectedInstrument =
-      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value;
-    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value;
-    const selectedLength = (parentContainer.querySelector('.length-chip.active') as HTMLElement | null)?.dataset.value;
-
-    // Get available lesson lengths based on cascading filters
-    const lengthAvailabilityMap = calculateCascadingAvailability(
-      'length',
-      this.instructors,
-      this.registrations,
-      this.nextTrimesterRegistrations,
-      this.#getSelectedStudentGrade(),
-      this._selectedPreviousRegistrationId,
-      this._isEnrollmentPeriodActive(),
-      { instrument: selectedInstrument, day: selectedDay }
-    );
-
-    // Calculate total slots across all lengths
-    let totalSlots = 0;
-    lengthAvailabilityMap.forEach(v => { totalSlots += v.available; });
-
-    // Create "All Lengths" chip - only default if no specific length is selected
-    const isAllDefault = !selectedLength || selectedLength === 'all';
-    const allChip = createFilterChip(
-      'length',
-      'all',
-      `All Lengths (${totalSlots} slots)`,
-      isAllDefault,
-      'available'
-    );
-    lengthContainer.appendChild(allChip);
-
-    // Standard lesson lengths in minutes
-    const standardLengths = [30, 45, 60];
-
-    // Create individual length chips
-    standardLengths.forEach(length => {
-      const slots = lengthAvailabilityMap.get(String(length))?.available || 0;
-      const chipText = `${length} min (${slots} slots)`;
-      const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
-      const chip = createFilterChip(
-        'length',
-        length.toString(),
-        chipText,
-        false,
-        availability
-      );
-      lengthContainer.appendChild(chip);
-    });
-  }
-
-  /**
-   * Generate time slots for all instructors
-   */
-  #generateTimeSlots(): void {
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) return;
-
-    const timeslotGrid = parentContainer.querySelector('.instructor-timeslot-grid');
-    if (!timeslotGrid) return;
-
-    // Clear existing instructor cards
-    const existingCards = timeslotGrid.querySelectorAll('.instructor-card');
-    existingCards.forEach(card => card.remove());
-
-    // Filter instructors by student grade eligibility
-    const studentGrade = this.#getSelectedStudentGrade();
-    const eligibleInstructors = this.instructors.filter((instructor: InstructorLike) =>
-      isInstructorGradeEligible(instructor, studentGrade)
-    );
-
-    // Generate cards for each eligible instructor
-    eligibleInstructors.forEach((instructor: InstructorLike) => {
-      const timeSlots = generateInstructorTimeSlots(
-        instructor,
-        this.registrations,
-        this.nextTrimesterRegistrations,
-        this._selectedPreviousRegistrationId,
-        this._isEnrollmentPeriodActive()
-      );
-      if (timeSlots.length > 0) {
-        const card = createInstructorCard(instructor, timeSlots);
-        timeslotGrid.appendChild(card);
-      }
-    });
-
-    // Attach listeners after generating
-    this.#attachTimeSlotListeners();
   }
 
   /**
@@ -501,33 +151,67 @@ export class ParentRegistrationForm {
     // Render registration selector if in enrollment period
     this._renderRegistrationSelector();
 
-    // Generate all filter chips dynamically with cascading order
-    // Order: Instrument → Day → Length → Instructor
-    this.#generateInstrumentChips();
-    this.#generateDayChips();
-    this.#generateLengthChips();
-    this.#generateInstructorChips();
+    // Create (or re-create) the cascading filter chips component
+    if (this.cascadingFilterChips) {
+      this.cascadingFilterChips.destroy();
+    }
+    this.cascadingFilterChips = new CascadingFilterChips({
+      instructors: this.instructors,
+      registrations: this.registrations,
+      nextTrimesterRegistrations: this.nextTrimesterRegistrations,
+      selectedPreviousRegistrationId: this._selectedPreviousRegistrationId,
+      isEnrollmentPeriod: this._isEnrollmentPeriodActive(),
+      parentChildren: this.parentChildren,
+      onTimeSlotSelected: (slot: TimeSlot | null) => {
+        this.selectedLesson = slot;
+      },
+    });
+    this.cascadingFilterChips.initialize();
 
-    // Generate time slots dynamically
-    this.#generateTimeSlots();
+    // Create (or re-create) the private submission component
+    this.privateSubmission = new ParentPrivateSubmission({
+      instructors: this.instructors,
+      getSelectedLesson: () => this.selectedLesson,
+      setSelectedLesson: (slot: TimeSlot | null) => { this.selectedLesson = slot; },
+      isEnrollmentPeriodActive: () => this._isEnrollmentPeriodActive(),
+      selectedPreviousRegistrationId: () => this._selectedPreviousRegistrationId,
+      showConfirmationModal: (message, onConfirm) => showConfirmationModal(message, onConfirm),
+      showConflictModal: (message) => showConflictModal(message),
+      setButtonLoading: (button, isLoading) => setButtonLoading(button, isLoading),
+      onSubmitSuccess: () => {
+        this.#clearForm();
+        this.#initializeHybridInterface();
+      },
+      sendDataFunction: this.sendDataFunction,
+    });
+    this.privateSubmission.initialize();
 
-    // Handle filter chips
-    this.#attachFilterChipListeners();
-
-    // Handle time slot selection
-    this.#attachTimeSlotListeners();
-
-    // Handle private registration submit button
-    this.#attachSubmitButtonListener();
-
-    // Handle group registration submit button
-    this.#attachGroupSubmitButtonListener();
+    // Create (or re-create) the group registration component
+    this.groupRegistration = new ParentGroupRegistration({
+      classes: this.classes,
+      registrations: this.registrations,
+      nextTrimesterRegistrations: this.nextTrimesterRegistrations,
+      students: this.students,
+      instructors: this.instructors,
+      getSelectedStudentId: () => {
+        const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
+        return studentSelect?.value || null;
+      },
+      isEnrollmentPeriodActive: () => this._isEnrollmentPeriodActive(),
+      selectedPreviousRegistrationId: () => this._selectedPreviousRegistrationId,
+      showConfirmationModal: (message, onConfirm) => showConfirmationModal(message, onConfirm),
+      showConflictModal: (message) => showConflictModal(message),
+      setButtonLoading: (button, isLoading) => setButtonLoading(button, isLoading),
+      onSubmitSuccess: () => {
+        this.groupRegistration!.clearForm();
+        this.#initializeHybridInterface();
+      },
+      sendDataFunction: this.sendDataFunction,
+    });
+    this.groupRegistration.initialize();
 
     // Handle clear button
     this.#attachClearButtonListener();
-
-    // Attach keyboard handlers for time slot interface
-    this.#attachTimeSlotKeyboardHandlers();
   }
 
   /**
@@ -595,25 +279,27 @@ export class ParentRegistrationForm {
           // If group registration type is already selected, repopulate classes for new student
           const registrationTypeSelect = document.getElementById('parent-registration-type-select') as HTMLSelectElement | null;
           if (registrationTypeSelect && registrationTypeSelect.value === RegistrationType.GROUP) {
-            this.#populateParentClassesDropdown();
+            if (this.groupRegistration) {
+              this.groupRegistration.populateClassesDropdown();
 
-            // Re-check any currently selected class for conflicts with the new student
-            const classSelect = document.getElementById('parent-class-select') as HTMLSelectElement | null;
-            if (classSelect && classSelect.value) {
-              this.#handleClassSelection(classSelect.value);
+              // Re-check any currently selected class for conflicts with the new student
+              const classSelect = document.getElementById('parent-class-select') as HTMLSelectElement | null;
+              if (classSelect && classSelect.value) {
+                this.groupRegistration.handleClassSelection(classSelect.value);
+              }
             }
           }
 
           // Regenerate filter chips and time slots based on new student's grade
-          this.#generateInstrumentChips();
-          this.#generateDayChips();
-          this.#generateLengthChips();
-          this.#generateInstructorChips();
-          this.#generateTimeSlots();
-          this.#attachFilterChipListeners();
-
-          // Clear any selected time slots when student changes
-          this.#clearTimeSlotSelection();
+          if (this.cascadingFilterChips) {
+            this.cascadingFilterChips.updateData({
+              selectedPreviousRegistrationId: this._selectedPreviousRegistrationId,
+              isEnrollmentPeriod: this._isEnrollmentPeriodActive(),
+            });
+            this.cascadingFilterChips.refreshChips();
+            this.cascadingFilterChips.clearSelection();
+          }
+          this.selectedLesson = null;
         } else {
           this.#hideAllRegistrationContainers();
         }
@@ -674,11 +360,13 @@ export class ParentRegistrationForm {
           groupContainer.style.display = 'block';
 
           // Populate the classes dropdown
-          this.#populateParentClassesDropdown();
+          if (this.groupRegistration) {
+            this.groupRegistration.populateClassesDropdown();
+          }
         }
 
         // Restore page scrolling to prevent scroll lock
-        this.#restorePageScrolling();
+        restorePageScrolling();
 
         // Initialize Materialize select components
         setTimeout(() => {
@@ -695,798 +383,6 @@ export class ParentRegistrationForm {
     }
   }
 
-  /**
-   * Populate the parent classes dropdown with available classes
-   */
-  #populateParentClassesDropdown(): void {
-    const classSelect = document.getElementById('parent-class-select') as HTMLSelectElement | null;
-    if (!classSelect || !this.classes) {
-      console.warn('Parent class select not found or no classes available');
-      return;
-    }
-
-    // Get selected student ID
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
-    const selectedStudentId = studentSelect?.value;
-
-    if (!selectedStudentId) {
-      console.warn('No student selected for class filtering');
-      return;
-    }
-
-    // Get the selected student to access their grade
-    const selectedStudent = this.students.find((s: StudentLike) => {
-      // Handle both plain string IDs and value objects
-      const studentId = s.id;
-      return studentId && studentId.toString() === selectedStudentId.toString();
-    });
-    const studentGrade = selectedStudent?.grade;
-
-    // Helper function to check grade eligibility
-    // Grades are always numbers 0-8 (0 = Kindergarten, 1-8 = grades 1-8)
-    const isGradeEligible = (studentGrade: number | string | null | undefined, minGrade: number | undefined, maxGrade: number | undefined): boolean => {
-      const gradeNum = Number(studentGrade);
-      const minNum = Number(minGrade);
-      const maxNum = Number(maxGrade);
-      return gradeNum >= minNum && gradeNum <= maxNum;
-    };
-
-    // Filter classes where student is NOT already enrolled AND grade is eligible
-    const availableClasses = this.classes.filter((cls: ClassLike) => {
-      // First, filter out restricted classes using the database field
-      if (cls.isRestricted) {
-        return false;
-      }
-
-      // Filter by grade eligibility if student has a grade
-      if (studentGrade !== null && studentGrade !== undefined) {
-        const eligible = isGradeEligible(studentGrade, cls.minimumGrade, cls.maximumGrade);
-        if (!eligible) {
-          return false;
-        }
-      }
-
-      // Check if student already has a group registration for this class
-      const hasExistingRegistration = this.registrations.some(
-        (registration: RegistrationLike) =>
-          registration.studentId === selectedStudentId &&
-          registration.classId === cls.id &&
-          registration.registrationType === RegistrationType.GROUP
-      );
-
-      return !hasExistingRegistration;
-    });
-
-    // Destroy existing Materialize select instance before modifying
-    if (typeof M !== 'undefined') {
-      const existingInstance = M.FormSelect.getInstance(classSelect) as { destroy(): void } | undefined;
-      if (existingInstance) {
-        existingInstance.destroy();
-      }
-    }
-
-    // Clear existing options
-    classSelect.innerHTML = '';
-
-    // Create default option
-    const defaultOption = document.createElement('option');
-    defaultOption.value = '';
-    defaultOption.textContent = 'Select a class';
-    classSelect.appendChild(defaultOption);
-
-    // Add available class options only
-    availableClasses.forEach((cls: ClassLike) => {
-      const option = document.createElement('option');
-      option.value = cls.id;
-      option.textContent = ClassManager.formatClassNameWithTime(
-        cls,
-        formatClassNameWithGradeCorrection,
-        formatTime as (time: string | undefined) => string
-      );
-      classSelect.appendChild(option);
-    });
-
-    // Show message if no classes available
-    if (availableClasses.length === 0) {
-      const noClassesOption = document.createElement('option');
-      noClassesOption.value = '';
-      noClassesOption.textContent =
-        'No available classes (student already enrolled in all classes)';
-      noClassesOption.disabled = true;
-      classSelect.appendChild(noClassesOption);
-    }
-
-    // Add event listener for class selection
-    classSelect.addEventListener('change', (event: Event) => {
-      this.#handleClassSelection((event.target as HTMLSelectElement).value);
-    });
-
-    // Initialize Materialize select
-    if (typeof M !== 'undefined') {
-      M.FormSelect.init(classSelect);
-    }
-  }
-
-  /**
-   * Handle class selection and check capacity
-   */
-  #handleClassSelection(classId: string): void {
-    const registerButton = document.getElementById('parent-create-group-registration-btn') as HTMLButtonElement | null;
-    // Get or create containers and clear previous states
-    getOrCreateErrorContainer('parent-class-error-message', 'parent-class-select');
-    getOrCreateInfoContainer('parent-class-info-message', 'parent-class-select');
-    clearErrorMessage('parent-class-error-message');
-    clearInfoMessage('parent-class-info-message');
-
-    if (!classId) {
-      // No class selected, disable button and reset text
-      if (registerButton) {
-        registerButton.disabled = true;
-        registerButton.style.opacity = '0.6';
-
-        // Reset button text to default
-        const buttonTextElement = registerButton.querySelector('b');
-        if (buttonTextElement) {
-          buttonTextElement.textContent = 'Register for Class';
-        }
-      }
-      return;
-    }
-
-    // Find the selected class
-    const selectedClass = this.classes.find((cls: ClassLike) => cls.id === classId);
-    if (!selectedClass) {
-      console.warn('Selected class not found:', classId);
-      return;
-    }
-
-    // Count current registrations for this class
-    // During enrollment periods, count next trimester registrations
-    // Outside enrollment periods, count current trimester
-    const registrationsToCheck = this._isEnrollmentPeriodActive()
-      ? this.nextTrimesterRegistrations || []
-      : this.registrations;
-
-    const currentRegistrations = registrationsToCheck.filter((reg: RegistrationLike) => {
-      const regClassId = reg.classId;
-      return regClassId === classId;
-    });
-
-    // Get class capacity (check multiple possible property names)
-    const classCapacity = selectedClass.size;
-    const hasACapacityDefined = classCapacity !== null && classCapacity !== undefined;
-
-    if (!hasACapacityDefined) {
-      // No capacity defined, assume unlimited
-    }
-
-    if (hasACapacityDefined && currentRegistrations.length >= classCapacity) {
-      // Class is full
-      showErrorMessage(
-        'parent-class-error-message',
-        `This class is full. Please email ${FORTE_PROGRAM_EMAIL} to be placed on the waitlist or to explore other options.`
-      );
-      if (registerButton) {
-        registerButton.disabled = true;
-        registerButton.style.opacity = '0.6';
-
-        // Reset button text when disabled
-        const buttonTextElement = registerButton.querySelector('b');
-        if (buttonTextElement) {
-          buttonTextElement.textContent = 'Register for Class';
-        }
-      }
-    } else if (!hasACapacityDefined || classCapacity > 0) {
-      // Class has space (or assume unlimited capacity)
-      // Duplicate and time conflict checking is handled server-side by RegistrationConflictService
-
-      // Check if this is a special waitlist class (Rock Band classes)
-      const isWaitlistClass = ClassManager.isRockBandClass(classId);
-      if (isWaitlistClass) {
-        // Show waitlist message for these special classes
-        showInfoMessage('parent-class-info-message', 'You will be joining the wait list.', 'info');
-
-        // Update button text for waitlist classes
-        if (registerButton) {
-          const buttonTextElement = registerButton.querySelector('b');
-          if (buttonTextElement) {
-            buttonTextElement.textContent = 'Join Wait List';
-          }
-        }
-      } else {
-        // Reset button text for regular classes
-        if (registerButton) {
-          const buttonTextElement = registerButton.querySelector('b');
-          if (buttonTextElement) {
-            buttonTextElement.textContent = 'Register for Class';
-          }
-        }
-      }
-
-      // No conflicts found, enable registration
-      if (registerButton) {
-        registerButton.disabled = false;
-        registerButton.style.opacity = '1';
-      }
-    }
-  }
-
-  /**
-   * Get or create error container for registration messages
-   */
-
-  /**
-   * Attach event listeners to filter chips with cascading logic
-   */
-  #attachFilterChipListeners(): void {
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) return;
-
-    const chips = parentContainer.querySelectorAll(
-      '.chip:not(.unavailable):not([data-listener-attached])'
-    );
-    chips.forEach((_chip: Element) => {
-      const chip = _chip as HTMLElement;
-      chip.addEventListener('click', () => {
-        const chipType = chip.dataset.type;
-        const chipValue = chip.dataset.value;
-
-        // Clear downstream selections when upstream chip is clicked (cascading)
-        this.#clearDownstreamSelections(chipType);
-
-        // Handle chip selection logic
-        const siblings = chip.parentElement!.querySelectorAll('.chip');
-        siblings.forEach((_sibling: Element) => {
-          const sibling = _sibling as HTMLElement;
-          sibling.classList.remove('active', 'selected');
-          if (!sibling.classList.contains('unavailable')) {
-            const isAvailable = sibling.classList.contains('available');
-            const isLimited = sibling.classList.contains('limited');
-            sibling.style.background = isAvailable ? '#e8f5e8' : isLimited ? '#fff3e0' : '#ffebee';
-            sibling.style.color = 'inherit';
-            sibling.style.border = isAvailable
-              ? '2px solid #4caf50'
-              : isLimited
-                ? '2px solid #ff9800'
-                : '2px solid #f44336';
-          }
-        });
-
-        // Activate this chip
-        chip.classList.add('active', 'selected');
-        chip.style.background = '#2b68a4';
-        chip.style.color = 'white';
-        chip.style.border = '2px solid #2b68a4';
-
-        // Regenerate downstream chips based on cascading logic
-        this.#updateCascadingChips(chipType);
-
-        // Debounce the time slot regeneration to prevent race conditions
-        clearTimeout(this.regenerateTimeout);
-        this.regenerateTimeout = setTimeout(() => {
-          // Regenerate time slots based on current filter state
-          this.#regenerateFilteredTimeSlots();
-
-          // Filter time slots based on selection
-          this.#filterTimeSlots();
-        }, 50);
-      });
-      chip.dataset.listenerAttached = 'true';
-    });
-  }
-
-  /**
-   * Clear selections in downstream chip categories when upstream chip is selected
-   */
-  #clearDownstreamSelections(chipType: string | undefined): void {
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) return;
-
-    const cascade = ['instrument', 'day', 'length', 'instructor'];
-    const currentIndex = cascade.indexOf(chipType || '');
-
-    // Clear all downstream selections (chips after current one in cascade)
-    for (let i = currentIndex + 1; i < cascade.length; i++) {
-      const downstreamType = cascade[i];
-      const downstreamChips = parentContainer.querySelectorAll(`.${downstreamType}-chip.active`);
-      downstreamChips.forEach((_chip: Element) => {
-        const chip = _chip as HTMLElement;
-        chip.classList.remove('active', 'selected');
-        // Reset styling
-        const isAvailable = chip.classList.contains('available');
-        const isLimited = chip.classList.contains('limited');
-        chip.style.background = isAvailable ? '#e8f5e8' : isLimited ? '#fff3e0' : '#ffebee';
-        chip.style.color = 'inherit';
-        chip.style.border = isAvailable
-          ? '2px solid #4caf50'
-          : isLimited
-            ? '2px solid #ff9800'
-            : '2px solid #f44336';
-      });
-
-      // Activate the "All" chip for downstream categories
-      const allChip = parentContainer.querySelector(`.${downstreamType}-chip[data-value="all"]`) as HTMLElement | null;
-      if (allChip && !allChip.classList.contains('unavailable')) {
-        allChip.classList.add('active', 'selected');
-        allChip.style.background = '#2b68a4';
-        allChip.style.color = 'white';
-        allChip.style.border = '2px solid #2b68a4';
-      }
-    }
-  }
-
-  /**
-   * Update chips based on cascading logic - only regenerate downstream chips
-   */
-  #updateCascadingChips(changedChipType: string | undefined): void {
-    const cascade = ['instrument', 'day', 'length', 'instructor'];
-    const currentIndex = cascade.indexOf(changedChipType || '');
-
-    // Regenerate only downstream chips (chips after current one in cascade)
-    for (let i = currentIndex + 1; i < cascade.length; i++) {
-      const downstreamType = cascade[i];
-      switch (downstreamType) {
-        case 'day':
-          this.#generateDayChips();
-          break;
-        case 'length':
-          this.#generateLengthChips();
-          break;
-        case 'instructor':
-          this.#generateInstructorChips();
-          break;
-      }
-    }
-
-    // Re-attach listeners to the new downstream chips
-    this.#attachFilterChipListeners();
-  }
-
-  /**
-   * Regenerate time slots based on current filter selections
-   */
-  #regenerateFilteredTimeSlots(): void {
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) return;
-
-    const timeslotGrid = parentContainer.querySelector('.instructor-timeslot-grid');
-    if (!timeslotGrid) return;
-
-    // Store current selection before regenerating
-    const currentSelection = this.selectedLesson;
-    console.log('Regenerating slots, preserving selection:', currentSelection);
-
-    // Get current filter selections
-    const selectedInstructor =
-      (parentContainer.querySelector('.instructor-chip.active') as HTMLElement | null)?.dataset.value || 'all';
-    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value || 'all';
-    const selectedInstrument =
-      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value || 'all';
-    const selectedLength =
-      (parentContainer.querySelector('.length-chip.active') as HTMLElement | null)?.dataset.value || 'all';
-
-    // Clear existing instructor cards
-    const existingCards = timeslotGrid.querySelectorAll('.instructor-card');
-    existingCards.forEach(card => card.remove());
-
-    // Determine which instructors to include (filter by student grade first)
-    const studentGrade = this.#getSelectedStudentGrade();
-    let instructorsToInclude = this.instructors.filter((instructor: InstructorLike) =>
-      isInstructorGradeEligible(instructor, studentGrade)
-    );
-
-    // Filter by selected instructor
-    if (selectedInstructor !== 'all') {
-      instructorsToInclude = instructorsToInclude.filter(
-        instructor => instructor.id === selectedInstructor
-      );
-    }
-
-    // Filter by selected instrument
-    if (selectedInstrument !== 'all') {
-      instructorsToInclude = instructorsToInclude.filter((instructor: InstructorLike) => {
-        const instructorInstruments =
-          instructor.specialties ||
-          (instructor.primaryInstrument ? [instructor.primaryInstrument] : ['Piano']);
-        const normalizedInstruments = Array.isArray(instructorInstruments)
-          ? instructorInstruments
-          : [instructorInstruments].filter(Boolean);
-        return normalizedInstruments.some(inst => inst.trim() === selectedInstrument);
-      });
-    }
-
-    // Generate cards for filtered instructors
-    instructorsToInclude.forEach((instructor: InstructorLike) => {
-      const timeSlots = this.#generateFilteredInstructorTimeSlots(
-        instructor,
-        selectedDay,
-        selectedInstrument,
-        selectedLength
-      );
-      if (timeSlots.length > 0) {
-        const card = createInstructorCard(instructor, timeSlots);
-        timeslotGrid.appendChild(card);
-      }
-    });
-
-    // Attach listeners after generating
-    this.#attachTimeSlotListeners();
-
-    // Restore previous selection if it still exists
-    if (currentSelection) {
-      setTimeout(() => {
-        this.#restoreTimeSlotSelection(currentSelection);
-      }, 100);
-    }
-  }
-
-  /**
-   * Restore time slot selection after regeneration
-   */
-  #restoreTimeSlotSelection(selectionData: TimeSlot): void {
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer || !selectionData) return;
-
-    const matchingSlot = parentContainer.querySelector(
-      `.timeslot[data-instructor-id="${selectionData.instructorId}"][data-day="${selectionData.day}"][data-time="${selectionData.time}"][data-length="${selectionData.length}"][data-instrument="${selectionData.instrument}"]`
-    ) as HTMLElement | null;
-
-    if (matchingSlot) {
-      // Restore the selection
-      matchingSlot.classList.add('selected');
-      matchingSlot.style.border = '3px solid #1976d2';
-      matchingSlot.style.background = '#e3f2fd';
-
-      // Ensure selectedLesson is restored
-      this.selectedLesson = selectionData;
-
-      // Update display
-      this.#updateSelectionDisplay(matchingSlot);
-
-      console.log('Time slot selection restored:', selectionData);
-    } else {
-      console.log(
-        'Could not restore time slot selection - slot no longer available:',
-        selectionData
-      );
-      // Only clear the selection if we're absolutely sure the slot is no longer available
-      // Check if the slot is still in the DOM but just wasn't found by the query
-      const stillAvailableSlot = document.querySelector(
-        `.timeslot[data-instructor-id="${selectionData.instructorId}"][data-day="${selectionData.day}"][data-time="${selectionData.time}"][data-length="${selectionData.length}"][data-instrument="${selectionData.instrument}"]`
-      ) as HTMLElement | null;
-
-      if (!stillAvailableSlot) {
-        console.log('Confirmed: slot no longer exists in DOM, clearing selection');
-        this.selectedLesson = null;
-      } else {
-        console.log('Slot still exists in DOM, keeping selection but re-selecting it');
-        stillAvailableSlot.classList.add('selected');
-        stillAvailableSlot.style.border = '3px solid #1976d2';
-        stillAvailableSlot.style.background = '#e3f2fd';
-        this.#updateSelectionDisplay(stillAvailableSlot);
-      }
-    }
-  }
-
-  /**
-   * Generate time slots for a specific instructor with filters applied
-   */
-  #generateFilteredInstructorTimeSlots(
-    instructor: InstructorLike,
-    dayFilter: string = 'all',
-    instrumentFilter: string = 'all',
-    lengthFilter: string = 'all'
-  ): TimeSlot[] {
-    const timeSlots: TimeSlot[] = [];
-    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-
-    // Create day mapping for registration lookups
-    const dayMap: Record<string, number> = {
-      monday: 0,
-      tuesday: 1,
-      wednesday: 2,
-      thursday: 3,
-      friday: 4,
-    };
-
-    // Filter days if a specific day is selected
-    const daysToProcess = dayFilter !== 'all' ? [dayFilter] : days;
-
-    daysToProcess.forEach(day => {
-      const index = days.indexOf(day);
-      if (index === -1) return; // Skip invalid days
-
-      // Enhanced availability checking
-      const daySchedule = (instructor.availability?.[day] || instructor[day]) as DaySchedule | undefined;
-
-      // Check if instructor is available on this day
-      if (!daySchedule || !daySchedule.isAvailable) {
-        return;
-      }
-
-      // Check for valid start and end times
-      if (!daySchedule.startTime || !daySchedule.endTime) {
-        return;
-      }
-
-      const startTime = daySchedule.startTime;
-      const endTime = daySchedule.endTime;
-
-      const startMinutes = parseTime(startTime);
-      const endMinutes = parseTime(endTime);
-
-      // Check for valid time window
-      if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
-        return;
-      }
-
-      // Get instructor's instruments
-      const instructorInstruments =
-        instructor.specialties ||
-        (instructor.primaryInstrument ? [instructor.primaryInstrument] : ['Piano']);
-
-      const normalizedInstruments = Array.isArray(instructorInstruments)
-        ? instructorInstruments
-        : [instructorInstruments].filter(Boolean);
-
-      // Filter instruments if a specific instrument is selected
-      const instrumentsToProcess =
-        instrumentFilter !== 'all'
-          ? normalizedInstruments.filter(inst => inst.trim() === instrumentFilter)
-          : normalizedInstruments.length > 0
-            ? normalizedInstruments
-            : ['Piano'];
-
-      // Get existing registrations for this instructor on this day
-      const dayIndex = dayMap[day];
-      // Use next trimester registrations during enrollment periods, current trimester otherwise
-      const registrationsToCheck = this._isEnrollmentPeriodActive()
-        ? this.nextTrimesterRegistrations || []
-        : this.registrations;
-
-      const existingRegistrations = registrationsToCheck.filter((reg: RegistrationLike) => {
-        const regInstructorId = reg.instructorId;
-        return regInstructorId === instructor.id && reg.day === getRegistrationDayName(day);
-      });
-
-      // Generate potential time slots (every 30 minutes from start to end)
-      for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += 30) {
-        const currentTimeStr = formatTimeFromMinutes(currentMinutes);
-
-        // Check if this time slot conflicts with existing registrations
-        const hasConflict = checkTimeSlotConflict(currentMinutes, 30, existingRegistrations, this._selectedPreviousRegistrationId);
-
-        if (hasConflict) {
-          continue;
-        }
-
-        // Generate slots for different lesson lengths and instruments
-        instrumentsToProcess.forEach(instrument => {
-          const lengthsToProcess = lengthFilter !== 'all' ? [parseInt(lengthFilter)] : [30, 45, 60];
-
-          lengthsToProcess.forEach(length => {
-            // Check if this length would fit within instructor's available window
-            if (currentMinutes + length > endMinutes) {
-              return;
-            }
-
-            // Check if this length would conflict with existing registrations
-            const lengthConflict = checkTimeSlotConflict(
-              currentMinutes,
-              length,
-              existingRegistrations,
-              this._selectedPreviousRegistrationId
-            );
-            if (lengthConflict) {
-              return;
-            }
-
-            const slotTime = formatDisplayTime(currentTimeStr);
-
-            timeSlots.push({
-              day: day,
-              dayName: dayNames[index],
-              time: currentTimeStr,
-              timeFormatted: slotTime,
-              length: length,
-              instrument: instrument.trim(),
-              instructor: instructor,
-              instructorId: instructor.id,
-            });
-          });
-        });
-      }
-    });
-
-    return timeSlots.slice(0, 20); // Limit to prevent overwhelming UI
-  }
-
-  /**
-   * Attach event listeners to time slots
-   */
-  #attachTimeSlotListeners(): void {
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) return;
-
-    // Remove existing listeners first to prevent duplicates
-    const existingSlots = parentContainer.querySelectorAll('.timeslot[data-listener-attached]');
-    existingSlots.forEach(slot => {
-      slot.removeAttribute('data-listener-attached');
-      // Clone node to remove all event listeners
-      const newSlot = slot.cloneNode(true);
-      slot.parentNode!.replaceChild(newSlot, slot);
-    });
-
-    const timeSlots = parentContainer.querySelectorAll('.timeslot.available');
-    timeSlots.forEach((_slot: Element) => {
-      const slot = _slot as HTMLElement;
-      slot.addEventListener('click', (event: Event) => {
-        event.preventDefault();
-        event.stopPropagation();
-
-        console.log('Time slot clicked:', slot.dataset);
-
-        // Remove previous selection and reset styling for all slots
-        parentContainer.querySelectorAll('.timeslot').forEach((_s: Element) => {
-          const s = _s as HTMLElement;
-          s.classList.remove('selected');
-          // Reset to original styling based on availability
-          if (s.classList.contains('available')) {
-            s.style.border = '2px solid #4caf50';
-            s.style.background = '#e8f5e8';
-          } else if (s.classList.contains('limited')) {
-            s.style.border = '2px solid #ff9800';
-            s.style.background = '#fff3e0';
-          } else {
-            s.style.border = '2px solid #f44336';
-            s.style.background = '#ffebee';
-          }
-        });
-
-        // Select this slot
-        slot.classList.add('selected');
-        slot.style.border = '3px solid #1976d2';
-        slot.style.background = '#e3f2fd';
-
-        // Store the selected lesson data with validation
-        const instructorId = slot.dataset.instructorId;
-        const day = slot.dataset.day;
-        const time = slot.dataset.time;
-        const length = slot.dataset.length;
-        const instrument = slot.dataset.instrument;
-
-        if (!instructorId || !day || !time || !length || !instrument) {
-          console.error('Invalid time slot data:', slot.dataset);
-          M.toast({ html: 'Invalid time slot data. Please try selecting again.' });
-          return;
-        }
-
-        this.selectedLesson = {
-          instructorId: instructorId,
-          day: day,
-          time: time,
-          length: parseInt(length),
-          instrument: instrument,
-        };
-
-        console.log('Selected lesson stored:', this.selectedLesson);
-
-        // Update the selection display
-        this.#updateSelectionDisplay(slot);
-      });
-
-      slot.dataset.listenerAttached = 'true';
-    });
-  }
-
-  /**
-   * Attach event listener to submit button
-   */
-  #attachSubmitButtonListener(): void {
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) return;
-
-    const submitButton = document.getElementById('parent-confirm-registration-btn');
-    if (submitButton) {
-      // Remove existing onclick if any
-      submitButton.removeAttribute('onclick');
-
-      submitButton.addEventListener('click', async event => {
-        event.preventDefault();
-
-        if (!this.#validateRegistration()) {
-          return;
-        }
-
-        // Show confirmation modal before proceeding
-        const registrationData = this.#getCreateRegistrationData();
-        if (!registrationData) return;
-        const confirmationMessage = this.#buildPrivateLessonConfirmationMessage(registrationData);
-
-        this.#showConfirmationModal(confirmationMessage, async () => {
-          const submitButton = document.getElementById('parent-confirm-registration-btn') as HTMLButtonElement | null;
-          try {
-            this.#setButtonLoading(submitButton, true);
-            await this.sendDataFunction(registrationData);
-            this.#clearForm();
-            this.#initializeHybridInterface();
-            M.toast({ html: 'Registration created successfully!' });
-          } catch (err: unknown) {
-            const error = err as Error & { type?: string };
-            console.error('Error creating registration:', error);
-            if (error.type === 'conflict') {
-              this.#showConflictModal(error.message);
-            } else {
-              M.toast({ html: `Error creating registration: ${error.message}` });
-            }
-          } finally {
-            this.#setButtonLoading(submitButton, false);
-          }
-        });
-      });
-    } else {
-      console.warn('Parent submit button not found');
-    }
-  }
-
-  /**
-   * Attach event listener to group registration submit button
-   */
-  #attachGroupSubmitButtonListener(): void {
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) return;
-
-    const groupSubmitButton = document.getElementById('parent-create-group-registration-btn');
-    if (groupSubmitButton) {
-      // Remove existing onclick if any
-      groupSubmitButton.removeAttribute('onclick');
-
-      groupSubmitButton.addEventListener('click', async event => {
-        event.preventDefault();
-
-        if (!this.#validateGroupRegistration()) {
-          return;
-        }
-
-        // Show confirmation modal before proceeding
-        const registrationData = this.#getCreateGroupRegistrationData();
-        let confirmationMessage;
-        if (ClassManager.isRockBandClass(registrationData.classId || '')) {
-          confirmationMessage = this.#buildWaitlistClassConfirmationMessage(registrationData);
-        } else {
-          confirmationMessage = this.#buildGroupClassConfirmationMessage(registrationData);
-        }
-
-        this.#showConfirmationModal(confirmationMessage, async () => {
-          const confirmButton = document.getElementById('parent-confirmation-confirm') as HTMLButtonElement | null;
-          try {
-            this.#setButtonLoading(confirmButton, true);
-            await this.sendDataFunction(registrationData);
-            this.#clearGroupForm();
-            this.#initializeHybridInterface();
-            M.toast({
-              html: ClassManager.isRockBandClass(registrationData.classId || '')
-                ? 'Wait list joined.'
-                : 'Group registration created successfully!',
-            });
-          } catch (err: unknown) {
-            const error = err as Error & { type?: string };
-            console.error('Error creating group registration:', error);
-            if (error.type === 'conflict') {
-              this.#showConflictModal(error.message);
-            } else {
-              M.toast({ html: `Error creating group registration: ${error.message}` });
-            }
-          } finally {
-            this.#setButtonLoading(confirmButton, false);
-          }
-        });
-      });
-    } else {
-      console.warn('Parent group submit button not found');
-    }
-  }
 
   /**
    * Attach event listener to clear button
@@ -1507,428 +403,6 @@ export class ParentRegistrationForm {
     } else {
       console.warn('Parent clear button not found');
     }
-  }
-
-  /**
-   * Filter time slots based on current filter selections
-   */
-  #filterTimeSlots(): void {
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) return;
-
-    // Get selected filter values
-    const selectedInstructor =
-      (parentContainer.querySelector('.instructor-chip.active') as HTMLElement | null)?.dataset.value || 'all';
-    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value || 'all';
-    const selectedLength =
-      (parentContainer.querySelector('.length-chip.active') as HTMLElement | null)?.dataset.value || 'all';
-    const selectedInstrument =
-      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value || 'all';
-
-    // Get all time slots
-    const timeSlots = parentContainer.querySelectorAll('.timeslot');
-
-    timeSlots.forEach((_slot: Element) => {
-      const slot = _slot as HTMLElement;
-      let show = true;
-
-      // Filter by instructor
-      if (selectedInstructor !== 'all') {
-        const slotInstructorId = slot.dataset.instructorId;
-        if (slotInstructorId !== selectedInstructor) {
-          show = false;
-        }
-      }
-
-      // Filter by day
-      if (selectedDay !== 'all') {
-        const slotDay = slot.dataset.day;
-        if (slotDay !== selectedDay) {
-          show = false;
-        }
-      }
-
-      // Filter by length
-      if (selectedLength !== 'all') {
-        const slotLength = slot.dataset.length;
-        if (slotLength !== selectedLength) {
-          show = false;
-        }
-      }
-
-      // Filter by instrument
-      if (selectedInstrument !== 'all') {
-        const slotInstrument = slot.dataset.instrument;
-        if (slotInstrument !== selectedInstrument) {
-          show = false;
-        }
-      }
-
-      // Show/hide the slot
-      slot.style.display = show ? 'block' : 'none';
-    });
-
-    // Update instructor card visibility and counts
-    this.#updateInstructorCardVisibility();
-  }
-
-  /**
-   * Update instructor card visibility based on filtered time slots
-   */
-  #updateInstructorCardVisibility(): void {
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) return;
-
-    const instructorCards = parentContainer.querySelectorAll('.instructor-card');
-
-    instructorCards.forEach((_card: Element) => {
-      const card = _card as HTMLElement;
-      const visibleSlots = card.querySelectorAll(
-        '.timeslot[style*="display: block"], .timeslot:not([style*="display: none"])'
-      );
-      const availableCount = visibleSlots.length;
-
-      // Update availability count in card header
-      const availabilitySpan = card.querySelector('h6 span') as HTMLElement | null;
-      if (availabilitySpan) {
-        availabilitySpan.textContent = `${availableCount} available`;
-        availabilitySpan.style.background =
-          availableCount > 3 ? '#e8f5e8' : availableCount > 0 ? '#fff3e0' : '#ffebee';
-        availabilitySpan.style.color =
-          availableCount > 3 ? '#4caf50' : availableCount > 0 ? '#ff9800' : '#f44336';
-      }
-
-      // Hide card if no slots are available
-      card.style.display = availableCount > 0 ? 'block' : 'none';
-    });
-  }
-
-  /**
-   * Update the selection display when a time slot is selected
-   */
-  #updateSelectionDisplay(slot: HTMLElement): void {
-    // Note: selectedLesson is now handled in the click handler with validation
-
-    // Update the selection display area
-    const parentContainer = document.getElementById('parent-registration');
-    const selectionDisplay = parentContainer?.querySelector('#admin-selected-lesson-display') as HTMLElement | null;
-    if (selectionDisplay) {
-      const instructor = slot.dataset.instructorId;
-      const dayName = (slot.dataset.day || '').charAt(0).toUpperCase() + (slot.dataset.day || '').slice(1);
-      const timeFormatted = formatDisplayTime(slot.dataset.time || '');
-      const instrument = slot.dataset.instrument;
-      const length = slot.dataset.length;
-
-      const detailsElement = selectionDisplay.querySelector('#admin-selected-lesson-details');
-      if (detailsElement) {
-        detailsElement.innerHTML = `
-          <div><strong>Instructor:</strong> ${instructor}</div>
-          <div><strong>Day:</strong> ${dayName}</div>
-          <div><strong>Time:</strong> ${timeFormatted}</div>
-          <div><strong>Duration:</strong> ${length} minutes</div>
-          <div><strong>Instrument:</strong> ${instrument}</div>
-        `;
-      }
-
-      selectionDisplay.style.display = 'block';
-      selectionDisplay.style.pointerEvents = 'none'; // Allow clicks to pass through
-
-      // Enable pointer events on the inner container
-      const innerContainer = selectionDisplay.querySelector('div') as HTMLElement | null;
-      if (innerContainer) {
-        innerContainer.style.pointerEvents = 'auto';
-      }
-    }
-  }
-
-  /**
-   * Validate registration data
-   */
-  #validateRegistration(): boolean {
-    console.log('Validating registration...', { selectedLesson: this.selectedLesson });
-
-    // Check if student is selected (only if dropdown is visible for multiple students)
-    const studentSection = document.getElementById('parent-student-selection-section');
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
-    const studentId = studentSelect?.value;
-
-    // Only validate student selection if the section is visible (multiple students)
-    if (studentSection && studentSection.style.display !== 'none' && !studentId) {
-      console.log('Validation failed: No student selected');
-      M.toast({ html: 'Please select a student' });
-      return false;
-    }
-
-    // For single student case, ensure there's still a student ID available
-    if (!studentId) {
-      console.log('Validation failed: No student ID available');
-      M.toast({ html: 'No student available for registration' });
-      return false;
-    }
-
-    if (!this.selectedLesson) {
-      console.log(
-        'Validation failed: No lesson selected in memory, checking DOM for selected slots...'
-      );
-
-      // Check if there's a selected time slot in the DOM as fallback
-      const selectedSlots = document.querySelectorAll('.timeslot.selected');
-      console.log('Current selected time slots in DOM:', selectedSlots);
-
-      if (selectedSlots.length === 1) {
-        // Try to rebuild selectedLesson from DOM state
-        const slot = selectedSlots[0] as HTMLElement;
-        const instructorId = slot.dataset.instructorId;
-        const day = slot.dataset.day;
-        const time = slot.dataset.time;
-        const length = slot.dataset.length;
-        const instrument = slot.dataset.instrument;
-
-        if (instructorId && day && time && length && instrument) {
-          console.log('Rebuilding selectedLesson from DOM state');
-          this.selectedLesson = {
-            instructorId: instructorId,
-            day: day,
-            time: time,
-            length: parseInt(length),
-            instrument: instrument,
-          };
-          console.log('Rebuilt selectedLesson:', this.selectedLesson);
-        } else {
-          console.log('Selected slot in DOM has incomplete data');
-          M.toast({ html: 'Please select a lesson time slot' });
-          return false;
-        }
-      } else if (selectedSlots.length > 1) {
-        console.log('Multiple slots selected, this should not happen');
-        M.toast({ html: 'Multiple time slots selected. Please select only one.' });
-        return false;
-      } else {
-        console.log('No selected time slots found in DOM either');
-        M.toast({ html: 'Please select a lesson time slot' });
-        return false;
-      }
-    }
-
-    // Additional validation of selectedLesson data
-    if (
-      !this.selectedLesson.instructorId ||
-      !this.selectedLesson.day ||
-      !this.selectedLesson.time
-    ) {
-      console.log('Validation failed: Incomplete lesson data', this.selectedLesson);
-      M.toast({ html: 'Selected lesson is incomplete. Please select again.' });
-      this.selectedLesson = null; // Clear invalid selection
-      return false;
-    }
-
-    // Time conflict checking is handled server-side by RegistrationConflictService
-
-    // Check bus time restrictions for Late Bus transportation
-    const dayName =
-      this.selectedLesson.day.charAt(0).toUpperCase() + this.selectedLesson.day.slice(1);
-    const transportationTypeRadio = document.querySelector(
-      'input[name="parent-transportation-type"]:checked'
-    ) as HTMLInputElement | null;
-    const transportationType = transportationTypeRadio?.value || 'pickup';
-
-    const busValidation = validateBusTimeRestrictions(
-      dayName,
-      this.selectedLesson.time,
-      this.selectedLesson.length,
-      transportationType
-    );
-
-    if (!busValidation.isValid) {
-      console.log('Validation failed: Bus time restriction violated');
-      M.toast({ html: busValidation.errorMessage || '' });
-      return false;
-    }
-
-    console.log('Validation passed');
-    return true;
-  }
-
-  /**
-   * Validate group registration data
-   */
-  #validateGroupRegistration(): boolean {
-    // Check if student is selected (only if dropdown is visible for multiple students)
-    const studentSection = document.getElementById('parent-student-selection-section');
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
-    const studentId = studentSelect?.value;
-
-    // Only validate student selection if the section is visible (multiple students)
-    if (studentSection && studentSection.style.display !== 'none' && !studentId) {
-      M.toast({ html: 'Please select a student' });
-      return false;
-    }
-
-    // For single student case, ensure there's still a student ID available
-    if (!studentId) {
-      M.toast({ html: 'No student available for registration' });
-      return false;
-    }
-
-    // Check if class is selected
-    const classSelect = document.getElementById('parent-class-select') as HTMLSelectElement | null;
-    const classId = classSelect?.value;
-
-    if (!classId) {
-      M.toast({ html: 'Please select a class' });
-      return false;
-    }
-
-    // Duplicate and time conflict checking is handled server-side by RegistrationConflictService
-
-    // Get the class details for bus validation
-    const selectedClass = this.classes.find((cls: ClassLike) => cls.id === classId);
-
-    if (selectedClass && selectedClass.day && selectedClass.startTime && selectedClass.length) {
-      // Check bus time restrictions for Late Bus transportation
-      const transportationTypeRadio = document.querySelector(
-        'input[name="parent-group-transportation-type"]:checked'
-      ) as HTMLInputElement | null;
-      const transportationType = transportationTypeRadio?.value || 'pickup';
-
-      const busValidation = validateBusTimeRestrictions(
-        selectedClass.day,
-        selectedClass.startTime,
-        selectedClass.length,
-        transportationType
-      );
-
-      if (!busValidation.isValid) {
-        console.log('Group validation failed: Bus time restriction violated');
-        M.toast({ html: busValidation.errorMessage || '' });
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  /**
-   * Get registration data for submission
-   */
-  #getCreateRegistrationData(): RegistrationSubmitData | null {
-    if (!this.selectedLesson) {
-      return null;
-    }
-
-    // Get selected student ID
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
-    const studentId = studentSelect?.value;
-
-    if (!studentId) {
-      throw new Error('Please select a student');
-    }
-
-    // Get selected transportation type
-    const transportationTypeRadio = document.querySelector(
-      'input[name="parent-transportation-type"]:checked'
-    ) as HTMLInputElement | null;
-    const transportationType = transportationTypeRadio?.value || 'pickup'; // Default to pickup if not selected
-
-    const dayMap: Record<string, string> = {
-      monday: 'Monday',
-      tuesday: 'Tuesday',
-      wednesday: 'Wednesday',
-      thursday: 'Thursday',
-      friday: 'Friday',
-    };
-
-    // Determine the target trimester
-    const appConfig = window.UserSession?.getAppConfig?.();
-    const trimester = this._isEnrollmentPeriodActive()
-      ? appConfig?.nextTrimester
-      : appConfig?.currentTrimester;
-
-    const registrationData: RegistrationSubmitData = {
-      studentId: studentId,
-      registrationType: RegistrationType.PRIVATE,
-      transportationType: transportationType,
-      instructorId: this.selectedLesson.instructorId,
-      instrument: this.selectedLesson.instrument,
-      day: dayMap[this.selectedLesson.day],
-      startTime: this.selectedLesson.time,
-      length: this.selectedLesson.length,
-      trimester: trimester ?? undefined,
-    };
-
-    // If modifying an existing registration during enrollment, include the ID to trigger deletion
-    // But do NOT add linkedPreviousRegistrationId to the new registration - that's only for migrations
-    if (this._isEnrollmentPeriodActive() && this._selectedPreviousRegistrationId) {
-      registrationData.replaceRegistrationId = this._selectedPreviousRegistrationId;
-    }
-
-    return registrationData;
-  }
-
-  /**
-   * Get group registration data for submission
-   */
-  #getCreateGroupRegistrationData(): RegistrationSubmitData {
-    // Get selected student ID
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
-    const studentId = studentSelect?.value;
-
-    if (!studentId) {
-      throw new Error('Please select a student');
-    }
-
-    // Get selected class ID
-    const classSelect = document.getElementById('parent-class-select') as HTMLSelectElement | null;
-    const classId = classSelect?.value;
-
-    if (!classId) {
-      throw new Error('Please select a class');
-    }
-
-    // Find the selected class to get its details
-    const selectedClass = this.classes.find((cls: ClassLike) => cls.id === classId);
-
-    if (!selectedClass) {
-      throw new Error('Selected class not found');
-    }
-
-    // Get selected transportation type (for group registration)
-    const transportationTypeRadio = document.querySelector(
-      'input[name="parent-group-transportation-type"]:checked'
-    ) as HTMLInputElement | null;
-    const transportationType = transportationTypeRadio?.value || 'pickup'; // Default to pickup if not selected
-
-    // Determine the target trimester
-    const appConfig = window.UserSession?.getAppConfig?.();
-    const trimester = this._isEnrollmentPeriodActive()
-      ? appConfig?.nextTrimester
-      : appConfig?.currentTrimester;
-
-    const registrationData: RegistrationSubmitData = {
-      studentId: studentId,
-      registrationType: RegistrationType.GROUP,
-      transportationType: transportationType,
-      classId: classId,
-      classTitle:
-        selectedClass.formattedName ||
-        selectedClass.title ||
-        selectedClass.instrument ||
-        `Class ${selectedClass.id}`,
-      instructorId: selectedClass.instructorId,
-      day: selectedClass.day,
-      startTime: selectedClass.startTime,
-      length: selectedClass.length,
-      instrument: selectedClass.instrument,
-      trimester: trimester ?? undefined,
-    };
-
-    // If modifying an existing registration during enrollment, include the ID to trigger deletion
-    // But do NOT add linkedPreviousRegistrationId to the new registration - that's only for migrations
-    if (this._isEnrollmentPeriodActive() && this._selectedPreviousRegistrationId) {
-      registrationData.replaceRegistrationId = this._selectedPreviousRegistrationId;
-    }
-
-    return registrationData;
   }
 
   /**
@@ -1977,314 +451,16 @@ export class ParentRegistrationForm {
     this.#initializeHybridInterface();
   }
 
-  /**
-   * Clear the group form after successful submission
-   */
-  #clearGroupForm(): void {
-    this._selectedPreviousRegistrationId = null; // Clear selected registration
 
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) return;
-
-    // Clear selects using consistent utility
-    DomHelpers.resetMaterializeSelects(
-      ['parent-class-select', 'parent-registration-type-select'],
-      true
-    );
-
-    // Reset transportation type to default (pickup) for both forms
-    const pickupRadio = document.querySelector(
-      'input[name="parent-transportation-type"][value="pickup"]'
-    ) as HTMLInputElement | null;
-    if (pickupRadio) {
-      pickupRadio.checked = true;
-    }
-
-    // Reset group transportation type to default (pickup)
-    const groupPickupRadio = document.querySelector(
-      'input[name="parent-group-transportation-type"][value="pickup"]'
-    ) as HTMLInputElement | null;
-    if (groupPickupRadio) {
-      groupPickupRadio.checked = true;
-    }
-
-    // Hide all registration containers (private and group)
-    this.#hideAllRegistrationContainers();
-
-    // Clear any error messages
-    clearErrorMessage('parent-class-error-message');
-
-    // Disable register button again
-    const registerButton = document.getElementById('parent-create-group-registration-btn') as HTMLButtonElement | null;
-    if (registerButton) {
-      registerButton.disabled = true;
-      registerButton.style.opacity = '0.6';
-
-      // Reset button text to default
-      const buttonTextElement = registerButton.querySelector('b');
-      if (buttonTextElement) {
-        buttonTextElement.textContent = 'Register for Class';
-      }
-    }
-  }
-
-  /**
-   * Show confirmation modal for parent registrations
-   */
-  #showConfirmationModal(message: string, onConfirm: () => void): void {
-    const modal = document.getElementById('parent-registration-confirmation-modal');
-    const messageElement = document.getElementById('parent-confirmation-message');
-    const confirmButton = document.getElementById('parent-confirmation-confirm');
-    const cancelButton = document.getElementById('parent-confirmation-cancel');
-
-    if (!modal || !messageElement || !confirmButton || !cancelButton) {
-      console.warn('Confirmation modal elements not found');
-      // If modal is not available, proceed directly
-      onConfirm();
-      return;
-    }
-
-    // Set the message
-    messageElement.innerHTML = message;
-
-    // Remove any existing event listeners
-    const newConfirmButton = confirmButton.cloneNode(true) as HTMLElement;
-    const newCancelButton = cancelButton.cloneNode(true) as HTMLElement;
-    confirmButton.parentNode!.replaceChild(newConfirmButton, confirmButton);
-    cancelButton.parentNode!.replaceChild(newCancelButton, cancelButton);
-
-    // Add event listeners
-    newConfirmButton.addEventListener('click', () => {
-      if (typeof M !== 'undefined') {
-        M.Modal.getInstance(modal)?.close();
-      }
-      // Ensure scrolling is restored
-      this.#restorePageScrolling();
-      onConfirm();
-    });
-
-    newCancelButton.addEventListener('click', () => {
-      if (typeof M !== 'undefined') {
-        M.Modal.getInstance(modal)?.close();
-      }
-      // Ensure scrolling is restored
-      this.#restorePageScrolling();
-      // Do nothing on cancel
-    });
-
-    // Initialize and open modal
-    if (typeof M !== 'undefined') {
-      const modalInstance = M.Modal.init(modal, {
-        dismissible: true,
-        onCloseEnd: () => {
-          // Clear message when modal closes and restore scrolling
-          messageElement.innerHTML = '';
-          this.#restorePageScrolling();
-          // Destroy modal instance to prevent memory leaks and scroll issues
-          if (modalInstance) {
-            modalInstance.destroy();
-          }
-          // Remove any lingering overlays
-          document.querySelectorAll('.modal-overlay').forEach(overlay => overlay.remove());
-        },
-      });
-
-      // Attach keyboard handlers for this confirmation modal
-      ModalKeyboardHandler.attachKeyboardHandlers(modal, {
-        allowEscape: true,
-        allowEnter: true,
-        onConfirm: (event: Event) => {
-          // Handle Enter key press for confirmation
-          console.log('Confirmation modal: Enter key pressed');
-          newConfirmButton.click();
-        },
-        onCancel: (event: Event) => {
-          // Handle ESC key press for confirmation
-          console.log('Confirmation modal: ESC key pressed');
-          newCancelButton.click();
-        },
-      });
-
-      // Scroll to top before opening modal
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-
-      modalInstance.open();
-    }
-  }
-
-  /**
-   * Ensure page scrolling is restored after modal operations
-   */
-  #restorePageScrolling(): void {
-    // Remove any overflow restrictions that might prevent scrolling
-    document.body.style.overflow = '';
-    document.documentElement.style.overflow = '';
-
-    // Remove any fixed positioning that might interfere
-    document.body.style.position = '';
-
-    // Remove all modal overlays instead of just hiding them
-    document.querySelectorAll('.modal-overlay').forEach(overlay => overlay.remove());
-  }
-
-  /**
-   * Build confirmation message for private lesson registration
-   */
-  #buildPrivateLessonConfirmationMessage(registrationData: RegistrationSubmitData): string {
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
-    const studentName = studentSelect?.selectedOptions[0]?.textContent || 'your child';
-
-    // Find instructor name
-    const instructor = this.instructors.find((inst: InstructorLike) => inst.id === registrationData.instructorId);
-    const instructorName = instructor
-      ? `${instructor.firstName} ${instructor.lastName}`
-      : 'the instructor';
-
-    // Format time
-    const timeFormatted = formatDisplayTime(registrationData.startTime || '');
-
-    // Format transportation type
-    const transportationDisplay =
-      registrationData.transportationType === 'bus' ? 'Late Bus' : 'Late Pick Up';
-
-    return `
-      <strong>Are you sure you want to register ${studentName} for a private lesson?</strong>
-      <br><br>
-      <strong>Lesson Details:</strong><br>
-      • <strong>Instructor:</strong> ${instructorName}<br>
-      • <strong>Instrument:</strong> ${registrationData.instrument}<br>
-      • <strong>Day:</strong> ${registrationData.day}<br>
-      • <strong>Time:</strong> ${timeFormatted}<br>
-      • <strong>Duration:</strong> ${registrationData.length} minutes<br>
-      • <strong>Transportation:</strong> ${transportationDisplay}
-      <br><br>
-      <p>If you need to change or cancel this registration, please contact ${FORTE_PROGRAM_EMAIL}. The last day to cancel registrations without charge is August 29th. After this date, all registrations will be billed in full for the Fall Trimester.</p>
-      
-      <p><strong>Absence and Cancellation Policy:</strong></p>
-      
-      <p>Lessons missed due to student absence are charged in full except in the case of school-sponsored field trips or religious holidays. Sports practices or games are not considered school-sponsored activities.</p>
-      
-      <p>There will be no charge for lessons canceled by instructors unless the instructor schedules a make-up lesson at a later date.</p>
-      
-      <p>Instructors are encouraged to schedule make-up lessons for lessons they have missed; however, as they are working professionals in their fields, make-up lessons may not always be possible. The scheduling of make-up lessons will be at the instructor's discretion.</p>
-      
-      <p>Please notify your instructor at least 24 hours in advance of any student absence when possible. Additionally, notify FORTE staff of student absences at ${FORTE_PROGRAM_EMAIL}.</p>
-      
-      <p>Instructor cancellations will be communicated to parents/guardians via phone or email at least 24 hours in advance whenever possible. Same-day cancellations by instructors will result in no charge for PM care.</p>
-      
-      <p><strong>By confirming, you acknowledge that you have read and agree to these terms and conditions.</strong></p>
-    `;
-  }
-
-  /**
-   * Build confirmation message for group class registration
-   */
-  #buildGroupClassConfirmationMessage(registrationData: RegistrationSubmitData): string {
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
-    const studentName = studentSelect?.selectedOptions[0]?.textContent || 'your child';
-
-    // Find class details
-    const selectedClass = this.classes.find((cls: ClassLike) => cls.id === registrationData.classId);
-    const className = selectedClass
-      ? formatClassNameWithGradeCorrection(selectedClass)
-      : 'the class';
-
-    // Find instructor name
-    const instructor = this.instructors.find((inst: InstructorLike) => inst.id === registrationData.instructorId);
-    const instructorName = instructor
-      ? `${instructor.firstName} ${instructor.lastName}`
-      : 'the instructor';
-
-    // Format time
-    const timeFormatted = formatDisplayTime(registrationData.startTime || '');
-
-    // Format transportation type
-    const transportationDisplay =
-      registrationData.transportationType === 'bus' ? 'Late Bus' : 'Late Pick Up';
-
-    return `
-      <strong>Are you sure you want to register ${studentName} for this group class?</strong>
-      <br><br>
-      <strong>Class Details:</strong><br>
-      • <strong>Class:</strong> ${className}<br>
-      • <strong>Instructor:</strong> ${instructorName}<br>
-      • <strong>Day:</strong> ${registrationData.day}<br>
-      • <strong>Time:</strong> ${timeFormatted}<br>
-      • <strong>Duration:</strong> ${registrationData.length} minutes<br>
-      • <strong>Transportation:</strong> ${transportationDisplay}
-      <br><br>
-      <p>If you need to change or cancel this class, please contact ${FORTE_PROGRAM_EMAIL}. The last day to cancel classes without charge is August 29th. After this date, all classes will be billed in full for the Fall Trimester.</p>
-      
-      <p><strong>Absence and Cancellation Policy:</strong></p>
-      
-      <p>Classes missed due to student absence are charged in full except in the case of school-sponsored field trips or religious holidays. Sports practices or games are not considered school-sponsored activities.</p>
-      
-      <p>There will be no charge for classes canceled by instructors. There are no makeup classes.</p>
-      
-      <p>Please notify your instructor at least 24 hours in advance of any student absence when possible. Additionally, notify FORTE staff of student absences at ${FORTE_PROGRAM_EMAIL}.</p>
-      
-      <p>Instructor cancellations will be communicated to parents/guardians via phone or email at least 24 hours in advance whenever possible. Same-day cancellations by instructors will result in no charge for PM care.</p>
-      
-      <p><strong>By confirming, you acknowledge that you have read and agree to these terms and conditions.</strong></p>
-    `;
-  }
-
-  /**
-   * Build confirmation message for waitlist group class registration (Rock Band classes)
-   */
-  #buildWaitlistClassConfirmationMessage(registrationData: RegistrationSubmitData): string {
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
-    const studentName = studentSelect?.selectedOptions[0]?.textContent || 'your child';
-
-    // Find class details
-    const selectedClass = this.classes.find((cls: ClassLike) => cls.id === registrationData.classId);
-    const className = selectedClass
-      ? formatClassNameWithGradeCorrection(selectedClass)
-      : 'the class';
-
-    // Find instructor name
-    const instructor = this.instructors.find((inst: InstructorLike) => inst.id === registrationData.instructorId);
-    const instructorName = instructor
-      ? `${instructor.firstName} ${instructor.lastName}`
-      : 'the instructor';
-
-    // Format time
-    const timeFormatted = formatDisplayTime(registrationData.startTime || '');
-
-    // Format transportation type
-    const transportationDisplay =
-      registrationData.transportationType === 'bus' ? 'Late Bus' : 'Late Pick Up';
-
-    return `
-      <strong>All new registrations for Rock Band are put on a waitlist and then assigned to one of the three Rock Band classes (class meeting times below). We at FORTE work with the Rock Band teacher, Paul Montes, to match students to the Rock Band that is right for them based on skill level, ensemble dynamics, and current Rock Band instrument needs.</strong>
-      <br><br>
-      <strong>Class Details:</strong><br>
-      • <strong>Class:</strong> ${className}<br>
-      • <strong>Instructor:</strong> ${instructorName}<br>
-      • <strong>Possible Class Times:</strong> Monday 3-4 PM or Monday 4-5 PM or Friday 3-4 PM<br>
-      • <strong>Transportation:</strong> ${transportationDisplay}
-      <br><br>
-      <p>You will be notified by email when a spot has been found for your student. If you need to change or cancel this wait list registration, please contact ${FORTE_PROGRAM_EMAIL}.</p>
-      
-      <p><strong>Absence and Cancellation Policy:</strong></p>
-      
-      <p>Classes missed due to student absence are charged in full except in the case of school-sponsored field trips or religious holidays. Sports practices or games are not considered school-sponsored activities.</p>
-      
-      <p>There will be no charge for classes canceled by instructors. There are no makeup classes.</p>
-      
-      <p>Please notify your instructor at least 24 hours in advance of any student absence when possible. Additionally, notify FORTE staff of student absences at ${FORTE_PROGRAM_EMAIL}.</p>
-      
-      <p>Instructor cancellations will be communicated to parents/guardians via phone or email at least 24 hours in advance whenever possible. Same-day cancellations by instructors will result in no charge for PM care.</p>
-      
-      <p><strong>By confirming, you acknowledge that you understand this is a wait list registration and that you have read and agree to these terms and conditions.</strong></p>
-    `;
-  }
 
   /**
    * Public method to clear the form selection (can be called externally)
    */
   clearSelection(): void {
-    this.#clearTimeSlotSelection();
+    if (this.cascadingFilterChips) {
+      this.cascadingFilterChips.clearSelection();
+    }
+    this.selectedLesson = null;
     this.#resetCompleteForm();
   }
 
@@ -2292,6 +468,12 @@ export class ParentRegistrationForm {
    * Destroy the form and clean up Materialize component instances
    */
   destroy(): void {
+    // Destroy the cascading filter chips component
+    if (this.cascadingFilterChips) {
+      this.cascadingFilterChips.destroy();
+      this.cascadingFilterChips = null;
+    }
+
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
@@ -2315,56 +497,6 @@ export class ParentRegistrationForm {
 
     // Clear selection
     this.clearSelection();
-  }
-
-  /**
-   * Clear only the time slot selection without hiding containers
-   */
-  #clearTimeSlotSelection(): void {
-    this.selectedLesson = null;
-
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) return;
-
-    // Hide the selected lesson display
-    const selectedDisplay = parentContainer.querySelector('#admin-selected-lesson-display') as HTMLElement | null;
-    if (selectedDisplay) {
-      selectedDisplay.style.display = 'none';
-      selectedDisplay.style.pointerEvents = 'none';
-    }
-
-    // Reset transportation type to default (pickup) when clearing selection
-    const pickupRadio = document.querySelector(
-      'input[name="parent-transportation-type"][value="pickup"]'
-    ) as HTMLInputElement | null;
-    if (pickupRadio) {
-      pickupRadio.checked = true;
-    }
-
-    // Reset group transportation type to default (pickup) for consistency
-    const groupPickupRadio = document.querySelector(
-      'input[name="parent-group-transportation-type"][value="pickup"]'
-    ) as HTMLInputElement | null;
-    if (groupPickupRadio) {
-      groupPickupRadio.checked = true;
-    }
-
-    // Remove selected class and reset styling for all time slots
-    parentContainer.querySelectorAll('.timeslot').forEach((_slot: Element) => {
-      const slot = _slot as HTMLElement;
-      slot.classList.remove('selected');
-      // Reset to original styling based on availability
-      if (slot.classList.contains('available')) {
-        slot.style.border = '2px solid #4caf50';
-        slot.style.background = '#e8f5e8';
-      } else if (slot.classList.contains('limited')) {
-        slot.style.border = '2px solid #ff9800';
-        slot.style.background = '#fff3e0';
-      } else {
-        slot.style.border = '2px solid #f44336';
-        slot.style.background = '#ffebee';
-      }
-    });
   }
 
   /**
@@ -2396,127 +528,15 @@ export class ParentRegistrationForm {
     // Hide all registration containers (type, private, group)
     this.#hideAllRegistrationContainers();
 
-    // Reset all filter chips to default state
-    this.#resetFilterChips();
+    // Reset all filter chips to default state via cascading filter chips component
+    if (this.cascadingFilterChips) {
+      this.cascadingFilterChips.clearSelection();
+    }
 
     // Show registration type container for next selection
     this.#showRegistrationTypeContainer();
   }
 
-  /**
-   * Reset all filter chips to their default state
-   */
-  #resetFilterChips(): void {
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) return;
-
-    // Remove active class from all filter chips
-    const allChips = parentContainer.querySelectorAll('.chip');
-    allChips.forEach((_chip: Element) => {
-      const chip = _chip as HTMLElement;
-      chip.classList.remove('active');
-      // Reset to default styling
-      chip.style.cssText =
-        'padding: 8px 12px; border-radius: 16px; display: flex; align-items: center; border: 2px solid #ddd; background: #f5f5f5; color: #666; transition: all 0.3s; cursor: pointer;';
-    });
-
-    // Set "All" chips as active by default
-    const allInstrumentChip = parentContainer.querySelector('.instrument-chip[data-value="all"]') as HTMLElement | null;
-    const allDayChip = parentContainer.querySelector('.day-chip[data-value="all"]') as HTMLElement | null;
-    const allLengthChip = parentContainer.querySelector('.length-chip[data-value="all"]') as HTMLElement | null;
-    const allInstructorChip = parentContainer.querySelector('.instructor-chip[data-value="all"]') as HTMLElement | null;
-
-    [allInstrumentChip, allDayChip, allLengthChip, allInstructorChip].forEach(chip => {
-      if (chip) {
-        chip.classList.add('active');
-        chip.style.cssText =
-          'padding: 8px 12px; border-radius: 16px; display: flex; align-items: center; border: 2px solid #2b68a4; background: #2b68a4; color: white; transition: all 0.3s; cursor: pointer;';
-      }
-    });
-  }
-
-  /**
-   * Attach keyboard handlers for time slot interface
-   */
-  #attachTimeSlotKeyboardHandlers(): void {
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) {
-      console.warn('Parent registration container not found for keyboard handlers');
-      return;
-    }
-
-    // Attach keyboard handlers for time slot selection
-    ModalKeyboardHandler.attachTimeSlotKeyboardHandlers(parentContainer, {
-      onConfirm: (event: Event, selectedSlot: HTMLElement) => {
-        console.log('Time slot keyboard: Enter pressed on selected slot');
-        // Try to submit the registration if a slot is selected
-        const submitButton = document.getElementById('parent-confirm-registration-btn') as HTMLButtonElement | null;
-        if (submitButton && !submitButton.disabled && this.selectedLesson) {
-          submitButton.click();
-        }
-      },
-      onCancel: (event: Event) => {
-        console.log('Time slot keyboard: ESC pressed, clearing selection');
-        // Clear time slot selection
-        this.#clearTimeSlotSelection();
-        // Also clear the selected lesson data
-        this.selectedLesson = null;
-        // Disable submit button since no lesson is selected
-        const submitButton = document.getElementById('parent-confirm-registration-btn') as HTMLButtonElement | null;
-        if (submitButton) {
-          submitButton.disabled = true;
-        }
-      },
-    });
-  }
-
-  /**
-   * Set button loading state
-   * @param {HTMLElement} button - Button element
-   * @param {boolean} isLoading - Whether button should show loading state
-   * @param {string} originalText - Original button text to restore
-   */
-  #setButtonLoading(button: HTMLButtonElement | null, isLoading: boolean, originalText: string | null = null): void {
-    if (!button) return;
-
-    if (isLoading) {
-      // Store original text if not provided
-      if (!originalText) {
-        originalText = button.innerHTML;
-        button.dataset.originalText = originalText;
-      }
-
-      // Disable button and show loading
-      button.disabled = true;
-      button.innerHTML = `<i class="material-icons left" style="font-size: 16px;">autorenew</i>Loading...`;
-
-      // Add spinning animation
-      const icon = button.querySelector('i');
-      if (icon) {
-        icon.style.animation = 'spin 1s linear infinite';
-        // Add CSS for spin animation if not already present
-        if (!document.getElementById('button-loading-styles')) {
-          const style = document.createElement('style');
-          style.id = 'button-loading-styles';
-          style.textContent = `
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `;
-          document.head.appendChild(style);
-        }
-      }
-    } else {
-      // Restore original state
-      button.disabled = false;
-      const storedText = button.dataset.originalText || originalText;
-      if (storedText) {
-        button.innerHTML = storedText;
-        delete button.dataset.originalText;
-      }
-    }
-  }
 
   /**
    * Render registration selector dropdown during enrollment periods
@@ -2615,85 +635,6 @@ export class ParentRegistrationForm {
   }
 
   /**
-   * Clear registration form to create new registration
-   * Resets all form fields and selections
-   * NOTE: This method is no longer used since we removed auto-prefill behavior
-   */
-  _clearRegistrationForm(): void {
-    // Reset registration type selector
-    const registrationTypeSelect = document.getElementById('parent-registration-type-select') as HTMLSelectElement | null;
-    if (registrationTypeSelect) {
-      registrationTypeSelect.value = '';
-      if (window.M && window.M.FormSelect) {
-        window.M.FormSelect.init(registrationTypeSelect);
-      }
-    }
-
-    // Clear private lesson form
-    this.selectedLesson = null;
-
-    // Deselect all chips
-    const activeChips = document.querySelectorAll('.chip.active');
-    activeChips.forEach((_chip: Element) => {
-      const chip = _chip as HTMLElement;
-      chip.classList.remove('active', 'selected');
-      // Reset styling based on availability
-      if (chip.classList.contains('available')) {
-        chip.style.background = '#e8f5e8';
-        chip.style.borderColor = '#4caf50';
-        chip.style.color = '#000';
-      } else if (chip.classList.contains('limited')) {
-        chip.style.background = '#fff3e0';
-        chip.style.borderColor = '#ff9800';
-        chip.style.color = '#000';
-      }
-    });
-
-    // Deselect time slots
-    const selectedTimeSlots = document.querySelectorAll('.time-slot-item.selected');
-    selectedTimeSlots.forEach((_slot: Element) => {
-      const slot = _slot as HTMLElement;
-      slot.classList.remove('selected');
-      slot.style.border = '2px solid #4caf50';
-      slot.style.background = '#e8f5e8';
-    });
-
-    // Clear group class form
-    const classSelect = document.getElementById('parent-class-select') as HTMLSelectElement | null;
-    if (classSelect) {
-      classSelect.value = '';
-      if (window.M && window.M.FormSelect) {
-        window.M.FormSelect.init(classSelect);
-      }
-    }
-
-    // Reset transportation to pickup
-    const pickupRadio = document.querySelector(
-      'input[name="parent-transportation-type"][value="pickup"]'
-    ) as HTMLInputElement | null;
-    if (pickupRadio) {
-      pickupRadio.checked = true;
-    }
-
-    const groupPickupRadio = document.querySelector(
-      'input[name="parent-group-transportation-type"][value="pickup"]'
-    ) as HTMLInputElement | null;
-    if (groupPickupRadio) {
-      groupPickupRadio.checked = true;
-    }
-
-    // Hide private and group containers, but keep registration type section visible
-    const privateContainer = document.getElementById('parent-private-registration-container');
-    const groupContainer = document.getElementById('parent-group-registration-container');
-    if (privateContainer) privateContainer.style.display = 'none';
-    if (groupContainer) groupContainer.style.display = 'none';
-
-    // Clear any error/info messages
-    clearErrorMessage('parent-class-error-message');
-    clearInfoMessage('parent-class-info-message');
-  }
-
-  /**
    * Check if we're in an enrollment period (priority or open)
    * @returns {boolean} True if current period allows next trimester registration
    */
@@ -2730,47 +671,4 @@ export class ParentRegistrationForm {
     return false;
   }
 
-  /**
-   * Show conflict error modal with refresh on acknowledge
-   */
-  #showConflictModal(message: string): void {
-    // Parse conflict messages from the error
-    const conflicts = message
-      .replace('Registration conflicts detected: ', '')
-      .split('; ')
-      .map((c: string) => `<li>${c}</li>`)
-      .join('');
-
-    const modalHtml = `
-      <div id="conflict-error-modal" class="modal">
-        <div class="modal-content">
-          <h5><i class="material-icons left red-text">warning</i>Registration Conflict</h5>
-          <p>This registration could not be created due to the following conflicts:</p>
-          <ul class="browser-default">${conflicts}</ul>
-        </div>
-        <div class="modal-footer">
-          <a href="#!" class="modal-close waves-effect waves-green btn" id="conflict-modal-ok">OK</a>
-        </div>
-      </div>
-    `;
-
-    // Remove existing modal if present
-    const existingModal = document.getElementById('conflict-error-modal');
-    if (existingModal) {
-      existingModal.remove();
-    }
-
-    // Add modal to DOM
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-    // Initialize and open modal
-    const modalElement = document.getElementById('conflict-error-modal')!;
-    const modalInstance = M.Modal.init(modalElement, {
-      dismissible: false,
-      onCloseEnd: () => {
-        window.location.reload();
-      },
-    });
-    modalInstance.open();
-  }
 }

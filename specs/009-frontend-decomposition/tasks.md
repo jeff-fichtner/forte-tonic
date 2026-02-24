@@ -66,26 +66,26 @@
 
 ### Step 2c: Cascading Filter UI
 
-- [ ] T014 [US2] Extract cascading filter UI into `src/web/js/components/registrationForm/cascadingFilterChips.ts` — create a class with chip generation methods (`#generateInstrumentChips()`, `#generateDayChips()`, `#generateLengthChips()`, `#generateInstructorChips()`), filter state management (`#attachFilterChipListeners()`, `#clearDownstreamSelections()`, `#updateCascadingChips()`, `#filterTimeSlots()`, `#regenerateFilteredTimeSlots()`). Constructor takes container element, availability engine reference, and presentation helpers reference.
-- [ ] T015 [US2] Update `src/web/js/workflows/parentRegistrationForm.ts` to instantiate `CascadingFilterChips` and delegate filter operations to it
-- [ ] T016 [US2] Verify compilation: `npx tsc --noEmit -p tsconfig.web.json` — zero errors after cascading filter extraction
+- [x] T014 [US2] Extract cascading filter UI into `src/web/js/components/registrationForm/cascadingFilterChips.ts` — create a class with chip generation methods (`#generateInstrumentChips()`, `#generateDayChips()`, `#generateLengthChips()`, `#generateInstructorChips()`), filter state management (`#attachFilterChipListeners()`, `#clearDownstreamSelections()`, `#updateCascadingChips()`, `#filterTimeSlots()`, `#regenerateFilteredTimeSlots()`). Constructor takes container element, availability engine reference, and presentation helpers reference.
+- [x] T015 [US2] Update `src/web/js/workflows/parentRegistrationForm.ts` to instantiate `CascadingFilterChips` and delegate filter operations to it
+- [x] T016 [US2] Verify compilation: `npx tsc --noEmit -p tsconfig.web.json` — zero errors after cascading filter extraction
 
 ### Step 2d: Group Registration
 
-- [ ] T017 [US2] Extract group registration logic into `src/web/js/components/registrationForm/parentGroupRegistration.ts` — create a class with `#populateParentClassesDropdown()`, `#handleClassSelection()`, `#validateGroupRegistration()`, `#getCreateGroupRegistrationData()`, `#attachGroupSubmitButtonListener()`, `#clearGroupForm()`. Constructor takes classes array, registrations array, students array, container element, submit callback, and appConfig reference.
-- [ ] T018 [US2] Update `src/web/js/workflows/parentRegistrationForm.ts` to instantiate `ParentGroupRegistration` and delegate group flow to it
-- [ ] T019 [US2] Verify compilation: `npx tsc --noEmit -p tsconfig.web.json` — zero errors after group registration extraction
+- [x] T017 [US2] Extract group registration logic into `src/web/js/components/registrationForm/parentGroupRegistration.ts` — create a class with `#populateParentClassesDropdown()`, `#handleClassSelection()`, `#validateGroupRegistration()`, `#getCreateGroupRegistrationData()`, `#attachGroupSubmitButtonListener()`, `#clearGroupForm()`. Constructor takes classes array, registrations array, students array, container element, submit callback, and appConfig reference.
+- [x] T018 [US2] Update `src/web/js/workflows/parentRegistrationForm.ts` to instantiate `ParentGroupRegistration` and delegate group flow to it
+- [x] T019 [US2] Verify compilation: `npx tsc --noEmit -p tsconfig.web.json` — zero errors after group registration extraction
 
 ### Step 2e: Private Registration Submission
 
-- [ ] T020 [US2] Extract private registration submission logic into `src/web/js/components/registrationForm/parentPrivateSubmission.ts` — create a class with `#validateRegistration()`, `#getCreateRegistrationData()`, `#attachSubmitButtonListener()`. Constructor takes selected lesson state, registrations, appConfig, and submit callback.
-- [ ] T021 [US2] Update `src/web/js/workflows/parentRegistrationForm.ts` to instantiate `ParentPrivateSubmission` and delegate private submission flow to it
-- [ ] T022 [US2] Verify compilation: `npx tsc --noEmit -p tsconfig.web.json` — zero errors after private submission extraction
+- [x] T020 [US2] Extract private registration submission logic into `src/web/js/components/registrationForm/parentPrivateSubmission.ts` — create a class with `#validateRegistration()`, `#getCreateRegistrationData()`, `#attachSubmitButtonListener()`. Constructor takes selected lesson state, registrations, appConfig, and submit callback.
+- [x] T021 [US2] Update `src/web/js/workflows/parentRegistrationForm.ts` to instantiate `ParentPrivateSubmission` and delegate private submission flow to it
+- [x] T022 [US2] Verify compilation: `npx tsc --noEmit -p tsconfig.web.json` — zero errors after private submission extraction
 
 ### Step 2f: Reduce Orchestrator
 
-- [ ] T023 [US2] Clean up `src/web/js/workflows/parentRegistrationForm.ts` — remove all dead code from extractions, verify remaining orchestrator has: constructor, `#initializeHybridInterface()` (instantiates sub-components), `updateData()` (passes data to sub-components), `#populateStudentSelector()`, `#attachRegistrationTypeListener()`, `clearSelection()`, `destroy()`, `_isEnrollmentPeriodActive()`, `_canAccessNextTrimester()`, `_renderRegistrationSelector()`. Target: under 800 lines.
-- [ ] T024 [US2] Verify orchestrator line count is under 800 and compilation passes: `wc -l src/web/js/workflows/parentRegistrationForm.ts` and `npx tsc --noEmit -p tsconfig.web.json`
+- [x] T023 [US2] Clean up `src/web/js/workflows/parentRegistrationForm.ts` — remove all dead code from extractions, verify remaining orchestrator has: constructor, `#initializeHybridInterface()` (instantiates sub-components), `updateData()` (passes data to sub-components), `#populateStudentSelector()`, `#attachRegistrationTypeListener()`, `clearSelection()`, `destroy()`, `_isEnrollmentPeriodActive()`, `_canAccessNextTrimester()`, `_renderRegistrationSelector()`. Target: under 800 lines.
+- [x] T024 [US2] Verify orchestrator line count is under 800 and compilation passes: `wc -l src/web/js/workflows/parentRegistrationForm.ts` and `npx tsc --noEmit -p tsconfig.web.json`
 
 ### Tests for User Story 2
 
