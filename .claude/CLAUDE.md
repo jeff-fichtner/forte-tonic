@@ -25,6 +25,7 @@ Today's date is 2026-02-18.
 - N/A (all tests mock the Google Sheets layer) (006-backend-test-coverage)
 - TypeScript 5.x targeting ES2022, browser environmen + Vite 7.x (build), MaterializeCSS 1.0.0 (CDN, UI library) (008-frontend-type-hardening)
 - N/A (frontend only; API calls via HttpService) (008-frontend-type-hardening)
+- TypeScript 5.x targeting ES2022 + Express 4 (backend), Vite 7.x (frontend build), MaterializeCSS 1.0.0 (UI), googleapis (Google Sheets) (009-frontend-decomposition)
 
 ## Recent Changes
 - 002-typescript-migration: Added TypeScript 5.x targeting ES2022, running on Node.js (ESM) + Express 4, Google Sheets API v4, tsx (runtime), ts-jest (testing), typescript-eslint (linting)
