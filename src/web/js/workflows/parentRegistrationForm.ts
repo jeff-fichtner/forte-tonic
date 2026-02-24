@@ -28,21 +28,126 @@ import {
 } from '../utilities/registrationForm/messageDisplay.js';
 import { FORTE_PROGRAM_EMAIL } from '../constants.js';
 
+/** Instructor shape used by the parent registration form */
+export interface InstructorLike {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  specialties?: string[];
+  primaryInstrument?: string;
+  gradeRange?: { minimum?: number; maximum?: number };
+  availability?: Record<string, DaySchedule>;
+  [key: string]: unknown;
+}
+
+/** Day schedule entry for instructor availability */
+interface DaySchedule {
+  isAvailable?: boolean;
+  startTime?: string;
+  endTime?: string;
+  [key: string]: unknown;
+}
+
+/** Student shape used by the parent registration form */
+export interface StudentLike {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  grade?: number | string | null;
+  getFullName?: () => string;
+  [key: string]: unknown;
+}
+
+/** Class shape used by the parent registration form */
+export interface ClassLike {
+  id: string;
+  day?: string;
+  startTime?: string;
+  length?: number;
+  title?: string;
+  instrument?: string;
+  instructorId?: string;
+  formattedName?: string;
+  minimumGrade?: number;
+  maximumGrade?: number;
+  size?: number;
+  isRestricted?: boolean;
+  [key: string]: unknown;
+}
+
+/** Registration record shape */
+export interface RegistrationLike {
+  id: string;
+  studentId?: string;
+  instructorId?: string;
+  classId?: string;
+  classTitle?: string;
+  day?: string;
+  startTime?: string;
+  length?: number;
+  instrument?: string;
+  registrationType?: string;
+  transportationType?: string;
+  linkedPreviousRegistrationId?: string;
+  [key: string]: unknown;
+}
+
+/** Registration data built for submission */
+export interface RegistrationSubmitData {
+  studentId: string;
+  registrationType: string;
+  transportationType?: string;
+  instructorId?: string;
+  instrument?: string;
+  day?: string;
+  startTime?: string;
+  length?: number;
+  trimester?: string;
+  replaceRegistrationId?: string;
+  classId?: string;
+  classTitle?: string;
+  [key: string]: unknown;
+}
+
+/** Time slot for instructor availability grid */
+interface TimeSlot {
+  instructor?: InstructorLike;
+  instructorId: string;
+  day: string;
+  dayName?: string;
+  time: string;
+  timeFormatted?: string;
+  length: number;
+  instrument: string;
+}
+
 /**
  * Parent Registration Form with hybrid interface (progressive filters + time slot grid)
  */
 export class ParentRegistrationForm {
+  instructors: InstructorLike[];
+  students: StudentLike[];
+  classes: ClassLike[];
+  registrations: RegistrationLike[];
+  sendDataFunction: (data: RegistrationSubmitData) => Promise<unknown>;
+  parentChildren: StudentLike[];
+  currentTrimesterRegistrations: RegistrationLike[];
+  nextTrimesterRegistrations: RegistrationLike[];
+  selectedLesson: TimeSlot | null;
+  _selectedPreviousRegistrationId: string | null;
+  regenerateTimeout: ReturnType<typeof setTimeout> | undefined;
+
   /**
    * Constructor
    */
   constructor(
-    instructors,
-    students,
-    classes,
-    nextTrimesterRegistrations,
-    sendDataFunction,
-    parentChildren = [],
-    currentTrimesterRegistrations = []
+    instructors: InstructorLike[],
+    students: StudentLike[],
+    classes: ClassLike[],
+    nextTrimesterRegistrations: RegistrationLike[],
+    sendDataFunction: (data: RegistrationSubmitData) => Promise<unknown>,
+    parentChildren: StudentLike[] = [],
+    currentTrimesterRegistrations: RegistrationLike[] = []
   ) {
     this.instructors = instructors;
     this.students = students;
@@ -67,13 +172,13 @@ export class ParentRegistrationForm {
    * Update the form data without recreating the instance
    */
   updateData(
-    instructors,
-    students,
-    classes,
-    nextTrimesterRegistrations,
-    parentChildren,
-    currentTrimesterRegistrations = []
-  ) {
+    instructors: InstructorLike[],
+    students: StudentLike[],
+    classes: ClassLike[],
+    nextTrimesterRegistrations: RegistrationLike[],
+    parentChildren: StudentLike[],
+    currentTrimesterRegistrations: RegistrationLike[] = []
+  ): void {
     this.instructors = instructors;
     this.students = students;
     this.classes = classes;
@@ -89,7 +194,7 @@ export class ParentRegistrationForm {
   /**
    * Refresh the interface with current data
    */
-  #refreshInterface() {
+  #refreshInterface(): void {
     // Clear current selection
     this.selectedLesson = null;
 
@@ -115,7 +220,7 @@ export class ParentRegistrationForm {
   /**
    * Create a filter chip with appropriate styling
    */
-  #createFilterChip(type, value, text, isDefault = false, availability = 'available') {
+  #createFilterChip(type: string, value: string, text: string, isDefault: boolean = false, availability: string = 'available'): HTMLDivElement {
     const chip = document.createElement('div');
     chip.className = `chip ${type}-chip`;
     chip.dataset.type = type;
@@ -123,7 +228,7 @@ export class ParentRegistrationForm {
     chip.textContent = text;
 
     // Apply base styles
-    const styles = {
+    const styles: Record<string, string> = {
       padding: '8px 12px',
       borderRadius: '16px',
       display: 'flex',
@@ -183,7 +288,7 @@ export class ParentRegistrationForm {
    * @param {object} daySchedule - Day schedule object
    * @returns {boolean} True if available
    */
-  #isInstructorAvailableOnDay(instructor, day, daySchedule) {
+  #isInstructorAvailableOnDay(instructor: InstructorLike, day: string, daySchedule: DaySchedule | undefined): boolean {
     // Check 1: Day schedule must exist
     if (!daySchedule) {
       return false;
@@ -221,7 +326,7 @@ export class ParentRegistrationForm {
    * @param {string} day - Day name in lowercase (e.g., "monday")
    * @returns {string} Capitalized day name (e.g., "Monday")
    */
-  #getRegistrationDayName(day) {
+  #getRegistrationDayName(day: string): string {
     return day.charAt(0).toUpperCase() + day.slice(1);
   }
 
@@ -229,20 +334,22 @@ export class ParentRegistrationForm {
    * Get the currently selected student's grade
    * @returns {number|null} Student grade (0-8) or null if no student selected
    */
-  #getSelectedStudentGrade() {
-    const studentSelect = document.getElementById('parent-student-select');
+  #getSelectedStudentGrade(): number | null {
+    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
     const selectedStudentId = studentSelect?.value;
 
     if (!selectedStudentId) {
       return null;
     }
 
-    const selectedStudent = this.students.find(s => {
+    const selectedStudent = this.students.find((s: StudentLike) => {
       const studentId = s.id;
       return studentId && studentId.toString() === selectedStudentId.toString();
     });
 
-    return selectedStudent?.grade ?? null;
+    const grade = selectedStudent?.grade;
+    if (grade === null || grade === undefined) return null;
+    return typeof grade === 'number' ? grade : Number(grade);
   }
 
   /**
@@ -251,7 +358,7 @@ export class ParentRegistrationForm {
    * @param {number|null} studentGrade - Student's grade (0-8) or null
    * @returns {boolean} True if instructor can teach this grade
    */
-  #isInstructorGradeEligible(instructor, studentGrade) {
+  #isInstructorGradeEligible(instructor: InstructorLike, studentGrade: number | null): boolean {
     // If no student grade, allow all instructors
     if (studentGrade === null || studentGrade === undefined) {
       return true;
@@ -284,7 +391,7 @@ export class ParentRegistrationForm {
    * @param {Array} existingRegistrations - Existing registrations for this day
    * @returns {number} Number of available 30-minute slots
    */
-  #calculateAvailableSlotsForDay(startMinutes, endMinutes, existingRegistrations) {
+  #calculateAvailableSlotsForDay(startMinutes: number, endMinutes: number, existingRegistrations: RegistrationLike[]): number {
     let availableSlots = 0;
 
     // Check every 30-minute slot in the day
@@ -301,12 +408,12 @@ export class ParentRegistrationForm {
   /**
    * Calculate cascading day availability based on selected instrument
    */
-  #calculateCascadingDayAvailability(selectedInstrument = null) {
-    const availability = {};
+  #calculateCascadingDayAvailability(selectedInstrument: string | null = null): Record<string, number> {
+    const availability: Record<string, number> = {};
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
 
     // Create day mapping for registration lookups
-    const dayMap = {
+    const dayMap: Record<string, number> = {
       monday: 0,
       tuesday: 1,
       wednesday: 2,
@@ -321,12 +428,12 @@ export class ParentRegistrationForm {
 
     // Filter instructors based on selected instrument and student grade (cascading)
     const studentGrade = this.#getSelectedStudentGrade();
-    let instructorsToUse = this.instructors.filter(instructor =>
+    let instructorsToUse = this.instructors.filter((instructor: InstructorLike) =>
       this.#isInstructorGradeEligible(instructor, studentGrade)
     );
 
     if (selectedInstrument && selectedInstrument !== 'all') {
-      instructorsToUse = instructorsToUse.filter(instructor => {
+      instructorsToUse = instructorsToUse.filter((instructor: InstructorLike) => {
         const instructorInstruments =
           instructor.specialties ||
           (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
@@ -336,21 +443,21 @@ export class ParentRegistrationForm {
           : [instructorInstruments].filter(Boolean);
 
         return normalizedInstruments.some(
-          inst => inst && inst.toLowerCase().includes(selectedInstrument.toLowerCase())
+          (inst: string) => inst && inst.toLowerCase().includes(selectedInstrument.toLowerCase())
         );
       });
     }
 
     // Count all possible slots for each day across filtered instructors
-    instructorsToUse.forEach(instructor => {
+    instructorsToUse.forEach((instructor: InstructorLike) => {
       days.forEach(day => {
-        const daySchedule = instructor.availability?.[day] || instructor[day];
+        const daySchedule = (instructor.availability?.[day] || instructor[day]) as DaySchedule | undefined;
 
-        if (!this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
+        if (!daySchedule || !this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
           return; // Skip this instructor on this day
         }
 
-        const startTime = daySchedule.startTime;
+        const startTime = daySchedule.startTime || '';
         const endTime = daySchedule.endTime || '17:00';
 
         const startMinutes = parseTime(startTime);
@@ -362,7 +469,7 @@ export class ParentRegistrationForm {
             ? this.nextTrimesterRegistrations || []
             : this.registrations;
 
-          const existingRegistrations = registrationsToCheck.filter(reg => {
+          const existingRegistrations = registrationsToCheck.filter((reg: RegistrationLike) => {
             const regInstructorId = reg.instructorId;
             return (
               regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day)
@@ -398,11 +505,11 @@ export class ParentRegistrationForm {
   /**
    * Calculate cascading length availability based on selected instrument and day
    */
-  #calculateCascadingLengthAvailability(selectedInstrument = null, selectedDay = null) {
-    const availability = { 30: 0, 45: 0, 60: 0 };
+  #calculateCascadingLengthAvailability(selectedInstrument: string | null = null, selectedDay: string | null = null): Record<number, number> {
+    const availability: Record<number, number> = { 30: 0, 45: 0, 60: 0 };
 
     // Create day mapping for registration lookups
-    const dayMap = {
+    const dayMap: Record<string, number> = {
       monday: 0,
       tuesday: 1,
       wednesday: 2,
@@ -412,12 +519,12 @@ export class ParentRegistrationForm {
 
     // Filter instructors based on selected instrument and student grade (cascading)
     const studentGrade = this.#getSelectedStudentGrade();
-    let instructorsToUse = this.instructors.filter(instructor =>
+    let instructorsToUse = this.instructors.filter((instructor: InstructorLike) =>
       this.#isInstructorGradeEligible(instructor, studentGrade)
     );
 
     if (selectedInstrument && selectedInstrument !== 'all') {
-      instructorsToUse = instructorsToUse.filter(instructor => {
+      instructorsToUse = instructorsToUse.filter((instructor: InstructorLike) => {
         const instructorInstruments =
           instructor.specialties ||
           (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
@@ -427,7 +534,7 @@ export class ParentRegistrationForm {
           : [instructorInstruments].filter(Boolean);
 
         return normalizedInstruments.some(
-          inst => inst && inst.toLowerCase().includes(selectedInstrument.toLowerCase())
+          (inst: string) => inst && inst.toLowerCase().includes(selectedInstrument.toLowerCase())
         );
       });
     }
@@ -439,15 +546,15 @@ export class ParentRegistrationForm {
         : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
 
     // Count slots for each length across filtered instructors and days
-    instructorsToUse.forEach(instructor => {
+    instructorsToUse.forEach((instructor: InstructorLike) => {
       daysToCheck.forEach(day => {
-        const daySchedule = instructor.availability?.[day] || instructor[day];
+        const daySchedule = (instructor.availability?.[day] || instructor[day]) as DaySchedule | undefined;
 
-        if (!this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
+        if (!daySchedule || !this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
           return; // Skip this instructor on this day
         }
 
-        const startTime = daySchedule.startTime;
+        const startTime = daySchedule.startTime || '';
         const endTime = daySchedule.endTime || '17:00';
 
         const startMinutes = parseTime(startTime);
@@ -459,7 +566,7 @@ export class ParentRegistrationForm {
             ? this.nextTrimesterRegistrations || []
             : this.registrations;
 
-          const existingRegistrations = registrationsToCheck.filter(reg => {
+          const existingRegistrations = registrationsToCheck.filter((reg: RegistrationLike) => {
             const regInstructorId = reg.instructorId;
             return (
               regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day)
@@ -496,14 +603,14 @@ export class ParentRegistrationForm {
    * Calculate cascading instructor availability based on selected instrument, day, and length
    */
   #calculateCascadingInstructorAvailability(
-    selectedInstrument = null,
-    selectedDay = null,
-    selectedLength = null
-  ) {
-    const availability = {};
+    selectedInstrument: string | null = null,
+    selectedDay: string | null = null,
+    selectedLength: string | null = null
+  ): Record<string, number> {
+    const availability: Record<string, number> = {};
 
     // Create day mapping for registration lookups
-    const dayMap = {
+    const dayMap: Record<string, number> = {
       monday: 0,
       tuesday: 1,
       wednesday: 2,
@@ -513,12 +620,12 @@ export class ParentRegistrationForm {
 
     // Filter instructors based on selected instrument and student grade (cascading)
     const studentGrade = this.#getSelectedStudentGrade();
-    let instructorsToUse = this.instructors.filter(instructor =>
+    let instructorsToUse = this.instructors.filter((instructor: InstructorLike) =>
       this.#isInstructorGradeEligible(instructor, studentGrade)
     );
 
     if (selectedInstrument && selectedInstrument !== 'all') {
-      instructorsToUse = instructorsToUse.filter(instructor => {
+      instructorsToUse = instructorsToUse.filter((instructor: InstructorLike) => {
         const instructorInstruments =
           instructor.specialties ||
           (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
@@ -528,7 +635,7 @@ export class ParentRegistrationForm {
           : [instructorInstruments].filter(Boolean);
 
         return normalizedInstruments.some(
-          inst => inst && inst.toLowerCase().includes(selectedInstrument.toLowerCase())
+          (inst: string) => inst && inst.toLowerCase().includes(selectedInstrument.toLowerCase())
         );
       });
     }
@@ -540,20 +647,20 @@ export class ParentRegistrationForm {
         : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
 
     // Initialize instructor availability
-    instructorsToUse.forEach(instructor => {
+    instructorsToUse.forEach((instructor: InstructorLike) => {
       availability[instructor.id] = 0;
     });
 
     // Count slots for each instructor based on cascading filters
-    instructorsToUse.forEach(instructor => {
+    instructorsToUse.forEach((instructor: InstructorLike) => {
       daysToCheck.forEach(day => {
-        const daySchedule = instructor.availability?.[day] || instructor[day];
+        const daySchedule = (instructor.availability?.[day] || instructor[day]) as DaySchedule | undefined;
 
-        if (!this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
+        if (!daySchedule || !this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
           return; // Skip this instructor on this day
         }
 
-        const startTime = daySchedule.startTime;
+        const startTime = daySchedule.startTime || '';
         const endTime = daySchedule.endTime || '17:00';
 
         const startMinutes = parseTime(startTime);
@@ -565,7 +672,7 @@ export class ParentRegistrationForm {
             ? this.nextTrimesterRegistrations || []
             : this.registrations;
 
-          const existingRegistrations = registrationsToCheck.filter(reg => {
+          const existingRegistrations = registrationsToCheck.filter((reg: RegistrationLike) => {
             const regInstructorId = reg.instructorId;
             return (
               regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day)
@@ -622,7 +729,7 @@ export class ParentRegistrationForm {
   /**
    * Generate instructor filter chips dynamically using cascading filters
    */
-  #generateInstructorChips() {
+  #generateInstructorChips(): void {
     // Find the instructor container specifically in parent registration
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
@@ -651,11 +758,11 @@ export class ParentRegistrationForm {
 
     // Get current filter context - only consider upstream filters (instrument, day, length)
     const selectedInstrument =
-      parentContainer.querySelector('.instrument-chip.active')?.dataset.value;
-    const selectedDay = parentContainer.querySelector('.day-chip.active')?.dataset.value;
-    const selectedLength = parentContainer.querySelector('.length-chip.active')?.dataset.value;
+      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value;
+    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value;
+    const selectedLength = (parentContainer.querySelector('.length-chip.active') as HTMLElement | null)?.dataset.value;
     const selectedInstructor =
-      parentContainer.querySelector('.instructor-chip.active')?.dataset.value;
+      (parentContainer.querySelector('.instructor-chip.active') as HTMLElement | null)?.dataset.value;
 
     // Calculate availability counts for each instructor based on cascading filters
     const instructorAvailability = this.#calculateCascadingInstructorAvailability(
@@ -663,7 +770,7 @@ export class ParentRegistrationForm {
       selectedDay,
       selectedLength
     );
-    const totalSlots = Object.values(instructorAvailability).reduce((sum, count) => sum + count, 0);
+    const totalSlots = Object.values(instructorAvailability).reduce((sum: number, count: number) => sum + count, 0);
 
     // Create "All Instructors" chip - only default if no specific instructor is selected
     const isAllDefault = !selectedInstructor || selectedInstructor === 'all';
@@ -678,11 +785,11 @@ export class ParentRegistrationForm {
 
     // Create individual instructor chips (filtered by student grade)
     const studentGrade = this.#getSelectedStudentGrade();
-    const eligibleInstructors = this.instructors.filter(instructor =>
+    const eligibleInstructors = this.instructors.filter((instructor: InstructorLike) =>
       this.#isInstructorGradeEligible(instructor, studentGrade)
     );
 
-    eligibleInstructors.forEach(instructor => {
+    eligibleInstructors.forEach((instructor: InstructorLike) => {
       const slots = instructorAvailability[instructor.id] || 0;
       const chipText = `${instructor.firstName} ${instructor.lastName} (${slots} slots)`;
       const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
@@ -700,7 +807,7 @@ export class ParentRegistrationForm {
   /**
    * Generate day filter chips dynamically based on selected instrument (cascading)
    */
-  #generateDayChips() {
+  #generateDayChips(): void {
     // Find the day container specifically in parent registration
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
@@ -717,12 +824,12 @@ export class ParentRegistrationForm {
 
     // Get current filter context - only consider upstream filters (instrument)
     const selectedInstrument =
-      parentContainer.querySelector('.instrument-chip.active')?.dataset.value;
-    const selectedDay = parentContainer.querySelector('.day-chip.active')?.dataset.value;
+      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value;
+    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value;
 
     // Calculate availability counts for each day based on selected instrument only
     const dayAvailability = this.#calculateCascadingDayAvailability(selectedInstrument);
-    const totalSlots = Object.values(dayAvailability).reduce((sum, count) => sum + count, 0);
+    const totalSlots = Object.values(dayAvailability).reduce((sum: number, count: number) => sum + count, 0);
 
     // Create "All Days" chip - only default if no specific day is selected
     const isAllDefault = !selectedDay || selectedDay === 'all';
@@ -751,7 +858,7 @@ export class ParentRegistrationForm {
   /**
    * Generate instrument filter chips dynamically (top of cascade - no upstream filters)
    */
-  #generateInstrumentChips() {
+  #generateInstrumentChips(): void {
     // Find the instrument container specifically in parent registration
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
@@ -768,11 +875,11 @@ export class ParentRegistrationForm {
 
     // Get current selection (for restoring active state)
     const selectedInstrument =
-      parentContainer.querySelector('.instrument-chip.active')?.dataset.value;
+      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value;
 
     // Calculate availability for each instrument (no upstream filters - top of cascade)
     const instrumentAvailability = this.#calculateFilteredInstrumentAvailability(null, null, null);
-    const totalSlots = Object.values(instrumentAvailability).reduce((sum, count) => sum + count, 0);
+    const totalSlots = Object.values(instrumentAvailability).reduce((sum: number, count: number) => sum + count, 0);
 
     // Create "All Instruments" chip - only default if no specific instrument is selected
     const isAllDefault = !selectedInstrument || selectedInstrument === 'all';
@@ -800,14 +907,14 @@ export class ParentRegistrationForm {
    * Calculate filtered instrument availability based on selected filters
    */
   #calculateFilteredInstrumentAvailability(
-    selectedInstructor = null,
-    selectedDay = null,
-    selectedLength = null
-  ) {
-    const availability = {};
+    selectedInstructor: string | null = null,
+    selectedDay: string | null = null,
+    selectedLength: string | null = null
+  ): Record<string, number> {
+    const availability: Record<string, number> = {};
 
     // Create day mapping for registration lookups
-    const dayMap = {
+    const dayMap: Record<string, number> = {
       monday: 0,
       tuesday: 1,
       wednesday: 2,
@@ -817,18 +924,18 @@ export class ParentRegistrationForm {
 
     // Filter instructors based on selected instructor and student grade
     const studentGrade = this.#getSelectedStudentGrade();
-    let instructorsToUse = this.instructors.filter(instructor =>
+    let instructorsToUse = this.instructors.filter((instructor: InstructorLike) =>
       this.#isInstructorGradeEligible(instructor, studentGrade)
     );
     if (selectedInstructor && selectedInstructor !== 'all') {
       instructorsToUse = instructorsToUse.filter(
-        instructor => instructor.id === selectedInstructor
+        (instructor: InstructorLike) => instructor.id === selectedInstructor
       );
     }
 
     // Get all possible instruments from filtered instructors
-    const instrumentsSet = new Set();
-    instructorsToUse.forEach(instructor => {
+    const instrumentsSet = new Set<string>();
+    instructorsToUse.forEach((instructor: InstructorLike) => {
       const instructorInstruments =
         instructor.specialties ||
         (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
@@ -852,7 +959,7 @@ export class ParentRegistrationForm {
     });
 
     // Calculate availability for each instrument
-    instructorsToUse.forEach(instructor => {
+    instructorsToUse.forEach((instructor: InstructorLike) => {
       const days =
         selectedDay && selectedDay !== 'all'
           ? [selectedDay]
@@ -867,13 +974,13 @@ export class ParentRegistrationForm {
         : [instructorInstruments].filter(Boolean);
 
       days.forEach(day => {
-        const daySchedule = instructor.availability?.[day] || instructor[day];
+        const daySchedule = (instructor.availability?.[day] || instructor[day]) as DaySchedule | undefined;
 
-        if (!this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
+        if (!daySchedule || !this.#isInstructorAvailableOnDay(instructor, day, daySchedule)) {
           return;
         }
 
-        const startTime = daySchedule.startTime;
+        const startTime = daySchedule.startTime || '';
         const endTime = daySchedule.endTime || '17:00';
 
         const startMinutes = parseTime(startTime);
@@ -886,7 +993,7 @@ export class ParentRegistrationForm {
             ? this.nextTrimesterRegistrations || []
             : this.registrations;
 
-          const existingRegistrations = registrationsToCheck.filter(reg => {
+          const existingRegistrations = registrationsToCheck.filter((reg: RegistrationLike) => {
             const regInstructorId = reg.instructorId;
             return (
               regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day)
@@ -934,7 +1041,7 @@ export class ParentRegistrationForm {
   /**
    * Generate length chips based on cascading filters (instrument and day)
    */
-  #generateLengthChips() {
+  #generateLengthChips(): void {
     // Find the length container specifically in parent registration
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
@@ -951,9 +1058,9 @@ export class ParentRegistrationForm {
 
     // Get current filter context - only consider upstream filters (instrument and day)
     const selectedInstrument =
-      parentContainer.querySelector('.instrument-chip.active')?.dataset.value;
-    const selectedDay = parentContainer.querySelector('.day-chip.active')?.dataset.value;
-    const selectedLength = parentContainer.querySelector('.length-chip.active')?.dataset.value;
+      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value;
+    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value;
+    const selectedLength = (parentContainer.querySelector('.length-chip.active') as HTMLElement | null)?.dataset.value;
 
     // Get available lesson lengths based on cascading filters
     const availableLengths = this.#calculateCascadingLengthAvailability(
@@ -962,7 +1069,7 @@ export class ParentRegistrationForm {
     );
 
     // Calculate total slots across all lengths
-    const totalSlots = Object.values(availableLengths).reduce((sum, count) => sum + count, 0);
+    const totalSlots = Object.values(availableLengths).reduce((sum: number, count: number) => sum + count, 0);
 
     // Create "All Lengths" chip - only default if no specific length is selected
     const isAllDefault = !selectedLength || selectedLength === 'all';
@@ -997,7 +1104,7 @@ export class ParentRegistrationForm {
   /**
    * Generate time slots for all instructors
    */
-  #generateTimeSlots() {
+  #generateTimeSlots(): void {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
@@ -1010,12 +1117,12 @@ export class ParentRegistrationForm {
 
     // Filter instructors by student grade eligibility
     const studentGrade = this.#getSelectedStudentGrade();
-    const eligibleInstructors = this.instructors.filter(instructor =>
+    const eligibleInstructors = this.instructors.filter((instructor: InstructorLike) =>
       this.#isInstructorGradeEligible(instructor, studentGrade)
     );
 
     // Generate cards for each eligible instructor
-    eligibleInstructors.forEach(instructor => {
+    eligibleInstructors.forEach((instructor: InstructorLike) => {
       const timeSlots = this.#generateInstructorTimeSlots(instructor);
       if (timeSlots.length > 0) {
         const card = this.#createInstructorCard(instructor, timeSlots);
@@ -1030,13 +1137,13 @@ export class ParentRegistrationForm {
   /**
    * Generate time slots for a specific instructor
    */
-  #generateInstructorTimeSlots(instructor) {
-    const timeSlots = [];
+  #generateInstructorTimeSlots(instructor: InstructorLike): TimeSlot[] {
+    const timeSlots: TimeSlot[] = [];
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
     // Create day mapping for registration lookups
-    const dayMap = {
+    const dayMap: Record<string, number> = {
       monday: 0,
       tuesday: 1,
       wednesday: 2,
@@ -1046,7 +1153,7 @@ export class ParentRegistrationForm {
 
     days.forEach((day, index) => {
       // Enhanced availability checking
-      const daySchedule = instructor.availability?.[day] || instructor[day];
+      const daySchedule = (instructor.availability?.[day] || instructor[day]) as DaySchedule | undefined;
 
       // Check 1: Instructor must be available on this day
       if (!daySchedule || !daySchedule.isAvailable) {
@@ -1088,7 +1195,7 @@ export class ParentRegistrationForm {
         ? this.nextTrimesterRegistrations || []
         : this.registrations;
 
-      const existingRegistrations = registrationsToCheck.filter(reg => {
+      const existingRegistrations = registrationsToCheck.filter((reg: RegistrationLike) => {
         const regInstructorId = reg.instructorId;
         return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
       });
@@ -1132,6 +1239,7 @@ export class ParentRegistrationForm {
               length: length,
               instrument: instrument.trim(),
               instructor: instructor,
+              instructorId: instructor.id,
             });
           });
         });
@@ -1147,12 +1255,12 @@ export class ParentRegistrationForm {
    * @returns {Array} Filtered registrations
    * @private
    */
-  #getFilteredRegistrationsForConflictCheck(registrations) {
+  #getFilteredRegistrationsForConflictCheck(registrations: RegistrationLike[]): RegistrationLike[] {
     if (!this._selectedPreviousRegistrationId) {
       return registrations;
     }
 
-    return registrations.filter(reg => {
+    return registrations.filter((reg: RegistrationLike) => {
       return reg.id !== this._selectedPreviousRegistrationId;
     });
   }
@@ -1164,15 +1272,15 @@ export class ParentRegistrationForm {
    * @param {Array} existingRegistrations - Array of existing registrations
    * @returns {boolean} True if there's a conflict
    */
-  #checkTimeSlotConflict(slotStartMinutes, slotLengthMinutes, existingRegistrations) {
+  #checkTimeSlotConflict(slotStartMinutes: number, slotLengthMinutes: number, existingRegistrations: RegistrationLike[]): boolean {
     const slotEndMinutes = slotStartMinutes + slotLengthMinutes;
 
     // Filter out the registration being modified
     const filteredRegistrations =
       this.#getFilteredRegistrationsForConflictCheck(existingRegistrations);
 
-    return filteredRegistrations.some(reg => {
-      const regStartMinutes = parseTime(reg.startTime);
+    return filteredRegistrations.some((reg: RegistrationLike) => {
+      const regStartMinutes = parseTime(reg.startTime || '');
       if (regStartMinutes === null) return false;
 
       const regEndMinutes = regStartMinutes + (reg.length || 30);
@@ -1187,7 +1295,7 @@ export class ParentRegistrationForm {
   /**
    * Create an instructor card with time slots
    */
-  #createInstructorCard(instructor, timeSlots) {
+  #createInstructorCard(instructor: InstructorLike, timeSlots: TimeSlot[]): HTMLDivElement {
     const card = document.createElement('div');
     card.className = 'instructor-card';
     card.style.cssText =
@@ -1229,13 +1337,13 @@ export class ParentRegistrationForm {
   /**
    * Create a time slot element
    */
-  #createTimeSlotElement(slot) {
+  #createTimeSlotElement(slot: TimeSlot): HTMLDivElement {
     const element = document.createElement('div');
     element.className = 'timeslot available';
-    element.dataset.instructorId = slot.instructor.id;
+    element.dataset.instructorId = slot.instructor!.id;
     element.dataset.day = slot.day;
     element.dataset.time = slot.time;
-    element.dataset.length = slot.length;
+    element.dataset.length = String(slot.length);
     element.dataset.instrument = slot.instrument;
 
     element.style.cssText =
@@ -1257,7 +1365,7 @@ export class ParentRegistrationForm {
   /**
    * Initialize the hybrid registration interface
    */
-  #initializeHybridInterface() {
+  #initializeHybridInterface(): void {
     // Hide all registration containers initially
     this.#hideAllRegistrationContainers();
 
@@ -1302,8 +1410,8 @@ export class ParentRegistrationForm {
   /**
    * Populate the student selector with parent's children
    */
-  #populateStudentSelector() {
-    const studentSelect = document.getElementById('parent-student-select');
+  #populateStudentSelector(): void {
+    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
     const studentSection = document.getElementById('parent-student-selection-section');
 
     if (!studentSelect || !studentSection) {
@@ -1313,7 +1421,7 @@ export class ParentRegistrationForm {
 
     // Clear existing options (except the first placeholder)
     while (studentSelect.children.length > 1) {
-      studentSelect.removeChild(studentSelect.lastChild);
+      studentSelect.removeChild(studentSelect.lastChild!)
     }
 
     // Handle based on number of students
@@ -1350,8 +1458,8 @@ export class ParentRegistrationForm {
       });
 
       // Add event listener for student selection changes
-      studentSelect.addEventListener('change', event => {
-        const selectedStudentId = event.target.value;
+      studentSelect.addEventListener('change', (event: Event) => {
+        const selectedStudentId = (event.target as HTMLSelectElement).value;
         if (selectedStudentId) {
           // Clear any previously selected registration when switching students
           this._selectedPreviousRegistrationId = null;
@@ -1362,12 +1470,12 @@ export class ParentRegistrationForm {
           this._renderRegistrationSelector();
 
           // If group registration type is already selected, repopulate classes for new student
-          const registrationTypeSelect = document.getElementById('parent-registration-type-select');
+          const registrationTypeSelect = document.getElementById('parent-registration-type-select') as HTMLSelectElement | null;
           if (registrationTypeSelect && registrationTypeSelect.value === RegistrationType.GROUP) {
             this.#populateParentClassesDropdown();
 
             // Re-check any currently selected class for conflicts with the new student
-            const classSelect = document.getElementById('parent-class-select');
+            const classSelect = document.getElementById('parent-class-select') as HTMLSelectElement | null;
             if (classSelect && classSelect.value) {
               this.#handleClassSelection(classSelect.value);
             }
@@ -1396,8 +1504,8 @@ export class ParentRegistrationForm {
   /**
    * Show the registration type container
    */
-  #showRegistrationTypeContainer() {
-    const registrationTypeSection = document.querySelector('.registration-type-section');
+  #showRegistrationTypeContainer(): void {
+    const registrationTypeSection = document.querySelector('.registration-type-section') as HTMLElement | null;
     if (registrationTypeSection) {
       registrationTypeSection.style.display = 'block';
     }
@@ -1406,8 +1514,8 @@ export class ParentRegistrationForm {
   /**
    * Hide all registration containers (type, private, group)
    */
-  #hideAllRegistrationContainers() {
-    const registrationTypeSection = document.querySelector('.registration-type-section');
+  #hideAllRegistrationContainers(): void {
+    const registrationTypeSection = document.querySelector('.registration-type-section') as HTMLElement | null;
     const privateContainer = document.getElementById('parent-private-registration-container');
     const groupContainer = document.getElementById('parent-group-registration-container');
 
@@ -1419,17 +1527,17 @@ export class ParentRegistrationForm {
   /**
    * Attach event listener to registration type selection
    */
-  #attachRegistrationTypeListener() {
+  #attachRegistrationTypeListener(): void {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
-    const registrationTypeSelect = document.getElementById('parent-registration-type-select');
+    const registrationTypeSelect = document.getElementById('parent-registration-type-select') as HTMLSelectElement | null;
     const privateContainer = document.getElementById('parent-private-registration-container');
     const groupContainer = document.getElementById('parent-group-registration-container');
 
     if (registrationTypeSelect && privateContainer && groupContainer) {
-      registrationTypeSelect.addEventListener('change', event => {
-        const selectedType = event.target.value;
+      registrationTypeSelect.addEventListener('change', (event: Event) => {
+        const selectedType = (event.target as HTMLSelectElement).value;
 
         // Hide both containers first
         privateContainer.style.display = 'none';
@@ -1467,15 +1575,15 @@ export class ParentRegistrationForm {
   /**
    * Populate the parent classes dropdown with available classes
    */
-  #populateParentClassesDropdown() {
-    const classSelect = document.getElementById('parent-class-select');
+  #populateParentClassesDropdown(): void {
+    const classSelect = document.getElementById('parent-class-select') as HTMLSelectElement | null;
     if (!classSelect || !this.classes) {
       console.warn('Parent class select not found or no classes available');
       return;
     }
 
     // Get selected student ID
-    const studentSelect = document.getElementById('parent-student-select');
+    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
     const selectedStudentId = studentSelect?.value;
 
     if (!selectedStudentId) {
@@ -1484,7 +1592,7 @@ export class ParentRegistrationForm {
     }
 
     // Get the selected student to access their grade
-    const selectedStudent = this.students.find(s => {
+    const selectedStudent = this.students.find((s: StudentLike) => {
       // Handle both plain string IDs and value objects
       const studentId = s.id;
       return studentId && studentId.toString() === selectedStudentId.toString();
@@ -1493,7 +1601,7 @@ export class ParentRegistrationForm {
 
     // Helper function to check grade eligibility
     // Grades are always numbers 0-8 (0 = Kindergarten, 1-8 = grades 1-8)
-    const isGradeEligible = (studentGrade, minGrade, maxGrade) => {
+    const isGradeEligible = (studentGrade: number | string | null | undefined, minGrade: number | undefined, maxGrade: number | undefined): boolean => {
       const gradeNum = Number(studentGrade);
       const minNum = Number(minGrade);
       const maxNum = Number(maxGrade);
@@ -1501,7 +1609,7 @@ export class ParentRegistrationForm {
     };
 
     // Filter classes where student is NOT already enrolled AND grade is eligible
-    const availableClasses = this.classes.filter(cls => {
+    const availableClasses = this.classes.filter((cls: ClassLike) => {
       // First, filter out restricted classes using the database field
       if (cls.isRestricted) {
         return false;
@@ -1517,7 +1625,7 @@ export class ParentRegistrationForm {
 
       // Check if student already has a group registration for this class
       const hasExistingRegistration = this.registrations.some(
-        registration =>
+        (registration: RegistrationLike) =>
           registration.studentId === selectedStudentId &&
           registration.classId === cls.id &&
           registration.registrationType === RegistrationType.GROUP
@@ -1528,7 +1636,7 @@ export class ParentRegistrationForm {
 
     // Destroy existing Materialize select instance before modifying
     if (typeof M !== 'undefined') {
-      const existingInstance = M.FormSelect.getInstance(classSelect);
+      const existingInstance = M.FormSelect.getInstance(classSelect) as { destroy(): void } | undefined;
       if (existingInstance) {
         existingInstance.destroy();
       }
@@ -1544,13 +1652,13 @@ export class ParentRegistrationForm {
     classSelect.appendChild(defaultOption);
 
     // Add available class options only
-    availableClasses.forEach(cls => {
+    availableClasses.forEach((cls: ClassLike) => {
       const option = document.createElement('option');
       option.value = cls.id;
       option.textContent = ClassManager.formatClassNameWithTime(
         cls,
         formatClassNameWithGradeCorrection,
-        formatTime
+        formatTime as (time: string | undefined) => string
       );
       classSelect.appendChild(option);
     });
@@ -1566,8 +1674,8 @@ export class ParentRegistrationForm {
     }
 
     // Add event listener for class selection
-    classSelect.addEventListener('change', event => {
-      this.#handleClassSelection(event.target.value);
+    classSelect.addEventListener('change', (event: Event) => {
+      this.#handleClassSelection((event.target as HTMLSelectElement).value);
     });
 
     // Initialize Materialize select
@@ -1579,8 +1687,8 @@ export class ParentRegistrationForm {
   /**
    * Handle class selection and check capacity
    */
-  #handleClassSelection(classId) {
-    const registerButton = document.getElementById('parent-create-group-registration-btn');
+  #handleClassSelection(classId: string): void {
+    const registerButton = document.getElementById('parent-create-group-registration-btn') as HTMLButtonElement | null;
     // Get or create containers and clear previous states
     getOrCreateErrorContainer('parent-class-error-message', 'parent-class-select');
     getOrCreateInfoContainer('parent-class-info-message', 'parent-class-select');
@@ -1603,7 +1711,7 @@ export class ParentRegistrationForm {
     }
 
     // Find the selected class
-    const selectedClass = this.classes.find(cls => cls.id === classId);
+    const selectedClass = this.classes.find((cls: ClassLike) => cls.id === classId);
     if (!selectedClass) {
       console.warn('Selected class not found:', classId);
       return;
@@ -1616,7 +1724,7 @@ export class ParentRegistrationForm {
       ? this.nextTrimesterRegistrations || []
       : this.registrations;
 
-    const currentRegistrations = registrationsToCheck.filter(reg => {
+    const currentRegistrations = registrationsToCheck.filter((reg: RegistrationLike) => {
       const regClassId = reg.classId;
       return regClassId === classId;
     });
@@ -1687,14 +1795,15 @@ export class ParentRegistrationForm {
   /**
    * Attach event listeners to filter chips with cascading logic
    */
-  #attachFilterChipListeners() {
+  #attachFilterChipListeners(): void {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
     const chips = parentContainer.querySelectorAll(
       '.chip:not(.unavailable):not([data-listener-attached])'
     );
-    chips.forEach(chip => {
+    chips.forEach((_chip: Element) => {
+      const chip = _chip as HTMLElement;
       chip.addEventListener('click', () => {
         const chipType = chip.dataset.type;
         const chipValue = chip.dataset.value;
@@ -1703,8 +1812,9 @@ export class ParentRegistrationForm {
         this.#clearDownstreamSelections(chipType);
 
         // Handle chip selection logic
-        const siblings = chip.parentElement.querySelectorAll('.chip');
-        siblings.forEach(sibling => {
+        const siblings = chip.parentElement!.querySelectorAll('.chip');
+        siblings.forEach((_sibling: Element) => {
+          const sibling = _sibling as HTMLElement;
           sibling.classList.remove('active', 'selected');
           if (!sibling.classList.contains('unavailable')) {
             const isAvailable = sibling.classList.contains('available');
@@ -1745,18 +1855,19 @@ export class ParentRegistrationForm {
   /**
    * Clear selections in downstream chip categories when upstream chip is selected
    */
-  #clearDownstreamSelections(chipType) {
+  #clearDownstreamSelections(chipType: string | undefined): void {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
     const cascade = ['instrument', 'day', 'length', 'instructor'];
-    const currentIndex = cascade.indexOf(chipType);
+    const currentIndex = cascade.indexOf(chipType || '');
 
     // Clear all downstream selections (chips after current one in cascade)
     for (let i = currentIndex + 1; i < cascade.length; i++) {
       const downstreamType = cascade[i];
       const downstreamChips = parentContainer.querySelectorAll(`.${downstreamType}-chip.active`);
-      downstreamChips.forEach(chip => {
+      downstreamChips.forEach((_chip: Element) => {
+        const chip = _chip as HTMLElement;
         chip.classList.remove('active', 'selected');
         // Reset styling
         const isAvailable = chip.classList.contains('available');
@@ -1771,7 +1882,7 @@ export class ParentRegistrationForm {
       });
 
       // Activate the "All" chip for downstream categories
-      const allChip = parentContainer.querySelector(`.${downstreamType}-chip[data-value="all"]`);
+      const allChip = parentContainer.querySelector(`.${downstreamType}-chip[data-value="all"]`) as HTMLElement | null;
       if (allChip && !allChip.classList.contains('unavailable')) {
         allChip.classList.add('active', 'selected');
         allChip.style.background = '#2b68a4';
@@ -1784,9 +1895,9 @@ export class ParentRegistrationForm {
   /**
    * Update chips based on cascading logic - only regenerate downstream chips
    */
-  #updateCascadingChips(changedChipType) {
+  #updateCascadingChips(changedChipType: string | undefined): void {
     const cascade = ['instrument', 'day', 'length', 'instructor'];
-    const currentIndex = cascade.indexOf(changedChipType);
+    const currentIndex = cascade.indexOf(changedChipType || '');
 
     // Regenerate only downstream chips (chips after current one in cascade)
     for (let i = currentIndex + 1; i < cascade.length; i++) {
@@ -1811,7 +1922,7 @@ export class ParentRegistrationForm {
   /**
    * Regenerate time slots based on current filter selections
    */
-  #regenerateFilteredTimeSlots() {
+  #regenerateFilteredTimeSlots(): void {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
@@ -1824,12 +1935,12 @@ export class ParentRegistrationForm {
 
     // Get current filter selections
     const selectedInstructor =
-      parentContainer.querySelector('.instructor-chip.active')?.dataset.value || 'all';
-    const selectedDay = parentContainer.querySelector('.day-chip.active')?.dataset.value || 'all';
+      (parentContainer.querySelector('.instructor-chip.active') as HTMLElement | null)?.dataset.value || 'all';
+    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value || 'all';
     const selectedInstrument =
-      parentContainer.querySelector('.instrument-chip.active')?.dataset.value || 'all';
+      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value || 'all';
     const selectedLength =
-      parentContainer.querySelector('.length-chip.active')?.dataset.value || 'all';
+      (parentContainer.querySelector('.length-chip.active') as HTMLElement | null)?.dataset.value || 'all';
 
     // Clear existing instructor cards
     const existingCards = timeslotGrid.querySelectorAll('.instructor-card');
@@ -1837,7 +1948,7 @@ export class ParentRegistrationForm {
 
     // Determine which instructors to include (filter by student grade first)
     const studentGrade = this.#getSelectedStudentGrade();
-    let instructorsToInclude = this.instructors.filter(instructor =>
+    let instructorsToInclude = this.instructors.filter((instructor: InstructorLike) =>
       this.#isInstructorGradeEligible(instructor, studentGrade)
     );
 
@@ -1850,7 +1961,7 @@ export class ParentRegistrationForm {
 
     // Filter by selected instrument
     if (selectedInstrument !== 'all') {
-      instructorsToInclude = instructorsToInclude.filter(instructor => {
+      instructorsToInclude = instructorsToInclude.filter((instructor: InstructorLike) => {
         const instructorInstruments =
           instructor.specialties ||
           (instructor.primaryInstrument ? [instructor.primaryInstrument] : ['Piano']);
@@ -1862,7 +1973,7 @@ export class ParentRegistrationForm {
     }
 
     // Generate cards for filtered instructors
-    instructorsToInclude.forEach(instructor => {
+    instructorsToInclude.forEach((instructor: InstructorLike) => {
       const timeSlots = this.#generateFilteredInstructorTimeSlots(
         instructor,
         selectedDay,
@@ -1889,13 +2000,13 @@ export class ParentRegistrationForm {
   /**
    * Restore time slot selection after regeneration
    */
-  #restoreTimeSlotSelection(selectionData) {
+  #restoreTimeSlotSelection(selectionData: TimeSlot): void {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer || !selectionData) return;
 
     const matchingSlot = parentContainer.querySelector(
       `.timeslot[data-instructor-id="${selectionData.instructorId}"][data-day="${selectionData.day}"][data-time="${selectionData.time}"][data-length="${selectionData.length}"][data-instrument="${selectionData.instrument}"]`
-    );
+    ) as HTMLElement | null;
 
     if (matchingSlot) {
       // Restore the selection
@@ -1919,7 +2030,7 @@ export class ParentRegistrationForm {
       // Check if the slot is still in the DOM but just wasn't found by the query
       const stillAvailableSlot = document.querySelector(
         `.timeslot[data-instructor-id="${selectionData.instructorId}"][data-day="${selectionData.day}"][data-time="${selectionData.time}"][data-length="${selectionData.length}"][data-instrument="${selectionData.instrument}"]`
-      );
+      ) as HTMLElement | null;
 
       if (!stillAvailableSlot) {
         console.log('Confirmed: slot no longer exists in DOM, clearing selection');
@@ -1938,17 +2049,17 @@ export class ParentRegistrationForm {
    * Generate time slots for a specific instructor with filters applied
    */
   #generateFilteredInstructorTimeSlots(
-    instructor,
-    dayFilter = 'all',
-    instrumentFilter = 'all',
-    lengthFilter = 'all'
-  ) {
-    const timeSlots = [];
+    instructor: InstructorLike,
+    dayFilter: string = 'all',
+    instrumentFilter: string = 'all',
+    lengthFilter: string = 'all'
+  ): TimeSlot[] {
+    const timeSlots: TimeSlot[] = [];
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
     // Create day mapping for registration lookups
-    const dayMap = {
+    const dayMap: Record<string, number> = {
       monday: 0,
       tuesday: 1,
       wednesday: 2,
@@ -1964,7 +2075,7 @@ export class ParentRegistrationForm {
       if (index === -1) return; // Skip invalid days
 
       // Enhanced availability checking
-      const daySchedule = instructor.availability?.[day] || instructor[day];
+      const daySchedule = (instructor.availability?.[day] || instructor[day]) as DaySchedule | undefined;
 
       // Check if instructor is available on this day
       if (!daySchedule || !daySchedule.isAvailable) {
@@ -2011,7 +2122,7 @@ export class ParentRegistrationForm {
         ? this.nextTrimesterRegistrations || []
         : this.registrations;
 
-      const existingRegistrations = registrationsToCheck.filter(reg => {
+      const existingRegistrations = registrationsToCheck.filter((reg: RegistrationLike) => {
         const regInstructorId = reg.instructorId;
         return regInstructorId === instructor.id && reg.day === this.#getRegistrationDayName(day);
       });
@@ -2057,6 +2168,7 @@ export class ParentRegistrationForm {
               length: length,
               instrument: instrument.trim(),
               instructor: instructor,
+              instructorId: instructor.id,
             });
           });
         });
@@ -2069,7 +2181,7 @@ export class ParentRegistrationForm {
   /**
    * Attach event listeners to time slots
    */
-  #attachTimeSlotListeners() {
+  #attachTimeSlotListeners(): void {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
@@ -2079,19 +2191,21 @@ export class ParentRegistrationForm {
       slot.removeAttribute('data-listener-attached');
       // Clone node to remove all event listeners
       const newSlot = slot.cloneNode(true);
-      slot.parentNode.replaceChild(newSlot, slot);
+      slot.parentNode!.replaceChild(newSlot, slot);
     });
 
     const timeSlots = parentContainer.querySelectorAll('.timeslot.available');
-    timeSlots.forEach(slot => {
-      slot.addEventListener('click', event => {
+    timeSlots.forEach((_slot: Element) => {
+      const slot = _slot as HTMLElement;
+      slot.addEventListener('click', (event: Event) => {
         event.preventDefault();
         event.stopPropagation();
 
         console.log('Time slot clicked:', slot.dataset);
 
         // Remove previous selection and reset styling for all slots
-        parentContainer.querySelectorAll('.timeslot').forEach(s => {
+        parentContainer.querySelectorAll('.timeslot').forEach((_s: Element) => {
+          const s = _s as HTMLElement;
           s.classList.remove('selected');
           // Reset to original styling based on availability
           if (s.classList.contains('available')) {
@@ -2145,7 +2259,7 @@ export class ParentRegistrationForm {
   /**
    * Attach event listener to submit button
    */
-  #attachSubmitButtonListener() {
+  #attachSubmitButtonListener(): void {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
@@ -2163,17 +2277,19 @@ export class ParentRegistrationForm {
 
         // Show confirmation modal before proceeding
         const registrationData = this.#getCreateRegistrationData();
+        if (!registrationData) return;
         const confirmationMessage = this.#buildPrivateLessonConfirmationMessage(registrationData);
 
         this.#showConfirmationModal(confirmationMessage, async () => {
-          const submitButton = document.getElementById('parent-confirm-registration-btn');
+          const submitButton = document.getElementById('parent-confirm-registration-btn') as HTMLButtonElement | null;
           try {
             this.#setButtonLoading(submitButton, true);
             await this.sendDataFunction(registrationData);
             this.#clearForm();
             this.#initializeHybridInterface();
             M.toast({ html: 'Registration created successfully!' });
-          } catch (error) {
+          } catch (err: unknown) {
+            const error = err as Error & { type?: string };
             console.error('Error creating registration:', error);
             if (error.type === 'conflict') {
               this.#showConflictModal(error.message);
@@ -2193,7 +2309,7 @@ export class ParentRegistrationForm {
   /**
    * Attach event listener to group registration submit button
    */
-  #attachGroupSubmitButtonListener() {
+  #attachGroupSubmitButtonListener(): void {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
@@ -2212,25 +2328,26 @@ export class ParentRegistrationForm {
         // Show confirmation modal before proceeding
         const registrationData = this.#getCreateGroupRegistrationData();
         let confirmationMessage;
-        if (ClassManager.isRockBandClass(registrationData.classId)) {
+        if (ClassManager.isRockBandClass(registrationData.classId || '')) {
           confirmationMessage = this.#buildWaitlistClassConfirmationMessage(registrationData);
         } else {
           confirmationMessage = this.#buildGroupClassConfirmationMessage(registrationData);
         }
 
         this.#showConfirmationModal(confirmationMessage, async () => {
-          const confirmButton = document.getElementById('parent-confirmation-confirm');
+          const confirmButton = document.getElementById('parent-confirmation-confirm') as HTMLButtonElement | null;
           try {
             this.#setButtonLoading(confirmButton, true);
             await this.sendDataFunction(registrationData);
             this.#clearGroupForm();
             this.#initializeHybridInterface();
             M.toast({
-              html: ClassManager.isRockBandClass(registrationData.classId)
+              html: ClassManager.isRockBandClass(registrationData.classId || '')
                 ? 'Wait list joined.'
                 : 'Group registration created successfully!',
             });
-          } catch (error) {
+          } catch (err: unknown) {
+            const error = err as Error & { type?: string };
             console.error('Error creating group registration:', error);
             if (error.type === 'conflict') {
               this.#showConflictModal(error.message);
@@ -2250,7 +2367,7 @@ export class ParentRegistrationForm {
   /**
    * Attach event listener to clear button
    */
-  #attachClearButtonListener() {
+  #attachClearButtonListener(): void {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
@@ -2271,23 +2388,24 @@ export class ParentRegistrationForm {
   /**
    * Filter time slots based on current filter selections
    */
-  #filterTimeSlots() {
+  #filterTimeSlots(): void {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
     // Get selected filter values
     const selectedInstructor =
-      parentContainer.querySelector('.instructor-chip.active')?.dataset.value || 'all';
-    const selectedDay = parentContainer.querySelector('.day-chip.active')?.dataset.value || 'all';
+      (parentContainer.querySelector('.instructor-chip.active') as HTMLElement | null)?.dataset.value || 'all';
+    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value || 'all';
     const selectedLength =
-      parentContainer.querySelector('.length-chip.active')?.dataset.value || 'all';
+      (parentContainer.querySelector('.length-chip.active') as HTMLElement | null)?.dataset.value || 'all';
     const selectedInstrument =
-      parentContainer.querySelector('.instrument-chip.active')?.dataset.value || 'all';
+      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value || 'all';
 
     // Get all time slots
     const timeSlots = parentContainer.querySelectorAll('.timeslot');
 
-    timeSlots.forEach(slot => {
+    timeSlots.forEach((_slot: Element) => {
+      const slot = _slot as HTMLElement;
       let show = true;
 
       // Filter by instructor
@@ -2333,20 +2451,21 @@ export class ParentRegistrationForm {
   /**
    * Update instructor card visibility based on filtered time slots
    */
-  #updateInstructorCardVisibility() {
+  #updateInstructorCardVisibility(): void {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
     const instructorCards = parentContainer.querySelectorAll('.instructor-card');
 
-    instructorCards.forEach(card => {
+    instructorCards.forEach((_card: Element) => {
+      const card = _card as HTMLElement;
       const visibleSlots = card.querySelectorAll(
         '.timeslot[style*="display: block"], .timeslot:not([style*="display: none"])'
       );
       const availableCount = visibleSlots.length;
 
       // Update availability count in card header
-      const availabilitySpan = card.querySelector('h6 span');
+      const availabilitySpan = card.querySelector('h6 span') as HTMLElement | null;
       if (availabilitySpan) {
         availabilitySpan.textContent = `${availableCount} available`;
         availabilitySpan.style.background =
@@ -2363,16 +2482,16 @@ export class ParentRegistrationForm {
   /**
    * Update the selection display when a time slot is selected
    */
-  #updateSelectionDisplay(slot) {
+  #updateSelectionDisplay(slot: HTMLElement): void {
     // Note: selectedLesson is now handled in the click handler with validation
 
     // Update the selection display area
     const parentContainer = document.getElementById('parent-registration');
-    const selectionDisplay = parentContainer.querySelector('#admin-selected-lesson-display');
+    const selectionDisplay = parentContainer?.querySelector('#admin-selected-lesson-display') as HTMLElement | null;
     if (selectionDisplay) {
       const instructor = slot.dataset.instructorId;
-      const dayName = slot.dataset.day.charAt(0).toUpperCase() + slot.dataset.day.slice(1);
-      const timeFormatted = formatDisplayTime(slot.dataset.time);
+      const dayName = (slot.dataset.day || '').charAt(0).toUpperCase() + (slot.dataset.day || '').slice(1);
+      const timeFormatted = formatDisplayTime(slot.dataset.time || '');
       const instrument = slot.dataset.instrument;
       const length = slot.dataset.length;
 
@@ -2391,7 +2510,7 @@ export class ParentRegistrationForm {
       selectionDisplay.style.pointerEvents = 'none'; // Allow clicks to pass through
 
       // Enable pointer events on the inner container
-      const innerContainer = selectionDisplay.querySelector('div');
+      const innerContainer = selectionDisplay.querySelector('div') as HTMLElement | null;
       if (innerContainer) {
         innerContainer.style.pointerEvents = 'auto';
       }
@@ -2401,12 +2520,12 @@ export class ParentRegistrationForm {
   /**
    * Validate registration data
    */
-  #validateRegistration() {
+  #validateRegistration(): boolean {
     console.log('Validating registration...', { selectedLesson: this.selectedLesson });
 
     // Check if student is selected (only if dropdown is visible for multiple students)
     const studentSection = document.getElementById('parent-student-selection-section');
-    const studentSelect = document.getElementById('parent-student-select');
+    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
     const studentId = studentSelect?.value;
 
     // Only validate student selection if the section is visible (multiple students)
@@ -2434,7 +2553,7 @@ export class ParentRegistrationForm {
 
       if (selectedSlots.length === 1) {
         // Try to rebuild selectedLesson from DOM state
-        const slot = selectedSlots[0];
+        const slot = selectedSlots[0] as HTMLElement;
         const instructorId = slot.dataset.instructorId;
         const day = slot.dataset.day;
         const time = slot.dataset.time;
@@ -2486,7 +2605,7 @@ export class ParentRegistrationForm {
       this.selectedLesson.day.charAt(0).toUpperCase() + this.selectedLesson.day.slice(1);
     const transportationTypeRadio = document.querySelector(
       'input[name="parent-transportation-type"]:checked'
-    );
+    ) as HTMLInputElement | null;
     const transportationType = transportationTypeRadio?.value || 'pickup';
 
     const busValidation = validateBusTimeRestrictions(
@@ -2498,7 +2617,7 @@ export class ParentRegistrationForm {
 
     if (!busValidation.isValid) {
       console.log('Validation failed: Bus time restriction violated');
-      M.toast({ html: busValidation.errorMessage });
+      M.toast({ html: busValidation.errorMessage || '' });
       return false;
     }
 
@@ -2509,10 +2628,10 @@ export class ParentRegistrationForm {
   /**
    * Validate group registration data
    */
-  #validateGroupRegistration() {
+  #validateGroupRegistration(): boolean {
     // Check if student is selected (only if dropdown is visible for multiple students)
     const studentSection = document.getElementById('parent-student-selection-section');
-    const studentSelect = document.getElementById('parent-student-select');
+    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
     const studentId = studentSelect?.value;
 
     // Only validate student selection if the section is visible (multiple students)
@@ -2528,7 +2647,7 @@ export class ParentRegistrationForm {
     }
 
     // Check if class is selected
-    const classSelect = document.getElementById('parent-class-select');
+    const classSelect = document.getElementById('parent-class-select') as HTMLSelectElement | null;
     const classId = classSelect?.value;
 
     if (!classId) {
@@ -2539,13 +2658,13 @@ export class ParentRegistrationForm {
     // Duplicate and time conflict checking is handled server-side by RegistrationConflictService
 
     // Get the class details for bus validation
-    const selectedClass = this.classes.find(cls => cls.id === classId);
+    const selectedClass = this.classes.find((cls: ClassLike) => cls.id === classId);
 
     if (selectedClass && selectedClass.day && selectedClass.startTime && selectedClass.length) {
       // Check bus time restrictions for Late Bus transportation
       const transportationTypeRadio = document.querySelector(
         'input[name="parent-group-transportation-type"]:checked'
-      );
+      ) as HTMLInputElement | null;
       const transportationType = transportationTypeRadio?.value || 'pickup';
 
       const busValidation = validateBusTimeRestrictions(
@@ -2557,7 +2676,7 @@ export class ParentRegistrationForm {
 
       if (!busValidation.isValid) {
         console.log('Group validation failed: Bus time restriction violated');
-        M.toast({ html: busValidation.errorMessage });
+        M.toast({ html: busValidation.errorMessage || '' });
         return false;
       }
     }
@@ -2568,13 +2687,13 @@ export class ParentRegistrationForm {
   /**
    * Get registration data for submission
    */
-  #getCreateRegistrationData() {
+  #getCreateRegistrationData(): RegistrationSubmitData | null {
     if (!this.selectedLesson) {
       return null;
     }
 
     // Get selected student ID
-    const studentSelect = document.getElementById('parent-student-select');
+    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
     const studentId = studentSelect?.value;
 
     if (!studentId) {
@@ -2584,10 +2703,10 @@ export class ParentRegistrationForm {
     // Get selected transportation type
     const transportationTypeRadio = document.querySelector(
       'input[name="parent-transportation-type"]:checked'
-    );
+    ) as HTMLInputElement | null;
     const transportationType = transportationTypeRadio?.value || 'pickup'; // Default to pickup if not selected
 
-    const dayMap = {
+    const dayMap: Record<string, string> = {
       monday: 'Monday',
       tuesday: 'Tuesday',
       wednesday: 'Wednesday',
@@ -2601,7 +2720,7 @@ export class ParentRegistrationForm {
       ? appConfig?.nextTrimester
       : appConfig?.currentTrimester;
 
-    const registrationData = {
+    const registrationData: RegistrationSubmitData = {
       studentId: studentId,
       registrationType: RegistrationType.PRIVATE,
       transportationType: transportationType,
@@ -2610,7 +2729,7 @@ export class ParentRegistrationForm {
       day: dayMap[this.selectedLesson.day],
       startTime: this.selectedLesson.time,
       length: this.selectedLesson.length,
-      trimester: trimester,
+      trimester: trimester ?? undefined,
     };
 
     // If modifying an existing registration during enrollment, include the ID to trigger deletion
@@ -2625,9 +2744,9 @@ export class ParentRegistrationForm {
   /**
    * Get group registration data for submission
    */
-  #getCreateGroupRegistrationData() {
+  #getCreateGroupRegistrationData(): RegistrationSubmitData {
     // Get selected student ID
-    const studentSelect = document.getElementById('parent-student-select');
+    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
     const studentId = studentSelect?.value;
 
     if (!studentId) {
@@ -2635,7 +2754,7 @@ export class ParentRegistrationForm {
     }
 
     // Get selected class ID
-    const classSelect = document.getElementById('parent-class-select');
+    const classSelect = document.getElementById('parent-class-select') as HTMLSelectElement | null;
     const classId = classSelect?.value;
 
     if (!classId) {
@@ -2643,7 +2762,7 @@ export class ParentRegistrationForm {
     }
 
     // Find the selected class to get its details
-    const selectedClass = this.classes.find(cls => cls.id === classId);
+    const selectedClass = this.classes.find((cls: ClassLike) => cls.id === classId);
 
     if (!selectedClass) {
       throw new Error('Selected class not found');
@@ -2652,7 +2771,7 @@ export class ParentRegistrationForm {
     // Get selected transportation type (for group registration)
     const transportationTypeRadio = document.querySelector(
       'input[name="parent-group-transportation-type"]:checked'
-    );
+    ) as HTMLInputElement | null;
     const transportationType = transportationTypeRadio?.value || 'pickup'; // Default to pickup if not selected
 
     // Determine the target trimester
@@ -2661,7 +2780,7 @@ export class ParentRegistrationForm {
       ? appConfig?.nextTrimester
       : appConfig?.currentTrimester;
 
-    const registrationData = {
+    const registrationData: RegistrationSubmitData = {
       studentId: studentId,
       registrationType: RegistrationType.GROUP,
       transportationType: transportationType,
@@ -2676,7 +2795,7 @@ export class ParentRegistrationForm {
       startTime: selectedClass.startTime,
       length: selectedClass.length,
       instrument: selectedClass.instrument,
-      trimester: trimester,
+      trimester: trimester ?? undefined,
     };
 
     // If modifying an existing registration during enrollment, include the ID to trigger deletion
@@ -2691,7 +2810,7 @@ export class ParentRegistrationForm {
   /**
    * Clear the form after successful submission
    */
-  #clearForm() {
+  #clearForm(): void {
     this.selectedLesson = null;
     this._selectedPreviousRegistrationId = null; // Clear selected registration
 
@@ -2699,7 +2818,7 @@ export class ParentRegistrationForm {
     if (!parentContainer) return;
 
     // Hide the fixed registration preview (using the correct ID)
-    const selectedDisplay = parentContainer.querySelector('#admin-selected-lesson-display');
+    const selectedDisplay = parentContainer.querySelector('#admin-selected-lesson-display') as HTMLElement | null;
     if (selectedDisplay) {
       selectedDisplay.style.display = 'none';
       selectedDisplay.style.pointerEvents = 'none'; // Ensure it doesn't interfere when hidden
@@ -2708,7 +2827,7 @@ export class ParentRegistrationForm {
     // Reset transportation type to default (pickup)
     const pickupRadio = document.querySelector(
       'input[name="parent-transportation-type"][value="pickup"]'
-    );
+    ) as HTMLInputElement | null;
     if (pickupRadio) {
       pickupRadio.checked = true;
     }
@@ -2716,7 +2835,7 @@ export class ParentRegistrationForm {
     // Reset group transportation type to default (pickup) for consistency
     const groupPickupRadio = document.querySelector(
       'input[name="parent-group-transportation-type"][value="pickup"]'
-    );
+    ) as HTMLInputElement | null;
     if (groupPickupRadio) {
       groupPickupRadio.checked = true;
     }
@@ -2737,7 +2856,7 @@ export class ParentRegistrationForm {
   /**
    * Clear the group form after successful submission
    */
-  #clearGroupForm() {
+  #clearGroupForm(): void {
     this._selectedPreviousRegistrationId = null; // Clear selected registration
 
     const parentContainer = document.getElementById('parent-registration');
@@ -2752,7 +2871,7 @@ export class ParentRegistrationForm {
     // Reset transportation type to default (pickup) for both forms
     const pickupRadio = document.querySelector(
       'input[name="parent-transportation-type"][value="pickup"]'
-    );
+    ) as HTMLInputElement | null;
     if (pickupRadio) {
       pickupRadio.checked = true;
     }
@@ -2760,7 +2879,7 @@ export class ParentRegistrationForm {
     // Reset group transportation type to default (pickup)
     const groupPickupRadio = document.querySelector(
       'input[name="parent-group-transportation-type"][value="pickup"]'
-    );
+    ) as HTMLInputElement | null;
     if (groupPickupRadio) {
       groupPickupRadio.checked = true;
     }
@@ -2772,7 +2891,7 @@ export class ParentRegistrationForm {
     clearErrorMessage('parent-class-error-message');
 
     // Disable register button again
-    const registerButton = document.getElementById('parent-create-group-registration-btn');
+    const registerButton = document.getElementById('parent-create-group-registration-btn') as HTMLButtonElement | null;
     if (registerButton) {
       registerButton.disabled = true;
       registerButton.style.opacity = '0.6';
@@ -2788,7 +2907,7 @@ export class ParentRegistrationForm {
   /**
    * Show confirmation modal for parent registrations
    */
-  #showConfirmationModal(message, onConfirm) {
+  #showConfirmationModal(message: string, onConfirm: () => void): void {
     const modal = document.getElementById('parent-registration-confirmation-modal');
     const messageElement = document.getElementById('parent-confirmation-message');
     const confirmButton = document.getElementById('parent-confirmation-confirm');
@@ -2805,15 +2924,15 @@ export class ParentRegistrationForm {
     messageElement.innerHTML = message;
 
     // Remove any existing event listeners
-    const newConfirmButton = confirmButton.cloneNode(true);
-    const newCancelButton = cancelButton.cloneNode(true);
-    confirmButton.parentNode.replaceChild(newConfirmButton, confirmButton);
-    cancelButton.parentNode.replaceChild(newCancelButton, cancelButton);
+    const newConfirmButton = confirmButton.cloneNode(true) as HTMLElement;
+    const newCancelButton = cancelButton.cloneNode(true) as HTMLElement;
+    confirmButton.parentNode!.replaceChild(newConfirmButton, confirmButton);
+    cancelButton.parentNode!.replaceChild(newCancelButton, cancelButton);
 
     // Add event listeners
     newConfirmButton.addEventListener('click', () => {
       if (typeof M !== 'undefined') {
-        M.Modal.getInstance(modal).close();
+        M.Modal.getInstance(modal)?.close();
       }
       // Ensure scrolling is restored
       this.#restorePageScrolling();
@@ -2822,7 +2941,7 @@ export class ParentRegistrationForm {
 
     newCancelButton.addEventListener('click', () => {
       if (typeof M !== 'undefined') {
-        M.Modal.getInstance(modal).close();
+        M.Modal.getInstance(modal)?.close();
       }
       // Ensure scrolling is restored
       this.#restorePageScrolling();
@@ -2850,12 +2969,12 @@ export class ParentRegistrationForm {
       ModalKeyboardHandler.attachKeyboardHandlers(modal, {
         allowEscape: true,
         allowEnter: true,
-        onConfirm: event => {
+        onConfirm: (event: Event) => {
           // Handle Enter key press for confirmation
           console.log('Confirmation modal: Enter key pressed');
           newConfirmButton.click();
         },
-        onCancel: event => {
+        onCancel: (event: Event) => {
           // Handle ESC key press for confirmation
           console.log('Confirmation modal: ESC key pressed');
           newCancelButton.click();
@@ -2872,7 +2991,7 @@ export class ParentRegistrationForm {
   /**
    * Ensure page scrolling is restored after modal operations
    */
-  #restorePageScrolling() {
+  #restorePageScrolling(): void {
     // Remove any overflow restrictions that might prevent scrolling
     document.body.style.overflow = '';
     document.documentElement.style.overflow = '';
@@ -2887,18 +3006,18 @@ export class ParentRegistrationForm {
   /**
    * Build confirmation message for private lesson registration
    */
-  #buildPrivateLessonConfirmationMessage(registrationData) {
-    const studentSelect = document.getElementById('parent-student-select');
+  #buildPrivateLessonConfirmationMessage(registrationData: RegistrationSubmitData): string {
+    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
     const studentName = studentSelect?.selectedOptions[0]?.textContent || 'your child';
 
     // Find instructor name
-    const instructor = this.instructors.find(inst => inst.id === registrationData.instructorId);
+    const instructor = this.instructors.find((inst: InstructorLike) => inst.id === registrationData.instructorId);
     const instructorName = instructor
       ? `${instructor.firstName} ${instructor.lastName}`
       : 'the instructor';
 
     // Format time
-    const timeFormatted = formatDisplayTime(registrationData.startTime);
+    const timeFormatted = formatDisplayTime(registrationData.startTime || '');
 
     // Format transportation type
     const transportationDisplay =
@@ -2936,24 +3055,24 @@ export class ParentRegistrationForm {
   /**
    * Build confirmation message for group class registration
    */
-  #buildGroupClassConfirmationMessage(registrationData) {
-    const studentSelect = document.getElementById('parent-student-select');
+  #buildGroupClassConfirmationMessage(registrationData: RegistrationSubmitData): string {
+    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
     const studentName = studentSelect?.selectedOptions[0]?.textContent || 'your child';
 
     // Find class details
-    const selectedClass = this.classes.find(cls => cls.id === registrationData.classId);
+    const selectedClass = this.classes.find((cls: ClassLike) => cls.id === registrationData.classId);
     const className = selectedClass
       ? formatClassNameWithGradeCorrection(selectedClass)
       : 'the class';
 
     // Find instructor name
-    const instructor = this.instructors.find(inst => inst.id === registrationData.instructorId);
+    const instructor = this.instructors.find((inst: InstructorLike) => inst.id === registrationData.instructorId);
     const instructorName = instructor
       ? `${instructor.firstName} ${instructor.lastName}`
       : 'the instructor';
 
     // Format time
-    const timeFormatted = formatDisplayTime(registrationData.startTime);
+    const timeFormatted = formatDisplayTime(registrationData.startTime || '');
 
     // Format transportation type
     const transportationDisplay =
@@ -2989,24 +3108,24 @@ export class ParentRegistrationForm {
   /**
    * Build confirmation message for waitlist group class registration (Rock Band classes)
    */
-  #buildWaitlistClassConfirmationMessage(registrationData) {
-    const studentSelect = document.getElementById('parent-student-select');
+  #buildWaitlistClassConfirmationMessage(registrationData: RegistrationSubmitData): string {
+    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
     const studentName = studentSelect?.selectedOptions[0]?.textContent || 'your child';
 
     // Find class details
-    const selectedClass = this.classes.find(cls => cls.id === registrationData.classId);
+    const selectedClass = this.classes.find((cls: ClassLike) => cls.id === registrationData.classId);
     const className = selectedClass
       ? formatClassNameWithGradeCorrection(selectedClass)
       : 'the class';
 
     // Find instructor name
-    const instructor = this.instructors.find(inst => inst.id === registrationData.instructorId);
+    const instructor = this.instructors.find((inst: InstructorLike) => inst.id === registrationData.instructorId);
     const instructorName = instructor
       ? `${instructor.firstName} ${instructor.lastName}`
       : 'the instructor';
 
     // Format time
-    const timeFormatted = formatDisplayTime(registrationData.startTime);
+    const timeFormatted = formatDisplayTime(registrationData.startTime || '');
 
     // Format transportation type
     const transportationDisplay =
@@ -3040,7 +3159,7 @@ export class ParentRegistrationForm {
   /**
    * Public method to clear the form selection (can be called externally)
    */
-  clearSelection() {
+  clearSelection(): void {
     this.#clearTimeSlotSelection();
     this.#resetCompleteForm();
   }
@@ -3048,14 +3167,14 @@ export class ParentRegistrationForm {
   /**
    * Destroy the form and clean up Materialize component instances
    */
-  destroy() {
+  destroy(): void {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
     // Destroy all Materialize Select instances
     const selects = parentContainer.querySelectorAll('select');
     selects.forEach(select => {
-      const instance = M.FormSelect.getInstance(select);
+      const instance = M.FormSelect.getInstance(select) as { destroy(): void } | undefined;
       if (instance) {
         instance.destroy();
       }
@@ -3077,14 +3196,14 @@ export class ParentRegistrationForm {
   /**
    * Clear only the time slot selection without hiding containers
    */
-  #clearTimeSlotSelection() {
+  #clearTimeSlotSelection(): void {
     this.selectedLesson = null;
 
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
     // Hide the selected lesson display
-    const selectedDisplay = parentContainer.querySelector('#admin-selected-lesson-display');
+    const selectedDisplay = parentContainer.querySelector('#admin-selected-lesson-display') as HTMLElement | null;
     if (selectedDisplay) {
       selectedDisplay.style.display = 'none';
       selectedDisplay.style.pointerEvents = 'none';
@@ -3093,7 +3212,7 @@ export class ParentRegistrationForm {
     // Reset transportation type to default (pickup) when clearing selection
     const pickupRadio = document.querySelector(
       'input[name="parent-transportation-type"][value="pickup"]'
-    );
+    ) as HTMLInputElement | null;
     if (pickupRadio) {
       pickupRadio.checked = true;
     }
@@ -3101,13 +3220,14 @@ export class ParentRegistrationForm {
     // Reset group transportation type to default (pickup) for consistency
     const groupPickupRadio = document.querySelector(
       'input[name="parent-group-transportation-type"][value="pickup"]'
-    );
+    ) as HTMLInputElement | null;
     if (groupPickupRadio) {
       groupPickupRadio.checked = true;
     }
 
     // Remove selected class and reset styling for all time slots
-    parentContainer.querySelectorAll('.timeslot').forEach(slot => {
+    parentContainer.querySelectorAll('.timeslot').forEach((_slot: Element) => {
+      const slot = _slot as HTMLElement;
       slot.classList.remove('selected');
       // Reset to original styling based on availability
       if (slot.classList.contains('available')) {
@@ -3126,9 +3246,9 @@ export class ParentRegistrationForm {
   /**
    * Complete form reset - used when switching users or need full reset
    */
-  #resetCompleteForm() {
+  #resetCompleteForm(): void {
     // Reset registration type dropdown to default state
-    const registrationTypeSelect = document.getElementById('parent-registration-type-select');
+    const registrationTypeSelect = document.getElementById('parent-registration-type-select') as HTMLSelectElement | null;
     if (registrationTypeSelect) {
       registrationTypeSelect.value = '';
       // Re-initialize Materialize select to update the display
@@ -3138,7 +3258,7 @@ export class ParentRegistrationForm {
     }
 
     // Reset class selection dropdown
-    const classSelect = document.getElementById('parent-class-select');
+    const classSelect = document.getElementById('parent-class-select') as HTMLSelectElement | null;
     if (classSelect) {
       classSelect.value = '';
       if (typeof M !== 'undefined') {
@@ -3162,13 +3282,14 @@ export class ParentRegistrationForm {
   /**
    * Reset all filter chips to their default state
    */
-  #resetFilterChips() {
+  #resetFilterChips(): void {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
     // Remove active class from all filter chips
     const allChips = parentContainer.querySelectorAll('.chip');
-    allChips.forEach(chip => {
+    allChips.forEach((_chip: Element) => {
+      const chip = _chip as HTMLElement;
       chip.classList.remove('active');
       // Reset to default styling
       chip.style.cssText =
@@ -3176,10 +3297,10 @@ export class ParentRegistrationForm {
     });
 
     // Set "All" chips as active by default
-    const allInstrumentChip = parentContainer.querySelector('.instrument-chip[data-value="all"]');
-    const allDayChip = parentContainer.querySelector('.day-chip[data-value="all"]');
-    const allLengthChip = parentContainer.querySelector('.length-chip[data-value="all"]');
-    const allInstructorChip = parentContainer.querySelector('.instructor-chip[data-value="all"]');
+    const allInstrumentChip = parentContainer.querySelector('.instrument-chip[data-value="all"]') as HTMLElement | null;
+    const allDayChip = parentContainer.querySelector('.day-chip[data-value="all"]') as HTMLElement | null;
+    const allLengthChip = parentContainer.querySelector('.length-chip[data-value="all"]') as HTMLElement | null;
+    const allInstructorChip = parentContainer.querySelector('.instructor-chip[data-value="all"]') as HTMLElement | null;
 
     [allInstrumentChip, allDayChip, allLengthChip, allInstructorChip].forEach(chip => {
       if (chip) {
@@ -3193,7 +3314,7 @@ export class ParentRegistrationForm {
   /**
    * Attach keyboard handlers for time slot interface
    */
-  #attachTimeSlotKeyboardHandlers() {
+  #attachTimeSlotKeyboardHandlers(): void {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) {
       console.warn('Parent registration container not found for keyboard handlers');
@@ -3202,22 +3323,22 @@ export class ParentRegistrationForm {
 
     // Attach keyboard handlers for time slot selection
     ModalKeyboardHandler.attachTimeSlotKeyboardHandlers(parentContainer, {
-      onConfirm: (event, selectedSlot) => {
+      onConfirm: (event: Event, selectedSlot: HTMLElement) => {
         console.log('Time slot keyboard: Enter pressed on selected slot');
         // Try to submit the registration if a slot is selected
-        const submitButton = document.getElementById('parent-confirm-registration-btn');
+        const submitButton = document.getElementById('parent-confirm-registration-btn') as HTMLButtonElement | null;
         if (submitButton && !submitButton.disabled && this.selectedLesson) {
           submitButton.click();
         }
       },
-      onCancel: event => {
+      onCancel: (event: Event) => {
         console.log('Time slot keyboard: ESC pressed, clearing selection');
         // Clear time slot selection
         this.#clearTimeSlotSelection();
         // Also clear the selected lesson data
         this.selectedLesson = null;
         // Disable submit button since no lesson is selected
-        const submitButton = document.getElementById('parent-confirm-registration-btn');
+        const submitButton = document.getElementById('parent-confirm-registration-btn') as HTMLButtonElement | null;
         if (submitButton) {
           submitButton.disabled = true;
         }
@@ -3231,7 +3352,7 @@ export class ParentRegistrationForm {
    * @param {boolean} isLoading - Whether button should show loading state
    * @param {string} originalText - Original button text to restore
    */
-  #setButtonLoading(button, isLoading, originalText = null) {
+  #setButtonLoading(button: HTMLButtonElement | null, isLoading: boolean, originalText: string | null = null): void {
     if (!button) return;
 
     if (isLoading) {
@@ -3278,9 +3399,9 @@ export class ParentRegistrationForm {
    * Shows existing registrations that can be modified for next trimester
    * Only visible during priority/open enrollment AND if user has access
    */
-  _renderRegistrationSelector() {
+  _renderRegistrationSelector(): void {
     const selectorSection = document.getElementById('parent-registration-selector-section');
-    const selectorDropdown = document.getElementById('parent-registration-selector');
+    const selectorDropdown = document.getElementById('parent-registration-selector') as HTMLSelectElement | null;
 
     if (!selectorSection || !selectorDropdown) {
       return; // Elements not found, skip
@@ -3296,7 +3417,7 @@ export class ParentRegistrationForm {
     selectorSection.style.display = 'block';
 
     // Get selected student
-    const studentSelect = document.getElementById('parent-student-select');
+    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
     const selectedStudentId = studentSelect?.value;
 
     // Clear existing options (except first "Create New")
@@ -3307,7 +3428,7 @@ export class ParentRegistrationForm {
     // Filter next trimester registrations for selected student that have linkedPreviousRegistrationId
     // These are registrations that were created from intent (keep/change) and can be modified once
     const studentRegistrations = selectedStudentId
-      ? this.nextTrimesterRegistrations.filter(reg => {
+      ? this.nextTrimesterRegistrations.filter((reg: RegistrationLike) => {
           const matchesStudent = reg.studentId === selectedStudentId;
           const hasLinkedPrevious = !!reg.linkedPreviousRegistrationId;
           return matchesStudent && hasLinkedPrevious;
@@ -3331,7 +3452,7 @@ export class ParentRegistrationForm {
         const instrument = registration.instrument || 'Lesson';
         const day = registration.day || '';
         const time = registration.startTime || '';
-        const instructor = this.instructors.find(i => i.id === registration.instructorId);
+        const instructor = this.instructors.find((i: InstructorLike) => i.id === registration.instructorId);
         const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : '';
         label = `Modify: ${instrument} - ${day} ${time} with ${instructorName}`;
       } else if (registration.registrationType === 'group') {
@@ -3357,8 +3478,8 @@ export class ParentRegistrationForm {
    * Handle registration selection from dropdown
    * @private
    */
-  _handleRegistrationSelection(event) {
-    const selectedId = event.target.value;
+  _handleRegistrationSelection(event: Event): void {
+    const selectedId = (event.target as HTMLSelectElement).value;
 
     if (!selectedId) {
       // "Create New" selected - clear tracking
@@ -3374,9 +3495,9 @@ export class ParentRegistrationForm {
    * Resets all form fields and selections
    * NOTE: This method is no longer used since we removed auto-prefill behavior
    */
-  _clearRegistrationForm() {
+  _clearRegistrationForm(): void {
     // Reset registration type selector
-    const registrationTypeSelect = document.getElementById('parent-registration-type-select');
+    const registrationTypeSelect = document.getElementById('parent-registration-type-select') as HTMLSelectElement | null;
     if (registrationTypeSelect) {
       registrationTypeSelect.value = '';
       if (window.M && window.M.FormSelect) {
@@ -3389,7 +3510,8 @@ export class ParentRegistrationForm {
 
     // Deselect all chips
     const activeChips = document.querySelectorAll('.chip.active');
-    activeChips.forEach(chip => {
+    activeChips.forEach((_chip: Element) => {
+      const chip = _chip as HTMLElement;
       chip.classList.remove('active', 'selected');
       // Reset styling based on availability
       if (chip.classList.contains('available')) {
@@ -3405,14 +3527,15 @@ export class ParentRegistrationForm {
 
     // Deselect time slots
     const selectedTimeSlots = document.querySelectorAll('.time-slot-item.selected');
-    selectedTimeSlots.forEach(slot => {
+    selectedTimeSlots.forEach((_slot: Element) => {
+      const slot = _slot as HTMLElement;
       slot.classList.remove('selected');
       slot.style.border = '2px solid #4caf50';
       slot.style.background = '#e8f5e8';
     });
 
     // Clear group class form
-    const classSelect = document.getElementById('parent-class-select');
+    const classSelect = document.getElementById('parent-class-select') as HTMLSelectElement | null;
     if (classSelect) {
       classSelect.value = '';
       if (window.M && window.M.FormSelect) {
@@ -3423,14 +3546,14 @@ export class ParentRegistrationForm {
     // Reset transportation to pickup
     const pickupRadio = document.querySelector(
       'input[name="parent-transportation-type"][value="pickup"]'
-    );
+    ) as HTMLInputElement | null;
     if (pickupRadio) {
       pickupRadio.checked = true;
     }
 
     const groupPickupRadio = document.querySelector(
       'input[name="parent-group-transportation-type"][value="pickup"]'
-    );
+    ) as HTMLInputElement | null;
     if (groupPickupRadio) {
       groupPickupRadio.checked = true;
     }
@@ -3450,9 +3573,9 @@ export class ParentRegistrationForm {
    * Check if we're in an enrollment period (priority or open)
    * @returns {boolean} True if current period allows next trimester registration
    */
-  _isEnrollmentPeriodActive() {
+  _isEnrollmentPeriodActive(): boolean {
     const currentPeriod = window.UserSession?.getCurrentPeriod?.();
-    return (
+    return !!(
       currentPeriod &&
       (currentPeriod.periodType === 'priorityEnrollment' ||
         currentPeriod.periodType === 'openEnrollment')
@@ -3486,12 +3609,12 @@ export class ParentRegistrationForm {
   /**
    * Show conflict error modal with refresh on acknowledge
    */
-  #showConflictModal(message) {
+  #showConflictModal(message: string): void {
     // Parse conflict messages from the error
     const conflicts = message
       .replace('Registration conflicts detected: ', '')
       .split('; ')
-      .map(c => `<li>${c}</li>`)
+      .map((c: string) => `<li>${c}</li>`)
       .join('');
 
     const modalHtml = `
@@ -3517,7 +3640,7 @@ export class ParentRegistrationForm {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
     // Initialize and open modal
-    const modalElement = document.getElementById('conflict-error-modal');
+    const modalElement = document.getElementById('conflict-error-modal')!;
     const modalInstance = M.Modal.init(modalElement, {
       dismissible: false,
       onCloseEnd: () => {

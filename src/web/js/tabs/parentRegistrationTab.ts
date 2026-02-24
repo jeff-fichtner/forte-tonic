@@ -1,6 +1,21 @@
-import { BaseTab } from '../core/baseTab.js';
-import { ParentRegistrationForm } from '../workflows/parentRegistrationForm.js';
+import { BaseTab, SessionInfo } from '../core/baseTab.js';
+import {
+  ParentRegistrationForm,
+  InstructorLike,
+  StudentLike,
+  ClassLike,
+  RegistrationLike,
+  RegistrationSubmitData,
+} from '../workflows/parentRegistrationForm.js';
 import { HttpService } from '../data/httpService.js';
+
+interface RegistrationTabData {
+  instructors: Record<string, unknown>[];
+  students: Record<string, unknown>[];
+  classes: Record<string, unknown>[];
+  nextTrimesterRegistrations: Record<string, unknown>[];
+  currentTrimesterRegistrations: Record<string, unknown>[];
+}
 
 /**
  * ParentRegistrationTab - Registration form for parents
@@ -16,10 +31,11 @@ import { HttpService } from '../data/httpService.js';
  * Data waste eliminated: ~1800+ records (other parents' students, unrelated registrations)
  */
 export class ParentRegistrationTab extends BaseTab {
+  private registrationForm: ParentRegistrationForm | null;
+
   constructor() {
     super('parent-registration');
 
-    /** @private {ParentRegistrationForm|null} Registration form instance */
     this.registrationForm = null;
   }
 
@@ -28,11 +44,10 @@ export class ParentRegistrationTab extends BaseTab {
    * Makes 2 calls (current + next trimester) and assembles combined view
    * Returns instructors, parent's children, classes, next trimester registrations,
    * current trimester registrations
-   * @param {object} sessionInfo - User session
-   * @returns {Promise<object>} Registration form data
    */
-  async fetchData(sessionInfo) {
-    const parentId = sessionInfo?.user?.parent?.id;
+  async fetchData(sessionInfo: { user: Record<string, unknown>; userType: string } | null): Promise<Record<string, unknown>> {
+    const parentObj = (sessionInfo?.user as Record<string, unknown> | undefined)?.parent as Record<string, unknown> | undefined;
+    const parentId = parentObj?.id as string | undefined;
     if (!parentId) {
       throw new Error('No parent ID found in session');
     }
@@ -52,7 +67,7 @@ export class ParentRegistrationTab extends BaseTab {
     const [currentData, nextData] = await Promise.all([
       HttpService.get(`parent/tabs/registration/${currentTrimester}?parentId=${parentId}`, { signal }),
       HttpService.get(`parent/tabs/registration/${nextTrimester}?parentId=${parentId}`, { signal }),
-    ]);
+    ]) as [Record<string, unknown>, Record<string, unknown>];
 
     // Validate responses
     if (!currentData.instructors || !currentData.students || !currentData.classes || !currentData.registrations) {
@@ -69,40 +84,41 @@ export class ParentRegistrationTab extends BaseTab {
       classes: currentData.classes,
       nextTrimesterRegistrations: nextData.registrations,
       currentTrimesterRegistrations: currentData.registrations,
-    };
+    } as Record<string, unknown>;
   }
 
   /**
    * Render the registration form
    */
-  async render() {
+  async render(): Promise<void> {
     const container = this.getContainer();
+    const typedData = this.data as unknown as RegistrationTabData;
 
     // The ParentRegistrationForm expects to render into the container
     // If form already exists, update its data instead of recreating
     if (this.registrationForm) {
       // Update existing form with new data
       this.registrationForm.updateData(
-        this.data.instructors,
-        this.data.students,
-        this.data.classes,
-        this.data.nextTrimesterRegistrations,
-        this.data.students, // parentChildren = all students for this parent
-        this.data.currentTrimesterRegistrations // for recurring enrollment
+        typedData.instructors as unknown as InstructorLike[],
+        typedData.students as unknown as StudentLike[],
+        typedData.classes as unknown as ClassLike[],
+        typedData.nextTrimesterRegistrations as unknown as RegistrationLike[],
+        typedData.students as unknown as StudentLike[], // parentChildren = all students for this parent
+        typedData.currentTrimesterRegistrations as unknown as RegistrationLike[] // for recurring enrollment
       );
     } else {
       // Create new form instance
       this.registrationForm = new ParentRegistrationForm(
-        this.data.instructors,
-        this.data.students,
-        this.data.classes,
-        this.data.nextTrimesterRegistrations, // registrations for availability calculation
-        async registrationData => {
+        typedData.instructors as unknown as InstructorLike[],
+        typedData.students as unknown as StudentLike[],
+        typedData.classes as unknown as ClassLike[],
+        typedData.nextTrimesterRegistrations as unknown as RegistrationLike[], // registrations for availability calculation
+        async (registrationData: RegistrationSubmitData) => {
           // Send data function - delegate to viewModel for registration creation
           await this.#createRegistration(registrationData);
         },
-        this.data.students, // parentChildren = all students for this parent
-        this.data.currentTrimesterRegistrations // for recurring enrollment options
+        typedData.students as unknown as StudentLike[], // parentChildren = all students for this parent
+        typedData.currentTrimesterRegistrations as unknown as RegistrationLike[] // for recurring enrollment options
       );
     }
   }
@@ -111,7 +127,7 @@ export class ParentRegistrationTab extends BaseTab {
    * Create a registration via viewModel delegation
    * @private
    */
-  async #createRegistration(registrationData) {
+  async #createRegistration(registrationData: RegistrationSubmitData): Promise<void> {
     // Delegate to viewModel for registration creation
     if (
       window.viewModel &&
@@ -119,7 +135,7 @@ export class ParentRegistrationTab extends BaseTab {
     ) {
       // The viewModel expects the method to be called with 'this' context
       // Call it via viewModel to maintain proper context
-      await window.viewModel.createRegistrationWithEnrichment(registrationData);
+      await (window.viewModel.createRegistrationWithEnrichment as (data: Record<string, unknown>) => Promise<void>)(registrationData);
 
       // Reload the tab to show updated data
       await this.reload();
@@ -134,7 +150,7 @@ export class ParentRegistrationTab extends BaseTab {
   /**
    * Cleanup when tab is unloaded
    */
-  async cleanup() {
+  async cleanup(): Promise<void> {
     // Destroy the form instance to ensure clean state when tab is reloaded
     // This prevents Materialize component state issues when switching tabs
     if (this.registrationForm && typeof this.registrationForm.destroy === 'function') {

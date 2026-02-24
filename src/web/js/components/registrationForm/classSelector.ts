@@ -9,14 +9,34 @@ import { ClassManager } from '../../utilities/classManager.js';
 import { formatClassNameWithGradeCorrection } from '../../utilities/classNameFormatter.js';
 import { formatTime } from '../../extensions/numberExtensions.js';
 
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+interface ClassLike {
+  id: string;
+  day?: string;
+  startTime?: string;
+  title?: string;
+  [key: string]: unknown;
+}
+
+type ClassChangeCallback = (selectedClass: ClassLike | undefined) => void;
+
 export class ClassSelector {
+  selectId: string;
+  classes: ClassLike[];
+  onChangeCallback: ClassChangeCallback | null;
+  select: Select;
+
   /**
    * Create a class selector
    * @param {string} selectId - ID of the select element
    * @param {Array} classes - Array of class objects
    * @param {Function} onChangeCallback - Callback when class changes
    */
-  constructor(selectId, classes = [], onChangeCallback = null) {
+  constructor(selectId: string, classes: ClassLike[] = [], onChangeCallback: ClassChangeCallback | null = null) {
     this.selectId = selectId;
     this.classes = classes;
     this.onChangeCallback = onChangeCallback;
@@ -30,7 +50,7 @@ export class ClassSelector {
       RegistrationFormText.CLASS_PLACEHOLDER,
       RegistrationFormText.CLASS_EMPTY,
       options,
-      event => this.#handleChange(event)
+      (event: Event) => this.#handleChange(event)
     );
   }
 
@@ -38,13 +58,13 @@ export class ClassSelector {
    * Build class options from classes array
    * @private
    */
-  #buildClassOptions(classes) {
+  #buildClassOptions(classes: ClassLike[]): SelectOption[] {
     return classes.map(cls => ({
       value: cls.id,
       label: ClassManager.formatClassNameWithTime(
         cls,
         formatClassNameWithGradeCorrection,
-        formatTime
+        (time: string | undefined) => formatTime(time as string)
       ),
     }));
   }
@@ -53,9 +73,9 @@ export class ClassSelector {
    * Handle class change
    * @private
    */
-  #handleChange(event) {
+  #handleChange(event: Event): void {
     event.preventDefault();
-    const selectedValue = event.target.value;
+    const selectedValue = (event.target as HTMLSelectElement).value;
     const selectedClass = this.classes.find(x => x.id === selectedValue);
 
     console.log('Class changed to:', selectedValue);
@@ -70,7 +90,7 @@ export class ClassSelector {
    * Get the selected class ID
    * @returns {string} Selected class ID
    */
-  getSelectedClassId() {
+  getSelectedClassId(): string {
     return this.select.getSelectedOption();
   }
 
@@ -78,7 +98,7 @@ export class ClassSelector {
    * Get the selected class object
    * @returns {object | null} Selected class object or null
    */
-  getSelectedClass() {
+  getSelectedClass(): ClassLike | null {
     const selectedId = this.getSelectedClassId();
     return this.classes.find(x => x.id === selectedId) || null;
   }
@@ -87,14 +107,14 @@ export class ClassSelector {
    * Set the selected class
    * @param {string} classId - Class ID to select
    */
-  setSelectedClass(classId) {
+  setSelectedClass(classId: string): void {
     this.select.setSelectedOption(classId);
   }
 
   /**
    * Clear the class selection
    */
-  clear() {
+  clear(): void {
     this.select.clearSelectedOption();
   }
 
@@ -103,7 +123,7 @@ export class ClassSelector {
    * @param {Array} classes - New array of class objects
    * @param {boolean} forceRefresh - Whether to force refresh and clear selection
    */
-  updateClasses(classes, forceRefresh = false) {
+  updateClasses(classes: ClassLike[], forceRefresh: boolean = false): void {
     this.classes = classes;
     const options = this.#buildClassOptions(classes);
     this.select.populateOptions(options, forceRefresh);
@@ -113,7 +133,7 @@ export class ClassSelector {
    * Filter classes by a predicate function
    * @param {Function} predicateFn - Function that returns true for classes to include
    */
-  filterClasses(predicateFn) {
+  filterClasses(predicateFn: (cls: ClassLike) => boolean): void {
     const filteredClasses = this.classes.filter(predicateFn);
     const options = this.#buildClassOptions(filteredClasses);
     this.select.populateOptions(options, true);

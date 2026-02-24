@@ -2,7 +2,7 @@
 /**
  *
  */
-function formatGrade(grade) {
+function formatGrade(grade: number | string): string {
   // Handle both numeric 0 and string "0" for kindergarten
   return grade === 0 || grade === '0' ? 'K' : (grade?.toString() ?? '');
 }
@@ -13,7 +13,7 @@ function formatGrade(grade) {
  * @param {string} time24 - Time in 24-hour format (HH:MM)
  * @returns {string} Time in 12-hour format with AM/PM
  */
-function formatTime(time24) {
+function formatTime(time24: string): string {
   if (!time24 || typeof time24 !== 'string') return time24 || 'N/A';
 
   const [hours, minutes] = time24.split(':').map(num => parseInt(num, 10));

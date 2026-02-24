@@ -5,19 +5,37 @@
 
 import { RegistrationFormText } from '../../constants/registrationFormConstants.js';
 
+interface StudentLike {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  getFullName?: () => string;
+  [key: string]: unknown;
+}
+
+type StudentSelectCallback = (selectedStudent: StudentLike | undefined) => void;
+
 export class StudentSelector {
+  elementId: string;
+  element: HTMLInputElement;
+  onSelectCallback: StudentSelectCallback | null;
+  selectedStudent: StudentLike | null;
+  studentMap: Record<string, string>;
+  students: StudentLike[];
+
   /**
    * Create a student selector
    * @param {string} elementId - ID of the autocomplete input element
    * @param {Array} students - Array of student objects
    * @param {Function} onSelectCallback - Callback when student is selected
    */
-  constructor(elementId, students = [], onSelectCallback = null) {
+  constructor(elementId: string, students: StudentLike[] = [], onSelectCallback: StudentSelectCallback | null = null) {
     this.elementId = elementId;
-    this.element = document.getElementById(elementId);
+    this.element = document.getElementById(elementId) as HTMLInputElement;
     this.onSelectCallback = onSelectCallback;
     this.selectedStudent = null;
     this.studentMap = {};
+    this.students = [];
 
     if (!this.element) {
       console.error(`Student autocomplete element with ID '${elementId}' not found in DOM`);
@@ -31,7 +49,7 @@ export class StudentSelector {
    * Set or update the list of students
    * @param {Array} students - Array of student objects
    */
-  setStudents(students) {
+  setStudents(students: StudentLike[]): void {
     this.students = students || [];
 
     if (!this.students.length) {
@@ -42,7 +60,7 @@ export class StudentSelector {
     }
 
     // Build autocomplete data object
-    const data = this.students.reduce((acc, student) => {
+    const data: Record<string, null> = this.students.reduce((acc: Record<string, null>, student: StudentLike) => {
       const fullName = student.getFullName
         ? student.getFullName()
         : `${student.firstName || ''} ${student.lastName || ''}`.trim();
@@ -51,7 +69,7 @@ export class StudentSelector {
     }, {});
 
     // Build student ID mapping
-    this.studentMap = this.students.reduce((acc, student) => {
+    this.studentMap = this.students.reduce((acc: Record<string, string>, student: StudentLike) => {
       const fullName = student.getFullName
         ? student.getFullName()
         : `${student.firstName || ''} ${student.lastName || ''}`.trim();
@@ -60,16 +78,16 @@ export class StudentSelector {
     }, {});
 
     // Initialize Materialize autocomplete
-    const options = {
+    const options: MaterializeAutocompleteOptions = {
       data: data,
       limit: 20,
-      onAutocomplete: selectedOption => {
+      onAutocomplete: (selectedOption: string) => {
         const studentId = this.studentMap[selectedOption];
-        this.selectedStudent = this.students.find(x => x.id === studentId);
+        this.selectedStudent = this.students.find(x => x.id === studentId) || null;
 
         // Trigger callback if provided
         if (this.onSelectCallback && typeof this.onSelectCallback === 'function') {
-          this.onSelectCallback(this.selectedStudent);
+          this.onSelectCallback(this.selectedStudent || undefined);
         }
       },
     };
@@ -81,7 +99,7 @@ export class StudentSelector {
    * Get the currently selected student
    * @returns {object | null} Selected student object or null
    */
-  getSelectedStudent() {
+  getSelectedStudent(): StudentLike | null {
     return this.selectedStudent;
   }
 
@@ -89,7 +107,7 @@ export class StudentSelector {
    * Get the selected student ID
    * @returns {string|null} Student ID or null
    */
-  getSelectedStudentId() {
+  getSelectedStudentId(): string | null {
     if (!this.selectedStudent) return null;
 
     return this.selectedStudent.id;
@@ -99,7 +117,7 @@ export class StudentSelector {
    * Set the current student (for external updates)
    * @param {object | null} student - Student object or null to clear
    */
-  setSelectedStudent(student) {
+  setSelectedStudent(student: StudentLike | null): void {
     this.selectedStudent = student;
     this.element.value = student
       ? student.getFullName
@@ -111,21 +129,21 @@ export class StudentSelector {
   /**
    * Clear the student selection
    */
-  clear() {
+  clear(): void {
     this.setSelectedStudent(null);
   }
 
   /**
    * Disable the student selector
    */
-  disable() {
+  disable(): void {
     this.element.disabled = true;
   }
 
   /**
    * Enable the student selector
    */
-  enable() {
+  enable(): void {
     this.element.disabled = false;
   }
 }

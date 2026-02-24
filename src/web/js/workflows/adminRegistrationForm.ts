@@ -19,14 +19,102 @@ import { InstructorSelector } from '../components/registrationForm/instructorSel
 import { ClassSelector } from '../components/registrationForm/classSelector.js';
 import { LessonDetailsForm } from '../components/registrationForm/lessonDetailsForm.js';
 
+/** Instructor shape used by this form */
+interface InstructorLike {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  specialties?: string[];
+  [key: string]: unknown;
+}
+
+/** Student shape used by this form */
+interface StudentLike {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  getFullName?: () => string;
+  [key: string]: unknown;
+}
+
+/** Class shape used by this form */
+interface ClassLike {
+  id: string;
+  day?: string;
+  startTime?: string;
+  length?: number;
+  title?: string;
+  instrument?: string;
+  instructorId?: string;
+  formattedName?: string;
+  [key: string]: unknown;
+}
+
+/** Registration data built for submission */
+interface RegistrationData {
+  studentId: string | null;
+  registrationType: string;
+  transportationType?: string | null;
+  classId?: string;
+  classTitle?: string;
+  instructorId?: string;
+  day?: string | null;
+  startTime?: string;
+  length?: number | null;
+  instrument?: string;
+  replaceRegistrationId?: string;
+  trimester?: string;
+}
+
+/** Shape of a trimester registration record */
+interface TrimesterRegistration {
+  id: string;
+  studentId: string;
+  registrationType?: string;
+  instrument?: string;
+  day?: string;
+  startTime?: string;
+  instructorId?: string;
+  classTitle?: string;
+  linkedPreviousRegistrationId?: string;
+  [key: string]: unknown;
+}
+
+/** Typed error from the send data function */
+interface SendDataError extends Error {
+  type?: string;
+}
+
+/** Callback type for the send data function */
+type SendDataFunction = (data: RegistrationData) => Promise<void>;
+
 /**
  * Admin Registration Form with simplified progressive filters
  */
 export class AdminRegistrationForm {
+  instructors: InstructorLike[];
+  students: StudentLike[];
+  classes: ClassLike[];
+  sendDataFunction: SendDataFunction;
+  selectedTrimester: string | null;
+  trimesterRegistrations: TrimesterRegistration[];
+  _selectedRegistrationToReplace: string | null;
+  studentSelector!: StudentSelector;
+  registrationTypeSelector!: RegistrationTypeSelector;
+  transportationSelector!: TransportationSelector;
+  instructorSelector!: InstructorSelector;
+  classSelector!: ClassSelector;
+  lessonDetailsForm!: LessonDetailsForm;
+
   /**
    * Constructor
    */
-  constructor(instructors, students, classes, sendDataFunction) {
+  constructor(
+    instructors: InstructorLike[],
+    students: StudentLike[],
+    classes: ClassLike[],
+    sendDataFunction: SendDataFunction
+  ) {
     this.instructors = instructors;
     this.students = students;
     this.classes = classes;
@@ -46,7 +134,7 @@ export class AdminRegistrationForm {
    * Set the trimester context for new registrations
    * @param {string} trimester - The trimester ('fall', 'winter', 'spring')
    */
-  setTrimester(trimester) {
+  setTrimester(trimester: string): void {
     this.selectedTrimester = trimester;
   }
 
@@ -54,7 +142,7 @@ export class AdminRegistrationForm {
    * Set registrations for the selected trimester
    * @param {Array} registrations - Array of registration objects for the trimester
    */
-  setTrimesterRegistrations(registrations) {
+  setTrimesterRegistrations(registrations: TrimesterRegistration[]): void {
     this.trimesterRegistrations = registrations || [];
     // Render the selector if a student is already selected
     const selectedStudentId = this.studentSelector.getSelectedStudentId();
@@ -66,12 +154,12 @@ export class AdminRegistrationForm {
   /**
    * Initialize all form components
    */
-  #initializeComponents() {
+  #initializeComponents(): void {
     // Student selector with callback to update registration selector
     this.studentSelector = new StudentSelector(
       'student-autocomplete-input',
       this.students,
-      student => this.#handleStudentChange(student)
+      (student: StudentLike | undefined) => this.#handleStudentChange(student)
     );
 
     // Registration type selector
@@ -87,7 +175,7 @@ export class AdminRegistrationForm {
     this.instructorSelector = new InstructorSelector(
       'instructor-select',
       this.instructors,
-      instructor => this.#handleInstructorChange(instructor)
+      (instructor: InstructorLike | undefined) => this.#handleInstructorChange(instructor)
     );
 
     // Class selector
@@ -114,7 +202,7 @@ export class AdminRegistrationForm {
   /**
    * Handle instructor selection change
    */
-  #handleInstructorChange(instructor) {
+  #handleInstructorChange(instructor: InstructorLike | undefined): void {
     const hasInstructor = !!instructor;
 
     // Show lesson details when instructor is selected
@@ -129,7 +217,7 @@ export class AdminRegistrationForm {
   /**
    * Show/hide container helper
    */
-  #showContainer(containerId, shouldShow) {
+  #showContainer(containerId: string, shouldShow: boolean): void {
     const container = document.getElementById(containerId);
     if (container) {
       container.hidden = !shouldShow;
@@ -139,10 +227,10 @@ export class AdminRegistrationForm {
   /**
    * Attach event listener to submit button
    */
-  #attachSubmitButtonListener() {
+  #attachSubmitButtonListener(): void {
     const submitButton = document.getElementById('create-registration-submit-btn');
     if (submitButton) {
-      submitButton.addEventListener('click', async event => {
+      submitButton.addEventListener('click', async (event: Event) => {
         event.preventDefault();
 
         if (!this.#validateRegistration()) {
@@ -155,7 +243,8 @@ export class AdminRegistrationForm {
           await this.sendDataFunction(registrationData);
           this.#clearForm();
           M.toast({ html: RegistrationFormText.SUCCESS_CREATED });
-        } catch (error) {
+        } catch (err: unknown) {
+          const error = err as SendDataError;
           console.error('Error creating registration:', error);
           if (error.type === 'conflict') {
             this.#showConflictModal(error.message);
@@ -176,14 +265,17 @@ export class AdminRegistrationForm {
   /**
    * Validate registration before submission
    */
-  #validateRegistration() {
+  #validateRegistration(): boolean {
     const registrationData = this.#getCreateRegistrationData();
     const registrationType = registrationData.registrationType;
     const isPrivate = registrationType === RegistrationType.PRIVATE;
     const isGroup = registrationType === RegistrationType.GROUP;
 
     // Basic field validation
-    const validation = validateRegistrationData(registrationData, registrationType);
+    const validation = validateRegistrationData(
+      registrationData as unknown as Record<string, unknown>,
+      registrationType
+    );
     if (!validation.isValid) {
       M.toast({ html: formatValidationErrors(validation.errors) });
       return false;
@@ -196,26 +288,26 @@ export class AdminRegistrationForm {
       if (isPrivate) {
         // For private lessons
         busValidation = validateBusTimeRestrictions(
-          registrationData.day,
-          registrationData.startTime,
-          registrationData.length,
-          registrationData.transportationType
+          registrationData.day as string,
+          registrationData.startTime as string,
+          registrationData.length as number,
+          registrationData.transportationType as string
         );
       } else if (isGroup) {
         // For group classes
         const selectedClass = this.classSelector.getSelectedClass();
         if (selectedClass) {
           busValidation = validateBusTimeRestrictions(
-            selectedClass.day,
-            selectedClass.startTime,
-            selectedClass.length,
-            registrationData.transportationType
+            selectedClass.day as string,
+            selectedClass.startTime as string,
+            selectedClass.length as number,
+            registrationData.transportationType as string
           );
         }
       }
 
       if (busValidation && !busValidation.isValid) {
-        M.toast({ html: busValidation.errorMessage });
+        M.toast({ html: busValidation.errorMessage as string });
         return false;
       }
     }
@@ -226,12 +318,15 @@ export class AdminRegistrationForm {
   /**
    * Get registration data for submission
    */
-  #getCreateRegistrationData() {
+  #getCreateRegistrationData(): RegistrationData {
     const studentId = this.studentSelector.getSelectedStudentId();
     const registrationType = this.registrationTypeSelector.getSelectedType();
     const transportationType = this.transportationSelector.getSelectedType();
 
-    let registrationData = {};
+    let registrationData: RegistrationData = {
+      studentId,
+      registrationType,
+    };
 
     if (registrationType === RegistrationType.GROUP) {
       const selectedClass = this.classSelector.getSelectedClass();
@@ -246,15 +341,15 @@ export class AdminRegistrationForm {
         transportationType: transportationType,
         classId: selectedClass.id,
         classTitle:
-          selectedClass.formattedName ||
-          selectedClass.title ||
-          selectedClass.instrument ||
+          (selectedClass.formattedName as string | undefined) ||
+          (selectedClass.title as string | undefined) ||
+          (selectedClass.instrument as string | undefined) ||
           `Class ${selectedClass.id}`,
-        instructorId: selectedClass.instructorId,
+        instructorId: selectedClass.instructorId as string | undefined,
         day: selectedClass.day,
         startTime: selectedClass.startTime,
-        length: selectedClass.length,
-        instrument: selectedClass.instrument,
+        length: selectedClass.length as number | undefined,
+        instrument: selectedClass.instrument as string | undefined,
       };
     } else if (registrationType === RegistrationType.PRIVATE) {
       // For private lessons
@@ -298,8 +393,8 @@ export class AdminRegistrationForm {
   /**
    * Set loading state
    */
-  #setAdminRegistrationLoading(isLoading) {
-    const submitButton = document.getElementById('create-registration-submit-btn');
+  #setAdminRegistrationLoading(isLoading: boolean): void {
+    const submitButton = document.getElementById('create-registration-submit-btn') as HTMLButtonElement | null;
     if (submitButton) {
       if (isLoading) {
         submitButton.disabled = true;
@@ -314,14 +409,14 @@ export class AdminRegistrationForm {
   /**
    * Public method to clear the form (can be called externally when switching users)
    */
-  clearForm() {
+  clearForm(): void {
     this.#clearForm();
   }
 
   /**
    * Clear the form after successful submission
    */
-  #clearForm() {
+  #clearForm(): void {
     // Clear all component selections
     this.registrationTypeSelector.clear();
     this.classSelector.clear();
@@ -341,11 +436,11 @@ export class AdminRegistrationForm {
   /**
    * Attach event listener to registration selector dropdown
    */
-  #attachRegistrationSelectorListener() {
-    const selectorDropdown = document.getElementById('admin-registration-selector');
+  #attachRegistrationSelectorListener(): void {
+    const selectorDropdown = document.getElementById('admin-registration-selector') as HTMLSelectElement | null;
     if (selectorDropdown) {
-      selectorDropdown.addEventListener('change', event => {
-        const selectedId = event.target.value;
+      selectorDropdown.addEventListener('change', (event: Event) => {
+        const selectedId = (event.target as HTMLSelectElement).value;
         if (!selectedId) {
           // "Create New (Don't Replace)" selected
           this._selectedRegistrationToReplace = null;
@@ -361,7 +456,7 @@ export class AdminRegistrationForm {
    * Handle student selection change
    * Called when a student is selected from autocomplete or cleared
    */
-  #handleStudentChange(student) {
+  #handleStudentChange(_student: StudentLike | undefined): void {
     // Render registration selector (will hide if student is null)
     this.#renderRegistrationSelector();
   }
@@ -369,12 +464,12 @@ export class AdminRegistrationForm {
   /**
    * Attach listener to detect when student input is manually cleared
    */
-  #attachStudentSelectorListener() {
-    const studentInput = document.getElementById('student-autocomplete-input');
+  #attachStudentSelectorListener(): void {
+    const studentInput = document.getElementById('student-autocomplete-input') as HTMLInputElement | null;
     if (studentInput) {
       // Listen for input events to detect when field is cleared
-      studentInput.addEventListener('input', event => {
-        if (event.target.value === '') {
+      studentInput.addEventListener('input', (event: Event) => {
+        if ((event.target as HTMLInputElement).value === '') {
           // Input was cleared, hide the registration selector
           this.#hideRegistrationSelector();
         }
@@ -385,9 +480,9 @@ export class AdminRegistrationForm {
   /**
    * Render the registration selector with existing registrations for the selected student
    */
-  #renderRegistrationSelector() {
+  #renderRegistrationSelector(): void {
     const selectorSection = document.getElementById('admin-registration-selector-section');
-    const selectorDropdown = document.getElementById('admin-registration-selector');
+    const selectorDropdown = document.getElementById('admin-registration-selector') as HTMLSelectElement | null;
 
     if (!selectorSection || !selectorDropdown) {
       return; // Elements not found
@@ -412,7 +507,7 @@ export class AdminRegistrationForm {
 
     // Filter registrations for selected student that have linkedPreviousRegistrationId
     // These are registrations created from reenrollment intent that can be modified
-    const studentRegistrations = this.trimesterRegistrations.filter(reg => {
+    const studentRegistrations = this.trimesterRegistrations.filter((reg: TrimesterRegistration) => {
       const regStudentId = reg.studentId;
       const hasLinkedPrevious = !!reg.linkedPreviousRegistrationId;
       return regStudentId === selectedStudentId && hasLinkedPrevious;
@@ -428,7 +523,7 @@ export class AdminRegistrationForm {
     selectorSection.style.display = 'block';
 
     // Populate dropdown with existing registrations
-    studentRegistrations.forEach(registration => {
+    studentRegistrations.forEach((registration: TrimesterRegistration) => {
       const option = document.createElement('option');
       option.value = registration.id;
 
@@ -439,7 +534,7 @@ export class AdminRegistrationForm {
         const instrument = registration.instrument || 'Lesson';
         const day = registration.day || '';
         const time = registration.startTime || '';
-        const instructor = this.instructors.find(i => i.id === registration.instructorId);
+        const instructor = this.instructors.find((i: InstructorLike) => i.id === registration.instructorId);
         const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : '';
         label = `${instrument} - ${day} ${time} with ${instructorName}`;
       } else if (regType === 'group') {
@@ -462,7 +557,7 @@ export class AdminRegistrationForm {
   /**
    * Hide the registration selector section
    */
-  #hideRegistrationSelector() {
+  #hideRegistrationSelector(): void {
     const selectorSection = document.getElementById('admin-registration-selector-section');
     if (selectorSection) {
       selectorSection.style.display = 'none';
@@ -473,12 +568,12 @@ export class AdminRegistrationForm {
   /**
    * Show conflict error modal with refresh on acknowledge
    */
-  #showConflictModal(message) {
+  #showConflictModal(message: string): void {
     // Parse conflict messages from the error
     const conflicts = message
       .replace('Registration conflicts detected: ', '')
       .split('; ')
-      .map(c => `<li>${c}</li>`)
+      .map((c: string) => `<li>${c}</li>`)
       .join('');
 
     const modalHtml = `
@@ -504,7 +599,7 @@ export class AdminRegistrationForm {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
     // Initialize and open modal
-    const modalElement = document.getElementById('conflict-error-modal');
+    const modalElement = document.getElementById('conflict-error-modal') as HTMLElement;
     const modalInstance = M.Modal.init(modalElement, {
       dismissible: false,
       onCloseEnd: () => {

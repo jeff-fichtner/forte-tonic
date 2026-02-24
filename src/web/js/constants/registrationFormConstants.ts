@@ -41,7 +41,7 @@ export const RegistrationFormText = {
   BUTTON_REGISTER: 'Register',
 
   // Bus validation messages
-  BUS_ERROR_TEMPLATE: (deadlineDisplay, day, endTimeDisplay) =>
+  BUS_ERROR_TEMPLATE: (deadlineDisplay: string, day: string, endTimeDisplay: string): string =>
     `Late Bus is not available for lessons ending after ${deadlineDisplay} on ${day}. This lesson ends at ${endTimeDisplay}. Please select "Late Pick Up" instead or choose a different time slot.`,
 };
 

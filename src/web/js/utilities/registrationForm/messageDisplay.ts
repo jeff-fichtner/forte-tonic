@@ -9,7 +9,7 @@
  * @param {string} targetElementId - ID of element to insert after
  * @returns {HTMLElement} The error container element
  */
-export function getOrCreateErrorContainer(containerId, targetElementId) {
+export function getOrCreateErrorContainer(containerId: string, targetElementId: string): HTMLElement {
   let errorContainer = document.getElementById(containerId);
 
   if (!errorContainer) {
@@ -23,7 +23,7 @@ export function getOrCreateErrorContainer(containerId, targetElementId) {
     const targetElement = document.getElementById(targetElementId);
     const inputField = targetElement?.closest('.input-field');
     if (inputField) {
-      inputField.parentNode.insertBefore(errorContainer, inputField.nextSibling);
+      inputField.parentNode!.insertBefore(errorContainer, inputField.nextSibling);
     }
   }
 
@@ -35,7 +35,7 @@ export function getOrCreateErrorContainer(containerId, targetElementId) {
  * @param {string} containerId - ID of the error container
  * @param {string} message - Error message to display
  */
-export function showErrorMessage(containerId, message) {
+export function showErrorMessage(containerId: string, message: string): void {
   const errorContainer = document.getElementById(containerId);
   if (errorContainer) {
     errorContainer.textContent = message;
@@ -47,7 +47,7 @@ export function showErrorMessage(containerId, message) {
  * Clear an error message
  * @param {string} containerId - ID of the error container
  */
-export function clearErrorMessage(containerId) {
+export function clearErrorMessage(containerId: string): void {
   const errorContainer = document.getElementById(containerId);
   if (errorContainer) {
     errorContainer.style.display = 'none';
@@ -61,7 +61,7 @@ export function clearErrorMessage(containerId) {
  * @param {string} targetElementId - ID of element to insert after
  * @returns {HTMLElement} The message container element
  */
-export function getOrCreateInfoContainer(containerId, targetElementId) {
+export function getOrCreateInfoContainer(containerId: string, targetElementId: string): HTMLElement {
   let messageContainer = document.getElementById(containerId);
 
   if (!messageContainer) {
@@ -73,7 +73,7 @@ export function getOrCreateInfoContainer(containerId, targetElementId) {
     const targetElement = document.getElementById(targetElementId);
     const inputField = targetElement?.closest('.input-field');
     if (inputField) {
-      inputField.parentNode.insertBefore(messageContainer, inputField.nextSibling);
+      inputField.parentNode!.insertBefore(messageContainer, inputField.nextSibling);
     }
   }
 
@@ -86,7 +86,7 @@ export function getOrCreateInfoContainer(containerId, targetElementId) {
  * @param {string} message - Message to display
  * @param {string} type - Message type ('info' or 'warning')
  */
-export function showInfoMessage(containerId, message, type = 'info') {
+export function showInfoMessage(containerId: string, message: string, type: string = 'info'): void {
   const messageContainer = document.getElementById(containerId);
 
   if (!messageContainer) {
@@ -109,7 +109,7 @@ export function showInfoMessage(containerId, message, type = 'info') {
  * Clear an info message
  * @param {string} containerId - ID of the message container
  */
-export function clearInfoMessage(containerId) {
+export function clearInfoMessage(containerId: string): void {
   const messageContainer = document.getElementById(containerId);
   if (messageContainer) {
     messageContainer.style.display = 'none';

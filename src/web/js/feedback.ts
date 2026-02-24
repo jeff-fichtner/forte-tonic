@@ -6,8 +6,59 @@
 import { HttpService } from './data/httpService.js';
 import { ServerFunctions } from './constants.js';
 
+interface FeedbackState {
+  timestamp: string;
+  url: string;
+  userAgent: string;
+  screenResolution: string;
+  viewportSize: string;
+  currentUser?: {
+    email: unknown;
+    isAdmin: boolean;
+    isInstructor: boolean;
+    isParent: boolean;
+    adminId: unknown;
+    instructorId: unknown;
+    parentId: unknown;
+  };
+  currentSection?: unknown;
+  dataCounts?: {
+    students: number;
+    instructors: number;
+    classes: number;
+    registrations: number;
+    nextTrimesterRegistrations: number;
+  };
+  selectedTrimester?: unknown;
+  currentPeriod?: {
+    periodType: unknown;
+    trimester: unknown;
+  };
+  parentRegistrationForm?: {
+    selectedLesson: {
+      instructorId: unknown;
+      instrument: unknown;
+      day: unknown;
+      time: unknown;
+      length: unknown;
+    } | null;
+    selectedPreviousRegistrationId: unknown;
+  };
+}
+
+interface FeedbackData {
+  message: string;
+  state: FeedbackState;
+}
+
+interface FeedbackViewModel {
+  [key: string]: unknown;
+}
+
 export class FeedbackManager {
-  constructor(viewModel) {
+  private viewModel: FeedbackViewModel;
+
+  constructor(viewModel: FeedbackViewModel) {
     this.viewModel = viewModel;
     this.#initializeFeedbackButton();
   }
@@ -15,7 +66,7 @@ export class FeedbackManager {
   /**
    * Initialize the feedback button and modal
    */
-  #initializeFeedbackButton() {
+  #initializeFeedbackButton(): void {
     // Initialize modal
     const feedbackModal = document.getElementById('feedback-modal');
     if (feedbackModal && window.M) {
@@ -25,7 +76,7 @@ export class FeedbackManager {
     // Attach submit handler
     const submitBtn = document.getElementById('feedback-submit-btn');
     if (submitBtn) {
-      submitBtn.addEventListener('click', async e => {
+      submitBtn.addEventListener('click', async (e: Event) => {
         e.preventDefault();
         await this.#handleFeedbackSubmit();
       });
@@ -36,8 +87,8 @@ export class FeedbackManager {
    * Capture current application state
    * @returns {object} Captured state data
    */
-  #captureState() {
-    const state = {
+  #captureState(): FeedbackState {
+    const state: FeedbackState = {
       timestamp: new Date().toISOString(),
       url: window.location.href,
       userAgent: navigator.userAgent,
@@ -47,30 +98,34 @@ export class FeedbackManager {
 
     // Capture user info if available
     if (this.viewModel?.currentUser) {
+      const currentUser = this.viewModel.currentUser as Record<string, unknown>;
       state.currentUser = {
-        email: this.viewModel.currentUser.email,
-        isAdmin: !!this.viewModel.currentUser.admin,
-        isInstructor: !!this.viewModel.currentUser.instructor,
-        isParent: !!this.viewModel.currentUser.parent,
-        adminId: this.viewModel.currentUser.admin?.id,
-        instructorId: this.viewModel.currentUser.instructor?.id,
-        parentId: this.viewModel.currentUser.parent?.id,
+        email: currentUser.email,
+        isAdmin: !!(currentUser.admin),
+        isInstructor: !!(currentUser.instructor),
+        isParent: !!(currentUser.parent),
+        adminId: (currentUser.admin as Record<string, unknown> | undefined)?.id,
+        instructorId: (currentUser.instructor as Record<string, unknown> | undefined)?.id,
+        parentId: (currentUser.parent as Record<string, unknown> | undefined)?.id,
       };
     }
 
     // Capture current section/tab
-    if (this.viewModel?.navTabs?.currentSection) {
-      state.currentSection = this.viewModel.navTabs.currentSection;
+    if (this.viewModel?.navTabs) {
+      const navTabs = this.viewModel.navTabs as Record<string, unknown>;
+      if (navTabs.currentSection) {
+        state.currentSection = navTabs.currentSection;
+      }
     }
 
     // Capture counts of key data
     if (this.viewModel) {
       state.dataCounts = {
-        students: this.viewModel.students?.length || 0,
-        instructors: this.viewModel.instructors?.length || 0,
-        classes: this.viewModel.classes?.length || 0,
-        registrations: this.viewModel.registrations?.length || 0,
-        nextTrimesterRegistrations: this.viewModel.nextTrimesterRegistrations?.length || 0,
+        students: (this.viewModel.students as unknown[] | undefined)?.length || 0,
+        instructors: (this.viewModel.instructors as unknown[] | undefined)?.length || 0,
+        classes: (this.viewModel.classes as unknown[] | undefined)?.length || 0,
+        registrations: (this.viewModel.registrations as unknown[] | undefined)?.length || 0,
+        nextTrimesterRegistrations: (this.viewModel.nextTrimesterRegistrations as unknown[] | undefined)?.length || 0,
       };
     }
 
@@ -92,18 +147,20 @@ export class FeedbackManager {
 
     // Capture parent registration form state if exists
     if (this.viewModel?.parentRegistrationForm) {
+      const form = this.viewModel.parentRegistrationForm as Record<string, unknown>;
+      const selectedLesson = form.selectedLesson as Record<string, unknown> | null | undefined;
       state.parentRegistrationForm = {
-        selectedLesson: this.viewModel.parentRegistrationForm.selectedLesson
+        selectedLesson: selectedLesson
           ? {
-              instructorId: this.viewModel.parentRegistrationForm.selectedLesson.instructorId,
-              instrument: this.viewModel.parentRegistrationForm.selectedLesson.instrument,
-              day: this.viewModel.parentRegistrationForm.selectedLesson.day,
-              time: this.viewModel.parentRegistrationForm.selectedLesson.time,
-              length: this.viewModel.parentRegistrationForm.selectedLesson.length,
+              instructorId: selectedLesson.instructorId,
+              instrument: selectedLesson.instrument,
+              day: selectedLesson.day,
+              time: selectedLesson.time,
+              length: selectedLesson.length,
             }
           : null,
         selectedPreviousRegistrationId:
-          this.viewModel.parentRegistrationForm._selectedPreviousRegistrationId || null,
+          (form as Record<string, unknown>)._selectedPreviousRegistrationId || null,
       };
     }
 
@@ -113,16 +170,19 @@ export class FeedbackManager {
   /**
    * Handle feedback form submission
    */
-  async #handleFeedbackSubmit() {
-    const messageInput = document.getElementById('feedback-message');
+  async #handleFeedbackSubmit(): Promise<void> {
+    const messageInput = document.getElementById('feedback-message') as HTMLTextAreaElement | null;
     const submitBtn = document.getElementById('feedback-submit-btn');
-    const modal = window.M.Modal.getInstance(document.getElementById('feedback-modal'));
+    const feedbackModalEl = document.getElementById('feedback-modal');
+    const modal = feedbackModalEl ? window.M.Modal.getInstance(feedbackModalEl) : undefined;
+
+    if (!messageInput || !submitBtn) return;
 
     // Disable button during submission
     submitBtn.classList.add('disabled');
 
     try {
-      const feedbackData = {
+      const feedbackData: FeedbackData = {
         message: messageInput.value.trim(),
         state: this.#captureState(),
       };
@@ -140,7 +200,7 @@ export class FeedbackManager {
       // Clear form and close modal
       messageInput.value = '';
       window.M.updateTextFields(); // Update Materialize labels
-      modal.close();
+      modal?.close();
     } catch (error) {
       console.error('Error submitting feedback:', error);
 

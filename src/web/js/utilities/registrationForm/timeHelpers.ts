@@ -11,7 +11,7 @@ import { TimeSlotConfig } from '../../constants/registrationFormConstants.js';
  * @param {string} timeStr - Time string to parse
  * @returns {number|null} Minutes since midnight, or null if invalid
  */
-export function parseTime(timeStr) {
+export function parseTime(timeStr: string): number | null {
   if (!timeStr) return null;
 
   // Handle AM/PM format (e.g., "3:00 PM", "11:30 AM")
@@ -39,7 +39,7 @@ export function parseTime(timeStr) {
  * @param {number} minutes - Minutes since midnight
  * @returns {string} Time in HH:MM format
  */
-export function formatTimeFromMinutes(minutes) {
+export function formatTimeFromMinutes(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
@@ -50,7 +50,7 @@ export function formatTimeFromMinutes(minutes) {
  * @param {string} time24 - Time in HH:MM format
  * @returns {string} Time in "H:MM AM/PM" format
  */
-export function formatDisplayTime(time24) {
+export function formatDisplayTime(time24: string): string {
   const [hours, minutes] = time24.split(':');
   const hour12 = parseInt(hours) % 12 || 12;
   const ampm = parseInt(hours) >= 12 ? 'PM' : 'AM';
@@ -62,7 +62,7 @@ export function formatDisplayTime(time24) {
  * Uses configuration from TimeSlotConfig
  * @returns {Array<{value: string, label: string}>} Array of time options
  */
-export function generateTimeOptions() {
+export function generateTimeOptions(): Array<{ value: string; label: string }> {
   const times = [];
   const { START_HOUR, END_HOUR, INTERVAL_MINUTES } = TimeSlotConfig;
 
@@ -83,8 +83,8 @@ export function generateTimeOptions() {
  * @param {number} lengthMinutes - Duration in minutes
  * @returns {string} End time in HH:MM format
  */
-export function calculateEndTime(startTime, lengthMinutes) {
-  const startMinutes = parseTime(startTime);
+export function calculateEndTime(startTime: string, lengthMinutes: number): string {
+  const startMinutes = parseTime(startTime) ?? 0;
   const endMinutes = startMinutes + lengthMinutes;
   return formatTimeFromMinutes(endMinutes);
 }
@@ -95,8 +95,8 @@ export function calculateEndTime(startTime, lengthMinutes) {
  * @param {string} time2 - Second time
  * @returns {boolean} True if time1 is before time2
  */
-export function isTimeBefore(time1, time2) {
-  return parseTime(time1) < parseTime(time2);
+export function isTimeBefore(time1: string, time2: string): boolean {
+  return (parseTime(time1) ?? 0) < (parseTime(time2) ?? 0);
 }
 
 /**
@@ -105,6 +105,6 @@ export function isTimeBefore(time1, time2) {
  * @param {string} time2 - Second time
  * @returns {boolean} True if time1 is after time2
  */
-export function isTimeAfter(time1, time2) {
-  return parseTime(time1) > parseTime(time2);
+export function isTimeAfter(time1: string, time2: string): boolean {
+  return (parseTime(time1) ?? 0) > (parseTime(time2) ?? 0);
 }

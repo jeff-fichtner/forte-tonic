@@ -6,10 +6,44 @@
  * Validates reason input and submits to backend API.
  */
 
-import { HttpService } from '/data/httpService.js';
+import { HttpService } from '../data/httpService.js';
 import { DropRequestStatus } from '/utils/values/dropRequestStatus.js';
 
+interface DropRegistration {
+  id: string;
+  student?: { firstName?: string; lastName?: string };
+  instructor?: { firstName?: string; lastName?: string };
+  instrument?: string;
+  day?: string;
+  startTime?: string;
+  length?: string | number;
+}
+
+interface DropRequestModalOptions {
+  onSuccess?: (response: unknown) => void;
+  onError?: (error: Error) => void;
+}
+
 export class DropRequestModal {
+  private registration: DropRegistration;
+  private onSuccess: (response: unknown) => void;
+  private onError: (error: Error) => void;
+
+  private modalElement!: HTMLDivElement;
+  private reasonTextarea!: HTMLTextAreaElement;
+  private charCounter!: HTMLSpanElement;
+  private reasonError!: HTMLSpanElement;
+  private submitButton!: HTMLButtonElement;
+  private submitText!: HTMLSpanElement;
+  private spinner!: HTMLSpanElement;
+  private closeButton!: HTMLButtonElement;
+  private cancelButton!: HTMLButtonElement;
+  private escapeHandler!: (e: KeyboardEvent) => void;
+  private isSubmitting: boolean;
+
+  private readonly MIN_REASON_LENGTH: number;
+  private readonly MAX_REASON_LENGTH: number;
+
   /**
    * Create and show a drop request modal
    * @param {object} registration - Registration object to drop
@@ -17,15 +51,11 @@ export class DropRequestModal {
    * @param {function} options.onSuccess - Called when request submitted successfully
    * @param {function} options.onError - Called on error
    */
-  constructor(registration, options = {}) {
+  constructor(registration: DropRegistration, options: DropRequestModalOptions = {}) {
     this.registration = registration;
     this.onSuccess = options.onSuccess || (() => {});
-    this.onError = options.onError || (error => console.error('Drop request error:', error));
+    this.onError = options.onError || ((error: Error) => console.error('Drop request error:', error));
 
-    this.modalElement = null;
-    this.reasonTextarea = null;
-    this.charCounter = null;
-    this.submitButton = null;
     this.isSubmitting = false;
 
     this.MIN_REASON_LENGTH = 10;
@@ -39,7 +69,7 @@ export class DropRequestModal {
   /**
    * Create the modal DOM structure
    */
-  #createModal() {
+  #createModal(): void {
     // Create overlay
     const overlay = document.createElement('div');
     overlay.id = 'dropRequestModalOverlay';
@@ -212,14 +242,14 @@ export class DropRequestModal {
     this.modalElement = overlay;
 
     // Store references to interactive elements
-    this.reasonTextarea = modal.querySelector('#dropRequestReason');
-    this.charCounter = modal.querySelector('#dropRequestCharCount');
-    this.reasonError = modal.querySelector('#dropRequestReasonError');
-    this.submitButton = modal.querySelector('#dropRequestSubmitBtn');
-    this.submitText = modal.querySelector('#dropRequestSubmitText');
-    this.spinner = modal.querySelector('#dropRequestSpinner');
-    this.closeButton = modal.querySelector('#dropRequestModalClose');
-    this.cancelButton = modal.querySelector('#dropRequestCancelBtn');
+    this.reasonTextarea = modal.querySelector<HTMLTextAreaElement>('#dropRequestReason')!;
+    this.charCounter = modal.querySelector<HTMLSpanElement>('#dropRequestCharCount')!;
+    this.reasonError = modal.querySelector<HTMLSpanElement>('#dropRequestReasonError')!;
+    this.submitButton = modal.querySelector<HTMLButtonElement>('#dropRequestSubmitBtn')!;
+    this.submitText = modal.querySelector<HTMLSpanElement>('#dropRequestSubmitText')!;
+    this.spinner = modal.querySelector<HTMLSpanElement>('#dropRequestSpinner')!;
+    this.closeButton = modal.querySelector<HTMLButtonElement>('#dropRequestModalClose')!;
+    this.cancelButton = modal.querySelector<HTMLButtonElement>('#dropRequestCancelBtn')!;
 
     // Populate registration details
     this.#populateRegistrationDetails(modal);
@@ -228,10 +258,10 @@ export class DropRequestModal {
   /**
    * Populate registration details in the modal
    */
-  #populateRegistrationDetails(modal) {
-    const studentName = modal.querySelector('#dropRequestStudentName');
-    const lessonDetails = modal.querySelector('#dropRequestLessonDetails');
-    const schedule = modal.querySelector('#dropRequestSchedule');
+  #populateRegistrationDetails(modal: HTMLDivElement): void {
+    const studentName = modal.querySelector<HTMLSpanElement>('#dropRequestStudentName')!;
+    const lessonDetails = modal.querySelector<HTMLSpanElement>('#dropRequestLessonDetails')!;
+    const schedule = modal.querySelector<HTMLSpanElement>('#dropRequestSchedule')!;
 
     // Format student name
     const student = this.registration.student || {};
@@ -254,20 +284,20 @@ export class DropRequestModal {
   /**
    * Attach event listeners
    */
-  #attachEventListeners() {
+  #attachEventListeners(): void {
     // Close button
     this.closeButton.addEventListener('click', () => this.close());
     this.cancelButton.addEventListener('click', () => this.close());
 
     // Click outside to close
-    this.modalElement.addEventListener('click', e => {
+    this.modalElement.addEventListener('click', (e: MouseEvent) => {
       if (e.target === this.modalElement) {
         this.close();
       }
     });
 
     // Escape key to close
-    this.escapeHandler = e => {
+    this.escapeHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         this.close();
       }
@@ -284,7 +314,7 @@ export class DropRequestModal {
     this.submitButton.addEventListener('click', () => this.#handleSubmit());
 
     // Enter key in textarea submits if reason is valid
-    this.reasonTextarea.addEventListener('keydown', e => {
+    this.reasonTextarea.addEventListener('keydown', (e: KeyboardEvent) => {
       if (e.key === 'Enter' && e.ctrlKey) {
         this.#handleSubmit();
       }
@@ -294,7 +324,7 @@ export class DropRequestModal {
   /**
    * Update character counter
    */
-  #updateCharCounter() {
+  #updateCharCounter(): void {
     const length = this.reasonTextarea.value.length;
     this.charCounter.textContent = `${length} / ${this.MAX_REASON_LENGTH} characters`;
 
@@ -311,7 +341,7 @@ export class DropRequestModal {
   /**
    * Validate reason input
    */
-  #validateReason() {
+  #validateReason(): boolean {
     const reason = this.reasonTextarea.value.trim();
     let error = '';
 
@@ -340,7 +370,7 @@ export class DropRequestModal {
   /**
    * Handle form submission
    */
-  async #handleSubmit() {
+  async #handleSubmit(): Promise<void> {
     if (this.isSubmitting) return;
 
     if (!this.#validateReason()) {
@@ -367,7 +397,7 @@ export class DropRequestModal {
       this.close();
     } catch (error) {
       console.error('Error submitting drop request:', error);
-      this.#showError(error.message || 'Failed to submit drop request. Please try again.');
+      this.#showError((error as Error).message || 'Failed to submit drop request. Please try again.');
       this.isSubmitting = false;
       this.submitButton.disabled = false;
       this.submitText.textContent = 'Submit Request';
@@ -378,7 +408,7 @@ export class DropRequestModal {
   /**
    * Show error message
    */
-  #showError(message) {
+  #showError(message: string): void {
     this.reasonError.textContent = message;
     this.reasonError.style.display = 'block';
     this.onError(new Error(message));
@@ -387,12 +417,12 @@ export class DropRequestModal {
   /**
    * Show the modal
    */
-  show() {
+  show(): void {
     document.body.appendChild(this.modalElement);
     // Trigger animation
     window.requestAnimationFrame(() => {
       this.modalElement.style.opacity = '1';
-      this.modalElement.querySelector('#dropRequestModal').style.transform = 'translateY(0)';
+      this.modalElement.querySelector<HTMLDivElement>('#dropRequestModal')!.style.transform = 'translateY(0)';
     });
     // Focus on textarea
     setTimeout(() => {
@@ -403,10 +433,10 @@ export class DropRequestModal {
   /**
    * Close the modal
    */
-  close() {
+  close(): void {
     // Animate out
     this.modalElement.style.opacity = '0';
-    this.modalElement.querySelector('#dropRequestModal').style.transform = 'translateY(-20px)';
+    this.modalElement.querySelector<HTMLDivElement>('#dropRequestModal')!.style.transform = 'translateY(-20px)';
 
     // Remove after animation
     setTimeout(() => {

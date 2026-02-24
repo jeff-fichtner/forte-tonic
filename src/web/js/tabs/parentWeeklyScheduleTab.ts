@@ -1,19 +1,41 @@
-import { BaseTab } from '../core/baseTab.js';
+import { BaseTab, SessionInfo } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatGrade, formatTime } from '../extensions/numberExtensions.js';
 import { RegistrationType } from '../constants.js';
 import { PeriodType } from '/utils/values/periodType.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
+import { formatDateTime } from '../utilities/formatHelpers.js';
 import { isEnrollmentPeriod } from '../utilities/periodHelpers.js';
 import { ClassManager } from '../utilities/classManager.js';
 import { HttpService } from '../data/httpService.js';
 
 // Intent labels (matching viewModel.js)
-const INTENT_LABELS = {
+const INTENT_LABELS: Record<string, string> = {
   keep: '✅ Keep',
   drop: '❌ Drop',
   change: '🔄 Change',
 };
+
+interface TrimesterData {
+  registrations: Record<string, unknown>[];
+  students: Record<string, unknown>[];
+  instructors: Record<string, unknown>[];
+  classes: Record<string, unknown>[];
+}
+
+interface TrimesterInfo {
+  name: string;
+  data: TrimesterData;
+}
+
+interface WeeklyScheduleData {
+  currentTrimester: TrimesterInfo;
+  nextTrimester?: TrimesterInfo;
+  showTwoTrimesters: boolean;
+  students: Record<string, unknown>[];
+  instructors: Record<string, unknown>[];
+  classes: Record<string, unknown>[];
+}
 
 /**
  * ParentWeeklyScheduleTab - Weekly schedule for parents
@@ -30,24 +52,23 @@ const INTENT_LABELS = {
  * Data waste eliminated: ~1800+ records (other parents' data, unrelated students)
  */
 export class ParentWeeklyScheduleTab extends BaseTab {
+  private studentTables: Map<string, Table>;
+  private waitListTable: Table | null;
+
   constructor() {
     super('parent-weekly-schedule');
 
-    /** @private {Map<string, Table>} Tables by student */
-    this.studentTables = new Map();
-
-    /** @private {Table|null} Wait list table */
+    this.studentTables = new Map<string, Table>();
     this.waitListTable = null;
   }
 
   /**
    * Fetch weekly schedule data for parent's children
    * Returns registrations for BOTH current and next trimester
-   * @param {object} sessionInfo - User session
-   * @returns {Promise<object>} Weekly schedule data for both trimesters
    */
-  async fetchData(sessionInfo) {
-    const parentId = sessionInfo?.user?.parent?.id;
+  async fetchData(sessionInfo: SessionInfo | null): Promise<Record<string, unknown>> {
+    const parentObj = (sessionInfo?.user as Record<string, unknown> | undefined)?.parent as Record<string, unknown> | undefined;
+    const parentId = parentObj?.id as string | undefined;
     if (!parentId) {
       throw new Error('No parent ID found in session');
     }
@@ -69,7 +90,8 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     });
 
     // Determine which trimesters to show
-    let firstTrimester, secondTrimester;
+    let firstTrimester: string | null | undefined;
+    let secondTrimester: string | null | undefined;
     let showTwoTrimesters = false;
 
     if (isEnrollmentPeriod(currentPeriod)) {
@@ -93,9 +115,9 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     }
 
     // Fetch data for the trimester(s)
-    const fetchPromises = [this.#fetchTrimesterData(parentId, firstTrimester)];
+    const fetchPromises: Promise<TrimesterData>[] = [this.#fetchTrimesterData(parentId, firstTrimester as string)];
     if (showTwoTrimesters) {
-      fetchPromises.push(this.#fetchTrimesterData(parentId, secondTrimester));
+      fetchPromises.push(this.#fetchTrimesterData(parentId, secondTrimester as string));
     }
 
     const results = await Promise.all(fetchPromises);
@@ -107,11 +129,11 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       firstRegistrations: firstData.registrations.length,
       ...(showTwoTrimesters && {
         secondTrimester,
-        secondRegistrations: secondData.registrations.length,
+        secondRegistrations: secondData!.registrations.length,
       }),
     });
 
-    const responseData = {
+    const responseData: Record<string, unknown> = {
       currentTrimester: {
         name: firstTrimester,
         data: firstData,
@@ -140,8 +162,8 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Fetch data for a specific trimester
    * @private
    */
-  async #fetchTrimesterData(parentId, trimester) {
-    const data = await HttpService.get(`parent/tabs/weekly-schedule/${trimester}?parentId=${parentId}`, { signal: this.getAbortSignal() });
+  async #fetchTrimesterData(parentId: string, trimester: string): Promise<TrimesterData> {
+    const data = await HttpService.get(`parent/tabs/weekly-schedule/${trimester}?parentId=${parentId}`, { signal: this.getAbortSignal() }) as TrimesterData;
 
     // Validate response
     if (!data.registrations || !data.students || !data.instructors || !data.classes) {
@@ -155,9 +177,9 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Merge arrays and remove duplicates by ID
    * @private
    */
-  #mergeUnique(array, idField) {
-    const seen = new Set();
-    return array.filter(item => {
+  #mergeUnique(array: Record<string, unknown>[], idField: string): Record<string, unknown>[] {
+    const seen = new Set<unknown>();
+    return array.filter((item: Record<string, unknown>) => {
       const id = item[idField];
       if (seen.has(id)) {
         return false;
@@ -171,11 +193,12 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Render the weekly schedule tables
    * Shows one or two trimesters depending on period type
    */
-  async render() {
+  async render(): Promise<void> {
     const container = this.getContainer();
+    const typedData = this.data as unknown as WeeklyScheduleData;
 
     // Find or create the schedule container
-    let scheduleContainer = container.querySelector('#parent-weekly-schedule-section');
+    let scheduleContainer = container.querySelector<HTMLElement>('#parent-weekly-schedule-section');
     if (!scheduleContainer) {
       scheduleContainer = document.createElement('div');
       scheduleContainer.id = 'parent-weekly-schedule-section';
@@ -188,11 +211,11 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     this.waitListTable = null;
 
     // Render Current Trimester Section
-    this.#renderTrimesterSection(scheduleContainer, this.data.currentTrimester, 'current');
+    this.#renderTrimesterSection(scheduleContainer, typedData.currentTrimester, 'current');
 
     // Render Next Trimester Section (only during enrollment periods)
-    if (this.data.showTwoTrimesters && this.data.nextTrimester) {
-      this.#renderTrimesterSection(scheduleContainer, this.data.nextTrimester, 'next');
+    if (typedData.showTwoTrimesters && typedData.nextTrimester) {
+      this.#renderTrimesterSection(scheduleContainer, typedData.nextTrimester, 'next');
     }
 
     // Attach event listeners for intent dropdowns
@@ -203,7 +226,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Render a section for a specific trimester
    * @private
    */
-  #renderTrimesterSection(container, trimesterInfo, sectionType) {
+  #renderTrimesterSection(container: HTMLElement, trimesterInfo: TrimesterInfo, sectionType: string): void {
     const { name: trimesterName, data: trimesterData } = trimesterInfo;
     const registrations = trimesterData.registrations;
 
@@ -220,10 +243,10 @@ export class ParentWeeklyScheduleTab extends BaseTab {
 
     // Separate regular registrations from wait list (Rock Band)
     const regularRegistrations = registrations.filter(
-      reg => !rockBandClassIds.includes(reg.classId)
+      (reg: Record<string, unknown>) => !rockBandClassIds.includes(reg.classId as string)
     );
-    const waitListRegistrations = registrations.filter(reg =>
-      rockBandClassIds.includes(reg.classId)
+    const waitListRegistrations = registrations.filter((reg: Record<string, unknown>) =>
+      rockBandClassIds.includes(reg.classId as string)
     );
 
     // Render regular schedule section using trimesterData directly
@@ -251,7 +274,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Render the main schedule section (one table per student)
    * @private
    */
-  #renderScheduleSection(container, registrations, trimesterName, sectionType, trimesterData) {
+  #renderScheduleSection(container: HTMLElement, registrations: Record<string, unknown>[], trimesterName: string, sectionType: string, trimesterData: TrimesterData): void {
     // Show 'no matching registrations' message if no registrations
     if (registrations.length === 0) {
       const noRegistrationsMessage = document.createElement('div');
@@ -268,24 +291,24 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     }
 
     // Get parent's students from this trimester's data who have registrations
-    const studentsWithRegistrations = trimesterData.students.filter(student => {
-      const studentId = student.id;
-      return registrations.some(reg => {
-        const regStudentId = reg.studentId;
+    const studentsWithRegistrations = trimesterData.students.filter((student: Record<string, unknown>) => {
+      const studentId = student.id as string;
+      return registrations.some((reg: Record<string, unknown>) => {
+        const regStudentId = reg.studentId as string;
         return regStudentId === studentId;
       });
     });
 
     // Sort students by grade
-    studentsWithRegistrations.sort((a, b) => {
-      const gradeA = a.grade || 0;
-      const gradeB = b.grade || 0;
+    studentsWithRegistrations.sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+      const gradeA = (a.grade as number) || 0;
+      const gradeB = (b.grade as number) || 0;
       return gradeA - gradeB;
     });
 
     // Create a table for each student
-    studentsWithRegistrations.forEach(student => {
-      const studentId = student.id;
+    studentsWithRegistrations.forEach((student: Record<string, unknown>) => {
+      const studentId = student.id as string;
 
       // Create a container for each student's table with padding
       const studentContainer = document.createElement('div');
@@ -293,7 +316,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
 
       // Add a student header for better organization
       const studentHeader = document.createElement('h5');
-      studentHeader.textContent = `${student.firstName} ${student.lastName} - Grade ${formatGrade(student.grade)}`;
+      studentHeader.textContent = `${student.firstName} ${student.lastName} - Grade ${formatGrade(student.grade as number | string)}`;
       studentHeader.style.cssText =
         'color: #2b68a4; margin-bottom: 15px; margin-top: 20px; font-weight: bold;';
       studentContainer.appendChild(studentHeader);
@@ -307,8 +330,8 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       container.appendChild(studentContainer);
 
       // Filter and sort registrations for this student
-      const studentRegistrations = registrations.filter(reg => {
-        const regStudentId = reg.studentId;
+      const studentRegistrations = registrations.filter((reg: Record<string, unknown>) => {
+        const regStudentId = reg.studentId as string;
         return regStudentId === studentId;
       });
       const sortedRegistrations = this.#sortRegistrations(studentRegistrations);
@@ -324,12 +347,12 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * @private
    */
   #renderWaitListSection(
-    container,
-    waitListRegistrations,
-    trimesterName,
-    sectionType,
-    trimesterData
-  ) {
+    container: HTMLElement,
+    waitListRegistrations: Record<string, unknown>[],
+    trimesterName: string,
+    sectionType: string,
+    trimesterData: TrimesterData
+  ): void {
     // Create wait list header
     const waitListHeader = document.createElement('h5');
     waitListHeader.textContent = 'Rock Band Wait List';
@@ -351,12 +374,12 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Build a weekly schedule table for a specific student
    * @private
    */
-  #buildWeeklyScheduleTable(tableId, enrollments, trimesterData) {
+  #buildWeeklyScheduleTable(tableId: string, enrollments: Record<string, unknown>[], trimesterData: TrimesterData): Table {
     // Check if we're in the intent period to show the Intent column
     const currentPeriod = window.UserSession?.getCurrentPeriod();
     const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
 
-    const headers = [
+    const headers: string[] = [
       'Weekday',
       'Start Time',
       'Length',
@@ -373,7 +396,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     headers.push('Contact');
 
     // Create a wrapper function that has access to trimesterData
-    const rowBuilder = enrollment => this.#buildScheduleTableRow(enrollment, trimesterData);
+    const rowBuilder = (enrollment: Record<string, unknown>): string => this.#buildScheduleTableRow(enrollment, trimesterData);
 
     return new Table(
       tableId,
@@ -384,7 +407,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       null, // filterFunction
       null, // onFilterChanges
       {
-        rowClassFunction: enrollment => {
+        rowClassFunction: (enrollment: Record<string, unknown>): string => {
           // Return CSS class based on enrollment registration type
           return enrollment.registrationType === RegistrationType.GROUP
             ? 'registration-row-group'
@@ -398,11 +421,11 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Build a wait list table
    * @private
    */
-  #buildWaitListTable(tableId, enrollments, trimesterData) {
+  #buildWaitListTable(tableId: string, enrollments: Record<string, unknown>[], trimesterData: TrimesterData): Table {
     const headers = ['Student', 'Grade', 'Class Title', 'Timestamp'];
 
     // Create a wrapper function that has access to trimesterData
-    const rowBuilder = enrollment => this.#buildWaitListTableRow(enrollment, trimesterData);
+    const rowBuilder = (enrollment: Record<string, unknown>): string => this.#buildWaitListTableRow(enrollment, trimesterData);
 
     return new Table(
       tableId,
@@ -413,7 +436,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       null, // filterFunction
       null, // onFilterChanges
       {
-        rowClassFunction: () => 'registration-row-waitlist',
+        rowClassFunction: (): string => 'registration-row-waitlist',
       }
     );
   }
@@ -422,13 +445,13 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Build a table row for a schedule enrollment
    * @private
    */
-  #buildScheduleTableRow(enrollment, trimesterData) {
+  #buildScheduleTableRow(enrollment: Record<string, unknown>, trimesterData: TrimesterData): string {
     // Find instructor and student from trimesterData
-    const instructorId = enrollment.instructorId;
-    const studentId = enrollment.studentId;
+    const instructorId = enrollment.instructorId as string;
+    const studentId = enrollment.studentId as string;
 
-    const instructor = trimesterData.instructors.find(i => i.id === instructorId);
-    const student = trimesterData.students.find(s => s.id === studentId);
+    const instructor = trimesterData.instructors.find((i: Record<string, unknown>) => i.id === instructorId);
+    const student = trimesterData.students.find((s: Record<string, unknown>) => s.id === studentId);
 
     // Handle orphaned enrollments (student or instructor deleted but enrollment remains)
     const isOrphaned = !instructor || !student;
@@ -444,8 +467,8 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     // Determine instrument/class name
     const instrumentOrClass =
       enrollment.registrationType === RegistrationType.GROUP
-        ? enrollment.classTitle || 'N/A'
-        : enrollment.instrument || 'N/A';
+        ? (enrollment.classTitle as string) || 'N/A'
+        : (enrollment.instrument as string) || 'N/A';
 
     // Build intent cell for parent view during intent period only
     const currentPeriod = window.UserSession?.getCurrentPeriod();
@@ -453,8 +476,8 @@ export class ParentWeeklyScheduleTab extends BaseTab {
 
     let intentCell = '';
     if (isIntentPeriod) {
-      const enrollmentId = enrollment.id;
-      const intentValue = enrollment.reenrollmentIntent;
+      const enrollmentId = enrollment.id as string;
+      const intentValue = enrollment.reenrollmentIntent as string | undefined;
 
       // Show dropdown for selecting intent
       const selectedKeep = intentValue === 'keep' ? 'selected' : '';
@@ -479,7 +502,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     const studentName = student
       ? `${student.firstName} ${student.lastName}`
       : `<span class="red-text text-darken-2">⚠ Unknown Student</span>`;
-    const studentGrade = student ? formatGrade(student.grade) || 'N/A' : '—';
+    const studentGrade = student ? formatGrade(student.grade as number | string) || 'N/A' : '—';
     const instructorName = instructor
       ? `${instructor.firstName} ${instructor.lastName}`
       : `<span class="red-text text-darken-2">⚠ Unknown Instructor</span>`;
@@ -489,7 +512,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
 
     return `
       <td style="${rowStyle}">${enrollment.day}</td>
-      <td style="${rowStyle}">${formatTime(enrollment.startTime) || 'N/A'}</td>
+      <td style="${rowStyle}">${formatTime(enrollment.startTime as string) || 'N/A'}</td>
       <td style="${rowStyle}">${enrollment.length || 'N/A'} min</td>
       <td style="${rowStyle}">${studentName}</td>
       <td style="${rowStyle}">${studentGrade}</td>
@@ -508,10 +531,10 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Build a table row for a wait list enrollment
    * @private
    */
-  #buildWaitListTableRow(enrollment, trimesterData) {
+  #buildWaitListTableRow(enrollment: Record<string, unknown>, trimesterData: TrimesterData): string {
     // Find student from trimesterData
-    const studentId = enrollment.studentId;
-    const student = trimesterData.students.find(s => s.id === studentId);
+    const studentId = enrollment.studentId as string;
+    const student = trimesterData.students.find((s: Record<string, unknown>) => s.id === studentId);
 
     if (!student) {
       console.warn(`Student not found for wait list enrollment: ${enrollment.id}`, { studentId });
@@ -520,14 +543,14 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     const studentName = student
       ? `${student.firstName} ${student.lastName}`
       : `<span class="red-text text-darken-2">⚠ Unknown Student</span>`;
-    const studentGrade = student ? formatGrade(student.grade) || 'N/A' : '—';
+    const studentGrade = student ? formatGrade(student.grade as number | string) || 'N/A' : '—';
     const rowStyle = !student ? 'background-color: #ffebee;' : '';
 
     return `
       <td style="${rowStyle}">${studentName}</td>
       <td style="${rowStyle}">${studentGrade}</td>
-      <td style="${rowStyle}">${enrollment.classTitle || 'N/A'}</td>
-      <td style="${rowStyle}">${this.#formatDateTime(enrollment.createdAt) || 'N/A'}</td>
+      <td style="${rowStyle}">${(enrollment.classTitle as string) || 'N/A'}</td>
+      <td style="${rowStyle}">${formatDateTime(enrollment.createdAt as string | Date | number) || 'N/A'}</td>
     `;
   }
 
@@ -535,8 +558,9 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Handle table clicks (email copy for parent view)
    * @private
    */
-  async #handleScheduleTableClick(event) {
-    const isCopy = event.target.classList.contains('copy-emails-table-icon');
+  async #handleScheduleTableClick(event: Event): Promise<void> {
+    const target = event.target as HTMLElement;
+    const isCopy = target.classList.contains('copy-emails-table-icon');
     if (!isCopy) {
       return;
     }
@@ -545,30 +569,32 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     event.stopPropagation();
 
     // Get the registration ID from the data attribute
-    const buttonElement = event.target.closest('button');
+    const buttonElement = target.closest('button');
     const registrationId = buttonElement?.getAttribute('data-registration-id');
     if (!registrationId) return;
 
+    const typedData = this.data as unknown as WeeklyScheduleData;
+
     // Find the enrollment by ID - search in both current and next trimester data
-    let currentEnrollment = this.data.currentTrimester.data.registrations.find(
-      e => e.id === registrationId
+    let currentEnrollment = typedData.currentTrimester.data.registrations.find(
+      (e: Record<string, unknown>) => e.id === registrationId
     );
 
     // If not found in current trimester, check next trimester (if it exists)
-    if (!currentEnrollment && this.data.nextTrimester) {
-      currentEnrollment = this.data.nextTrimester.data.registrations.find(
-        e => e.id === registrationId
+    if (!currentEnrollment && typedData.nextTrimester) {
+      currentEnrollment = typedData.nextTrimester.data.registrations.find(
+        (e: Record<string, unknown>) => e.id === registrationId
       );
     }
 
     if (!currentEnrollment) return;
 
     // For parent view: show instructor emails
-    const instructorIdToFind = currentEnrollment.instructorId;
+    const instructorIdToFind = currentEnrollment.instructorId as string;
     const instructor = this.findInstructor(instructorIdToFind);
 
-    if (instructor && instructor.email && instructor.email.trim()) {
-      await copyToClipboard(instructor.email);
+    if (instructor && instructor.email && (instructor.email as string).trim()) {
+      await copyToClipboard(instructor.email as string);
     } else {
       if (typeof M !== 'undefined') {
         M.toast({ html: 'No instructor email available.' });
@@ -580,13 +606,13 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Sort registrations by day and start time
    * @private
    */
-  #sortRegistrations(registrations) {
+  #sortRegistrations(registrations: Record<string, unknown>[]): Record<string, unknown>[] {
     const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-    return registrations.sort((a, b) => {
+    return registrations.sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
       // First, sort by day of week
-      const dayA = a.day || '';
-      const dayB = b.day || '';
+      const dayA = (a.day as string) || '';
+      const dayB = (b.day as string) || '';
       const dayIndexA = dayOrder.indexOf(dayA);
       const dayIndexB = dayOrder.indexOf(dayB);
 
@@ -595,80 +621,22 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       }
 
       // Then sort by start time
-      const timeA = a.startTime || '';
-      const timeB = b.startTime || '';
+      const timeA = (a.startTime as string) || '';
+      const timeB = (b.startTime as string) || '';
       return timeA.localeCompare(timeB);
     });
-  }
-
-  /**
-   * Format a datetime value for display in tables
-   * @private
-   */
-  #formatDateTime(timestamp) {
-    if (!timestamp) return 'N/A';
-
-    try {
-      let date;
-
-      // Handle different input types
-      if (timestamp instanceof Date) {
-        date = timestamp;
-      } else if (typeof timestamp === 'string') {
-        // Handle ISO strings or other date strings
-        date = new Date(timestamp);
-      } else if (typeof timestamp === 'number') {
-        // Handle Google Sheets serial dates or Unix timestamps
-        if (timestamp > 1 && timestamp < 100000) {
-          // Likely a Google Sheets serial date (days since 1899-12-30)
-          const googleEpoch = new Date(1899, 11, 30); // Month is 0-indexed
-          const msPerDay = 24 * 60 * 60 * 1000;
-          date = new Date(googleEpoch.getTime() + timestamp * msPerDay);
-        } else {
-          // Assume Unix timestamp (milliseconds or seconds)
-          date = new Date(timestamp > 1000000000000 ? timestamp : timestamp * 1000);
-        }
-      } else {
-        // Try to convert to string and parse
-        date = new Date(String(timestamp));
-      }
-
-      // Check if date is valid
-      if (isNaN(date.getTime())) {
-        console.warn('Invalid timestamp:', timestamp);
-        return 'Invalid Date';
-      }
-
-      // Format: "M/D/YYYY, H:MM AM/PM"
-      const month = date.getMonth() + 1;
-      const day = date.getDate();
-      const year = date.getFullYear();
-
-      let hours = date.getHours();
-      const minutes = date.getMinutes();
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-
-      hours = hours % 12;
-      hours = hours ? hours : 12; // 0 becomes 12
-      const minutesStr = minutes < 10 ? '0' + minutes : minutes;
-
-      return `${month}/${day}/${year}, ${hours}:${minutesStr} ${ampm}`;
-    } catch (error) {
-      console.error('Error formatting timestamp:', error);
-      return 'Error formatting date';
-    }
   }
 
   /**
    * Attach event listeners for intent dropdowns
    * @private
    */
-  #attachIntentDropdownListeners() {
+  #attachIntentDropdownListeners(): void {
     // Find all intent dropdowns in the container
     const container = this.getContainer();
-    const intentDropdowns = container.querySelectorAll('.intent-dropdown');
+    const intentDropdowns = container.querySelectorAll<HTMLSelectElement>('.intent-dropdown');
 
-    intentDropdowns.forEach(dropdown => {
+    intentDropdowns.forEach((dropdown: HTMLSelectElement) => {
       // Remove existing listeners to avoid duplicates
       dropdown.removeEventListener('change', this.#handleIntentChange);
 
@@ -681,8 +649,8 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Handle intent dropdown change events
    * @private
    */
-  async #handleIntentChange(event) {
-    const dropdown = event.target;
+  async #handleIntentChange(event: Event): Promise<void> {
+    const dropdown = event.target as HTMLSelectElement;
     const registrationId = dropdown.getAttribute('data-registration-id');
     const intent = dropdown.value;
 
@@ -692,7 +660,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     }
 
     // Find the status indicator for this dropdown
-    const statusIndicator = dropdown.parentElement.querySelector(
+    const statusIndicator = dropdown.parentElement?.querySelector<HTMLElement>(
       `.intent-status-indicator[data-registration-id="${registrationId}"]`
     );
     if (statusIndicator) {
@@ -743,11 +711,11 @@ export class ParentWeeklyScheduleTab extends BaseTab {
   /**
    * Cleanup when tab is unloaded
    */
-  async cleanup() {
+  async cleanup(): Promise<void> {
     // Remove intent dropdown listeners
     const container = this.getContainer();
-    const intentDropdowns = container.querySelectorAll('.intent-dropdown');
-    intentDropdowns.forEach(dropdown => {
+    const intentDropdowns = container.querySelectorAll<HTMLSelectElement>('.intent-dropdown');
+    intentDropdowns.forEach((dropdown: HTMLSelectElement) => {
       dropdown.removeEventListener('change', this.#handleIntentChange);
     });
 

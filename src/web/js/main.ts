@@ -28,7 +28,8 @@ import './utilities/classManager.js';
 import './extensions/durationExtensions.js';
 import './extensions/numberExtensions.js';
 import './extensions/stringExtensions.js';
-import './viewModel.js';
+import { ViewModel } from './viewModel.js';
+import type { AppConfigurationResponse, Period } from '../../models/shared/responses/appConfigurationResponse.js';
 
 // Tab-based architecture
 import { TabController } from './core/tabController.js';
@@ -41,19 +42,72 @@ import { AdminWaitListTab } from './tabs/adminWaitListTab.js';
 import { AdminMasterScheduleTab } from './tabs/adminMasterScheduleTab.js';
 import { AdminRegistrationTab } from './tabs/adminRegistrationTab.js';
 
+// ---------------------------------------------------------------------------
+// Local type aliases (mirrors of non-exported interfaces from global.d.ts)
+// ---------------------------------------------------------------------------
+
+/** Local alias matching AccessCodeManagerType from global.d.ts */
+interface AccessCodeManagerShape {
+  _accessCodeCache: { accessCode: string; loginType: string } | null;
+  saveAccessCodeSecurely(accessCode: string, loginType?: string): void;
+  generateSessionId(): string;
+  getStoredAccessCode(): string | null;
+  getStoredAuthData(): { accessCode: string; loginType: string } | null;
+  clearStoredAccessCode(): boolean;
+}
+
+/** Local alias matching UserSessionType from global.d.ts */
+interface UserSessionShape {
+  appConfig: AppConfigurationResponse | null;
+  saveAppConfig(config: AppConfigurationResponse): void;
+  getAppConfig(): AppConfigurationResponse | null;
+  getCurrentPeriod(): Period | undefined;
+  getNextPeriod(): Period | undefined;
+  clearAppConfig(): void;
+  hasAcceptedTermsOfService(): boolean;
+  acceptTermsOfService(): void;
+  unacceptTermsOfService(): void;
+}
+
+/** Shape of the /api/version response */
+interface VersionInfo {
+  number: string;
+  environment: string;
+  gitCommit: string;
+  gitTag?: string;
+  buildDate: string;
+  displayVersion?: boolean;
+}
+
+/** Shape of the /api/admin/clear-cache response */
+interface ClearCacheResponse {
+  clearedBy: string;
+  message: string;
+}
+
+/** Shape of an admin record returned by /api/admins */
+interface DirectorRecord {
+  isDirector?: boolean;
+  fullName: string;
+  displayEmail?: string;
+  email: string;
+  displayPhone?: string;
+  phone?: string;
+}
+
 /**
  * Access code manager for secure storage and retrieval of access codes
  */
-const AccessCodeManager = {
+const AccessCodeManager: AccessCodeManagerShape = {
   // Private cache for memory fallback
-  _accessCodeCache: null,
+  _accessCodeCache: null as { accessCode: string; loginType: string } | null,
 
   /**
    * Save access code securely in the browser
    * @param {string} accessCode - The access code to save
    * @param {string} loginType - The type of login ('parent' or 'employee')
    */
-  saveAccessCodeSecurely(accessCode, loginType = 'employee') {
+  saveAccessCodeSecurely(accessCode: string, loginType: string = 'employee'): void {
     try {
       const secureData = {
         accessCode: accessCode,
@@ -76,7 +130,7 @@ const AccessCodeManager = {
    * Generate a unique session ID
    * @returns {string} A unique session identifier
    */
-  generateSessionId() {
+  generateSessionId(): string {
     return 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   },
 
@@ -84,7 +138,7 @@ const AccessCodeManager = {
    * Retrieve the securely stored access code
    * @returns {string|null} The stored access code or null if not found
    */
-  getStoredAccessCode() {
+  getStoredAccessCode(): string | null {
     const authData = this.getStoredAuthData();
     return authData?.accessCode || null;
   },
@@ -93,7 +147,7 @@ const AccessCodeManager = {
    * Retrieve the securely stored access code and login type
    * @returns {object | null} Object with accessCode and loginType, or null if not found
    */
-  getStoredAuthData() {
+  getStoredAuthData(): { accessCode: string; loginType: string } | null {
     try {
       const encodedData = localStorage.getItem('forte_auth_session');
       if (!encodedData) {
@@ -140,7 +194,7 @@ const AccessCodeManager = {
   /**
    * Clear the stored access code (for logout)
    */
-  clearStoredAccessCode() {
+  clearStoredAccessCode(): boolean {
     try {
       localStorage.removeItem('forte_auth_session');
       this._accessCodeCache = null;
@@ -155,26 +209,26 @@ const AccessCodeManager = {
 /**
  * User session storage for current user data
  */
-const UserSession = {
-  appConfig: null,
+const UserSession: UserSessionShape = {
+  appConfig: null as AppConfigurationResponse | null,
 
-  saveAppConfig(config) {
+  saveAppConfig(config: AppConfigurationResponse): void {
     this.appConfig = config;
   },
 
-  getAppConfig() {
+  getAppConfig(): AppConfigurationResponse | null {
     return this.appConfig;
   },
 
-  getCurrentPeriod() {
-    return this.appConfig?.currentPeriod;
+  getCurrentPeriod(): Period | undefined {
+    return this.appConfig?.currentPeriod ?? undefined;
   },
 
-  getNextPeriod() {
-    return this.appConfig?.nextPeriod;
+  getNextPeriod(): Period | undefined {
+    return this.appConfig?.nextPeriod ?? undefined;
   },
 
-  clearAppConfig() {
+  clearAppConfig(): void {
     this.appConfig = null;
   },
 
@@ -182,21 +236,21 @@ const UserSession = {
    * Check if the user has accepted the Terms of Service
    * @returns {boolean} True if terms have been accepted
    */
-  hasAcceptedTermsOfService() {
+  hasAcceptedTermsOfService(): boolean {
     return localStorage.getItem('hasAcceptedTermsOfService') === 'true';
   },
 
   /**
    * Mark that the user has accepted the Terms of Service
    */
-  acceptTermsOfService() {
+  acceptTermsOfService(): void {
     localStorage.setItem('hasAcceptedTermsOfService', 'true');
   },
 
   /**
    * Mark that the user has not accepted the Terms of Service (for testing/reset purposes)
    */
-  unacceptTermsOfService() {
+  unacceptTermsOfService(): void {
     localStorage.removeItem('hasAcceptedTermsOfService');
   },
 };
@@ -205,7 +259,7 @@ const UserSession = {
  * Load director information from API and populate HTML elements
  * Fetches admins and finds the one marked as director (isDirector=true)
  */
-async function loadDirectorInfo() {
+async function loadDirectorInfo(): Promise<void> {
   try {
     // Fetch all admins from API
     const admins = await HttpService.get('admins');
@@ -216,7 +270,7 @@ async function loadDirectorInfo() {
     }
 
     // Find the director (admin with isDirector=true)
-    const director = admins.find(admin => admin.isDirector);
+    const director = (admins as DirectorRecord[]).find((admin: DirectorRecord) => admin.isDirector);
 
     if (director) {
       // Populate HTML elements with director info
@@ -240,11 +294,11 @@ async function loadDirectorInfo() {
 /**
  * Initialize application
  */
-async function initializeApplication() {
+async function initializeApplication(): Promise<void> {
   try {
     // Log version information
     try {
-      const versionInfo = await HttpService.get('version');
+      const versionInfo = (await HttpService.get('version')) as VersionInfo;
       console.log(
         `Tonic v${versionInfo.number} (${versionInfo.environment}) [${versionInfo.gitCommit.substring(0, 7)}]`
       );
@@ -261,7 +315,7 @@ async function initializeApplication() {
     await viewModel.initializeAsync();
 
     // Store globally for debugging and other scripts
-    window.viewModel = viewModel;
+    window.viewModel = viewModel as unknown as typeof window.viewModel;
 
     // Initialize TabController for tab-based architecture
     const tabController = new TabController();
@@ -296,8 +350,9 @@ async function initializeApplication() {
     window.tabController = tabController;
 
     // Now that TabController is ready, auto-click the default section if specified
-    if (viewModel.roleToClick) {
-      const navLink = document.querySelector(`a[data-section="${viewModel.roleToClick}"]`);
+    const roleToClick = (viewModel as unknown as Record<string, unknown>).roleToClick as string | null;
+    if (roleToClick) {
+      const navLink = document.querySelector<HTMLAnchorElement>(`a[data-section="${roleToClick}"]`);
       if (navLink) {
         navLink.click();
       }
@@ -305,7 +360,7 @@ async function initializeApplication() {
 
     // Expose maintenance mode override function globally
     // Usage: window.overrideMaintenanceMode() in browser console
-    window.overrideMaintenanceMode = function () {
+    window.overrideMaintenanceMode = function (): boolean {
       if (viewModel && typeof viewModel.overrideMaintenanceMode === 'function') {
         return viewModel.overrideMaintenanceMode();
       } else {
@@ -316,7 +371,7 @@ async function initializeApplication() {
 
     // Expose server cache clearing function globally (admin only)
     // Usage: window.clearServerCache('your-admin-code') in browser console
-    window.clearServerCache = async function (adminCode) {
+    window.clearServerCache = async function (adminCode: string): Promise<boolean> {
       if (!adminCode) {
         console.error('✗ Admin code required. Usage: window.clearServerCache("your-admin-code")');
         return false;
@@ -324,7 +379,7 @@ async function initializeApplication() {
 
       try {
         console.log('🧹 Clearing server cache...');
-        const cacheData = await HttpService.post('admin/clear-cache', { adminCode });
+        const cacheData = (await HttpService.post('admin/clear-cache', { adminCode })) as ClearCacheResponse;
         console.log('✓ Server cache cleared successfully by:', cacheData.clearedBy);
         console.log('  Message:', cacheData.message);
         return true;
@@ -341,11 +396,12 @@ async function initializeApplication() {
     console.error('✗ Error initializing application:', error);
 
     // Show user-friendly error messages
-    if (error.message.includes('authorize') || error.message.includes('authenticated')) {
+    const message = (error as Error).message;
+    if (message.includes('authorize') || message.includes('authenticated')) {
       alert('Please authorize the application to access your account.');
     } else {
       alert(
-        `Failed to initialize the application: ${error.message}
+        `Failed to initialize the application: ${message}
 
 Please refresh the page and try again.`
       );
@@ -368,9 +424,9 @@ const NodeEnv = {
 /**
  * Initialize version display for staging environments
  */
-async function initializeVersionDisplay() {
+async function initializeVersionDisplay(): Promise<void> {
   try {
-    const versionInfo = await HttpService.get('version');
+    const versionInfo = (await HttpService.get('version')) as VersionInfo;
 
     // Set global environment information for use throughout the application
     window.TONIC_ENV = {
@@ -427,7 +483,7 @@ Git Commit: ${versionInfo.gitCommit}
 /**
  * Main application entry point
  */
-async function main() {
+async function main(): Promise<void> {
   try {
     // Initialize version info first so window.TONIC_ENV is available during app initialization
     try {

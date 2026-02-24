@@ -9,26 +9,26 @@ export class NavTabs {
   /**
    *
    */
-  constructor(defaultSection) {
-    const tabsContainer = document.querySelector('.tabs');
-    const tabs = document.querySelectorAll('.tabs .tab');
-    const tabLinks = document.querySelectorAll('.tabs .tab a');
-    const tabContents = document.querySelectorAll('.tab-content');
-    const links = document.querySelectorAll('.section-link');
+  constructor(defaultSection: string) {
+    const tabsContainer = document.querySelector<HTMLElement>('.tabs');
+    const tabs = document.querySelectorAll<HTMLElement>('.tabs .tab');
+    const tabLinks = document.querySelectorAll<HTMLAnchorElement>('.tabs .tab a');
+    const tabContents = document.querySelectorAll<HTMLElement>('.tab-content');
+    const links = document.querySelectorAll<HTMLAnchorElement>('.section-link');
 
     if (!tabsContainer || tabs.length === 0) {
       console.warn('No tabs container or tabs found - NavTabs not initialized');
       return;
     }
-    tabsContainer.addEventListener('click', async event => {
+    tabsContainer.addEventListener('click', async (event: Event) => {
       // return if not a tab link
-      const tabLink = event.target.closest('.tab a');
+      const tabLink = (event.target as HTMLElement).closest<HTMLAnchorElement>('.tab a');
       if (!tabLink) return;
       event.preventDefault();
 
       // Get the tab href and target content
       const targetTab = tabLink.getAttribute('href');
-      const targetContent = document.querySelector(targetTab);
+      const targetContent = document.querySelector<HTMLElement>(targetTab!);
 
       if (!targetContent) {
         console.warn(`No content found for tab: ${targetTab}`);
@@ -36,7 +36,7 @@ export class NavTabs {
       }
 
       // Remove active class from all tabs and add it to the clicked tab
-      tabLinks.forEach(t => {
+      tabLinks.forEach((t: HTMLAnchorElement) => {
         t.classList.toggle('active', t.getAttribute('href') === tabLink.getAttribute('href'));
       });
 
@@ -48,12 +48,13 @@ export class NavTabs {
       if (isTabControllerRegistered) {
         try {
           // Get session info from viewModel if available
-          const sessionInfo = window.viewModel?.currentUser
+          const currentUser = window.viewModel?.currentUser as Record<string, unknown> | undefined;
+          const sessionInfo = currentUser
             ? {
-                user: window.viewModel.currentUser,
-                userType: window.viewModel.currentUser.admin
+                user: currentUser,
+                userType: currentUser.admin
                   ? UserType.ADMIN
-                  : window.viewModel.currentUser.instructor
+                  : currentUser.instructor
                     ? UserType.INSTRUCTOR
                     : UserType.PARENT,
               }
@@ -65,7 +66,7 @@ export class NavTabs {
           }
 
           // Hide all tab contents first
-          tabContents.forEach(content => {
+          tabContents.forEach((content: HTMLElement) => {
             content.hidden = true;
           });
 
@@ -81,7 +82,7 @@ export class NavTabs {
         }
       } else {
         // Old behavior for non-migrated tabs
-        tabContents.forEach(content => {
+        tabContents.forEach((content: HTMLElement) => {
           content.hidden = content.id !== targetContent.id;
         });
       }
@@ -92,7 +93,7 @@ export class NavTabs {
       // CRITICAL: Trimester selector is ADMIN-ONLY and ENROLLMENT-PERIOD-ONLY
       const adminTrimesterSelector = document.getElementById('admin-trimester-selector-container');
       if (adminTrimesterSelector) {
-        const isAdmin = !!window.viewModel?.currentUser?.admin;
+        const isAdmin = !!(window.viewModel?.currentUser as Record<string, unknown> | undefined)?.admin;
         const currentPeriod = window.UserSession?.getCurrentPeriod();
 
         const adminTrimesterTabs = [
@@ -101,7 +102,7 @@ export class NavTabs {
           '#admin-registration',
         ];
         const shouldShowAdminTrimester =
-          adminTrimesterTabs.includes(targetTab) && isAdmin && isEnrollmentPeriod(currentPeriod);
+          adminTrimesterTabs.includes(targetTab!) && isAdmin && isEnrollmentPeriod(currentPeriod);
         adminTrimesterSelector.hidden = !shouldShowAdminTrimester;
       }
 
@@ -111,12 +112,12 @@ export class NavTabs {
         'instructor-trimester-selector-container'
       );
       if (instructorTrimesterSelector) {
-        const isInstructor = !!window.viewModel?.currentUser?.instructor;
+        const isInstructor = !!(window.viewModel?.currentUser as Record<string, unknown> | undefined)?.instructor;
         const currentPeriod = window.UserSession?.getCurrentPeriod();
 
         const instructorTrimesterTabs = ['#instructor-weekly-schedule'];
         const shouldShowInstructorTrimester =
-          instructorTrimesterTabs.includes(targetTab) &&
+          instructorTrimesterTabs.includes(targetTab!) &&
           isInstructor &&
           isEnrollmentPeriod(currentPeriod);
         instructorTrimesterSelector.hidden = !shouldShowInstructorTrimester;
@@ -131,8 +132,8 @@ export class NavTabs {
       console.warn(`No links found.`);
       return;
     }
-    links.forEach(link => {
-      link.addEventListener('click', async event => {
+    links.forEach((link: HTMLAnchorElement) => {
+      link.addEventListener('click', async (event: Event) => {
         event.preventDefault();
         const dataSection = link.getAttribute('data-section');
 
@@ -140,19 +141,19 @@ export class NavTabs {
         this.#showContent();
 
         // Show/hide tabs based on selected section
-        this.#showTabsForSection(dataSection);
+        this.#showTabsForSection(dataSection!);
 
         // Initialize section-specific UI (trimester selector for admin)
-        this.#initializeSectionUI(dataSection);
+        this.#initializeSectionUI(dataSection!);
 
         // Auto-click the first tab within this section to show content
-        await this.#activateFirstTabInSection(dataSection);
+        await this.#activateFirstTabInSection(dataSection!);
 
         // Force layout reflow and scroll reset to fix rendering issues
-        this.#forceLayoutRefresh(dataSection);
+        this.#forceLayoutRefresh(dataSection!);
 
         // Keep the active state toggle functionality
-        links.forEach(l =>
+        links.forEach((l: HTMLAnchorElement) =>
           l.classList.toggle('active', l.getAttribute('data-section') === dataSection)
         );
       });
@@ -168,7 +169,7 @@ export class NavTabs {
    * Force layout refresh and scroll reset to fix rendering issues when switching sections
    * @param {string} section - The section that was just activated
    */
-  #forceLayoutRefresh(section) {
+  #forceLayoutRefresh(section: string): void {
     // Reset scroll position to top
     window.scrollTo(0, 0);
 
@@ -179,7 +180,7 @@ export class NavTabs {
       pageContent.offsetHeight;
 
       // Also force reflow on the main container
-      const container = document.querySelector('.container');
+      const container = document.querySelector<HTMLElement>('.container');
       if (container) {
         container.offsetHeight;
       }
@@ -187,7 +188,7 @@ export class NavTabs {
 
     // Force reflow specifically on the active tab content
     setTimeout(() => {
-      const sectionFirstTabs = {
+      const sectionFirstTabs: Record<string, string> = {
         admin: '#admin-master-schedule',
         instructor: '#instructor-weekly-schedule',
         parent: '#parent-weekly-schedule',
@@ -195,14 +196,14 @@ export class NavTabs {
 
       const firstTabHref = sectionFirstTabs[section];
       if (firstTabHref) {
-        const activeTabContent = document.querySelector(firstTabHref);
+        const activeTabContent = document.querySelector<HTMLElement>(firstTabHref);
         if (activeTabContent && !activeTabContent.hidden) {
           // Force reflow on the tab content
           activeTabContent.offsetHeight;
 
           // Find any tables in the content and force reflow on them too
-          const tables = activeTabContent.querySelectorAll('table');
-          tables.forEach(table => {
+          const tables = activeTabContent.querySelectorAll<HTMLTableElement>('table');
+          tables.forEach((table: HTMLTableElement) => {
             if (!table.hidden) {
               table.offsetHeight;
 
@@ -221,7 +222,7 @@ export class NavTabs {
       window.scrollTo(0, 0);
 
       // Also try scrolling the main container and document body to fix any scroll lock issues
-      const container = document.querySelector('.container');
+      const container = document.querySelector<HTMLElement>('.container');
       if (container) {
         container.scrollTop = 0;
       }
@@ -249,7 +250,7 @@ export class NavTabs {
    * Force refresh of specific tab content to fix rendering issues
    * @param {Element} tabContent - The tab content element that was just shown
    */
-  #forceTabContentRefresh(tabContent) {
+  #forceTabContentRefresh(tabContent: HTMLElement): void {
     if (!tabContent || tabContent.hidden) return;
 
     // Reset scroll to top when switching tabs
@@ -259,13 +260,13 @@ export class NavTabs {
     tabContent.offsetHeight;
 
     // Find any tables and force reflow on them
-    const tables = tabContent.querySelectorAll('table');
-    tables.forEach(table => {
+    const tables = tabContent.querySelectorAll<HTMLTableElement>('table');
+    tables.forEach((table: HTMLTableElement) => {
       if (!table.hidden) {
         table.offsetHeight;
 
         // For tables with complex content, also check their parent containers
-        const tableContainer = table.closest('.card, .card-content, .row, .col');
+        const tableContainer = table.closest<HTMLElement>('.card, .card-content, .row, .col');
         if (tableContainer) {
           tableContainer.offsetHeight;
         }
@@ -280,7 +281,7 @@ export class NavTabs {
       }
 
       // Reinitialize any dropdowns, modals, etc. in this tab
-      const selects = tabContent.querySelectorAll('select');
+      const selects = tabContent.querySelectorAll<HTMLSelectElement>('select');
       if (selects.length > 0) {
         window.M.FormSelect.init(selects);
       }
@@ -291,22 +292,22 @@ export class NavTabs {
    * Show/hide tabs based on the selected section
    * @param {string} section - The section that was selected ('admin', 'instructor', 'parent')
    */
-  #showTabsForSection(section) {
+  #showTabsForSection(section: string): void {
     // First show the tabs container
-    const tabsContainer = document.querySelector('.tabs');
+    const tabsContainer = document.querySelector<HTMLElement>('.tabs');
     if (tabsContainer) {
       tabsContainer.hidden = false;
     }
 
     // Hide all tabs first
-    const allTabs = document.querySelectorAll('.tabs .tab');
-    allTabs.forEach(tab => {
+    const allTabs = document.querySelectorAll<HTMLElement>('.tabs .tab');
+    allTabs.forEach((tab: HTMLElement) => {
       tab.style.display = 'none';
     });
 
     // Show only tabs for the selected section
-    const sectionTabs = document.querySelectorAll(`.tabs .tab.${section}-tab`);
-    sectionTabs.forEach(tab => {
+    const sectionTabs = document.querySelectorAll<HTMLElement>(`.tabs .tab.${section}-tab`);
+    sectionTabs.forEach((tab: HTMLElement) => {
       tab.style.display = '';
     });
 
@@ -317,8 +318,8 @@ export class NavTabs {
 
       if (isIntentPeriod) {
         const registrationTab = document
-          .querySelector('a[href="#parent-registration"]')
-          ?.closest('.tab');
+          .querySelector<HTMLAnchorElement>('a[href="#parent-registration"]')
+          ?.closest<HTMLElement>('.tab');
         if (registrationTab) {
           registrationTab.style.display = 'none';
         }
@@ -337,9 +338,9 @@ export class NavTabs {
    * Initialize section-specific UI components
    * @param {string} section - The section that was selected ('admin', 'instructor', 'parent')
    */
-  #initializeSectionUI(section) {
+  #initializeSectionUI(section: string): void {
     if (section === 'admin') {
-      const isAdmin = !!window.viewModel?.currentUser?.admin;
+      const isAdmin = !!(window.viewModel?.currentUser as Record<string, unknown> | undefined)?.admin;
       const currentPeriod = window.UserSession?.getCurrentPeriod();
       const appConfig = window.UserSession?.getAppConfig();
 
@@ -354,7 +355,7 @@ export class NavTabs {
         if (trimesterButtons && appConfig?.availableTrimesters) {
           // Only populate if buttons don't exist yet
           if (trimesterButtons.children.length === 0) {
-            appConfig.availableTrimesters.forEach(trimester => {
+            (appConfig.availableTrimesters as string[]).forEach((trimester: string) => {
               const button = document.createElement('button');
               button.className = 'trimester-btn';
               button.setAttribute('data-trimester', trimester);
@@ -381,7 +382,7 @@ export class NavTabs {
     }
 
     if (section === 'instructor') {
-      const isInstructor = !!window.viewModel?.currentUser?.instructor;
+      const isInstructor = !!(window.viewModel?.currentUser as Record<string, unknown> | undefined)?.instructor;
       const currentPeriod = window.UserSession?.getCurrentPeriod();
       const appConfig = window.UserSession?.getAppConfig();
 
@@ -396,7 +397,7 @@ export class NavTabs {
         if (trimesterButtons && appConfig?.availableTrimesters) {
           // Only populate if buttons don't exist yet
           if (trimesterButtons.children.length === 0) {
-            appConfig.availableTrimesters.forEach(trimester => {
+            (appConfig.availableTrimesters as string[]).forEach((trimester: string) => {
               const button = document.createElement('button');
               button.className = 'trimester-btn';
               button.setAttribute('data-trimester', trimester);
@@ -427,9 +428,9 @@ export class NavTabs {
    * Activate the first tab within a section when access is granted
    * @param {string} section - The section that was accessed
    */
-  async #activateFirstTabInSection(section) {
+  async #activateFirstTabInSection(section: string): Promise<void> {
     // Define mapping of sections to their first tab
-    const sectionFirstTabs = {
+    const sectionFirstTabs: Record<string, string> = {
       admin: '#admin-master-schedule',
       instructor: '#instructor-weekly-schedule',
       parent: '#parent-weekly-schedule',
@@ -438,11 +439,11 @@ export class NavTabs {
     const firstTabHref = sectionFirstTabs[section];
 
     if (firstTabHref) {
-      const firstTabLink = document.querySelector(`a[href="${firstTabHref}"]`);
+      const firstTabLink = document.querySelector<HTMLAnchorElement>(`a[href="${firstTabHref}"]`);
 
       if (firstTabLink) {
         // Check if the tab link is visible
-        const tabParent = firstTabLink.closest('.tab');
+        const tabParent = firstTabLink.closest<HTMLElement>('.tab');
         if (tabParent) {
           // Make sure the tab is visible
           if (tabParent.hidden) {
@@ -451,13 +452,13 @@ export class NavTabs {
         }
 
         // Hide all tab contents first
-        const tabContents = document.querySelectorAll('.tab-content');
-        tabContents.forEach(content => {
+        const tabContents = document.querySelectorAll<HTMLElement>('.tab-content');
+        tabContents.forEach((content: HTMLElement) => {
           content.hidden = true;
         });
 
         // Show the target tab content
-        const targetContent = document.querySelector(firstTabHref);
+        const targetContent = document.querySelector<HTMLElement>(firstTabHref);
 
         if (targetContent) {
           targetContent.hidden = false;
@@ -467,12 +468,13 @@ export class NavTabs {
           const isRegistered = window.tabController && window.tabController.isTabRegistered(tabId);
 
           if (isRegistered) {
-            const sessionInfo = window.viewModel?.currentUser
+            const currentUser = window.viewModel?.currentUser as Record<string, unknown> | undefined;
+            const sessionInfo = currentUser
               ? {
-                  user: window.viewModel.currentUser,
-                  userType: window.viewModel.currentUser.admin
+                  user: currentUser,
+                  userType: currentUser.admin
                     ? UserType.ADMIN
-                    : window.viewModel.currentUser.instructor
+                    : currentUser.instructor
                       ? UserType.INSTRUCTOR
                       : UserType.PARENT,
                 }
@@ -483,8 +485,8 @@ export class NavTabs {
             }
 
             // Add active class to the tab link BEFORE activating
-            const allTabLinks = document.querySelectorAll('.tabs .tab a');
-            allTabLinks.forEach(link => {
+            const allTabLinks = document.querySelectorAll<HTMLAnchorElement>('.tabs .tab a');
+            allTabLinks.forEach((link: HTMLAnchorElement) => {
               link.classList.remove('active');
             });
             firstTabLink.classList.add('active');
@@ -497,12 +499,12 @@ export class NavTabs {
             }
 
             // Update Materialize tabs indicator without triggering click
-            const tabsContainer = document.querySelector('.tabs');
+            const tabsContainer = document.querySelector<HTMLElement>('.tabs');
             if (tabsContainer && window.M && window.M.Tabs) {
               const tabsInstance = window.M.Tabs.getInstance(tabsContainer);
               if (tabsInstance) {
                 // Update the indicator to the correct tab
-                const tabIdForMaterialize = firstTabLink.getAttribute('href').substring(1);
+                const tabIdForMaterialize = firstTabLink.getAttribute('href')!.substring(1);
                 tabsInstance.select(tabIdForMaterialize);
               }
             }
@@ -519,8 +521,8 @@ export class NavTabs {
           } else {
             // Fallback for non-TabController tabs: just click
             // Add active class to the clicked tab link
-            const allTabLinks = document.querySelectorAll('.tabs .tab a');
-            allTabLinks.forEach(link => {
+            const allTabLinks = document.querySelectorAll<HTMLAnchorElement>('.tabs .tab a');
+            allTabLinks.forEach((link: HTMLAnchorElement) => {
               link.classList.remove('active');
             });
             firstTabLink.classList.add('active');
@@ -548,7 +550,7 @@ export class NavTabs {
   /**
    * Show the main content when access is granted
    */
-  #showContent() {
+  #showContent(): void {
     // Show all main content
     const pageContent = document.getElementById('page-content');
     const pageLoading = document.getElementById('page-loading-container');

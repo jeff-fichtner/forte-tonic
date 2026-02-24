@@ -1,66 +1,31 @@
-import { BaseTab } from '../core/baseTab.js';
+import { BaseTab, SessionInfo } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatGrade } from '../extensions/numberExtensions.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
+import { formatDateTime } from '../utilities/formatHelpers.js';
 import { HttpService } from '../data/httpService.js';
 
-/**
- * formatDateTime - Format a datetime value for display in tables
- * @param {string|Date|number} timestamp - The timestamp to format
- * @returns {string} Formatted datetime string
- */
-function formatDateTime(timestamp) {
-  if (!timestamp) return 'N/A';
+interface WaitListRegistration {
+  id: string;
+  studentId: string;
+  classTitle: string;
+  registrationType: string;
+  isWaitlistClass: boolean;
+  linkedPreviousRegistrationId: string | null;
+  createdAt: string;
+}
 
-  try {
-    let date;
+interface WaitListStudent {
+  id: string;
+  firstName: string;
+  lastName: string;
+  grade: number | string;
+  parentEmails: string;
+}
 
-    // Handle different input types
-    if (timestamp instanceof Date) {
-      date = timestamp;
-    } else if (typeof timestamp === 'string') {
-      // Handle ISO strings or other date strings
-      date = new Date(timestamp);
-    } else if (typeof timestamp === 'number') {
-      // Handle Google Sheets serial dates or Unix timestamps
-      if (timestamp > 1 && timestamp < 100000) {
-        // Likely a Google Sheets serial date (days since 1899-12-30)
-        const googleEpoch = new Date(1899, 11, 30); // Month is 0-indexed
-        const msPerDay = 24 * 60 * 60 * 1000;
-        date = new Date(googleEpoch.getTime() + timestamp * msPerDay);
-      } else {
-        // Assume Unix timestamp (milliseconds or seconds)
-        date = new Date(timestamp > 1000000000000 ? timestamp : timestamp * 1000);
-      }
-    } else {
-      // Try to convert to string and parse
-      date = new Date(String(timestamp));
-    }
-
-    // Check if date is valid
-    if (isNaN(date.getTime())) {
-      console.warn('Invalid timestamp:', timestamp);
-      return 'Invalid Date';
-    }
-
-    // Format: "M/D/YYYY, H:MM AM/PM"
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const year = date.getFullYear();
-
-    let hours = date.getHours();
-    const minutes = date.getMinutes();
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-
-    hours = hours % 12;
-    hours = hours ? hours : 12; // 0 becomes 12
-    const minutesStr = minutes < 10 ? '0' + minutes : minutes;
-
-    return `${month}/${day}/${year}, ${hours}:${minutesStr} ${ampm}`;
-  } catch (error) {
-    console.error('Error formatting timestamp:', error);
-    return 'Error formatting date';
-  }
+interface WaitListData extends Record<string, unknown> {
+  registrations: WaitListRegistration[];
+  students: WaitListStudent[];
 }
 
 /**
@@ -75,6 +40,9 @@ function formatDateTime(timestamp) {
  * Data waste eliminated: ~2020+ records (non-wait-list registrations, instructors, classes, rooms)
  */
 export class AdminWaitListTab extends BaseTab {
+  declare protected data: WaitListData | null;
+  private waitListTable: Table | null;
+
   constructor() {
     super('admin-wait-list');
 
@@ -88,10 +56,10 @@ export class AdminWaitListTab extends BaseTab {
    * @param {object} sessionInfo - User session
    * @returns {Promise<object>} Wait list data
    */
-  async fetchData(sessionInfo) {
+  async fetchData(sessionInfo: SessionInfo | null): Promise<WaitListData> {
     // Get selected trimester from admin selector buttons
     const trimesterButtons = document.getElementById('admin-trimester-buttons');
-    const activeButton = trimesterButtons?.querySelector('.trimester-btn.active');
+    const activeButton = trimesterButtons?.querySelector<HTMLElement>('.trimester-btn.active');
 
     // During non-enrollment periods, trimester buttons are hidden, so use current period
     const currentPeriod = window.UserSession?.getCurrentPeriod();
@@ -101,7 +69,7 @@ export class AdminWaitListTab extends BaseTab {
       throw new Error('Could not determine trimester: no button selected and no current period');
     }
 
-    const data = await HttpService.get(`admin/tabs/wait-list/${trimester}`, { signal: this.getAbortSignal() });
+    const data = await HttpService.get(`admin/tabs/wait-list/${trimester}`, { signal: this.getAbortSignal() }) as WaitListData;
 
     // Validate response
     if (!data.registrations || !data.students) {
@@ -114,13 +82,13 @@ export class AdminWaitListTab extends BaseTab {
   /**
    * Render the wait list table
    */
-  async render() {
+  async render(): Promise<void> {
     const container = this.getContainer();
 
     // Check if we're in development to show the Recurring column
     const showRecurringColumn = window.TONIC_ENV?.isDevelopment;
 
-    const headers = [];
+    const headers: string[] = [];
 
     // Add Recurring column first (only in dev)
     if (showRecurringColumn) {
@@ -130,7 +98,7 @@ export class AdminWaitListTab extends BaseTab {
     headers.push('Student', 'Grade', 'Class Title', 'Timestamp', 'Contact', 'Remove');
 
     // Find or create table element
-    let tableElement = container.querySelector('#admin-wait-list-table');
+    let tableElement = container.querySelector<HTMLTableElement>('#admin-wait-list-table');
     if (!tableElement) {
       tableElement = document.createElement('table');
       tableElement.id = 'admin-wait-list-table';
@@ -142,15 +110,15 @@ export class AdminWaitListTab extends BaseTab {
       'admin-wait-list-table',
       headers,
       this.#buildTableRow.bind(this),
-      this.data.registrations,
+      this.data!.registrations,
       this.#handleTableClick.bind(this),
-      registration => true, // no filtering
+      (_registration: WaitListRegistration): boolean => true, // no filtering
       [], // no filter change handlers
       {
         pagination: true,
         itemsPerPage: 50,
         pageSizeOptions: [25, 50, 100],
-        rowClassFunction: registration => {
+        rowClassFunction: (_registration: WaitListRegistration): string | null => {
           // All wait list items are group registrations with special styling
           return 'registration-row-waitlist';
         },
@@ -162,7 +130,7 @@ export class AdminWaitListTab extends BaseTab {
    * Build a table row for a wait list registration
    * @private
    */
-  #buildTableRow(registration) {
+  #buildTableRow(registration: WaitListRegistration): string {
     // Check if we're in development to show the Recurring column
     const showRecurringColumn = window.TONIC_ENV?.isDevelopment;
 
@@ -170,7 +138,7 @@ export class AdminWaitListTab extends BaseTab {
     const studentIdToFind = registration.studentId;
 
     // Find student
-    const student = this.data.students.find(x => {
+    const student = this.data!.students.find(x => {
       const studentId = x.id;
       return studentId === studentIdToFind;
     });
@@ -190,7 +158,7 @@ export class AdminWaitListTab extends BaseTab {
           <i class="material-icons green-text text-darken-2" style="font-size: 20px;">check_circle</i>
         </td>`;
       } else {
-        recurringCell = `<td style="text-align: center;">—</td>`;
+        recurringCell = `<td style="text-align: center;">\u2014</td>`;
       }
     }
 
@@ -219,9 +187,10 @@ export class AdminWaitListTab extends BaseTab {
    * Handle table clicks (email copy, delete)
    * @private
    */
-  async #handleTableClick(event) {
-    const isCopy = event.target.classList.contains('copy-parent-emails-table-icon');
-    const isDelete = event.target.classList.contains('remove-registration-table-icon');
+  async #handleTableClick(event: Event): Promise<void> {
+    const target = event.target as HTMLElement;
+    const isCopy = target.classList.contains('copy-parent-emails-table-icon');
+    const isDelete = target.classList.contains('remove-registration-table-icon');
 
     if (!isCopy && !isDelete) {
       return;
@@ -231,12 +200,12 @@ export class AdminWaitListTab extends BaseTab {
     event.stopPropagation();
 
     // Get the registration ID from the data attribute
-    const buttonElement = event.target.closest('button');
+    const buttonElement = target.closest('button');
     const registrationId = buttonElement?.getAttribute('data-registration-id');
     if (!registrationId) return;
 
     // Find the registration by ID in the registrations
-    const currentRegistration = this.data.registrations.find(r => r.id === registrationId);
+    const currentRegistration = this.data!.registrations.find(r => r.id === registrationId);
     if (!currentRegistration) return;
 
     if (isCopy) {
@@ -244,7 +213,7 @@ export class AdminWaitListTab extends BaseTab {
       const studentIdToFind = currentRegistration.studentId;
 
       // Find the full student object with parent emails
-      const fullStudent = this.data.students.find(x => {
+      const fullStudent = this.data!.students.find(x => {
         const studentId = x.id;
         return studentId === studentIdToFind;
       });
@@ -270,10 +239,10 @@ export class AdminWaitListTab extends BaseTab {
    * Delete a registration
    * @private
    */
-  async #deleteRegistration(registrationId) {
+  async #deleteRegistration(registrationId: string): Promise<void> {
     // Delegate to viewModel for registration deletion
     if (window.viewModel && typeof window.viewModel.requestDeleteRegistrationAsync === 'function') {
-      await window.viewModel.requestDeleteRegistrationAsync(registrationId);
+      await (window.viewModel.requestDeleteRegistrationAsync as (id: string) => Promise<void>)(registrationId);
 
       // Reload the tab to show updated data
       await this.reload();
@@ -288,11 +257,12 @@ export class AdminWaitListTab extends BaseTab {
   /**
    * Attach event listeners for trimester selector
    */
-  attachEventListeners() {
+  attachEventListeners(): void {
     const trimesterButtons = document.getElementById('admin-trimester-buttons');
     if (trimesterButtons) {
-      this.addEventListener(trimesterButtons, 'click', async event => {
-        const button = event.target.closest('.trimester-btn');
+      this.addEventListener(trimesterButtons, 'click', async (event: Event) => {
+        const target = event.target as HTMLElement;
+        const button = target.closest('.trimester-btn');
         if (button) {
           // Update active button state
           trimesterButtons.querySelectorAll('.trimester-btn').forEach(btn => {
@@ -310,7 +280,7 @@ export class AdminWaitListTab extends BaseTab {
   /**
    * Cleanup when tab is unloaded
    */
-  async cleanup() {
+  async cleanup(): Promise<void> {
     this.waitListTable = null;
   }
 }

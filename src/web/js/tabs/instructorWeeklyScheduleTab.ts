@@ -1,9 +1,16 @@
-import { BaseTab } from '../core/baseTab.js';
+import { BaseTab, SessionInfo } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatGrade, formatTime } from '../extensions/numberExtensions.js';
 import { RegistrationType } from '../constants.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { HttpService } from '../data/httpService.js';
+
+interface InstructorScheduleData {
+  registrations: Record<string, unknown>[];
+  students: Record<string, unknown>[];
+  instructors: Record<string, unknown>[];
+  classes: Record<string, unknown>[];
+}
 
 /**
  * InstructorWeeklyScheduleTab - Weekly schedule for instructors
@@ -18,51 +25,52 @@ import { HttpService } from '../data/httpService.js';
  * Data waste eliminated: ~2000+ records (other instructors' registrations, unrelated students)
  */
 export class InstructorWeeklyScheduleTab extends BaseTab {
+  private dayTables: Map<string, Table>;
+
   constructor() {
     super('instructor-weekly-schedule');
 
-    /** @private {Map<string, Table>} Tables by day */
-    this.dayTables = new Map();
+    this.dayTables = new Map<string, Table>();
   }
 
   /**
    * Fetch weekly schedule data for instructor
    * Returns registrations for this instructor + associated students + classes
-   * @param {object} sessionInfo - User session
-   * @returns {Promise<object>} Weekly schedule data
    */
-  async fetchData(sessionInfo) {
-    const instructorId = sessionInfo?.user?.instructor?.id;
-    if (!instructorId) {
+  async fetchData(sessionInfo: SessionInfo | null): Promise<Record<string, unknown>> {
+    const instructorId = (sessionInfo?.user as Record<string, unknown> | undefined)?.instructor as Record<string, unknown> | undefined;
+    const id = instructorId?.id as string | undefined;
+    if (!id) {
       throw new Error('No instructor ID found in session');
     }
 
     // Get selected trimester from instructor selector buttons
     const trimesterButtons = document.getElementById('instructor-trimester-buttons');
-    const activeButton = trimesterButtons?.querySelector('.trimester-btn.active');
+    const activeButton = trimesterButtons?.querySelector<HTMLElement>('.trimester-btn.active');
 
     // Fallback to current period if no button selected
     const currentPeriod = window.UserSession?.getCurrentPeriod();
     const trimester = activeButton?.dataset.trimester || currentPeriod?.trimester;
 
-    const data = await HttpService.get(`instructor/tabs/weekly-schedule/${trimester}?instructorId=${instructorId}`, { signal: this.getAbortSignal() });
+    const data = await HttpService.get(`instructor/tabs/weekly-schedule/${trimester}?instructorId=${id}`, { signal: this.getAbortSignal() }) as InstructorScheduleData;
 
     // Validate response
     if (!data.registrations || !data.students || !data.instructors || !data.classes) {
       throw new Error('Invalid response: missing required data');
     }
 
-    return data;
+    return data as unknown as Record<string, unknown>;
   }
 
   /**
    * Render the weekly schedule tables (one per day)
    */
-  async render() {
+  async render(): Promise<void> {
     const container = this.getContainer();
+    const typedData = this.data as unknown as InstructorScheduleData;
 
     // Find or create the tables container
-    let tablesContainer = container.querySelector('#instructor-weekly-schedule-tables');
+    let tablesContainer = container.querySelector<HTMLElement>('#instructor-weekly-schedule-tables');
     if (!tablesContainer) {
       tablesContainer = document.createElement('div');
       tablesContainer.id = 'instructor-weekly-schedule-tables';
@@ -74,7 +82,7 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
     this.dayTables.clear();
 
     // Show 'no matching registrations' message if instructor has no registrations
-    if (this.data.registrations.length === 0) {
+    if (typedData.registrations.length === 0) {
       const noRegistrationsMessage = document.createElement('div');
       noRegistrationsMessage.className = 'card-panel orange lighten-4';
       noRegistrationsMessage.style.cssText = 'text-align: center; padding: 30px; margin: 20px 0;';
@@ -90,12 +98,12 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
 
     // Get unique days with registrations, sorted by day of week
     const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const daysWithRegistrations = [...new Set(this.data.registrations.map(reg => reg.day))].sort(
-      (a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b)
+    const daysWithRegistrations = [...new Set(typedData.registrations.map((reg: Record<string, unknown>) => reg.day as string))].sort(
+      (a: string, b: string) => dayOrder.indexOf(a) - dayOrder.indexOf(b)
     );
 
     // Create a table for each day
-    daysWithRegistrations.forEach(day => {
+    daysWithRegistrations.forEach((day: string) => {
       // Create a container for each day's table with padding
       const dayContainer = document.createElement('div');
       dayContainer.style.cssText = 'margin-bottom: 30px;';
@@ -113,38 +121,38 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
       tableElement.id = tableId;
       dayContainer.appendChild(tableElement);
 
-      tablesContainer.appendChild(dayContainer);
+      tablesContainer!.appendChild(dayContainer);
 
       // Sort registrations for this day by start time, length, instrument, and grade
-      const dayRegistrations = this.data.registrations
-        .filter(reg => reg.day === day)
-        .sort((a, b) => {
+      const dayRegistrations = typedData.registrations
+        .filter((reg: Record<string, unknown>) => reg.day === day)
+        .sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
           // First, sort by start time
-          const timeA = a.startTime || '';
-          const timeB = b.startTime || '';
+          const timeA = (a.startTime as string) || '';
+          const timeB = (b.startTime as string) || '';
           if (timeA !== timeB) {
             return timeA.localeCompare(timeB);
           }
 
           // Then sort by length
-          const lengthA = a.length || 0;
-          const lengthB = b.length || 0;
+          const lengthA = (a.length as number) || 0;
+          const lengthB = (b.length as number) || 0;
           if (lengthA !== lengthB) {
             return lengthA - lengthB;
           }
 
           // Then sort by instrument/class
-          const instrumentA = a.instrument || a.classTitle || '';
-          const instrumentB = b.instrument || b.classTitle || '';
+          const instrumentA = (a.instrument as string) || (a.classTitle as string) || '';
+          const instrumentB = (b.instrument as string) || (b.classTitle as string) || '';
           if (instrumentA !== instrumentB) {
             return instrumentA.localeCompare(instrumentB);
           }
 
           // Finally sort by student grade
-          const studentA = this.findStudent(a.studentId);
-          const studentB = this.findStudent(b.studentId);
-          const gradeA = studentA?.grade || '';
-          const gradeB = studentB?.grade || '';
+          const studentA = this.findStudent(a.studentId as string);
+          const studentB = this.findStudent(b.studentId as string);
+          const gradeA = (studentA?.grade as string) || '';
+          const gradeB = (studentB?.grade as string) || '';
           return String(gradeA).localeCompare(String(gradeB));
         });
 
@@ -158,7 +166,7 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
    * Build a weekly schedule table for a specific day
    * @private
    */
-  #buildWeeklyScheduleTable(tableId, enrollments) {
+  #buildWeeklyScheduleTable(tableId: string, enrollments: Record<string, unknown>[]): Table {
     const headers = [
       'Weekday',
       'Start Time',
@@ -183,9 +191,9 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
    * Build a table row for an enrollment
    * @private
    */
-  #buildTableRow(enrollment) {
-    const instructor = this.findInstructor(enrollment.instructorId);
-    const student = this.findStudent(enrollment.studentId);
+  #buildTableRow(enrollment: Record<string, unknown>): string {
+    const instructor = this.findInstructor(enrollment.instructorId as string);
+    const student = this.findStudent(enrollment.studentId as string);
 
     if (!instructor || !student) {
       console.warn(`Instructor or student not found for enrollment: ${enrollment.id}`);
@@ -195,15 +203,15 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
     // Determine instrument/class name
     const instrumentOrClass =
       enrollment.registrationType === RegistrationType.GROUP
-        ? enrollment.classTitle || 'N/A'
-        : enrollment.instrument || 'N/A';
+        ? (enrollment.classTitle as string) || 'N/A'
+        : (enrollment.instrument as string) || 'N/A';
 
     return `
       <td>${enrollment.day}</td>
-      <td>${formatTime(enrollment.startTime) || 'N/A'}</td>
+      <td>${formatTime(enrollment.startTime as string) || 'N/A'}</td>
       <td>${enrollment.length || 'N/A'} min</td>
       <td>${student.firstName} ${student.lastName}</td>
-      <td>${formatGrade(student.grade) || 'N/A'}</td>
+      <td>${formatGrade(student.grade as number | string) || 'N/A'}</td>
       <td>${instructor.firstName} ${instructor.lastName}</td>
       <td>${instrumentOrClass}</td>
       <td>
@@ -218,8 +226,9 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
    * Handle table clicks (email copy for instructor view)
    * @private
    */
-  async #handleTableClick(event) {
-    const isCopy = event.target.classList.contains('copy-emails-table-icon');
+  async #handleTableClick(event: Event): Promise<void> {
+    const target = event.target as HTMLElement;
+    const isCopy = target.classList.contains('copy-emails-table-icon');
     if (!isCopy) {
       return;
     }
@@ -228,20 +237,22 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
     event.stopPropagation();
 
     // Get the registration ID from the data attribute
-    const buttonElement = event.target.closest('button');
+    const buttonElement = target.closest('button');
     const registrationId = buttonElement?.getAttribute('data-registration-id');
     if (!registrationId) return;
 
+    const typedData = this.data as unknown as InstructorScheduleData;
+
     // Find the enrollment by ID
-    const currentEnrollment = this.data.registrations.find(e => e.id === registrationId);
+    const currentEnrollment = typedData.registrations.find((e: Record<string, unknown>) => e.id === registrationId);
     if (!currentEnrollment) return;
 
     // For instructor view: show parent emails
-    const studentIdToFind = currentEnrollment.studentId;
+    const studentIdToFind = currentEnrollment.studentId as string;
     const student = this.findStudent(studentIdToFind);
 
-    if (student && student.parentEmails && student.parentEmails.trim()) {
-      await copyToClipboard(student.parentEmails);
+    if (student && student.parentEmails && (student.parentEmails as string).trim()) {
+      await copyToClipboard(student.parentEmails as string);
     } else {
       if (typeof M !== 'undefined') {
         M.toast({ html: 'No parent email available for this student.' });
@@ -252,14 +263,15 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
   /**
    * Attach event listeners for trimester selector
    */
-  attachEventListeners() {
+  attachEventListeners(): void {
     const trimesterButtons = document.getElementById('instructor-trimester-buttons');
     if (trimesterButtons) {
-      this.addEventListener(trimesterButtons, 'click', async event => {
-        const button = event.target.closest('.trimester-btn');
+      this.addEventListener(trimesterButtons, 'click', async (event: Event) => {
+        const target = event.target as HTMLElement;
+        const button = target.closest('.trimester-btn');
         if (button) {
           // Update active button state
-          trimesterButtons.querySelectorAll('.trimester-btn').forEach(btn => {
+          trimesterButtons.querySelectorAll('.trimester-btn').forEach((btn: Element) => {
             btn.classList.remove('active');
           });
           button.classList.add('active');
@@ -274,7 +286,7 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
   /**
    * Cleanup when tab is unloaded
    */
-  async cleanup() {
+  async cleanup(): Promise<void> {
     this.dayTables.clear();
   }
 }

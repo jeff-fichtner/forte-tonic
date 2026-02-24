@@ -1,8 +1,42 @@
-import { BaseTab } from '../core/baseTab.js';
+import { BaseTab, SessionInfo } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatPhone } from '../utilities/phoneHelpers.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { HttpService } from '../data/httpService.js';
+
+interface DirectoryAdmin {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  role: string;
+}
+
+interface DirectoryInstructor {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  specialties: string[];
+}
+
+interface DirectoryData extends Record<string, unknown> {
+  admins: DirectoryAdmin[];
+  instructors: DirectoryInstructor[];
+}
+
+interface EmployeeDisplay {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  role?: string;
+  roles: string[];
+  lastName?: string;
+  firstName?: string;
+}
 
 /**
  * EmployeeDirectoryTab - Employee directory for instructors and admins
@@ -14,6 +48,9 @@ import { HttpService } from '../data/httpService.js';
  * Data waste eliminated: ~2150+ records (students, registrations, classes, rooms)
  */
 export class EmployeeDirectoryTab extends BaseTab {
+  declare protected data: DirectoryData | null;
+  private directoryTable: Table | null;
+
   constructor() {
     super('instructor-forte-directory');
 
@@ -26,8 +63,8 @@ export class EmployeeDirectoryTab extends BaseTab {
    * @param {object} sessionInfo - User session
    * @returns {Promise<object>} Directory data
    */
-  async fetchData(sessionInfo) {
-    const data = await HttpService.get('instructor/tabs/directory', { signal: this.getAbortSignal() });
+  async fetchData(sessionInfo: SessionInfo | null): Promise<DirectoryData> {
+    const data = await HttpService.get('instructor/tabs/directory', { signal: this.getAbortSignal() }) as DirectoryData;
 
     // Validate response
     if (!data.admins || !data.instructors) {
@@ -40,21 +77,21 @@ export class EmployeeDirectoryTab extends BaseTab {
   /**
    * Render the employee directory table
    */
-  async render() {
+  async render(): Promise<void> {
     const container = this.getContainer();
 
     // Map admins and instructors to employee format
-    const adminEmployees = this.#mapAdminsToEmployees(this.data.admins);
-    const instructorEmployees = this.data.instructors.map(instructor =>
+    const adminEmployees = this.#mapAdminsToEmployees(this.data!.admins);
+    const instructorEmployees = this.data!.instructors.map(instructor =>
       this.#mapInstructorToEmployee(instructor)
     );
 
     // Combine and sort (admins first, then instructors alphabetically)
-    const allEmployees = [...adminEmployees, ...instructorEmployees];
+    const allEmployees: EmployeeDisplay[] = [...adminEmployees, ...instructorEmployees];
     const sortedEmployees = this.#sortEmployeesForDirectory(allEmployees);
 
     // Find or create table element
-    let tableElement = container.querySelector('#employee-directory-table');
+    let tableElement = container.querySelector<HTMLTableElement>('#employee-directory-table');
     if (!tableElement) {
       tableElement = document.createElement('table');
       tableElement.id = 'employee-directory-table';
@@ -75,7 +112,7 @@ export class EmployeeDirectoryTab extends BaseTab {
    * Build a table row for an employee
    * @private
    */
-  #buildTableRow(employee) {
+  #buildTableRow(employee: EmployeeDisplay): string {
     const fullName =
       employee.fullName ||
       `${employee.firstName || ''} ${employee.lastName || ''}`.trim() ||
@@ -102,8 +139,9 @@ export class EmployeeDirectoryTab extends BaseTab {
    * Handle table clicks (email copy)
    * @private
    */
-  async #handleTableClick(event) {
-    const isCopy = event.target.classList.contains('copy-parent-emails-table-icon');
+  async #handleTableClick(event: Event): Promise<void> {
+    const target = event.target as HTMLElement;
+    const isCopy = target.classList.contains('copy-parent-emails-table-icon');
     if (!isCopy) {
       return;
     }
@@ -112,7 +150,7 @@ export class EmployeeDirectoryTab extends BaseTab {
     event.stopPropagation();
 
     // Get the email from the data attribute
-    const buttonElement = event.target.closest('button');
+    const buttonElement = target.closest('button');
     const email = buttonElement?.getAttribute('data-employee-email');
 
     if (email && email !== 'No email') {
@@ -129,7 +167,7 @@ export class EmployeeDirectoryTab extends BaseTab {
    * For employee directory, show internal contact info (email, phoneNumber)
    * @private
    */
-  #mapAdminsToEmployees(admins) {
+  #mapAdminsToEmployees(admins: DirectoryAdmin[]): EmployeeDisplay[] {
     return admins.map(admin => ({
       id: admin.id,
       fullName: admin.fullName,
@@ -144,7 +182,7 @@ export class EmployeeDirectoryTab extends BaseTab {
    * For employee directory, show internal contact info (email, phoneNumber)
    * @private
    */
-  #mapInstructorToEmployee(instructor, obscurePhone = false) {
+  #mapInstructorToEmployee(instructor: DirectoryInstructor, obscurePhone: boolean = false): EmployeeDisplay {
     // Get instruments from specialties field
     const instruments = instructor.specialties || [];
     const instrumentsText = instruments.length > 0 ? instruments.join(', ') : 'Instructor';
@@ -170,10 +208,10 @@ export class EmployeeDirectoryTab extends BaseTab {
    * Admins first (by priority), then instructors (alphabetically by last name)
    * @private
    */
-  #sortEmployeesForDirectory(employees) {
+  #sortEmployeesForDirectory(employees: EmployeeDisplay[]): EmployeeDisplay[] {
     return employees.sort((a, b) => {
       // Define admin role priorities (lower number = higher priority)
-      const getAdminPriority = employee => {
+      const getAdminPriority = (employee: EmployeeDisplay): number => {
         if (!employee.roles || !Array.isArray(employee.roles)) return 999;
 
         for (const role of employee.roles) {
@@ -217,7 +255,7 @@ export class EmployeeDirectoryTab extends BaseTab {
   /**
    * Cleanup when tab is unloaded
    */
-  async cleanup() {
+  async cleanup(): Promise<void> {
     this.directoryTable = null;
   }
 }

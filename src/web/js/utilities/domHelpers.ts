@@ -7,7 +7,7 @@ export class DomHelpers {
   /**
    *
    */
-  static async waitForDocumentReadyAsync() {
+  static async waitForDocumentReadyAsync(): Promise<boolean | void> {
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
       return true;
     }
@@ -24,9 +24,9 @@ export class DomHelpers {
    * @param {string|HTMLElement} selectElement - Select element ID or element reference
    * @param {boolean} triggerChange - Whether to trigger a change event after resetting
    */
-  static resetMaterializeSelect(selectElement, triggerChange = false) {
+  static resetMaterializeSelect(selectElement: string | HTMLElement, triggerChange: boolean = false): void {
     const select =
-      typeof selectElement === 'string' ? document.getElementById(selectElement) : selectElement;
+      (typeof selectElement === 'string' ? document.getElementById(selectElement) : selectElement) as HTMLSelectElement | null;
 
     if (!select) {
       console.warn(`❌ Select element not found for clearing: ${selectElement}`);
@@ -65,7 +65,7 @@ export class DomHelpers {
    * @param {Array<string|HTMLElement>} selectElements - Array of select element IDs or element references
    * @param {boolean} triggerChange - Whether to trigger change events after resetting
    */
-  static resetMaterializeSelects(selectElements, triggerChange = false) {
+  static resetMaterializeSelects(selectElements: Array<string | HTMLElement>, triggerChange: boolean = false): void {
     selectElements.forEach(selectElement => {
       this.resetMaterializeSelect(selectElement, triggerChange);
     });

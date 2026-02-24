@@ -1,9 +1,25 @@
-import { BaseTab } from '../core/baseTab.js';
+import { BaseTab, SessionInfo } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatPhone } from '../utilities/phoneHelpers.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { isEnrollmentPeriod } from '../utilities/periodHelpers.js';
 import { HttpService } from '../data/httpService.js';
+
+interface ContactData {
+  admins: Record<string, unknown>[];
+  instructors: Record<string, unknown>[];
+}
+
+interface EmployeeDisplay {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  role?: string;
+  roles: string[];
+  lastName?: string;
+  firstName?: string;
+}
 
 /**
  * ParentContactTab - Contact directory for parents
@@ -16,10 +32,11 @@ import { HttpService } from '../data/httpService.js';
  * Data waste eliminated: ~2050+ records (other students, unrelated instructors, registrations, classes, rooms)
  */
 export class ParentContactTab extends BaseTab {
+  private directoryTable: Table | null;
+
   constructor() {
     super('parent-contact-us');
 
-    /** @private {Table|null} Table instance */
     this.directoryTable = null;
   }
 
@@ -27,12 +44,11 @@ export class ParentContactTab extends BaseTab {
    * Fetch contact directory data for parent
    * Returns admins + instructors teaching this parent's children
    * Makes 2 calls during enrollment (current + next trimester), 1 during registration period
-   * @param {object} sessionInfo - User session
-   * @returns {Promise<object>} Directory data
    */
-  async fetchData(sessionInfo) {
-    const parentId = sessionInfo?.user?.parent?.id;
-    if (!parentId) {
+  async fetchData(sessionInfo: SessionInfo | null): Promise<Record<string, unknown>> {
+    const parentId = (sessionInfo?.user as Record<string, unknown> | undefined)?.parent as Record<string, unknown> | undefined;
+    const id = parentId?.id as string | undefined;
+    if (!id) {
       throw new Error('No parent ID found in session');
     }
 
@@ -47,7 +63,7 @@ export class ParentContactTab extends BaseTab {
     const signal = this.getAbortSignal();
 
     // Fetch current trimester data
-    const currentData = await HttpService.get(`parent/tabs/contact/${currentTrimester}?parentId=${parentId}`, { signal });
+    const currentData = await HttpService.get(`parent/tabs/contact/${currentTrimester}?parentId=${id}`, { signal }) as ContactData;
 
     if (!currentData.admins || !currentData.instructors) {
       throw new Error('Invalid response: missing admins or instructors');
@@ -56,39 +72,40 @@ export class ParentContactTab extends BaseTab {
     // During enrollment periods, also fetch next trimester and merge instructor lists
     if (isEnrollmentPeriod(currentPeriod)) {
       const nextTrimester = appConfig?.nextTrimester || currentPeriod.trimester;
-      const nextData = await HttpService.get(`parent/tabs/contact/${nextTrimester}?parentId=${parentId}`, { signal });
+      const nextData = await HttpService.get(`parent/tabs/contact/${nextTrimester}?parentId=${id}`, { signal }) as ContactData;
 
       // Merge instructor arrays, deduplicating by ID
-      const seenIds = new Set(currentData.instructors.map(i => i.id));
-      const uniqueNextInstructors = (nextData.instructors || []).filter(i => !seenIds.has(i.id));
+      const seenIds = new Set<string>(currentData.instructors.map((i: Record<string, unknown>) => i.id as string));
+      const uniqueNextInstructors = (nextData.instructors || []).filter((i: Record<string, unknown>) => !seenIds.has(i.id as string));
 
       return {
         admins: currentData.admins,
         instructors: [...currentData.instructors, ...uniqueNextInstructors],
-      };
+      } as unknown as Record<string, unknown>;
     }
 
-    return currentData;
+    return currentData as unknown as Record<string, unknown>;
   }
 
   /**
    * Render the contact directory table
    */
-  async render() {
+  async render(): Promise<void> {
     const container = this.getContainer();
+    const typedData = this.data as unknown as ContactData;
 
     // Map admins and instructors to employee format
-    const adminEmployees = this.#mapAdminsToEmployees(this.data.admins);
-    const instructorEmployees = this.data.instructors.map(instructor =>
+    const adminEmployees = this.#mapAdminsToEmployees(typedData.admins);
+    const instructorEmployees = typedData.instructors.map((instructor: Record<string, unknown>) =>
       this.#mapInstructorToEmployee(instructor, true)
     );
 
     // Combine and sort (admins first, then instructors alphabetically)
-    const allEmployees = [...adminEmployees, ...instructorEmployees];
+    const allEmployees: EmployeeDisplay[] = [...adminEmployees, ...instructorEmployees];
     const sortedEmployees = this.#sortEmployeesForDirectory(allEmployees);
 
     // Find or create table element
-    let tableElement = container.querySelector('#parent-directory-table');
+    let tableElement = container.querySelector<HTMLElement>('#parent-directory-table');
     if (!tableElement) {
       tableElement = document.createElement('table');
       tableElement.id = 'parent-directory-table';
@@ -109,7 +126,7 @@ export class ParentContactTab extends BaseTab {
    * Build a table row for an employee
    * @private
    */
-  #buildTableRow(employee) {
+  #buildTableRow(employee: EmployeeDisplay): string {
     const fullName =
       employee.fullName ||
       `${employee.firstName || ''} ${employee.lastName || ''}`.trim() ||
@@ -136,8 +153,9 @@ export class ParentContactTab extends BaseTab {
    * Handle table clicks (email copy)
    * @private
    */
-  async #handleTableClick(event) {
-    const isCopy = event.target.classList.contains('copy-parent-emails-table-icon');
+  async #handleTableClick(event: Event): Promise<void> {
+    const target = event.target as HTMLElement;
+    const isCopy = target.classList.contains('copy-parent-emails-table-icon');
     if (!isCopy) {
       return;
     }
@@ -146,7 +164,7 @@ export class ParentContactTab extends BaseTab {
     event.stopPropagation();
 
     // Get the email from the data attribute
-    const buttonElement = event.target.closest('button');
+    const buttonElement = target.closest('button');
     const email = buttonElement?.getAttribute('data-employee-email');
 
     if (email && email !== 'No email') {
@@ -169,13 +187,13 @@ export class ParentContactTab extends BaseTab {
    * Shows blank if not set (no fallback to personal contact info)
    * @private
    */
-  #mapAdminsToEmployees(admins) {
-    return admins.map(admin => ({
-      id: admin.id,
-      fullName: admin.fullName,
-      email: admin.displayEmail,
-      phone: formatPhone(admin.displayPhone),
-      roles: admin.role ? [admin.role] : [],
+  #mapAdminsToEmployees(admins: Record<string, unknown>[]): EmployeeDisplay[] {
+    return admins.map((admin: Record<string, unknown>) => ({
+      id: admin.id as string,
+      fullName: admin.fullName as string,
+      email: admin.displayEmail as string,
+      phone: formatPhone(admin.displayPhone as string),
+      roles: admin.role ? [admin.role as string] : [],
     }));
   }
 
@@ -183,27 +201,25 @@ export class ParentContactTab extends BaseTab {
    * Map instructor to employee format
    * For parent contact, show public contact info (displayEmail, displayPhone)
    * @private
-   * @param {object} instructor - Instructor object
-   * @param {boolean} obscurePhone - Whether to hide phone number
    */
-  #mapInstructorToEmployee(instructor, obscurePhone = false) {
+  #mapInstructorToEmployee(instructor: Record<string, unknown>, obscurePhone: boolean = false): EmployeeDisplay {
     // Get instruments from specialties field
-    const instruments = instructor.specialties || [];
+    const instruments = (instructor.specialties as string[]) || [];
     const instrumentsText = instruments.length > 0 ? instruments.join(', ') : 'Instructor';
 
-    const displayEmail = instructor.displayEmail || '';
-    const displayPhone = instructor.displayPhone || '';
+    const displayEmail = (instructor.displayEmail as string) || '';
+    const displayPhone = (instructor.displayPhone as string) || '';
 
     return {
-      id: instructor.id,
+      id: instructor.id as string,
       fullName:
-        instructor.fullName || `${instructor.firstName || ''} ${instructor.lastName || ''}`.trim(),
+        (instructor.fullName as string) || `${(instructor.firstName as string) || ''} ${(instructor.lastName as string) || ''}`.trim(),
       email: displayEmail,
       phone: formatPhone(displayPhone),
       role: instrumentsText,
       roles: [instrumentsText], // Array for sorting compatibility
-      lastName: instructor.lastName || '',
-      firstName: instructor.firstName || '',
+      lastName: (instructor.lastName as string) || '',
+      firstName: (instructor.firstName as string) || '',
     };
   }
 
@@ -212,10 +228,10 @@ export class ParentContactTab extends BaseTab {
    * Admins first (by priority), then instructors (alphabetically by last name)
    * @private
    */
-  #sortEmployeesForDirectory(employees) {
-    return employees.sort((a, b) => {
+  #sortEmployeesForDirectory(employees: EmployeeDisplay[]): EmployeeDisplay[] {
+    return employees.sort((a: EmployeeDisplay, b: EmployeeDisplay) => {
       // Define admin role priorities (lower number = higher priority)
-      const getAdminPriority = employee => {
+      const getAdminPriority = (employee: EmployeeDisplay): number => {
         if (!employee.roles || !Array.isArray(employee.roles)) return 999;
 
         for (const role of employee.roles) {
@@ -259,7 +275,7 @@ export class ParentContactTab extends BaseTab {
   /**
    * Cleanup when tab is unloaded
    */
-  async cleanup() {
+  async cleanup(): Promise<void> {
     this.directoryTable = null;
   }
 }

@@ -1,4 +1,5 @@
 import { PeriodType } from '/utils/values/periodType.js';
+import type { Period } from '/models/shared/responses/appConfigurationResponse.js';
 
 /**
  * Check if the current period is an enrollment period
@@ -6,7 +7,7 @@ import { PeriodType } from '/utils/values/periodType.js';
  * @param {object} period - Period object with periodType property
  * @returns {boolean} True if current period is an enrollment period
  */
-export function isEnrollmentPeriod(period) {
+export function isEnrollmentPeriod(period: Period | null | undefined): boolean {
   if (!period) return false;
 
   return (

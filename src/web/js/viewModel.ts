@@ -12,21 +12,118 @@ import { FeedbackManager } from './feedback.js';
 import { capitalize } from './utilities/formatHelpers.js';
 import { isEnrollmentPeriod } from './utilities/periodHelpers.js';
 
+import type { Period } from '../../models/shared/responses/appConfigurationResponse.js';
+
+/** Authenticated user shape returned from HttpService.post (raw JSON, not model class) */
+interface AuthenticatedUser {
+  email?: string;
+  admin?: Record<string, unknown> | null;
+  instructor?: Record<string, unknown> | null;
+  parent?: Record<string, unknown> | null;
+  systemError?: boolean;
+  error?: string;
+  [key: string]: unknown;
+}
+
+/** Registration creation data passed to createRegistrationWithEnrichment */
+interface RegistrationCreateData {
+  trimester?: string | null;
+  replaceRegistrationId?: string;
+  [key: string]: unknown;
+}
+
+/** Options for createRegistrationWithEnrichment */
+interface EnrichmentOptions {
+  students?: Array<{ id: string; [key: string]: unknown }> | null;
+  instructors?: Array<{ id: string; [key: string]: unknown }> | null;
+}
+
+/** Extended Registration with dynamically-assigned enrichment fields */
+interface EnrichedRegistration extends Registration {
+  student?: { id: string; [key: string]: unknown };
+  instructor?: { id: string; [key: string]: unknown };
+}
+
+/** Extended HTMLElement with temp handler storage for terms modal */
+interface TermsModalElement extends HTMLElement {
+  _tempKeydownHandler?: (e: KeyboardEvent) => void;
+  _tempClickHandler?: (e: MouseEvent) => void;
+}
+
+/** Minimal interface for parentRegistrationForm */
+interface ParentRegistrationFormLike {
+  clearSelection(): void;
+  [key: string]: unknown;
+}
+
 /**
  *
  */
 export class ViewModel {
   // Private fields
 
+  // Data arrays
+  admins: Array<{ id: string; [key: string]: unknown }> | null;
+  instructors: Array<{ id: string; [key: string]: unknown }> | null;
+  students: Array<{ id: string; [key: string]: unknown }> | null;
+  registrations: Registration[];
+  classes: unknown[] | null;
+  rooms: unknown[] | null;
+  nextTrimesterRegistrations: Registration[];
+
+  // Current user
+  currentUser: AuthenticatedUser | null;
+
+  // UI components
+  navTabs: NavTabs | null;
+  feedbackManager: FeedbackManager | null;
+  loginModal: MaterializeModalInstance | null;
+  termsModal: MaterializeModalInstance | null;
+  privacyModal: MaterializeModalInstance | null;
+
+  // Login state
+  currentLoginType: string;
+  roleToClick: string | null;
+
+  // Initialization flags
+  adminContentInitialized: boolean;
+  instructorContentInitialized: boolean;
+  parentContentInitialized: boolean;
+
+  // External form reference
+  parentRegistrationForm: ParentRegistrationFormLike | null;
+
+  // Index signature to satisfy FeedbackViewModel and ViewModelType
+  [key: string]: unknown;
+
   constructor() {
-    // No initialization properties needed - tabs handle their own state
+    // Initialize property defaults
+    this.admins = null;
+    this.instructors = null;
+    this.students = null;
+    this.registrations = [];
+    this.classes = null;
+    this.rooms = null;
+    this.nextTrimesterRegistrations = [];
+    this.currentUser = null;
+    this.navTabs = null;
+    this.feedbackManager = null;
+    this.loginModal = null;
+    this.termsModal = null;
+    this.privacyModal = null;
+    this.currentLoginType = 'parent';
+    this.roleToClick = null;
+    this.adminContentInitialized = false;
+    this.instructorContentInitialized = false;
+    this.parentContentInitialized = false;
+    this.parentRegistrationForm = null;
   }
 
-  async initializeAsync() {
+  async initializeAsync(): Promise<void> {
     // Get application configuration when page first loads
     const appConfig = await HttpService.fetch(ServerFunctions.getAppConfiguration, data =>
-      new AppConfigurationResponse(data)
-    );
+      new AppConfigurationResponse(data as AppConfigurationResponse)
+    ) as AppConfigurationResponse | null;
 
     // Save entire app configuration in user session
     // ClassManager will read rockBandClassIds from here directly
@@ -63,23 +160,24 @@ export class ViewModel {
       // show terms of service
       this.#showTermsOfService(() => {
         // After terms are accepted, open the login modal
-        this.loginModal.open();
+        this.loginModal!.open();
       });
       return;
     }
 
     // open modal
-    this.loginModal.open();
+    this.loginModal!.open();
   }
 
-  async loadUserData(user, roleToClick = null) {
+  async loadUserData(user: AuthenticatedUser | null, roleToClick: string | null = null): Promise<void> {
     // Only proceed if we have a valid user with backing data
     if (!user || (!user.admin && !user.instructor && !user.parent)) {
       return;
     }
 
     // Show content area
-    document.getElementById('page-content').hidden = false;
+    const pageContent = document.getElementById('page-content');
+    if (pageContent) pageContent.hidden = false;
 
     await DomHelpers.waitForDocumentReadyAsync();
 
@@ -96,7 +194,7 @@ export class ViewModel {
     // Store current user for access throughout the application
     this.currentUser = user;
 
-    let defaultSection;
+    let defaultSection: string | undefined;
     if (user.admin) {
       defaultSection = Sections.ADMIN;
     }
@@ -108,7 +206,7 @@ export class ViewModel {
     }
 
     // Use the default section based on user's role
-    this.navTabs = new NavTabs(defaultSection);
+    this.navTabs = new NavTabs(defaultSection as string);
     this.#setPageLoading(false);
 
     // Initialize feedback system
@@ -121,7 +219,7 @@ export class ViewModel {
 
     // If TabController already exists (user switching), activate the section immediately
     if (roleToClick && window.tabController) {
-      const navLink = document.querySelector(`a[data-section="${roleToClick}"]`);
+      const navLink = document.querySelector<HTMLAnchorElement>(`a[data-section="${roleToClick}"]`);
       if (navLink) {
         navLink.click();
       }
@@ -141,8 +239,8 @@ export class ViewModel {
    * Shows different messages for intent, priority enrollment, and open enrollment
    * Hides banner during regular registration periods
    */
-  _updateEnrollmentBanner() {
-    const currentPeriod = window.UserSession.getCurrentPeriod();
+  _updateEnrollmentBanner(): void {
+    const currentPeriod: Period | undefined = window.UserSession.getCurrentPeriod();
     const banner = document.getElementById('enrollment-period-banner');
     const bannerText = document.getElementById('enrollment-banner-text');
 
@@ -183,12 +281,15 @@ export class ViewModel {
    * @param {Array} options.students - Optional students array for enrichment lookup
    * @param {Array} options.instructors - Optional instructors array for enrichment lookup
    */
-  async createRegistrationWithEnrichment(data, { students = null, instructors = null } = {}) {
+  async createRegistrationWithEnrichment(
+    data: RegistrationCreateData,
+    { students = null, instructors = null }: EnrichmentOptions = {}
+  ): Promise<EnrichedRegistration> {
     // Admins always use the regular endpoint - they can create registrations for any trimester
     const isAdmin = this.currentUser?.admin !== undefined;
 
     // Determine which endpoint to use based on enrollment period (for non-admin users)
-    const currentPeriod = window.UserSession?.getCurrentPeriod?.();
+    const currentPeriod: Period | undefined = window.UserSession?.getCurrentPeriod?.();
 
     // Admins always use regular endpoint, parents use next trimester endpoint during enrollment
     const endpoint =
@@ -212,7 +313,7 @@ export class ViewModel {
         // For next trimester during enrollment: registrations/next-trimester/{id}
         // For current trimester: registrations/{id}
         const deleteEndpoint =
-          isEnrollmentPeriod && !isAdmin
+          isEnrollmentPeriod(currentPeriod) && !isAdmin
             ? `registrations/next-trimester/${data.replaceRegistrationId}`
             : `registrations/${data.replaceRegistrationId}`;
 
@@ -220,8 +321,8 @@ export class ViewModel {
 
         // Remove the old registration from local state (from ALL relevant arrays)
         // This is critical to prevent the old registration from persisting in the UI
-        if (isEnrollmentPeriod && !isAdmin && this.nextTrimesterRegistrations) {
-          const oldRegIndex = this.nextTrimesterRegistrations.findIndex(reg => {
+        if (isEnrollmentPeriod(currentPeriod) && !isAdmin && this.nextTrimesterRegistrations) {
+          const oldRegIndex = this.nextTrimesterRegistrations.findIndex((reg: Registration) => {
             const regId = reg.id;
             return regId === data.replaceRegistrationId;
           });
@@ -230,7 +331,7 @@ export class ViewModel {
             this.nextTrimesterRegistrations.splice(oldRegIndex, 1);
           }
         } else {
-          const oldRegIndex = this.registrations.findIndex(reg => {
+          const oldRegIndex = this.registrations.findIndex((reg: Registration) => {
             const regId = reg.id;
             return regId === data.replaceRegistrationId;
           });
@@ -243,15 +344,15 @@ export class ViewModel {
         // Remove the replaceRegistrationId from the data object before creating the new registration
         // The new registration should NOT have linkedPreviousRegistrationId - that's only for migrations
         delete data.replaceRegistrationId;
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error deleting old registration:', error);
-        throw new Error(`Failed to delete old registration: ${error.message}`);
+        throw new Error(`Failed to delete old registration: ${(error as Error).message}`);
       }
     }
 
     const response = await HttpService.post(endpoint, data);
     // HttpService auto-unwraps { success, data } responses, so response is already the registration data
-    const newRegistration = new Registration(response);
+    const newRegistration = new Registration(response as import('../../models/shared/registration.js').RegistrationData) as EnrichedRegistration;
 
     // Enrich the registration with instructor and student objects (same logic as initial data loading)
     // Use provided lookup arrays if available, otherwise fall back to viewModel's cached arrays
@@ -259,7 +360,7 @@ export class ViewModel {
     const instructorsLookup = instructors || this.instructors || [];
 
     if (!newRegistration.student) {
-      newRegistration.student = studentsLookup.find(x => {
+      newRegistration.student = studentsLookup.find((x: { id: string; [key: string]: unknown }) => {
         const studentId = x.id;
         const registrationStudentId = newRegistration.studentId;
         return studentId === registrationStudentId;
@@ -273,7 +374,7 @@ export class ViewModel {
     }
 
     if (!newRegistration.instructor) {
-      newRegistration.instructor = instructorsLookup.find(x => {
+      newRegistration.instructor = instructorsLookup.find((x: { id: string; [key: string]: unknown }) => {
         const instructorId = x.id;
         const registrationInstructorId = newRegistration.instructorId;
         return instructorId === registrationInstructorId;
@@ -294,7 +395,7 @@ export class ViewModel {
    * Show maintenance mode overlay
    * @param {string} message - Custom maintenance message
    */
-  #showMaintenanceMode(message) {
+  #showMaintenanceMode(message: string | null): void {
     const overlay = document.getElementById('maintenance-mode-overlay');
     const messageText = document.getElementById('maintenance-message-text');
 
@@ -319,7 +420,7 @@ export class ViewModel {
    * Hide maintenance mode overlay and reinitialize the application
    * Used for debugging or emergency admin override
    */
-  #hideMaintenanceMode() {
+  #hideMaintenanceMode(): void {
     const overlay = document.getElementById('maintenance-mode-overlay');
     const pageContent = document.getElementById('page-content');
 
@@ -336,7 +437,7 @@ export class ViewModel {
    * Override maintenance mode for this session
    * Accessible via console: window.overrideMaintenanceMode()
    */
-  overrideMaintenanceMode() {
+  overrideMaintenanceMode(): boolean {
     try {
       // Set session storage flag to persist override for this session
       sessionStorage.setItem('maintenance_mode_override', 'true');
@@ -354,7 +455,7 @@ export class ViewModel {
       const hasAcceptedTermsOfService = window.UserSession.hasAcceptedTermsOfService();
       if (!hasAcceptedTermsOfService) {
         this.#showTermsOfService(() => {
-          this.loginModal.open();
+          this.loginModal!.open();
         });
       } else {
         // Try auto-login if credentials exist
@@ -363,12 +464,12 @@ export class ViewModel {
           this.#attemptLoginWithCode(storedAuthData.accessCode, storedAuthData.loginType);
         } else {
           // Open login modal
-          this.loginModal.open();
+          this.loginModal!.open();
         }
       }
 
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('✗ Failed to override maintenance mode:', error);
       return false;
     }
@@ -377,20 +478,26 @@ export class ViewModel {
   /**
    *
    */
-  #setPageLoading(isLoading, errorMessage = '') {
+  #setPageLoading(isLoading: boolean, errorMessage: string = ''): void {
     const loadingContainer = document.getElementById('page-loading-container');
     const pageContent = document.getElementById('page-content');
     const pageErrorContent = document.getElementById('page-error-content');
     const pageErrorContentMessage = document.getElementById('page-error-content-message');
 
-    loadingContainer.style.display = isLoading ? 'flex' : 'none';
-    loadingContainer.hidden = !isLoading;
+    if (loadingContainer) {
+      loadingContainer.style.display = isLoading ? 'flex' : 'none';
+      loadingContainer.hidden = !isLoading;
+    }
 
     // Only show page content if not loading, no error
-    pageContent.hidden = isLoading || errorMessage;
+    if (pageContent) {
+      pageContent.hidden = isLoading || !!errorMessage;
+    }
 
     // Only show error content when there's actually an error message
-    pageErrorContent.hidden = !errorMessage;
+    if (pageErrorContent) {
+      pageErrorContent.hidden = !errorMessage;
+    }
     if (pageErrorContentMessage) {
       pageErrorContentMessage.textContent = errorMessage;
     }
@@ -400,7 +507,7 @@ export class ViewModel {
    * Delete a registration by ID
    * @param {string} registrationToDeleteId - Registration ID to delete
    */
-  async requestDeleteRegistrationAsync(registrationToDeleteId) {
+  async requestDeleteRegistrationAsync(registrationToDeleteId: string): Promise<void> {
     // Confirm delete
     if (!confirm('Are you sure you want to delete this registration?')) {
       return;
@@ -418,7 +525,7 @@ export class ViewModel {
       M.toast({ html: 'Registration deleted successfully.' });
 
       // Tabs handle their own data refresh - they call tab.onLoad() to reload fresh data
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error deleting registration:', error);
       M.toast({ html: 'Error deleting registration.' });
     }
@@ -431,16 +538,16 @@ export class ViewModel {
    * @returns {Promise<object>} Updated registration
    * @throws {Error} If submission fails
    */
-  async submitIntent(registrationId, intent) {
+  async submitIntent(registrationId: string, intent: string): Promise<unknown> {
     try {
       const data = await HttpService.patch(`registrations/${registrationId}/intent`, { intent });
 
       // Tabs handle their own data refresh - ParentWeeklyScheduleTab will reload fresh data
       M.toast({ html: 'Intent submitted successfully.' });
       return data;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error submitting intent:', error);
-      M.toast({ html: error.message || 'Error submitting intent.' });
+      M.toast({ html: (error as Error).message || 'Error submitting intent.' });
       throw error;
     }
   }
@@ -448,7 +555,7 @@ export class ViewModel {
   /**
    * Initialize the login modal functionality
    */
-  #initLoginModal() {
+  #initLoginModal(): void {
     // Initialize MaterializeCSS modal
     const modalElement = document.getElementById('login-modal');
     if (!modalElement) {
@@ -462,7 +569,7 @@ export class ViewModel {
       opacity: 0.5,
       inDuration: 300,
       outDuration: 200,
-    });
+    } as MaterializeModalOptions);
 
     // Expose to window for console debugging and runtime access
     window.loginModal = modalElement;
@@ -473,8 +580,8 @@ export class ViewModel {
     const employeeTab = document.getElementById('employee-login-tab');
     const parentSection = document.getElementById('parent-login-section');
     const employeeSection = document.getElementById('employee-login-section');
-    const parentPhoneInput = document.getElementById('parent-phone-input');
-    const employeeCodeInput = document.getElementById('employee-access-code');
+    const parentPhoneInput = document.getElementById('parent-phone-input') as HTMLInputElement | null;
+    const employeeCodeInput = document.getElementById('employee-access-code') as HTMLInputElement | null;
     const loginButton = document.getElementById('login-submit-btn');
 
     if (
@@ -503,7 +610,7 @@ export class ViewModel {
     this.#initEmployeeCodeInput(employeeCodeInput, loginButton);
 
     // Handle login button click
-    loginButton.addEventListener('click', e => {
+    loginButton.addEventListener('click', (e: Event) => {
       e.preventDefault();
       this.#handleLogin();
     });
@@ -527,13 +634,13 @@ export class ViewModel {
     ModalKeyboardHandler.attachKeyboardHandlers(modalElement, {
       allowEscape: true,
       allowEnter: true,
-      onConfirm: event => {
-        if (!loginButton.disabled) {
+      onConfirm: (event: KeyboardEvent) => {
+        if (!(loginButton as HTMLButtonElement).disabled) {
           this.#handleLogin();
         }
       },
-      onCancel: event => {
-        this.loginModal.close();
+      onCancel: (event: KeyboardEvent) => {
+        this.loginModal!.close();
       },
     });
   }
@@ -541,9 +648,14 @@ export class ViewModel {
   /**
    * Initialize login type switching functionality
    */
-  #initLoginTypeSwitching(parentTab, employeeTab, parentSection, employeeSection) {
+  #initLoginTypeSwitching(
+    parentTab: HTMLElement,
+    employeeTab: HTMLElement,
+    parentSection: HTMLElement,
+    employeeSection: HTMLElement
+  ): void {
     // Parent tab click handler
-    parentTab.addEventListener('click', e => {
+    parentTab.addEventListener('click', (e: Event) => {
       e.preventDefault();
       if (this.currentLoginType !== 'parent') {
         this.currentLoginType = 'parent';
@@ -569,7 +681,7 @@ export class ViewModel {
     });
 
     // Employee tab click handler
-    employeeTab.addEventListener('click', e => {
+    employeeTab.addEventListener('click', (e: Event) => {
       e.preventDefault();
       if (this.currentLoginType !== 'employee') {
         this.currentLoginType = 'employee';
@@ -598,21 +710,22 @@ export class ViewModel {
   /**
    * Initialize parent phone input with formatting and validation
    */
-  #initParentPhoneInput(phoneInput, loginButton) {
-    phoneInput.addEventListener('input', e => {
+  #initParentPhoneInput(phoneInput: HTMLInputElement, loginButton: HTMLElement): void {
+    phoneInput.addEventListener('input', (e: Event) => {
+      const target = e.target as HTMLInputElement;
       // Format phone number as user types
       if (typeof window.formatPhoneAsTyped === 'function') {
-        const formattedValue = window.formatPhoneAsTyped(e.target.value);
-        e.target.value = formattedValue;
+        const formattedValue = window.formatPhoneAsTyped(target.value);
+        target.value = formattedValue;
       } else {
         // Fallback formatting - basic cleanup
-        const digits = e.target.value.replace(/\D/g, '').substring(0, 10);
+        const digits = target.value.replace(/\D/g, '').substring(0, 10);
         if (digits.length <= 3) {
-          e.target.value = digits;
+          target.value = digits;
         } else if (digits.length <= 6) {
-          e.target.value = `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+          target.value = `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
         } else {
-          e.target.value = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+          target.value = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
         }
       }
 
@@ -622,7 +735,7 @@ export class ViewModel {
     });
 
     // Handle focus events to ensure validation runs
-    phoneInput.addEventListener('focus', e => {
+    phoneInput.addEventListener('focus', (_e: Event) => {
       if (this.currentLoginType === 'parent') {
         setTimeout(() => {
           this.#validateCurrentInput();
@@ -631,11 +744,12 @@ export class ViewModel {
     });
 
     // Handle paste events
-    phoneInput.addEventListener('paste', e => {
+    phoneInput.addEventListener('paste', (e: Event) => {
+      const target = e.target as HTMLInputElement;
       setTimeout(() => {
         if (typeof window.formatPhoneAsTyped === 'function') {
-          const formattedValue = window.formatPhoneAsTyped(e.target.value);
-          e.target.value = formattedValue;
+          const formattedValue = window.formatPhoneAsTyped(target.value);
+          target.value = formattedValue;
         }
         if (this.currentLoginType === 'parent') {
           this.#validateCurrentInput();
@@ -647,11 +761,12 @@ export class ViewModel {
   /**
    * Initialize employee access code input with validation
    */
-  #initEmployeeCodeInput(codeInput, loginButton) {
-    codeInput.addEventListener('input', e => {
+  #initEmployeeCodeInput(codeInput: HTMLInputElement, loginButton: HTMLElement): void {
+    codeInput.addEventListener('input', (e: Event) => {
+      const target = e.target as HTMLInputElement;
       // Only allow numeric input, max 6 digits
-      const numericValue = e.target.value.replace(/[^0-9]/g, '').substring(0, 6);
-      e.target.value = numericValue;
+      const numericValue = target.value.replace(/[^0-9]/g, '').substring(0, 6);
+      target.value = numericValue;
 
       if (this.currentLoginType === 'employee') {
         this.#validateCurrentInput();
@@ -659,7 +774,7 @@ export class ViewModel {
     });
 
     // Handle focus events to ensure validation runs
-    codeInput.addEventListener('focus', e => {
+    codeInput.addEventListener('focus', (_e: Event) => {
       if (this.currentLoginType === 'employee') {
         setTimeout(() => {
           this.#validateCurrentInput();
@@ -671,12 +786,15 @@ export class ViewModel {
   /**
    * Validate the current active input and update button state
    */
-  #validateCurrentInput() {
+  #validateCurrentInput(): void {
     const loginButton = document.getElementById('login-submit-btn');
+    if (!loginButton) return;
+
     let isValid = false;
 
     if (this.currentLoginType === 'parent') {
-      const phoneInput = document.getElementById('parent-phone-input');
+      const phoneInput = document.getElementById('parent-phone-input') as HTMLInputElement | null;
+      if (!phoneInput) return;
       const phoneValue = phoneInput.value;
 
       // Check if phone validation function is available
@@ -707,7 +825,8 @@ export class ViewModel {
         phoneInput.classList.remove('valid', 'invalid');
       }
     } else {
-      const codeInput = document.getElementById('employee-access-code');
+      const codeInput = document.getElementById('employee-access-code') as HTMLInputElement | null;
+      if (!codeInput) return;
       const codeValue = codeInput.value;
       isValid = codeValue.length === 6;
 
@@ -744,20 +863,24 @@ export class ViewModel {
   /**
    * Focus the current active input
    */
-  #focusCurrentInput() {
+  #focusCurrentInput(): void {
     if (this.currentLoginType === 'parent') {
-      const phoneInput = document.getElementById('parent-phone-input');
-      phoneInput.focus();
+      const phoneInput = document.getElementById('parent-phone-input') as HTMLInputElement | null;
+      if (phoneInput) phoneInput.focus();
     } else {
-      const codeInput = document.getElementById('employee-access-code');
-      codeInput.focus();
+      const codeInput = document.getElementById('employee-access-code') as HTMLInputElement | null;
+      if (codeInput) codeInput.focus();
     }
   }
 
   /**
    * Reset login modal to initial state
    */
-  #resetLoginModal(parentPhoneInput, employeeCodeInput, loginButton) {
+  #resetLoginModal(
+    parentPhoneInput: HTMLInputElement,
+    employeeCodeInput: HTMLInputElement,
+    loginButton: HTMLElement
+  ): void {
     // Clear inputs
     parentPhoneInput.value = '';
     employeeCodeInput.value = '';
@@ -781,24 +904,32 @@ export class ViewModel {
     const employeeSection = document.getElementById('employee-login-section');
 
     // Update tab appearance
-    parentTab.classList.remove('inactive-login-type');
-    parentTab.classList.add('active-login-type');
-    employeeTab.classList.remove('active-login-type');
-    employeeTab.classList.add('inactive-login-type');
+    if (parentTab) {
+      parentTab.classList.remove('inactive-login-type');
+      parentTab.classList.add('active-login-type');
+    }
+    if (employeeTab) {
+      employeeTab.classList.remove('active-login-type');
+      employeeTab.classList.add('inactive-login-type');
+    }
 
     // Show parent section, hide employee section
-    parentSection.style.display = 'block';
-    parentSection.classList.remove('inactive-section');
-    parentSection.classList.add('active-section');
-    employeeSection.style.display = 'none';
-    employeeSection.classList.remove('active-section');
-    employeeSection.classList.add('inactive-section');
+    if (parentSection) {
+      parentSection.style.display = 'block';
+      parentSection.classList.remove('inactive-section');
+      parentSection.classList.add('active-section');
+    }
+    if (employeeSection) {
+      employeeSection.style.display = 'none';
+      employeeSection.classList.remove('active-section');
+      employeeSection.classList.add('inactive-section');
+    }
   }
 
   /**
    * Initialize all application modals (Terms, Privacy, and Login)
    */
-  #initializeAllModals() {
+  #initializeAllModals(): void {
     // Initialize Terms of Service modal (non-dismissible)
     this.#initTermsModal();
 
@@ -812,21 +943,21 @@ export class ViewModel {
   /**
    * Initialize Terms of Service modal with non-dismissible behavior
    */
-  #initTermsModal() {
-    const termsModal = document.getElementById('terms-modal');
+  #initTermsModal(): void {
+    const termsModal = document.getElementById('terms-modal') as TermsModalElement | null;
     if (!termsModal) {
       console.warn('⚠️ Terms of Service modal element not found');
       return;
     }
 
-    const termsBtn = termsModal.querySelector('.modal-footer .modal-close');
+    const termsBtn = termsModal.querySelector('.modal-footer .modal-close') as HTMLElement | null;
 
     // Initialize modal with default dismissible behavior for footer links
     this.termsModal = M.Modal.init(termsModal, {
       dismissible: true,
       opacity: 0.5,
       preventScrolling: true,
-    });
+    } as MaterializeModalOptions);
 
     // Make available globally
     window.termsModal = termsModal;
@@ -834,7 +965,7 @@ export class ViewModel {
 
     // Add custom click handler for "I Understand" button
     if (termsBtn) {
-      termsBtn.addEventListener('click', e => {
+      termsBtn.addEventListener('click', (e: Event) => {
         e.preventDefault();
         e.stopPropagation();
 
@@ -856,25 +987,25 @@ export class ViewModel {
           }
 
           // Restore normal dismissible behavior for future footer link clicks
-          this.termsModal.destroy();
+          this.termsModal!.destroy();
           this.termsModal = M.Modal.init(termsModal, {
             dismissible: true,
             opacity: 0.5,
             preventScrolling: true,
-          });
+          } as MaterializeModalOptions);
 
           // Reattach keyboard handlers after reinitializing the modal
-          const newTermsBtn = termsModal.querySelector('.modal-footer .modal-close');
+          const newTermsBtn = termsModal.querySelector('.modal-footer .modal-close') as HTMLElement | null;
           ModalKeyboardHandler.attachKeyboardHandlers(termsModal, {
             allowEscape: true,
             allowEnter: true,
-            onConfirm: event => {
+            onConfirm: (event: KeyboardEvent) => {
               if (newTermsBtn) {
                 newTermsBtn.click();
               }
             },
-            onCancel: event => {
-              this.termsModal.close();
+            onCancel: (event: KeyboardEvent) => {
+              this.termsModal!.close();
             },
           });
 
@@ -886,7 +1017,7 @@ export class ViewModel {
         }
 
         // Close the modal normally
-        this.termsModal.close();
+        this.termsModal!.close();
       });
     }
 
@@ -894,13 +1025,13 @@ export class ViewModel {
     ModalKeyboardHandler.attachKeyboardHandlers(termsModal, {
       allowEscape: true,
       allowEnter: true,
-      onConfirm: event => {
+      onConfirm: (event: KeyboardEvent) => {
         // Handle Enter key press for Terms of Service
         if (termsBtn) {
           termsBtn.click();
         }
       },
-      onCancel: event => {
+      onCancel: (event: KeyboardEvent) => {
         // Handle ESC key press for Terms of Service
 
         // Check if this is non-dismissible mode
@@ -911,7 +1042,7 @@ export class ViewModel {
         }
 
         // Allow normal ESC behavior
-        this.termsModal.close();
+        this.termsModal!.close();
       },
     });
   }
@@ -919,21 +1050,21 @@ export class ViewModel {
   /**
    * Initialize Privacy Policy modal with dismissible behavior
    */
-  #initPrivacyModal() {
+  #initPrivacyModal(): void {
     const privacyModal = document.getElementById('privacy-modal');
     if (!privacyModal) {
       console.warn('⚠️ Privacy Policy modal element not found');
       return;
     }
 
-    const privacyBtn = privacyModal.querySelector('.modal-footer .modal-close');
+    const privacyBtn = privacyModal.querySelector('.modal-footer .modal-close') as HTMLElement | null;
 
     // Initialize with normal dismissible settings
     this.privacyModal = M.Modal.init(privacyModal, {
       dismissible: true, // Allow normal dismissal behavior
       opacity: 0.5, // Standard opacity
       preventScrolling: true,
-    });
+    } as MaterializeModalOptions);
 
     // Make available globally
     window.privacyModal = privacyModal;
@@ -943,17 +1074,17 @@ export class ViewModel {
     ModalKeyboardHandler.attachKeyboardHandlers(privacyModal, {
       allowEscape: true,
       allowEnter: true,
-      onConfirm: event => {
+      onConfirm: (event: KeyboardEvent) => {
         // Handle Enter key press for Privacy Policy - trigger button click
         if (privacyBtn) {
           privacyBtn.click();
         } else {
-          this.privacyModal.close();
+          this.privacyModal!.close();
         }
       },
-      onCancel: event => {
+      onCancel: (event: KeyboardEvent) => {
         // Handle ESC key press for Privacy Policy
-        this.privacyModal.close();
+        this.privacyModal!.close();
       },
     });
   }
@@ -961,7 +1092,7 @@ export class ViewModel {
   /**
    * Update login button state based on stored access code
    */
-  #updateLoginButtonState() {
+  #updateLoginButtonState(): void {
     const loginButton = document.querySelector('a[href="#login-modal"]');
     if (!loginButton) {
       console.warn('Login button not found');
@@ -989,12 +1120,13 @@ export class ViewModel {
   /**
    * Handle login form submission (public method for modal event handlers)
    */
-  async handleLogin() {
+  async handleLogin(): Promise<void> {
     let loginValue = '';
     const loginType = this.currentLoginType;
 
     if (loginType === 'parent') {
-      const phoneInput = document.getElementById('parent-phone-input');
+      const phoneInput = document.getElementById('parent-phone-input') as HTMLInputElement | null;
+      if (!phoneInput) return;
       const phoneValue = phoneInput.value.trim();
 
       // Validate phone number
@@ -1011,7 +1143,8 @@ export class ViewModel {
       // Strip formatting for backend
       loginValue = window.stripPhoneFormatting(phoneValue);
     } else {
-      const codeInput = document.getElementById('employee-access-code');
+      const codeInput = document.getElementById('employee-access-code') as HTMLInputElement | null;
+      if (!codeInput) return;
       const codeValue = codeInput.value.trim();
 
       // Validate access code
@@ -1029,7 +1162,7 @@ export class ViewModel {
     }
 
     // Close modal before attempting login
-    this.loginModal.close();
+    this.loginModal!.close();
 
     await this.#attemptLoginWithCode(
       loginValue,
@@ -1037,8 +1170,10 @@ export class ViewModel {
       () => {
         // Handle successful login
         // Clear the inputs
-        document.getElementById('parent-phone-input').value = '';
-        document.getElementById('employee-access-code').value = '';
+        const parentInput = document.getElementById('parent-phone-input') as HTMLInputElement | null;
+        const employeeInput = document.getElementById('employee-access-code') as HTMLInputElement | null;
+        if (parentInput) parentInput.value = '';
+        if (employeeInput) employeeInput.value = '';
 
         // Reset UI state after modal close to prevent scroll lock
         setTimeout(() => {
@@ -1047,7 +1182,7 @@ export class ViewModel {
       },
       () => {
         // Handle failed login - reopen modal and focus appropriate input
-        this.loginModal.open();
+        this.loginModal!.open();
         setTimeout(() => {
           this.#focusCurrentInput();
         }, 300); // Delay to ensure modal is open before focusing
@@ -1058,17 +1193,17 @@ export class ViewModel {
   /**
    * Handle login form submission
    */
-  async #handleLogin() {
+  async #handleLogin(): Promise<void> {
     // Delegate to public method
     await this.handleLogin();
   }
 
   async #attemptLoginWithCode(
-    loginValue,
-    loginType,
-    onSuccessfulLogin = null,
-    onFailedLogin = null
-  ) {
+    loginValue: string,
+    loginType: string,
+    onSuccessfulLogin: (() => void) | null = null,
+    onFailedLogin: (() => void) | null = null
+  ): Promise<void> {
     try {
       this.#setPageLoading(true);
 
@@ -1076,7 +1211,7 @@ export class ViewModel {
       const authenticatedUser = await HttpService.post(ServerFunctions.authenticateByAccessCode, {
         accessCode: loginValue,
         loginType: loginType,
-      });
+      }) as AuthenticatedUser | null;
 
       // Check if authentication was successful (non-null response)
       const loginSuccess = authenticatedUser !== null && !authenticatedUser?.systemError;
@@ -1097,7 +1232,7 @@ export class ViewModel {
         this.admins = null;
         this.instructors = null;
         this.students = null;
-        this.registrations = null;
+        this.registrations = [];
         this.classes = null;
         this.rooms = null;
         this.currentUser = null;
@@ -1105,14 +1240,14 @@ export class ViewModel {
         // Load user data with the authenticated user
 
         // Determine default role to click (admin -> instructor -> parent)
-        let roleToClick = null;
-        if (authenticatedUser.admin) {
+        let roleToClick: string | null = null;
+        if (authenticatedUser!.admin) {
           roleToClick = 'admin';
 
           // For admin users, we'll explicitly show admin tabs and click the first one
-        } else if (authenticatedUser.instructor) {
+        } else if (authenticatedUser!.instructor) {
           roleToClick = 'instructor';
-        } else if (authenticatedUser.parent) {
+        } else if (authenticatedUser!.parent) {
           roleToClick = 'parent';
         }
 
@@ -1139,7 +1274,7 @@ export class ViewModel {
         }
         onFailedLogin?.();
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Login error:', error);
       M.toast({
         html: 'Login failed. Please try again.',
@@ -1178,7 +1313,7 @@ export class ViewModel {
   /**
    * Public method to clear stored access code (for logout functionality)
    */
-  async clearUserSession() {
+  async clearUserSession(): Promise<void> {
     window.AccessCodeManager.clearStoredAccessCode();
     await this.#resetInitializationFlags();
     this.#updateLoginButtonState();
@@ -1188,7 +1323,7 @@ export class ViewModel {
   /**
    * Reset all initialization flags (useful for testing or when switching users)
    */
-  async #resetInitializationFlags() {
+  async #resetInitializationFlags(): Promise<void> {
     this.adminContentInitialized = false;
     this.instructorContentInitialized = false;
     this.parentContentInitialized = false;
@@ -1200,9 +1335,9 @@ export class ViewModel {
         try {
           await currentTab.onUnload();
           // Clear TabController's current tab tracking so next activation is treated as fresh
-          window.tabController.currentTab = null;
-          window.tabController.currentTabId = null;
-        } catch (error) {
+          (window.tabController as unknown as Record<string, unknown>).currentTab = null;
+          (window.tabController as unknown as Record<string, unknown>).currentTabId = null;
+        } catch (error: unknown) {
           console.error('Error unloading tab during user switch:', error);
         }
       }
@@ -1220,7 +1355,7 @@ export class ViewModel {
   /**
    * Reset UI state to prevent scroll lock and other issues during user changes
    */
-  #resetUIState() {
+  #resetUIState(): void {
     try {
       // Ensure login modal is properly closed
       if (this.loginModal && this.loginModal.isOpen) {
@@ -1235,7 +1370,7 @@ export class ViewModel {
       // Reset container scroll
       const container = document.querySelector('.container');
       if (container) {
-        container.scrollTop = 0;
+        (container as HTMLElement).scrollTop = 0;
       }
 
       // Reset page content scroll
@@ -1263,9 +1398,9 @@ export class ViewModel {
 
       // Hide any fixed elements that might interfere
       const fixedElements = document.querySelectorAll('[style*="position: fixed"]');
-      fixedElements.forEach(element => {
-        if (element.id === 'admin-selected-lesson-display') {
-          element.style.display = 'none';
+      fixedElements.forEach((element: Element) => {
+        if ((element as HTMLElement).id === 'admin-selected-lesson-display') {
+          (element as HTMLElement).style.display = 'none';
         }
       });
 
@@ -1275,8 +1410,8 @@ export class ViewModel {
 
       // Remove any potential overlay elements
       const overlays = document.querySelectorAll('.modal-overlay');
-      overlays.forEach(overlay => overlay.remove());
-    } catch (error) {
+      overlays.forEach((overlay: Element) => overlay.remove());
+    } catch (error: unknown) {
       console.error('❌ Error resetting UI state:', error);
     }
   }
@@ -1284,13 +1419,13 @@ export class ViewModel {
   /**
    * Show the login button after app configuration loads
    */
-  #showLoginButton() {
+  #showLoginButton(): void {
     try {
       const loginButtonContainer = document.getElementById('login-button-container');
       if (loginButtonContainer) {
         loginButtonContainer.hidden = false;
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ Error showing login button:', error);
     }
   }
@@ -1299,8 +1434,8 @@ export class ViewModel {
    * Show Terms of Service modal with confirmation callback
    * @param {Function} onConfirmation - Callback to execute when user accepts terms
    */
-  #showTermsOfService(onConfirmation) {
-    const termsModal = document.getElementById('terms-modal');
+  #showTermsOfService(onConfirmation: () => void): void {
+    const termsModal = document.getElementById('terms-modal') as TermsModalElement | null;
     const hasAcceptedTerms = window.UserSession.hasAcceptedTermsOfService();
 
     // Store the confirmation callback globally for the modal to access
@@ -1310,17 +1445,17 @@ export class ViewModel {
     if (!hasAcceptedTerms && this.termsModal) {
       // Temporarily make the modal non-dismissible for initial terms acceptance
       this.termsModal.destroy();
-      this.termsModal = M.Modal.init(termsModal, {
+      this.termsModal = M.Modal.init(termsModal!, {
         dismissible: false,
         opacity: 0.8,
         preventScrolling: true,
-        onCloseStart: function () {
+        onCloseStart: function (this: MaterializeModalInstance) {
           return false; // Prevent closing
         },
-      });
+      } as MaterializeModalOptions);
 
       // Add keyboard event prevention for non-dismissible mode (only block ESC, allow Enter)
-      const keydownHandler = e => {
+      const keydownHandler = (e: KeyboardEvent): void => {
         if (e.key === 'Escape') {
           e.preventDefault();
           e.stopPropagation();
@@ -1329,7 +1464,7 @@ export class ViewModel {
       };
 
       // Add click prevention for non-dismissible mode (only prevent overlay clicks)
-      const clickHandler = e => {
+      const clickHandler = (e: MouseEvent): void => {
         // Only prevent clicks on the overlay, not on modal content
         if (e.target === termsModal) {
           e.stopPropagation();
@@ -1337,24 +1472,24 @@ export class ViewModel {
         }
       };
 
-      termsModal.addEventListener('keydown', keydownHandler);
-      termsModal.addEventListener('click', clickHandler);
+      termsModal!.addEventListener('keydown', keydownHandler);
+      termsModal!.addEventListener('click', clickHandler);
 
       // Store handlers for cleanup
-      termsModal._tempKeydownHandler = keydownHandler;
-      termsModal._tempClickHandler = clickHandler;
+      termsModal!._tempKeydownHandler = keydownHandler;
+      termsModal!._tempClickHandler = clickHandler;
 
       // Reattach keyboard handlers for the non-dismissible modal
-      const termsBtn = termsModal.querySelector('.modal-footer .modal-close');
-      ModalKeyboardHandler.attachKeyboardHandlers(termsModal, {
+      const termsBtn = termsModal!.querySelector('.modal-footer .modal-close') as HTMLElement | null;
+      ModalKeyboardHandler.attachKeyboardHandlers(termsModal!, {
         allowEscape: false, // Block ESC in non-dismissible mode
         allowEnter: true, // Allow Enter for button activation
-        onConfirm: event => {
+        onConfirm: (event: KeyboardEvent) => {
           if (termsBtn) {
             termsBtn.click();
           }
         },
-        onCancel: event => {
+        onCancel: (event: KeyboardEvent) => {
           // Should not be called since allowEscape is false
         },
       });
@@ -1370,4 +1505,4 @@ export class ViewModel {
 }
 
 // Expose to window for console debugging and runtime access
-window.ViewModel = ViewModel;
+window.ViewModel = ViewModel as unknown as typeof window.ViewModel;

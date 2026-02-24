@@ -9,6 +9,18 @@ import type { ClassManager } from '../web/js/utilities/classManager.js';
 import type { ModalKeyboardHandler } from '../web/js/utilities/modalKeyboardHandler.js';
 import type { HttpService } from '../web/js/data/httpService.js';
 import type { Duration, DateTime, DateHelpers } from '../utils/nativeDateTimeHelpers.js';
+import type {
+  AppConfigurationResponse,
+  Period,
+} from '../models/shared/responses/appConfigurationResponse.js';
+import type { TabController } from '../web/js/core/tabController.js';
+import type { Table } from '../web/js/components/table.js';
+import type { Select } from '../web/js/components/select.js';
+import type { NavTabs } from '../web/js/components/navTabs.js';
+import type { IndexedDbClient } from '../web/js/data/indexedDbClient.js';
+import type { DomHelpers } from '../web/js/utilities/domHelpers.js';
+import type { DurationHelpers } from '../web/js/utilities/durationHelpers.js';
+import type { PromiseHelpers } from '../web/js/utilities/promiseHelpers.js';
 
 interface AccessCodeManagerType {
   _accessCodeCache: { accessCode: string; loginType: string } | null;
@@ -20,22 +32,49 @@ interface AccessCodeManagerType {
 }
 
 interface UserSessionType {
-  appConfig: Record<string, unknown> | null;
-  saveAppConfig(config: Record<string, unknown>): void;
-  getAppConfig(): Record<string, unknown> | null;
-  getCurrentPeriod(): Record<string, unknown> | undefined;
-  getNextPeriod(): Record<string, unknown> | undefined;
+  appConfig: AppConfigurationResponse | null;
+  saveAppConfig(config: AppConfigurationResponse): void;
+  getAppConfig(): AppConfigurationResponse | null;
+  getCurrentPeriod(): Period | undefined;
+  getNextPeriod(): Period | undefined;
   clearAppConfig(): void;
   hasAcceptedTermsOfService(): boolean;
   acceptTermsOfService(): void;
   unacceptTermsOfService(): void;
 }
 
+interface TonicEnv {
+  environment: string;
+  isDevelopment: boolean;
+  isStaging: boolean;
+  isProduction: boolean;
+  version: string;
+  gitCommit: string;
+  NodeEnv: Record<string, string>;
+}
+
 interface ViewModelType {
   [key: string]: unknown;
 }
 
+declare module '../utils/nativeDateTimeHelpers.js' {
+  interface TonicDuration {
+    to12HourFormat(): string;
+    to24HourFormat(): string;
+  }
+}
+
 declare global {
+
+  // Prototype extension declarations (T003)
+  interface String {
+    capitalize(): string;
+  }
+
+  interface Number {
+    formatGrade(): string;
+  }
+
   interface Window {
     // Core framework
     M: Materialize;
@@ -49,17 +88,17 @@ declare global {
     HttpService: typeof HttpService;
 
     // UI components
-    Table: unknown;
-    Select: unknown;
-    NavTabs: unknown;
+    Table: typeof Table;
+    Select: typeof Select;
+    NavTabs: typeof NavTabs;
 
     // Data layer
-    IndexedDbClient: unknown;
+    IndexedDbClient: typeof IndexedDbClient;
 
     // Utilities
-    DomHelpers: unknown;
-    DurationHelpers: unknown;
-    PromiseHelpers: unknown;
+    DomHelpers: typeof DomHelpers;
+    DurationHelpers: typeof DurationHelpers;
+    PromiseHelpers: typeof PromiseHelpers;
 
     // Date/time (from constants.ts)
     DateTime: typeof DateTime;
@@ -83,6 +122,26 @@ declare global {
     stripPhoneFormatting: (phoneNumber: string) => string;
     formatPhoneAsTyped: (value: string) => string;
     isValidPhoneNumber: (phoneNumber: string) => boolean;
+
+    // Instance globals (assigned at runtime in main.ts / viewModel.ts)
+    viewModel: ViewModelType;
+    tabController: TabController;
+
+    // Modal instances (assigned at runtime in viewModel.ts)
+    loginModal: Element;
+    loginModalInstance: MaterializeModalInstance;
+    termsModal: Element;
+    termsModalInstance: MaterializeModalInstance;
+    privacyModal: Element;
+    privacyModalInstance: MaterializeModalInstance;
+    termsOnConfirmationCallback: (() => void) | null;
+
+    // Environment (assigned at runtime in main.ts)
+    TONIC_ENV: TonicEnv;
+
+    // Console helper functions (assigned at runtime in main.ts)
+    overrideMaintenanceMode: () => boolean;
+    clearServerCache: (adminCode: string) => Promise<boolean>;
   }
 
   // Allow direct access without window. prefix

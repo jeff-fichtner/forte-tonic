@@ -6,14 +6,33 @@
 import { Select } from '../select.js';
 import { RegistrationFormText } from '../../constants/registrationFormConstants.js';
 
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+interface InstructorLike {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  [key: string]: unknown;
+}
+
+type InstructorChangeCallback = (selectedInstructor: InstructorLike | undefined) => void;
+
 export class InstructorSelector {
+  selectId: string;
+  instructors: InstructorLike[];
+  onChangeCallback: InstructorChangeCallback | null;
+  select: Select;
+
   /**
    * Create an instructor selector
    * @param {string} selectId - ID of the select element
    * @param {Array} instructors - Array of instructor objects
    * @param {Function} onChangeCallback - Callback when instructor changes
    */
-  constructor(selectId, instructors = [], onChangeCallback = null) {
+  constructor(selectId: string, instructors: InstructorLike[] = [], onChangeCallback: InstructorChangeCallback | null = null) {
     this.selectId = selectId;
     this.instructors = instructors;
     this.onChangeCallback = onChangeCallback;
@@ -27,7 +46,7 @@ export class InstructorSelector {
       RegistrationFormText.INSTRUCTOR_PLACEHOLDER,
       RegistrationFormText.INSTRUCTOR_EMPTY,
       options,
-      event => this.#handleChange(event)
+      (event: Event) => this.#handleChange(event)
     );
   }
 
@@ -35,7 +54,7 @@ export class InstructorSelector {
    * Build instructor options from instructor array
    * @private
    */
-  #buildInstructorOptions(instructors) {
+  #buildInstructorOptions(instructors: InstructorLike[]): SelectOption[] {
     return instructors.map(instructor => ({
       value: instructor.id,
       label: `${instructor.firstName} ${instructor.lastName}`,
@@ -46,9 +65,9 @@ export class InstructorSelector {
    * Handle instructor change
    * @private
    */
-  #handleChange(event) {
+  #handleChange(event: Event): void {
     event.preventDefault();
-    const selectedValue = event.target.value;
+    const selectedValue = (event.target as HTMLSelectElement).value;
     const selectedInstructor = this.instructors.find(x => x.id === selectedValue);
 
     // Trigger callback if provided
@@ -61,7 +80,7 @@ export class InstructorSelector {
    * Get the selected instructor ID
    * @returns {string} Selected instructor ID
    */
-  getSelectedInstructorId() {
+  getSelectedInstructorId(): string {
     return this.select.getSelectedOption();
   }
 
@@ -69,7 +88,7 @@ export class InstructorSelector {
    * Get the selected instructor object
    * @returns {object | null} Selected instructor object or null
    */
-  getSelectedInstructor() {
+  getSelectedInstructor(): InstructorLike | null {
     const selectedId = this.getSelectedInstructorId();
     return this.instructors.find(x => x.id === selectedId) || null;
   }
@@ -78,14 +97,14 @@ export class InstructorSelector {
    * Set the selected instructor
    * @param {string} instructorId - Instructor ID to select
    */
-  setSelectedInstructor(instructorId) {
+  setSelectedInstructor(instructorId: string): void {
     this.select.setSelectedOption(instructorId);
   }
 
   /**
    * Clear the instructor selection
    */
-  clear() {
+  clear(): void {
     this.select.clearSelectedOption();
   }
 
@@ -94,7 +113,7 @@ export class InstructorSelector {
    * @param {Array} instructors - New array of instructor objects
    * @param {boolean} forceRefresh - Whether to force refresh and clear selection
    */
-  updateInstructors(instructors, forceRefresh = false) {
+  updateInstructors(instructors: InstructorLike[], forceRefresh: boolean = false): void {
     this.instructors = instructors;
     const options = this.#buildInstructorOptions(instructors);
     this.select.populateOptions(options, forceRefresh);
@@ -104,7 +123,7 @@ export class InstructorSelector {
    * Filter instructors by a predicate function
    * @param {Function} predicateFn - Function that returns true for instructors to include
    */
-  filterInstructors(predicateFn) {
+  filterInstructors(predicateFn: (instructor: InstructorLike) => boolean): void {
     const filteredInstructors = this.instructors.filter(predicateFn);
     const options = this.#buildInstructorOptions(filteredInstructors);
     this.select.populateOptions(options, true);

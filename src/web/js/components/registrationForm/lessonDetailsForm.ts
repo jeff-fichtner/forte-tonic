@@ -12,7 +12,35 @@ import {
 } from '../../constants/registrationFormConstants.js';
 import { generateTimeOptions } from '../../utilities/registrationForm/timeHelpers.js';
 
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+interface ElementIds {
+  daySelectId?: string;
+  timeSelectId?: string;
+  instrumentSelectId?: string;
+  containerIdWhenDaySelected?: string;
+  lessonLengthRadioName?: string;
+}
+
+type DayChangeCallback = (dayValue: string, hasDay: boolean) => void;
+type ValueChangeCallback = (value: string) => void;
+
 export class LessonDetailsForm {
+  daySelectId: string;
+  timeSelectId: string;
+  instrumentSelectId: string;
+  containerIdWhenDaySelected: string;
+  lessonLengthRadioName: string;
+  onDayChangeCallback: DayChangeCallback | null;
+  onTimeChangeCallback: ValueChangeCallback | null;
+  onInstrumentChangeCallback: ValueChangeCallback | null;
+  daySelect!: Select;
+  startTimeSelect!: Select;
+  instrumentSelect!: Select;
+
   /**
    * Create a lesson details form
    * @param {object} elementIds - Object with IDs for day, time, instrument selects and container
@@ -21,10 +49,10 @@ export class LessonDetailsForm {
    * @param {Function} onInstrumentChangeCallback - Callback when instrument changes
    */
   constructor(
-    elementIds = {},
-    onDayChangeCallback = null,
-    onTimeChangeCallback = null,
-    onInstrumentChangeCallback = null
+    elementIds: ElementIds = {},
+    onDayChangeCallback: DayChangeCallback | null = null,
+    onTimeChangeCallback: ValueChangeCallback | null = null,
+    onInstrumentChangeCallback: ValueChangeCallback | null = null
   ) {
     this.daySelectId = elementIds.daySelectId || 'day-select';
     this.timeSelectId = elementIds.timeSelectId || 'start-time-select';
@@ -44,14 +72,14 @@ export class LessonDetailsForm {
    * Initialize all sub-components
    * @private
    */
-  #initialize() {
+  #initialize(): void {
     // Initialize day selector
     this.daySelect = new Select(
       this.daySelectId,
       RegistrationFormText.DAY_PLACEHOLDER,
       RegistrationFormText.DAY_EMPTY,
       WeekDays,
-      event => this.#handleDayChange(event)
+      (event: Event) => this.#handleDayChange(event)
     );
 
     // Initialize start time selector
@@ -60,7 +88,7 @@ export class LessonDetailsForm {
       RegistrationFormText.TIME_PLACEHOLDER,
       RegistrationFormText.TIME_EMPTY,
       generateTimeOptions(),
-      event => this.#handleTimeChange(event)
+      (event: Event) => this.#handleTimeChange(event)
     );
 
     // Initialize instrument selector
@@ -69,7 +97,7 @@ export class LessonDetailsForm {
       RegistrationFormText.INSTRUMENT_PLACEHOLDER,
       RegistrationFormText.INSTRUMENT_EMPTY,
       DefaultInstruments,
-      event => this.#handleInstrumentChange(event)
+      (event: Event) => this.#handleInstrumentChange(event)
     );
   }
 
@@ -77,8 +105,8 @@ export class LessonDetailsForm {
    * Handle day change
    * @private
    */
-  #handleDayChange(event) {
-    const hasDay = !!event.target.value;
+  #handleDayChange(event: Event): void {
+    const hasDay = !!(event.target as HTMLSelectElement).value;
 
     // Show the lesson length and start time container when day is selected
     this.#showContainer(this.containerIdWhenDaySelected, hasDay);
@@ -86,7 +114,7 @@ export class LessonDetailsForm {
     // Reset start time, lesson length, and instrument when day is cleared
     if (!hasDay) {
       // Reset lesson length radio buttons to default (30 minutes)
-      const lengthRadios = document.querySelectorAll(`input[name="${this.lessonLengthRadioName}"]`);
+      const lengthRadios = document.querySelectorAll<HTMLInputElement>(`input[name="${this.lessonLengthRadioName}"]`);
       if (lengthRadios.length > 0) {
         lengthRadios[0].checked = true;
       }
@@ -104,7 +132,7 @@ export class LessonDetailsForm {
 
     // Trigger callback if provided
     if (this.onDayChangeCallback && typeof this.onDayChangeCallback === 'function') {
-      this.onDayChangeCallback(event.target.value, hasDay);
+      this.onDayChangeCallback((event.target as HTMLSelectElement).value, hasDay);
     }
   }
 
@@ -112,10 +140,10 @@ export class LessonDetailsForm {
    * Handle time change
    * @private
    */
-  #handleTimeChange(event) {
+  #handleTimeChange(event: Event): void {
     // Trigger callback if provided
     if (this.onTimeChangeCallback && typeof this.onTimeChangeCallback === 'function') {
-      this.onTimeChangeCallback(event.target.value);
+      this.onTimeChangeCallback((event.target as HTMLSelectElement).value);
     }
   }
 
@@ -123,10 +151,10 @@ export class LessonDetailsForm {
    * Handle instrument change
    * @private
    */
-  #handleInstrumentChange(event) {
+  #handleInstrumentChange(event: Event): void {
     // Trigger callback if provided
     if (this.onInstrumentChangeCallback && typeof this.onInstrumentChangeCallback === 'function') {
-      this.onInstrumentChangeCallback(event.target.value);
+      this.onInstrumentChangeCallback((event.target as HTMLSelectElement).value);
     }
   }
 
@@ -134,7 +162,7 @@ export class LessonDetailsForm {
    * Show or hide container
    * @private
    */
-  #showContainer(containerId, shouldShow) {
+  #showContainer(containerId: string, shouldShow: boolean): void {
     const container = document.getElementById(containerId);
     if (container) {
       container.hidden = !shouldShow;
@@ -145,7 +173,7 @@ export class LessonDetailsForm {
    * Get selected day value (numeric string)
    * @returns {string} Day value
    */
-  getSelectedDayValue() {
+  getSelectedDayValue(): string {
     return this.daySelect.getSelectedOption();
   }
 
@@ -153,7 +181,7 @@ export class LessonDetailsForm {
    * Get selected day name
    * @returns {string} Day name (e.g., 'Monday')
    */
-  getSelectedDayName() {
+  getSelectedDayName(): string | null {
     const dayValue = this.getSelectedDayValue();
     return dayValue ? DayNames[parseInt(dayValue)] : null;
   }
@@ -162,7 +190,7 @@ export class LessonDetailsForm {
    * Get selected start time
    * @returns {string} Start time in HH:MM format
    */
-  getSelectedTime() {
+  getSelectedTime(): string {
     return this.startTimeSelect.getSelectedOption();
   }
 
@@ -170,7 +198,7 @@ export class LessonDetailsForm {
    * Get selected instrument
    * @returns {string} Instrument name
    */
-  getSelectedInstrument() {
+  getSelectedInstrument(): string {
     return this.instrumentSelect.getSelectedOption();
   }
 
@@ -178,8 +206,8 @@ export class LessonDetailsForm {
    * Get selected lesson length from radio buttons
    * @returns {number} Lesson length in minutes
    */
-  getSelectedLength() {
-    const checkedRadio = document.querySelector(
+  getSelectedLength(): number | null {
+    const checkedRadio = document.querySelector<HTMLInputElement>(
       `input[name="${this.lessonLengthRadioName}"]:checked`
     );
     return checkedRadio ? parseInt(checkedRadio.value) : null;
@@ -189,8 +217,8 @@ export class LessonDetailsForm {
    * Update instrument options (e.g., based on selected instructor's specialties)
    * @param {Array<string>} instruments - Array of instrument names
    */
-  updateInstrumentOptions(instruments) {
-    let instrumentOptions;
+  updateInstrumentOptions(instruments: string[]): void {
+    let instrumentOptions: SelectOption[];
 
     if (instruments && instruments.length > 0) {
       instrumentOptions = instruments.map(instrument => ({
@@ -208,13 +236,13 @@ export class LessonDetailsForm {
   /**
    * Clear all selections
    */
-  clear() {
+  clear(): void {
     this.daySelect.clearSelectedOption();
     this.startTimeSelect.clearSelectedOption();
     this.instrumentSelect.clearSelectedOption();
 
     // Reset lesson length to default
-    const lengthRadios = document.querySelectorAll(`input[name="${this.lessonLengthRadioName}"]`);
+    const lengthRadios = document.querySelectorAll<HTMLInputElement>(`input[name="${this.lessonLengthRadioName}"]`);
     if (lengthRadios.length > 0) {
       lengthRadios[0].checked = true;
     }

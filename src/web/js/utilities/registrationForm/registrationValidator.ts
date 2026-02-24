@@ -10,6 +10,16 @@ import {
 } from '../../constants/registrationFormConstants.js';
 import { parseTime, formatTimeFromMinutes, calculateEndTime } from './timeHelpers.js';
 
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
+
+interface BusValidationResult {
+  isValid: boolean;
+  errorMessage: string | null;
+}
+
 /**
  * Validate bus time restrictions for Late Bus transportation
  * @param {string} day - Day of the week (e.g., 'Monday', 'Wednesday')
@@ -18,26 +28,26 @@ import { parseTime, formatTimeFromMinutes, calculateEndTime } from './timeHelper
  * @param {string} transportationType - Selected transportation type
  * @returns {{isValid: boolean, errorMessage: string|null}} Validation result
  */
-export function validateBusTimeRestrictions(day, startTime, lengthMinutes, transportationType) {
+export function validateBusTimeRestrictions(day: string, startTime: string, lengthMinutes: number, transportationType: string): BusValidationResult {
   // Only validate if Late Bus is selected
   if (transportationType !== TransportationType.BUS && transportationType !== 'bus') {
     return { isValid: true, errorMessage: null };
   }
 
   // Parse start time and calculate end time
-  const startMinutes = parseTime(startTime);
+  const startMinutes = parseTime(startTime) ?? 0;
   const endMinutes = startMinutes + lengthMinutes;
 
   // Convert end time back to time string for display
   const endTimeDisplay = formatTimeFromMinutes(endMinutes);
 
   // Get bus deadline for the selected day
-  const deadlineTime = BusDeadlines[day];
+  const deadlineTime = BusDeadlines[day as keyof typeof BusDeadlines];
   if (!deadlineTime) {
     return { isValid: true, errorMessage: null }; // Unknown day, allow
   }
 
-  const deadlineMinutes = parseTime(deadlineTime);
+  const deadlineMinutes = parseTime(deadlineTime) ?? 0;
   const deadlineDisplay = formatTimeFromMinutes(deadlineMinutes);
 
   // Check if lesson ends after bus deadline
@@ -58,7 +68,7 @@ export function validateBusTimeRestrictions(day, startTime, lengthMinutes, trans
  * @param {object} data - Registration data to validate
  * @returns {{isValid: boolean, errors: string[]}} Validation result with error list
  */
-export function validatePrivateRegistration(data) {
+export function validatePrivateRegistration(data: Record<string, unknown>): ValidationResult {
   const errors = [];
 
   if (!data.studentId) {
@@ -91,7 +101,7 @@ export function validatePrivateRegistration(data) {
  * @param {object} data - Registration data to validate
  * @returns {{isValid: boolean, errors: string[]}} Validation result with error list
  */
-export function validateGroupRegistration(data) {
+export function validateGroupRegistration(data: Record<string, unknown>): ValidationResult {
   const errors = [];
 
   if (!data.studentId) {
@@ -113,7 +123,7 @@ export function validateGroupRegistration(data) {
  * @param {string} registrationType - 'private' or 'group'
  * @returns {{isValid: boolean, errors: string[]}} Validation result
  */
-export function validateRegistrationData(data, registrationType) {
+export function validateRegistrationData(data: Record<string, unknown>, registrationType?: string): ValidationResult {
   if (!data.registrationType && !registrationType) {
     return { isValid: false, errors: ['Registration Type'] };
   }
@@ -134,7 +144,7 @@ export function validateRegistrationData(data, registrationType) {
  * @param {string[]} errors - Array of error field names
  * @returns {string} Formatted error message
  */
-export function formatValidationErrors(errors) {
+export function formatValidationErrors(errors: string[]): string {
   if (errors.length === 0) {
     return '';
   }

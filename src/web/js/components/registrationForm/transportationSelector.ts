@@ -5,18 +5,24 @@
 
 import { TransportationType } from '../../constants/registrationFormConstants.js';
 
+type TransportationChangeCallback = (value: string) => void;
+
 export class TransportationSelector {
+  radioGroupName: string;
+  onChangeCallback: TransportationChangeCallback | null;
+  radioButtons: NodeListOf<HTMLInputElement>;
+
   /**
    * Create a transportation selector
    * @param {string} radioGroupName - Name attribute of the radio button group
    * @param {Function} onChangeCallback - Callback when transportation type changes
    */
-  constructor(radioGroupName = 'transportation-type', onChangeCallback = null) {
+  constructor(radioGroupName: string = 'transportation-type', onChangeCallback: TransportationChangeCallback | null = null) {
     this.radioGroupName = radioGroupName;
     this.onChangeCallback = onChangeCallback;
 
     // Get all radio buttons in this group
-    this.radioButtons = document.querySelectorAll(`input[name="${radioGroupName}"]`);
+    this.radioButtons = document.querySelectorAll<HTMLInputElement>(`input[name="${radioGroupName}"]`);
 
     if (this.radioButtons.length === 0) {
       console.warn(`No transportation radio buttons found with name '${radioGroupName}'`);
@@ -30,11 +36,12 @@ export class TransportationSelector {
    * Attach change listeners to radio buttons
    * @private
    */
-  #attachListeners() {
-    this.radioButtons.forEach(radio => {
-      radio.addEventListener('change', event => {
-        if (event.target.checked) {
-          const value = event.target.value;
+  #attachListeners(): void {
+    this.radioButtons.forEach((radio: HTMLInputElement) => {
+      radio.addEventListener('change', (event: Event) => {
+        const target = event.target as HTMLInputElement;
+        if (target.checked) {
+          const value = target.value;
           console.log('Transportation type changed to:', value);
 
           // Trigger callback if provided
@@ -50,8 +57,8 @@ export class TransportationSelector {
    * Get the selected transportation type
    * @returns {string|null} Selected transportation type value or null
    */
-  getSelectedType() {
-    const checkedRadio = document.querySelector(`input[name="${this.radioGroupName}"]:checked`);
+  getSelectedType(): string | null {
+    const checkedRadio = document.querySelector<HTMLInputElement>(`input[name="${this.radioGroupName}"]:checked`);
     return checkedRadio ? checkedRadio.value : null;
   }
 
@@ -59,8 +66,8 @@ export class TransportationSelector {
    * Set the selected transportation type
    * @param {string} value - Transportation type value to set
    */
-  setSelectedType(value) {
-    this.radioButtons.forEach(radio => {
+  setSelectedType(value: string): void {
+    this.radioButtons.forEach((radio: HTMLInputElement) => {
       if (radio.value === value) {
         radio.checked = true;
       }
@@ -70,7 +77,7 @@ export class TransportationSelector {
   /**
    * Clear the transportation selection (set to first option as default)
    */
-  clear() {
+  clear(): void {
     if (this.radioButtons.length > 0) {
       this.radioButtons[0].checked = true;
     }
@@ -80,7 +87,7 @@ export class TransportationSelector {
    * Check if Late Bus is selected
    * @returns {boolean} True if Late Bus is selected
    */
-  isBusSelected() {
+  isBusSelected(): boolean {
     const selected = this.getSelectedType();
     return selected === TransportationType.BUS || selected === 'bus';
   }
@@ -88,8 +95,8 @@ export class TransportationSelector {
   /**
    * Disable all radio buttons
    */
-  disable() {
-    this.radioButtons.forEach(radio => {
+  disable(): void {
+    this.radioButtons.forEach((radio: HTMLInputElement) => {
       radio.disabled = true;
     });
   }
@@ -97,8 +104,8 @@ export class TransportationSelector {
   /**
    * Enable all radio buttons
    */
-  enable() {
-    this.radioButtons.forEach(radio => {
+  enable(): void {
+    this.radioButtons.forEach((radio: HTMLInputElement) => {
       radio.disabled = false;
     });
   }

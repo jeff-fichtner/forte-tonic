@@ -4,13 +4,26 @@
 
 import { formatGrade } from '../extensions/numberExtensions.js';
 
+export interface ClassInfo {
+  id?: string;
+  title?: string;
+  instrument?: string;
+  formattedName?: string;
+  minimumGrade?: number;
+  maximumGrade?: number;
+  formattedMinimumGrade?: string;
+  formattedMaximumGrade?: string;
+  day?: string;
+  formattedStartTime?: string;
+}
+
 /**
  * Formats a class name for display in dropdown selects
  * Enhances the existing class properties with proper grade formatting
  * @param {object} cls - Class object with formattedName, title, instrument properties
  * @returns {string} Formatted class name for dropdown display
  */
-export function formatClassNameForDropdown(cls) {
+export function formatClassNameForDropdown(cls: ClassInfo): string {
   // First try to use the class's existing formattedName
   if (cls.formattedName) {
     return cls.formattedName;
@@ -48,15 +61,15 @@ export function formatClassNameForDropdown(cls) {
  * @param {object} cls - Class object
  * @returns {string} Formatted class name with proper kindergarten handling (no time)
  */
-export function formatClassNameWithGradeCorrection(cls) {
+export function formatClassNameWithGradeCorrection(cls: ClassInfo): string {
   // Build class name with grade range but WITHOUT time to avoid duplication
   // since ClassManager.formatClassNameWithTime() will add time appropriately
   let displayName;
 
   if (cls.title && (cls.minimumGrade !== undefined || cls.maximumGrade !== undefined)) {
     // Format grade range using the same logic as Class model
-    const minGrade = cls.formattedMinimumGrade || formatGrade(cls.minimumGrade) || '';
-    const maxGrade = cls.formattedMaximumGrade || formatGrade(cls.maximumGrade) || '';
+    const minGrade = cls.formattedMinimumGrade || (cls.minimumGrade !== undefined ? formatGrade(cls.minimumGrade) : '') || '';
+    const maxGrade = cls.formattedMaximumGrade || (cls.maximumGrade !== undefined ? formatGrade(cls.maximumGrade) : '') || '';
 
     if (minGrade && maxGrade) {
       displayName = `${cls.title} (${minGrade}-${maxGrade})`;

@@ -6,7 +6,7 @@
  * Copy text to clipboard with fallback support
  * @param {string} text - Text to copy to clipboard
  */
-export async function copyToClipboard(text) {
+export async function copyToClipboard(text: string): Promise<void> {
   try {
     // Attempt to use the Clipboard API
     if (navigator.clipboard && navigator.clipboard.writeText) {

@@ -6,8 +6,8 @@ export class PromiseHelpers {
   /**
    *
    */
-  static promisify(fn) {
-    return (...args) =>
+  static promisify(fn: (...args: unknown[]) => void): (...args: unknown[]) => Promise<boolean> {
+    return (...args: unknown[]) =>
       new Promise((resolve, reject) => {
         try {
           fn(...args);
@@ -21,8 +21,8 @@ export class PromiseHelpers {
   /**
    *
    */
-  static promisifyWithResult(fn) {
-    return (...args) =>
+  static promisifyWithResult<T>(fn: (...args: unknown[]) => T): (...args: unknown[]) => Promise<T> {
+    return (...args: unknown[]) =>
       new Promise((resolve, reject) => {
         try {
           const result = fn(...args);
@@ -37,7 +37,7 @@ export class PromiseHelpers {
   /**
    *
    */
-  static promisifyEvent(eventName, target, resolveOnce = true) {
+  static promisifyEvent(eventName: string, target: EventTarget, resolveOnce: boolean = true): Promise<Event> {
     return new Promise(resolve => {
       target.addEventListener(eventName, resolve, { once: resolveOnce });
     });

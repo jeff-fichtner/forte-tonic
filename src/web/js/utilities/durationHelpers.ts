@@ -8,7 +8,7 @@ export class DurationHelpers {
   /**
    *
    */
-  static stringToDuration(timeString) {
+  static stringToDuration(timeString: string): Duration {
     return Duration.fromTimeString(timeString);
   }
 
@@ -16,7 +16,7 @@ export class DurationHelpers {
   /**
    *
    */
-  static minutesToDuration(minutes) {
+  static minutesToDuration(minutes: number): Duration {
     return Duration.fromMinutes(minutes);
   }
 
@@ -24,7 +24,7 @@ export class DurationHelpers {
   /**
    *
    */
-  static durationToDateTime(duration) {
+  static durationToDateTime(duration: Duration): Date {
     // Convert duration to a date at midnight plus the duration
     return duration.toDate();
   }

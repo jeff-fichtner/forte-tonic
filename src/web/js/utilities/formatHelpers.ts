@@ -2,28 +2,27 @@
  * Format helpers for common string and date formatting operations
  */
 
-import { MonthNames } from '../constants.js';
-
 /**
  * Capitalize the first letter of a string (for display purposes)
  * @param {string} str - String to capitalize
  * @returns {string} Capitalized string
  */
-export function capitalize(str) {
+export function capitalize(str: string): string {
   if (!str) return '';
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 /**
  * Format a datetime value for display in tables
+ * Handles Date objects, ISO strings, Unix timestamps, and Google Sheets serial dates
  * @param {string|Date|number} timestamp - The timestamp to format
- * @returns {string} Formatted datetime string
+ * @returns {string} Formatted datetime string in "M/D/YYYY, H:MM AM/PM" format
  */
-export function formatDateTime(timestamp) {
+export function formatDateTime(timestamp: string | Date | number): string {
   if (!timestamp) return 'N/A';
 
   try {
-    let date;
+    let date: Date;
 
     // Handle different input types
     if (timestamp instanceof Date) {
@@ -53,18 +52,22 @@ export function formatDateTime(timestamp) {
       return 'Invalid Date';
     }
 
-    // Format as "Aug 10 - 8:11 PM"
-    const month = MonthNames[date.getMonth()];
+    // Format: "M/D/YYYY, H:MM AM/PM"
+    const month = date.getMonth() + 1;
     const day = date.getDate();
-    const time = date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
+    const year = date.getFullYear();
 
-    return `${month} ${day} - ${time}`;
+    let hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+
+    hours = hours % 12;
+    hours = hours ? hours : 12; // 0 becomes 12
+    const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+
+    return `${month}/${day}/${year}, ${hours}:${minutesStr} ${ampm}`;
   } catch (error) {
-    console.warn('Error formatting timestamp:', timestamp, error);
-    return 'Invalid Date';
+    console.error('Error formatting timestamp:', error);
+    return 'Error formatting date';
   }
 }

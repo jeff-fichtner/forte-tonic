@@ -1,4 +1,4 @@
-import { BaseTab } from '../core/baseTab.js';
+import { BaseTab, SessionInfo } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatGrade, formatTime } from '../extensions/numberExtensions.js';
 import { RegistrationType } from '../constants.js';
@@ -7,11 +7,60 @@ import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { HttpService } from '../data/httpService.js';
 
 // Intent labels (matching viewModel.js)
-const INTENT_LABELS = {
-  keep: '✅ Keep',
-  drop: '❌ Drop',
-  change: '🔄 Change',
+const INTENT_LABELS: Record<string, string> = {
+  keep: '\u2705 Keep',
+  drop: '\u274C Drop',
+  change: '\uD83D\uDD04 Change',
 };
+
+interface MasterScheduleRegistration {
+  id: string;
+  studentId: string;
+  instructorId: string;
+  day: string;
+  startTime: string;
+  length: number;
+  instrument: string;
+  classTitle: string;
+  registrationType: string;
+  isWaitlistClass: boolean;
+  reenrollmentIntent: string;
+  linkedPreviousRegistrationId: string | null;
+  createdAt: string;
+}
+
+interface MasterScheduleStudent {
+  id: string;
+  firstName: string;
+  lastName: string;
+  grade: number | string;
+  parentEmails: string;
+}
+
+interface MasterScheduleInstructor {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
+
+interface MasterScheduleData extends Record<string, unknown> {
+  registrations: MasterScheduleRegistration[];
+  students: MasterScheduleStudent[];
+  instructors: MasterScheduleInstructor[];
+  classes: Record<string, unknown>[];
+}
+
+interface IntentStyle {
+  bgClass: string;
+  textClass: string;
+  label: string;
+  icon?: string;
+}
+
+interface FilterConfig {
+  filterId: string;
+  type: string;
+}
 
 /**
  * AdminMasterScheduleTab - Master schedule for admins
@@ -30,6 +79,9 @@ const INTENT_LABELS = {
  * Data waste eliminated: ~1500+ records (other trimesters, rooms not needed)
  */
 export class AdminMasterScheduleTab extends BaseTab {
+  declare protected data: MasterScheduleData | null;
+  private masterScheduleTable: Table | null;
+
   constructor() {
     super('admin-master-schedule');
 
@@ -43,10 +95,10 @@ export class AdminMasterScheduleTab extends BaseTab {
    * @param {object} sessionInfo - User session
    * @returns {Promise<object>} Master schedule data
    */
-  async fetchData(sessionInfo) {
+  async fetchData(sessionInfo: SessionInfo | null): Promise<MasterScheduleData> {
     // Get selected trimester from admin selector buttons
     const trimesterButtons = document.getElementById('admin-trimester-buttons');
-    const activeButton = trimesterButtons?.querySelector('.trimester-btn.active');
+    const activeButton = trimesterButtons?.querySelector<HTMLElement>('.trimester-btn.active');
 
     // During non-enrollment periods, trimester buttons are hidden, so use current period
     const currentPeriod = window.UserSession?.getCurrentPeriod();
@@ -56,7 +108,7 @@ export class AdminMasterScheduleTab extends BaseTab {
       throw new Error('Could not determine trimester: no button selected and no current period');
     }
 
-    const data = await HttpService.get(`admin/tabs/master-schedule/${trimester}`, { signal: this.getAbortSignal() });
+    const data = await HttpService.get(`admin/tabs/master-schedule/${trimester}`, { signal: this.getAbortSignal() }) as MasterScheduleData;
 
     console.log('[Master Schedule] API response received:', {
       registrationsCount: data.registrations?.length,
@@ -86,7 +138,7 @@ export class AdminMasterScheduleTab extends BaseTab {
 
     // Validate response
     if (!data.registrations || !data.students || !data.instructors || !data.classes) {
-      console.error('Invalid API response:', result);
+      console.error('Invalid API response:', data);
       throw new Error('Invalid response: missing required data');
     }
 
@@ -96,18 +148,18 @@ export class AdminMasterScheduleTab extends BaseTab {
   /**
    * Render the master schedule table
    */
-  async render() {
+  async render(): Promise<void> {
     console.log('[Master Schedule] Render starting');
     console.log('[Master Schedule] Data received:', {
-      registrationsCount: this.data.registrations?.length,
-      studentsCount: this.data.students?.length,
-      instructorsCount: this.data.instructors?.length,
-      classesCount: this.data.classes?.length,
+      registrationsCount: this.data!.registrations?.length,
+      studentsCount: this.data!.students?.length,
+      instructorsCount: this.data!.instructors?.length,
+      classesCount: this.data!.classes?.length,
     });
 
     // Log sample registrations to see isWaitlistClass values
-    if (this.data.registrations?.length > 0) {
-      const sampleRegs = this.data.registrations.slice(0, 3);
+    if (this.data!.registrations?.length > 0) {
+      const sampleRegs = this.data!.registrations.slice(0, 3);
       console.log(
         '[Master Schedule] Sample registrations:',
         sampleRegs.map(r => ({
@@ -120,7 +172,7 @@ export class AdminMasterScheduleTab extends BaseTab {
       );
 
       // Count waitlist registrations
-      const waitlistCount = this.data.registrations.filter(r => r.isWaitlistClass === true).length;
+      const waitlistCount = this.data!.registrations.filter(r => r.isWaitlistClass === true).length;
       console.log('[Master Schedule] Total waitlist registrations in data:', waitlistCount);
     }
 
@@ -133,7 +185,7 @@ export class AdminMasterScheduleTab extends BaseTab {
     const currentPeriod = window.UserSession?.getCurrentPeriod();
     const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
 
-    const headers = [];
+    const headers: string[] = [];
 
     // Add Recurring column first (only in dev)
     if (showRecurringColumn) {
@@ -158,7 +210,7 @@ export class AdminMasterScheduleTab extends BaseTab {
     headers.push('Contact', 'Remove');
 
     // Find or create table element
-    let tableElement = container.querySelector('#master-schedule-table');
+    let tableElement = container.querySelector<HTMLTableElement>('#master-schedule-table');
     if (!tableElement) {
       tableElement = document.createElement('table');
       tableElement.id = 'master-schedule-table';
@@ -166,11 +218,11 @@ export class AdminMasterScheduleTab extends BaseTab {
     }
 
     // Exclude Rock Band classes from master schedule (they go in wait list)
-    const nonWaitlistRegistrations = this.#excludeRockBandClasses(this.data.registrations);
+    const nonWaitlistRegistrations = this.#excludeRockBandClasses(this.data!.registrations);
     const sortedRegistrations = this.#sortRegistrations(nonWaitlistRegistrations);
 
     // Build onFilterChanges array conditionally
-    const onFilterChanges = [
+    const onFilterChanges: FilterConfig[] = [
       {
         filterId: 'master-schedule-instructor-filter-select',
         type: 'select-multiple',
@@ -206,7 +258,7 @@ export class AdminMasterScheduleTab extends BaseTab {
         pagination: true,
         itemsPerPage: 50,
         pageSizeOptions: [25, 50, 100, 200],
-        rowClassFunction: registration => {
+        rowClassFunction: (registration: MasterScheduleRegistration): string | null => {
           // Return CSS class based on enrollment registration type
           return registration.registrationType === RegistrationType.GROUP
             ? 'registration-row-group'
@@ -223,7 +275,7 @@ export class AdminMasterScheduleTab extends BaseTab {
    * Build a table row for a registration
    * @private
    */
-  #buildTableRow(registration) {
+  #buildTableRow(registration: MasterScheduleRegistration): string {
     // Check if we're in development to show the Recurring column
     const showRecurringColumn = window.TONIC_ENV?.isDevelopment;
 
@@ -236,11 +288,11 @@ export class AdminMasterScheduleTab extends BaseTab {
     const studentIdToFind = registration.studentId;
 
     // Find instructor and student
-    const instructor = this.data.instructors.find(x => {
+    const instructor = this.data!.instructors.find(x => {
       const id = x.id;
       return id === instructorIdToFind;
     });
-    const student = this.data.students.find(x => {
+    const student = this.data!.students.find(x => {
       const studentId = x.id;
       return studentId === studentIdToFind;
     });
@@ -266,7 +318,7 @@ export class AdminMasterScheduleTab extends BaseTab {
           <i class="material-icons green-text text-darken-2" style="font-size: 20px;">check_circle</i>
         </td>`;
       } else {
-        recurringCell = `<td style="text-align: center;">—</td>`;
+        recurringCell = `<td style="text-align: center;">\u2014</td>`;
       }
     }
 
@@ -277,7 +329,7 @@ export class AdminMasterScheduleTab extends BaseTab {
 
       if (intentValue) {
         // Map intent values to badge styles and icons
-        const intentStyles = {
+        const intentStyles: Record<string, IntentStyle> = {
           keep: {
             bgClass: 'teal lighten-5',
             textClass: 'teal-text text-darken-2',
@@ -295,7 +347,7 @@ export class AdminMasterScheduleTab extends BaseTab {
           },
         };
 
-        const style = intentStyles[intentValue] || {
+        const style: IntentStyle = intentStyles[intentValue] || {
           bgClass: 'grey lighten-4',
           textClass: 'grey-text text-darken-1',
           icon: 'help_outline',
@@ -309,7 +361,7 @@ export class AdminMasterScheduleTab extends BaseTab {
         </td>`;
       } else {
         // No intent set
-        intentCell = `<td class="grey-text text-lighten-1" style="text-align: center; white-space: nowrap;">—</td>`;
+        intentCell = `<td class="grey-text text-lighten-1" style="text-align: center; white-space: nowrap;">\u2014</td>`;
       }
     }
 
@@ -322,11 +374,11 @@ export class AdminMasterScheduleTab extends BaseTab {
     // Display names - use placeholders for orphaned records
     const studentName = student
       ? `${student.firstName} ${student.lastName}`
-      : `<span class="red-text text-darken-2" title="Student ID: ${studentIdToFind}">⚠ Unknown Student</span>`;
-    const studentGrade = student ? formatGrade(student.grade) || 'N/A' : '—';
+      : `<span class="red-text text-darken-2" title="Student ID: ${studentIdToFind}">\u26A0 Unknown Student</span>`;
+    const studentGrade = student ? formatGrade(student.grade) || 'N/A' : '\u2014';
     const instructorName = instructor
       ? `${instructor.firstName} ${instructor.lastName}`
-      : `<span class="red-text text-darken-2" title="Instructor ID: ${instructorIdToFind}">⚠ Unknown Instructor</span>`;
+      : `<span class="red-text text-darken-2" title="Instructor ID: ${instructorIdToFind}">\u26A0 Unknown Instructor</span>`;
 
     // Add visual indicator for orphaned rows
     const rowStyle = isOrphaned ? 'background-color: #ffebee;' : '';
@@ -358,9 +410,10 @@ export class AdminMasterScheduleTab extends BaseTab {
    * Handle table clicks (email copy, delete)
    * @private
    */
-  async #handleTableClick(event) {
-    const isCopy = event.target.classList.contains('copy-parent-emails-table-icon');
-    const isDelete = event.target.classList.contains('remove-registration-table-icon');
+  async #handleTableClick(event: Event): Promise<void> {
+    const target = event.target as HTMLElement;
+    const isCopy = target.classList.contains('copy-parent-emails-table-icon');
+    const isDelete = target.classList.contains('remove-registration-table-icon');
 
     if (!isCopy && !isDelete) {
       return;
@@ -370,12 +423,12 @@ export class AdminMasterScheduleTab extends BaseTab {
     event.stopPropagation();
 
     // Get the registration ID from the data attribute
-    const buttonElement = event.target.closest('button');
+    const buttonElement = target.closest('button');
     const registrationId = buttonElement?.getAttribute('data-registration-id');
     if (!registrationId) return;
 
     // Find the registration by ID
-    const currentRegistration = this.data.registrations.find(r => r.id === registrationId);
+    const currentRegistration = this.data!.registrations.find(r => r.id === registrationId);
     if (!currentRegistration) return;
 
     if (isCopy) {
@@ -383,7 +436,7 @@ export class AdminMasterScheduleTab extends BaseTab {
       const studentIdToFind = currentRegistration.studentId;
 
       // Find the full student object with parent emails
-      const fullStudent = this.data.students.find(x => {
+      const fullStudent = this.data!.students.find(x => {
         const studentId = x.id;
         return studentId === studentIdToFind;
       });
@@ -409,12 +462,12 @@ export class AdminMasterScheduleTab extends BaseTab {
    * Filter registration based on filter selects
    * @private
    */
-  #filterRegistration(registration) {
+  #filterRegistration(registration: MasterScheduleRegistration): boolean {
     // Get filter values
-    const instructorSelect = document.getElementById('master-schedule-instructor-filter-select');
-    const daySelect = document.getElementById('master-schedule-day-filter-select');
-    const gradeSelect = document.getElementById('master-schedule-grade-filter-select');
-    const intentSelect = document.getElementById('master-schedule-intent-filter-select');
+    const instructorSelect = document.getElementById('master-schedule-instructor-filter-select') as HTMLSelectElement | null;
+    const daySelect = document.getElementById('master-schedule-day-filter-select') as HTMLSelectElement | null;
+    const gradeSelect = document.getElementById('master-schedule-grade-filter-select') as HTMLSelectElement | null;
+    const intentSelect = document.getElementById('master-schedule-intent-filter-select') as HTMLSelectElement | null;
 
     // Get selected values from each filter
     const selectedInstructors = instructorSelect
@@ -439,7 +492,7 @@ export class AdminMasterScheduleTab extends BaseTab {
 
     // Get student grade for filtering
     const studentIdToFind = registration.studentId;
-    const student = this.data.students.find(x => {
+    const student = this.data!.students.find(x => {
       const studentId = x.id;
       return studentId === studentIdToFind;
     });
@@ -458,19 +511,19 @@ export class AdminMasterScheduleTab extends BaseTab {
    * Populate filter dropdowns with unique values from registrations
    * @private
    */
-  #populateFilterDropdowns(registrations) {
+  #populateFilterDropdowns(registrations: MasterScheduleRegistration[]): void {
     // Populate instructor dropdown
-    const instructorSelect = document.getElementById('master-schedule-instructor-filter-select');
+    const instructorSelect = document.getElementById('master-schedule-instructor-filter-select') as HTMLSelectElement | null;
     if (instructorSelect) {
       // Clear existing options except the first (placeholder)
       while (instructorSelect.children.length > 1) {
-        instructorSelect.removeChild(instructorSelect.lastChild);
+        instructorSelect.removeChild(instructorSelect.lastChild!);
       }
 
       // Ensure first option is disabled and not selected
       if (instructorSelect.firstElementChild) {
-        instructorSelect.firstElementChild.disabled = true;
-        instructorSelect.firstElementChild.selected = false;
+        (instructorSelect.firstElementChild as HTMLOptionElement).disabled = true;
+        (instructorSelect.firstElementChild as HTMLOptionElement).selected = false;
       }
 
       // Get unique instructor IDs from registrations
@@ -478,8 +531,8 @@ export class AdminMasterScheduleTab extends BaseTab {
 
       // Create options for each instructor
       instructorIds
-        .map(id => this.data.instructors.find(i => i.id === id))
-        .filter(Boolean)
+        .map(id => this.data!.instructors.find(i => i.id === id))
+        .filter((i): i is MasterScheduleInstructor => Boolean(i))
         .sort((a, b) => {
           const lastNameA = a.lastName || '';
           const lastNameB = b.lastName || '';
@@ -494,17 +547,17 @@ export class AdminMasterScheduleTab extends BaseTab {
     }
 
     // Populate day dropdown
-    const daySelect = document.getElementById('master-schedule-day-filter-select');
+    const daySelect = document.getElementById('master-schedule-day-filter-select') as HTMLSelectElement | null;
     if (daySelect) {
       // Clear existing options except the first (placeholder)
       while (daySelect.children.length > 1) {
-        daySelect.removeChild(daySelect.lastChild);
+        daySelect.removeChild(daySelect.lastChild!);
       }
 
       // Ensure first option is disabled and not selected
       if (daySelect.firstElementChild) {
-        daySelect.firstElementChild.disabled = true;
-        daySelect.firstElementChild.selected = false;
+        (daySelect.firstElementChild as HTMLOptionElement).disabled = true;
+        (daySelect.firstElementChild as HTMLOptionElement).selected = false;
       }
 
       // Get unique days from registrations, filtering out null/undefined/empty values
@@ -533,32 +586,32 @@ export class AdminMasterScheduleTab extends BaseTab {
     }
 
     // Populate grade dropdown
-    const gradeSelect = document.getElementById('master-schedule-grade-filter-select');
+    const gradeSelect = document.getElementById('master-schedule-grade-filter-select') as HTMLSelectElement | null;
     if (gradeSelect) {
       // Clear existing options except the first (placeholder)
       while (gradeSelect.children.length > 1) {
-        gradeSelect.removeChild(gradeSelect.lastChild);
+        gradeSelect.removeChild(gradeSelect.lastChild!);
       }
 
       // Ensure first option is disabled and not selected
       if (gradeSelect.firstElementChild) {
-        gradeSelect.firstElementChild.disabled = true;
-        gradeSelect.firstElementChild.selected = false;
+        (gradeSelect.firstElementChild as HTMLOptionElement).disabled = true;
+        (gradeSelect.firstElementChild as HTMLOptionElement).selected = false;
       }
 
       // Get unique grades from students who have registrations
       const registeredStudentIds = registrations.map(reg => reg.studentId);
-      const registeredStudents = this.data.students.filter(student =>
+      const registeredStudents = this.data!.students.filter(student =>
         registeredStudentIds.includes(student.id)
       );
       const uniqueGrades = [...new Set(registeredStudents.map(student => student.grade))];
       // Sort grades numerically and filter out null/undefined values
       uniqueGrades
-        .filter(grade => grade != null && grade !== '')
+        .filter((grade): grade is number | string => grade != null && grade !== '')
         .sort((a, b) => {
           // Convert to numbers for proper numeric sorting
-          const gradeA = typeof a === 'number' ? a : parseInt(a) || 0;
-          const gradeB = typeof b === 'number' ? b : parseInt(b) || 0;
+          const gradeA = typeof a === 'number' ? a : parseInt(String(a)) || 0;
+          const gradeB = typeof b === 'number' ? b : parseInt(String(b)) || 0;
           return gradeA - gradeB;
         })
         .forEach(grade => {
@@ -576,7 +629,7 @@ export class AdminMasterScheduleTab extends BaseTab {
     const intentFilterContainer = document.getElementById(
       'master-schedule-intent-filter-container'
     );
-    const intentSelect = document.getElementById('master-schedule-intent-filter-select');
+    const intentSelect = document.getElementById('master-schedule-intent-filter-select') as HTMLSelectElement | null;
 
     // Adjust column widths based on whether intent filter is shown
     const instructorFilter = document.getElementById('master-schedule-instructor-filter-select')
@@ -602,13 +655,13 @@ export class AdminMasterScheduleTab extends BaseTab {
 
       // Clear existing options except the first (placeholder)
       while (intentSelect.children.length > 1) {
-        intentSelect.removeChild(intentSelect.lastChild);
+        intentSelect.removeChild(intentSelect.lastChild!);
       }
 
       // Ensure first option is disabled and not selected
       if (intentSelect.firstElementChild) {
-        intentSelect.firstElementChild.disabled = true;
-        intentSelect.firstElementChild.selected = false;
+        (intentSelect.firstElementChild as HTMLOptionElement).disabled = true;
+        (intentSelect.firstElementChild as HTMLOptionElement).selected = false;
       }
 
       // Get unique intent values from registrations (including null/undefined as 'none')
@@ -657,7 +710,7 @@ export class AdminMasterScheduleTab extends BaseTab {
    * Waitlist registrations are identified by the isWaitlistClass property
    * @private
    */
-  #excludeRockBandClasses(registrations) {
+  #excludeRockBandClasses(registrations: MasterScheduleRegistration[]): MasterScheduleRegistration[] {
     console.log('[Master Schedule] Starting waitlist exclusion filter');
     console.log('[Master Schedule] Total registrations before filter:', registrations.length);
 
@@ -687,7 +740,7 @@ export class AdminMasterScheduleTab extends BaseTab {
    * Sort registrations by day, start time, length, instrument, grade
    * @private
    */
-  #sortRegistrations(registrations) {
+  #sortRegistrations(registrations: MasterScheduleRegistration[]): MasterScheduleRegistration[] {
     const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
     return registrations.sort((a, b) => {
@@ -735,10 +788,10 @@ export class AdminMasterScheduleTab extends BaseTab {
    * Delete a registration
    * @private
    */
-  async #deleteRegistration(registrationId) {
+  async #deleteRegistration(registrationId: string): Promise<void> {
     // Delegate to viewModel for registration deletion
     if (window.viewModel && typeof window.viewModel.requestDeleteRegistrationAsync === 'function') {
-      await window.viewModel.requestDeleteRegistrationAsync(registrationId);
+      await (window.viewModel.requestDeleteRegistrationAsync as (id: string) => Promise<void>)(registrationId);
 
       // Reload the tab to show updated data
       await this.reload();
@@ -753,11 +806,12 @@ export class AdminMasterScheduleTab extends BaseTab {
   /**
    * Attach event listeners for trimester selector
    */
-  attachEventListeners() {
+  attachEventListeners(): void {
     const trimesterButtons = document.getElementById('admin-trimester-buttons');
     if (trimesterButtons) {
-      this.addEventListener(trimesterButtons, 'click', async event => {
-        const button = event.target.closest('.trimester-btn');
+      this.addEventListener(trimesterButtons, 'click', async (event: Event) => {
+        const target = event.target as HTMLElement;
+        const button = target.closest('.trimester-btn');
         if (button) {
           // Update active button state
           trimesterButtons.querySelectorAll('.trimester-btn').forEach(btn => {
@@ -775,7 +829,7 @@ export class AdminMasterScheduleTab extends BaseTab {
   /**
    * Cleanup when tab is unloaded
    */
-  async cleanup() {
+  async cleanup(): Promise<void> {
     this.masterScheduleTable = null;
   }
 }
