@@ -4,11 +4,11 @@
  */
 
 import {
-  BusDeadlines,
   RegistrationFormText,
   TransportationType,
 } from '../../constants/registrationFormConstants.js';
-import { parseTime, formatTimeFromMinutes, calculateEndTime } from './timeHelpers.js';
+import { parseTime, formatTimeFromMinutes } from './timeHelpers.js';
+import { getRegistrationConfig } from './registrationConfig.js';
 
 interface ValidationResult {
   isValid: boolean;
@@ -28,7 +28,7 @@ interface BusValidationResult {
  * @param {string} transportationType - Selected transportation type
  * @returns {{isValid: boolean, errorMessage: string|null}} Validation result
  */
-export function validateBusTimeRestrictions(day: string, startTime: string, lengthMinutes: number, transportationType: string): BusValidationResult {
+export function validateBusTimeRestrictions(day: string, startTime: string, lengthMinutes: number, transportationType: string, busDeadlines?: Record<string, string>): BusValidationResult {
   // Only validate if Late Bus is selected
   if (transportationType !== TransportationType.BUS && transportationType !== 'bus') {
     return { isValid: true, errorMessage: null };
@@ -41,8 +41,9 @@ export function validateBusTimeRestrictions(day: string, startTime: string, leng
   // Convert end time back to time string for display
   const endTimeDisplay = formatTimeFromMinutes(endMinutes);
 
-  // Get bus deadline for the selected day
-  const deadlineTime = BusDeadlines[day as keyof typeof BusDeadlines];
+  // Get bus deadline for the selected day (from parameter or config)
+  const deadlines = busDeadlines ?? getRegistrationConfig().busDeadlines;
+  const deadlineTime = deadlines[day];
   if (!deadlineTime) {
     return { isValid: true, errorMessage: null }; // Unknown day, allow
   }

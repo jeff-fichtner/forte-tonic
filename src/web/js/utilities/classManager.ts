@@ -4,6 +4,8 @@
  * Reads configuration from UserSession.appConfig (single source of truth)
  */
 
+import { getRegistrationConfig } from './registrationForm/registrationConfig.js';
+
 interface ClassLike {
   id: string;
   title?: string;
@@ -70,8 +72,9 @@ class ClassManager {
 
     // Check if this is a waitlist class (Rock Band class)
     if (this.isRockBandClass(cls.id)) {
-      // Show special waitlist times with "or" separators, skip day and actual time
-      return `${baseName}: Monday 3-4 PM or Monday 4-5 PM or Friday 3-4 PM`;
+      // Show special waitlist times from config
+      const { timesDescription } = getRegistrationConfig().rockBandDisplayConfig;
+      return `${baseName}: ${timesDescription}`;
     }
 
     // For regular classes, show day and time
@@ -81,7 +84,7 @@ class ClassManager {
   }
 
   static getRockBandClassLength(): number {
-    return 60; // Default length for Rock Band classes
+    return getRegistrationConfig().rockBandDisplayConfig.defaultLengthMinutes;
   }
 }
 

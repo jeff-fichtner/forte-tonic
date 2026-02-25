@@ -115,7 +115,7 @@
 
 ### Tests for User Story 3
 
-- [ ] T033 [US3] Write unit tests for the registration service in `tests/unit/web/registrationService.test.ts` — test endpoint routing (admin vs parent, enrollment vs non-enrollment), delete-then-create replacement flow, response enrichment, and error propagation
+- [x] T033 [US3] Write unit tests for the registration service in `tests/unit/web/registrationService.test.ts` — test endpoint routing (admin vs parent, enrollment vs non-enrollment), delete-then-create replacement flow, response enrichment, and error propagation
 
 **Checkpoint**: RegistrationService handles all registration orchestration. viewModel has zero registration methods and zero vestigial state arrays. Build green.
 
@@ -131,26 +131,26 @@
 
 ### Step 5a: Backend — Expand Configuration Endpoint
 
-- [ ] T034 [P] [US4] Add `RegistrationConfig` interface and `registrationConfig` field to `src/models/shared/responses/appConfigurationResponse.ts` — field defaults to `null` in constructor, `toJSON()` includes it. Interface shape per contracts/configuration-endpoint.md.
-- [ ] T035 [US4] Populate `registrationConfig` in `src/controllers/userController.ts` `getAppConfiguration()` — initially hardcode current values (busDeadlines, lessonLengths, operationalHours, schedulingIntervalMinutes, defaultInstruments, defaultInstrument, rockBandDisplayConfig) matching contracts/configuration-endpoint.md defaults
-- [ ] T036 [US4] Write integration test verifying `registrationConfig` appears in API response in `tests/integration/configuration.test.ts`
+- [x] T034 [P] [US4] Add `RegistrationConfig` interface and `registrationConfig` field to `src/models/shared/responses/appConfigurationResponse.ts` — field defaults to `null` in constructor, `toJSON()` includes it. Interface shape per contracts/configuration-endpoint.md.
+- [x] T035 [US4] Populate `registrationConfig` in `src/controllers/userController.ts` `getAppConfiguration()` — initially hardcode current values (busDeadlines, lessonLengths, operationalHours, schedulingIntervalMinutes, defaultInstruments, defaultInstrument, rockBandDisplayConfig) matching contracts/configuration-endpoint.md defaults
+- [x] T036 [US4] Write integration test verifying `registrationConfig` appears in API response in `tests/integration/configuration.test.ts`
 
 ### Step 5b: Frontend — Create Config Access Helper
 
-- [ ] T037 [US4] Create `getRegistrationConfig()` helper function (location: either in `src/web/js/utilities/registrationForm/` or alongside the types) that reads `window.UserSession.getAppConfig()?.registrationConfig` and merges with default values for any missing fields — this is the single fallback point
+- [x] T037 [US4] Create `getRegistrationConfig()` helper function (location: either in `src/web/js/utilities/registrationForm/` or alongside the types) that reads `window.UserSession.getAppConfig()?.registrationConfig` and merges with default values for any missing fields — this is the single fallback point
 
 ### Step 5c: Frontend — Update Consumers
 
-- [ ] T038 [US4] Update `src/web/js/utilities/registrationForm/registrationValidator.ts` — `validateBusTimeRestrictions()` accepts `busDeadlines` parameter instead of importing `BusDeadlines` constant
-- [ ] T039 [US4] Update `src/web/js/utilities/registrationForm/timeHelpers.ts` — `generateTimeOptions()` accepts `startHour`, `endHour`, `intervalMinutes` parameters instead of reading `TimeSlotConfig` constant
-- [ ] T040 [P] [US4] Update `src/web/js/utilities/classManager.ts` — `formatClassNameWithTime()` and `getRockBandClassLength()` read from `rockBandDisplayConfig` in appConfig instead of hardcoded values
-- [ ] T041 [US4] Update `src/web/js/utilities/registrationForm/availabilityEngine.ts` — slot generation functions accept lesson lengths and operational hours as parameters from config
-- [ ] T042 [US4] Update `src/web/js/components/registrationForm/cascadingFilterChips.ts` — read lesson lengths from config for chip generation
-- [ ] T043 [P] [US4] Update `src/web/js/components/registrationForm/parentGroupRegistration.ts` — pass bus deadlines from config to validator
-- [ ] T044 [P] [US4] Update `src/web/js/components/registrationForm/parentPrivateSubmission.ts` — pass bus deadlines from config to validator
-- [ ] T045 [US4] Update `src/web/js/components/registrationForm/lessonDetailsForm.ts` — read `defaultInstruments` and time options from config
-- [ ] T046 [US4] Clean up `src/web/js/constants/registrationFormConstants.ts` — remove `BusDeadlines`, `TimeSlotConfig`, `LessonLengths`, `DefaultInstruments` exports. Retain `RegistrationFormText`, `WeekDays`, `DayNames`, `TransportationType`.
-- [ ] T047 [US4] Verify compilation: `npx tsc --noEmit` (backend) and `npx tsc --noEmit -p tsconfig.web.json` (frontend) — zero errors
+- [x] T038 [US4] Update `src/web/js/utilities/registrationForm/registrationValidator.ts` — `validateBusTimeRestrictions()` accepts `busDeadlines` parameter instead of importing `BusDeadlines` constant
+- [x] T039 [US4] Update `src/web/js/utilities/registrationForm/timeHelpers.ts` — `generateTimeOptions()` accepts `startHour`, `endHour`, `intervalMinutes` parameters instead of reading `TimeSlotConfig` constant
+- [x] T040 [P] [US4] Update `src/web/js/utilities/classManager.ts` — `formatClassNameWithTime()` and `getRockBandClassLength()` read from `rockBandDisplayConfig` in appConfig instead of hardcoded values
+- [x] T041 [US4] Update `src/web/js/utilities/registrationForm/availabilityEngine.ts` — slot generation functions accept lesson lengths and operational hours as parameters from config
+- [x] T042 [US4] Update `src/web/js/components/registrationForm/cascadingFilterChips.ts` — read lesson lengths from config for chip generation
+- [x] T043 [P] [US4] Update `src/web/js/components/registrationForm/parentGroupRegistration.ts` — pass bus deadlines from config to validator
+- [x] T044 [P] [US4] Update `src/web/js/components/registrationForm/parentPrivateSubmission.ts` — pass bus deadlines from config to validator
+- [x] T045 [US4] Update `src/web/js/components/registrationForm/lessonDetailsForm.ts` — read `defaultInstruments` and time options from config
+- [x] T046 [US4] Clean up `src/web/js/constants/registrationFormConstants.ts` — remove `BusDeadlines`, `TimeSlotConfig`, `LessonLengths`, `DefaultInstruments` exports. Retain `RegistrationFormText`, `WeekDays`, `DayNames`, `TransportationType`.
+- [x] T047 [US4] Verify compilation: `npx tsc --noEmit` (backend) and `npx tsc --noEmit -p tsconfig.web.json` (frontend) — zero errors
 
 **Checkpoint**: Business config served from backend. Frontend reads from API response with fallback defaults. Hardcoded business constants removed from frontend. Build green.
 

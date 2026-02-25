@@ -3,7 +3,7 @@
  * Shared time parsing, formatting, and generation functions
  */
 
-import { TimeSlotConfig } from '../../constants/registrationFormConstants.js';
+import { getRegistrationConfig } from './registrationConfig.js';
 
 /**
  * Parse time string to minutes since midnight
@@ -59,15 +59,21 @@ export function formatDisplayTime(time24: string): string {
 
 /**
  * Generate array of time slot options for dropdowns
- * Uses configuration from TimeSlotConfig
- * @returns {Array<{value: string, label: string}>} Array of time options
+ * Reads operational hours from backend-served config, with optional overrides.
  */
-export function generateTimeOptions(): Array<{ value: string; label: string }> {
-  const times = [];
-  const { START_HOUR, END_HOUR, INTERVAL_MINUTES } = TimeSlotConfig;
+export function generateTimeOptions(
+  startHour?: number,
+  endHour?: number,
+  intervalMinutes?: number
+): Array<{ value: string; label: string }> {
+  const config = getRegistrationConfig();
+  const start = startHour ?? config.operationalHours.startHour;
+  const end = endHour ?? config.operationalHours.endHour;
+  const interval = intervalMinutes ?? config.schedulingIntervalMinutes;
 
-  for (let hour = START_HOUR; hour <= END_HOUR; hour++) {
-    for (let minute = 0; minute < 60; minute += INTERVAL_MINUTES) {
+  const times = [];
+  for (let hour = start; hour <= end; hour++) {
+    for (let minute = 0; minute < 60; minute += interval) {
       const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
       const displayTime = formatDisplayTime(timeString);
       times.push({ value: timeString, label: displayTime });

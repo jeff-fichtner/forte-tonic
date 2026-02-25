@@ -7,10 +7,10 @@ import { Select } from '../select.js';
 import {
   RegistrationFormText,
   WeekDays,
-  DefaultInstruments,
   DayNames,
 } from '../../constants/registrationFormConstants.js';
 import { generateTimeOptions } from '../../utilities/registrationForm/timeHelpers.js';
+import { getRegistrationConfig } from '../../utilities/registrationForm/registrationConfig.js';
 
 interface SelectOption {
   value: string;
@@ -96,7 +96,7 @@ export class LessonDetailsForm {
       this.instrumentSelectId,
       RegistrationFormText.INSTRUMENT_PLACEHOLDER,
       RegistrationFormText.INSTRUMENT_EMPTY,
-      DefaultInstruments,
+      getRegistrationConfig().defaultInstruments.map(i => ({ value: i, label: i })),
       (event: Event) => this.#handleInstrumentChange(event)
     );
   }
@@ -226,8 +226,8 @@ export class LessonDetailsForm {
         label: instrument,
       }));
     } else {
-      // Fallback to default instruments
-      instrumentOptions = DefaultInstruments;
+      // Fallback to default instruments from config
+      instrumentOptions = getRegistrationConfig().defaultInstruments.map(i => ({ value: i, label: i }));
     }
 
     this.instrumentSelect.populateOptions(instrumentOptions, true);

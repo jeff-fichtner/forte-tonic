@@ -7,7 +7,7 @@
  */
 
 import { parseTime, formatTimeFromMinutes, formatDisplayTime } from './timeHelpers.js';
-import { LessonLengths } from '../../constants/registrationFormConstants.js';
+import { getRegistrationConfig } from './registrationConfig.js';
 import type {
   InstructorLike,
   DaySchedule,
@@ -22,7 +22,7 @@ import type {
 const ALL_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] as const;
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as const;
 const SLOT_STEP_MINUTES = 30;
-const STANDARD_LENGTHS = LessonLengths.map(l => l.value); // [30, 45, 60]
+const getStandardLengths = (): number[] => getRegistrationConfig().lessonLengths;
 
 // ---------------------------------------------------------------------------
 // Low-level helpers
@@ -230,7 +230,7 @@ export function generateInstructorTimeSlots(
 
       // Generate slots for each instrument x length combination
       instruments.forEach(instrument => {
-        STANDARD_LENGTHS.forEach(length => {
+        getStandardLengths().forEach(length => {
           if (currentMinutes + length > endMinutes) return;
 
           const lengthConflict = checkTimeSlotConflict(
@@ -353,7 +353,7 @@ export function calculateCascadingAvailability(
     dimension !== 'instrument' && dimension !== 'day' && dimension !== 'length' &&
     filters.length && filters.length !== 0
       ? [filters.length]
-      : STANDARD_LENGTHS;
+      : getStandardLengths();
 
   // Select the appropriate registration set
   const registrationsToCheck = isEnrollmentPeriod
@@ -364,7 +364,7 @@ export function calculateCascadingAvailability(
   if (dimension === 'day') {
     ALL_DAYS.forEach(d => result.set(d, { available: 0, total: 0 }));
   } else if (dimension === 'length') {
-    STANDARD_LENGTHS.forEach(l => result.set(String(l), { available: 0, total: 0 }));
+    getStandardLengths().forEach(l => result.set(String(l), { available: 0, total: 0 }));
   } else if (dimension === 'instructor') {
     filtered.forEach(inst => result.set(inst.id, { available: 0, total: 0 }));
   }

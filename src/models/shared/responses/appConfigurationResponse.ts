@@ -8,6 +8,17 @@ export interface Period {
   isCurrentPeriod?: boolean;
 }
 
+/** Business configuration for registration forms, served from backend */
+export interface RegistrationConfig {
+  busDeadlines: Record<string, string>;
+  lessonLengths: number[];
+  operationalHours: { startHour: number; endHour: number };
+  schedulingIntervalMinutes: number;
+  defaultInstruments: string[];
+  defaultInstrument: string;
+  rockBandDisplayConfig: { timesDescription: string; defaultLengthMinutes: number };
+}
+
 export interface AppConfigurationResponseData {
   currentPeriod?: Period | null;
   nextPeriod?: Period | null;
@@ -18,6 +29,7 @@ export interface AppConfigurationResponseData {
   defaultTrimester?: string | null;
   maintenanceMode?: boolean;
   maintenanceMessage?: string | null;
+  registrationConfig?: RegistrationConfig | null;
 }
 
 /**
@@ -34,6 +46,7 @@ export class AppConfigurationResponse {
   defaultTrimester: string | null;
   maintenanceMode: boolean;
   maintenanceMessage: string | null;
+  registrationConfig: RegistrationConfig | null;
 
   constructor(data: AppConfigurationResponseData | null) {
     if (typeof data === 'object' && data !== null) {
@@ -47,6 +60,7 @@ export class AppConfigurationResponse {
         defaultTrimester,
         maintenanceMode,
         maintenanceMessage,
+        registrationConfig,
       } = data;
 
       this.currentPeriod = currentPeriod || null;
@@ -60,6 +74,7 @@ export class AppConfigurationResponse {
       this.defaultTrimester = defaultTrimester || null;
       this.maintenanceMode = maintenanceMode || false;
       this.maintenanceMessage = maintenanceMessage || null;
+      this.registrationConfig = registrationConfig || null;
     } else {
       this.currentPeriod = null;
       this.nextPeriod = null;
@@ -70,6 +85,7 @@ export class AppConfigurationResponse {
       this.defaultTrimester = null;
       this.maintenanceMode = false;
       this.maintenanceMessage = null;
+      this.registrationConfig = null;
     }
   }
 
@@ -84,6 +100,7 @@ export class AppConfigurationResponse {
       defaultTrimester: this.defaultTrimester,
       maintenanceMode: this.maintenanceMode,
       maintenanceMessage: this.maintenanceMessage,
+      registrationConfig: this.registrationConfig,
     };
   }
 
@@ -98,6 +115,7 @@ export class AppConfigurationResponse {
       defaultTrimester: null,
       maintenanceMode: false,
       maintenanceMessage: null,
+      registrationConfig: null,
     });
   }
 }
