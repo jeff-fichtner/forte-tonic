@@ -89,7 +89,7 @@
 
 ### Tests for User Story 2
 
-- [ ] T025 [US2] Write unit tests for the availability engine in `tests/unit/web/availabilityEngine.test.ts` — test `isInstructorAvailableOnDay()`, `isInstructorGradeEligible()`, `calculateAvailableSlotsForDay()`, `checkTimeSlotConflict()`, `generateInstructorTimeSlots()`, and the consolidated `calculateCascadingAvailability()` with each groupBy dimension. Include edge case: empty/null instructor array returns zero availability across all dimensions without errors.
+- [x] T025 [US2] Write unit tests for the availability engine in `tests/unit/web/availabilityEngine.test.ts` — test `isInstructorAvailableOnDay()`, `isInstructorGradeEligible()`, `calculateAvailableSlotsForDay()`, `checkTimeSlotConflict()`, `generateInstructorTimeSlots()`, and the consolidated `calculateCascadingAvailability()` with each groupBy dimension. Include edge case: empty/null instructor array returns zero availability across all dimensions without errors.
 
 **Checkpoint**: parentRegistrationForm.ts under 800 lines. 5 extracted modules compile and function. Availability engine has unit tests. Build green.
 
@@ -105,13 +105,13 @@
 
 ### Implementation for User Story 3
 
-- [ ] T026 [US3] Create `src/web/js/data/registrationService.ts` — static-method class with `create()` (endpoint routing for admin/parent + enrollment/non-enrollment, delete-then-create replacement, response enrichment with student/instructor objects), `delete()` (wraps `HttpService` delete call), and `submitIntent()`. Logic moved from `viewModel.createRegistrationWithEnrichment`, `viewModel.requestDeleteRegistrationAsync`, and `viewModel.submitIntent`.
-- [ ] T027 [US3] Update `src/web/js/tabs/parentRegistrationTab.ts` to call `RegistrationService.create()` and `RegistrationService.delete()` instead of `window.viewModel.createRegistrationWithEnrichment()` and `window.viewModel.requestDeleteRegistrationAsync()`
-- [ ] T028 [US3] Update `src/web/js/tabs/adminRegistrationTab.ts` to call `RegistrationService.create()` and `RegistrationService.delete()` instead of viewModel methods
-- [ ] T029 [US3] Remove registration methods from `src/web/js/viewModel.ts` — delete `createRegistrationWithEnrichment()`, `requestDeleteRegistrationAsync()`, `submitIntent()` and any remaining callers
-- [ ] T030 [US3] Remove vestigial state arrays from `src/web/js/viewModel.ts` — delete `admins`, `instructors`, `students`, `registrations`, `classes`, `rooms`, `nextTrimesterRegistrations` property declarations and their empty-array initializations in `loadUserData()`
-- [ ] T031 [US3] No changes needed to `src/types/global.d.ts` — `ViewModelType` uses an index signature (`[key: string]: unknown`) with no specific method declarations, so removing methods from viewModel has no type impact. Skip this task.
-- [ ] T032 [US3] Verify compilation: `npx tsc --noEmit -p tsconfig.web.json` — zero errors after viewModel cleanup
+- [x] T026 [US3] Create `src/web/js/data/registrationService.ts` — static-method class with `create()` (endpoint routing for admin/parent + enrollment/non-enrollment, delete-then-create replacement, response enrichment with student/instructor objects), `delete()` (wraps `HttpService` delete call), and `submitIntent()`. Logic moved from `viewModel.createRegistrationWithEnrichment`, `viewModel.requestDeleteRegistrationAsync`, and `viewModel.submitIntent`.
+- [x] T027 [US3] Update `src/web/js/tabs/parentRegistrationTab.ts` to call `RegistrationService.create()` and `RegistrationService.delete()` instead of `window.viewModel.createRegistrationWithEnrichment()` and `window.viewModel.requestDeleteRegistrationAsync()`
+- [x] T028 [US3] Update `src/web/js/tabs/adminRegistrationTab.ts` to call `RegistrationService.create()` and `RegistrationService.delete()` instead of viewModel methods
+- [x] T029 [US3] Remove registration methods from `src/web/js/viewModel.ts` — delete `createRegistrationWithEnrichment()`, `requestDeleteRegistrationAsync()`, `submitIntent()` and any remaining callers
+- [x] T030 [US3] Remove vestigial state arrays from `src/web/js/viewModel.ts` — delete `admins`, `instructors`, `students`, `registrations`, `classes`, `rooms`, `nextTrimesterRegistrations` property declarations and their empty-array initializations in `loadUserData()`
+- [x] T031 [US3] No changes needed to `src/types/global.d.ts` — `ViewModelType` uses an index signature (`[key: string]: unknown`) with no specific method declarations, so removing methods from viewModel has no type impact. Skip this task.
+- [x] T032 [US3] Verify compilation: `npx tsc --noEmit -p tsconfig.web.json` — zero errors after viewModel cleanup
 
 ### Tests for User Story 3
 

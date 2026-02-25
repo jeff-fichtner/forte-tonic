@@ -4,6 +4,7 @@ import { formatGrade } from '../extensions/numberExtensions.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { formatDateTime } from '../utilities/formatHelpers.js';
 import { HttpService } from '../data/httpService.js';
+import { RegistrationService } from '../data/registrationService.js';
 
 interface WaitListRegistration {
   id: string;
@@ -236,22 +237,12 @@ export class AdminWaitListTab extends BaseTab {
   }
 
   /**
-   * Delete a registration
+   * Delete a registration via RegistrationService
    * @private
    */
   async #deleteRegistration(registrationId: string): Promise<void> {
-    // Delegate to viewModel for registration deletion
-    if (window.viewModel && typeof window.viewModel.requestDeleteRegistrationAsync === 'function') {
-      await (window.viewModel.requestDeleteRegistrationAsync as (id: string) => Promise<void>)(registrationId);
-
-      // Reload the tab to show updated data
-      await this.reload();
-    } else {
-      console.error('Delete registration method not available');
-      if (typeof M !== 'undefined') {
-        M.toast({ html: 'Unable to delete registration. Please refresh and try again.' });
-      }
-    }
+    await RegistrationService.delete(registrationId);
+    await this.reload();
   }
 
   /**

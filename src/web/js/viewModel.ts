@@ -1,16 +1,13 @@
 import { HttpService } from './data/httpService.js';
-import { ServerFunctions, Sections, RegistrationType } from './constants.js';
+import { ServerFunctions, Sections } from './constants.js';
 import { AppConfigurationResponse } from '../../models/shared/responses/appConfigurationResponse.js';
-import { Registration } from '../../models/shared/index.js';
 import { DomHelpers } from './utilities/domHelpers.js';
 import { NavTabs } from './components/navTabs.js';
 import { formatPhone } from './utilities/phoneHelpers.js';
 import { ClassManager } from './utilities/classManager.js';
-import { INTENT_LABELS } from './constants/intentConstants.js';
 import { PeriodType } from '/utils/values/periodType.js';
 import { FeedbackManager } from './feedback.js';
 import { capitalize } from './utilities/formatHelpers.js';
-import { isEnrollmentPeriod } from './utilities/periodHelpers.js';
 
 import type { Period } from '../../models/shared/responses/appConfigurationResponse.js';
 
@@ -23,25 +20,6 @@ interface AuthenticatedUser {
   systemError?: boolean;
   error?: string;
   [key: string]: unknown;
-}
-
-/** Registration creation data passed to createRegistrationWithEnrichment */
-interface RegistrationCreateData {
-  trimester?: string | null;
-  replaceRegistrationId?: string;
-  [key: string]: unknown;
-}
-
-/** Options for createRegistrationWithEnrichment */
-interface EnrichmentOptions {
-  students?: Array<{ id: string; [key: string]: unknown }> | null;
-  instructors?: Array<{ id: string; [key: string]: unknown }> | null;
-}
-
-/** Extended Registration with dynamically-assigned enrichment fields */
-interface EnrichedRegistration extends Registration {
-  student?: { id: string; [key: string]: unknown };
-  instructor?: { id: string; [key: string]: unknown };
 }
 
 /** Extended HTMLElement with temp handler storage for terms modal */
@@ -61,15 +39,6 @@ interface ParentRegistrationFormLike {
  */
 export class ViewModel {
   // Private fields
-
-  // Data arrays
-  admins: Array<{ id: string; [key: string]: unknown }> | null;
-  instructors: Array<{ id: string; [key: string]: unknown }> | null;
-  students: Array<{ id: string; [key: string]: unknown }> | null;
-  registrations: Registration[];
-  classes: unknown[] | null;
-  rooms: unknown[] | null;
-  nextTrimesterRegistrations: Registration[];
 
   // Current user
   currentUser: AuthenticatedUser | null;
@@ -98,13 +67,6 @@ export class ViewModel {
 
   constructor() {
     // Initialize property defaults
-    this.admins = null;
-    this.instructors = null;
-    this.students = null;
-    this.registrations = [];
-    this.classes = null;
-    this.rooms = null;
-    this.nextTrimesterRegistrations = [];
     this.currentUser = null;
     this.navTabs = null;
     this.feedbackManager = null;
@@ -182,14 +144,6 @@ export class ViewModel {
     await DomHelpers.waitForDocumentReadyAsync();
 
     M.AutoInit();
-
-    // Initialize empty arrays - tabs will fetch their own data
-    this.admins = [];
-    this.instructors = [];
-    this.students = [];
-    this.registrations = [];
-    this.classes = [];
-    this.rooms = [];
 
     // Store current user for access throughout the application
     this.currentUser = user;
@@ -269,126 +223,6 @@ export class ViewModel {
     } else {
       banner.style.display = 'none';
     }
-  }
-
-  /**
-   * Shared method to create registration with proper enrichment
-   * This method handles the API call and enriches the response with instructor and student objects
-   * Routes to next trimester endpoint during enrollment periods (for parents only)
-   * Admins always use the regular endpoint regardless of period
-   * @param {object} data - Registration data
-   * @param {object} options - Optional enrichment lookup data
-   * @param {Array} options.students - Optional students array for enrichment lookup
-   * @param {Array} options.instructors - Optional instructors array for enrichment lookup
-   */
-  async createRegistrationWithEnrichment(
-    data: RegistrationCreateData,
-    { students = null, instructors = null }: EnrichmentOptions = {}
-  ): Promise<EnrichedRegistration> {
-    // Admins always use the regular endpoint - they can create registrations for any trimester
-    const isAdmin = this.currentUser?.admin !== undefined;
-
-    // Determine which endpoint to use based on enrollment period (for non-admin users)
-    const currentPeriod: Period | undefined = window.UserSession?.getCurrentPeriod?.();
-
-    // Admins always use regular endpoint, parents use next trimester endpoint during enrollment
-    const endpoint =
-      isEnrollmentPeriod(currentPeriod) && !isAdmin
-        ? ServerFunctions.createNextTrimesterRegistration
-        : ServerFunctions.register;
-
-    // Ensure trimester is set when using the regular endpoint
-    // For parents during registration period, use the current trimester
-    if (endpoint === ServerFunctions.register && !data.trimester && currentPeriod?.trimester) {
-      data.trimester = currentPeriod.trimester;
-    }
-
-    // If replacing an existing registration (has replaceRegistrationId),
-    // delete the old registration first (this creates an audit record for the deletion)
-    // The old registration being deleted may have linkedPreviousRegistrationId, which will be in the audit record
-    if (data.replaceRegistrationId) {
-      try {
-        // Use the appropriate delete endpoint based on enrollment period
-        // Admins always use regular endpoint
-        // For next trimester during enrollment: registrations/next-trimester/{id}
-        // For current trimester: registrations/{id}
-        const deleteEndpoint =
-          isEnrollmentPeriod(currentPeriod) && !isAdmin
-            ? `registrations/next-trimester/${data.replaceRegistrationId}`
-            : `registrations/${data.replaceRegistrationId}`;
-
-        await HttpService.delete(deleteEndpoint);
-
-        // Remove the old registration from local state (from ALL relevant arrays)
-        // This is critical to prevent the old registration from persisting in the UI
-        if (isEnrollmentPeriod(currentPeriod) && !isAdmin && this.nextTrimesterRegistrations) {
-          const oldRegIndex = this.nextTrimesterRegistrations.findIndex((reg: Registration) => {
-            const regId = reg.id;
-            return regId === data.replaceRegistrationId;
-          });
-
-          if (oldRegIndex !== -1) {
-            this.nextTrimesterRegistrations.splice(oldRegIndex, 1);
-          }
-        } else {
-          const oldRegIndex = this.registrations.findIndex((reg: Registration) => {
-            const regId = reg.id;
-            return regId === data.replaceRegistrationId;
-          });
-
-          if (oldRegIndex !== -1) {
-            this.registrations.splice(oldRegIndex, 1);
-          }
-        }
-
-        // Remove the replaceRegistrationId from the data object before creating the new registration
-        // The new registration should NOT have linkedPreviousRegistrationId - that's only for migrations
-        delete data.replaceRegistrationId;
-      } catch (error: unknown) {
-        console.error('Error deleting old registration:', error);
-        throw new Error(`Failed to delete old registration: ${(error as Error).message}`);
-      }
-    }
-
-    const response = await HttpService.post(endpoint, data);
-    // HttpService auto-unwraps { success, data } responses, so response is already the registration data
-    const newRegistration = new Registration(response as import('../../models/shared/registration.js').RegistrationData) as EnrichedRegistration;
-
-    // Enrich the registration with instructor and student objects (same logic as initial data loading)
-    // Use provided lookup arrays if available, otherwise fall back to viewModel's cached arrays
-    const studentsLookup = students || this.students || [];
-    const instructorsLookup = instructors || this.instructors || [];
-
-    if (!newRegistration.student) {
-      newRegistration.student = studentsLookup.find((x: { id: string; [key: string]: unknown }) => {
-        const studentId = x.id;
-        const registrationStudentId = newRegistration.studentId;
-        return studentId === registrationStudentId;
-      });
-
-      if (!newRegistration.student && studentsLookup.length > 0) {
-        console.warn(
-          `❌ Student not found for new registration with studentId "${newRegistration.studentId}"`
-        );
-      }
-    }
-
-    if (!newRegistration.instructor) {
-      newRegistration.instructor = instructorsLookup.find((x: { id: string; [key: string]: unknown }) => {
-        const instructorId = x.id;
-        const registrationInstructorId = newRegistration.instructorId;
-        return instructorId === registrationInstructorId;
-      });
-
-      if (!newRegistration.instructor && instructorsLookup.length > 0) {
-        console.warn(
-          `❌ Instructor not found for new registration with instructorId "${newRegistration.instructorId}"`
-        );
-      }
-    }
-
-    // Tabs handle their own data refresh after creation - they call tab.onLoad() to reload fresh data
-    return newRegistration;
   }
 
   /**
@@ -500,55 +334,6 @@ export class ViewModel {
     }
     if (pageErrorContentMessage) {
       pageErrorContentMessage.textContent = errorMessage;
-    }
-  }
-
-  /**
-   * Delete a registration by ID
-   * @param {string} registrationToDeleteId - Registration ID to delete
-   */
-  async requestDeleteRegistrationAsync(registrationToDeleteId: string): Promise<void> {
-    // Confirm delete
-    if (!confirm('Are you sure you want to delete this registration?')) {
-      return;
-    }
-
-    if (!registrationToDeleteId) {
-      console.error('No registration ID provided for deletion');
-      M.toast({ html: 'Error: No registration ID provided for deletion.' });
-      return;
-    }
-
-    try {
-      const response = await HttpService.delete(`registrations/${registrationToDeleteId}`);
-
-      M.toast({ html: 'Registration deleted successfully.' });
-
-      // Tabs handle their own data refresh - they call tab.onLoad() to reload fresh data
-    } catch (error: unknown) {
-      console.error('Error deleting registration:', error);
-      M.toast({ html: 'Error deleting registration.' });
-    }
-  }
-
-  /**
-   * Submit intent for a registration
-   * @param {string} registrationId - Registration ID
-   * @param {string} intent - One of: 'keep', 'drop', 'change'
-   * @returns {Promise<object>} Updated registration
-   * @throws {Error} If submission fails
-   */
-  async submitIntent(registrationId: string, intent: string): Promise<unknown> {
-    try {
-      const data = await HttpService.patch(`registrations/${registrationId}/intent`, { intent });
-
-      // Tabs handle their own data refresh - ParentWeeklyScheduleTab will reload fresh data
-      M.toast({ html: 'Intent submitted successfully.' });
-      return data;
-    } catch (error: unknown) {
-      console.error('Error submitting intent:', error);
-      M.toast({ html: (error as Error).message || 'Error submitting intent.' });
-      throw error;
     }
   }
 
@@ -1228,13 +1013,7 @@ export class ViewModel {
         // Clear cached data and reset initialization flags for new user
         await this.#resetInitializationFlags();
 
-        // Clear cached data properties
-        this.admins = null;
-        this.instructors = null;
-        this.students = null;
-        this.registrations = [];
-        this.classes = null;
-        this.rooms = null;
+        // Clear cached data
         this.currentUser = null;
 
         // Load user data with the authenticated user

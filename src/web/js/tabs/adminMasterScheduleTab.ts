@@ -5,6 +5,7 @@ import { RegistrationType } from '../constants.js';
 import { PeriodType } from '/utils/values/periodType.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { HttpService } from '../data/httpService.js';
+import { RegistrationService } from '../data/registrationService.js';
 
 // Intent labels (matching viewModel.js)
 const INTENT_LABELS: Record<string, string> = {
@@ -785,22 +786,12 @@ export class AdminMasterScheduleTab extends BaseTab {
   }
 
   /**
-   * Delete a registration
+   * Delete a registration via RegistrationService
    * @private
    */
   async #deleteRegistration(registrationId: string): Promise<void> {
-    // Delegate to viewModel for registration deletion
-    if (window.viewModel && typeof window.viewModel.requestDeleteRegistrationAsync === 'function') {
-      await (window.viewModel.requestDeleteRegistrationAsync as (id: string) => Promise<void>)(registrationId);
-
-      // Reload the tab to show updated data
-      await this.reload();
-    } else {
-      console.error('Delete registration method not available');
-      if (typeof M !== 'undefined') {
-        M.toast({ html: 'Unable to delete registration. Please refresh and try again.' });
-      }
-    }
+    await RegistrationService.delete(registrationId);
+    await this.reload();
   }
 
   /**

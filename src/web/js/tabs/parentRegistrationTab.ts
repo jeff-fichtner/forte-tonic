@@ -8,6 +8,7 @@ import {
   RegistrationSubmitData,
 } from '../workflows/parentRegistrationForm.js';
 import { HttpService } from '../data/httpService.js';
+import { RegistrationService } from '../data/registrationService.js';
 
 interface RegistrationTabData {
   instructors: Record<string, unknown>[];
@@ -124,27 +125,12 @@ export class ParentRegistrationTab extends BaseTab {
   }
 
   /**
-   * Create a registration via viewModel delegation
+   * Create a registration via RegistrationService
    * @private
    */
   async #createRegistration(registrationData: RegistrationSubmitData): Promise<void> {
-    // Delegate to viewModel for registration creation
-    if (
-      window.viewModel &&
-      typeof window.viewModel.createRegistrationWithEnrichment === 'function'
-    ) {
-      // The viewModel expects the method to be called with 'this' context
-      // Call it via viewModel to maintain proper context
-      await (window.viewModel.createRegistrationWithEnrichment as (data: Record<string, unknown>) => Promise<void>)(registrationData);
-
-      // Reload the tab to show updated data
-      await this.reload();
-    } else {
-      console.error('Registration creation method not available');
-      if (typeof M !== 'undefined') {
-        M.toast({ html: 'Unable to create registration. Please refresh and try again.' });
-      }
-    }
+    await RegistrationService.create(registrationData, {}, { isAdmin: false });
+    await this.reload();
   }
 
   /**

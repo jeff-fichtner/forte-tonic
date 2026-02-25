@@ -1,6 +1,7 @@
 import { BaseTab, SessionInfo } from '../core/baseTab.js';
 import { AdminRegistrationForm } from '../workflows/adminRegistrationForm.js';
 import { HttpService } from '../data/httpService.js';
+import { RegistrationService } from '../data/registrationService.js';
 import type { InstructorLike, StudentLike, ClassLike, RegistrationLike } from '../types/registrationTypes.js';
 
 interface RegistrationFormData extends Record<string, unknown> {
@@ -102,33 +103,16 @@ export class AdminRegistrationTab extends BaseTab {
   }
 
   /**
-   * Create a new registration
-   * Delegates to viewModel for registration creation
+   * Create a new registration via RegistrationService
    * @private
    */
   async #createRegistration(registrationData: unknown): Promise<void> {
-    // Delegate to viewModel for registration creation
-    if (
-      window.viewModel &&
-      typeof window.viewModel.createRegistrationWithEnrichment === 'function'
-    ) {
-      // Pass the tab's student/instructor data for proper enrichment
-      await (window.viewModel.createRegistrationWithEnrichment as (
-        data: Record<string, unknown>,
-        context: { students: Record<string, unknown>[]; instructors: Record<string, unknown>[] }
-      ) => Promise<void>)(registrationData as Record<string, unknown>, {
-        students: this.data!.students,
-        instructors: this.data!.instructors,
-      });
-
-      // Reload the tab to show updated data
-      await this.reload();
-    } else {
-      console.error('Registration creation method not available');
-      if (typeof M !== 'undefined') {
-        M.toast({ html: 'Unable to create registration. Please refresh and try again.' });
-      }
-    }
+    await RegistrationService.create(
+      registrationData as Record<string, unknown>,
+      { students: this.data!.students, instructors: this.data!.instructors },
+      { isAdmin: true }
+    );
+    await this.reload();
   }
 
   /**
