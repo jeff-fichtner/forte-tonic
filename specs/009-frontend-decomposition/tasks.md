@@ -160,15 +160,15 @@
 
 **Purpose**: Final validation across all stories
 
-- [ ] T048 Run full backend compilation: `npx tsc --noEmit` — zero errors
-- [ ] T049 Run full frontend compilation: `npx tsc --noEmit -p tsconfig.web.json` — zero errors
-- [ ] T050 Run Vite build: `npx vite build` — build succeeds
-- [ ] T051 Run all tests: `npm test` — all existing + new tests pass
-- [ ] T052 Verify `parentRegistrationForm.ts` line count under 800: `wc -l src/web/js/workflows/parentRegistrationForm.ts`
-- [ ] T053 Verify zero entity interfaces duplicated between `parentRegistrationForm.ts` and `adminRegistrationForm.ts` — grep for `interface` in both files
-- [ ] T054 Verify zero vestigial state arrays in `viewModel.ts` — grep for `admins`, `instructors`, `students`, `registrations`, `classes`, `rooms`, `nextTrimesterRegistrations` property declarations
-- [ ] T055 Verify zero hardcoded business constants remain in `registrationFormConstants.ts` — confirm `BusDeadlines`, `TimeSlotConfig`, `LessonLengths`, `DefaultInstruments` are removed
-- [ ] T056 Verify zero-behavior-change (FR-012): run quickstart.md verification scenarios manually — confirm parent private lesson registration, group class registration, enrollment period behavior, admin registration, and configuration fallback all produce identical behavior to pre-decomposition
+- [x] T048 Run full backend compilation: `npx tsc --noEmit` — zero errors
+- [x] T049 Run full frontend compilation: `npx tsc --noEmit -p tsconfig.web.json` — zero errors
+- [x] T050 Run Vite build: `npx vite build` — build succeeds
+- [x] T051 Run all tests: `npm test` — all existing + new tests pass
+- [x] T052 Verify `parentRegistrationForm.ts` line count under 800: `wc -l src/web/js/workflows/parentRegistrationForm.ts`
+- [x] T053 Verify zero entity interfaces duplicated between `parentRegistrationForm.ts` and `adminRegistrationForm.ts` — grep for `interface` in both files
+- [x] T054 Verify zero vestigial state arrays in `viewModel.ts` — grep for `admins`, `instructors`, `students`, `registrations`, `classes`, `rooms`, `nextTrimesterRegistrations` property declarations
+- [x] T055 Verify zero hardcoded business constants remain in `registrationFormConstants.ts` — confirm `BusDeadlines`, `TimeSlotConfig`, `LessonLengths`, `DefaultInstruments` are removed
+- [x] T056 Verify zero-behavior-change (FR-012): run quickstart.md verification scenarios manually — confirm parent private lesson registration, group class registration, enrollment period behavior, admin registration, and configuration fallback all produce identical behavior to pre-decomposition
 
 ---
 
