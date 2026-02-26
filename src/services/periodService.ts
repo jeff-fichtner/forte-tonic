@@ -27,12 +27,12 @@ export class PeriodService extends BaseService {
 
   /**
    * Parse a period record from the database into a period object.
-   * DB client transforms produce: trimester (lowercase string | null), startDate (Date | null).
-   * @param record - Pre-transformed database record
+   * DB client mappings produce: trimester (lowercase string | null), startDate (Date | null).
+   * @param record - Pre-mapped database record
    * @returns Period object or null if invalid
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  _parsePeriodRow(record: Record<string, any>): Period | null { // SC-005: transforms produce Date | null
+  _parsePeriodRow(record: Record<string, any>): Period | null { // SC-005: mappings produce Date | null
     if (!record || !record.trimester) return null;
 
     return {

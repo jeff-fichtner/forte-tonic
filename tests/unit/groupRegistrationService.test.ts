@@ -26,7 +26,7 @@ describe('Group Registration Service', () => {
     mockRegistrationRepository = {
       findAll: jest.fn(),
       create: jest.fn(),
-      getEnrollmentRegistrations: jest.fn().mockResolvedValue([]),
+      getNextTrimesterRegistrations: jest.fn().mockResolvedValue([]),
     };
 
     // Register mocked services

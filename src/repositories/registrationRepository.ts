@@ -5,10 +5,9 @@
  * Repository for simplified registration model with UUID primary keys
  */
 
-import crypto from 'crypto';
 import { BaseRepository } from './baseRepository.js';
 import { Registration } from '../models/shared/registration.js';
-import type { RegistrationData, RegistrationJSON } from '../models/shared/registration.js';
+import type { RegistrationData } from '../models/shared/registration.js';
 import { UuidUtility } from '../utils/uuidUtility.js';
 import { isValidTrimester } from '../utils/values/trimester.js';
 import type { GoogleSheetsDbClient } from '../database/googleSheetsDbClient.js';
@@ -20,11 +19,6 @@ const REGISTRATION_TABLES = ['registrations_fall', 'registrations_winter', 'regi
 export class RegistrationRepository extends BaseRepository<Registration> {
   periodService: PeriodService;
 
-  /**
-   * @param dbClient - Database client instance
-   * @param configService - Configuration service for logger initialization
-   * @param periodService - Period service for trimester management
-   */
   constructor(
     dbClient: GoogleSheetsDbClient,
     configService: ConfigurationService,
@@ -36,62 +30,57 @@ export class RegistrationRepository extends BaseRepository<Registration> {
 
   /**
    * Fetch all valid registrations from a single table.
-   * Encapsulates the getAllRecords + fromDatabaseRow + null-filter pattern.
    */
   private async _fetchRegistrations(tableName: string): Promise<Registration[]> {
-    const allRegistrations = await this.dbClient.getAllRecords(tableName, (record: Record<string, string>) => {
-      if (!record || !record.id) {
-        return null;
-      }
+    return this.fetchAll(tableName, (record) => {
+      if (!record || !record.id) return null;
       try {
         return Registration.fromDatabaseRow(record);
       } catch {
         return null;
       }
     });
-
-    return (allRegistrations || []).filter(
-      (reg): reg is Registration => reg !== null
-    );
   }
 
   /**
-   * Get registration by UUID (new format)
-   * Caching is handled at the GoogleSheetsDbClient layer
+   * Derive the table name for a trimester
    */
-  async getById(id: string): Promise<Registration | null> {
-    try {
-      // Registrations are stored in trimester-specific sheets, so we need to search all three
-      for (const table of REGISTRATION_TABLES) {
-        const validRegistrations = await this._fetchRegistrations(table);
-        const registration = validRegistrations.find(reg => reg.id === id);
+  private _tableName(trimester: string): string {
+    if (!isValidTrimester(trimester)) {
+      throw new Error(`Invalid trimester: ${trimester}`);
+    }
+    return `registrations_${trimester.toLowerCase()}`;
+  }
 
+  /**
+   * Find a registration by ID across all trimester tables
+   */
+  override async findById(id: string): Promise<Registration | null> {
+    try {
+      for (const table of REGISTRATION_TABLES) {
+        const registrations = await this._fetchRegistrations(table);
+        const registration = registrations.find(reg => reg.id === id);
         if (registration) {
           return registration;
         }
       }
-
       return null;
     } catch (error) {
-      this.logger.error('Error getting registration by ID:', error);
+      this.logger.error('Error finding registration by ID:', error);
       throw error;
     }
   }
 
   /**
-   * Get all registrations for a student
+   * Get all registrations for a student across all trimester tables
    */
   async getByStudentId(studentId: string): Promise<Registration[]> {
     try {
-      // Registrations are stored in trimester-specific sheets, so we need to search all three
       const allRegistrations: Registration[] = [];
-
       for (const table of REGISTRATION_TABLES) {
-        const validRegistrations = await this._fetchRegistrations(table);
-        allRegistrations.push(...validRegistrations);
+        const registrations = await this._fetchRegistrations(table);
+        allRegistrations.push(...registrations);
       }
-
-      // Filter registrations by student ID
       return allRegistrations.filter(reg => reg.studentId === studentId);
     } catch (error) {
       this.logger.error('Error getting registrations by student ID:', error);
@@ -100,19 +89,15 @@ export class RegistrationRepository extends BaseRepository<Registration> {
   }
 
   /**
-   * Get all registrations for an instructor
+   * Get all registrations for an instructor across all trimester tables
    */
   async getByInstructorId(instructorId: string): Promise<Registration[]> {
     try {
-      // Registrations are stored in trimester-specific sheets, so we need to search all three
       const allRegistrations: Registration[] = [];
-
       for (const table of REGISTRATION_TABLES) {
-        const validRegistrations = await this._fetchRegistrations(table);
-        allRegistrations.push(...validRegistrations);
+        const registrations = await this._fetchRegistrations(table);
+        allRegistrations.push(...registrations);
       }
-
-      // Filter registrations by instructor ID
       return allRegistrations.filter(reg => reg.instructorId === instructorId);
     } catch (error) {
       this.logger.error('Error getting registrations by instructor ID:', error);
@@ -121,39 +106,24 @@ export class RegistrationRepository extends BaseRepository<Registration> {
   }
 
   /**
-   * Get all active registrations from the current trimester table
-   * Note: Since status field was removed, all registrations are considered active
+   * Get all registrations from the current trimester table.
+   * Since status field was removed, all registrations are considered active.
    */
-  async getActiveRegistrations(): Promise<Registration[]> {
+  override async findAll(_options: Record<string, unknown> = {}): Promise<Registration[]> {
     try {
-      // Get current trimester table name from period service
       const currentTable = await this.periodService.getCurrentTrimesterTable();
-
-      this.logger.info(`📋 Getting active registrations from table: ${currentTable}`);
-
-      const validRegistrations = await this._fetchRegistrations(currentTable);
-
-      this.logger.info(`✅ Found ${validRegistrations.length} active registrations`);
-
-      // Since status field was removed, all registrations are considered active
-      return validRegistrations;
+      this.logger.info(`📋 Getting registrations from table: ${currentTable}`);
+      const registrations = await this._fetchRegistrations(currentTable);
+      this.logger.info(`✅ Found ${registrations.length} registrations`);
+      return registrations;
     } catch (error) {
-      this.logger.error('Error getting active registrations:', error);
+      this.logger.error('Error getting registrations:', error);
       throw error;
     }
   }
 
   /**
-   * Get all registrations (alias for getActiveRegistrations for service compatibility)
-   */
-  override async findAll(_options: Record<string, unknown> = {}): Promise<Registration[]> {
-    return this.getActiveRegistrations();
-  }
-
-  /**
    * Get registrations for a specific trimester
-   * @param trimester - Trimester name (fall, winter, spring)
-   * @returns Array of registrations
    */
   async getRegistrationsForTrimester(trimester: string): Promise<Registration[]> {
     try {
@@ -162,13 +132,8 @@ export class RegistrationRepository extends BaseRepository<Registration> {
         return [];
       }
 
-      if (!isValidTrimester(trimester)) {
-        throw new Error(`Invalid trimester: ${trimester}`);
-      }
-
-      const tableName = `registrations_${trimester.toLowerCase()}`;
+      const tableName = this._tableName(trimester);
       this.logger.info(`📋 Getting registrations from table: ${tableName}`);
-
       return await this._fetchRegistrations(tableName);
     } catch (error) {
       this.logger.error(`Error getting registrations for trimester ${trimester}:`, error);
@@ -178,7 +143,6 @@ export class RegistrationRepository extends BaseRepository<Registration> {
 
   /**
    * Get registrations from the next trimester table
-   * @deprecated Use getRegistrationsForTrimester() with explicit trimester instead
    */
   async getNextTrimesterRegistrations(): Promise<Registration[]> {
     const nextTrimester = await this.periodService.getNextTrimester();
@@ -189,63 +153,20 @@ export class RegistrationRepository extends BaseRepository<Registration> {
   }
 
   /**
-   * Alias for backward compatibility
-   * @deprecated Use getNextTrimesterRegistrations() instead
-   */
-  async getEnrollmentRegistrations(): Promise<Registration[]> {
-    return this.getNextTrimesterRegistrations();
-  }
-
-  /**
-   * Alias for getById for service compatibility
-   */
-  override async findById(id: string): Promise<Registration | null> {
-    return this.getById(id);
-  }
-
-  /**
-   * Alias for getByStudentId for service compatibility
-   */
-  async findByStudentId(studentId: string): Promise<Registration[]> {
-    return this.getByStudentId(studentId);
-  }
-
-  /**
-   * Get registrations (alias for getActiveRegistrations for service compatibility)
-   */
-  async getRegistrations(_options: Record<string, unknown> = {}): Promise<Registration[]> {
-    return this.getActiveRegistrations();
-  }
-
-  /**
-   * Create a new registration
-   * @param registrationData - Registration data
-   * @param targetTrimester - Required trimester (fall, winter, spring)
+   * Create a new registration in a trimester-specific table
    */
   override async create(registrationData: Record<string, unknown>, targetTrimester: string): Promise<Registration> {
     const data = registrationData as RegistrationData;
     try {
-      // Trimester is required - caller must explicitly specify which trimester to write to
       if (!targetTrimester) {
-        throw new Error(
-          'targetTrimester is required - must explicitly specify which trimester to save to'
-        );
+        throw new Error('targetTrimester is required - must explicitly specify which trimester to save to');
       }
 
-      if (!isValidTrimester(targetTrimester)) {
-        throw new Error(`Invalid trimester: ${targetTrimester}`);
-      }
-
-      const tableName = `registrations_${targetTrimester.toLowerCase()}`;
-
+      const tableName = this._tableName(targetTrimester);
       this.logger.info(`📝 Creating registration in table: ${tableName}`);
 
-      // Generate UUID if not provided
-      const registrationId = data.id || this.generateUUID();
-
-      // Create Registration instance with a data object
       const registration = new Registration({
-        id: registrationId,
+        id: data.id || UuidUtility.generateUuid(),
         studentId: data.studentId,
         instructorId: data.instructorId,
         day: data.day,
@@ -259,6 +180,7 @@ export class RegistrationRepository extends BaseRepository<Registration> {
         classId: data.classId,
         classTitle: data.classTitle,
         expectedStartDate: data.expectedStartDate,
+        linkedPreviousRegistrationId: data.linkedPreviousRegistrationId || null,
         createdAt: new Date().toISOString(),
         createdBy:
           data.createdBy ||
@@ -268,12 +190,12 @@ export class RegistrationRepository extends BaseRepository<Registration> {
         isWaitlistClass: data.isWaitlistClass,
       });
 
-      await this.dbClient.appendRecord(tableName, { ...registration.toJSON() }, data.createdBy || '');
+      await this.dbClient.appendRecord(tableName, { ...registration.toJSON() });
 
-      // Write audit record
       const auditSheet = `${tableName}_audit`;
       await this.#writeAuditRecord(registration, data.createdBy || '', auditSheet);
 
+      this.logger.info(`✅ Created registration: ${registration.id}`);
       return registration;
     } catch (error) {
       this.logger.error('Error creating registration:', error);
@@ -282,9 +204,11 @@ export class RegistrationRepository extends BaseRepository<Registration> {
   }
 
   /**
-   * Delete a registration by ID from the specified trimester table
+   * Delete a registration by ID from the specified trimester table.
+   * Overrides base delete because registrations are stored in trimester-specific tables.
    */
-  async delete(id: string, userId: string, trimester: string): Promise<boolean> {
+  // @ts-expect-error -- extended signature: base is (id, deletedBy), this adds required trimester
+  override async delete(id: string, userId: string, trimester: string): Promise<boolean> {
     try {
       if (!userId) {
         throw new Error('userId is required for audit trail');
@@ -293,19 +217,17 @@ export class RegistrationRepository extends BaseRepository<Registration> {
         throw new Error('trimester is required to locate the registration table');
       }
 
-      const tableName = `registrations_${trimester}`;
+      const tableName = this._tableName(trimester);
 
-      // Verify the registration exists in the target table
-      const registration = await this.findByIdInTable(tableName, id);
+      const registration = await this.findById(id);
       if (!registration) {
-        throw new Error(`Registration with ID ${id} not found in table ${tableName}`);
+        throw new Error(`Registration with ID ${id} not found`);
       }
 
       this.logger.info(`🗑️ Deleting registration from table: ${tableName}`);
 
       await this.dbClient.deleteRecord(tableName, id, userId);
 
-      // Write audit record with isDeleted flag
       const auditSheet = `${tableName}_audit`;
       await this.#writeAuditRecord(registration, userId, auditSheet, true);
 
@@ -318,95 +240,50 @@ export class RegistrationRepository extends BaseRepository<Registration> {
 
   /**
    * Write a registration audit record to the corresponding audit sheet.
-   * Moved from DB client to repository (US4) — domain logic belongs in the repository layer.
    */
   async #writeAuditRecord(
-    registration: Registration | RegistrationJSON,
+    registration: Registration,
     performedBy: string,
     auditSheet: string,
     isDeleted: boolean = false
   ): Promise<void> {
     const now = new Date().toISOString();
+    const json = registration.toJSON();
     const auditRecord: Record<string, unknown> = {
+      ...json,
       id: UuidUtility.generateUuid(),
       registrationId: registration.id,
-      studentId: registration.studentId,
-      instructorId: registration.instructorId,
-      day: registration.day,
-      startTime: registration.startTime,
-      length: registration.length,
-      registrationType: registration.registrationType,
-      roomId: registration.roomId,
-      instrument: registration.instrument,
-      transportationType: registration.transportationType,
-      notes: registration.notes,
-      classId: registration.classId,
-      classTitle: registration.classTitle,
-      expectedStartDate: registration.expectedStartDate,
-      createdAt: registration.createdAt,
-      createdBy: registration.createdBy,
       isDeleted,
       deletedAt: isDeleted ? now : '',
       deletedBy: isDeleted ? performedBy : '',
-      reenrollmentIntent: registration.reenrollmentIntent,
-      intentSubmittedAt: registration.intentSubmittedAt,
-      intentSubmittedBy: registration.intentSubmittedBy,
       updatedAt: now,
       updatedBy: performedBy,
-      linkedPreviousRegistrationId: registration.linkedPreviousRegistrationId,
     };
-    await this.dbClient.insertIntoSheet(auditSheet, auditRecord);
-  }
-
-  /**
-   * Generate a UUID v4 string using UuidUtility
-   */
-  generateUUID(): string {
-    // Try using crypto.randomUUID() if available (Node.js 16.7.0+)
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-      return crypto.randomUUID();
-    }
-
-    // Fallback to UuidUtility for consistent UUID generation
-    return UuidUtility.generateUuid();
+    await this.dbClient.appendRecord(auditSheet, auditRecord, 'USER_ENTERED');
   }
 
   /**
    * Update reenrollment intent for a registration
-   * Includes authorization check - only allows updates to registrations the user has access to
-   * @param registrationId - Registration ID
-   * @param intent - One of: 'keep', 'drop', 'change'
-   * @param submittedBy - Email/identifier of who submitted
-   * @returns Updated registration
-   * @throws If registration not found or access denied
    */
   async updateIntent(
     registrationId: string,
     intent: string,
     submittedBy: string
   ): Promise<Registration> {
-    // Get all registrations (filtered by user's authorized access)
-    const registrations = await this.getRegistrations();
-
-    // Find the registration - if not found, user doesn't have access or it doesn't exist
+    const registrations = await this.findAll();
     const registration = registrations.find(r => r.id === registrationId);
 
     if (!registration) {
       throw new Error('Registration not found');
     }
 
-    // Update the intent
     registration.updateIntent(intent as 'keep' | 'drop' | 'change', submittedBy);
 
-    // Determine which trimester sheet this registration belongs to
-    // Search across all trimester sheets to find the record
+    // Find which trimester table contains this registration
     let targetSheet: string | null = null;
-
     for (const table of REGISTRATION_TABLES) {
-      const validRegistrations = await this._fetchRegistrations(table);
-      const found = validRegistrations.find(reg => reg.id === registrationId);
-
-      if (found) {
+      const tableRegistrations = await this._fetchRegistrations(table);
+      if (tableRegistrations.find(reg => reg.id === registrationId)) {
         targetSheet = table;
         break;
       }
@@ -416,181 +293,15 @@ export class RegistrationRepository extends BaseRepository<Registration> {
       throw new Error('Registration not found in any trimester sheet');
     }
 
-    // Save to the correct trimester-specific database sheet
     await this.dbClient.updateRecord(
       targetSheet,
-      {
-        id: registration.id,
-        studentId: registration.studentId,
-        instructorId: registration.instructorId,
-        day: registration.day,
-        startTime: registration.startTime,
-        length: registration.length,
-        registrationType: registration.registrationType,
-        roomId: registration.roomId,
-        instrument: registration.instrument,
-        transportationType: registration.transportationType,
-        notes: registration.notes,
-        classId: registration.classId,
-        classTitle: registration.classTitle,
-        expectedStartDate: registration.expectedStartDate,
-        createdAt: registration.createdAt,
-        createdBy: registration.createdBy,
-        reenrollmentIntent: registration.reenrollmentIntent,
-        intentSubmittedAt: registration.intentSubmittedAt,
-        intentSubmittedBy: registration.intentSubmittedBy,
-      },
+      { ...registration.toJSON() },
       submittedBy
     );
 
-    // Write audit record for intent update
     const auditSheet = `${targetSheet}_audit`;
     await this.#writeAuditRecord(registration, submittedBy, auditSheet);
 
     return registration;
-  }
-
-  /**
-   * Get all registrations for a specific trimester
-   * @param trimester - 'fall', 'winter', or 'spring'
-   * @returns Array of registration objects
-   * @throws If trimester is invalid
-   */
-  async getRegistrationsByTrimester(trimester: string): Promise<Registration[]> {
-    if (!isValidTrimester(trimester)) {
-      throw new Error(`Invalid trimester: ${trimester}`);
-    }
-
-    const tableName = `registrations_${trimester}`;
-    return await this.getFromTable(tableName);
-  }
-
-  /**
-   * Get all registrations from a specific trimester table
-   * Used during enrollment periods to read from current or next trimester
-   * @param tableName - Table name like "registrations_fall"
-   * @returns Array of registrations from specified table
-   */
-  async getFromTable(tableName: string): Promise<Registration[]> {
-    try {
-      this.logger.info(`📋 Getting registrations from table: ${tableName}`);
-
-      const validRegistrations = await this._fetchRegistrations(tableName);
-
-      this.logger.info(`✅ Found ${validRegistrations.length} registrations in ${tableName}`);
-      return validRegistrations;
-    } catch (error) {
-      this.logger.error(`Error getting registrations from table ${tableName}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Create a registration in a specific trimester table
-   * Used during enrollment periods to create in next trimester table
-   * @param tableName - Table name like "registrations_winter"
-   * @param registrationData - Registration data object
-   * @returns Created registration
-   * @throws If createdBy is missing or table write fails
-   */
-  async createInTable(tableName: string, registrationData: RegistrationData): Promise<Registration> {
-    try {
-      this.logger.info(`📝 Creating registration in table: ${tableName}`);
-
-      // Generate UUID if not provided
-      const registrationId = registrationData.id || this.generateUUID();
-
-      // Create Registration instance
-      const registration = new Registration({
-        id: registrationId,
-        studentId: registrationData.studentId,
-        instructorId: registrationData.instructorId,
-        day: registrationData.day,
-        startTime: registrationData.startTime,
-        length: registrationData.length,
-        registrationType: registrationData.registrationType,
-        roomId: registrationData.roomId,
-        instrument: registrationData.instrument,
-        transportationType: registrationData.transportationType,
-        notes: registrationData.notes,
-        classId: registrationData.classId,
-        classTitle: registrationData.classTitle,
-        expectedStartDate: registrationData.expectedStartDate,
-        linkedPreviousRegistrationId: registrationData.linkedPreviousRegistrationId || null,
-        createdAt: new Date().toISOString(),
-        createdBy:
-          registrationData.createdBy ||
-          (() => {
-            throw new Error('createdBy is required for audit trail');
-          })(),
-      });
-
-      await this.dbClient.appendRecord(tableName, { ...registration.toJSON() }, registrationData.createdBy || '');
-
-      // Write audit record
-      const auditSheet = `${tableName}_audit`;
-      await this.#writeAuditRecord(registration, registrationData.createdBy || '', auditSheet);
-
-      this.logger.info(`✅ Created registration in ${tableName}: ${registrationId}`);
-      return registration;
-    } catch (error) {
-      this.logger.error(`Error creating registration in table ${tableName}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Find a registration by ID in a specific table
-   * @param tableName - Table name to search in
-   * @param id - Registration ID
-   * @returns Registration or null if not found
-   */
-  async findByIdInTable(tableName: string, id: string): Promise<Registration | null> {
-    try {
-      // Get all registrations from the specified table
-      const registrations = await this.getFromTable(tableName);
-
-      // Find the registration with matching ID
-      const registration = registrations.find(reg => reg.id === id);
-
-      return registration || null;
-    } catch (error) {
-      this.logger.error(`Error finding registration in table ${tableName}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Delete a registration from a specific table
-   * @param tableName - Table name to delete from
-   * @param id - Registration ID
-   * @param userId - User performing the deletion (for audit)
-   * @returns True if deleted successfully
-   */
-  async deleteFromTable(tableName: string, id: string, userId: string): Promise<boolean> {
-    try {
-      if (!userId) {
-        throw new Error('userId is required for audit trail');
-      }
-
-      // First verify the registration exists
-      const registration = await this.findByIdInTable(tableName, id);
-      if (!registration) {
-        throw new Error(`Registration with ID ${id} not found in table ${tableName}`);
-      }
-
-      this.logger.info(`🗑️ Deleting registration from table: ${tableName}`);
-
-      await this.dbClient.deleteRecord(tableName, id, userId);
-
-      // Write audit record with isDeleted flag
-      const auditSheet = `${tableName}_audit`;
-      await this.#writeAuditRecord(registration, userId, auditSheet, true);
-
-      return true;
-    } catch (error) {
-      this.logger.error(`Error deleting registration from table ${tableName}:`, error);
-      throw error;
-    }
   }
 }

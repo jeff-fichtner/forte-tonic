@@ -10,27 +10,21 @@ import type { ConfigurationService } from '../services/configurationService.js';
  * Extends BaseRepository for consistent logging and base functionality
  */
 export class ProgramRepository extends BaseRepository<Class> {
-  constructor(dbClient?: GoogleSheetsDbClient, configService?: ConfigurationService) {
+  constructor(dbClient: GoogleSheetsDbClient, configService?: ConfigurationService) {
     super(Keys.CLASSES, (record) => Class.fromDatabaseRow(record), dbClient, configService);
   }
 
   /**
    * Get all classes
-   * Caching is handled at the GoogleSheetsDbClient layer
    */
   async getClasses(): Promise<Class[]> {
-    this.logger.info(`📋 Loading ${Keys.CLASSES}`);
-    const classes = await this.dbClient.getAllRecords(Keys.CLASSES, (record: Record<string, string>) => Class.fromDatabaseRow(record));
-
-    this.logger.info(`✅ Found ${classes.length} ${Keys.CLASSES}`);
-    return classes;
+    return this.findAll();
   }
 
   /**
    * Get a specific class by ID
    */
-  async getClassById(id: string): Promise<Class | undefined> {
-    const classes = await this.getClasses();
-    return classes.find(x => x.id === id);
+  async getClassById(id: string): Promise<Class | null> {
+    return this.findById(id);
   }
 }

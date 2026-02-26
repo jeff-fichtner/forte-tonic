@@ -91,11 +91,11 @@ export class Admin {
   }
 
   /**
-   * Factory method for creating from database record (named fields, pre-transformed by DB client).
-   * DB client transforms produce: isDirector (boolean).
+   * Factory method for creating from database record (named fields, pre-mapped by DB client).
+   * DB client mappings produce: isDirector (boolean).
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static fromDatabaseRow(record: Record<string, any>): Admin { // SC-005: transforms produce boolean
+  static fromDatabaseRow(record: Record<string, any>): Admin { // SC-005: mappings produce boolean
     return new Admin({
       id: record.id,
       email: record.email,

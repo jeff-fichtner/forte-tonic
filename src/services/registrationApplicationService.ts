@@ -185,7 +185,7 @@ export class RegistrationApplicationService extends BaseService {
       }
 
       // Step 5: Check for conflicts with existing registrations in the enrollment trimester
-      const existingRegistrations = await this.registrationRepository.getEnrollmentRegistrations();
+      const existingRegistrations = await this.registrationRepository.getNextTrimesterRegistrations();
 
       // Check for duplicate group registrations (student can only be enrolled in a class once)
       if (registrationData.registrationType === 'group' && registrationData.classId) {
@@ -325,32 +325,21 @@ export class RegistrationApplicationService extends BaseService {
     registrationId: string,
     reason: string,
     userId: string,
-    tableName: string | null = null
+    trimester: string
   ): Promise<{ success: boolean; message: string }> {
     try {
-      this.logger.info('🚫 Cancelling registration:', { registrationId, tableName });
+      this.logger.info('🚫 Cancelling registration:', { registrationId, trimester });
 
-      // Get existing registration from the specified table (or default table)
-      const existingData = tableName
-        ? await this.registrationRepository.findByIdInTable(tableName, registrationId)
-        : await this.registrationRepository.findById(registrationId);
+      if (!trimester) {
+        throw new Error('trimester is required to determine which trimester table to delete from');
+      }
 
+      const existingData = await this.registrationRepository.findById(registrationId);
       if (!existingData) {
         throw new Error(`Registration not found: ${registrationId}`);
       }
 
-      // existingData is already a Registration instance from the repository
-      const registration = existingData;
-
-      // For admin/instructor deletions, bypass complex business logic checks
-      // and proceed with deletion (as requested - work with current schema)
-
-      // Perform cancellation from the specified table
-      if (tableName) {
-        await this.registrationRepository.deleteFromTable(tableName, registrationId, userId);
-      } else {
-        throw new Error('tableName is required to determine which trimester table to delete from');
-      }
+      await this.registrationRepository.delete(registrationId, userId, trimester);
 
       this.logger.info('✅ Registration cancelled successfully');
 
@@ -375,7 +364,7 @@ export class RegistrationApplicationService extends BaseService {
       this.logger.info('📋 Getting registrations with options:', options);
 
       // Get registrations from repository
-      const registrations = await this.registrationRepository.getRegistrations(options);
+      const registrations = await this.registrationRepository.findAll(options);
 
       if (!registrations || registrations.length === 0) {
         return [];

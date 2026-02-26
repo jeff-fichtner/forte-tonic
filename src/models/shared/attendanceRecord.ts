@@ -89,11 +89,11 @@ export class AttendanceRecord {
   }
 
   /**
-   * Factory method for creating from database record (named fields, pre-transformed by DB client).
-   * DB client transforms produce: week (number), attended (boolean).
+   * Factory method for creating from database record (named fields, pre-mapped by DB client).
+   * DB client mappings produce: week (number), attended (boolean).
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static fromDatabaseRow(record: Record<string, any>): AttendanceRecord { // SC-005: transforms produce number/boolean
+  static fromDatabaseRow(record: Record<string, any>): AttendanceRecord { // SC-005: mappings produce number/boolean
     return new AttendanceRecord({
       id: record.id,
       registrationId: record.registrationId || '',

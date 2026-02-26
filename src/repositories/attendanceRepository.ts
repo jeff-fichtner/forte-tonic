@@ -43,11 +43,11 @@ export class AttendanceRepository extends BaseRepository<AttendanceRecord> {
    * @param dbClient - Database client instance
    * @param configService - Configuration service for logger initialization
    */
-  constructor(dbClient?: GoogleSheetsDbClient, configService?: ConfigurationService) {
+  constructor(dbClient: GoogleSheetsDbClient, configService?: ConfigurationService) {
     super(
       Keys.ATTENDANCE,
       (record) => AttendanceRecord.fromDatabaseRow(record),
-      dbClient || null,
+      dbClient,
       configService
     );
   }
@@ -72,7 +72,7 @@ export class AttendanceRepository extends BaseRepository<AttendanceRecord> {
       performedBy,
       performedAt: new Date().toISOString(),
     };
-    await this.dbClient.insertIntoSheet(Keys.ATTENDANCEAUDIT, auditRecord);
+    await this.dbClient.appendRecord(Keys.ATTENDANCEAUDIT, auditRecord, 'USER_ENTERED');
   }
 
   /**

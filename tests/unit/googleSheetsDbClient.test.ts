@@ -67,7 +67,7 @@ describe('GoogleSheetsDbClient', () => {
       // DB client no longer has caching
       expect(client.cache).toBeUndefined();
       expect(client.cacheTimestamps).toBeUndefined();
-      expect(client.CACHE_TTL).toBeUndefined();
+      expect(client.cacheExpiration).toBeUndefined();
     });
 
     test('should have workingSheetInfo configured', () => {

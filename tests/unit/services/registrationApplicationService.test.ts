@@ -119,13 +119,11 @@ function buildMockRegistrationRepository() {
   return {
     create: jest.fn(),
     findById: jest.fn(),
-    findByIdInTable: jest.fn(),
-    deleteFromTable: jest.fn(),
-    getEnrollmentRegistrations: jest.fn(),
-    getRegistrations: jest.fn(),
-    getActiveRegistrations: jest.fn(),
+    delete: jest.fn(),
+    getNextTrimesterRegistrations: jest.fn(),
     findAll: jest.fn(),
-    getFromTable: jest.fn(),
+    getActiveRegistrations: jest.fn(),
+    _fetchRegistrations: jest.fn(),
   };
 }
 
@@ -276,7 +274,7 @@ describe('RegistrationApplicationService', () => {
 
       mockValidateRegistrationData.mockReturnValue({ isValid: true, errors: [] });
       mockCheckConflicts.mockResolvedValue({ hasConflicts: false, conflicts: [] });
-      mockRegRepo.getEnrollmentRegistrations.mockResolvedValue([]);
+      mockRegRepo.getNextTrimesterRegistrations.mockResolvedValue([]);
 
       mockUserRepo.getStudentById.mockResolvedValue(student);
       mockUserRepo.getInstructorById.mockResolvedValue(instructor);
@@ -336,7 +334,7 @@ describe('RegistrationApplicationService', () => {
       mockProgramRepo.getClassById.mockResolvedValue(groupClass);
 
       // Existing registration with the same studentId + classId
-      mockRegRepo.getEnrollmentRegistrations.mockResolvedValue([
+      mockRegRepo.getNextTrimesterRegistrations.mockResolvedValue([
         {
           studentId: 'student-100',
           classId: 'G001',
@@ -709,8 +707,8 @@ describe('RegistrationApplicationService', () => {
     // ------------------------------------------------------------------
     it('should cancel a registration and log the audit event', async () => {
       const existingReg = fakeRegistration({ id: 'reg-cancel-1' });
-      mockRegRepo.findByIdInTable.mockResolvedValue(existingReg);
-      mockRegRepo.deleteFromTable.mockResolvedValue(true);
+      mockRegRepo.findById.mockResolvedValue(existingReg);
+      mockRegRepo.delete.mockResolvedValue(true);
       mockUserRepo.getStudentById.mockResolvedValue(fakeStudent());
       mockUserRepo.getInstructorById.mockResolvedValue(fakeInstructor());
 
@@ -718,15 +716,15 @@ describe('RegistrationApplicationService', () => {
         'reg-cancel-1',
         'Changed schedule',
         'admin-user',
-        'registrations_winter',
+        'winter',
       );
 
       expect(result.success).toBe(true);
       expect(result.message).toBe('Registration cancelled successfully');
-      expect(mockRegRepo.deleteFromTable).toHaveBeenCalledWith(
-        'registrations_winter',
+      expect(mockRegRepo.delete).toHaveBeenCalledWith(
         'reg-cancel-1',
         'admin-user',
+        'winter',
       );
     });
 
@@ -734,23 +732,21 @@ describe('RegistrationApplicationService', () => {
     // T003-2: Missing registration throws error
     // ------------------------------------------------------------------
     it('should throw when registration is not found', async () => {
-      mockRegRepo.findByIdInTable.mockResolvedValue(null);
+      mockRegRepo.findById.mockResolvedValue(null);
 
       await expect(
         service.cancelRegistration(
           'nonexistent-id',
           'No longer needed',
           'admin-user',
-          'registrations_winter',
+          'winter',
         ),
       ).rejects.toThrow(/Registration not found/);
     });
 
-    it('should throw when tableName is not provided', async () => {
+    it('should throw when trimester is not provided', async () => {
       const existingReg = fakeRegistration({ id: 'reg-cancel-2' });
-      mockRegRepo.findByIdInTable.mockResolvedValue(existingReg);
-      // findById path (tableName=null) finds the registration but tableName is required for deletion
-      (mockRegRepo as any).findById = jest.fn().mockResolvedValue(existingReg);
+      mockRegRepo.findById.mockResolvedValue(existingReg);
 
       await expect(
         service.cancelRegistration(
@@ -759,7 +755,7 @@ describe('RegistrationApplicationService', () => {
           'admin-user',
           null,
         ),
-      ).rejects.toThrow(/tableName is required/);
+      ).rejects.toThrow(/trimester is required/);
     });
   });
 
@@ -792,7 +788,7 @@ describe('RegistrationApplicationService', () => {
         registrationType: 'private',
       };
 
-      mockRegRepo.getRegistrations.mockResolvedValue([reg1, reg2]);
+      mockRegRepo.findAll.mockResolvedValue([reg1, reg2]);
 
       const student1 = fakeStudent({ id: 'student-100', firstName: 'Alice', lastName: 'Smith' });
       const student2 = fakeStudent({ id: 'student-101', firstName: 'Carol', lastName: 'Brown' });
@@ -854,7 +850,7 @@ describe('RegistrationApplicationService', () => {
         registrationType: 'private',
       };
 
-      mockRegRepo.getRegistrations.mockResolvedValue([reg]);
+      mockRegRepo.findAll.mockResolvedValue([reg]);
       mockUserRepo.getStudents.mockResolvedValue([]);
       mockUserRepo.getInstructors.mockResolvedValue([]);
       mockProgramRepo.getClasses.mockResolvedValue([]);
@@ -871,7 +867,7 @@ describe('RegistrationApplicationService', () => {
     // T004-2: Empty registrations
     // ------------------------------------------------------------------
     it('should return empty array when no registrations exist', async () => {
-      mockRegRepo.getRegistrations.mockResolvedValue([]);
+      mockRegRepo.findAll.mockResolvedValue([]);
 
       const results = await service.getRegistrations({});
 
@@ -883,7 +879,7 @@ describe('RegistrationApplicationService', () => {
     });
 
     it('should return empty array when getRegistrations returns null', async () => {
-      mockRegRepo.getRegistrations.mockResolvedValue(null);
+      mockRegRepo.findAll.mockResolvedValue(null);
 
       const results = await service.getRegistrations({});
 

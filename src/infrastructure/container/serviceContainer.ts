@@ -274,8 +274,8 @@ export class ServiceContainer {
       await emailClientWithShutdown.shutdown();
     }
 
-    if (this.cacheService && typeof this.cacheService.shutdown === 'function') {
-      await this.cacheService.shutdown();
+    if (this.cacheService) {
+      this.cacheService.clear();
     }
 
     // Clear all service instances

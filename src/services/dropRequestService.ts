@@ -82,7 +82,7 @@ export class DropRequestService extends BaseService {
       }
 
       // 2. Verify registration exists
-      const registration = await this.registrationRepository.getById(registrationId);
+      const registration = await this.registrationRepository.findById(registrationId);
       if (!registration) {
         this.logger.warn(`Drop request rejected: Registration not found ${registrationId}`);
         throw new NotFoundError(`Registration not found: ${registrationId}`);
@@ -259,7 +259,7 @@ export class DropRequestService extends BaseService {
       const registrationMap = new Map<string, Registration>();
       for (const id of registrationIds) {
         try {
-          const reg = await this.registrationRepository.getById(id);
+          const reg = await this.registrationRepository.findById(id);
           if (reg) registrationMap.set(id, reg);
         } catch (error) {
           this.logger.warn(`Could not fetch registration ${id}:`, (error as Error).message);
@@ -309,7 +309,7 @@ export class DropRequestService extends BaseService {
       const registrationMap = new Map<string, Registration>();
       for (const id of registrationIds) {
         try {
-          const reg = await this.registrationRepository.getById(id);
+          const reg = await this.registrationRepository.findById(id);
           if (reg) registrationMap.set(id, reg);
         } catch (error) {
           this.logger.warn(`Could not fetch registration ${id}:`, (error as Error).message);

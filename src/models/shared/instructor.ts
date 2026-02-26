@@ -128,12 +128,12 @@ export class Instructor {
   }
 
   /**
-   * Factory method for creating from database record (named fields, pre-transformed by DB client).
-   * DB client transforms produce: isActive (boolean), specialties (string[]),
+   * Factory method for creating from database record (named fields, pre-mapped by DB client).
+   * DB client mappings produce: isActive (boolean), specialties (string[]),
    * availability (InstructorAvailability), gradeRange (GradeRange).
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static fromDatabaseRow(record: Record<string, any>): Instructor { // SC-005: transforms produce nested objects
+  static fromDatabaseRow(record: Record<string, any>): Instructor { // SC-005: mappings produce nested objects
     return new Instructor({
       id: record.id,
       email: record.email,

@@ -44,7 +44,7 @@ function createMocks() {
       update: jest.fn(),
     },
     registrationRepository: {
-      getById: jest.fn(),
+      findById: jest.fn(),
       delete: jest.fn(),
     },
     studentRepository: {
@@ -94,7 +94,7 @@ describe('DropRequestService', () => {
       mocks.periodService.getCurrentPeriod.mockResolvedValue({
         periodType: PeriodType.REGISTRATION,
       });
-      mocks.registrationRepository.getById.mockResolvedValue({
+      mocks.registrationRepository.findById.mockResolvedValue({
         id: registrationId,
         studentId: 'student-001',
       });
@@ -132,7 +132,7 @@ describe('DropRequestService', () => {
       mocks.periodService.getCurrentPeriod.mockResolvedValue({
         periodType: PeriodType.REGISTRATION,
       });
-      mocks.registrationRepository.getById.mockResolvedValue({
+      mocks.registrationRepository.findById.mockResolvedValue({
         id: registrationId,
         studentId: 'student-001',
       });
@@ -161,7 +161,7 @@ describe('DropRequestService', () => {
       mocks.periodService.getCurrentPeriod.mockResolvedValue({
         periodType: PeriodType.REGISTRATION,
       });
-      mocks.registrationRepository.getById.mockResolvedValue({
+      mocks.registrationRepository.findById.mockResolvedValue({
         id: registrationId,
         studentId: 'student-001',
       });
@@ -184,7 +184,7 @@ describe('DropRequestService', () => {
       mocks.periodService.getCurrentPeriod.mockResolvedValue({
         periodType: PeriodType.REGISTRATION,
       });
-      mocks.registrationRepository.getById.mockResolvedValue(null);
+      mocks.registrationRepository.findById.mockResolvedValue(null);
 
       await expect(
         service.createDropRequest(registrationId, parentId, reason),
@@ -322,7 +322,7 @@ describe('DropRequestService', () => {
       ];
       mocks.studentRepository.getStudents.mockResolvedValue(students);
 
-      mocks.registrationRepository.getById
+      mocks.registrationRepository.findById
         .mockResolvedValueOnce({ id: 'reg-001', studentId: 'student-001' })
         .mockResolvedValueOnce({ id: 'reg-002', studentId: 'student-002' });
 
@@ -361,7 +361,7 @@ describe('DropRequestService', () => {
       ];
       mocks.dropRequestRepository.findByParentId.mockResolvedValue(requests);
 
-      mocks.registrationRepository.getById
+      mocks.registrationRepository.findById
         .mockResolvedValueOnce({ id: 'reg-001', studentId: 'student-001' })
         .mockResolvedValueOnce({ id: 'reg-002', studentId: 'student-002' });
 
@@ -384,7 +384,7 @@ describe('DropRequestService', () => {
       const result = await service.getDropRequestsByParent(parentId);
 
       expect(result).toEqual([]);
-      expect(mocks.registrationRepository.getById).not.toHaveBeenCalled();
+      expect(mocks.registrationRepository.findById).not.toHaveBeenCalled();
     });
   });
 

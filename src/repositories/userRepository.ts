@@ -13,7 +13,7 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
   _enrichedStudentsCache: Student[] | null;
   _enrichedStudentsCacheTime: number | null;
 
-  constructor(dbClient?: GoogleSheetsDbClient, configService?: ConfigurationService) {
+  constructor(dbClient: GoogleSheetsDbClient, configService?: ConfigurationService) {
     // Call parent with a generic entity name since this repo manages multiple entity types
     // Identity mapper: this repo uses entity-specific mappers in each method, not the base class mapper
     super('users', (record) => record as Record<string, unknown>, dbClient, configService);
@@ -28,17 +28,13 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    * Caching is handled at the GoogleSheetsDbClient layer
    */
   async getAdmins(): Promise<Admin[]> {
-    this.logger.info(`📋 Loading ${Keys.ADMINS}`);
-    const admins = await this.dbClient.getAllRecords(Keys.ADMINS, (record: Record<string, string>) => Admin.fromDatabaseRow(record));
-
-    this.logger.info(`✅ Found ${admins.length} ${Keys.ADMINS}`);
-    return admins;
+    return this.fetchAll(Keys.ADMINS, (record) => Admin.fromDatabaseRow(record));
   }
 
   /** Find admin by email address */
-  async getAdminByEmail(email: string): Promise<Admin | undefined> {
+  async getAdminByEmail(email: string): Promise<Admin | null> {
     const admins = await this.getAdmins();
-    return admins.find(x => x.email === email);
+    return admins.find(x => x.email === email) ?? null;
   }
 
   /**
@@ -46,9 +42,9 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    * @param accessCode - The access code to search for
    * @returns Admin with matching access code
    */
-  async getAdminByAccessCode(accessCode: string): Promise<Admin | undefined> {
+  async getAdminByAccessCode(accessCode: string): Promise<Admin | null> {
     const admins = await this.getAdmins();
-    return admins.find(x => x.accessCode === accessCode);
+    return admins.find(x => x.accessCode === accessCode) ?? null;
   }
 
   /**
@@ -56,26 +52,20 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    * Caching is handled at the GoogleSheetsDbClient layer
    */
   async getInstructors(): Promise<Instructor[]> {
-    this.logger.info(`📋 Loading ${Keys.INSTRUCTORS}`);
-    const allInstructors = await this.dbClient.getAllRecords(Keys.INSTRUCTORS, (record: Record<string, string>) =>
-      Instructor.fromDatabaseRow(record)
-    );
-    const instructors = allInstructors.filter((x: Instructor) => x.isActive);
-
-    this.logger.info(`✅ Found ${instructors.length} active ${Keys.INSTRUCTORS}`);
-    return instructors;
+    const allInstructors = await this.fetchAll(Keys.INSTRUCTORS, (record) => Instructor.fromDatabaseRow(record));
+    return allInstructors.filter((x) => x.isActive);
   }
 
   /** Find instructor by ID */
-  async getInstructorById(id: string): Promise<Instructor | undefined> {
+  async getInstructorById(id: string): Promise<Instructor | null> {
     const instructors = await this.getInstructors();
-    return instructors.find(x => x.id === id);
+    return instructors.find(x => x.id === id) ?? null;
   }
 
   /** Find instructor by email address */
-  async getInstructorByEmail(email: string): Promise<Instructor | undefined> {
+  async getInstructorByEmail(email: string): Promise<Instructor | null> {
     const instructors = await this.getInstructors();
-    return instructors.find(x => x.email === email);
+    return instructors.find(x => x.email === email) ?? null;
   }
 
   /**
@@ -83,9 +73,9 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    * @param accessCode - The access code to search for
    * @returns Instructor with matching access code
    */
-  async getInstructorByAccessCode(accessCode: string): Promise<Instructor | undefined> {
+  async getInstructorByAccessCode(accessCode: string): Promise<Instructor | null> {
     const instructors = await this.getInstructors();
-    return instructors.find(x => x.accessCode === accessCode);
+    return instructors.find(x => x.accessCode === accessCode) ?? null;
   }
 
   /**
@@ -94,19 +84,15 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    * and in-memory for enriched data to avoid repeated enrichment operations
    */
   async getStudents(): Promise<Student[]> {
-    // Check if we have a valid cache (enriched students) — 5 min TTL matches dbClient
-    const ENRICHED_CACHE_TTL = 5 * 60 * 1000;
-    if (this._enrichedStudentsCache && this._enrichedStudentsCacheTime && (Date.now() - this._enrichedStudentsCacheTime) < ENRICHED_CACHE_TTL) {
+    // Check if we have a valid cache (enriched students) — 5 min expiration matches dbClient
+    const ENRICHED_CACHE_EXPIRATION = 5 * 60 * 1000;
+    if (this._enrichedStudentsCache && this._enrichedStudentsCacheTime && (Date.now() - this._enrichedStudentsCacheTime) < ENRICHED_CACHE_EXPIRATION) {
       this.logger.info(`📦 Cache hit for enriched students`);
       return this._enrichedStudentsCache;
     }
 
-    this.logger.info(`📋 Loading ${Keys.STUDENTS}`);
-
     // First, get the basic student data
-    const students: Student[] = await this.dbClient.getAllRecords(Keys.STUDENTS, (record: Record<string, string>) =>
-      Student.fromDatabaseRow(record)
-    );
+    const students = await this.fetchAll(Keys.STUDENTS, (record) => Student.fromDatabaseRow(record));
 
     // Then, enrich with parent emails
     const parents = await this.getParents();
@@ -126,13 +112,6 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
         parentEmails,
       });
 
-      // Debug log for first few students to verify parent emails are populated
-      if (students.indexOf(student) < 3) {
-        this.logger?.info(
-          `Student ${student.firstName} ${student.lastName}: parentEmails = "${parentEmails}"`
-        );
-      }
-
       return enrichedStudent;
     });
 
@@ -146,9 +125,9 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
   }
 
   /** Find student by ID */
-  async getStudentById(id: string): Promise<Student | undefined> {
+  async getStudentById(id: string): Promise<Student | null> {
     const students = await this.getStudents();
-    return students.find(x => x.id === id);
+    return students.find(x => x.id === id) ?? null;
   }
 
   /**
@@ -156,17 +135,13 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    * Caching is handled at the GoogleSheetsDbClient layer
    */
   async getParents(): Promise<Parent[]> {
-    this.logger.info(`📋 Loading ${Keys.PARENTS}`);
-    const parents = await this.dbClient.getAllRecords(Keys.PARENTS, (record: Record<string, string>) => Parent.fromDatabaseRow(record));
-
-    this.logger.info(`✅ Found ${parents.length} ${Keys.PARENTS}`);
-    return parents;
+    return this.fetchAll(Keys.PARENTS, (record) => Parent.fromDatabaseRow(record));
   }
 
   /** Find parent by email address */
-  async getParentByEmail(email: string): Promise<Parent | undefined> {
+  async getParentByEmail(email: string): Promise<Parent | null> {
     const parents = await this.getParents();
-    return parents.find(x => x.email === email);
+    return parents.find(x => x.email === email) ?? null;
   }
 
   /**
@@ -174,9 +149,9 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    * @param accessCode - The access code to search for
    * @returns Parent with matching access code
    */
-  async getParentByAccessCode(accessCode: string): Promise<Parent | undefined> {
+  async getParentByAccessCode(accessCode: string): Promise<Parent | null> {
     const parents = await this.getParents();
-    return parents.find(x => x.accessCode === accessCode);
+    return parents.find(x => x.accessCode === accessCode) ?? null;
   }
 
   /**
@@ -184,9 +159,9 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    * @param phone - The phone number to search for (10-digit format)
    * @returns Parent with matching phone number
    */
-  async getParentByPhone(phone: string): Promise<Parent | undefined> {
+  async getParentByPhone(phone: string): Promise<Parent | null> {
     const parents = await this.getParents();
-    return parents.find(x => x.phone === phone);
+    return parents.find(x => x.phone === phone) ?? null;
   }
 
   /**
@@ -194,17 +169,13 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    * Caching is handled at the GoogleSheetsDbClient layer
    */
   async getRooms(): Promise<Room[]> {
-    this.logger.info(`📋 Loading ${Keys.ROOMS}`);
-    const rooms = await this.dbClient.getAllRecords(Keys.ROOMS, (record: Record<string, string>) => Room.fromDatabaseRow(record));
-
-    this.logger.info(`✅ Found ${rooms.length} ${Keys.ROOMS}`);
-    return rooms;
+    return this.fetchAll(Keys.ROOMS, (record) => Room.fromDatabaseRow(record));
   }
 
   /** Find room by ID */
-  async getRoomById(id: string): Promise<Room | undefined> {
+  async getRoomById(id: string): Promise<Room | null> {
     const rooms = await this.getRooms();
-    return rooms.find(x => x.id === id);
+    return rooms.find(x => x.id === id) ?? null;
   }
 
   /**

@@ -216,30 +216,32 @@ export class RegistrationController {
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
       const registrationRepository = serviceContainer.get('registrationRepository');
 
-      // Find which table contains this registration by searching all trimester tables
-      const trimesterTables = TRIMESTER_SEQUENCE.map(trimester => `registrations_${trimester}`);
-      let tableName = null;
-
-      for (const table of trimesterTables) {
-        try {
-          const registration = await registrationRepository.findByIdInTable(table, registrationId);
-          if (registration) {
-            tableName = table;
-            break;
-          }
-        } catch {
-          // Continue searching in other tables
-          logger.debug(`Registration not found in ${table}, continuing search...`);
-        }
-      }
-
-      if (!tableName) {
+      // Find the registration to determine which trimester it belongs to
+      const registration = await registrationRepository.findById(registrationId);
+      if (!registration) {
         throw new ValidationError(
           `Registration ${registrationId} not found in any trimester table`
         );
       }
 
-      logger.info(`🎯 Deleting registration from table: ${tableName}`, {
+      // Determine trimester from the table search (findById searches all tables)
+      // We need to find which trimester table contains it
+      let trimester: string | null = null;
+      for (const t of TRIMESTER_SEQUENCE) {
+        const regs = await registrationRepository.getRegistrationsForTrimester(t);
+        if (regs.find(r => r.id === registrationId)) {
+          trimester = t;
+          break;
+        }
+      }
+
+      if (!trimester) {
+        throw new ValidationError(
+          `Registration ${registrationId} not found in any trimester table`
+        );
+      }
+
+      logger.info(`🎯 Deleting registration from trimester: ${trimester}`, {
         registrationId,
         authenticatedUser: authenticatedUserEmail,
       });
@@ -248,7 +250,7 @@ export class RegistrationController {
         registrationId,
         'Registration cancelled by user',
         authenticatedUserEmail,
-        tableName
+        trimester
       );
 
       successResponse(res, result, {
@@ -364,38 +366,25 @@ export class RegistrationController {
 
       logger.info('🎯 Next trimester registrations request from:', authenticatedUserEmail);
 
-      // Check if next trimester table is available
-      const nextTable = await periodService.getEnrollmentTrimesterTable();
-      if (!nextTable) {
+      // Check if next trimester is available
+      const nextTrimester = await periodService.getNextTrimester();
+      if (!nextTrimester) {
         throw new ValidationError('Next trimester registration is not currently available');
       }
 
       // Get all registrations from next trimester table
-      const allRegistrations = await registrationRepository.getFromTable(nextTable);
+      const allRegistrations = await registrationRepository.getRegistrationsForTrimester(nextTrimester);
 
-      // Debug: Log classId for each registration
-      logger.info(`📋 Found ${allRegistrations.length} registrations in next trimester:`);
-      allRegistrations.forEach((reg, i: number) => {
-        const classId = reg.classId || '';
-        const classTitle = reg.classTitle || '';
-        logger.info(
-          `  [${i}] classId: "${classId}", classTitle: "${classTitle}", type: ${reg.registrationType}`
-        );
-      });
+      logger.info(`📋 Found ${allRegistrations.length} registrations in next trimester`);
 
-      // Note: This endpoint returns all next trimester registrations for the enrollment UI
-      // Access control is enforced at the enrollment period level (see periodService checks)
-      // Parents can only see/modify their own students via enrollment form validation
-      const userRegistrations = allRegistrations;
-
-      successResponse(res, userRegistrations, {
+      successResponse(res, allRegistrations, {
         req,
         startTime,
         context: {
           controller: 'RegistrationController',
           method: 'getNextTrimesterRegistrations',
-          table: nextTable,
-          count: userRegistrations.length,
+          trimester: nextTrimester,
+          count: allRegistrations.length,
         },
       });
     } catch (error) {
@@ -445,8 +434,7 @@ export class RegistrationController {
 
       if (!isAdmin) {
         // Check access permissions for non-admin users
-        const currentTable = await periodService.getCurrentTrimesterTable();
-        const currentRegistrations = await registrationRepository.getFromTable(currentTable);
+        const currentRegistrations = await registrationRepository.findAll();
         const hasActiveRegistrations = currentRegistrations.some(
           reg => reg.studentId === requestData.studentId
         );
@@ -532,24 +520,23 @@ export class RegistrationController {
       const periodService = serviceContainer.get('periodService');
       const registrationApplicationService = serviceContainer.get('registrationApplicationService');
 
-      // Get next trimester table
-      const nextTable = await periodService.getEnrollmentTrimesterTable();
-      if (!nextTable) {
+      // Get next trimester
+      const nextTrimester = await periodService.getNextTrimester();
+      if (!nextTrimester) {
         throw new ValidationError('Next trimester registration is not currently available');
       }
 
       logger.info('🎯 Deleting next trimester registration:', {
         registrationId,
-        table: nextTable,
+        trimester: nextTrimester,
         authenticatedUser: authenticatedUserEmail,
       });
 
-      // Delete the registration from next trimester table
       const result = await registrationApplicationService.cancelRegistration(
         registrationId,
         'Next trimester registration cancelled by user',
         authenticatedUserEmail,
-        nextTable
+        nextTrimester
       );
 
       successResponse(res, result, {
@@ -560,7 +547,7 @@ export class RegistrationController {
           controller: 'RegistrationController',
           method: 'deleteNextTrimesterRegistration',
           registrationId,
-          table: nextTable,
+          trimester: nextTrimester,
         },
       });
     } catch (error) {
@@ -590,7 +577,7 @@ export class RegistrationController {
       logger.info(`📋 Getting registrations for trimester: ${trimester}`);
 
       // Get registrations for the specified trimester
-      const registrations = await registrationRepository.getRegistrationsByTrimester(trimester);
+      const registrations = await registrationRepository.getRegistrationsForTrimester(trimester);
 
       successResponse(res, registrations, {
         message: `Retrieved ${registrations.length} registrations for ${trimester} trimester`,
@@ -637,7 +624,7 @@ export class RegistrationController {
 
       // Fetch all data in parallel for performance
       const [registrations, students, instructors, classes] = await Promise.all([
-        registrationRepository.getRegistrationsByTrimester(trimester),
+        registrationRepository.getRegistrationsForTrimester(trimester),
         userRepository.getStudents(),
         userRepository.getInstructors(),
         classRepository.getClasses(),

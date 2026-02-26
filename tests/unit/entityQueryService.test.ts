@@ -54,7 +54,7 @@ describe('EntityQueryService', () => {
     };
 
     mockRegistrationRepository = {
-      getRegistrationsByTrimester: jest.fn<() => Promise<typeof mockRegistrations>>().mockResolvedValue(mockRegistrations),
+      getRegistrationsForTrimester: jest.fn<() => Promise<typeof mockRegistrations>>().mockResolvedValue(mockRegistrations),
     };
 
     mockConfigService = {
@@ -131,7 +131,7 @@ describe('EntityQueryService', () => {
   describe('getRegistrations', () => {
     it('fetches registrations by trimester', async () => {
       const result = await service.getRegistrations({ trimester: 'fall' });
-      expect(mockRegistrationRepository.getRegistrationsByTrimester).toHaveBeenCalledWith('fall');
+      expect(mockRegistrationRepository.getRegistrationsForTrimester).toHaveBeenCalledWith('fall');
       expect(result).toEqual(mockRegistrations);
     });
 

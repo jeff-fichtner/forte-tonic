@@ -21,11 +21,11 @@ export interface SheetConfig {
   sheet: string;
   startRow: number;
   columns: readonly string[];
-  transforms?: FieldTransform;
+  mappings?: FieldMapping;
 }
 
-/** Per-field transformation applied after rowToObject, before data reaches the model */
-export type FieldTransform = Record<string, (value: string, row: Record<string, string>) => unknown>;
+/** Per-field mapping applied after rowToObject, before data reaches the model */
+export type FieldMapping = Record<string, (value: string, row: Record<string, string>) => unknown>;
 
 /** Convert a positional string[] row to a named Record using a column schema */
 export function rowToObject(row: string[], columns: readonly string[]): Record<string, string> {
@@ -46,23 +46,23 @@ export function objectToRow(obj: Record<string, unknown>, columns: readonly stri
   return row;
 }
 
-/** Apply per-field transforms to a Record, returning a new Record with transformed values.
- *  Transforms can modify existing fields or create new computed fields. */
-export function applyTransforms(
+/** Apply per-field mappings to a Record, returning a new Record with mapped values.
+ *  Mappings can modify existing fields or create new computed fields. */
+export function applyMappings(
   record: Record<string, string>,
-  transforms: FieldTransform
+  mappings: FieldMapping
 ): Record<string, unknown> {
   const result: Record<string, unknown> = { ...record };
-  for (const [field, transform] of Object.entries(transforms)) {
-    result[field] = transform(record[field] ?? '', record);
+  for (const [field, mapping] of Object.entries(mappings)) {
+    result[field] = mapping(record[field] ?? '', record);
   }
   return result;
 }
 
-// --- Field transform maps: isolate Sheets-specific parsing from models ---
+// --- Field mapping maps: isolate Sheets-specific parsing from models ---
 
 /** Classes: parse time strings to 24h format, length to number, isRestricted to boolean */
-const classTransforms: FieldTransform = {
+const classMappings: FieldMapping = {
   startTime: (val) => DateHelpers.parseTimeString(val).to24Hour(),
   endTime: (val) => DateHelpers.parseTimeString(val).to24Hour(),
   length: (val) => parseInt(val) || 0,
@@ -70,7 +70,7 @@ const classTransforms: FieldTransform = {
 };
 
 /** Instructors: isDeactivated→isActive inversion, flat fields→nested objects */
-const instructorTransforms: FieldTransform = {
+const instructorMappings: FieldMapping = {
   isActive: (_val, row) => !row.isDeactivated || row.isDeactivated.toLowerCase() === 'false',
   specialties: (_val, row) => [row.instrument1, row.instrument2, row.instrument3, row.instrument4].filter(Boolean),
   availability: (_val, row) => ({
@@ -84,23 +84,23 @@ const instructorTransforms: FieldTransform = {
 };
 
 /** Attendance: week to number, attended to boolean */
-const attendanceTransforms: FieldTransform = {
+const attendanceMappings: FieldMapping = {
   week: (val) => Number(val || 0),
   attended: (val) => val ? val.toLowerCase() === 'true' : true,
 };
 
 /** Admins: isDirector to boolean */
-const adminTransforms: FieldTransform = {
+const adminMappings: FieldMapping = {
   isDirector: (val) => val === 'TRUE' || val === 'true',
 };
 
 /** Rooms: includeRoomId to boolean */
-const roomTransforms: FieldTransform = {
+const roomMappings: FieldMapping = {
   includeRoomId: (val) => val === 'TRUE' || val === 'true',
 };
 
 /** Periods: trimester to lowercase, startDate to Date */
-const periodTransforms: FieldTransform = {
+const periodMappings: FieldMapping = {
   trimester: (val) => val ? val.toLowerCase() : null,
   startDate: (val) => {
     if (!val) return null;
@@ -116,7 +116,7 @@ const periodTransforms: FieldTransform = {
  */
 export class GoogleSheetsDbClient extends BaseService {
   cacheService: CacheService | null;
-  cacheTtl: number;
+  cacheExpirationMs: number;
   auth: GoogleAuth;
   sheets: sheets_v4.Sheets;
   spreadsheetId: string;
@@ -133,7 +133,7 @@ export class GoogleSheetsDbClient extends BaseService {
 
     // Store cache service reference
     this.cacheService = cacheService;
-    this.cacheTtl = 5 * 60 * 1000; // 5 minutes in milliseconds
+    this.cacheExpirationMs = 5 * 60 * 1000; // 5 minutes in milliseconds
 
     // Get authentication configuration from config service
     const authConfig = this.configService.getGoogleSheetsAuth();
@@ -168,15 +168,15 @@ export class GoogleSheetsDbClient extends BaseService {
     // Initialize sheet info — compact configs referencing model column schemas
     const trimesters = ['fall', 'winter', 'spring'] as const;
     this.workingSheetInfo = {
-      [Keys.ADMINS]: { sheet: Keys.ADMINS, startRow: 2, columns: Admin.columns, transforms: adminTransforms },
-      [Keys.INSTRUCTORS]: { sheet: Keys.INSTRUCTORS, startRow: 2, columns: Instructor.columns, transforms: instructorTransforms },
+      [Keys.ADMINS]: { sheet: Keys.ADMINS, startRow: 2, columns: Admin.columns, mappings: adminMappings },
+      [Keys.INSTRUCTORS]: { sheet: Keys.INSTRUCTORS, startRow: 2, columns: Instructor.columns, mappings: instructorMappings },
       [Keys.PARENTS]: { sheet: Keys.PARENTS, startRow: 2, columns: Parent.columns },
       [Keys.STUDENTS]: { sheet: Keys.STUDENTS, startRow: 2, columns: Student.columns },
-      [Keys.CLASSES]: { sheet: Keys.CLASSES, startRow: 2, columns: Class.columns, transforms: classTransforms },
-      [Keys.ROOMS]: { sheet: Keys.ROOMS, startRow: 2, columns: Room.columns, transforms: roomTransforms },
-      [Keys.ATTENDANCE]: { sheet: Keys.ATTENDANCE, startRow: 2, columns: AttendanceRecordModel.columns, transforms: attendanceTransforms },
+      [Keys.CLASSES]: { sheet: Keys.CLASSES, startRow: 2, columns: Class.columns, mappings: classMappings },
+      [Keys.ROOMS]: { sheet: Keys.ROOMS, startRow: 2, columns: Room.columns, mappings: roomMappings },
+      [Keys.ATTENDANCE]: { sheet: Keys.ATTENDANCE, startRow: 2, columns: AttendanceRecordModel.columns, mappings: attendanceMappings },
       [Keys.ATTENDANCEAUDIT]: { sheet: Keys.ATTENDANCEAUDIT, startRow: 2, columns: AttendanceRecordModel.auditColumns },
-      [Keys.PERIODS]: { sheet: Keys.PERIODS, startRow: 2, columns: PERIOD_COLUMNS, transforms: periodTransforms },
+      [Keys.PERIODS]: { sheet: Keys.PERIODS, startRow: 2, columns: PERIOD_COLUMNS, mappings: periodMappings },
       drop_requests: { sheet: 'drop_requests', startRow: 2, columns: DropRequest.columns },
       // Generate trimester-specific registration and audit sheets from shared schemas
       ...Object.fromEntries(trimesters.flatMap(t => [
@@ -187,8 +187,8 @@ export class GoogleSheetsDbClient extends BaseService {
   }
 
   /**
-   * Get raw records from a sheet as Record<string, string> without field transforms.
-   * Used internally by update/delete operations that need untransformed data for ID matching and writes.
+   * Get raw records from a sheet as Record<string, string> without field mappings.
+   * Used internally by update/delete operations that need unmapped data for ID matching and writes.
    */
   async #getRawRecords(sheetKey: string): Promise<Record<string, string>[]> {
     return this.getAllRecords(sheetKey, (rec) => rec as Record<string, string>, true);
@@ -198,10 +198,10 @@ export class GoogleSheetsDbClient extends BaseService {
    * Get all records from a sheet using an open-ended range for optimal performance.
    * Google Sheets API will automatically return only populated rows.
    * Implements caching to minimize API calls.
-   * Field transforms (if configured) are applied before passing data to mapFunc.
+   * Field mappings (if configured) are applied before passing data to mapFunc.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async getAllRecords<T>(sheetKey: string, mapFunc: (record: Record<string, any>) => T, skipTransforms = false): Promise<T[]> { // SC-005: Record<string, any> because field transforms produce mixed types
+  async getAllRecords<T>(sheetKey: string, mapFunc: (record: Record<string, any>) => T, skipMappings = false): Promise<T[]> { // SC-005: Record<string, any> because field mappings produce mixed types
     try {
       const sheetInfo = this.workingSheetInfo[sheetKey];
 
@@ -221,10 +221,10 @@ export class GoogleSheetsDbClient extends BaseService {
       // CRITICAL: Periods should NEVER be cached as they control time-sensitive application behavior
       const shouldCache = sheetKey !== Keys.PERIODS;
 
-      // Convert raw row to record, applying field transforms if configured
+      // Convert raw row to record, applying field mappings if configured
       const processRow = (row: string[]): Record<string, unknown> => {
         const record = rowToObject(row, sheetInfo.columns);
-        return (!skipTransforms && sheetInfo.transforms) ? applyTransforms(record, sheetInfo.transforms) : record;
+        return (!skipMappings && sheetInfo.mappings) ? applyMappings(record, sheetInfo.mappings) : record;
       };
 
       // Check cache if available and caching is allowed for this sheet
@@ -250,7 +250,7 @@ export class GoogleSheetsDbClient extends BaseService {
 
       // Store raw rows in cache if available and caching is allowed for this sheet
       if (this.cacheService && shouldCache) {
-        this.cacheService.set(cacheKey, rows, this.cacheTtl);
+        this.cacheService.set(cacheKey, rows, this.cacheExpirationMs);
       }
 
       return rows.map((row: string[]) => mapFunc(processRow(row))).filter((item: T): item is NonNullable<T> => item !== null && item !== undefined);
@@ -272,12 +272,14 @@ export class GoogleSheetsDbClient extends BaseService {
   }
 
   /**
-   * Append a record to a sheet
+   * Append a record to a sheet.
+   * @param inputOption - 'RAW' preserves data as-is (default for domain records),
+   *   'USER_ENTERED' lets Sheets interpret values (used for audit records).
    */
   async appendRecord(
     sheetKey: string,
     record: Record<string, unknown>,
-    createdBy: string
+    inputOption: 'RAW' | 'USER_ENTERED' = 'RAW'
   ): Promise<Record<string, unknown>> {
     try {
       const sheetInfo = this.workingSheetInfo[sheetKey];
@@ -286,60 +288,22 @@ export class GoogleSheetsDbClient extends BaseService {
         throw new Error(`Sheet info not found for key: ${sheetKey}`);
       }
 
-      // Convert record to positional row using column schema
       const row = objectToRow(record, sheetInfo.columns);
 
-      // Append directly to spreadsheet using RAW to preserve data types
       await this.sheets.spreadsheets.values.append({
         spreadsheetId: this.spreadsheetId,
         range: `${sheetInfo.sheet}!A:A`,
-        valueInputOption: 'RAW',
+        valueInputOption: inputOption,
         requestBody: {
           values: [row],
         },
       });
 
-      // Clear cache after successful write
       this.clearSheetCache(sheetKey);
 
       return record;
     } catch (error) {
       this.logger.error(`Error appending record to sheet ${sheetKey}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Insert data into sheet
-   */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async insertIntoSheet(sheetKey: string, data: Record<string, any>): Promise<any> { // Google Sheets API boundary
-    try {
-      const sheetInfo = this.workingSheetInfo[sheetKey];
-      if (!sheetInfo) {
-        throw new Error(`Sheet info not found for key: ${sheetKey}`);
-      }
-
-      const spreadsheetId = this.spreadsheetId;
-
-      // Convert object to positional row using column schema
-      const row = objectToRow(data, sheetInfo.columns);
-
-      const response = await this.sheets.spreadsheets.values.append({
-        spreadsheetId: spreadsheetId,
-        range: `${sheetInfo.sheet}!A:A`,
-        valueInputOption: 'USER_ENTERED',
-        requestBody: {
-          values: [row],
-        },
-      });
-
-      // Clear cache after successful write
-      this.clearSheetCache(sheetKey);
-
-      return response.data;
-    } catch (error) {
-      this.logger.error(`Error inserting data into sheet ${sheetKey}:`, error);
       throw error;
     }
   }

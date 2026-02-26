@@ -127,16 +127,16 @@ const mockUserRepository = {
 };
 
 const mockRegistrationRepository = {
-  getRegistrations: jest.fn().mockResolvedValue([mockRegistration]),
+  findAll: jest.fn().mockResolvedValue([mockRegistration]),
   getActiveRegistrations: jest.fn().mockResolvedValue([mockRegistration]),
   create: jest.fn().mockResolvedValue(mockRegistration),
   update: jest.fn().mockResolvedValue(mockRegistration),
   delete: jest.fn().mockResolvedValue(true),
   updateIntent: jest.fn().mockResolvedValue({ ...mockRegistration, reenrollmentIntent: 'keep' }),
-  getFromTable: jest.fn().mockResolvedValue([mockRegistration]),
-  createInTable: jest.fn().mockResolvedValue(mockRegistration),
-  getRegistrationsByTrimester: jest.fn().mockResolvedValue([mockRegistration]),
-  findByIdInTable: jest.fn().mockResolvedValue(mockRegistration),
+  _fetchRegistrations: jest.fn().mockResolvedValue([mockRegistration]),
+  getRegistrationsForTrimester: jest.fn().mockResolvedValue([mockRegistration]),
+  findById: jest.fn().mockResolvedValue(mockRegistration),
+  getNextTrimesterRegistrations: jest.fn().mockResolvedValue([mockRegistration]),
 };
 
 const mockRegistrationApplicationService = {
@@ -341,7 +341,7 @@ describe('RegistrationController Integration Tests', () => {
         registrationId,
         'Registration cancelled by user',
         expect.any(String),
-        expect.any(String) // tableName parameter
+        expect.any(String) // trimester parameter
       );
     });
 
@@ -371,7 +371,7 @@ describe('RegistrationController Integration Tests', () => {
         },
       ]);
       expect(mockPeriodService.getEnrollmentTrimesterTable).toHaveBeenCalled();
-      expect(mockRegistrationRepository.getFromTable).toHaveBeenCalledWith('registrations_winter');
+      expect(mockRegistrationRepository._fetchRegistrations).toHaveBeenCalledWith('registrations_winter');
     });
 
     test('should reject when next trimester not available', async () => {
@@ -425,7 +425,7 @@ describe('RegistrationController Integration Tests', () => {
     });
 
     test('should reject non-returning families during priority enrollment', async () => {
-      mockRegistrationRepository.getFromTable.mockResolvedValueOnce([]); // No current registrations
+      mockRegistrationRepository._fetchRegistrations.mockResolvedValueOnce([]); // No current registrations
       mockPeriodService.canAccessNextTrimester.mockResolvedValueOnce(false);
 
       const response = await request(app)
@@ -483,11 +483,11 @@ describe('RegistrationController Integration Tests', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.data).toBeDefined();
-      expect(mockRegistrationRepository.getRegistrationsByTrimester).toHaveBeenCalledWith('fall');
+      expect(mockRegistrationRepository.getRegistrationsForTrimester).toHaveBeenCalledWith('fall');
     });
 
     test('should validate trimester parameter', async () => {
-      mockRegistrationRepository.getRegistrationsByTrimester.mockRejectedValueOnce(
+      mockRegistrationRepository.getRegistrationsForTrimester.mockRejectedValueOnce(
         new Error('Invalid trimester: summer')
       );
 

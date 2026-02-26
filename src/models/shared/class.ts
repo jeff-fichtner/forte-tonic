@@ -84,11 +84,11 @@ export class Class {
   }
 
   /**
-   * Factory method for creating from database record (named fields, pre-transformed by DB client).
-   * DB client transforms produce: startTime/endTime (string), length (number), isRestricted (boolean).
+   * Factory method for creating from database record (named fields, pre-mapped by DB client).
+   * DB client mappings produce: startTime/endTime (string), length (number), isRestricted (boolean).
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static fromDatabaseRow(record: Record<string, any>): Class { // SC-005: transforms produce number/boolean
+  static fromDatabaseRow(record: Record<string, any>): Class { // SC-005: mappings produce number/boolean
     return new Class({
       id: record.id,
       instructorId: record.instructorId,

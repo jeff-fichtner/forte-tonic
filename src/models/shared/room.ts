@@ -42,11 +42,11 @@ export class Room {
   }
 
   /**
-   * Factory method for creating from database record (named fields, pre-transformed by DB client).
-   * DB client transforms produce: includeRoomId (boolean).
+   * Factory method for creating from database record (named fields, pre-mapped by DB client).
+   * DB client mappings produce: includeRoomId (boolean).
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static fromDatabaseRow(record: Record<string, any>): Room { // SC-005: transforms produce boolean
+  static fromDatabaseRow(record: Record<string, any>): Room { // SC-005: mappings produce boolean
     return new Room({ id: record.id, name: record.name, altName: record.altName, includeRoomId: record.includeRoomId });
   }
 
