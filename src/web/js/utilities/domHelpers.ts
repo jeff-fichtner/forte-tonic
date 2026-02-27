@@ -33,31 +33,18 @@ export class DomHelpers {
       return;
     }
 
-    console.log(
-      `🔄 Resetting select: ${select.id || 'unnamed select'}, current value: "${select.value}"`
-    );
-
     // Clear the value
     select.value = '';
 
-    // Check if Materialize is available
-    if (typeof M === 'undefined') {
-      console.warn('❌ Materialize (M) is not available for select reinitialization');
-    } else if (!M.FormSelect) {
-      console.warn('❌ M.FormSelect is not available');
-    } else {
-      // Reinitialize Materialize select to refresh the display
+    // Check if Materialize is available and reinitialize to refresh the display
+    if (typeof M !== 'undefined' && M.FormSelect) {
       M.FormSelect.init(select);
-      console.log(`✅ Reinitialized Materialize select: ${select.id}`);
     }
 
     // Trigger change event if requested
     if (triggerChange) {
       select.dispatchEvent(new Event('change', { bubbles: true }));
-      console.log(`📢 Triggered change event for: ${select.id}`);
     }
-
-    console.log(`✅ Select reset: ${select.id || 'unnamed select'}, new value: "${select.value}"`);
   }
 
   /**

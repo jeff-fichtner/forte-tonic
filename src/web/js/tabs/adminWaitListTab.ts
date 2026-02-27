@@ -1,9 +1,11 @@
-import { BaseTab, SessionInfo } from '../core/baseTab.js';
+import { AdminBaseTab } from '../core/adminBaseTab.js';
+import type { SessionInfo } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatGrade } from '../extensions/numberExtensions.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { formatDateTime } from '../utilities/formatHelpers.js';
 import { HttpService } from '../data/httpService.js';
+import type { HttpResult } from '../data/httpService.js';
 import { RegistrationService } from '../data/registrationService.js';
 
 interface WaitListRegistration {
@@ -40,7 +42,7 @@ interface WaitListData extends Record<string, unknown> {
  * Data needed: wait list registrations (~50 records) + students for those registrations
  * Data waste eliminated: ~2020+ records (non-wait-list registrations, instructors, classes, rooms)
  */
-export class AdminWaitListTab extends BaseTab {
+export class AdminWaitListTab extends AdminBaseTab {
   declare protected data: WaitListData | null;
   private waitListTable: Table | null;
 
@@ -53,31 +55,22 @@ export class AdminWaitListTab extends BaseTab {
 
   /**
    * Fetch wait list data for admin
-   * Returns only Rock Band registrations + associated students
-   * @param {object} sessionInfo - User session
-   * @returns {Promise<object>} Wait list data
    */
-  async fetchData(sessionInfo: SessionInfo | null): Promise<WaitListData> {
-    // Get selected trimester from admin selector buttons
-    const trimesterButtons = document.getElementById('admin-trimester-buttons');
-    const activeButton = trimesterButtons?.querySelector<HTMLElement>('.trimester-btn.active');
-
-    // During non-enrollment periods, trimester buttons are hidden, so use current period
-    const currentPeriod = window.UserSession?.getCurrentPeriod();
-    const trimester = activeButton?.dataset.trimester || currentPeriod?.trimester;
-
+  async fetchData(_sessionInfo: SessionInfo | null): Promise<HttpResult<WaitListData>> {
+    const trimester = this.getTrimester();
     if (!trimester) {
-      throw new Error('Could not determine trimester: no button selected and no current period');
+      return { ok: false, error: { message: 'Could not determine trimester: no button selected and no current period' } };
     }
 
-    const data = await HttpService.get(`admin/tabs/wait-list/${trimester}`, { signal: this.getAbortSignal() }) as WaitListData;
+    const result = await HttpService.get<WaitListData>(`admin/tabs/wait-list/${trimester}`, { signal: this.getAbortSignal() });
 
-    // Validate response
-    if (!data.registrations || !data.students) {
-      throw new Error('Invalid response: missing registrations or students');
+    if (!result.ok) return result;
+
+    if (!result.data.registrations || !result.data.students) {
+      return { ok: false, error: { message: 'Invalid response: missing registrations or students' } };
     }
 
-    return data;
+    return result;
   }
 
   /**
@@ -241,30 +234,9 @@ export class AdminWaitListTab extends BaseTab {
    * @private
    */
   async #deleteRegistration(registrationId: string): Promise<void> {
-    await RegistrationService.delete(registrationId);
-    await this.reload();
-  }
-
-  /**
-   * Attach event listeners for trimester selector
-   */
-  attachEventListeners(): void {
-    const trimesterButtons = document.getElementById('admin-trimester-buttons');
-    if (trimesterButtons) {
-      this.addEventListener(trimesterButtons, 'click', async (event: Event) => {
-        const target = event.target as HTMLElement;
-        const button = target.closest('.trimester-btn');
-        if (button) {
-          // Update active button state
-          trimesterButtons.querySelectorAll('.trimester-btn').forEach(btn => {
-            btn.classList.remove('active');
-          });
-          button.classList.add('active');
-
-          // Reload tab with new trimester
-          await this.reload();
-        }
-      });
+    const result = await RegistrationService.delete(registrationId, this.getTrimester() ?? '');
+    if (result.ok) {
+      await this.reload();
     }
   }
 

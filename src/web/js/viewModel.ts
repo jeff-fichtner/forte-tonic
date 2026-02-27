@@ -82,23 +82,36 @@ export class ViewModel {
   }
 
   async initializeAsync(): Promise<void> {
+    // Listen for session expiry events fired by HttpService on 401 responses
+    window.addEventListener('auth:sessionExpired', () => {
+      window.AccessCodeManager.clearStoredAccessCode();
+      window.UserSession.clearAppConfig();
+      this.#initializeAllModals();
+      this.loginModal?.open();
+    });
+
     // Get application configuration when page first loads
-    const appConfig = await HttpService.fetch(ServerFunctions.getAppConfiguration, data =>
+    const configResult = await HttpService.fetch(ServerFunctions.getAppConfiguration, data =>
       new AppConfigurationResponse(data as AppConfigurationResponse)
-    ) as AppConfigurationResponse | null;
+    );
+
+    const appConfig = configResult.ok ? configResult.data : null;
+
+    if (!appConfig) {
+      this.#showConfigError();
+      return;
+    }
 
     // Save entire app configuration in user session
     // ClassManager will read rockBandClassIds from here directly
-    if (appConfig) {
-      window.UserSession.saveAppConfig(appConfig);
+    window.UserSession.saveAppConfig(appConfig);
 
-      // Check if maintenance mode is enabled
-      // Allow override via session storage for debugging/admin purposes
-      const hasOverride = sessionStorage.getItem('maintenance_mode_override') === 'true';
-      if (appConfig.maintenanceMode && !hasOverride) {
-        this.#showMaintenanceMode(appConfig.maintenanceMessage);
-        return; // Block further initialization
-      }
+    // Check if maintenance mode is enabled
+    // Allow override via session storage for debugging/admin purposes
+    const hasOverride = sessionStorage.getItem('maintenance_mode_override') === 'true';
+    if (appConfig.maintenanceMode && !hasOverride) {
+      this.#showMaintenanceMode(appConfig.maintenanceMessage);
+      return; // Block further initialization
     }
 
     // Initialize all modals
@@ -247,6 +260,27 @@ export class ViewModel {
       const pageContent = document.getElementById('page-content');
       if (loadingContainer) loadingContainer.style.display = 'none';
       if (pageContent) pageContent.hidden = true;
+    }
+  }
+
+  /**
+   * Show a full-page error when application configuration cannot be loaded.
+   * Stops all further initialization.
+   */
+  #showConfigError(): void {
+    const pageContent = document.getElementById('page-content');
+    const loadingContainer = document.getElementById('page-loading-container');
+    if (loadingContainer) loadingContainer.style.display = 'none';
+    if (pageContent) {
+      pageContent.hidden = false;
+      pageContent.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; text-align: center; padding: 24px;">
+          <i class="material-icons" style="font-size: 48px; color: #c62828; margin-bottom: 16px;">error_outline</i>
+          <h5 style="color: #c62828; margin-bottom: 8px;">Unable to Load Application</h5>
+          <p style="color: #555; margin-bottom: 24px;">Unable to load application configuration. Please reload the page.</p>
+          <button class="btn red darken-2" onclick="window.location.reload()">Reload</button>
+        </div>
+      `;
     }
   }
 
@@ -989,81 +1023,80 @@ export class ViewModel {
     onSuccessfulLogin: (() => void) | null = null,
     onFailedLogin: (() => void) | null = null
   ): Promise<void> {
-    try {
-      this.#setPageLoading(true);
+    this.#setPageLoading(true);
 
-      // Send login data to backend
-      const authenticatedUser = await HttpService.post(ServerFunctions.authenticateByAccessCode, {
-        accessCode: loginValue,
-        loginType: loginType,
-      }) as AuthenticatedUser | null;
+    // Send login data to backend
+    const authResult = await HttpService.post<AuthenticatedUser>(ServerFunctions.authenticateByAccessCode, {
+      accessCode: loginValue,
+      loginType: loginType,
+    });
 
-      // Check if authentication was successful (non-null response)
-      const loginSuccess = authenticatedUser !== null && !authenticatedUser?.systemError;
+    const authenticatedUser = authResult.ok ? authResult.data : null;
 
-      if (loginSuccess) {
-        // Save the login value securely in the browser
-        window.AccessCodeManager.saveAccessCodeSecurely(loginValue, loginType);
+    // Check if authentication was successful (non-null response)
+    const loginSuccess = authenticatedUser !== null && !authenticatedUser?.systemError;
 
-        // Update login button state to show "Change User"
-        this.#updateLoginButtonState();
+    if (loginSuccess) {
+      // Save the login value securely in the browser
+      window.AccessCodeManager.saveAccessCodeSecurely(loginValue, loginType);
 
-        onSuccessfulLogin?.();
+      // Update login button state to show "Change User"
+      this.#updateLoginButtonState();
 
-        // Clear cached data and reset initialization flags for new user
-        await this.#resetInitializationFlags();
+      onSuccessfulLogin?.();
 
-        // Clear cached data
-        this.currentUser = null;
+      // Clear cached data and reset initialization flags for new user
+      await this.#resetInitializationFlags();
 
-        // Load user data with the authenticated user
+      // Clear cached data
+      this.currentUser = null;
 
-        // Determine default role to click (admin -> instructor -> parent)
-        let roleToClick: string | null = null;
-        if (authenticatedUser!.admin) {
-          roleToClick = 'admin';
+      // Load user data with the authenticated user
 
-          // For admin users, we'll explicitly show admin tabs and click the first one
-        } else if (authenticatedUser!.instructor) {
-          roleToClick = 'instructor';
-        } else if (authenticatedUser!.parent) {
-          roleToClick = 'parent';
-        }
+      // Determine default role to click (admin -> instructor -> parent)
+      let roleToClick: string | null = null;
+      if (authenticatedUser!.admin) {
+        roleToClick = 'admin';
 
-        // Load user data and navigate to the appropriate section
-        await this.loadUserData(authenticatedUser, roleToClick);
-      } else {
-        // Check if it's a system error or just no match found
-        if (authenticatedUser?.systemError && authenticatedUser?.error) {
-          // Server-side system error (Google Sheets, DB connection, etc.)
-          M.toast({
-            html: authenticatedUser.error,
-            classes: 'red darken-1',
-            displayLength: 4000,
-          });
-        } else {
-          // No match found - client-side validation message
-          const isPhoneNumber = loginValue.length === 10 && /^\d{10}$/.test(loginValue);
-          const errorMessage = isPhoneNumber ? 'Invalid phone number' : 'Invalid access code';
-          M.toast({
-            html: errorMessage,
-            classes: 'red darken-1',
-            displayLength: 3000,
-          });
-        }
-        onFailedLogin?.();
+        // For admin users, we'll explicitly show admin tabs and click the first one
+      } else if (authenticatedUser!.instructor) {
+        roleToClick = 'instructor';
+      } else if (authenticatedUser!.parent) {
+        roleToClick = 'parent';
       }
-    } catch (error: unknown) {
-      console.error('Login error:', error);
-      M.toast({
-        html: 'Login failed. Please try again.',
-        classes: 'red darken-1',
-        displayLength: 4000,
-      });
+
+      // Load user data and navigate to the appropriate section
+      await this.loadUserData(authenticatedUser, roleToClick);
+    } else {
+      // Check if it's a system error or just no match found
+      if (authenticatedUser?.systemError && authenticatedUser?.error) {
+        // Server-side system error (Google Sheets, DB connection, etc.)
+        M.toast({
+          html: authenticatedUser.error,
+          classes: 'red darken-1',
+          displayLength: 4000,
+        });
+      } else if (!authResult.ok) {
+        // Network/server error returned by HttpService
+        M.toast({
+          html: authResult.error.message || 'Login failed. Please try again.',
+          classes: 'red darken-1',
+          displayLength: 4000,
+        });
+      } else {
+        // No match found - client-side validation message
+        const isPhoneNumber = loginValue.length === 10 && /^\d{10}$/.test(loginValue);
+        const errorMessage = isPhoneNumber ? 'Invalid phone number' : 'Invalid access code';
+        M.toast({
+          html: errorMessage,
+          classes: 'red darken-1',
+          displayLength: 3000,
+        });
+      }
       onFailedLogin?.();
-    } finally {
-      this.#setPageLoading(false);
     }
+
+    this.#setPageLoading(false);
   }
 
   /**

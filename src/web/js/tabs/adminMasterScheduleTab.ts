@@ -1,10 +1,12 @@
-import { BaseTab, SessionInfo } from '../core/baseTab.js';
+import { AdminBaseTab } from '../core/adminBaseTab.js';
+import type { SessionInfo } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatGrade, formatTime } from '../extensions/numberExtensions.js';
 import { RegistrationType } from '../constants.js';
 import { PeriodType } from '/utils/values/periodType.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { HttpService } from '../data/httpService.js';
+import type { HttpResult } from '../data/httpService.js';
 import { RegistrationService } from '../data/registrationService.js';
 
 // Intent labels (matching viewModel.js)
@@ -79,7 +81,7 @@ interface FilterConfig {
  * Data needed: registrations (for trimester), students, instructors, classes
  * Data waste eliminated: ~1500+ records (other trimesters, rooms not needed)
  */
-export class AdminMasterScheduleTab extends BaseTab {
+export class AdminMasterScheduleTab extends AdminBaseTab {
   declare protected data: MasterScheduleData | null;
   private masterScheduleTable: Table | null;
 
@@ -96,87 +98,27 @@ export class AdminMasterScheduleTab extends BaseTab {
    * @param {object} sessionInfo - User session
    * @returns {Promise<object>} Master schedule data
    */
-  async fetchData(sessionInfo: SessionInfo | null): Promise<MasterScheduleData> {
-    // Get selected trimester from admin selector buttons
-    const trimesterButtons = document.getElementById('admin-trimester-buttons');
-    const activeButton = trimesterButtons?.querySelector<HTMLElement>('.trimester-btn.active');
-
-    // During non-enrollment periods, trimester buttons are hidden, so use current period
-    const currentPeriod = window.UserSession?.getCurrentPeriod();
-    const trimester = activeButton?.dataset.trimester || currentPeriod?.trimester;
-
+  async fetchData(_sessionInfo: SessionInfo | null): Promise<HttpResult<MasterScheduleData>> {
+    const trimester = this.getTrimester();
     if (!trimester) {
-      throw new Error('Could not determine trimester: no button selected and no current period');
+      return { ok: false, error: { message: 'Could not determine trimester: no button selected and no current period' } };
     }
 
-    const data = await HttpService.get(`admin/tabs/master-schedule/${trimester}`, { signal: this.getAbortSignal() }) as MasterScheduleData;
+    const result = await HttpService.get<MasterScheduleData>(`admin/tabs/master-schedule/${trimester}`, { signal: this.getAbortSignal() });
 
-    console.log('[Master Schedule] API response received:', {
-      registrationsCount: data.registrations?.length,
-      studentsCount: data.students?.length,
-      instructorsCount: data.instructors?.length,
-      classesCount: data.classes?.length,
-    });
+    if (!result.ok) return result;
 
-    // Log sample registrations from API to verify isWaitlistClass flag
-    if (data.registrations?.length > 0) {
-      const sampleRegs = data.registrations.slice(0, 3);
-      console.log(
-        '[Master Schedule] Sample API registrations:',
-        sampleRegs.map(r => ({
-          id: r.id,
-          classTitle: r.classTitle,
-          instrument: r.instrument,
-          isWaitlistClass: r.isWaitlistClass,
-          registrationType: r.registrationType,
-        }))
-      );
-
-      // Count waitlist registrations in API response
-      const waitlistCount = data.registrations.filter(r => r.isWaitlistClass === true).length;
-      console.log('[Master Schedule] API response contains waitlist registrations:', waitlistCount);
+    if (!result.data.registrations || !result.data.students || !result.data.instructors || !result.data.classes) {
+      return { ok: false, error: { message: 'Invalid response: missing required data' } };
     }
 
-    // Validate response
-    if (!data.registrations || !data.students || !data.instructors || !data.classes) {
-      console.error('Invalid API response:', data);
-      throw new Error('Invalid response: missing required data');
-    }
-
-    return data;
+    return result;
   }
 
   /**
    * Render the master schedule table
    */
   async render(): Promise<void> {
-    console.log('[Master Schedule] Render starting');
-    console.log('[Master Schedule] Data received:', {
-      registrationsCount: this.data!.registrations?.length,
-      studentsCount: this.data!.students?.length,
-      instructorsCount: this.data!.instructors?.length,
-      classesCount: this.data!.classes?.length,
-    });
-
-    // Log sample registrations to see isWaitlistClass values
-    if (this.data!.registrations?.length > 0) {
-      const sampleRegs = this.data!.registrations.slice(0, 3);
-      console.log(
-        '[Master Schedule] Sample registrations:',
-        sampleRegs.map(r => ({
-          id: r.id,
-          classTitle: r.classTitle,
-          instrument: r.instrument,
-          isWaitlistClass: r.isWaitlistClass,
-          registrationType: r.registrationType,
-        }))
-      );
-
-      // Count waitlist registrations
-      const waitlistCount = this.data!.registrations.filter(r => r.isWaitlistClass === true).length;
-      console.log('[Master Schedule] Total waitlist registrations in data:', waitlistCount);
-    }
-
     const container = this.getContainer();
 
     // Check if we're in development to show the Recurring column
@@ -712,29 +654,7 @@ export class AdminMasterScheduleTab extends BaseTab {
    * @private
    */
   #excludeRockBandClasses(registrations: MasterScheduleRegistration[]): MasterScheduleRegistration[] {
-    console.log('[Master Schedule] Starting waitlist exclusion filter');
-    console.log('[Master Schedule] Total registrations before filter:', registrations.length);
-
-    const filtered = registrations.filter(reg => {
-      // Exclude registrations marked as waitlist classes
-      const isWaitlist = reg.isWaitlistClass === true;
-
-      if (isWaitlist) {
-        console.log('[Master Schedule] Filtering out waitlist registration:', {
-          id: reg.id,
-          classTitle: reg.classTitle,
-          isWaitlistClass: reg.isWaitlistClass,
-          registrationType: reg.registrationType,
-        });
-      }
-
-      return !isWaitlist;
-    });
-
-    console.log('[Master Schedule] Registrations after filter:', filtered.length);
-    console.log('[Master Schedule] Filtered out count:', registrations.length - filtered.length);
-
-    return filtered;
+    return registrations.filter(reg => !reg.isWaitlistClass);
   }
 
   /**
@@ -790,30 +710,9 @@ export class AdminMasterScheduleTab extends BaseTab {
    * @private
    */
   async #deleteRegistration(registrationId: string): Promise<void> {
-    await RegistrationService.delete(registrationId);
-    await this.reload();
-  }
-
-  /**
-   * Attach event listeners for trimester selector
-   */
-  attachEventListeners(): void {
-    const trimesterButtons = document.getElementById('admin-trimester-buttons');
-    if (trimesterButtons) {
-      this.addEventListener(trimesterButtons, 'click', async (event: Event) => {
-        const target = event.target as HTMLElement;
-        const button = target.closest('.trimester-btn');
-        if (button) {
-          // Update active button state
-          trimesterButtons.querySelectorAll('.trimester-btn').forEach(btn => {
-            btn.classList.remove('active');
-          });
-          button.classList.add('active');
-
-          // Reload tab with new trimester
-          await this.reload();
-        }
-      });
+    const result = await RegistrationService.delete(registrationId, this.getTrimester() ?? '');
+    if (result.ok) {
+      await this.reload();
     }
   }
 

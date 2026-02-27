@@ -107,7 +107,6 @@ export class ParentPrivateSubmission {
    */
   #validateRegistration(): boolean {
     const selectedLesson = this.config.getSelectedLesson();
-    console.log('Validating registration...', { selectedLesson });
 
     // Check if student is selected (only if dropdown is visible for multiple students)
     const studentSection = document.getElementById('parent-student-selection-section');
@@ -116,26 +115,21 @@ export class ParentPrivateSubmission {
 
     // Only validate student selection if the section is visible (multiple students)
     if (studentSection && studentSection.style.display !== 'none' && !studentId) {
-      console.log('Validation failed: No student selected');
       M.toast({ html: 'Please select a student' });
       return false;
     }
 
     // For single student case, ensure there's still a student ID available
     if (!studentId) {
-      console.log('Validation failed: No student ID available');
       M.toast({ html: 'No student available for registration' });
       return false;
     }
 
     if (!selectedLesson) {
-      console.log(
-        'Validation failed: No lesson selected in memory, checking DOM for selected slots...'
-      );
+      // TODO: This DOM fallback compensates for selectedLesson being null when it should not be — likely a race condition or event handler not firing in the timeslot selection lifecycle. The root cause requires separate investigation (out of scope).
 
       // Check if there's a selected time slot in the DOM as fallback
       const selectedSlots = document.querySelectorAll('.timeslot.selected');
-      console.log('Current selected time slots in DOM:', selectedSlots);
 
       if (selectedSlots.length === 1) {
         // Try to rebuild selectedLesson from DOM state
@@ -147,7 +141,6 @@ export class ParentPrivateSubmission {
         const instrument = slot.dataset.instrument;
 
         if (instructorId && day && time && length && instrument) {
-          console.log('Rebuilding selectedLesson from DOM state');
           this.config.setSelectedLesson({
             instructorId: instructorId,
             day: day,
@@ -155,18 +148,14 @@ export class ParentPrivateSubmission {
             length: parseInt(length),
             instrument: instrument,
           });
-          console.log('Rebuilt selectedLesson:', this.config.getSelectedLesson());
         } else {
-          console.log('Selected slot in DOM has incomplete data');
           M.toast({ html: 'Please select a lesson time slot' });
           return false;
         }
       } else if (selectedSlots.length > 1) {
-        console.log('Multiple slots selected, this should not happen');
         M.toast({ html: 'Multiple time slots selected. Please select only one.' });
         return false;
       } else {
-        console.log('No selected time slots found in DOM either');
         M.toast({ html: 'Please select a lesson time slot' });
         return false;
       }
@@ -182,13 +171,12 @@ export class ParentPrivateSubmission {
       !currentLesson.day ||
       !currentLesson.time
     ) {
-      console.log('Validation failed: Incomplete lesson data', currentLesson);
       M.toast({ html: 'Selected lesson is incomplete. Please select again.' });
       this.config.setSelectedLesson(null); // Clear invalid selection
       return false;
     }
 
-    // Time conflict checking is handled server-side by RegistrationConflictService
+    // Time conflict checking is handled server-side by RegistrationService
 
     // Check bus time restrictions for Late Bus transportation
     const dayName =
@@ -206,12 +194,10 @@ export class ParentPrivateSubmission {
     );
 
     if (!busValidation.isValid) {
-      console.log('Validation failed: Bus time restriction violated');
       M.toast({ html: busValidation.errorMessage || '' });
       return false;
     }
 
-    console.log('Validation passed');
     return true;
   }
 
