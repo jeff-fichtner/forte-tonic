@@ -53,10 +53,6 @@ interface TonicEnv {
   NodeEnv: Record<string, string>;
 }
 
-interface ViewModelType {
-  [key: string]: unknown;
-}
-
 declare module '../utils/nativeDateTimeHelpers.js' {
   interface TonicDuration {
     to12HourFormat(): string;
@@ -80,7 +76,6 @@ declare global {
     M: Materialize;
 
     // Application singletons
-    ViewModel: ViewModelType;
     ModalKeyboardHandler: typeof ModalKeyboardHandler;
     AccessCodeManager: AccessCodeManagerType;
     UserSession: UserSessionType;
@@ -123,8 +118,7 @@ declare global {
     formatPhoneAsTyped: (value: string) => string;
     isValidPhoneNumber: (phoneNumber: string) => boolean;
 
-    // Instance globals (assigned at runtime in main.ts / viewModel.ts)
-    viewModel: ViewModelType;
+    // Instance globals (assigned at runtime in main.ts)
     tabController: TabController;
 
     // Modal instances (assigned at runtime in viewModel.ts)
@@ -145,7 +139,6 @@ declare global {
   }
 
   // Allow direct access without window. prefix
-  const ViewModel: ViewModelType;
   const ModalKeyboardHandler: Window['ModalKeyboardHandler'];
   const AccessCodeManager: AccessCodeManagerType;
   const UserSession: UserSessionType;

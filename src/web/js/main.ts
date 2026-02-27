@@ -14,7 +14,6 @@ import '/models/shared/parent.js';
 import '/models/shared/registration.js';
 import '/models/shared/room.js';
 import '/models/shared/student.js';
-import './components/navTabs.js';
 import './components/select.js';
 import './components/table.js';
 import './workflows/adminRegistrationForm.js';
@@ -28,8 +27,16 @@ import './utilities/classManager.js';
 import './extensions/durationExtensions.js';
 import './extensions/numberExtensions.js';
 import './extensions/stringExtensions.js';
-import { ViewModel } from './viewModel.js';
-import type { AppConfigurationResponse, Period } from '../../models/shared/responses/appConfigurationResponse.js';
+import { NavTabs } from './components/navTabs.js';
+import { FeedbackManager } from './feedback.js';
+import * as LoginModal from './auth/loginModal.js';
+import * as TermsModal from './auth/termsModal.js';
+import { AccessCodeManager, UserSession } from './auth/session.js';
+import { initializeVersionDisplay, loadDirectorInfo } from './startup/versionAndDirector.js';
+import { DomHelpers } from './utilities/domHelpers.js';
+import { Sections, ServerFunctions } from './constants.js';
+import { AppConfigurationResponse } from '../../models/shared/responses/appConfigurationResponse.js';
+import { PeriodType } from '/utils/values/periodType.js';
 
 // Tab-based architecture
 import { TabController } from './core/tabController.js';
@@ -43,40 +50,18 @@ import { AdminMasterScheduleTab } from './tabs/adminMasterScheduleTab.js';
 import { AdminRegistrationTab } from './tabs/adminRegistrationTab.js';
 
 // ---------------------------------------------------------------------------
-// Local type aliases (mirrors of non-exported interfaces from global.d.ts)
+// Local type aliases
 // ---------------------------------------------------------------------------
 
-/** Local alias matching AccessCodeManagerType from global.d.ts */
-interface AccessCodeManagerShape {
-  _accessCodeCache: { accessCode: string; loginType: string } | null;
-  saveAccessCodeSecurely(accessCode: string, loginType?: string): void;
-  generateSessionId(): string;
-  getStoredAccessCode(): string | null;
-  getStoredAuthData(): { accessCode: string; loginType: string } | null;
-  clearStoredAccessCode(): boolean;
-}
-
-/** Local alias matching UserSessionType from global.d.ts */
-interface UserSessionShape {
-  appConfig: AppConfigurationResponse | null;
-  saveAppConfig(config: AppConfigurationResponse): void;
-  getAppConfig(): AppConfigurationResponse | null;
-  getCurrentPeriod(): Period | undefined;
-  getNextPeriod(): Period | undefined;
-  clearAppConfig(): void;
-  hasAcceptedTermsOfService(): boolean;
-  acceptTermsOfService(): void;
-  unacceptTermsOfService(): void;
-}
-
-/** Shape of the /api/version response */
-interface VersionInfo {
-  number: string;
-  environment: string;
-  gitCommit: string;
-  gitTag?: string;
-  buildDate: string;
-  displayVersion?: boolean;
+/** Authenticated user shape returned from HttpService.post (raw JSON, not model class) */
+interface AuthenticatedUser {
+  email?: string;
+  admin?: Record<string, unknown> | null;
+  instructor?: Record<string, unknown> | null;
+  parent?: Record<string, unknown> | null;
+  systemError?: boolean;
+  error?: string;
+  [key: string]: unknown;
 }
 
 /** Shape of the /api/admin/clear-cache response */
@@ -85,292 +70,401 @@ interface ClearCacheResponse {
   message: string;
 }
 
+// ---------------------------------------------------------------------------
+// Module-level state (replaces ViewModel instance fields)
+// ---------------------------------------------------------------------------
 
-/**
- * Access code manager for secure storage and retrieval of access codes
- */
-const AccessCodeManager: AccessCodeManagerShape = {
-  // Private cache for memory fallback
-  _accessCodeCache: null as { accessCode: string; loginType: string } | null,
+let currentUser: AuthenticatedUser | null = null;
+let navTabs: NavTabs | null = null;
+let feedbackManager: FeedbackManager | null = null;
+let roleToClick: string | null = null;
 
-  /**
-   * Save access code securely in the browser
-   * @param {string} accessCode - The access code to save
-   * @param {string} loginType - The type of login ('parent' or 'employee')
-   */
-  saveAccessCodeSecurely(accessCode: string, loginType: string = 'employee'): void {
-    try {
-      const secureData = {
-        accessCode: accessCode,
-        loginType: loginType,
-        sessionId: this.generateSessionId(),
-      };
+// ---------------------------------------------------------------------------
+// Plain module-level functions (absorbed from ViewModel)
+// ---------------------------------------------------------------------------
 
-      const encodedData = btoa(JSON.stringify(secureData));
-      localStorage.setItem('forte_auth_session', encodedData);
-    } catch (error) {
-      console.error('Failed to save access code securely:', error);
-      this._accessCodeCache = {
-        accessCode: accessCode,
-        loginType: loginType,
-      };
+function setPageLoading(isLoading: boolean, errorMessage: string = ''): void {
+  const loadingContainer = document.getElementById('page-loading-container');
+  const pageContent = document.getElementById('page-content');
+  const pageErrorContent = document.getElementById('page-error-content');
+  const pageErrorContentMessage = document.getElementById('page-error-content-message');
+
+  if (loadingContainer) {
+    loadingContainer.style.display = isLoading ? 'flex' : 'none';
+    loadingContainer.hidden = !isLoading;
+  }
+
+  if (pageContent) {
+    pageContent.hidden = isLoading || !!errorMessage;
+  }
+
+  if (pageErrorContent) {
+    pageErrorContent.hidden = !errorMessage;
+  }
+  if (pageErrorContentMessage) {
+    pageErrorContentMessage.textContent = errorMessage;
+  }
+}
+
+function showMaintenanceMode(message: string | null): void {
+  const overlay = document.getElementById('maintenance-mode-overlay');
+  const messageText = document.getElementById('maintenance-message-text');
+
+  if (overlay) {
+    if (message && messageText) {
+      messageText.textContent = message;
     }
-  },
 
-  /**
-   * Generate a unique session ID
-   * @returns {string} A unique session identifier
-   */
-  generateSessionId(): string {
-    return 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-  },
+    overlay.classList.add('active');
 
-  /**
-   * Retrieve the securely stored access code
-   * @returns {string|null} The stored access code or null if not found
-   */
-  getStoredAccessCode(): string | null {
-    const authData = this.getStoredAuthData();
-    return authData?.accessCode || null;
-  },
+    const loadingContainer = document.getElementById('page-loading-container');
+    const pageContent = document.getElementById('page-content');
+    if (loadingContainer) loadingContainer.style.display = 'none';
+    if (pageContent) pageContent.hidden = true;
+  }
+}
 
-  /**
-   * Retrieve the securely stored access code and login type
-   * @returns {object | null} Object with accessCode and loginType, or null if not found
-   */
-  getStoredAuthData(): { accessCode: string; loginType: string } | null {
-    try {
-      const encodedData = localStorage.getItem('forte_auth_session');
-      if (!encodedData) {
-        if (!this._accessCodeCache) {
-          return null;
-        }
-        if (!this._accessCodeCache.loginType) {
-          console.error('loginType not found in access code cache');
-          return null;
-        }
-        return {
-          accessCode: this._accessCodeCache.accessCode,
-          loginType: this._accessCodeCache.loginType,
-        };
-      }
+function showConfigError(): void {
+  const pageContent = document.getElementById('page-content');
+  const loadingContainer = document.getElementById('page-loading-container');
+  if (loadingContainer) loadingContainer.style.display = 'none';
+  if (pageContent) {
+    pageContent.hidden = false;
+    pageContent.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; text-align: center; padding: 24px;">
+        <i class="material-icons" style="font-size: 48px; color: #c62828; margin-bottom: 16px;">error_outline</i>
+        <h5 style="color: #c62828; margin-bottom: 8px;">Unable to Load Application</h5>
+        <p style="color: #555; margin-bottom: 24px;">Unable to load application configuration. Please reload the page.</p>
+        <button class="btn red darken-2" onclick="window.location.reload()">Reload</button>
+      </div>
+    `;
+  }
+}
 
-      const secureData = JSON.parse(atob(encodedData));
+function hideMaintenanceMode(): void {
+  const overlay = document.getElementById('maintenance-mode-overlay');
+  const pageContent = document.getElementById('page-content');
 
-      if (!secureData.loginType) {
-        console.error('loginType not found in stored auth data');
-        return null;
-      }
+  if (overlay) {
+    overlay.classList.remove('active');
+    if (pageContent) pageContent.hidden = false;
+  }
+}
 
-      return {
-        accessCode: secureData.accessCode,
-        loginType: secureData.loginType,
-      };
-    } catch (error) {
-      console.error('Failed to retrieve stored auth data:', error);
-      if (!this._accessCodeCache) {
-        return null;
-      }
-      if (!this._accessCodeCache.loginType) {
-        console.error('loginType not found in access code cache');
-        return null;
-      }
-      return {
-        accessCode: this._accessCodeCache.accessCode,
-        loginType: this._accessCodeCache.loginType,
-      };
-    }
-  },
+function updateEnrollmentBanner(): void {
+  const currentPeriod = window.UserSession.getCurrentPeriod();
+  const banner = document.getElementById('enrollment-period-banner');
+  const bannerText = document.getElementById('enrollment-banner-text');
 
-  /**
-   * Clear the stored access code (for logout)
-   */
-  clearStoredAccessCode(): boolean {
-    try {
-      localStorage.removeItem('forte_auth_session');
-      this._accessCodeCache = null;
-      return true;
-    } catch (error) {
-      console.error('Failed to clear stored access code:', error);
-      return false;
-    }
-  },
-};
-
-/**
- * User session storage for current user data
- */
-const UserSession: UserSessionShape = {
-  appConfig: null as AppConfigurationResponse | null,
-
-  saveAppConfig(config: AppConfigurationResponse): void {
-    this.appConfig = config;
-  },
-
-  getAppConfig(): AppConfigurationResponse | null {
-    return this.appConfig;
-  },
-
-  getCurrentPeriod(): Period | undefined {
-    return this.appConfig?.currentPeriod ?? undefined;
-  },
-
-  getNextPeriod(): Period | undefined {
-    return this.appConfig?.nextPeriod ?? undefined;
-  },
-
-  clearAppConfig(): void {
-    this.appConfig = null;
-  },
-
-  /**
-   * Check if the user has accepted the Terms of Service
-   * @returns {boolean} True if terms have been accepted
-   */
-  hasAcceptedTermsOfService(): boolean {
-    return localStorage.getItem('hasAcceptedTermsOfService') === 'true';
-  },
-
-  /**
-   * Mark that the user has accepted the Terms of Service
-   */
-  acceptTermsOfService(): void {
-    localStorage.setItem('hasAcceptedTermsOfService', 'true');
-  },
-
-  /**
-   * Mark that the user has not accepted the Terms of Service (for testing/reset purposes)
-   */
-  unacceptTermsOfService(): void {
-    localStorage.removeItem('hasAcceptedTermsOfService');
-  },
-};
-
-/**
- * Load director information from app config and populate HTML elements
- */
-function loadDirectorInfo(): void {
-  const director = UserSession.getAppConfig()?.director;
-
-  if (!director) {
+  if (!banner || !bannerText) {
     return;
   }
 
-  const nameElement = document.getElementById('director-name');
-  const emailElement = document.getElementById('director-email');
-  const phoneElement = document.getElementById('director-phone');
+  if (!currentPeriod) {
+    banner.style.display = 'none';
+    return;
+  }
 
-  if (nameElement) nameElement.textContent = director.fullName;
-  if (emailElement) emailElement.textContent = director.displayEmail || director.email;
-  if (phoneElement) phoneElement.textContent = director.displayPhone || director.phone || 'N/A';
+  if (currentPeriod.periodType === PeriodType.PRIORITY_ENROLLMENT) {
+    banner.style.display = 'block';
+    banner.className = 'enrollment-banner priority';
+    bannerText.textContent = 'Priority Enrollment is now open for returning families';
+  } else if (currentPeriod.periodType === PeriodType.OPEN_ENROLLMENT) {
+    banner.style.display = 'block';
+    banner.className = 'enrollment-banner open';
+    bannerText.textContent = 'Open Enrollment is now available for all families';
+  } else if (currentPeriod.periodType === PeriodType.INTENT) {
+    banner.style.display = 'none';
+  } else {
+    banner.style.display = 'none';
+  }
 }
 
-/**
- * Initialize application
- */
-async function initializeApplication(): Promise<void> {
+function resetUIState(): void {
   try {
-    // Log version information
-    try {
-      const versionInfo = (await HttpService.get('version')) as VersionInfo;
-      console.log(
-        `Tonic v${versionInfo.number} (${versionInfo.environment}) [${versionInfo.gitCommit.substring(0, 7)}]`
-      );
-    } catch (error) {
-      console.warn('Could not fetch version info:', error);
+    LoginModal.closeIfOpen();
+
+    window.scrollTo(0, 0);
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+
+    const container = document.querySelector('.container');
+    if (container) {
+      (container as HTMLElement).scrollTop = 0;
     }
 
-    // Make UserSession and AccessCodeManager available globally before ViewModel initialization
+    const pageContent = document.getElementById('page-content');
+    if (pageContent) {
+      pageContent.scrollTop = 0;
+      pageContent.style.overflow = '';
+      pageContent.style.overflowY = '';
+      pageContent.style.height = '';
+      pageContent.style.position = '';
+    }
+
+    document.body.style.overflow = '';
+    document.body.style.overflowY = '';
+    document.body.style.height = '';
+    document.body.style.position = '';
+
+    document.documentElement.style.overflow = '';
+    document.documentElement.style.overflowY = '';
+    document.documentElement.style.height = '';
+
+    const fixedElements = document.querySelectorAll('[style*="position: fixed"]');
+    fixedElements.forEach((element: Element) => {
+      if ((element as HTMLElement).id === 'admin-selected-lesson-display') {
+        (element as HTMLElement).style.display = 'none';
+      }
+    });
+
+    document.body.classList.remove('modal-open');
+    document.documentElement.classList.remove('modal-open');
+
+    const overlays = document.querySelectorAll('.modal-overlay');
+    overlays.forEach((overlay: Element) => overlay.remove());
+  } catch (error: unknown) {
+    console.error('❌ Error resetting UI state:', error);
+  }
+}
+
+async function resetInitializationFlags(): Promise<void> {
+  if (window.tabController) {
+    const currentTab = window.tabController.getCurrentTab();
+    if (currentTab) {
+      try {
+        await currentTab.onUnload();
+        (window.tabController as unknown as Record<string, unknown>).currentTab = null;
+        (window.tabController as unknown as Record<string, unknown>).currentTabId = null;
+      } catch (error: unknown) {
+        console.error('Error unloading tab during user switch:', error);
+      }
+    }
+  }
+
+  resetUIState();
+}
+
+async function loadUserData(user: AuthenticatedUser | null, roleToClickArg: string | null = null): Promise<void> {
+  if (!user || (!user.admin && !user.instructor && !user.parent)) {
+    return;
+  }
+
+  const pageContent = document.getElementById('page-content');
+  if (pageContent) pageContent.hidden = false;
+
+  await DomHelpers.waitForDocumentReadyAsync();
+
+  M.AutoInit();
+
+  currentUser = user;
+
+  let defaultSection: string | undefined;
+  if (user.admin) {
+    defaultSection = Sections.ADMIN;
+  }
+  if (user.instructor) {
+    defaultSection = Sections.INSTRUCTOR;
+  }
+  if (user.parent) {
+    defaultSection = Sections.PARENT;
+  }
+
+  navTabs = new NavTabs(defaultSection as string);
+  navTabs.setCurrentUser(currentUser as Record<string, unknown>);
+  setPageLoading(false);
+
+  if (!feedbackManager) {
+    feedbackManager = new FeedbackManager({ currentUser, navTabs });
+  }
+
+  roleToClick = roleToClickArg;
+
+  if (roleToClickArg && window.tabController) {
+    const navLink = document.querySelector<HTMLAnchorElement>(`a[data-section="${roleToClickArg}"]`);
+    if (navLink) {
+      navLink.click();
+    }
+  }
+
+  updateEnrollmentBanner();
+
+  setTimeout(() => {
+    resetUIState();
+  }, 300);
+}
+
+// ---------------------------------------------------------------------------
+// Auto-login helper
+// ---------------------------------------------------------------------------
+
+async function attemptAutoLogin(accessCode: string, loginType: string): Promise<void> {
+  setPageLoading(true);
+
+  const authResult = await HttpService.post<AuthenticatedUser>(ServerFunctions.authenticateByAccessCode, {
+    accessCode,
+    loginType,
+  });
+
+  const authenticatedUser = authResult.ok ? authResult.data : null;
+  const loginSuccess = authenticatedUser !== null && !authenticatedUser?.systemError;
+
+  if (loginSuccess) {
+    window.AccessCodeManager.saveAccessCodeSecurely(accessCode, loginType);
+    LoginModal.updateLoginButtonState();
+
+    await resetInitializationFlags();
+    currentUser = null;
+
+    let role: string | null = null;
+    if (authenticatedUser!.admin) {
+      role = 'admin';
+    } else if (authenticatedUser!.instructor) {
+      role = 'instructor';
+    } else if (authenticatedUser!.parent) {
+      role = 'parent';
+    }
+
+    await loadUserData(authenticatedUser, role);
+    initTabController();
+  } else {
+    if (authenticatedUser?.systemError && authenticatedUser?.error) {
+      M.toast({
+        html: authenticatedUser.error as string,
+        classes: 'red darken-1',
+        displayLength: 4000,
+      });
+    } else if (!authResult.ok) {
+      M.toast({
+        html: authResult.error.message || 'Login failed. Please try again.',
+        classes: 'red darken-1',
+        displayLength: 4000,
+      });
+    } else {
+      const isPhoneNumber = accessCode.length === 10 && /^\d{10}$/.test(accessCode);
+      M.toast({
+        html: isPhoneNumber ? 'Invalid phone number' : 'Invalid access code',
+        classes: 'red darken-1',
+        displayLength: 3000,
+      });
+    }
+
+    setPageLoading(false);
+    LoginModal.open();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// TabController initialization
+// ---------------------------------------------------------------------------
+
+function initTabController(): void {
+  const tabController = new TabController();
+  tabController.initialize();
+
+  tabController.registerTab('instructor-forte-directory', new EmployeeDirectoryTab());
+  tabController.registerTab('parent-contact-us', new ParentContactTab());
+  tabController.registerTab('admin-wait-list', new AdminWaitListTab());
+  tabController.registerTab('instructor-weekly-schedule', new InstructorWeeklyScheduleTab());
+  tabController.registerTab('parent-weekly-schedule', new ParentWeeklyScheduleTab());
+  tabController.registerTab('admin-master-schedule', new AdminMasterScheduleTab());
+  tabController.registerTab('parent-registration', new ParentRegistrationTab());
+  tabController.registerTab('admin-registration', new AdminRegistrationTab());
+
+  window.tabController = tabController;
+
+  if (roleToClick) {
+    const navLink = document.querySelector<HTMLAnchorElement>(`a[data-section="${roleToClick}"]`);
+    if (navLink) {
+      navLink.click();
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Application initialization
+// ---------------------------------------------------------------------------
+
+async function initializeApplication(): Promise<void> {
+  try {
+    // Log version information (window.TONIC_ENV set by initializeVersionDisplay in main())
+    if (window.TONIC_ENV) {
+      console.log(
+        `Tonic v${window.TONIC_ENV.version} (${window.TONIC_ENV.environment}) [${window.TONIC_ENV.gitCommit.substring(0, 7)}]`
+      );
+    }
+
+    // Make UserSession and AccessCodeManager available globally
     window.UserSession = UserSession;
     window.AccessCodeManager = AccessCodeManager;
 
-    // Initialize the main ViewModel
-    const viewModel = new ViewModel();
-    await viewModel.initializeAsync();
+    // Forward page loading state requests from auth modules
+    window.addEventListener('app:setPageLoading', (e: Event) => {
+      const { isLoading } = (e as CustomEvent<{ isLoading: boolean }>).detail;
+      setPageLoading(isLoading);
+    });
 
-    // Store globally for debugging and other scripts
-    window.viewModel = viewModel as unknown as typeof window.viewModel;
+    // Listen for session expiry events fired by HttpService on 401 responses
+    window.addEventListener('auth:sessionExpired', () => {
+      window.AccessCodeManager.clearStoredAccessCode();
+      window.UserSession.clearAppConfig();
+      LoginModal.init(loadUserData);
+      TermsModal.init();
+      LoginModal.open();
+    });
 
-    // Initialize TabController for tab-based architecture
-    const tabController = new TabController();
-    tabController.initialize();
+    // Initialize login and terms modals
+    LoginModal.init(loadUserData);
+    TermsModal.init();
 
-    // Register tabs
-    const employeeDirectoryTab = new EmployeeDirectoryTab();
-    tabController.registerTab('instructor-forte-directory', employeeDirectoryTab);
+    // Get application configuration
+    const configResult = await HttpService.fetch(ServerFunctions.getAppConfiguration, data =>
+      new AppConfigurationResponse(data as AppConfigurationResponse)
+    );
 
-    const parentContactTab = new ParentContactTab();
-    tabController.registerTab('parent-contact-us', parentContactTab);
+    const appConfig = configResult.ok ? configResult.data : null;
 
-    const adminWaitListTab = new AdminWaitListTab();
-    tabController.registerTab('admin-wait-list', adminWaitListTab);
-
-    const instructorWeeklyScheduleTab = new InstructorWeeklyScheduleTab();
-    tabController.registerTab('instructor-weekly-schedule', instructorWeeklyScheduleTab);
-
-    const parentWeeklyScheduleTab = new ParentWeeklyScheduleTab();
-    tabController.registerTab('parent-weekly-schedule', parentWeeklyScheduleTab);
-
-    const adminMasterScheduleTab = new AdminMasterScheduleTab();
-    tabController.registerTab('admin-master-schedule', adminMasterScheduleTab);
-
-    const parentRegistrationTab = new ParentRegistrationTab();
-    tabController.registerTab('parent-registration', parentRegistrationTab);
-
-    const adminRegistrationTab = new AdminRegistrationTab();
-    tabController.registerTab('admin-registration', adminRegistrationTab);
-
-    // Make TabController available globally for NavTabs integration
-    window.tabController = tabController;
-
-    // Now that TabController is ready, auto-click the default section if specified
-    const roleToClick = (viewModel as unknown as Record<string, unknown>).roleToClick as string | null;
-    if (roleToClick) {
-      const navLink = document.querySelector<HTMLAnchorElement>(`a[data-section="${roleToClick}"]`);
-      if (navLink) {
-        navLink.click();
-      }
+    if (!appConfig) {
+      showConfigError();
+      return;
     }
 
-    // Expose maintenance mode override function globally
-    // Usage: window.overrideMaintenanceMode() in browser console
-    window.overrideMaintenanceMode = function (): boolean {
-      if (viewModel && typeof viewModel.overrideMaintenanceMode === 'function') {
-        return viewModel.overrideMaintenanceMode();
-      } else {
-        console.error('✗ Override function not available. Please refresh and try again.');
-        return false;
-      }
-    };
+    window.UserSession.saveAppConfig(appConfig);
 
-    // Expose server cache clearing function globally (admin only)
-    // Usage: window.clearServerCache() in browser console
-    // Uses the already-authenticated user's access code from the x-access-code header
-    window.clearServerCache = async function (): Promise<boolean> {
-      try {
-        console.log('🧹 Clearing server cache...');
-        const result = await HttpService.post<ClearCacheResponse>('admin/clear-cache', {});
-        if (!result.ok) {
-          console.error('✗ Error clearing server cache:', result.error.message);
-          return false;
-        }
-        const cacheData = result.data;
-        console.log('✓ Server cache cleared successfully by:', cacheData.clearedBy);
-        console.log('  Message:', cacheData.message);
-        return true;
-      } catch (error) {
-        console.error('✗ Error clearing server cache:', error);
-        return false;
-      }
-    };
+    const hasOverride = sessionStorage.getItem('maintenance_mode_override') === 'true';
+    if (appConfig.maintenanceMode && !hasOverride) {
+      showMaintenanceMode(appConfig.maintenanceMessage);
+      return;
+    }
 
-    // Load director info for Terms of Service display
-    // This is a non-critical operation, so we don't await it
+    LoginModal.updateLoginButtonState();
+    LoginModal.showLoginButton();
+
+    exposeConsoleHelpers();
     loadDirectorInfo();
+
+    const storedAuthData = window.AccessCodeManager.getStoredAuthData();
+    if (storedAuthData) {
+      await attemptAutoLogin(storedAuthData.accessCode, storedAuthData.loginType);
+      return;
+    }
+
+    setPageLoading(false);
+
+    const hasAcceptedTermsOfService = window.UserSession.hasAcceptedTermsOfService();
+    if (!hasAcceptedTermsOfService) {
+      TermsModal.showIfNeeded(() => {
+        LoginModal.open();
+      });
+      initTabController();
+      return;
+    }
+
+    LoginModal.open();
+    initTabController();
   } catch (error) {
     console.error('✗ Error initializing application:', error);
 
-    // Show user-friendly error messages
     const message = (error as Error).message;
     if (message.includes('authorize') || message.includes('authenticated')) {
       alert('Please authorize the application to access your account.');
@@ -386,81 +480,63 @@ Please refresh the page and try again.`
   }
 }
 
-/**
- * Environment constants (must match backend NodeEnv values)
- */
-const NodeEnv = {
-  PRODUCTION: 'production',
-  STAGING: 'staging',
-  DEVELOPMENT: 'development',
-  TEST: 'test',
-};
+function exposeConsoleHelpers(): void {
+  window.overrideMaintenanceMode = function (): boolean {
+    try {
+      sessionStorage.setItem('maintenance_mode_override', 'true');
+      hideMaintenanceMode();
+      LoginModal.init(loadUserData);
+      TermsModal.init();
+      LoginModal.updateLoginButtonState();
+      LoginModal.showLoginButton();
+      setPageLoading(false);
 
-/**
- * Initialize version display for staging environments
- */
-async function initializeVersionDisplay(): Promise<void> {
-  try {
-    const versionInfo = (await HttpService.get('version')) as VersionInfo;
-
-    // Set global environment information for use throughout the application
-    window.TONIC_ENV = {
-      environment: versionInfo.environment,
-      isDevelopment: versionInfo.environment === NodeEnv.DEVELOPMENT,
-      isStaging: versionInfo.environment === NodeEnv.STAGING,
-      isProduction: versionInfo.environment === NodeEnv.PRODUCTION,
-      version: versionInfo.number,
-      gitCommit: versionInfo.gitCommit,
-      // Export NodeEnv constants for use throughout the app
-      NodeEnv,
-    };
-
-    if (versionInfo.displayVersion) {
-      const versionDisplay = document.getElementById('version-display');
-      const versionNumber = document.getElementById('version-number-text');
-      const versionEnv = document.getElementById('version-env');
-      const versionCommit = document.getElementById('version-commit');
-
-      if (versionDisplay && versionNumber && versionEnv && versionCommit) {
-        versionNumber.textContent = versionInfo.number;
-        versionEnv.textContent = versionInfo.environment.toUpperCase();
-        versionCommit.textContent = versionInfo.gitCommit.substring(0, 7);
-
-        versionDisplay.style.display = 'block';
-
-        // Add click handler to copy commit ID and show detailed version info
-        versionDisplay.addEventListener('click', async () => {
-          // Copy commit ID to clipboard
-          try {
-            await navigator.clipboard.writeText(versionInfo.gitCommit);
-          } catch (error) {
-            console.warn('Failed to copy commit ID:', error);
-          }
-
-          const details = `
-Version: ${versionInfo.number}
-${versionInfo.gitTag ? `Git Tag: ${versionInfo.gitTag}\n` : ''}Environment: ${versionInfo.environment}
-Build Date: ${new Date(versionInfo.buildDate).toLocaleString()}
-Git Commit: ${versionInfo.gitCommit}
-
-✓ Commit ID copied to clipboard!
-          `.trim();
-
-          alert(details);
+      const hasAcceptedTerms = window.UserSession.hasAcceptedTermsOfService();
+      if (!hasAcceptedTerms) {
+        TermsModal.showIfNeeded(() => {
+          LoginModal.open();
         });
+      } else {
+        const stored = window.AccessCodeManager.getStoredAuthData();
+        if (stored) {
+          attemptAutoLogin(stored.accessCode, stored.loginType);
+        } else {
+          LoginModal.open();
+        }
       }
+
+      return true;
+    } catch (error: unknown) {
+      console.error('✗ Failed to override maintenance mode:', error);
+      return false;
     }
-  } catch (error) {
-    // Don't throw - version display is not critical
-  }
+  };
+
+  window.clearServerCache = async function (): Promise<boolean> {
+    try {
+      console.log('🧹 Clearing server cache...');
+      const result = await HttpService.post<ClearCacheResponse>('admin/clear-cache', {});
+      if (!result.ok) {
+        console.error('✗ Error clearing server cache:', result.error.message);
+        return false;
+      }
+      const cacheData = result.data;
+      console.log('✓ Server cache cleared successfully by:', cacheData.clearedBy);
+      console.log('  Message:', cacheData.message);
+      return true;
+    } catch (error) {
+      console.error('✗ Error clearing server cache:', error);
+      return false;
+    }
+  };
 }
 
-/**
- * Main application entry point
- */
+// ---------------------------------------------------------------------------
+// Main entry point
+// ---------------------------------------------------------------------------
+
 async function main(): Promise<void> {
   try {
-    // Initialize version info first so window.TONIC_ENV is available during app initialization
     try {
       await initializeVersionDisplay();
     } catch (error) {

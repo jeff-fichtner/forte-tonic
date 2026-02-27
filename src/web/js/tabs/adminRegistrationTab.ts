@@ -105,7 +105,7 @@ export class AdminRegistrationTab extends AdminBaseTab {
   async #createRegistration(registrationData: unknown): Promise<void> {
     const result = await RegistrationService.create(
       registrationData as Record<string, unknown>,
-      { students: this.data!.students, instructors: this.data!.instructors },
+      { students: this.data!.students as Array<{ id: string; [key: string]: unknown }>, instructors: this.data!.instructors as Array<{ id: string; [key: string]: unknown }> },
       { isAdmin: true }
     );
     if (result.ok) {

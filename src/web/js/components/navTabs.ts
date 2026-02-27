@@ -6,6 +6,12 @@ import { isEnrollmentPeriod } from '../utilities/periodHelpers.js';
  *
  */
 export class NavTabs {
+  #currentUser: Record<string, unknown> | null = null;
+
+  setCurrentUser(user: Record<string, unknown> | null): void {
+    this.#currentUser = user;
+  }
+
   /**
    *
    */
@@ -47,8 +53,8 @@ export class NavTabs {
 
       if (isTabControllerRegistered) {
         try {
-          // Get session info from viewModel if available
-          const currentUser = window.viewModel?.currentUser as Record<string, unknown> | undefined;
+          // Get session info from current user state
+          const currentUser = this.#currentUser;
           const sessionInfo = currentUser
             ? {
                 user: currentUser,
@@ -93,7 +99,7 @@ export class NavTabs {
       // CRITICAL: Trimester selector is ADMIN-ONLY and ENROLLMENT-PERIOD-ONLY
       const adminTrimesterSelector = document.getElementById('admin-trimester-selector-container');
       if (adminTrimesterSelector) {
-        const isAdmin = !!(window.viewModel?.currentUser as Record<string, unknown> | undefined)?.admin;
+        const isAdmin = !!this.#currentUser?.admin;
         const currentPeriod = window.UserSession?.getCurrentPeriod();
 
         const adminTrimesterTabs = [
@@ -112,7 +118,7 @@ export class NavTabs {
         'instructor-trimester-selector-container'
       );
       if (instructorTrimesterSelector) {
-        const isInstructor = !!(window.viewModel?.currentUser as Record<string, unknown> | undefined)?.instructor;
+        const isInstructor = !!this.#currentUser?.instructor;
         const currentPeriod = window.UserSession?.getCurrentPeriod();
 
         const instructorTrimesterTabs = ['#instructor-weekly-schedule'];
@@ -340,7 +346,7 @@ export class NavTabs {
    */
   #initializeSectionUI(section: string): void {
     if (section === 'admin') {
-      const isAdmin = !!(window.viewModel?.currentUser as Record<string, unknown> | undefined)?.admin;
+      const isAdmin = !!this.#currentUser?.admin;
       const currentPeriod = window.UserSession?.getCurrentPeriod();
       const appConfig = window.UserSession?.getAppConfig();
 
@@ -382,7 +388,7 @@ export class NavTabs {
     }
 
     if (section === 'instructor') {
-      const isInstructor = !!(window.viewModel?.currentUser as Record<string, unknown> | undefined)?.instructor;
+      const isInstructor = !!this.#currentUser?.instructor;
       const currentPeriod = window.UserSession?.getCurrentPeriod();
       const appConfig = window.UserSession?.getAppConfig();
 
@@ -468,7 +474,7 @@ export class NavTabs {
           const isRegistered = window.tabController && window.tabController.isTabRegistered(tabId);
 
           if (isRegistered) {
-            const currentUser = window.viewModel?.currentUser as Record<string, unknown> | undefined;
+            const currentUser = this.#currentUser;
             const sessionInfo = currentUser
               ? {
                   user: currentUser,
