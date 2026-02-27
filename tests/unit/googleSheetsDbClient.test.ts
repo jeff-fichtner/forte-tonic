@@ -86,8 +86,8 @@ describe('GoogleSheetsDbClient', () => {
       const mockApiResponse = {
         data: {
           values: [
-            ['admin-1', 'admin1@test.com', 'Doe', 'John', '555-1234'],
-            ['admin-2', 'admin2@test.com', 'Smith', 'Jane', '555-5678'],
+            ['admin-1', 'admin1@test.com', 'Doe', 'John', '5551234000'],
+            ['admin-2', 'admin2@test.com', 'Smith', 'Jane', '5555678000'],
           ],
         },
       };
@@ -117,14 +117,14 @@ describe('GoogleSheetsDbClient', () => {
           email: 'admin1@test.com',
           lastName: 'Doe',
           firstName: 'John',
-          phone: '555-1234',
+          phone: '5551234000',
         },
         {
           id: 'admin-2',
           email: 'admin2@test.com',
           lastName: 'Smith',
           firstName: 'Jane',
-          phone: '555-5678',
+          phone: '5555678000',
         },
       ]);
     });
@@ -225,8 +225,8 @@ describe('GoogleSheetsDbClient', () => {
     });
   });
 
-  describe('insertIntoSheet', () => {
-    test('should insert data', async () => {
+  describe('appendRecord', () => {
+    test('should append data with default RAW input option', async () => {
       mockSheetsApi.spreadsheets.values.append.mockResolvedValue({
         data: {
           updates: {
@@ -241,7 +241,7 @@ describe('GoogleSheetsDbClient', () => {
         email: 'test@test.com',
         lastName: 'Doe',
         firstName: 'John',
-        phone: '555-1234',
+        phone: '5551234000',
         accessCode: '',
         role: '',
         displayEmail: '',
@@ -249,14 +249,14 @@ describe('GoogleSheetsDbClient', () => {
         isDirector: false,
       };
 
-      await client.insertIntoSheet('admins', data);
+      await client.appendRecord('admins', data);
 
       expect(mockSheetsApi.spreadsheets.values.append).toHaveBeenCalledWith({
         spreadsheetId: 'test-spreadsheet-id',
         range: 'admins!A:A',
-        valueInputOption: 'USER_ENTERED',
+        valueInputOption: 'RAW',
         requestBody: {
-          values: [['admin-1', 'test@test.com', 'Doe', 'John', '555-1234', '', '', '', '', 'false']],
+          values: [['admin-1', 'test@test.com', 'Doe', 'John', '5551234000', '', '', '', '', 'false']],
         },
       });
     });
@@ -270,11 +270,11 @@ describe('GoogleSheetsDbClient', () => {
         id: 'admin-1',
         email: 'test@test.com',
         // lastName and firstName omitted
-        phone: '555-1234',
+        phone: '5551234000',
         // accessCode, role, displayEmail, displayPhone, isDirector omitted
       };
 
-      await client.insertIntoSheet('admins', data);
+      await client.appendRecord('admins', data);
 
       // Verify row has empty strings for missing columns (up to isDirector at index 9)
       const call = mockSheetsApi.spreadsheets.values.append.mock.calls[0][0];
@@ -283,7 +283,7 @@ describe('GoogleSheetsDbClient', () => {
         'test@test.com',
         '',
         '',
-        '555-1234',
+        '5551234000',
         '',
         '',
         '',
@@ -299,8 +299,8 @@ describe('GoogleSheetsDbClient', () => {
       mockSheetsApi.spreadsheets.values.get.mockResolvedValue({
         data: {
           values: [
-            ['admin-1', 'old@test.com', 'Doe', 'John', '555-1234', '', '', '', '', ''],
-            ['admin-2', 'admin2@test.com', 'Smith', 'Jane', '555-5678', '', '', '', '', ''],
+            ['admin-1', 'old@test.com', 'Doe', 'John', '5551234000', '', '', '', '', ''],
+            ['admin-2', 'admin2@test.com', 'Smith', 'Jane', '5555678000', '', '', '', '', ''],
           ],
         },
       });
@@ -314,7 +314,7 @@ describe('GoogleSheetsDbClient', () => {
         email: 'updated@test.com',
         lastName: 'Smith',
         firstName: 'Jane',
-        phone: '555-9999',
+        phone: '5559999000',
         accessCode: '',
         role: '',
         displayEmail: '',
@@ -332,7 +332,7 @@ describe('GoogleSheetsDbClient', () => {
         valueInputOption: 'USER_ENTERED',
         requestBody: {
           values: [
-            ['admin-2', 'updated@test.com', 'Smith', 'Jane', '555-9999', '', '', '', '', 'false'],
+            ['admin-2', 'updated@test.com', 'Smith', 'Jane', '5559999000', '', '', '', '', 'false'],
           ],
         },
       });

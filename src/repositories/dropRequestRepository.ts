@@ -9,6 +9,9 @@
 import { BaseRepository } from './baseRepository.js';
 import { DropRequest } from '../models/shared/dropRequest.js';
 import type { DropRequestData } from '../models/shared/dropRequest.js';
+import { Keys } from '../utils/values/keys.js';
+import { UuidUtility } from '../utils/uuidUtility.js';
+import { DropRequestStatus } from '../utils/values/dropRequestStatus.js';
 import type { GoogleSheetsDbClient } from '../database/googleSheetsDbClient.js';
 import type { ConfigurationService } from '../services/configurationService.js';
 
@@ -20,7 +23,7 @@ export type { DropRequestData, DropRequestJSON } from '../models/shared/dropRequ
  */
 export class DropRequestRepository extends BaseRepository<DropRequest> {
   constructor(dbClient: GoogleSheetsDbClient, configService?: ConfigurationService) {
-    super('drop_requests', (record) => DropRequest.fromDatabaseRow(record), dbClient, configService);
+    super(Keys.DROP_REQUESTS, (record) => DropRequest.fromDatabaseRow(record), dbClient, configService);
   }
 
   /**
@@ -32,8 +35,20 @@ export class DropRequestRepository extends BaseRepository<DropRequest> {
         `📝 Creating new drop request for registration: ${String(requestData.registrationId)} by ${createdBy}`
       );
 
-      const dropRequest = new DropRequest(requestData as Partial<DropRequestData>);
-      await this.dbClient.appendRecord('drop_requests', { ...dropRequest.toJSON() });
+      const dropRequest = new DropRequest({
+        id: UuidUtility.generateUuid(),
+        registrationId: '',
+        parentId: '',
+        trimester: '',
+        reason: '',
+        requestedAt: new Date().toISOString(),
+        status: DropRequestStatus.PENDING,
+        reviewedBy: null,
+        reviewedAt: null,
+        adminNotes: null,
+        ...requestData,
+      } as DropRequestData);
+      await this.dbClient.appendRecord(Keys.DROP_REQUESTS, { ...dropRequest.toJSON() });
 
       this.logger.info(`✅ Created drop request with ID: ${dropRequest.id}`);
       return dropRequest;
@@ -63,9 +78,9 @@ export class DropRequestRepository extends BaseRepository<DropRequest> {
         ...existing,
         ...(updateData as Partial<DropRequestData>),
         id,
-      });
+      } as DropRequestData);
 
-      await this.dbClient.updateRecord('drop_requests', { ...updated.toJSON() }, updatedBy);
+      await this.dbClient.updateRecord(Keys.DROP_REQUESTS, { ...updated.toJSON() }, updatedBy);
 
       this.logger.info(`✅ Updated drop request: ${id}`);
       return updated;

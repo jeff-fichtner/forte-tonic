@@ -1,4 +1,6 @@
 /**
+ * @jest-environment jsdom
+ *
  * Registration Service Unit Tests
  * ================================
  *
@@ -198,7 +200,7 @@ describe('RegistrationService.create()', () => {
         { isAdmin: false },
       );
 
-      expect(mockHttpDelete).toHaveBeenCalledWith('registrations/old-reg-1');
+      expect(mockHttpDelete).toHaveBeenCalledWith('registrations/Fall/old-reg-1');
       expect(mockHttpPost).toHaveBeenCalled();
     });
 
@@ -229,7 +231,7 @@ describe('RegistrationService.create()', () => {
         { isAdmin: true },
       );
 
-      expect(mockHttpDelete).toHaveBeenCalledWith('registrations/old-reg-3');
+      expect(mockHttpDelete).toHaveBeenCalledWith('registrations/Spring/old-reg-3');
     });
 
     test('throws and does not create new registration when delete fails', async () => {
@@ -418,16 +420,16 @@ describe('RegistrationService.delete()', () => {
     mockConfirm.mockReturnValue(true);
     mockHttpDelete.mockResolvedValue(undefined);
 
-    await RegistrationService.delete('reg-100');
+    await RegistrationService.delete('reg-100', 'fall');
 
     expect(mockConfirm).toHaveBeenCalledWith('Are you sure you want to delete this registration?');
-    expect(mockHttpDelete).toHaveBeenCalledWith('registrations/reg-100');
+    expect(mockHttpDelete).toHaveBeenCalledWith('registrations/fall/reg-100');
   });
 
   test('does nothing if user cancels confirmation', async () => {
     mockConfirm.mockReturnValue(false);
 
-    await RegistrationService.delete('reg-100');
+    await RegistrationService.delete('reg-100', 'fall');
 
     expect(mockHttpDelete).not.toHaveBeenCalled();
     expect(mockToast).not.toHaveBeenCalled();
@@ -437,7 +439,7 @@ describe('RegistrationService.delete()', () => {
     mockConfirm.mockReturnValue(true);
     mockHttpDelete.mockResolvedValue(undefined);
 
-    await RegistrationService.delete('reg-100');
+    await RegistrationService.delete('reg-100', 'fall');
 
     expect(mockToast).toHaveBeenCalledWith({ html: 'Registration deleted successfully.' });
   });
@@ -446,7 +448,7 @@ describe('RegistrationService.delete()', () => {
     mockConfirm.mockReturnValue(true);
     mockHttpDelete.mockRejectedValue(new Error('network error'));
 
-    await RegistrationService.delete('reg-100');
+    await RegistrationService.delete('reg-100', 'fall');
 
     expect(mockToast).toHaveBeenCalledWith({ html: 'Error deleting registration.' });
   });
@@ -454,7 +456,7 @@ describe('RegistrationService.delete()', () => {
   test('shows error toast when no registration ID provided', async () => {
     mockConfirm.mockReturnValue(true);
 
-    await RegistrationService.delete('');
+    await RegistrationService.delete('', 'fall');
 
     expect(mockHttpDelete).not.toHaveBeenCalled();
     expect(mockToast).toHaveBeenCalledWith({ html: 'Error: No registration ID provided for deletion.' });

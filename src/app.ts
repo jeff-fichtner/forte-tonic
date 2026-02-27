@@ -9,9 +9,11 @@ import { initializeRepositories } from './middleware/auth.js';
 import { configService } from './services/configurationService.js';
 import { createLogger } from './utils/logger.js';
 import { serviceContainer } from './infrastructure/container/serviceContainer.js';
+import { errorResponse } from './common/responseHelpers.js';
+import { ERROR_CODE, ERROR_TYPE } from './common/errorConstants.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+
+const appDir = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 
@@ -102,7 +104,7 @@ app.use('/api', apiRoutes);
 // Only expose models/shared/ — not the full models/ directory
 app.use(
   '/models/shared',
-  express.static(path.join(__dirname, 'models', 'shared'), {
+  express.static(path.join(appDir, 'models', 'shared'), {
     setHeaders: (res: Response): void => {
       if (isDevelopment) {
         res.set({
@@ -122,7 +124,7 @@ app.use(
 // Only expose utils/values/ (enums, constants) — not the full utils/ directory
 app.use(
   '/utils/values',
-  express.static(path.join(__dirname, 'utils', 'values'), {
+  express.static(path.join(appDir, 'utils', 'values'), {
     setHeaders: (res: Response): void => {
       if (isDevelopment) {
         res.set({
@@ -140,20 +142,24 @@ app.use(
 
 // Fallback: Serve other static files from web directory (images, etc)
 // This comes AFTER the static routes so version injection middleware runs first
-app.use(express.static(path.join(__dirname, 'web'), developmentStaticOptions));
+app.use(express.static(path.join(appDir, 'web'), developmentStaticOptions));
 
 // 404 handler
-app.use('*', (req: Request, res: Response) => {
-  res.status(404).json({ error: 'Route not found' });
+app.use('*', (_req: Request, res: Response) => {
+  res.status(404).json({
+    success: false,
+    error: {
+      message: 'Route not found',
+      code: ERROR_CODE.NOT_FOUND,
+      type: ERROR_TYPE.NOT_FOUND,
+    },
+  });
 });
 
 // Error handling middleware
 app.use((error: Error, req: Request, res: Response, _next: NextFunction) => {
   logger.error('Unhandled error:', error);
-  res.status(500).json({
-    error: 'Internal server error',
-    message: configService.isDevelopment() ? error.message : 'Something went wrong',
-  });
+  errorResponse(res, error, { req, context: { source: 'globalErrorHandler' } });
 });
 
 /**

@@ -26,6 +26,8 @@ Today's date is 2026-02-18.
 - TypeScript 5.x targeting ES2022, browser environmen + Vite 7.x (build), MaterializeCSS 1.0.0 (CDN, UI library) (008-frontend-type-hardening)
 - N/A (frontend only; API calls via HttpService) (008-frontend-type-hardening)
 - TypeScript 5.x targeting ES2022 + Express 4 (backend), Vite 7.x (frontend build), MaterializeCSS 1.0.0 (UI), googleapis (Google Sheets) (009-frontend-decomposition)
+- TypeScript 5.x targeting ES2022, browser environmen + MaterializeCSS 1.0.0 (CDN), Vite 7.x (build) (010-frontend-tab-cleanup)
+- N/A — frontend only; API calls via `HttpService` (010-frontend-tab-cleanup)
 
 ## Recent Changes
 - 002-typescript-migration: Added TypeScript 5.x targeting ES2022, running on Node.js (ESM) + Express 4, Google Sheets API v4, tsx (runtime), ts-jest (testing), typescript-eslint (linting)

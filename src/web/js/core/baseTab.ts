@@ -32,6 +32,8 @@
  *   }
  */
 
+import type { HttpResult } from '../data/httpService.js';
+
 export interface SessionInfo {
   user?: Record<string, unknown>;
   userType?: string;
@@ -77,35 +79,24 @@ export class BaseTab {
     }
 
     this.sessionInfo = sessionInfo;
-
-    // Create abort controller for this load cycle
     this.abortController = new AbortController();
+    this.showLoadingState(true);
 
-    try {
-      // Show loading state
-      this.showLoadingState(true);
+    const result = await this.fetchData(sessionInfo);
 
-      // Fetch tab-specific data
-      this.data = await this.fetchData(sessionInfo);
-
-      // Render the UI
-      await this.render();
-
-      // Attach event listeners
-      this.attachEventListeners();
-
-      this.isLoaded = true;
+    if (!result.ok) {
       this.showLoadingState(false);
-    } catch (error: unknown) {
-      // Don't log abort errors (user navigated away)
-      if (error instanceof Error && error.name !== 'AbortError') {
-        console.error(`Error loading tab ${this.tabId}:`, error);
-        this.showError(error);
-      }
-
-      this.showLoadingState(false);
-      throw error;
+      this.showError(result.error.message);
+      return;
     }
+
+    this.data = result.data;
+
+    await this.render();
+    this.attachEventListeners();
+
+    this.isLoaded = true;
+    this.showLoadingState(false);
   }
 
   /**
@@ -137,9 +128,9 @@ export class BaseTab {
 
   /**
    * Fetch tab-specific data from API
-   * MUST be implemented by subclasses
+   * MUST be implemented by subclasses — return HttpResult, never throw
    */
-  async fetchData(_sessionInfo: SessionInfo | null): Promise<Record<string, unknown>> {
+  async fetchData(_sessionInfo: SessionInfo | null): Promise<HttpResult<Record<string, unknown>>> {
     throw new Error(`fetchData() must be implemented by ${this.constructor.name}`);
   }
 
@@ -232,52 +223,50 @@ export class BaseTab {
   }
 
   /**
-   * Show error message
-   * Override in subclasses for custom error UI
+   * Show an inline error banner inside the tab container.
+   * Includes a retry button that re-runs fetchData + render.
+   * Override in subclasses for custom error UI.
    */
-  showError(error: Error | unknown): void {
+  showError(message: string): void {
     const container = this.getContainer();
-    const errorMessage =
-      error instanceof Error ? error.message : 'An error occurred loading this tab';
 
-    // Simple error display (override for better UI)
     container.innerHTML = `
-      <div class="error-message" role="alert">
-        <p><strong>Error:</strong> ${errorMessage}</p>
-        <button onclick="location.reload()">Reload Page</button>
+      <div class="tab-error-banner" role="alert" style="margin: 16px; padding: 12px 16px; background: #ffebee; border: 1px solid #f44336; border-radius: 4px; color: #c62828; display: flex; align-items: center; gap: 12px;">
+        <i class="material-icons" style="flex-shrink: 0;">error_outline</i>
+        <span style="flex: 1;">${message}</span>
+        <button class="btn-flat red-text tab-error-retry" type="button" style="flex-shrink: 0;">Retry</button>
       </div>
     `;
+
+    container.querySelector('.tab-error-retry')?.addEventListener('click', () => {
+      this.reload();
+    });
   }
 
   /**
    * Reload this tab's data
    */
   async reload(): Promise<void> {
-    // Cancel any in-flight requests
     if (this.abortController) {
       this.abortController.abort();
     }
 
     this.abortController = new AbortController();
+    this.isLoaded = false;
+    this.showLoadingState(true);
 
-    try {
-      this.showLoadingState(true);
+    const result = await this.fetchData(this.sessionInfo);
 
-      // Fetch fresh data
-      this.data = await this.fetchData(this.sessionInfo);
-
-      // Re-render
-      await this.render();
-
+    if (!result.ok) {
       this.showLoadingState(false);
-    } catch (error: unknown) {
-      if (error instanceof Error && error.name !== 'AbortError') {
-        console.error(`Error reloading tab ${this.tabId}:`, error);
-        this.showError(error);
-      }
-      this.showLoadingState(false);
-      throw error;
+      this.showError(result.error.message);
+      return;
     }
+
+    this.data = result.data;
+    await this.render();
+    this.isLoaded = true;
+    this.showLoadingState(false);
   }
 
   /**

@@ -77,16 +77,9 @@ export const Sections = {
 // Server API endpoints - REST API
 export const ServerFunctions = {
   getAppConfiguration: 'configuration',
-  getAdmins: 'admins',
-  getInstructors: 'instructors',
-  getStudents: 'students',
-  getClasses: 'classes',
-  getRegistrations: 'registrations',
-  getRooms: 'rooms',
   register: 'registrations',
   authenticateByAccessCode: 'auth/access-code',
   // Next trimester registration (enrollment periods only)
-  getNextTrimesterRegistrations: 'registrations/next-trimester',
   createNextTrimesterRegistration: 'registrations/next-trimester',
   // Feedback
   submitFeedback: 'feedback',

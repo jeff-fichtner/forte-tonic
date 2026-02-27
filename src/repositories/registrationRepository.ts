@@ -14,8 +14,6 @@ import type { GoogleSheetsDbClient } from '../database/googleSheetsDbClient.js';
 import type { ConfigurationService } from '../services/configurationService.js';
 import type { PeriodService } from '../services/periodService.js';
 
-const REGISTRATION_TABLES = ['registrations_fall', 'registrations_winter', 'registrations_spring'];
-
 export class RegistrationRepository extends BaseRepository<Registration> {
   periodService: PeriodService;
 
@@ -30,9 +28,11 @@ export class RegistrationRepository extends BaseRepository<Registration> {
 
   /**
    * Fetch all valid registrations from a single table.
+   * Hydrates isWaitlistClass from config since it is not persisted in the DB.
    */
   private async _fetchRegistrations(tableName: string): Promise<Registration[]> {
-    return this.fetchAll(tableName, (record) => {
+    const rockBandClassIds = this.configService.getRockBandClassIds();
+    const registrations = await this.fetchAll(tableName, (record) => {
       if (!record || !record.id) return null;
       try {
         return Registration.fromDatabaseRow(record);
@@ -40,6 +40,10 @@ export class RegistrationRepository extends BaseRepository<Registration> {
         return null;
       }
     });
+    for (const reg of registrations) {
+      reg.isWaitlistClass = rockBandClassIds.includes(reg.classId);
+    }
+    return registrations;
   }
 
   /**
@@ -53,54 +57,15 @@ export class RegistrationRepository extends BaseRepository<Registration> {
   }
 
   /**
-   * Find a registration by ID across all trimester tables
+   * Find a registration by ID within a specific trimester table.
    */
-  override async findById(id: string): Promise<Registration | null> {
+  async findByIdInTrimester(id: string, trimester: string): Promise<Registration | null> {
     try {
-      for (const table of REGISTRATION_TABLES) {
-        const registrations = await this._fetchRegistrations(table);
-        const registration = registrations.find(reg => reg.id === id);
-        if (registration) {
-          return registration;
-        }
-      }
-      return null;
+      const tableName = this._tableName(trimester);
+      const registrations = await this._fetchRegistrations(tableName);
+      return registrations.find(reg => reg.id === id) ?? null;
     } catch (error) {
       this.logger.error('Error finding registration by ID:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get all registrations for a student across all trimester tables
-   */
-  async getByStudentId(studentId: string): Promise<Registration[]> {
-    try {
-      const allRegistrations: Registration[] = [];
-      for (const table of REGISTRATION_TABLES) {
-        const registrations = await this._fetchRegistrations(table);
-        allRegistrations.push(...registrations);
-      }
-      return allRegistrations.filter(reg => reg.studentId === studentId);
-    } catch (error) {
-      this.logger.error('Error getting registrations by student ID:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get all registrations for an instructor across all trimester tables
-   */
-  async getByInstructorId(instructorId: string): Promise<Registration[]> {
-    try {
-      const allRegistrations: Registration[] = [];
-      for (const table of REGISTRATION_TABLES) {
-        const registrations = await this._fetchRegistrations(table);
-        allRegistrations.push(...registrations);
-      }
-      return allRegistrations.filter(reg => reg.instructorId === instructorId);
-    } catch (error) {
-      this.logger.error('Error getting registrations by instructor ID:', error);
       throw error;
     }
   }
@@ -219,9 +184,9 @@ export class RegistrationRepository extends BaseRepository<Registration> {
 
       const tableName = this._tableName(trimester);
 
-      const registration = await this.findById(id);
+      const registration = await this.findByIdInTrimester(id, trimester);
       if (!registration) {
-        throw new Error(`Registration with ID ${id} not found`);
+        throw new Error(`Registration with ID ${id} not found in ${tableName}`);
       }
 
       this.logger.info(`🗑️ Deleting registration from table: ${tableName}`);
@@ -270,7 +235,9 @@ export class RegistrationRepository extends BaseRepository<Registration> {
     intent: string,
     submittedBy: string
   ): Promise<Registration> {
-    const registrations = await this.findAll();
+    // Intent collection is always for the current trimester
+    const targetSheet = await this.periodService.getCurrentTrimesterTable();
+    const registrations = await this._fetchRegistrations(targetSheet);
     const registration = registrations.find(r => r.id === registrationId);
 
     if (!registration) {
@@ -278,20 +245,6 @@ export class RegistrationRepository extends BaseRepository<Registration> {
     }
 
     registration.updateIntent(intent as 'keep' | 'drop' | 'change', submittedBy);
-
-    // Find which trimester table contains this registration
-    let targetSheet: string | null = null;
-    for (const table of REGISTRATION_TABLES) {
-      const tableRegistrations = await this._fetchRegistrations(table);
-      if (tableRegistrations.find(reg => reg.id === registrationId)) {
-        targetSheet = table;
-        break;
-      }
-    }
-
-    if (!targetSheet) {
-      throw new Error('Registration not found in any trimester sheet');
-    }
 
     await this.dbClient.updateRecord(
       targetSheet,

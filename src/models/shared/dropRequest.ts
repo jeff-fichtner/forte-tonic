@@ -51,17 +51,17 @@ export class DropRequest {
   reviewedAt: string | null;
   adminNotes: string | null;
 
-  constructor(data: Partial<DropRequestData> = {}) {
-    this.id = data.id || UuidUtility.generateUuid();
-    this.registrationId = data.registrationId || '';
-    this.parentId = data.parentId || '';
-    this.trimester = data.trimester || '';
-    this.reason = data.reason || '';
-    this.requestedAt = data.requestedAt || new Date().toISOString();
-    this.status = data.status || DropRequestStatus.PENDING;
-    this.reviewedBy = data.reviewedBy || null;
-    this.reviewedAt = data.reviewedAt || null;
-    this.adminNotes = data.adminNotes || null;
+  constructor(data: DropRequestData) {
+    this.id = data.id;
+    this.registrationId = data.registrationId;
+    this.parentId = data.parentId;
+    this.trimester = data.trimester;
+    this.reason = data.reason;
+    this.requestedAt = data.requestedAt;
+    this.status = data.status;
+    this.reviewedBy = data.reviewedBy;
+    this.reviewedAt = data.reviewedAt;
+    this.adminNotes = data.adminNotes;
   }
 
   /**
@@ -85,7 +85,8 @@ export class DropRequest {
   /**
    * Create from database row
    */
-  static fromDatabaseRow(record: Record<string, string>): DropRequest {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  static fromDatabaseRow(record: Record<string, any>): DropRequest {
     return new DropRequest({
       id: record.id,
       registrationId: record.registrationId,

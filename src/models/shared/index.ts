@@ -25,5 +25,5 @@ export type { ParentData, ParentJSON } from './parent.js';
 export type { RegistrationData, RegistrationJSON, RegistrationType, ReenrollmentIntent } from './registration.js';
 export type { RoomData, RoomJSON } from './room.js';
 export type { StudentData, StudentJSON } from './student.js';
-export type { AppConfigurationResponseData, Period } from './responses/appConfigurationResponse.js';
+export type { AppConfigurationResponseData, Period, DirectorInfo } from './responses/appConfigurationResponse.js';
 export type { AuthenticatedUserResponseData, AuthenticatedUserResponseJSON } from './responses/authenticatedUserResponse.js';

@@ -18,13 +18,15 @@ jest.unstable_mockModule('../../../src/middleware/auth.js', () => ({
   getAuthenticatedUserEmail: mockGetAuthenticatedUserEmail,
 }));
 
+const mockLogger = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn(),
+};
 jest.unstable_mockModule('../../../src/utils/logger.js', () => ({
-  getLogger: () => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-  }),
+  getLogger: () => mockLogger,
+  createLogger: () => mockLogger,
 }));
 
 const mockSuccessResponse = jest.fn();
@@ -43,18 +45,41 @@ jest.unstable_mockModule('../../../src/common/responseHelpers.js', () => ({
 jest.unstable_mockModule('../../../src/common/errors.js', () => ({
   ValidationError: class ValidationError extends Error {
     statusCode = 400;
-    constructor(msg: string) {
-      super(msg);
-      this.name = 'ValidationError';
-    }
+    constructor(msg: string) { super(msg); this.name = 'ValidationError'; }
   },
   ConflictError: class ConflictError extends Error {
     statusCode = 409;
-    constructor(msg: string) {
-      super(msg);
-      this.name = 'ConflictError';
-    }
+    constructor(msg: string) { super(msg); this.name = 'ConflictError'; }
   },
+  NotFoundError: class NotFoundError extends Error {
+    statusCode = 404;
+    constructor(msg: string) { super(msg); this.name = 'NotFoundError'; }
+  },
+  ForbiddenError: class ForbiddenError extends Error {
+    statusCode = 403;
+    constructor(msg: string) { super(msg); this.name = 'ForbiddenError'; }
+  },
+  UnauthorizedError: class UnauthorizedError extends Error {
+    statusCode = 401;
+    constructor(msg: string) { super(msg); this.name = 'UnauthorizedError'; }
+  },
+}));
+
+// serviceContainer mock — populated per-test via mockAttendanceRepo reference
+const mockServiceContainer = {
+  get: jest.fn(),
+};
+jest.unstable_mockModule('../../../src/infrastructure/container/serviceContainer.js', () => ({
+  ServiceKeys: {
+    databaseClient: 'databaseClient', emailClient: 'emailClient', cacheService: 'cacheService',
+    configurationService: 'configurationService', registrationRepository: 'registrationRepository',
+    userRepository: 'userRepository', programRepository: 'programRepository',
+    attendanceRepository: 'attendanceRepository', dropRequestRepository: 'dropRequestRepository',
+    periodRepository: 'periodRepository', registrationService: 'registrationService',
+    periodService: 'periodService', dropRequestService: 'dropRequestService',
+    entityQueryService: 'entityQueryService',
+  },
+  serviceContainer: mockServiceContainer,
 }));
 
 // Import controller after all mocks are wired
@@ -94,6 +119,7 @@ describe('AttendanceController', () => {
     mockAttendanceRepo = createMockAttendanceRepo();
     res = createRes();
     mockGetAuthenticatedUserEmail.mockReturnValue('admin@test.com');
+    mockServiceContainer.get.mockReturnValue(mockAttendanceRepo);
   });
 
   // -----------------------------------------------------------------------
@@ -109,7 +135,6 @@ describe('AttendanceController', () => {
           schoolYear: '2025-2026',
           trimester: 'fall',
         },
-        attendanceRepository: mockAttendanceRepo,
       } as any;
 
       mockAttendanceRepo.hasAttendance.mockResolvedValue(false);
@@ -160,7 +185,6 @@ describe('AttendanceController', () => {
           schoolYear: '2025-2026',
           trimester: 'fall',
         },
-        attendanceRepository: mockAttendanceRepo,
       } as any;
 
       mockAttendanceRepo.hasAttendance.mockResolvedValue(true);
@@ -178,7 +202,6 @@ describe('AttendanceController', () => {
     it('should call errorResponse when registrationId is missing (ValidationError)', async () => {
       const req = {
         body: { week: '3', schoolYear: '2025-2026', trimester: 'fall' },
-        attendanceRepository: mockAttendanceRepo,
       } as any;
 
       await AttendanceController.markAttendance(req, res);
@@ -193,7 +216,6 @@ describe('AttendanceController', () => {
     it('should call errorResponse when week is missing (ValidationError)', async () => {
       const req = {
         body: { registrationId: 'reg1', schoolYear: '2025-2026', trimester: 'fall' },
-        attendanceRepository: mockAttendanceRepo,
       } as any;
 
       await AttendanceController.markAttendance(req, res);
@@ -215,7 +237,6 @@ describe('AttendanceController', () => {
       const req = {
         params: { registrationId: 'reg1' },
         query: { schoolYear: '2025-2026', trimester: 'Spring' },
-        attendanceRepository: mockAttendanceRepo,
       } as any;
 
       const summary = { totalWeeks: 12, attended: 8, missed: 4 };
@@ -244,7 +265,6 @@ describe('AttendanceController', () => {
       const req = {
         params: { registrationId: 'reg1' },
         query: {},
-        attendanceRepository: mockAttendanceRepo,
       } as any;
 
       mockAttendanceRepo.getAttendanceSummary.mockResolvedValue({});
@@ -262,7 +282,6 @@ describe('AttendanceController', () => {
       const req = {
         params: { registrationId: 'reg1' },
         query: {},
-        attendanceRepository: mockAttendanceRepo,
       } as any;
 
       mockAttendanceRepo.getAttendanceSummary.mockRejectedValue(

@@ -107,8 +107,8 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
       // Create a new student with parent emails populated
       const enrichedStudent = new Student({
         ...student,
-        firstName: student._firstName,
-        lastName: student._lastName,
+        firstName: student.givenFirstName,
+        lastName: student.givenLastName,
         parentEmails,
       });
 

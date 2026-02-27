@@ -1,32 +1,19 @@
 <!--
   SYNC IMPACT REPORT
   ==================
-  Version change: 2.0.0 → 2.1.0
-  Bump rationale: MINOR — expanded Principle IX with period type definitions and
-    trimester/targetTrimester distinction absorbed from reenrollment-consolidated.md
-  Modified principles:
-    - IX. Trimester-Aware by Default — expanded with period types, targetTrimester,
-      and start-date-only determination model
-  Added sections: None
+  Version change: 2.1.0 → 2.2.0
+  Bump rationale: MINOR — added Principle XI (Uniform CRUD Backend) codifying
+    that the backend is a generic app server with uniform CRUD patterns, no
+    UI-term wrappers, no feature-named routes, and strict layer separation
+  Modified principles: None
+  Added sections:
+    - XI. Uniform CRUD Backend
   Removed sections: None
   Templates requiring updates:
     - .specify/templates/plan-template.md ✅ no changes needed
     - .specify/templates/spec-template.md ✅ no changes needed
     - .specify/templates/tasks-template.md ✅ no changes needed
   Follow-up TODOs: None
-
-  Files absorbed into constitution and deleted:
-    - CLAUDE_CODEBASE_CACHE.md (project overview, architecture, commands)
-    - docs/technical/ARCHITECTURE.md, ARCHITECTURE_COMPLETE.md, DDD_ARCHITECTURE_SUMMARY.md
-    - docs/technical/DUAL_CONSTRUCTOR_ANALYSIS.md, FACTORY_PATTERN_EXAMPLE.md
-    - dev/plans/codebase-improvements.md (tech debt tracker)
-    - dev/plans/reenrollment-consolidated.md (period/trimester design decisions)
-    - dev/plans/test-coverage-analysis.md (testing expectations)
-    - docs/README.md (navigation index)
-    - 13 historical docs in docs/technical/ (completed migrations/bug fixes)
-    - 6 historical docs in docs/technical/refactoring/ (completed frontend migration)
-    - 2 historical docs in docs/business/ (completed hosting decision, Render winddown)
-    - 2 historical docs in dev/plans/backlog/ (completed UI testing investigation)
 -->
 
 # Tonic Constitution
@@ -147,6 +134,18 @@ All persistence is through Google Sheets API v4. There is no ORM, no migrations,
 - Cache invalidation after writes is handled by `clearCache()` — new features that write data MUST invalidate relevant caches
 - There is one spreadsheet per environment (production, staging) — do not assume multi-database support
 
+### XI. Uniform CRUD Backend
+
+The backend is a generic application server. Every entity flows through the same CRUD patterns — no entity is special enough to deserve custom persistence, mutation, or routing conventions.
+
+- Service methods MUST use CRUD terminology (`create`, `findById`, `update`, `delete`) — not UI or domain feature names (`cancel`, `enroll`, `submit`) that just wrap a single CRUD call
+- If a service method does nothing beyond calling one repository method with the same arguments, it MUST NOT exist — the controller calls the repository operation directly or uses a generic service method
+- Routes MUST follow REST conventions (`POST /registrations`, `DELETE /registrations/:trimester/:id`) — not feature-named endpoints (`/cancel-registration`, `/enroll-student`)
+- All repositories MUST expose the same base interface (`create`, `findById`, `findAll`, `update`, `delete`) — entity-specific query methods are allowed only when they represent genuinely different data access patterns, not renamed CRUD
+- Controllers MUST NOT contain business logic beyond request parsing, authorization, and response formatting — they delegate to services or repositories
+- No layer may skip its adjacent layer to "help" a specific feature — controllers call services, services call repositories, repositories call the database client
+- The backend MUST NOT model itself around frontend feature names, screen names, or user-facing workflows — it serves data through uniform resource endpoints that any client could consume
+
 ## Technology Constraints
 
 - **Runtime**: Node.js with ES modules
@@ -194,4 +193,4 @@ All persistence is through Google Sheets API v4. There is no ORM, no migrations,
 - All implementation plans MUST include a Constitution Check section verifying compliance
 - Complexity added in violation of these principles MUST include a Complexity Tracking entry justifying the deviation
 
-**Version**: 2.1.0 | **Ratified**: 2026-02-18 | **Last Amended**: 2026-02-18
+**Version**: 2.2.0 | **Ratified**: 2026-02-18 | **Last Amended**: 2026-02-26

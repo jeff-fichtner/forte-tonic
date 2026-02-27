@@ -111,30 +111,19 @@ describe('BaseRepository', () => {
         'user@example.com',
       );
 
+      // BaseRepository.create passes entityData directly to appendRecord (no createdBy arg)
       expect(mockDbClient.appendRecord).toHaveBeenCalledWith(
         'testEntity',
         expect.objectContaining({ id: 'abc-123', name: 'Item A' }),
-        'user@example.com',
       );
 
       expect(result).toEqual({ id: 'abc-123', name: 'Item A', value: 42 });
     });
 
-    test('should call toJSON() on entityData when available', async () => {
-      const toJSON = jest.fn().mockReturnValue({ id: 'xyz', name: 'Serialized', value: 7 });
-      const entityData = { id: 'xyz', name: 'Original', value: 7, toJSON };
-
-      const row = { id: 'xyz', name: 'Serialized', value: '7' };
-      mockDbClient.appendRecord.mockResolvedValue(row);
-
-      await repo.create(entityData as any, 'user@example.com');
-
-      expect(toJSON).toHaveBeenCalled();
-      expect(mockDbClient.appendRecord).toHaveBeenCalledWith(
-        'testEntity',
-        expect.objectContaining({ name: 'Serialized' }),
-        'user@example.com',
-      );
+    test('should require createdBy for audit trail', async () => {
+      await expect(
+        repo.create({ id: 'abc-123', name: 'Item A' }, ''),
+      ).rejects.toThrow('createdBy is required');
     });
   });
 

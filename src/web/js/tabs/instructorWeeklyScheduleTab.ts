@@ -4,6 +4,7 @@ import { formatGrade, formatTime } from '../extensions/numberExtensions.js';
 import { RegistrationType } from '../constants.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { HttpService } from '../data/httpService.js';
+import type { HttpResult } from '../data/httpService.js';
 
 interface InstructorScheduleData {
   registrations: Record<string, unknown>[];
@@ -37,29 +38,27 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
    * Fetch weekly schedule data for instructor
    * Returns registrations for this instructor + associated students + classes
    */
-  async fetchData(sessionInfo: SessionInfo | null): Promise<Record<string, unknown>> {
+  async fetchData(sessionInfo: SessionInfo | null): Promise<HttpResult<Record<string, unknown>>> {
     const instructorId = (sessionInfo?.user as Record<string, unknown> | undefined)?.instructor as Record<string, unknown> | undefined;
     const id = instructorId?.id as string | undefined;
     if (!id) {
-      throw new Error('No instructor ID found in session');
+      return { ok: false, error: { message: 'No instructor ID found in session' } };
     }
 
-    // Get selected trimester from instructor selector buttons
     const trimesterButtons = document.getElementById('instructor-trimester-buttons');
     const activeButton = trimesterButtons?.querySelector<HTMLElement>('.trimester-btn.active');
-
-    // Fallback to current period if no button selected
     const currentPeriod = window.UserSession?.getCurrentPeriod();
     const trimester = activeButton?.dataset.trimester || currentPeriod?.trimester;
 
-    const data = await HttpService.get(`instructor/tabs/weekly-schedule/${trimester}?instructorId=${id}`, { signal: this.getAbortSignal() }) as InstructorScheduleData;
+    const result = await HttpService.get<InstructorScheduleData>(`instructor/tabs/weekly-schedule/${trimester}?instructorId=${id}`, { signal: this.getAbortSignal() });
 
-    // Validate response
-    if (!data.registrations || !data.students || !data.instructors || !data.classes) {
-      throw new Error('Invalid response: missing required data');
+    if (!result.ok) return result;
+
+    if (!result.data.registrations || !result.data.students || !result.data.instructors || !result.data.classes) {
+      return { ok: false, error: { message: 'Invalid response: missing required data' } };
     }
 
-    return data as unknown as Record<string, unknown>;
+    return { ok: true, data: result.data as unknown as Record<string, unknown> };
   }
 
   /**

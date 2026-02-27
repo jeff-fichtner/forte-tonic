@@ -156,21 +156,21 @@ describe('AttendanceRepository', () => {
       expect(result.id).toBe('R1_3_2025-2026_fall');
       expect(result.registrationId).toBe('R1');
 
-      // appendRecord should have been called (parent create)
+      // appendRecord should have been called for the attendance record (no createdBy arg)
       expect(mockDbClient.appendRecord).toHaveBeenCalledWith(
         'attendance',
         expect.objectContaining({ id: 'R1_3_2025-2026_fall' }),
-        'teacher@example.com',
       );
 
-      // Audit record should have been written
-      expect(mockDbClient.insertIntoSheet).toHaveBeenCalledWith(
+      // Audit record should have been written via appendRecord with USER_ENTERED
+      expect(mockDbClient.appendRecord).toHaveBeenCalledWith(
         'attendance_audit',
         expect.objectContaining({
           action: 'CREATE',
           attendanceId: 'R1_3_2025-2026_fall',
           performedBy: 'teacher@example.com',
         }),
+        'USER_ENTERED',
       );
     });
 

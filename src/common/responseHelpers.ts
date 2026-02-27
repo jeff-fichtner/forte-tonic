@@ -113,10 +113,10 @@ export function successResponse<T>(
     });
   }
 
-  // Send success response
+  // Send success response (strip sensitive fields before serialization)
   res.status(statusCode).json({
     success: true,
-    data,
+    data: sanitizeForApi(data),
     ...(message && { message }),
   });
 }
@@ -256,6 +256,46 @@ function getErrorType(statusCode: number): string {
   return ERROR_TYPE.CLIENT;
 }
 
+/** Fields that must never appear in API responses */
+const SENSITIVE_FIELDS = new Set([
+  'password',
+  'accessCode',
+  'token',
+  'apiKey',
+  'secret',
+  'privateKey',
+  'authorization',
+]);
+
+/**
+ * Deep-strip sensitive fields from API response data.
+ * Handles nested objects, arrays, and entities with toJSON().
+ */
+function sanitizeForApi<T>(data: T): T {
+  if (data === null || data === undefined || typeof data !== 'object') {
+    return data;
+  }
+
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeForApi(item)) as T;
+  }
+
+  // If the object has toJSON, call it first (e.g. Date → string, model → plain object)
+  const record = data as Record<string, unknown>;
+  if (typeof record.toJSON === 'function') {
+    const serialized = (record.toJSON as () => unknown)();
+    // toJSON may return a primitive (e.g. Date → string) — recurse to handle it
+    return sanitizeForApi(serialized) as T;
+  }
+
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (SENSITIVE_FIELDS.has(key)) continue;
+    result[key] = sanitizeForApi(value);
+  }
+  return result as T;
+}
+
 /**
  * Sanitize request data for inclusion in error responses
  * Removes sensitive fields and includes relevant context
@@ -266,23 +306,12 @@ function getErrorType(statusCode: number): string {
 function sanitizeRequestData(req: Request): Record<string, unknown> {
   const data = (req.body || {}) as Record<string, unknown>;
 
-  // Create a shallow copy to avoid mutating the original
-  const sanitized: Record<string, unknown> = { ...data };
-
-  // Remove sensitive fields that should never be in error responses
-  const sensitiveFields: string[] = [
-    'password',
-    'accessCode',
-    'token',
-    'apiKey',
-    'secret',
-    'privateKey',
-    'authorization',
-  ];
-
-  sensitiveFields.forEach(field => {
-    delete sanitized[field];
-  });
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (!SENSITIVE_FIELDS.has(key)) {
+      sanitized[key] = value;
+    }
+  }
 
   // Include URL parameters if present (useful for PUT/PATCH/DELETE operations)
   if (req.params && Object.keys(req.params).length > 0) {

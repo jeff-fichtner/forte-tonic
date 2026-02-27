@@ -22,6 +22,7 @@ export interface ParentJSON {
   fullName: string;
   displayName: string;
   phone: string | null;
+  accessCode: string | null;
 }
 
 export class Parent {
@@ -52,7 +53,8 @@ export class Parent {
   /**
    * Factory method for creating from database row data (positional parameters)
    */
-  static fromDatabaseRow(record: Record<string, string>): Parent {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  static fromDatabaseRow(record: Record<string, any>): Parent {
     return new Parent({
       id: record.id,
       email: record.email,
@@ -89,6 +91,7 @@ export class Parent {
       fullName: this.fullName,
       displayName: this.displayName,
       phone: this.phone,
+      accessCode: this.accessCode,
     };
   }
 }

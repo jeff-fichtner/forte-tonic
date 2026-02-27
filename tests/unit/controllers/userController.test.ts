@@ -10,11 +10,8 @@ const mockPeriodService = {
 
 const mockUserRepository = {
   getAdmins: jest.fn(),
-  getInstructors: jest.fn(),
-  getStudents: jest.fn(),
   getAdminByAccessCode: jest.fn(),
   getInstructorByAccessCode: jest.fn(),
-  getParentByAccessCode: jest.fn(),
   getParentByPhone: jest.fn(),
 };
 
@@ -26,6 +23,15 @@ const mockEntityQueryService = {
 };
 
 jest.unstable_mockModule('../../../src/infrastructure/container/serviceContainer.js', () => ({
+  ServiceKeys: {
+    databaseClient: 'databaseClient', emailClient: 'emailClient', cacheService: 'cacheService',
+    configurationService: 'configurationService', registrationRepository: 'registrationRepository',
+    userRepository: 'userRepository', programRepository: 'programRepository',
+    attendanceRepository: 'attendanceRepository', dropRequestRepository: 'dropRequestRepository',
+    periodRepository: 'periodRepository', registrationService: 'registrationService',
+    periodService: 'periodService', dropRequestService: 'dropRequestService',
+    entityQueryService: 'entityQueryService',
+  },
   serviceContainer: {
     get: jest.fn().mockImplementation((name: string) => {
       const services: Record<string, unknown> = {
@@ -91,13 +97,6 @@ jest.unstable_mockModule('../../../src/common/errors.js', () => ({
     constructor(msg: string) {
       super(msg);
       this.name = 'ValidationError';
-    }
-  },
-  NotFoundError: class NotFoundError extends Error {
-    statusCode = 404;
-    constructor(msg: string) {
-      super(msg);
-      this.name = 'NotFoundError';
     }
   },
 }));
@@ -194,6 +193,7 @@ describe('UserController', () => {
       mockPeriodService.getNextPeriod.mockResolvedValue(
         next ? makePeriod(next.trimester, next.periodType) : null
       );
+      mockUserRepository.getAdmins.mockResolvedValue([]);
     }
 
     function getConfigData(): Record<string, unknown> {
@@ -413,91 +413,6 @@ describe('UserController', () => {
     });
   });
 
-  // =========================================================================
-  // T011 - Other endpoints
-  // =========================================================================
-  describe('getAdminByAccessCode', () => {
-    it('should return admin when found', async () => {
-      const adminObj = { id: 'a1', email: 'admin@test.com' };
-      mockUserRepository.getAdminByAccessCode.mockResolvedValue(adminObj);
-
-      const { req, res } = createMockReqRes({
-        params: { accessCode: '111111' },
-      });
-
-      await UserController.getAdminByAccessCode(req, res);
-
-      expect(mockSuccessResponse).toHaveBeenCalledTimes(1);
-      expect(mockSuccessResponse.mock.calls[0][1]).toBe(adminObj);
-    });
-
-    it('should call errorResponse when admin not found', async () => {
-      mockUserRepository.getAdminByAccessCode.mockResolvedValue(null);
-
-      const { req, res } = createMockReqRes({
-        params: { accessCode: '000000' },
-      });
-
-      await UserController.getAdminByAccessCode(req, res);
-
-      expect(mockErrorResponse).toHaveBeenCalledTimes(1);
-      const errorArg = mockErrorResponse.mock.calls[0][1] as Error;
-      expect(errorArg.name).toBe('NotFoundError');
-      expect(errorArg.message).toMatch(/admin not found/i);
-    });
-  });
-
-  describe('getInstructorByAccessCode', () => {
-    it('should return instructor when found', async () => {
-      const instructorObj = { id: 'i1', email: 'inst@test.com' };
-      mockUserRepository.getInstructorByAccessCode.mockResolvedValue(
-        instructorObj
-      );
-
-      const { req, res } = createMockReqRes({
-        params: { accessCode: '222222' },
-      });
-
-      await UserController.getInstructorByAccessCode(req, res);
-
-      expect(mockSuccessResponse).toHaveBeenCalledTimes(1);
-      expect(mockSuccessResponse.mock.calls[0][1]).toBe(instructorObj);
-    });
-  });
-
-  describe('getParentByAccessCode', () => {
-    it('should return parent when found', async () => {
-      const parentObj = { id: 'p1', email: 'parent@test.com' };
-      mockUserRepository.getParentByAccessCode.mockResolvedValue(parentObj);
-
-      const { req, res } = createMockReqRes({
-        params: { accessCode: '333333' },
-      });
-
-      await UserController.getParentByAccessCode(req, res);
-
-      expect(mockSuccessResponse).toHaveBeenCalledTimes(1);
-      expect(mockSuccessResponse.mock.calls[0][1]).toBe(parentObj);
-    });
-  });
-
-  describe('getAdmins', () => {
-    it('should return all admins', async () => {
-      const admins = [
-        { id: 'a1', email: 'admin1@test.com' },
-        { id: 'a2', email: 'admin2@test.com' },
-      ];
-      mockUserRepository.getAdmins.mockResolvedValue(admins);
-
-      const { req, res } = createMockReqRes();
-
-      await UserController.getAdmins(req, res);
-
-      expect(mockSuccessResponse).toHaveBeenCalledTimes(1);
-      expect(mockSuccessResponse.mock.calls[0][1]).toBe(admins);
-    });
-  });
-
   describe('getInstructorDirectoryTabData', () => {
     it('should return admins and instructors via entityQueryService', async () => {
       const admins = [{ id: 'a1' }];
@@ -586,8 +501,6 @@ describe('UserController', () => {
       expect(mockErrorResponse).toHaveBeenCalledTimes(1);
       const errorArg = mockErrorResponse.mock.calls[0][1] as Error;
       expect(errorArg.message).toMatch(/parent id is required/i);
-      // Fourth positional arg is the fallback status code
-      expect(mockErrorResponse.mock.calls[0][3]).toBe(400);
     });
   });
 });

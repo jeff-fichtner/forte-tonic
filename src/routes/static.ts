@@ -1,10 +1,10 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createVersionedHtmlMiddleware } from '../middleware/versionInjection.js';
+import { readFileSync } from 'fs';
+import { version } from '../config/environment.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
 const router = express.Router();
 
@@ -16,8 +16,8 @@ const isDevelopment =
 // In production, serve from dist/web (built by Vite with hashed filenames)
 // In development/test, serve from src/web (source files with manual version injection)
 const webPath = isDevelopment
-  ? path.join(__dirname, '..', 'web')
-  : path.join(__dirname, '..', '..', 'dist', 'web');
+  ? path.join(currentDir, '..', 'web')
+  : path.join(currentDir, '..', '..', 'dist', 'web');
 
 console.log(
   `🌐 Serving static files from: ${webPath} (${isDevelopment ? 'development' : 'production'})`
@@ -25,9 +25,29 @@ console.log(
 
 // Serve the main HTML file at root
 if (isDevelopment) {
-  // Development: use version injection middleware for cache busting
+  // Development: inject version hash into script/link tags for cache busting
   const htmlPath = path.join(webPath, 'index.html');
-  router.get('/', createVersionedHtmlMiddleware(htmlPath));
+  let cachedHtml: string | null = null;
+
+  router.get('/', (_req: Request, res: Response): void => {
+    // Regenerate on each request in development to pick up changes
+    if (!cachedHtml) {
+      const html = readFileSync(htmlPath, 'utf8');
+      cachedHtml = html
+        .replace(/<script([^>]*?)\ssrc=["']([^"'?]+)["']/gi, (_m, attrs, src) =>
+          src.startsWith('http://') || src.startsWith('https://')
+            ? _m
+            : `<script${attrs} src="${src}?v=${version.frontendHash}"`
+        )
+        .replace(/<link([^>]*?)\shref=["']([^"'?]+\.css)["']/gi, (_m, attrs, href) =>
+          href.startsWith('http://') || href.startsWith('https://')
+            ? _m
+            : `<link${attrs} href="${href}?v=${version.frontendHash}"`
+        );
+    }
+    res.set({ 'Cache-Control': 'no-cache, no-store, must-revalidate', Pragma: 'no-cache', Expires: '0' });
+    res.send(cachedHtml as string);
+  });
 } else {
   // Production: serve pre-built HTML with hashed assets from Vite
   router.get('/', (req: Request, res: Response) => {

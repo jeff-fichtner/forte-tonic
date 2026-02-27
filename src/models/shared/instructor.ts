@@ -54,6 +54,7 @@ export interface InstructorJSON {
   availability: InstructorAvailability | null;
   gradeRange: GradeRange | null;
   role: string | null;
+  accessCode: string | null;
 }
 
 export class Instructor {
@@ -88,43 +89,19 @@ export class Instructor {
    * Creates an Instructor API model instance
    */
   constructor(data: InstructorData) {
-    // Validate input
-    if (!data || typeof data !== 'object') {
-      throw new Error('Instructor data object is required');
-    }
-
-    const {
-      id,
-      email,
-      lastName,
-      firstName,
-      phoneNumber,
-      accessCode,
-      displayEmail,
-      displayPhone,
-      specialties,
-      isActive,
-      role,
-      availability,
-      gradeRange,
-    } = data;
-
-    // Required fields
-    this.id = id;
-    this.email = email || null;
-    this.lastName = lastName || null;
-    this.firstName = firstName || null;
-
-    // Optional fields
-    this.phoneNumber = phoneNumber || null;
-    this.accessCode = accessCode || null;
-    this.displayEmail = displayEmail || null;
-    this.displayPhone = displayPhone || null;
-    this.specialties = specialties || null;
-    this.isActive = isActive ?? false;
-    this.role = role || null;
-    this.availability = availability || null;
-    this.gradeRange = gradeRange || null;
+    this.id = data.id;
+    this.email = data.email || null;
+    this.lastName = data.lastName || null;
+    this.firstName = data.firstName || null;
+    this.phoneNumber = data.phoneNumber || null;
+    this.accessCode = data.accessCode || null;
+    this.displayEmail = data.displayEmail || null;
+    this.displayPhone = data.displayPhone || null;
+    this.specialties = data.specialties || null;
+    this.isActive = data.isActive ?? false;
+    this.role = data.role || null;
+    this.availability = data.availability || null;
+    this.gradeRange = data.gradeRange || null;
   }
 
   /**
@@ -183,6 +160,7 @@ export class Instructor {
       availability: this.availability,
       gradeRange: this.gradeRange,
       role: this.role,
+      accessCode: this.accessCode,
     };
   }
 }

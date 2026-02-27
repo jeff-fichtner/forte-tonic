@@ -382,22 +382,18 @@ export class DropRequestModal {
     this.submitText.textContent = 'Submitting...';
     this.spinner.style.display = 'inline-block';
 
-    try {
-      const reason = this.reasonTextarea.value.trim();
+    const reason = this.reasonTextarea.value.trim();
 
-      // Use HttpService.post to submit the drop request
-      // This will automatically include the access code from AccessCodeManager
-      const response = await HttpService.post('drop-requests', {
-        registrationId: this.registration.id,
-        reason: reason,
-      });
+    const result = await HttpService.post('drop-requests', {
+      registrationId: this.registration.id,
+      reason: reason,
+    });
 
-      // Response is already unwrapped by HttpService
-      this.onSuccess(response);
+    if (result.ok) {
+      this.onSuccess(result.data);
       this.close();
-    } catch (error) {
-      console.error('Error submitting drop request:', error);
-      this.#showError((error as Error).message || 'Failed to submit drop request. Please try again.');
+    } else {
+      this.#showError(result.error.message || 'Failed to submit drop request. Please try again.');
       this.isSubmitting = false;
       this.submitButton.disabled = false;
       this.submitText.textContent = 'Submit Request';

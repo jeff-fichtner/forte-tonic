@@ -48,19 +48,26 @@ describe('DropRequestRepository', () => {
   });
 
   describe('DropRequest model', () => {
-    test('should create drop request with defaults', () => {
+    test('should create drop request with all fields', () => {
       const dropRequest = new DropRequest({
+        id: 'drop-999',
         registrationId: 'reg-123',
         parentId: 'parent-456',
+        trimester: 'fall',
         reason: 'Test reason',
+        requestedAt: '2025-01-15T10:00:00Z',
+        status: DropRequestStatus.PENDING,
+        reviewedBy: null,
+        reviewedAt: null,
+        adminNotes: null,
       });
 
-      expect(dropRequest.id).toBeDefined();
+      expect(dropRequest.id).toBe('drop-999');
       expect(dropRequest.registrationId).toBe('reg-123');
       expect(dropRequest.parentId).toBe('parent-456');
       expect(dropRequest.reason).toBe('Test reason');
       expect(dropRequest.status).toBe(DropRequestStatus.PENDING);
-      expect(dropRequest.requestedAt).toBeDefined();
+      expect(dropRequest.requestedAt).toBe('2025-01-15T10:00:00Z');
       expect(dropRequest.reviewedBy).toBeNull();
       expect(dropRequest.reviewedAt).toBeNull();
       expect(dropRequest.adminNotes).toBeNull();
@@ -71,9 +78,13 @@ describe('DropRequestRepository', () => {
         id: 'drop-123',
         registrationId: 'reg-123',
         parentId: 'parent-456',
+        trimester: '',
         reason: 'Test reason',
         requestedAt: '2025-01-15T10:00:00Z',
         status: DropRequestStatus.PENDING,
+        reviewedBy: null,
+        reviewedAt: null,
+        adminNotes: null,
       });
 
       const json = dropRequest.toJSON();
@@ -151,10 +162,10 @@ describe('DropRequestRepository', () => {
       expect(result.parentId).toBe('parent-456');
       expect(result.reason).toBe('Test reason');
       expect(result.status).toBe(DropRequestStatus.PENDING);
+      // DropRequestRepository.create calls appendRecord with 2 args (no createdBy)
       expect(mockDbClient.appendRecord).toHaveBeenCalledWith(
         'drop_requests',
         expect.any(Object),
-        'parent@example.com'
       );
     });
 
@@ -211,7 +222,7 @@ describe('DropRequestRepository', () => {
       mockDbClient.getAllRecords.mockRejectedValue(new Error('Database error'));
 
       await expect(repository.findById('drop-123')).rejects.toThrow(
-        'Failed to find drop request by ID'
+        'Failed to find drop_requests by ID'
       );
     });
   });
@@ -366,8 +377,13 @@ describe('DropRequestRepository', () => {
         id: 'drop-123',
         registrationId: 'reg-456',
         parentId: 'parent-789',
+        trimester: 'fall',
         reason: 'Original reason',
+        requestedAt: '2025-01-15T10:00:00Z',
         status: DropRequestStatus.PENDING,
+        reviewedBy: null,
+        reviewedAt: null,
+        adminNotes: null,
       });
 
       repository.findById = jest.fn().mockResolvedValue(existingRequest);
@@ -404,8 +420,13 @@ describe('DropRequestRepository', () => {
         id: 'drop-123',
         registrationId: 'reg-456',
         parentId: 'parent-789',
+        trimester: 'fall',
         reason: 'Original reason',
+        requestedAt: '2025-01-15T10:00:00Z',
         status: DropRequestStatus.PENDING,
+        reviewedBy: null,
+        reviewedAt: null,
+        adminNotes: null,
       });
 
       repository.findById = jest.fn().mockResolvedValue(existingRequest);

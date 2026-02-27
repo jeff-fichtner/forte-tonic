@@ -19,6 +19,14 @@ export interface RegistrationConfig {
   rockBandDisplayConfig: { timesDescription: string; defaultLengthMinutes: number };
 }
 
+export interface DirectorInfo {
+  fullName: string;
+  email: string;
+  displayEmail: string | null;
+  phone: string | null;
+  displayPhone: string | null;
+}
+
 export interface AppConfigurationResponseData {
   currentPeriod?: Period | null;
   nextPeriod?: Period | null;
@@ -30,6 +38,7 @@ export interface AppConfigurationResponseData {
   maintenanceMode?: boolean;
   maintenanceMessage?: string | null;
   registrationConfig?: RegistrationConfig | null;
+  director?: DirectorInfo | null;
 }
 
 /**
@@ -47,46 +56,22 @@ export class AppConfigurationResponse {
   maintenanceMode: boolean;
   maintenanceMessage: string | null;
   registrationConfig: RegistrationConfig | null;
+  director: DirectorInfo | null;
 
-  constructor(data: AppConfigurationResponseData | null) {
-    if (typeof data === 'object' && data !== null) {
-      const {
-        currentPeriod,
-        nextPeriod,
-        rockBandClassIds,
-        currentTrimester,
-        nextTrimester,
-        availableTrimesters,
-        defaultTrimester,
-        maintenanceMode,
-        maintenanceMessage,
-        registrationConfig,
-      } = data;
-
-      this.currentPeriod = currentPeriod || null;
-      this.nextPeriod = nextPeriod || null;
-      this.rockBandClassIds = Array.isArray(rockBandClassIds) ? rockBandClassIds : [];
-      this.currentTrimester = currentTrimester || null;
-      this.nextTrimester = nextTrimester || null;
-      this.availableTrimesters = Array.isArray(availableTrimesters)
-        ? availableTrimesters
-        : TRIMESTER_SEQUENCE;
-      this.defaultTrimester = defaultTrimester || null;
-      this.maintenanceMode = maintenanceMode || false;
-      this.maintenanceMessage = maintenanceMessage || null;
-      this.registrationConfig = registrationConfig || null;
-    } else {
-      this.currentPeriod = null;
-      this.nextPeriod = null;
-      this.rockBandClassIds = [];
-      this.currentTrimester = null;
-      this.nextTrimester = null;
-      this.availableTrimesters = TRIMESTER_SEQUENCE;
-      this.defaultTrimester = null;
-      this.maintenanceMode = false;
-      this.maintenanceMessage = null;
-      this.registrationConfig = null;
-    }
+  constructor(data: AppConfigurationResponseData = {}) {
+    this.currentPeriod = data.currentPeriod || null;
+    this.nextPeriod = data.nextPeriod || null;
+    this.rockBandClassIds = Array.isArray(data.rockBandClassIds) ? data.rockBandClassIds : [];
+    this.currentTrimester = data.currentTrimester || null;
+    this.nextTrimester = data.nextTrimester || null;
+    this.availableTrimesters = Array.isArray(data.availableTrimesters)
+      ? data.availableTrimesters
+      : TRIMESTER_SEQUENCE;
+    this.defaultTrimester = data.defaultTrimester || null;
+    this.maintenanceMode = data.maintenanceMode || false;
+    this.maintenanceMessage = data.maintenanceMessage || null;
+    this.registrationConfig = data.registrationConfig || null;
+    this.director = data.director || null;
   }
 
   toJSON(): AppConfigurationResponseData {
@@ -101,6 +86,7 @@ export class AppConfigurationResponse {
       maintenanceMode: this.maintenanceMode,
       maintenanceMessage: this.maintenanceMessage,
       registrationConfig: this.registrationConfig,
+      director: this.director,
     };
   }
 
@@ -116,6 +102,7 @@ export class AppConfigurationResponse {
       maintenanceMode: false,
       maintenanceMessage: null,
       registrationConfig: null,
+      director: null,
     });
   }
 }

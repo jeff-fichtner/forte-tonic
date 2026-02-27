@@ -1,54 +1,21 @@
 import { BaseService } from '../infrastructure/base/baseService.js';
 import { PeriodType } from '../utils/values/periodType.js';
 import { TRIMESTER_SEQUENCE } from '../utils/values/trimester.js';
-import type { GoogleSheetsDbClient } from '../database/googleSheetsDbClient.js';
+import type { PeriodRepository, Period } from '../repositories/periodRepository.js';
 import type { ConfigurationService } from './configurationService.js';
 
-/** Column schema for the periods sheet (not a model class, so defined here) */
-export const PERIOD_COLUMNS = ['trimester', 'periodType', 'startDate'] as const;
-
-export interface Period {
-  trimester: string | null;
-  periodType: string;
-  startDate: Date | null;
-  isCurrentPeriod?: boolean;
-}
+// Re-export Period so existing consumers don't break
+export type { Period } from '../repositories/periodRepository.js';
 
 /**
- * Service for reading period information from database
+ * Service for period business logic
  */
 export class PeriodService extends BaseService {
-  dbClient: GoogleSheetsDbClient;
+  #periodRepository: PeriodRepository;
 
-  constructor(dbClient: GoogleSheetsDbClient, configService: ConfigurationService) {
+  constructor(periodRepository: PeriodRepository, configService?: ConfigurationService) {
     super(configService);
-    this.dbClient = dbClient;
-  }
-
-  /**
-   * Parse a period record from the database into a period object.
-   * DB client mappings produce: trimester (lowercase string | null), startDate (Date | null).
-   * @param record - Pre-mapped database record
-   * @returns Period object or null if invalid
-   */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  _parsePeriodRow(record: Record<string, any>): Period | null { // SC-005: mappings produce Date | null
-    if (!record || !record.trimester) return null;
-
-    return {
-      trimester: record.trimester,
-      periodType: record.periodType,
-      startDate: record.startDate,
-    };
-  }
-
-  /**
-   * Get all periods from database
-   * @returns Array of period objects
-   */
-  async _getAllPeriods(): Promise<(Period | null)[]> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return await this.dbClient.getAllRecords('periods', (record: Record<string, any>) => this._parsePeriodRow(record));
+    this.#periodRepository = periodRepository;
   }
 
   /**
@@ -58,7 +25,7 @@ export class PeriodService extends BaseService {
    */
   async getCurrentPeriod(): Promise<(Period & { isCurrentPeriod: boolean }) | null> {
     try {
-      const allPeriods = await this._getAllPeriods();
+      const allPeriods = await this.#periodRepository.getAll();
 
       // Get current date/time
       const now = new Date();
@@ -121,7 +88,7 @@ export class PeriodService extends BaseService {
    */
   async getNextPeriod(): Promise<Period | null> {
     try {
-      const allPeriods = await this._getAllPeriods();
+      const allPeriods = await this.#periodRepository.getAll();
 
       // Get current date/time
       const now = new Date();

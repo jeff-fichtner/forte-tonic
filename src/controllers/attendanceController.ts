@@ -6,6 +6,7 @@
 import { getAuthenticatedUserEmail } from '../middleware/auth.js';
 import type { Request, Response } from 'express';
 import { getLogger } from '../utils/logger.js';
+import { serviceContainer, ServiceKeys } from '../infrastructure/container/serviceContainer.js';
 import { successResponse, errorResponse, asString } from '../common/responseHelpers.js';
 import { ValidationError, ConflictError } from '../common/errors.js';
 
@@ -20,7 +21,7 @@ export class AttendanceController {
 
     try {
       const { registrationId, week, schoolYear, trimester } = req.body;
-      const attendanceRepository = req.attendanceRepository!;
+      const attendanceRepository = serviceContainer.get(ServiceKeys.attendanceRepository);
 
       // Get the authenticated user's email for audit purposes
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
@@ -120,7 +121,7 @@ export class AttendanceController {
       const registrationId = asString(req.params.registrationId);
       const schoolYear = asString(req.query.schoolYear, '2025-2026');
       const trimester = asString(req.query.trimester, 'Fall');
-      const attendanceRepository = req.attendanceRepository!;
+      const attendanceRepository = serviceContainer.get(ServiceKeys.attendanceRepository);
 
       const summary = await attendanceRepository.getAttendanceSummary(
         registrationId,

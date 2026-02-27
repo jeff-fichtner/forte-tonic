@@ -7,12 +7,10 @@
 
 export interface StudentData {
   id?: string;
-  studentId?: string;
   firstName: string;
   lastName: string;
   firstNickname?: string | null;
   lastNickname?: string | null;
-  email?: string | null;
   grade?: string;
   parent1Id?: string;
   parent2Id?: string;
@@ -29,7 +27,6 @@ export interface StudentJSON {
   parent1Id: string;
   parent2Id: string;
   parentEmails: string;
-  email: string | null;
   fullName: string;
 }
 
@@ -40,26 +37,22 @@ export class Student {
     'grade', 'parent1Id', 'parent2Id',
   ] as const;
 
-  _firstName: string;
-  _lastName: string;
+  givenFirstName: string;
+  givenLastName: string;
   firstNickname: string | null;
   lastNickname: string | null;
   id: string;
-  email: string | null;
   grade: string;
   parent1Id: string;
   parent2Id: string;
   parentEmails: string;
 
   constructor(data: StudentData) {
-    this.#validateConstructorData(data);
-
-    this._firstName = data.firstName;
-    this._lastName = data.lastName;
+    this.givenFirstName = data.firstName;
+    this.givenLastName = data.lastName;
     this.firstNickname = data.firstNickname || null;
     this.lastNickname = data.lastNickname || null;
-    this.id = data.id || data.studentId || '';
-    this.email = data.email || null;
+    this.id = data.id || '';
     this.grade = data.grade || '';
     this.parent1Id = data.parent1Id || '';
     this.parent2Id = data.parent2Id || '';
@@ -67,24 +60,11 @@ export class Student {
   }
 
   get firstName(): string {
-    return this.firstNickname || this._firstName;
+    return this.firstNickname || this.givenFirstName;
   }
 
   get lastName(): string {
-    return this.lastNickname || this._lastName;
-  }
-
-  #validateConstructorData(data: StudentData): void {
-    if (!data) {
-      throw new Error('Student data is required');
-    }
-
-    const required: (keyof StudentData)[] = ['firstName', 'lastName'];
-    const missing = required.filter(field => !data[field]);
-
-    if (missing.length > 0) {
-      throw new Error(`Missing required fields: ${missing.join(', ')}`);
-    }
+    return this.lastNickname || this.givenLastName;
   }
 
   /**
@@ -92,11 +72,6 @@ export class Student {
    */
   get fullName(): string {
     return `${this.firstName} ${this.lastName}`;
-  }
-
-  /** @deprecated Use fullName getter instead */
-  getFullName(): string {
-    return this.fullName;
   }
 
   toJSON(): StudentJSON {
@@ -110,7 +85,6 @@ export class Student {
       parent1Id: this.parent1Id,
       parent2Id: this.parent2Id,
       parentEmails: this.parentEmails,
-      email: this.email,
       fullName: this.fullName,
     };
   }
@@ -118,7 +92,8 @@ export class Student {
   /**
    * Factory method: Create from database row
    */
-  static fromDatabaseRow(record: Record<string, string>): Student {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  static fromDatabaseRow(record: Record<string, any>): Student {
     return new Student({
       id: record.id,
       lastName: record.lastName,

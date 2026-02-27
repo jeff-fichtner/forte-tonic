@@ -9,8 +9,8 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createHash } from 'crypto';
 
-const __dirname: string = dirname(fileURLToPath(import.meta.url));
-const packageJsonPath: string = join(__dirname, '../../package.json');
+const utilDir: string = dirname(fileURLToPath(import.meta.url));
+const packageJsonPath: string = join(utilDir, '../../package.json');
 
 /**
  * Generate a frontend version hash for cache busting

@@ -64,22 +64,6 @@ jest.unstable_mockModule('../../src/email/emailClient.js', () => ({
 }));
 
 // Test data
-const mockClass = {
-  id: 'CLASS1',
-  title: 'Piano Beginner',
-  instructor: 'INSTRUCTOR1@TEST.COM',
-  day: 'Monday',
-  startTime: '14:00',
-  length: 30,
-  roomId: 'ROOM1',
-};
-
-const mockRoom = {
-  id: 'ROOM1',
-  name: 'Music Room 1',
-  capacity: 10,
-};
-
 const mockRegistration = {
   id: '123e4567-e89b-42d3-8456-426614174000',
   studentId: 'STUDENT1',
@@ -113,12 +97,7 @@ const mockParent = {
 };
 
 // Create mock repositories
-const mockProgramRepository = {
-  getClasses: jest.fn().mockResolvedValue([mockClass]),
-};
-
 const mockUserRepository = {
-  getRooms: jest.fn().mockResolvedValue([mockRoom]),
   getParentByPhone: jest.fn().mockResolvedValue(mockParent),
   getUserByAccessCode: jest.fn().mockResolvedValue({
     user: mockParent,
@@ -134,21 +113,18 @@ const mockRegistrationRepository = {
   delete: jest.fn().mockResolvedValue(true),
   updateIntent: jest.fn().mockResolvedValue({ ...mockRegistration, reenrollmentIntent: 'keep' }),
   _fetchRegistrations: jest.fn().mockResolvedValue([mockRegistration]),
-  getRegistrationsForTrimester: jest.fn().mockResolvedValue([mockRegistration]),
-  findById: jest.fn().mockResolvedValue(mockRegistration),
-  getNextTrimesterRegistrations: jest.fn().mockResolvedValue([mockRegistration]),
+  findByIdInTrimester: jest.fn().mockResolvedValue(mockRegistration),
 };
 
-const mockRegistrationApplicationService = {
-  getRegistrations: jest.fn().mockResolvedValue([mockRegistration]),
+const mockRegistrationService = {
   processRegistration: jest.fn().mockResolvedValue({
     registration: mockRegistration,
     warnings: [],
   }),
   updateRegistration: jest.fn().mockResolvedValue(mockRegistration),
-  cancelRegistration: jest
+  deleteRegistration: jest
     .fn()
-    .mockResolvedValue({ success: true, registrationId: mockRegistration.id }),
+    .mockResolvedValue(true),
   validateRegistration: jest.fn().mockResolvedValue({
     isValid: true,
     conflicts: [],
@@ -166,20 +142,26 @@ const mockPeriodService = {
   }),
   isIntentPeriodActive: jest.fn().mockResolvedValue(true),
   getCurrentTrimester: jest.fn().mockResolvedValue('fall'),
-  getCurrentTrimesterTable: jest.fn().mockResolvedValue('registrations_fall'),
   getEnrollmentTrimesterTable: jest.fn().mockResolvedValue('registrations_winter'),
   canAccessNextTrimester: jest.fn().mockResolvedValue(true),
 };
 
 // Mock the service container
 jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js', () => ({
+  ServiceKeys: {
+    databaseClient: 'databaseClient', emailClient: 'emailClient', cacheService: 'cacheService',
+    configurationService: 'configurationService', registrationRepository: 'registrationRepository',
+    userRepository: 'userRepository', programRepository: 'programRepository',
+    attendanceRepository: 'attendanceRepository', dropRequestRepository: 'dropRequestRepository',
+    periodRepository: 'periodRepository', registrationService: 'registrationService',
+    periodService: 'periodService', dropRequestService: 'dropRequestService',
+    entityQueryService: 'entityQueryService',
+  },
   serviceContainer: {
     get: jest.fn().mockImplementation(serviceName => {
-      if (serviceName === 'programRepository') return mockProgramRepository;
       if (serviceName === 'userRepository') return mockUserRepository;
       if (serviceName === 'registrationRepository') return mockRegistrationRepository;
-      if (serviceName === 'registrationApplicationService')
-        return mockRegistrationApplicationService;
+      if (serviceName === 'registrationService') return mockRegistrationService;
       if (serviceName === 'periodService') return mockPeriodService;
       return null;
     }),
@@ -195,85 +177,6 @@ const { app } = await import('../../src/app.js');
 describe('RegistrationController Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  describe('GET /api/classes', () => {
-    test('should return all classes', async () => {
-      const response = await request(app)
-        .get('/api/classes')
-        .set('x-access-code', '123456')
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toEqual([mockClass]);
-      expect(mockProgramRepository.getClasses).toHaveBeenCalled();
-    });
-
-    test('should handle repository errors', async () => {
-      mockProgramRepository.getClasses.mockRejectedValueOnce(new Error('Database error'));
-
-      const response = await request(app)
-        .get('/api/classes')
-        .set('x-access-code', '123456')
-        .expect(500);
-
-      expect(response.body.success).toBe(false);
-      expect(response.body.error).toBeDefined();
-    });
-  });
-
-  describe('GET /api/rooms', () => {
-    test('should return all rooms', async () => {
-      const response = await request(app)
-        .get('/api/rooms')
-        .set('x-access-code', '123456')
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toEqual([mockRoom]);
-      expect(mockUserRepository.getRooms).toHaveBeenCalled();
-    });
-
-    test('should handle repository errors', async () => {
-      mockUserRepository.getRooms.mockRejectedValueOnce(new Error('Database error'));
-
-      const response = await request(app)
-        .get('/api/rooms')
-        .set('x-access-code', '123456')
-        .expect(500);
-
-      expect(response.body.success).toBe(false);
-    });
-  });
-
-  describe('GET /api/registrations', () => {
-    test('should return registrations with default pagination', async () => {
-      const response = await request(app)
-        .get('/api/registrations')
-        .set('x-access-code', '123456')
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.data).toBeDefined();
-    });
-
-    test('should filter registrations by studentId', async () => {
-      const response = await request(app)
-        .get('/api/registrations?studentId=STUDENT1')
-        .set('x-access-code', '123456')
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-    });
-
-    test('should handle pagination parameters', async () => {
-      const response = await request(app)
-        .get('/api/registrations?page=2&pageSize=50')
-        .set('x-access-code', '123456')
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-    });
   });
 
   describe('POST /api/registrations (createRegistration)', () => {
@@ -295,7 +198,7 @@ describe('RegistrationController Integration Tests', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.data).toBeDefined();
-      expect(mockRegistrationApplicationService.processRegistration).toHaveBeenCalledWith(
+      expect(mockRegistrationService.processRegistration).toHaveBeenCalledWith(
         validRegistrationData,
         expect.any(String),
         { isAdmin: false }
@@ -314,7 +217,7 @@ describe('RegistrationController Integration Tests', () => {
     });
 
     test('should handle service layer errors', async () => {
-      mockRegistrationApplicationService.processRegistration.mockRejectedValueOnce(
+      mockRegistrationService.processRegistration.mockRejectedValueOnce(
         new Error('Class not found')
       );
 
@@ -328,62 +231,29 @@ describe('RegistrationController Integration Tests', () => {
     });
   });
 
-  describe('DELETE /api/registrations/:id', () => {
+  describe('DELETE /api/registrations/:trimester/:id', () => {
     test('should delete registration', async () => {
       const registrationId = '123e4567-e89b-42d3-8456-426614174000';
       const response = await request(app)
-        .delete(`/api/registrations/${registrationId}`)
+        .delete(`/api/registrations/fall/${registrationId}`)
         .set('x-access-code', '123456')
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(mockRegistrationApplicationService.cancelRegistration).toHaveBeenCalledWith(
+      expect(mockRegistrationService.deleteRegistration).toHaveBeenCalledWith(
         registrationId,
-        'Registration cancelled by user',
         expect.any(String),
-        expect.any(String) // trimester parameter
+        'fall'
       );
     });
 
     test('should reject deletion without authentication', async () => {
       const registrationId = '123e4567-e89b-42d3-8456-426614174000';
       const response = await request(app)
-        .delete(`/api/registrations/${registrationId}`)
-        .expect(500);
+        .delete(`/api/registrations/fall/${registrationId}`)
+        .expect(401);
 
       expect(response.body.success).toBe(false);
-    });
-  });
-
-  describe('GET /api/registrations/next-trimester', () => {
-    test('should return next trimester registrations', async () => {
-      const response = await request(app)
-        .get('/api/registrations/next-trimester')
-        .set('x-access-code', '123456')
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      // Dates are serialized to strings in JSON
-      expect(response.body.data).toEqual([
-        {
-          ...mockRegistration,
-          createdAt: mockRegistration.createdAt.toISOString(),
-        },
-      ]);
-      expect(mockPeriodService.getEnrollmentTrimesterTable).toHaveBeenCalled();
-      expect(mockRegistrationRepository._fetchRegistrations).toHaveBeenCalledWith('registrations_winter');
-    });
-
-    test('should reject when next trimester not available', async () => {
-      mockPeriodService.getEnrollmentTrimesterTable.mockResolvedValueOnce(null);
-
-      const response = await request(app)
-        .get('/api/registrations/next-trimester')
-        .set('x-access-code', '123456')
-        .expect(400);
-
-      expect(response.body.success).toBe(false);
-      expect(response.body.error.message).toContain('not currently available');
     });
   });
 
@@ -405,7 +275,7 @@ describe('RegistrationController Integration Tests', () => {
 
       expect(response.body.success).toBe(true);
       expect(mockPeriodService.canAccessNextTrimester).toHaveBeenCalledWith(true);
-      expect(mockRegistrationApplicationService.processRegistration).toHaveBeenCalledWith(
+      expect(mockRegistrationService.processRegistration).toHaveBeenCalledWith(
         expect.objectContaining(validNextTrimesterData),
         expect.any(String),
         { isAdmin: false }
@@ -464,78 +334,13 @@ describe('RegistrationController Integration Tests', () => {
         .expect(201);
 
       expect(response.body.success).toBe(true);
-      expect(mockRegistrationApplicationService.processRegistration).toHaveBeenCalledWith(
+      expect(mockRegistrationService.processRegistration).toHaveBeenCalledWith(
         expect.objectContaining({
           linkedPreviousRegistrationId: 'OLD-REG-ID',
         }),
         expect.any(String),
         { isAdmin: false }
       );
-    });
-  });
-
-  describe('GET /api/admin/registrations/:trimester', () => {
-    test('should return registrations for specified trimester', async () => {
-      const response = await request(app)
-        .get('/api/admin/registrations/fall')
-        .set('x-access-code', '123456')
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toBeDefined();
-      expect(mockRegistrationRepository.getRegistrationsForTrimester).toHaveBeenCalledWith('fall');
-    });
-
-    test('should validate trimester parameter', async () => {
-      mockRegistrationRepository.getRegistrationsForTrimester.mockRejectedValueOnce(
-        new Error('Invalid trimester: summer')
-      );
-
-      const response = await request(app)
-        .get('/api/admin/registrations/summer')
-        .set('x-access-code', '123456')
-        .expect(500);
-
-      expect(response.body.success).toBe(false);
-    });
-
-    test('should handle all valid trimesters', async () => {
-      const trimesters = ['fall', 'winter', 'spring'];
-
-      for (const trimester of trimesters) {
-        const response = await request(app)
-          .get(`/api/admin/registrations/${trimester}`)
-          .set('x-access-code', '123456')
-          .expect(200);
-
-        expect(response.body.success).toBe(true);
-      }
-    });
-  });
-
-  describe('Error Handling', () => {
-    test('should return 500 for unexpected errors', async () => {
-      mockProgramRepository.getClasses.mockRejectedValueOnce(new Error('Unexpected error'));
-
-      const response = await request(app)
-        .get('/api/classes')
-        .set('x-access-code', '123456')
-        .expect(500);
-
-      expect(response.body.success).toBe(false);
-      expect(response.body.error).toBeDefined();
-    });
-
-    test('should include error information in responses', async () => {
-      mockUserRepository.getRooms.mockRejectedValueOnce(new Error('Database timeout'));
-
-      const response = await request(app)
-        .get('/api/rooms')
-        .set('x-access-code', '123456')
-        .expect(500);
-
-      expect(response.body.success).toBe(false);
-      expect(response.body.error).toBeDefined();
     });
   });
 });

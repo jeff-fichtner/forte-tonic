@@ -1,127 +1,23 @@
 /**
- * Registration Controller - Application layer API endpoints for program registration management
- * Handles classes, registrations, rooms, and registration lifecycle
+ * Registration Controller
+ * =======================
  *
- * Updated to use Domain-Driven Design architecture with service container
- * and application services for business logic coordination.
+ * API endpoints for program registration management.
+ * Handles classes, registrations, rooms, and registration lifecycle.
  */
 
 import { getAuthenticatedUserEmail } from '../middleware/auth.js';
 import type { Request, Response } from 'express';
 import { getLogger } from '../utils/logger.js';
-import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
-import { _fetchData } from '../utils/helpers.js';
+import { serviceContainer, ServiceKeys } from '../infrastructure/container/serviceContainer.js';
 import { successResponse, errorResponse, asString } from '../common/responseHelpers.js';
 import { ValidationError, UnauthorizedError, NotFoundError } from '../common/errors.js';
-import { TRIMESTER_SEQUENCE } from '../utils/values/trimester.js';
 import { INTENT_TYPES } from '../constants/intentTypes.js';
 import { UserType } from '../config/constants.js';
 
 const logger = getLogger();
 
 export class RegistrationController {
-  /**
-   * Get all classes/programs
-   */
-  static async getClasses(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      const programRepository = serviceContainer.get('programRepository');
-      const data = await programRepository.getClasses();
-
-      successResponse(res, data, {
-        req,
-        startTime,
-        context: { controller: 'RegistrationController', method: 'getClasses' },
-      });
-    } catch (error) {
-      logger.error('Error getting classes:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'RegistrationController', method: 'getClasses' },
-      });
-    }
-  }
-
-  /**
-   * Get registrations with filtering and pagination
-   */
-  static async getRegistrations(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      // Use the normalized request data from middleware
-      const request = (req.requestData || {}) as Record<string, unknown>;
-      const page = Number(request.page ?? 1);
-      const pageSize = Number(request.pageSize ?? 1000);
-
-      const registrationApplicationService = serviceContainer.get('registrationApplicationService');
-
-      const options = {
-        studentId: request.studentId,
-        classId: request.classId,
-        instructorId: request.instructorId,
-        registrationType: request.registrationType,
-        schoolYear: request.schoolYear,
-        trimester: request.trimester,
-        page,
-        pageSize,
-        sortBy: request.sortBy || 'registeredAt',
-        sortOrder: request.sortOrder || 'desc',
-      };
-
-      // Get enriched registrations through application service
-      const registrations = await registrationApplicationService.getRegistrations(options);
-
-      // Apply pagination
-      const paginatedResult = _fetchData(
-        () => registrations,
-        page || 0,
-        pageSize || 1000
-      );
-
-      successResponse(res, paginatedResult, {
-        req,
-        startTime,
-        context: { controller: 'RegistrationController', method: 'getRegistrations' },
-      });
-    } catch (error) {
-      logger.error('Error getting registrations:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'RegistrationController', method: 'getRegistrations' },
-      });
-    }
-  }
-
-  /**
-   * Get all rooms
-   */
-  static async getRooms(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      const userRepository = serviceContainer.get('userRepository');
-      const data = await userRepository.getRooms();
-
-      successResponse(res, data, {
-        req,
-        startTime,
-        context: { controller: 'RegistrationController', method: 'getRooms' },
-      });
-    } catch (error) {
-      logger.error('Error getting rooms:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'RegistrationController', method: 'getRooms' },
-      });
-    }
-  }
-
   /**
    * Create Registration using application service with comprehensive validation
    */
@@ -146,14 +42,13 @@ export class RegistrationController {
         throw new ValidationError('Missing required fields: studentId, registrationType');
       }
 
-      // Use the registration application service for business logic
-      const registrationApplicationService = serviceContainer.get('registrationApplicationService');
+      const registrationService = serviceContainer.get(ServiceKeys.registrationService);
 
       // Check if user is an admin (admins can bypass capacity restrictions and specify trimester)
       const isAdmin = req.currentUser?.userType === UserType.ADMIN;
 
       // Process registration through application service with authenticated user
-      const result = await registrationApplicationService.processRegistration(
+      const result = await registrationService.processRegistration(
         requestData,
         authenticatedUserEmail,
         { isAdmin }
@@ -213,42 +108,20 @@ export class RegistrationController {
         throw new ValidationError('Missing registrationId');
       }
 
-      const registrationApplicationService = serviceContainer.get('registrationApplicationService');
-      const registrationRepository = serviceContainer.get('registrationRepository');
-
-      // Find the registration to determine which trimester it belongs to
-      const registration = await registrationRepository.findById(registrationId);
-      if (!registration) {
-        throw new ValidationError(
-          `Registration ${registrationId} not found in any trimester table`
-        );
-      }
-
-      // Determine trimester from the table search (findById searches all tables)
-      // We need to find which trimester table contains it
-      let trimester: string | null = null;
-      for (const t of TRIMESTER_SEQUENCE) {
-        const regs = await registrationRepository.getRegistrationsForTrimester(t);
-        if (regs.find(r => r.id === registrationId)) {
-          trimester = t;
-          break;
-        }
-      }
-
+      const trimester = asString(req.params.trimester);
       if (!trimester) {
-        throw new ValidationError(
-          `Registration ${registrationId} not found in any trimester table`
-        );
+        throw new ValidationError('Missing trimester');
       }
+
+      const registrationService = serviceContainer.get(ServiceKeys.registrationService);
 
       logger.info(`🎯 Deleting registration from trimester: ${trimester}`, {
         registrationId,
         authenticatedUser: authenticatedUserEmail,
       });
 
-      const result = await registrationApplicationService.cancelRegistration(
+      const result = await registrationService.deleteRegistration(
         registrationId,
-        'Registration cancelled by user',
         authenticatedUserEmail,
         trimester
       );
@@ -291,8 +164,8 @@ export class RegistrationController {
       }
 
       // Get repository and period service from container
-      const registrationRepository = serviceContainer.get('registrationRepository');
-      const periodService = serviceContainer.get('periodService');
+      const registrationRepository = serviceContainer.get(ServiceKeys.registrationRepository);
+      const periodService = serviceContainer.get(ServiceKeys.periodService);
 
       // Check period is active
       const isIntentActive = await periodService.isIntentPeriodActive();
@@ -349,55 +222,6 @@ export class RegistrationController {
   }
 
   /**
-   * Get registrations for next trimester (enrollment periods only)
-   * Access control:
-   * - Priority enrollment: Only returning families
-   * - Open enrollment: All families
-   * - Other periods: Blocked
-   * GET /api/registrations/next-trimester
-   */
-  static async getNextTrimesterRegistrations(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      const periodService = serviceContainer.get('periodService');
-      const registrationRepository = serviceContainer.get('registrationRepository');
-      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
-
-      logger.info('🎯 Next trimester registrations request from:', authenticatedUserEmail);
-
-      // Check if next trimester is available
-      const nextTrimester = await periodService.getNextTrimester();
-      if (!nextTrimester) {
-        throw new ValidationError('Next trimester registration is not currently available');
-      }
-
-      // Get all registrations from next trimester table
-      const allRegistrations = await registrationRepository.getRegistrationsForTrimester(nextTrimester);
-
-      logger.info(`📋 Found ${allRegistrations.length} registrations in next trimester`);
-
-      successResponse(res, allRegistrations, {
-        req,
-        startTime,
-        context: {
-          controller: 'RegistrationController',
-          method: 'getNextTrimesterRegistrations',
-          trimester: nextTrimester,
-          count: allRegistrations.length,
-        },
-      });
-    } catch (error) {
-      logger.error('Error getting next trimester registrations:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'RegistrationController', method: 'getNextTrimesterRegistrations' },
-      });
-    }
-  }
-
-  /**
    * Create registration in next trimester (enrollment periods only)
    * Enforces access control and creates backward link if modifying existing registration
    * POST /api/registrations/next-trimester
@@ -408,9 +232,9 @@ export class RegistrationController {
     try {
       const requestData = req.body;
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
-      const periodService = serviceContainer.get('periodService');
-      const registrationRepository = serviceContainer.get('registrationRepository');
-      const registrationApplicationService = serviceContainer.get('registrationApplicationService');
+      const periodService = serviceContainer.get(ServiceKeys.periodService);
+      const registrationRepository = serviceContainer.get(ServiceKeys.registrationRepository);
+      const registrationService = serviceContainer.get(ServiceKeys.registrationService);
 
       logger.info('🎯 Next trimester registration creation:', {
         studentId: requestData.studentId,
@@ -450,7 +274,7 @@ export class RegistrationController {
 
       // Use application service to validate and create registration with conflict checking
       // This ensures the same validation rules apply as regular registration creation
-      const result = await registrationApplicationService.processRegistration(
+      const result = await registrationService.processRegistration(
         requestData,
         authenticatedUserEmail,
         { isAdmin }
@@ -517,8 +341,8 @@ export class RegistrationController {
         throw new ValidationError('Missing registrationId');
       }
 
-      const periodService = serviceContainer.get('periodService');
-      const registrationApplicationService = serviceContainer.get('registrationApplicationService');
+      const periodService = serviceContainer.get(ServiceKeys.periodService);
+      const registrationService = serviceContainer.get(ServiceKeys.registrationService);
 
       // Get next trimester
       const nextTrimester = await periodService.getNextTrimester();
@@ -532,9 +356,8 @@ export class RegistrationController {
         authenticatedUser: authenticatedUserEmail,
       });
 
-      const result = await registrationApplicationService.cancelRegistration(
+      const result = await registrationService.deleteRegistration(
         registrationId,
-        'Next trimester registration cancelled by user',
         authenticatedUserEmail,
         nextTrimester
       );
@@ -564,110 +387,6 @@ export class RegistrationController {
   }
 
   /**
-   * Get all registrations for a specific trimester (admin only)
-   * GET /api/admin/registrations/:trimester
-   */
-  static async getRegistrationsByTrimester(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      const trimester = asString(req.params.trimester);
-      const registrationRepository = serviceContainer.get('registrationRepository');
-
-      logger.info(`📋 Getting registrations for trimester: ${trimester}`);
-
-      // Get registrations for the specified trimester
-      const registrations = await registrationRepository.getRegistrationsForTrimester(trimester);
-
-      successResponse(res, registrations, {
-        message: `Retrieved ${registrations.length} registrations for ${trimester} trimester`,
-        req,
-        startTime,
-        context: {
-          controller: 'RegistrationController',
-          method: 'getRegistrationsByTrimester',
-          trimester,
-        },
-      });
-    } catch (error) {
-      logger.error('Error getting registrations by trimester:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: {
-          controller: 'RegistrationController',
-          method: 'getRegistrationsByTrimester',
-        },
-      });
-    }
-  }
-
-  /**
-   * Get comprehensive admin data for a specific trimester
-   * Returns all data needed for admin UI: registrations, students, instructors, classes
-   * GET /api/admin/trimester-data/:trimester
-   */
-  static async getAdminTrimesterData(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      const trimester = asString(req.params.trimester);
-
-      logger.info(`📋 Getting comprehensive admin data for trimester: ${trimester}`);
-
-      // Get all necessary repositories
-      const registrationRepository = serviceContainer.get('registrationRepository');
-      const userRepository = serviceContainer.get('userRepository');
-      const classRepository = serviceContainer.get('programRepository') as {
-        getClasses(): Promise<unknown[]>;
-      };
-
-      // Fetch all data in parallel for performance
-      const [registrations, students, instructors, classes] = await Promise.all([
-        registrationRepository.getRegistrationsForTrimester(trimester),
-        userRepository.getStudents(),
-        userRepository.getInstructors(),
-        classRepository.getClasses(),
-      ]);
-
-      const result = {
-        trimester,
-        registrations,
-        students,
-        instructors,
-        classes,
-      };
-
-      successResponse(res, result, {
-        message: `Retrieved admin data for ${trimester} trimester`,
-        req,
-        startTime,
-        context: {
-          controller: 'RegistrationController',
-          method: 'getAdminTrimesterData',
-          trimester,
-          counts: {
-            registrations: registrations.length,
-            students: students.length,
-            instructors: instructors.length,
-            classes: classes.length,
-          },
-        },
-      });
-    } catch (error) {
-      logger.error('Error getting admin trimester data:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: {
-          controller: 'RegistrationController',
-          method: 'getAdminTrimesterData',
-        },
-      });
-    }
-  }
-
-  /**
    * Get admin wait list tab data
    * Returns only Rock Band registrations + associated students for wait list
    * REST: GET /api/admin/tabs/wait-list/:trimester
@@ -679,20 +398,11 @@ export class RegistrationController {
       const trimester = asString(req.params.trimester);
 
       if (!trimester) {
-        return errorResponse(
-          res,
-          new Error('Trimester is required'),
-          {
-            req,
-            startTime,
-            context: { controller: 'RegistrationController', method: 'getAdminWaitListTabData' },
-          },
-          400
-        );
+        throw new ValidationError('Trimester is required');
       }
 
-      const queryService = serviceContainer.get('entityQueryService');
-      const configService = serviceContainer.get('configurationService');
+      const queryService = serviceContainer.get(ServiceKeys.entityQueryService);
+      const configService = serviceContainer.get(ServiceKeys.configurationService);
       const rockBandClassIds = configService.getRockBandClassIds();
 
       const [allRegistrations, students] = await Promise.all([
@@ -747,38 +457,14 @@ export class RegistrationController {
       const trimester = asString(req.params.trimester);
 
       if (!trimester) {
-        return errorResponse(
-          res,
-          new Error('Trimester parameter is required'),
-          {
-            req,
-            startTime,
-            context: {
-              controller: 'RegistrationController',
-              method: 'getInstructorWeeklyScheduleTabData',
-            },
-          },
-          400
-        );
+        throw new ValidationError('Trimester parameter is required');
       }
 
       if (!instructorId) {
-        return errorResponse(
-          res,
-          new Error('Instructor ID is required'),
-          {
-            req,
-            startTime,
-            context: {
-              controller: 'RegistrationController',
-              method: 'getInstructorWeeklyScheduleTabData',
-            },
-          },
-          400
-        );
+        throw new ValidationError('Instructor ID is required');
       }
 
-      const queryService = serviceContainer.get('entityQueryService');
+      const queryService = serviceContainer.get(ServiceKeys.entityQueryService);
 
       // Fetch registrations for this instructor, excluding waitlist
       const registrations = await queryService.getRegistrations({ trimester, instructorId, excludeWaitlist: true });
@@ -802,8 +488,8 @@ export class RegistrationController {
       const responseData = {
         registrations,
         students: relevantStudents,
-        instructors: instructors,
-        classes: classes,
+        instructors,
+        classes,
       };
 
       successResponse(res, responseData, {
@@ -842,17 +528,10 @@ export class RegistrationController {
       const parentId = asString(req.query.parentId);
 
       if (!parentId) {
-        return errorResponse(res, new Error('Parent ID is required'), {
-          req,
-          startTime,
-          context: {
-            controller: 'RegistrationController',
-            method: 'getParentWeeklyScheduleTabData',
-          },
-        });
+        throw new ValidationError('Parent ID is required');
       }
 
-      const queryService = serviceContainer.get('entityQueryService');
+      const queryService = serviceContainer.get(ServiceKeys.entityQueryService);
 
       // Get parent's students first (needed to scope registrations)
       const parentStudents = await queryService.getStudents({ parentId });
@@ -874,7 +553,7 @@ export class RegistrationController {
         registrations: parentRegistrations,
         students: parentStudents,
         instructors: relevantInstructors,
-        classes: classes,
+        classes,
       };
 
       successResponse(res, responseData, {
@@ -904,7 +583,12 @@ export class RegistrationController {
 
     try {
       const trimester = asString(req.params.trimester);
-      const queryService = serviceContainer.get('entityQueryService');
+
+      if (!trimester) {
+        throw new ValidationError('Trimester parameter is required');
+      }
+
+      const queryService = serviceContainer.get(ServiceKeys.entityQueryService);
 
       const [registrations, students, instructors, classes] = await Promise.all([
         queryService.getRegistrations({ trimester }),
@@ -914,10 +598,10 @@ export class RegistrationController {
       ]);
 
       const responseData = {
-        registrations: registrations,
-        students: students,
-        instructors: instructors,
-        classes: classes,
+        registrations,
+        students,
+        instructors,
+        classes,
       };
 
       successResponse(res, responseData, {
@@ -949,27 +633,14 @@ export class RegistrationController {
       const trimester = asString(req.params.trimester);
 
       if (!parentId) {
-        return errorResponse(res, new Error('Parent ID is required'), {
-          req,
-          startTime,
-          context: { controller: 'RegistrationController', method: 'getParentRegistrationTabData' },
-        });
+        throw new ValidationError('Parent ID is required');
       }
 
       if (!trimester) {
-        return errorResponse(
-          res,
-          new Error('Trimester parameter is required'),
-          {
-            req,
-            startTime,
-            context: { controller: 'RegistrationController', method: 'getParentRegistrationTabData' },
-          },
-          400
-        );
+        throw new ValidationError('Trimester parameter is required');
       }
 
-      const queryService = serviceContainer.get('entityQueryService');
+      const queryService = serviceContainer.get(ServiceKeys.entityQueryService);
 
       // Fetch parent's students + registrations for the provided trimester + instructors + classes
       const [parentStudents, registrations, instructors, classes] =
@@ -981,10 +652,10 @@ export class RegistrationController {
         ]);
 
       const responseData = {
-        instructors: instructors,
+        instructors,
         students: parentStudents,
-        classes: classes,
-        registrations: registrations,
+        classes,
+        registrations,
       };
 
       successResponse(res, responseData, {
@@ -1017,17 +688,10 @@ export class RegistrationController {
       const trimester = asString(req.params.trimester);
 
       if (!trimester) {
-        return errorResponse(res, new Error('Trimester parameter is required'), {
-          req,
-          startTime,
-          context: {
-            controller: 'RegistrationController',
-            method: 'getAdminRegistrationTabData',
-          },
-        });
+        throw new ValidationError('Trimester parameter is required');
       }
 
-      const queryService = serviceContainer.get('entityQueryService');
+      const queryService = serviceContainer.get(ServiceKeys.entityQueryService);
 
       const [instructors, students, classes, registrations] = await Promise.all([
         queryService.getInstructors(),
@@ -1037,10 +701,10 @@ export class RegistrationController {
       ]);
 
       const responseData = {
-        instructors: instructors,
-        students: students,
-        classes: classes,
-        registrations: registrations,
+        instructors,
+        students,
+        classes,
+        registrations,
       };
 
       successResponse(res, responseData, {

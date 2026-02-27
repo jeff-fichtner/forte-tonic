@@ -1,62 +1,63 @@
 import type { Request, Response, NextFunction } from 'express';
-import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
+import { serviceContainer, ServiceKeys } from '../infrastructure/container/serviceContainer.js';
 import { currentConfig } from '../config/environment.js';
 import { createLogger } from '../utils/logger.js';
 import { configService } from '../services/configurationService.js';
 import { UserType } from '../config/constants.js';
 import type { UserRepository } from '../repositories/userRepository.js';
-import type { ProgramRepository } from '../repositories/programRepository.js';
-import type { AttendanceRepository } from '../repositories/attendanceRepository.js';
-
+import { UnauthorizedError } from '../common/errors.js';
+import { ERROR_CODE, ERROR_TYPE } from '../common/errorConstants.js';
 const logger = createLogger(configService);
 
-// Initialize repositories for all requests - NO AUTHENTICATION
+// Extract authenticated user from request for all API routes
 export const initializeRepositories = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    // Service container handles all repository and service instances
-    const userRepository = serviceContainer.get('userRepository') as UserRepository;
-    const programRepository = serviceContainer.get('programRepository') as ProgramRepository;
-    const attendanceRepository = serviceContainer.get('attendanceRepository') as AttendanceRepository;
-
-    // Attach repositories to request for API endpoints
-    req.userRepository = userRepository;
-    req.programRepository = programRepository;
-    req.attendanceRepository = attendanceRepository;
-
-    // Try to extract authenticated user from request
+    const userRepository = serviceContainer.get(ServiceKeys.userRepository);
     await extractAuthenticatedUser(req, userRepository);
   } catch (error) {
     logger.error('Error initializing repositories:', error);
-    req.userRepository = undefined;
-    req.programRepository = undefined;
-    req.attendanceRepository = undefined;
     req.currentUser = null;
-    req.user = null;
+  }
+  next();
+};
+
+/**
+ * Middleware that requires a valid authenticated user.
+ * Must be used after initializeRepositories.
+ * Returns 401 if req.currentUser is not set.
+ */
+export const requireAuth = (req: Request, res: Response, next: NextFunction): void => {
+  if (!req.currentUser) {
+    res.status(401).json({
+      success: false,
+      error: {
+        message: 'Authentication required. Please provide a valid access code.',
+        code: ERROR_CODE.UNAUTHORIZED,
+        type: ERROR_TYPE.AUTHENTICATION,
+      },
+    });
+    return;
   }
   next();
 };
 
 /**
  * Get authenticated user email from access code
- * Throws error if no authenticated user is found
+ * Throws UnauthorizedError if no authenticated user is found
  */
 export function getAuthenticatedUserEmail(req: Request): string {
-  // Get access code owner email
-  const userEmail = req.currentUser?.email || req.user?.email;
+  const userEmail = req.currentUser?.email;
   if (userEmail) {
     return userEmail;
   }
 
-  // No authenticated user found - provide detailed error message
   logger.error('Authentication failed for audit trail:', {
     hasCurrentUser: !!req.currentUser,
     currentUserEmail: req.currentUser?.email,
-    hasUser: !!req.user,
-    userEmail: req.user?.email,
   });
 
-  throw new Error(
-    'Authentication required: No authenticated user found for audit trail. Please provide a valid access code.'
+  throw new UnauthorizedError(
+    'Authentication required: No authenticated user found. Please provide a valid access code.'
   );
 }
 
@@ -65,26 +66,13 @@ export function getAuthenticatedUserEmail(req: Request): string {
  */
 async function extractAuthenticatedUser(req: Request, userRepository: UserRepository): Promise<void> {
   try {
-    // Initialize to null
     req.currentUser = null;
-    req.user = null;
 
-    // Check for access code to determine the acting user
+    // Check for access code in priority order: body, header, query
     let accessCode: string | null = null;
 
-    // Check for access code in different locations, including HttpService array format
-    let bodyAccessCode: string | null = null;
-
-    // Handle HttpService payload format: [{ data: { accessCode } }]
-    if (Array.isArray(req.body) && req.body[0]?.data?.accessCode) {
-      bodyAccessCode = req.body[0].data.accessCode;
-    } else if (req.body?.accessCode) {
-      // Handle direct body format: { accessCode, ... }
-      bodyAccessCode = req.body.accessCode;
-    }
-
-    if (bodyAccessCode && bodyAccessCode !== null && bodyAccessCode !== '') {
-      accessCode = bodyAccessCode;
+    if (req.body?.accessCode) {
+      accessCode = req.body.accessCode;
     } else if (req.headers['x-access-code']) {
       accessCode = req.headers['x-access-code'] as string;
     } else if (req.query?.accessCode) {
@@ -136,7 +124,6 @@ async function extractAuthenticatedUser(req: Request, userRepository: UserReposi
           accessCode: accessCode,
           userType: userType,
         };
-        req.user = req.currentUser;
         logger.debug(`User authenticated: ${user.email} (${userType})`);
         return;
       } else {
@@ -150,6 +137,5 @@ async function extractAuthenticatedUser(req: Request, userRepository: UserReposi
   } catch (error) {
     logger.error('Error extracting authenticated user:', error);
     req.currentUser = null;
-    req.user = null;
   }
 }

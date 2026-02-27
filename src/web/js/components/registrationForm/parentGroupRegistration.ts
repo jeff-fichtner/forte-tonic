@@ -247,7 +247,7 @@ export class ParentGroupRegistration {
       }
     } else if (!hasACapacityDefined || classCapacity > 0) {
       // Class has space (or assume unlimited capacity)
-      // Duplicate and time conflict checking is handled server-side by RegistrationConflictService
+      // Duplicate and time conflict checking is handled server-side by RegistrationService
 
       // Check if this is a special waitlist class (Rock Band classes)
       const isWaitlistClass = ClassManager.isRockBandClass(classId);
@@ -356,7 +356,7 @@ export class ParentGroupRegistration {
       return false;
     }
 
-    // Duplicate and time conflict checking is handled server-side by RegistrationConflictService
+    // Duplicate and time conflict checking is handled server-side by RegistrationService
 
     // Get the class details for bus validation
     const selectedClass = this.config.classes.find((cls: ClassLike) => cls.id === classId);

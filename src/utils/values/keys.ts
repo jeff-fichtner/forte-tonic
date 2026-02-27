@@ -9,6 +9,7 @@ export const Keys = {
   ATTENDANCE: 'attendance',
   ATTENDANCEAUDIT: 'attendance_audit',
   PERIODS: 'periods',
+  DROP_REQUESTS: 'drop_requests',
 } as const;
 
 export type Key = (typeof Keys)[keyof typeof Keys];

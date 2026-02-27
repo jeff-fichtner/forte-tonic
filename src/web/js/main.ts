@@ -85,15 +85,6 @@ interface ClearCacheResponse {
   message: string;
 }
 
-/** Shape of an admin record returned by /api/admins */
-interface DirectorRecord {
-  isDirector?: boolean;
-  fullName: string;
-  displayEmail?: string;
-  email: string;
-  displayPhone?: string;
-  phone?: string;
-}
 
 /**
  * Access code manager for secure storage and retrieval of access codes
@@ -256,39 +247,22 @@ const UserSession: UserSessionShape = {
 };
 
 /**
- * Load director information from API and populate HTML elements
- * Fetches admins and finds the one marked as director (isDirector=true)
+ * Load director information from app config and populate HTML elements
  */
-async function loadDirectorInfo(): Promise<void> {
-  try {
-    // Fetch all admins from API
-    const admins = await HttpService.get('admins');
+function loadDirectorInfo(): void {
+  const director = UserSession.getAppConfig()?.director;
 
-    // Check if admins is null or not an array (unauthenticated user)
-    if (!admins || !Array.isArray(admins)) {
-      return; // Silently fail - user not authenticated yet
-    }
-
-    // Find the director (admin with isDirector=true)
-    const director = (admins as DirectorRecord[]).find((admin: DirectorRecord) => admin.isDirector);
-
-    if (director) {
-      // Populate HTML elements with director info
-      const nameElement = document.getElementById('director-name');
-      const emailElement = document.getElementById('director-email');
-      const phoneElement = document.getElementById('director-phone');
-
-      if (nameElement) nameElement.textContent = director.fullName;
-      if (emailElement) emailElement.textContent = director.displayEmail || director.email;
-      if (phoneElement) phoneElement.textContent = director.displayPhone || director.phone || 'N/A';
-    } else {
-      console.warn('No director found in admins data');
-      // Leave "Loading..." text if no director found
-    }
-  } catch (error) {
-    console.error('Error loading director info:', error);
-    // Leave "Loading..." text on error
+  if (!director) {
+    return;
   }
+
+  const nameElement = document.getElementById('director-name');
+  const emailElement = document.getElementById('director-email');
+  const phoneElement = document.getElementById('director-phone');
+
+  if (nameElement) nameElement.textContent = director.fullName;
+  if (emailElement) emailElement.textContent = director.displayEmail || director.email;
+  if (phoneElement) phoneElement.textContent = director.displayPhone || director.phone || 'N/A';
 }
 
 /**
@@ -370,16 +344,17 @@ async function initializeApplication(): Promise<void> {
     };
 
     // Expose server cache clearing function globally (admin only)
-    // Usage: window.clearServerCache('your-admin-code') in browser console
-    window.clearServerCache = async function (adminCode: string): Promise<boolean> {
-      if (!adminCode) {
-        console.error('✗ Admin code required. Usage: window.clearServerCache("your-admin-code")');
-        return false;
-      }
-
+    // Usage: window.clearServerCache() in browser console
+    // Uses the already-authenticated user's access code from the x-access-code header
+    window.clearServerCache = async function (): Promise<boolean> {
       try {
         console.log('🧹 Clearing server cache...');
-        const cacheData = (await HttpService.post('admin/clear-cache', { adminCode })) as ClearCacheResponse;
+        const result = await HttpService.post<ClearCacheResponse>('admin/clear-cache', {});
+        if (!result.ok) {
+          console.error('✗ Error clearing server cache:', result.error.message);
+          return false;
+        }
+        const cacheData = result.data;
         console.log('✓ Server cache cleared successfully by:', cacheData.clearedBy);
         console.log('  Message:', cacheData.message);
         return true;

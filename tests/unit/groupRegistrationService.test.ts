@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, beforeEach, jest } from '@jest/globals';
-import { RegistrationApplicationService } from '../../src/services/registrationApplicationService.js';
+import { RegistrationService } from '../../src/services/registrationService.js';
 import { serviceContainer } from '../../src/infrastructure/container/serviceContainer.js';
 
 describe('Group Registration Service', () => {
@@ -34,7 +34,7 @@ describe('Group Registration Service', () => {
     serviceContainer.register('programRepository', mockProgramRepository);
     serviceContainer.register('registrationRepository', mockRegistrationRepository);
 
-    registrationService = new RegistrationApplicationService({
+    registrationService = new RegistrationService({
       userRepository: mockUserRepository,
       programRepository: mockProgramRepository,
       registrationRepository: mockRegistrationRepository,

@@ -68,61 +68,18 @@ const mockUserRepository = {
   getAdmins: jest
     .fn()
     .mockResolvedValue([
-      { id: '1', email: 'admin@test.com', firstName: 'Test', lastName: 'Admin', phone: '555-1234' },
+      { id: '1', email: 'admin@test.com', firstName: 'Test', lastName: 'Admin', phone: '5551234000' },
     ]),
-  getInstructors: jest.fn().mockResolvedValue([
-    {
-      id: '1',
-      email: 'instructor@test.com',
-      firstName: 'Test',
-      lastName: 'Instructor',
-      phone: '555-5678',
-    },
-  ]),
-  getStudents: jest
-    .fn()
-    .mockResolvedValue([
-      { id: '1', email: 'student@test.com', firstName: 'Test', lastName: 'Student', grade: '5' },
-    ]),
-  getParents: jest.fn().mockResolvedValue([
-    {
-      id: '1',
-      email: 'parent@test.com',
-      firstName: 'Test',
-      lastName: 'Parent',
-      phone: '555-9999',
-    },
-  ]),
-  getRooms: jest
-    .fn()
-    .mockResolvedValue([{ id: '1', name: 'Piano Room', location: 'Main Building' }]),
   getAdminByAccessCode: jest.fn().mockResolvedValue({
     id: '1',
     email: 'admin@test.com',
     firstName: 'Test',
     lastName: 'Admin',
-    phone: '555-1234',
+    phone: '5551234000',
     accessCode: '123456',
   }),
   getInstructorByAccessCode: jest.fn().mockResolvedValue(null),
-  getParentByAccessCode: jest.fn().mockResolvedValue(null),
-  getAdminByEmail: jest.fn().mockResolvedValue({
-    id: '1',
-    email: 'admin@test.com',
-    firstName: 'Test',
-    lastName: 'Admin',
-    phone: '555-1234',
-  }),
-  getInstructorByEmail: jest.fn().mockResolvedValue(null),
-  getParentByEmail: jest.fn().mockResolvedValue(null),
   getParentByPhone: jest.fn().mockResolvedValue(null),
-};
-
-const mockProgramRepository = {
-  getClasses: jest.fn().mockResolvedValue([{ id: '1', name: 'Beginner Piano', instructorId: '1' }]),
-  getRegistrations: jest
-    .fn()
-    .mockResolvedValue([{ id: '1', studentId: '1', classId: '1', registrationType: 'group' }]),
 };
 
 const mockDbClient = {
@@ -155,9 +112,6 @@ const mockDbClient = {
 // Mock the middleware to add repositories to req
 jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
   initializeRepositories: (req, res, next) => {
-    req.dbClient = mockDbClient;
-    req.userRepository = mockUserRepository;
-    req.programRepository = mockProgramRepository;
     req.currentUser = {
       email: 'test-user@example.com',
       admin: { id: '1', email: 'admin@test.com', firstName: 'Test', lastName: 'Admin' },
@@ -174,7 +128,6 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
         };
       },
     };
-    req.user = req.currentUser; // For compatibility
     next();
   },
   getAuthenticatedUserEmail: jest.fn().mockImplementation(req => {
@@ -185,43 +138,24 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
 
 // Mock the service container
 jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js', () => ({
+  ServiceKeys: {
+    databaseClient: 'databaseClient', emailClient: 'emailClient', cacheService: 'cacheService',
+    configurationService: 'configurationService', registrationRepository: 'registrationRepository',
+    userRepository: 'userRepository', programRepository: 'programRepository',
+    attendanceRepository: 'attendanceRepository', dropRequestRepository: 'dropRequestRepository',
+    periodRepository: 'periodRepository', registrationService: 'registrationService',
+    periodService: 'periodService', dropRequestService: 'dropRequestService',
+    entityQueryService: 'entityQueryService',
+  },
   serviceContainer: {
     initialize: jest.fn().mockResolvedValue(undefined),
-    getUserRepository: jest.fn().mockReturnValue(mockUserRepository),
     get: jest.fn().mockImplementation(serviceName => {
       const services = {
         userRepository: mockUserRepository,
-        programRepository: mockProgramRepository,
+        databaseClient: mockDbClient,
         periodService: {
           getCurrentPeriod: jest.fn().mockResolvedValue(null),
           isIntentPeriodActive: jest.fn().mockResolvedValue(false),
-        },
-        studentApplicationService: {
-          getStudents: jest.fn().mockResolvedValue({
-            students: [
-              {
-                id: '1',
-                firstName: 'John',
-                lastName: 'Doe',
-                grade: '5',
-                ageCategory: 'elementary',
-                hasEmergencyContact: true,
-                recommendedLessonDuration: 30,
-              },
-              {
-                id: '2',
-                firstName: 'Jane',
-                lastName: 'Smith',
-                grade: '8',
-                ageCategory: 'middle',
-                hasEmergencyContact: false,
-                recommendedLessonDuration: 45,
-              },
-            ],
-            totalCount: 2,
-            page: 1,
-            pageSize: 1000,
-          }),
         },
       };
       return services[serviceName];
@@ -257,100 +191,6 @@ describe('Server Integration Tests', () => {
   });
 
   describe('API Routes', () => {
-    describe('GET /api/admins', () => {
-      test('should return list of admins', async () => {
-        const response = await request(app).get('/api/admins').expect(200);
-
-        // Expect wrapped format
-        expect(response.body).toHaveProperty('success', true);
-        expect(response.body).toHaveProperty('data');
-        expect(Array.isArray(response.body.data)).toBe(true);
-        expect(response.body.data).toHaveLength(1);
-        expect(response.body.data[0]).toHaveProperty('email', 'admin@test.com');
-      });
-    });
-
-    describe('GET /api/instructors', () => {
-      test('should return list of instructors', async () => {
-        const response = await request(app).get('/api/instructors').expect(200);
-
-        // Expect wrapped format
-        expect(response.body).toHaveProperty('success', true);
-        expect(response.body).toHaveProperty('data');
-        expect(Array.isArray(response.body.data)).toBe(true);
-        expect(response.body.data).toHaveLength(1);
-        expect(response.body.data[0]).toHaveProperty('email', 'instructor@test.com');
-      });
-    });
-
-    describe('GET /api/students', () => {
-      test('should return list of students', async () => {
-        const response = await request(app).get('/api/students').expect(200);
-
-        // Expect wrapped format
-        expect(response.body).toHaveProperty('success', true);
-        expect(response.body).toHaveProperty('data');
-        expect(Array.isArray(response.body.data)).toBe(true);
-        expect(response.body.data.length).toBeGreaterThan(0);
-        expect(response.body.data[0]).toHaveProperty('id');
-        expect(response.body.data[0]).toHaveProperty('firstName');
-        expect(response.body.data[0]).toHaveProperty('lastName');
-      });
-    });
-
-    describe('GET /api/classes', () => {
-      test('should return list of classes', async () => {
-        const response = await request(app).get('/api/classes').expect(200);
-
-        // Expect wrapped format
-        expect(response.body).toHaveProperty('success', true);
-        expect(response.body).toHaveProperty('data');
-        expect(Array.isArray(response.body.data)).toBe(true);
-        expect(response.body.data).toHaveLength(1);
-        expect(response.body.data[0]).toHaveProperty('name', 'Beginner Piano');
-      });
-    });
-
-    describe('GET /api/rooms', () => {
-      test('should return list of rooms', async () => {
-        const response = await request(app).get('/api/rooms').expect(200);
-
-        // Expect wrapped format
-        expect(response.body).toHaveProperty('success', true);
-        expect(response.body).toHaveProperty('data');
-        expect(Array.isArray(response.body.data)).toBe(true);
-        expect(response.body.data).toHaveLength(1);
-        expect(response.body.data[0]).toHaveProperty('name', 'Piano Room');
-      });
-    });
-
-    describe('POST /api/admin/test-connection', () => {
-      test('should test Google Sheets connection', async () => {
-        const response = await request(app).post('/api/admin/test-connection').expect(200);
-
-        expect(response.body).toHaveProperty('success', true);
-        expect(response.body).toHaveProperty('data');
-        expect(response.body.data).toHaveProperty('success', true);
-        expect(response.body.data).toHaveProperty('spreadsheetTitle', 'Test Spreadsheet');
-        expect(response.body.data).toHaveProperty('availableSheets');
-        expect(Array.isArray(response.body.data.availableSheets)).toBe(true);
-      });
-    });
-
-    describe('POST /api/admin/test-sheet-data', () => {
-      test('should test sheet data retrieval', async () => {
-        const response = await request(app)
-          .post('/api/admin/test-sheet-data')
-          .send({ sheetName: 'Students' })
-          .expect(200);
-
-        expect(response.body).toHaveProperty('success', true);
-        expect(response.body).toHaveProperty('data');
-        expect(response.body.data).toHaveProperty('success', true);
-        expect(response.body.data).toHaveProperty('sheetName', 'Students');
-      });
-    });
-
     describe('POST /api/auth/access-code', () => {
       test('should return authenticated user for valid access code', async () => {
         // Mock the repository method to return an admin for this test
@@ -359,7 +199,7 @@ describe('Server Integration Tests', () => {
           email: 'admin@test.com',
           firstName: 'Test',
           lastName: 'Admin',
-          phone: '555-1234',
+          phone: '5551234000',
           accessCode: '123456',
           toJSON: function () {
             return {

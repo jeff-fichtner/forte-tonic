@@ -78,11 +78,22 @@ const mockPeriodService = {
   isIntentPeriodActive: jest.fn().mockResolvedValue(true),
 };
 
-// Create mock user repository (empty for this test)
-const mockUserRepository = {};
+// Create mock user repository
+const mockUserRepository = {
+  getAdmins: jest.fn().mockResolvedValue([]),
+};
 
 // Mock the service container
 jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js', () => ({
+  ServiceKeys: {
+    databaseClient: 'databaseClient', emailClient: 'emailClient', cacheService: 'cacheService',
+    configurationService: 'configurationService', registrationRepository: 'registrationRepository',
+    userRepository: 'userRepository', programRepository: 'programRepository',
+    attendanceRepository: 'attendanceRepository', dropRequestRepository: 'dropRequestRepository',
+    periodRepository: 'periodRepository', registrationService: 'registrationService',
+    periodService: 'periodService', dropRequestService: 'dropRequestService',
+    entityQueryService: 'entityQueryService',
+  },
   serviceContainer: {
     get: jest.fn().mockImplementation(serviceName => {
       if (serviceName === 'periodService') return mockPeriodService;

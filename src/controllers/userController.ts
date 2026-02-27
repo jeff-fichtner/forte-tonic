@@ -1,19 +1,19 @@
 /**
- * User Controller - Application layer API endpoints for user management
- * Handles users, students, instructors, admins, and parents
+ * User Controller
+ * ===============
  *
- * Updated to use Domain-Driven Design architecture with service container
- * and application services for business logic coordination.
+ * API endpoints for user management.
+ * Handles students, instructors, admins, parents, and app configuration.
  */
 
-import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
+import { serviceContainer, ServiceKeys } from '../infrastructure/container/serviceContainer.js';
 import type { Request, Response } from 'express';
 import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
 import { AppConfigurationResponse } from '../models/shared/responses/appConfigurationResponse.js';
 import { configService } from '../services/configurationService.js';
 import { getLogger } from '../utils/logger.js';
 import { successResponse, errorResponse, asString } from '../common/responseHelpers.js';
-import { ValidationError, NotFoundError } from '../common/errors.js';
+import { ValidationError } from '../common/errors.js';
 import { PeriodType } from '../utils/values/periodType.js';
 import { Trimester } from '../utils/values/trimester.js';
 import { PeriodService } from '../services/periodService.js';
@@ -29,12 +29,27 @@ export class UserController {
     const startTime = Date.now();
 
     try {
-      const periodService = serviceContainer.get('periodService');
-      const currentPeriod = await periodService.getCurrentPeriod();
-      const nextPeriod = await periodService.getNextPeriod();
+      const periodService = serviceContainer.get(ServiceKeys.periodService);
+      const userRepository = serviceContainer.get(ServiceKeys.userRepository);
+      const [currentPeriod, nextPeriod, admins] = await Promise.all([
+        periodService.getCurrentPeriod(),
+        periodService.getNextPeriod(),
+        userRepository.getAdmins(),
+      ]);
 
       // Get maintenance mode configuration from singleton configService
       const appConfig = configService.getApplicationConfig();
+
+      const directorAdmin = admins.find(a => a.isDirector) ?? null;
+      const director = directorAdmin
+        ? {
+            fullName: directorAdmin.fullName,
+            email: directorAdmin.email,
+            displayEmail: directorAdmin.displayEmail,
+            phone: directorAdmin.phoneNumber,
+            displayPhone: directorAdmin.displayPhone,
+          }
+        : null;
 
       const configurationData = {
         currentPeriod,
@@ -52,6 +67,7 @@ export class UserController {
         defaultTrimester: currentPeriod?.trimester,
         maintenanceMode: appConfig.maintenanceMode,
         maintenanceMessage: appConfig.maintenanceMessage,
+        director,
         registrationConfig: {
           busDeadlines: {
             Monday: '16:45',
@@ -141,82 +157,6 @@ export class UserController {
     return [currentTrimester];
   }
 
-  /**
-   * Get all admins
-   */
-  static async getAdmins(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      const userRepository = serviceContainer.get('userRepository');
-      const data = await userRepository.getAdmins();
-
-      successResponse(res, data, {
-        req,
-        startTime,
-        context: { controller: 'UserController', method: 'getAdmins' },
-      });
-    } catch (error) {
-      logger.error('Error getting admins:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'UserController', method: 'getAdmins' },
-      });
-    }
-  }
-
-  /**
-   * Get all instructors
-   */
-  static async getInstructors(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      const userRepository = serviceContainer.get('userRepository');
-
-      // Force refresh to get latest data from spreadsheet
-      const data = await userRepository.getInstructors();
-
-      successResponse(res, data, {
-        req,
-        startTime,
-        context: { controller: 'UserController', method: 'getInstructors' },
-      });
-    } catch (error) {
-      logger.error('Error in getInstructors:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'UserController', method: 'getInstructors' },
-      });
-    }
-  }
-
-  /**
-   * Get students - simplified to match instructor pattern
-   */
-  static async getStudents(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      const userRepository = serviceContainer.get('userRepository');
-      const data = await userRepository.getStudents();
-
-      successResponse(res, data, {
-        req,
-        startTime,
-        context: { controller: 'UserController', method: 'getStudents' },
-      });
-    } catch (error) {
-      logger.error('Error getting students:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'UserController', method: 'getStudents' },
-      });
-    }
-  }
 
   /**
    * Authenticate user by access code
@@ -234,7 +174,7 @@ export class UserController {
         throw new ValidationError('Access code is required');
       }
 
-      const userRepository = serviceContainer.get('userRepository');
+      const userRepository = serviceContainer.get(ServiceKeys.userRepository);
 
       let admin = null;
       let instructor = null;
@@ -317,114 +257,6 @@ export class UserController {
   }
 
   /**
-   * Get admin by access code
-   * REST: GET /admins/by-access-code/:accessCode
-   */
-  static async getAdminByAccessCode(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      const accessCode = asString(req.params.accessCode);
-
-      if (!accessCode) {
-        throw new ValidationError('Access code is required');
-      }
-
-      const userRepository = serviceContainer.get('userRepository');
-      const admin = await userRepository.getAdminByAccessCode(accessCode);
-
-      if (!admin) {
-        throw new NotFoundError('Admin not found with provided access code');
-      }
-
-      successResponse(res, admin, {
-        req,
-        startTime,
-        context: { controller: 'UserController', method: 'getAdminByAccessCode' },
-      });
-    } catch (error) {
-      logger.error('Error getting admin by access code:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'UserController', method: 'getAdminByAccessCode' },
-      });
-    }
-  }
-
-  /**
-   * Get instructor by access code
-   * REST: GET /instructors/by-access-code/:accessCode
-   */
-  static async getInstructorByAccessCode(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      const accessCode = asString(req.params.accessCode);
-
-      if (!accessCode) {
-        throw new ValidationError('Access code is required');
-      }
-
-      const userRepository = serviceContainer.get('userRepository');
-      const instructor = await userRepository.getInstructorByAccessCode(accessCode);
-
-      if (!instructor) {
-        throw new NotFoundError('Instructor not found with provided access code');
-      }
-
-      successResponse(res, instructor, {
-        req,
-        startTime,
-        context: { controller: 'UserController', method: 'getInstructorByAccessCode' },
-      });
-    } catch (error) {
-      logger.error('Error in getInstructorByAccessCode:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'UserController', method: 'getInstructorByAccessCode' },
-      });
-    }
-  }
-
-  /**
-   * Get parent by access code
-   * REST: GET /parents/by-access-code/:accessCode
-   */
-  static async getParentByAccessCode(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      const accessCode = asString(req.params.accessCode);
-
-      if (!accessCode) {
-        throw new ValidationError('Access code is required');
-      }
-
-      const userRepository = serviceContainer.get('userRepository');
-      const parent = await userRepository.getParentByAccessCode(accessCode);
-
-      if (!parent) {
-        throw new NotFoundError('Parent not found with provided access code');
-      }
-
-      successResponse(res, parent, {
-        req,
-        startTime,
-        context: { controller: 'UserController', method: 'getParentByAccessCode' },
-      });
-    } catch (error) {
-      logger.error('Error getting parent by access code:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'UserController', method: 'getParentByAccessCode' },
-      });
-    }
-  }
-
-  /**
    * Get instructor directory tab data
    * Returns only admins and instructors (no students, registrations, classes, rooms)
    * REST: GET /api/instructor/tabs/directory
@@ -433,7 +265,7 @@ export class UserController {
     const startTime = Date.now();
 
     try {
-      const queryService = serviceContainer.get('entityQueryService');
+      const queryService = serviceContainer.get(ServiceKeys.entityQueryService);
 
       const [admins, instructors] = await Promise.all([
         queryService.getAdmins(),
@@ -474,32 +306,14 @@ export class UserController {
       const trimester = asString(req.params.trimester);
 
       if (!parentId) {
-        return errorResponse(
-          res,
-          new Error('Parent ID is required'),
-          {
-            req,
-            startTime,
-            context: { controller: 'UserController', method: 'getParentContactTabData' },
-          },
-          400
-        );
+        throw new ValidationError('Parent ID is required');
       }
 
       if (!trimester) {
-        return errorResponse(
-          res,
-          new Error('Trimester parameter is required'),
-          {
-            req,
-            startTime,
-            context: { controller: 'UserController', method: 'getParentContactTabData' },
-          },
-          400
-        );
+        throw new ValidationError('Trimester parameter is required');
       }
 
-      const queryService = serviceContainer.get('entityQueryService');
+      const queryService = serviceContainer.get(ServiceKeys.entityQueryService);
 
       // Get parent's students first (needed to scope registrations)
       const parentStudents = await queryService.getStudents({ parentId });

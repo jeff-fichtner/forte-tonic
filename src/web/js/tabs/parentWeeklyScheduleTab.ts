@@ -8,6 +8,7 @@ import { formatDateTime } from '../utilities/formatHelpers.js';
 import { isEnrollmentPeriod } from '../utilities/periodHelpers.js';
 import { ClassManager } from '../utilities/classManager.js';
 import { HttpService } from '../data/httpService.js';
+import type { HttpResult } from '../data/httpService.js';
 
 // Intent labels (matching viewModel.js)
 const INTENT_LABELS: Record<string, string> = {
@@ -66,111 +67,72 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Fetch weekly schedule data for parent's children
    * Returns registrations for BOTH current and next trimester
    */
-  async fetchData(sessionInfo: SessionInfo | null): Promise<Record<string, unknown>> {
+  async fetchData(sessionInfo: SessionInfo | null): Promise<HttpResult<Record<string, unknown>>> {
     const parentObj = (sessionInfo?.user as Record<string, unknown> | undefined)?.parent as Record<string, unknown> | undefined;
     const parentId = parentObj?.id as string | undefined;
     if (!parentId) {
-      throw new Error('No parent ID found in session');
+      return { ok: false, error: { message: 'No parent ID found in session' } };
     }
 
-    // Get period info and trimester config from UserSession
     const currentPeriod = window.UserSession?.getCurrentPeriod();
     const appConfig = window.UserSession?.getAppConfig();
 
     if (!currentPeriod) {
-      throw new Error('Period information not available');
+      return { ok: false, error: { message: 'Period information not available' } };
     }
 
-    console.log('Parent weekly schedule fetching:', {
-      currentPeriod: currentPeriod.trimester,
-      currentPeriodType: currentPeriod.periodType,
-      currentTrimester: appConfig?.currentTrimester,
-      nextTrimester: appConfig?.nextTrimester,
-      isEnrollment: isEnrollmentPeriod(currentPeriod),
-    });
-
-    // Determine which trimesters to show
-    let firstTrimester: string | null | undefined;
-    let secondTrimester: string | null | undefined;
+    let firstTrimester: string;
+    let secondTrimester: string | undefined;
     let showTwoTrimesters = false;
 
     if (isEnrollmentPeriod(currentPeriod)) {
-      // During enrollment periods, show BOTH trimesters:
-      // 1. Current trimester (classes happening now)
-      // 2. Next trimester (what they're enrolling for)
-      // Use config values which give us the academic sequence, not period phases
-      firstTrimester = appConfig?.currentTrimester || currentPeriod.trimester;
-      secondTrimester = appConfig?.nextTrimester || currentPeriod.trimester;
+      firstTrimester = appConfig?.currentTrimester || currentPeriod.trimester || '';
+      secondTrimester = appConfig?.nextTrimester || currentPeriod.trimester || '';
       showTwoTrimesters = true;
-
-      console.log(
-        `Enrollment period: showing current (${firstTrimester}) + next (${secondTrimester}) trimesters`
-      );
     } else {
-      // Non-enrollment periods: show only current period's trimester
-      firstTrimester = currentPeriod.trimester;
-      showTwoTrimesters = false;
-
-      console.log(`Non-enrollment period: showing current trimester (${firstTrimester})`);
+      firstTrimester = currentPeriod.trimester || '';
     }
 
-    // Fetch data for the trimester(s)
-    const fetchPromises: Promise<TrimesterData>[] = [this.#fetchTrimesterData(parentId, firstTrimester as string)];
-    if (showTwoTrimesters) {
-      fetchPromises.push(this.#fetchTrimesterData(parentId, secondTrimester as string));
+    const firstResult = await this.#fetchTrimesterData(parentId, firstTrimester);
+    if (!firstResult.ok) return firstResult;
+    const firstData = firstResult.data;
+
+    let secondData: TrimesterData | null = null;
+    if (showTwoTrimesters && secondTrimester) {
+      const secondResult = await this.#fetchTrimesterData(parentId, secondTrimester);
+      if (!secondResult.ok) return secondResult;
+      secondData = secondResult.data;
     }
-
-    const results = await Promise.all(fetchPromises);
-    const firstData = results[0];
-    const secondData = results[1] || null;
-
-    console.log('Parent weekly schedule fetched:', {
-      firstTrimester,
-      firstRegistrations: firstData.registrations.length,
-      ...(showTwoTrimesters && {
-        secondTrimester,
-        secondRegistrations: secondData!.registrations.length,
-      }),
-    });
 
     const responseData: Record<string, unknown> = {
-      currentTrimester: {
-        name: firstTrimester,
-        data: firstData,
-      },
+      currentTrimester: { name: firstTrimester, data: firstData },
       showTwoTrimesters,
-      // Merge students, instructors, classes from all fetched trimesters (deduplicated)
       students: this.#mergeUnique([...firstData.students, ...(secondData?.students || [])], 'id'),
-      instructors: this.#mergeUnique(
-        [...firstData.instructors, ...(secondData?.instructors || [])],
-        'id'
-      ),
+      instructors: this.#mergeUnique([...firstData.instructors, ...(secondData?.instructors || [])], 'id'),
       classes: this.#mergeUnique([...firstData.classes, ...(secondData?.classes || [])], 'id'),
     };
 
     if (showTwoTrimesters) {
-      responseData.nextTrimester = {
-        name: secondTrimester,
-        data: secondData,
-      };
+      responseData.nextTrimester = { name: secondTrimester, data: secondData };
     }
 
-    return responseData;
+    return { ok: true, data: responseData };
   }
 
   /**
    * Fetch data for a specific trimester
    * @private
    */
-  async #fetchTrimesterData(parentId: string, trimester: string): Promise<TrimesterData> {
-    const data = await HttpService.get(`parent/tabs/weekly-schedule/${trimester}?parentId=${parentId}`, { signal: this.getAbortSignal() }) as TrimesterData;
+  async #fetchTrimesterData(parentId: string, trimester: string): Promise<HttpResult<TrimesterData>> {
+    const result = await HttpService.get<TrimesterData>(`parent/tabs/weekly-schedule/${trimester}?parentId=${parentId}`, { signal: this.getAbortSignal() });
 
-    // Validate response
-    if (!data.registrations || !data.students || !data.instructors || !data.classes) {
-      throw new Error('Invalid response: missing required data');
+    if (!result.ok) return result;
+
+    if (!result.data.registrations || !result.data.students || !result.data.instructors || !result.data.classes) {
+      return { ok: false, error: { message: 'Invalid response: missing required data' } };
     }
 
-    return data;
+    return result;
   }
 
   /**
@@ -668,43 +630,22 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       statusIndicator.style.display = 'inline';
     }
 
-    try {
-      // Use HttpService which handles authentication headers automatically
-      await HttpService.patch(`registrations/${registrationId}/intent`, { intent });
+    const result = await HttpService.patch(`registrations/${registrationId}/intent`, { intent });
 
-      // Success - show checkmark
+    if (result.ok) {
       if (statusIndicator) {
         statusIndicator.textContent = '✅ Saved';
         statusIndicator.style.color = 'green';
-
-        // Hide after 2 seconds
-        setTimeout(() => {
-          statusIndicator.style.display = 'none';
-        }, 2000);
+        setTimeout(() => { statusIndicator.style.display = 'none'; }, 2000);
       }
-
-      // Show toast notification
-      if (typeof M !== 'undefined' && M.toast) {
-        M.toast({ html: 'Intent updated successfully!' });
-      }
-    } catch (error) {
-      console.error('Error updating intent:', error);
-
-      // Show error
+      M.toast({ html: 'Intent updated successfully!' });
+    } else {
       if (statusIndicator) {
         statusIndicator.textContent = '❌ Error';
         statusIndicator.style.color = 'red';
-
-        // Hide after 3 seconds
-        setTimeout(() => {
-          statusIndicator.style.display = 'none';
-        }, 3000);
+        setTimeout(() => { statusIndicator.style.display = 'none'; }, 3000);
       }
-
-      // Show error toast
-      if (typeof M !== 'undefined' && M.toast) {
-        M.toast({ html: 'Failed to update intent. Please try again.' });
-      }
+      M.toast({ html: result.error.message || 'Failed to update intent. Please try again.' });
     }
   }
 

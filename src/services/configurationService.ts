@@ -2,11 +2,10 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const configDir = dirname(fileURLToPath(import.meta.url));
 
 // Load environment variables from config/.env (or .env in project root as fallback)
-dotenv.config({ path: join(__dirname, '../../config/.env') });
+dotenv.config({ path: join(configDir, '../../config/.env') });
 dotenv.config(); // Fallback to root .env if config/.env doesn't exist
 
 export interface GoogleSheetsAuthConfig {

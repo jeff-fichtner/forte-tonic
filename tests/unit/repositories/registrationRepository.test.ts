@@ -37,6 +37,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
       sheets: mockSheets,
       deleteRecord: jest.fn().mockResolvedValue(true),
       insertIntoSheet: jest.fn().mockResolvedValue(true),
+      appendRecord: jest.fn().mockResolvedValue(true),
     };
 
     // Create mock config service
@@ -45,6 +46,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
         environment: 'test',
         logLevel: 'info',
       })),
+      getRockBandClassIds: jest.fn(() => []),
     };
 
     // Create mock period service
@@ -67,7 +69,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
 
   describe('delete method', () => {
     const testRegistrationId = 'da8ca6c8-7626-40c3-9173-319f15effaea';
-    const mockRegistration = {
+    const mockRegistrationData = {
       id: testRegistrationId,
       studentId: 'student-id',
       instructorId: 'instructor-id',
@@ -76,9 +78,13 @@ describe('RegistrationRepository - Delete Functionality', () => {
       length: 30,
       registrationType: 'private',
     };
+    const mockRegistration = {
+      ...mockRegistrationData,
+      toJSON: () => ({ ...mockRegistrationData }),
+    };
 
     test('should successfully delete a registration from Google Sheets', async () => {
-      repository.findById = jest.fn().mockResolvedValue(mockRegistration);
+      repository.findByIdInTrimester = jest.fn().mockResolvedValue(mockRegistration);
       repository.clearCache = jest.fn();
 
       // Execute delete
@@ -88,7 +94,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
       expect(result).toBe(true);
 
       // Verify findById was called to check existence
-      expect(repository.findById).toHaveBeenCalledWith(testRegistrationId);
+      expect(repository.findByIdInTrimester).toHaveBeenCalledWith(testRegistrationId, 'fall');
 
       // Verify deleteRecord was called with correct parameters
       expect(mockDbClient.deleteRecord).toHaveBeenCalledWith(
@@ -99,25 +105,25 @@ describe('RegistrationRepository - Delete Functionality', () => {
     });
 
     test('should handle string ID parameter', async () => {
-      repository.findById = jest.fn().mockResolvedValue(mockRegistration);
+      repository.findByIdInTrimester = jest.fn().mockResolvedValue(mockRegistration);
 
       await repository.delete(testRegistrationId, 'test-user-id', 'fall');
 
-      expect(repository.findById).toHaveBeenCalledWith(testRegistrationId);
+      expect(repository.findByIdInTrimester).toHaveBeenCalledWith(testRegistrationId, 'fall');
     });
 
     test('should throw error if registration does not exist', async () => {
-      repository.findById = jest.fn().mockResolvedValue(null);
+      repository.findByIdInTrimester = jest.fn().mockResolvedValue(null);
 
       await expect(repository.delete(testRegistrationId, 'test-user-id', 'fall')).rejects.toThrow(
-        `Registration with ID ${testRegistrationId} not found`
+        `Registration with ID ${testRegistrationId} not found in registrations_fall`
       );
 
       expect(mockDbClient.deleteRecord).not.toHaveBeenCalled();
     });
 
     test('should require userId for audit trail', async () => {
-      repository.findById = jest.fn().mockResolvedValue(mockRegistration);
+      repository.findByIdInTrimester = jest.fn().mockResolvedValue(mockRegistration);
 
       await expect(repository.delete(testRegistrationId, undefined, 'fall')).rejects.toThrow(
         'userId is required for audit trail'
@@ -125,7 +131,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
     });
 
     test('should require trimester parameter', async () => {
-      repository.findById = jest.fn().mockResolvedValue(mockRegistration);
+      repository.findByIdInTrimester = jest.fn().mockResolvedValue(mockRegistration);
 
       await expect(repository.delete(testRegistrationId, 'test-user-id', undefined)).rejects.toThrow(
         'trimester is required to locate the registration table'
@@ -133,7 +139,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
     });
 
     test('should handle deleteRecord failure gracefully', async () => {
-      repository.findById = jest.fn().mockResolvedValue(mockRegistration);
+      repository.findByIdInTrimester = jest.fn().mockResolvedValue(mockRegistration);
       mockDbClient.deleteRecord.mockRejectedValue(new Error('Database delete failed'));
 
       await expect(repository.delete(testRegistrationId, 'test-user-id', 'fall')).rejects.toThrow(
@@ -148,17 +154,17 @@ describe('RegistrationRepository - Delete Functionality', () => {
     });
 
     test('should handle findById returning null', async () => {
-      repository.findById = jest.fn().mockResolvedValue(null);
+      repository.findByIdInTrimester = jest.fn().mockResolvedValue(null);
 
       await expect(repository.delete(testRegistrationId, 'test-user-id', 'fall')).rejects.toThrow(
-        `Registration with ID ${testRegistrationId} not found`
+        `Registration with ID ${testRegistrationId} not found in registrations_fall`
       );
 
       expect(mockDbClient.deleteRecord).not.toHaveBeenCalled();
     });
 
     test('should handle deleteRecord API errors gracefully', async () => {
-      repository.findById = jest.fn().mockResolvedValue(mockRegistration);
+      repository.findByIdInTrimester = jest.fn().mockResolvedValue(mockRegistration);
       mockDbClient.deleteRecord.mockRejectedValue(new Error('API Error'));
 
       await expect(repository.delete(testRegistrationId, 'test-user-id', 'fall')).rejects.toThrow(
@@ -167,7 +173,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
     });
 
     test('should handle deleteRecord database errors gracefully', async () => {
-      repository.findById = jest.fn().mockResolvedValue(mockRegistration);
+      repository.findByIdInTrimester = jest.fn().mockResolvedValue(mockRegistration);
       mockDbClient.deleteRecord.mockRejectedValue(new Error('Delete failed'));
 
       await expect(repository.delete(testRegistrationId, 'test-user-id', 'fall')).rejects.toThrow(
@@ -176,7 +182,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
     });
 
     test('should verify dbClient handles cache clearing', async () => {
-      repository.findById = jest.fn().mockResolvedValue(mockRegistration);
+      repository.findByIdInTrimester = jest.fn().mockResolvedValue(mockRegistration);
 
       await repository.delete(testRegistrationId, 'test-user-id', 'fall');
 
@@ -189,10 +195,14 @@ describe('RegistrationRepository - Delete Functionality', () => {
     test('should properly integrate with registration service cancellation', async () => {
       const testId = 'da8ca6c8-7626-40c3-9173-319f15effaea'; // Valid UUID
 
-      repository.findById = jest.fn().mockResolvedValue({
+      const mockData = {
         id: testId,
         studentId: 'student-123',
         instructorId: 'instructor-456',
+      };
+      repository.findByIdInTrimester = jest.fn().mockResolvedValue({
+        ...mockData,
+        toJSON: () => ({ ...mockData }),
       });
 
       const result = await repository.delete(testId, 'test-user@example.com', 'fall');

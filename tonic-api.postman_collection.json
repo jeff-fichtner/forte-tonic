@@ -1,0 +1,374 @@
+{
+  "info": {
+    "name": "Tonic API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "trimester", "value": "fall", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Public",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/health"
+          }
+        },
+        {
+          "name": "Version",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/version"
+          }
+        },
+        {
+          "name": "App Configuration",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/configuration"
+          }
+        },
+        {
+          "name": "Auth - Admin (6-digit code)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/access-code",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accessCode\": \"{{adminAccessCode}}\",\n  \"loginType\": \"employee\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Auth - Instructor (6-digit code)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/access-code",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accessCode\": \"{{instructorAccessCode}}\",\n  \"loginType\": \"employee\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Auth - Parent (10-digit phone)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/access-code",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accessCode\": \"{{parentPhone}}\",\n  \"loginType\": \"parent\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Registrations",
+      "item": [
+        {
+          "name": "Create Registration (private lesson)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/registrations",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-access-code", "value": "{{accessCode}}" },
+              { "key": "x-login-type", "value": "employee" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"STUDENT1\",\n  \"instructorId\": \"{{instructorId}}\",\n  \"registrationType\": \"private\",\n  \"day\": \"Monday\",\n  \"startTime\": \"14:00\",\n  \"length\": 30,\n  \"instrument\": \"Piano\",\n  \"roomId\": \"ROOM1\",\n  \"transportationType\": \"parent\",\n  \"trimester\": \"{{trimester}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Registration (group class)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/registrations",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-access-code", "value": "{{accessCode}}" },
+              { "key": "x-login-type", "value": "employee" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"STUDENT1\",\n  \"registrationType\": \"group\",\n  \"classId\": \"G015\",\n  \"trimester\": \"{{trimester}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Registration",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/registrations/{{trimester}}/REGISTRATION-ID-HERE",
+            "header": [
+              { "key": "x-access-code", "value": "{{adminAccessCode}}" },
+              { "key": "x-login-type", "value": "employee" }
+            ]
+          }
+        },
+        {
+          "name": "Update Reenrollment Intent",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/registrations/REGISTRATION-ID-HERE/intent",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-access-code", "value": "{{parentPhone}}" },
+              { "key": "x-login-type", "value": "parent" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"intent\": \"keep\"\n}",
+              "description": "intent must be one of: keep, drop, change"
+            }
+          }
+        },
+        {
+          "name": "Create Next Trimester Registration",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/registrations/next-trimester",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-access-code", "value": "{{adminAccessCode}}" },
+              { "key": "x-login-type", "value": "employee" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"STUDENT1\",\n  \"instructorId\": \"{{instructorId}}\",\n  \"registrationType\": \"private\",\n  \"day\": \"Monday\",\n  \"startTime\": \"14:00\",\n  \"length\": 30,\n  \"linkedPreviousRegistrationId\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Next Trimester Registration",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/registrations/next-trimester/REGISTRATION-ID-HERE",
+            "header": [
+              { "key": "x-access-code", "value": "{{adminAccessCode}}" },
+              { "key": "x-login-type", "value": "employee" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Attendance",
+      "item": [
+        {
+          "name": "Mark Attendance",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/attendance",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-access-code", "value": "{{accessCode}}" },
+              { "key": "x-login-type", "value": "employee" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"registrationId\": \"REGISTRATION-ID-HERE\",\n  \"week\": 1,\n  \"schoolYear\": \"2025-2026\",\n  \"trimester\": \"{{trimester}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Attendance Summary",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance/summary/REGISTRATION-ID-HERE?schoolYear=2025-2026&trimester={{trimester}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attendance", "summary", "REGISTRATION-ID-HERE"],
+              "query": [
+                { "key": "schoolYear", "value": "2025-2026" },
+                { "key": "trimester", "value": "{{trimester}}" }
+              ]
+            },
+            "header": [
+              { "key": "x-access-code", "value": "{{accessCode}}" },
+              { "key": "x-login-type", "value": "employee" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Tabs",
+      "item": [
+        {
+          "name": "Master Schedule",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/admin/tabs/master-schedule/{{trimester}}",
+            "header": [
+              { "key": "x-access-code", "value": "{{adminAccessCode}}" },
+              { "key": "x-login-type", "value": "employee" }
+            ]
+          }
+        },
+        {
+          "name": "Wait List",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/admin/tabs/wait-list/{{trimester}}",
+            "header": [
+              { "key": "x-access-code", "value": "{{adminAccessCode}}" },
+              { "key": "x-login-type", "value": "employee" }
+            ]
+          }
+        },
+        {
+          "name": "Registration Tab",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/admin/tabs/registration/{{trimester}}",
+            "header": [
+              { "key": "x-access-code", "value": "{{adminAccessCode}}" },
+              { "key": "x-login-type", "value": "employee" }
+            ]
+          }
+        },
+        {
+          "name": "Clear Cache",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/admin/clear-cache",
+            "header": [
+              { "key": "x-access-code", "value": "{{adminAccessCode}}" },
+              { "key": "x-login-type", "value": "employee" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Instructor Tabs",
+      "item": [
+        {
+          "name": "Directory",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/instructor/tabs/directory",
+            "header": [
+              { "key": "x-access-code", "value": "{{instructorAccessCode}}" },
+              { "key": "x-login-type", "value": "employee" }
+            ]
+          }
+        },
+        {
+          "name": "Weekly Schedule",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/instructor/tabs/weekly-schedule/{{trimester}}?instructorId={{instructorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "instructor", "tabs", "weekly-schedule", "{{trimester}}"],
+              "query": [
+                { "key": "instructorId", "value": "{{instructorId}}" }
+              ]
+            },
+            "header": [
+              { "key": "x-access-code", "value": "{{instructorAccessCode}}" },
+              { "key": "x-login-type", "value": "employee" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Parent Tabs",
+      "item": [
+        {
+          "name": "Contact",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/parent/tabs/contact/{{trimester}}?parentId={{parentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "parent", "tabs", "contact", "{{trimester}}"],
+              "query": [
+                { "key": "parentId", "value": "{{parentId}}" }
+              ]
+            },
+            "header": [
+              { "key": "x-access-code", "value": "{{parentPhone}}" },
+              { "key": "x-login-type", "value": "parent" }
+            ]
+          }
+        },
+        {
+          "name": "Weekly Schedule",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/parent/tabs/weekly-schedule/{{trimester}}?parentId={{parentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "parent", "tabs", "weekly-schedule", "{{trimester}}"],
+              "query": [
+                { "key": "parentId", "value": "{{parentId}}" }
+              ]
+            },
+            "header": [
+              { "key": "x-access-code", "value": "{{parentPhone}}" },
+              { "key": "x-login-type", "value": "parent" }
+            ]
+          }
+        },
+        {
+          "name": "Registration Tab",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/parent/tabs/registration/{{trimester}}?parentId={{parentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "parent", "tabs", "registration", "{{trimester}}"],
+              "query": [
+                { "key": "parentId", "value": "{{parentId}}" }
+              ]
+            },
+            "header": [
+              { "key": "x-access-code", "value": "{{parentPhone}}" },
+              { "key": "x-login-type", "value": "parent" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Feedback",
+      "item": [
+        {
+          "name": "Submit Feedback",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/feedback",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-access-code", "value": "{{accessCode}}" },
+              { "key": "x-login-type", "value": "employee" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Test feedback message\",\n  \"state\": {\n    \"currentUser\": { \"email\": \"test@forte.edu\" },\n    \"timestamp\": \"2025-01-01T00:00:00Z\",\n    \"url\": \"/\",\n    \"currentSection\": \"registration\",\n    \"selectedTrimester\": \"fall\"\n  }\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

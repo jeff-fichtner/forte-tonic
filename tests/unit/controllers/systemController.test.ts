@@ -24,9 +24,18 @@ const mockDatabaseClient = {
 jest.unstable_mockModule(
   '../../../src/infrastructure/container/serviceContainer.js',
   () => ({
+    ServiceKeys: {
+      databaseClient: 'databaseClient', emailClient: 'emailClient', cacheService: 'cacheService',
+      configurationService: 'configurationService', registrationRepository: 'registrationRepository',
+      userRepository: 'userRepository', programRepository: 'programRepository',
+      attendanceRepository: 'attendanceRepository', dropRequestRepository: 'dropRequestRepository',
+      periodRepository: 'periodRepository', registrationService: 'registrationService',
+      periodService: 'periodService', dropRequestService: 'dropRequestService',
+      entityQueryService: 'entityQueryService',
+    },
     serviceContainer: {
-      get: jest.fn().mockImplementation((name: string) => {
-        const services: Record<string, unknown> = {
+      get: jest.fn().mockImplementation((name) => {
+        const services = {
           userRepository: mockUserRepository,
           databaseClient: mockDatabaseClient,
         };
@@ -80,14 +89,14 @@ jest.unstable_mockModule('../../../src/common/errorConstants.js', () => ({
 jest.unstable_mockModule('../../../src/common/errors.js', () => ({
   ValidationError: class ValidationError extends Error {
     statusCode = 400;
-    constructor(m: string) {
+    constructor(m) {
       super(m);
       this.name = 'ValidationError';
     }
   },
   UnauthorizedError: class UnauthorizedError extends Error {
     statusCode = 401;
-    constructor(m: string) {
+    constructor(m) {
       super(m);
       this.name = 'UnauthorizedError';
     }
@@ -160,7 +169,7 @@ describe('SystemController', () => {
 
   describe('clearCache', () => {
     it('should clear cache when a valid admin code is provided', async () => {
-      const req = { body: { adminCode: '123456' } } as any;
+      const req = { currentUser: { accessCode: '123456' } } as any;
 
       mockUserRepository.getAdminByAccessCode.mockResolvedValue({
         email: 'admin@test.com',
@@ -182,8 +191,8 @@ describe('SystemController', () => {
       );
     });
 
-    it('should call errorResponse with UnauthorizedError for invalid admin code', async () => {
-      const req = { body: { adminCode: 'wrong-code' } } as any;
+    it('should call errorResponse with UnauthorizedError for non-admin access code', async () => {
+      const req = { currentUser: { accessCode: 'wrong-code' } } as any;
 
       mockUserRepository.getAdminByAccessCode.mockResolvedValue(null);
 
@@ -196,8 +205,8 @@ describe('SystemController', () => {
       );
     });
 
-    it('should call errorResponse with ValidationError when adminCode is missing', async () => {
-      const req = { body: {} } as any;
+    it('should call errorResponse with ValidationError when currentUser is missing', async () => {
+      const req = { currentUser: null } as any;
 
       await SystemController.clearCache(req, res);
 
@@ -209,7 +218,7 @@ describe('SystemController', () => {
     });
 
     it('should succeed even when databaseClient lacks clearAllCache method', async () => {
-      const req = { body: { adminCode: '123456' } } as any;
+      const req = { currentUser: { accessCode: '123456' } } as any;
 
       mockUserRepository.getAdminByAccessCode.mockResolvedValue({
         email: 'admin@test.com',
@@ -238,7 +247,7 @@ describe('SystemController', () => {
     });
 
     it('should use firstName + lastName as clearedBy when email is absent', async () => {
-      const req = { body: { adminCode: '123456' } } as any;
+      const req = { currentUser: { accessCode: '123456' } } as any;
 
       mockUserRepository.getAdminByAccessCode.mockResolvedValue({
         email: '',

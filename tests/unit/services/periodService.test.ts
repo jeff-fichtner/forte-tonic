@@ -4,15 +4,13 @@ import { PeriodType } from '../../../src/utils/values/periodType.js';
 
 // Test helpers
 function createPeriodService(periods) {
-  const mockDbClient = {
-    getAllRecords: jest.fn().mockImplementation((sheetKey, mapper) => {
-      return Promise.resolve(periods.map(mapper).filter(Boolean));
-    }),
+  const mockPeriodRepository = {
+    getAll: jest.fn().mockResolvedValue(periods),
   };
   const mockConfigService = {
     getLoggingConfig: () => ({ enableLogging: false, logLevel: 'error' }),
   };
-  return { service: new PeriodService(mockDbClient, mockConfigService), mockDbClient };
+  return { service: new PeriodService(mockPeriodRepository, mockConfigService), mockPeriodRepository };
 }
 
 function mockCurrentDate(dateString) {
@@ -137,14 +135,14 @@ describe('PeriodService', () => {
       expect(result.periodType).toBe('priorityEnrollment');
     });
 
-    test('should throw error when database fails', async () => {
-      const mockDbClient = {
-        getAllRecords: jest.fn().mockRejectedValue(new Error('Database connection failed')),
+    test('should throw error when repository fails', async () => {
+      const mockPeriodRepository = {
+        getAll: jest.fn().mockRejectedValue(new Error('Database connection failed')),
       };
       const mockConfigService = {
         getLoggingConfig: () => ({ enableLogging: false, logLevel: 'error' }),
       };
-      const service = new PeriodService(mockDbClient, mockConfigService);
+      const service = new PeriodService(mockPeriodRepository, mockConfigService);
 
       await expect(service.getCurrentPeriod()).rejects.toThrow('Database connection failed');
     });

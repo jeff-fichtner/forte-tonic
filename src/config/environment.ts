@@ -9,8 +9,8 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { getFrontendVersionHash } from '../utils/versionHash.js';
 
-const __dirname: string = dirname(fileURLToPath(import.meta.url));
-const packageJsonPath: string = join(__dirname, '../../package.json');
+const configDir: string = dirname(fileURLToPath(import.meta.url));
+const packageJsonPath: string = join(configDir, '../../package.json');
 const packageJson: { version: string } = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
 
 const environment: string = process.env.NODE_ENV || NodeEnv.DEVELOPMENT;

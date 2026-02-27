@@ -37,18 +37,11 @@ interface EnrichedDropRequest {
  * Drop Request Service
  */
 export class DropRequestService extends BaseService {
-  dropRequestRepository: DropRequestRepository;
-  registrationRepository: RegistrationRepository;
-  studentRepository: UserRepository;
-  periodService: PeriodService;
+  #dropRequestRepository: DropRequestRepository;
+  #registrationRepository: RegistrationRepository;
+  #studentRepository: UserRepository;
+  #periodService: PeriodService;
 
-  /**
-   * @param dropRequestRepository - Drop request repository
-   * @param registrationRepository - Registration repository
-   * @param studentRepository - Student repository
-   * @param periodService - Period service for period validation
-   * @param configService - Configuration service for logger
-   */
   constructor(
     dropRequestRepository: DropRequestRepository,
     registrationRepository: RegistrationRepository,
@@ -57,10 +50,10 @@ export class DropRequestService extends BaseService {
     configService?: ConfigurationService
   ) {
     super(configService);
-    this.dropRequestRepository = dropRequestRepository;
-    this.registrationRepository = registrationRepository;
-    this.studentRepository = studentRepository;
-    this.periodService = periodService;
+    this.#dropRequestRepository = dropRequestRepository;
+    this.#registrationRepository = registrationRepository;
+    this.#studentRepository = studentRepository;
+    this.#periodService = periodService;
   }
 
   /**
@@ -73,7 +66,7 @@ export class DropRequestService extends BaseService {
       );
 
       // 1. Validate current period (must be registration period)
-      const currentPeriod = await this.periodService.getCurrentPeriod();
+      const currentPeriod = await this.#periodService.getCurrentPeriod();
       if (!currentPeriod || currentPeriod.periodType !== PeriodType.REGISTRATION) {
         this.logger.warn(
           `Drop request rejected: Not in registration period (current: ${currentPeriod?.periodType})`
@@ -81,8 +74,12 @@ export class DropRequestService extends BaseService {
         throw new ValidationError('Drop requests can only be submitted during active registration periods');
       }
 
-      // 2. Verify registration exists
-      const registration = await this.registrationRepository.findById(registrationId);
+      // 2. Verify registration exists in the current trimester
+      const trimester = currentPeriod.trimester;
+      if (!trimester) {
+        throw new ValidationError('Current period has no trimester configured');
+      }
+      const registration = await this.#registrationRepository.findByIdInTrimester(registrationId, trimester);
       if (!registration) {
         this.logger.warn(`Drop request rejected: Registration not found ${registrationId}`);
         throw new NotFoundError(`Registration not found: ${registrationId}`);
@@ -90,7 +87,7 @@ export class DropRequestService extends BaseService {
 
       // 3. Verify parent owns the student
       const studentId = registration.studentId;
-      const student = await this.studentRepository.getStudentById(studentId);
+      const student = await this.#studentRepository.getStudentById(studentId);
 
       if (!student) {
         this.logger.error(`Student not found for registration: ${studentId}`);
@@ -109,7 +106,7 @@ export class DropRequestService extends BaseService {
       }
 
       // 4. Check for existing pending drop request
-      const existingRequest = await this.dropRequestRepository.findByRegistrationId(registrationId);
+      const existingRequest = await this.#dropRequestRepository.findByRegistrationId(registrationId);
       if (existingRequest && existingRequest.status === DropRequestStatus.PENDING) {
         this.logger.warn(
           `Drop request rejected: Pending request already exists ${existingRequest.id}`
@@ -118,10 +115,11 @@ export class DropRequestService extends BaseService {
       }
 
       // 5. Create the drop request
-      const dropRequest = await this.dropRequestRepository.create(
+      const dropRequest = await this.#dropRequestRepository.create(
         {
           registrationId,
           parentId,
+          trimester,
           reason,
           status: DropRequestStatus.PENDING,
         },
@@ -151,7 +149,7 @@ export class DropRequestService extends BaseService {
       this.logger.info(`✅ Approving drop request ${requestId} by admin ${adminEmail}`);
 
       // 1. Find the drop request
-      const dropRequest = await this.dropRequestRepository.findById(requestId);
+      const dropRequest = await this.#dropRequestRepository.findById(requestId);
       if (!dropRequest) {
         throw new NotFoundError(`Drop request not found: ${requestId}`);
       }
@@ -163,10 +161,10 @@ export class DropRequestService extends BaseService {
 
       // 3. Delete the registration
       this.logger.info(`🗑️ Deleting registration ${dropRequest.registrationId}`);
-      await this.registrationRepository.delete(dropRequest.registrationId, adminEmail, dropRequest.trimester);
+      await this.#registrationRepository.delete(dropRequest.registrationId, adminEmail, dropRequest.trimester);
 
       // 4. Update drop request status
-      const updated = await this.dropRequestRepository.update(
+      const updated = await this.#dropRequestRepository.update(
         requestId,
         {
           status: DropRequestStatus.APPROVED,
@@ -200,7 +198,7 @@ export class DropRequestService extends BaseService {
       this.logger.info(`❌ Rejecting drop request ${requestId} by admin ${adminEmail}`);
 
       // 1. Find the drop request
-      const dropRequest = await this.dropRequestRepository.findById(requestId);
+      const dropRequest = await this.#dropRequestRepository.findById(requestId);
       if (!dropRequest) {
         throw new NotFoundError(`Drop request not found: ${requestId}`);
       }
@@ -211,7 +209,7 @@ export class DropRequestService extends BaseService {
       }
 
       // 3. Update drop request status (registration stays active)
-      const updated = await this.dropRequestRepository.update(
+      const updated = await this.#dropRequestRepository.update(
         requestId,
         {
           status: DropRequestStatus.REJECTED,
@@ -241,7 +239,7 @@ export class DropRequestService extends BaseService {
     try {
       this.logger.info('📋 Getting all pending drop requests');
 
-      const pendingRequests = await this.dropRequestRepository.findByStatus(
+      const pendingRequests = await this.#dropRequestRepository.findByStatus(
         DropRequestStatus.PENDING
       );
 
@@ -250,19 +248,19 @@ export class DropRequestService extends BaseService {
       }
 
       // Batch-fetch all students and build a lookup map
-      const allStudents = await this.studentRepository.getStudents();
+      const allStudents = await this.#studentRepository.getStudents();
       const studentMap = new Map(allStudents.map(s => [s.id, s]));
 
-      // Batch-fetch registrations by looking up each ID from the full list
-      // (getById already scans all trimester tables; fetching all once is more efficient)
-      const registrationIds = new Set(pendingRequests.map(r => r.registrationId));
+      // Batch-fetch registrations using each request's trimester
       const registrationMap = new Map<string, Registration>();
-      for (const id of registrationIds) {
+      for (const request of pendingRequests) {
         try {
-          const reg = await this.registrationRepository.findById(id);
-          if (reg) registrationMap.set(id, reg);
+          const reg = await this.#registrationRepository.findByIdInTrimester(
+            request.registrationId, request.trimester
+          );
+          if (reg) registrationMap.set(request.registrationId, reg);
         } catch (error) {
-          this.logger.warn(`Could not fetch registration ${id}:`, (error as Error).message);
+          this.logger.warn(`Could not fetch registration ${request.registrationId}:`, (error as Error).message);
         }
       }
 
@@ -298,21 +296,22 @@ export class DropRequestService extends BaseService {
     try {
       this.logger.info(`📋 Getting drop requests for parent ${parentId}`);
 
-      const requests = await this.dropRequestRepository.findByParentId(parentId);
+      const requests = await this.#dropRequestRepository.findByParentId(parentId);
 
       if (requests.length === 0) {
         return [];
       }
 
-      // Batch-fetch registrations for all unique IDs
-      const registrationIds = new Set(requests.map(r => r.registrationId));
+      // Batch-fetch registrations using each request's trimester
       const registrationMap = new Map<string, Registration>();
-      for (const id of registrationIds) {
+      for (const request of requests) {
         try {
-          const reg = await this.registrationRepository.findById(id);
-          if (reg) registrationMap.set(id, reg);
+          const reg = await this.#registrationRepository.findByIdInTrimester(
+            request.registrationId, request.trimester
+          );
+          if (reg) registrationMap.set(request.registrationId, reg);
         } catch (error) {
-          this.logger.warn(`Could not fetch registration ${id}:`, (error as Error).message);
+          this.logger.warn(`Could not fetch registration ${request.registrationId}:`, (error as Error).message);
         }
       }
 
@@ -337,7 +336,7 @@ export class DropRequestService extends BaseService {
     try {
       this.logger.info(`🔍 Getting drop request ${requestId}`);
 
-      const dropRequest = await this.dropRequestRepository.findById(requestId);
+      const dropRequest = await this.#dropRequestRepository.findById(requestId);
       if (!dropRequest) {
         throw new NotFoundError(`Drop request not found: ${requestId}`);
       }

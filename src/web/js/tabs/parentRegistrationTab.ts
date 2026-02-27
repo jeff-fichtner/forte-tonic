@@ -8,6 +8,7 @@ import {
   RegistrationSubmitData,
 } from '../workflows/parentRegistrationForm.js';
 import { HttpService } from '../data/httpService.js';
+import type { HttpResult } from '../data/httpService.js';
 import { RegistrationService } from '../data/registrationService.js';
 
 interface RegistrationTabData {
@@ -46,46 +47,52 @@ export class ParentRegistrationTab extends BaseTab {
    * Returns instructors, parent's children, classes, next trimester registrations,
    * current trimester registrations
    */
-  async fetchData(sessionInfo: { user: Record<string, unknown>; userType: string } | null): Promise<Record<string, unknown>> {
+  async fetchData(sessionInfo: { user: Record<string, unknown>; userType: string } | null): Promise<HttpResult<Record<string, unknown>>> {
     const parentObj = (sessionInfo?.user as Record<string, unknown> | undefined)?.parent as Record<string, unknown> | undefined;
     const parentId = parentObj?.id as string | undefined;
     if (!parentId) {
-      throw new Error('No parent ID found in session');
+      return { ok: false, error: { message: 'No parent ID found in session' } };
     }
 
     const currentPeriod = window.UserSession?.getCurrentPeriod();
     const appConfig = window.UserSession?.getAppConfig();
 
     if (!currentPeriod) {
-      throw new Error('Period information not available');
+      return { ok: false, error: { message: 'Period information not available' } };
     }
 
     const currentTrimester = appConfig?.currentTrimester || currentPeriod.trimester;
     const nextTrimester = appConfig?.nextTrimester || currentPeriod.trimester;
     const signal = this.getAbortSignal();
 
-    // Fetch both trimesters in parallel
-    const [currentData, nextData] = await Promise.all([
-      HttpService.get(`parent/tabs/registration/${currentTrimester}?parentId=${parentId}`, { signal }),
-      HttpService.get(`parent/tabs/registration/${nextTrimester}?parentId=${parentId}`, { signal }),
-    ]) as [Record<string, unknown>, Record<string, unknown>];
+    const [currentResult, nextResult] = await Promise.all([
+      HttpService.get<Record<string, unknown>>(`parent/tabs/registration/${currentTrimester}?parentId=${parentId}`, { signal }),
+      HttpService.get<Record<string, unknown>>(`parent/tabs/registration/${nextTrimester}?parentId=${parentId}`, { signal }),
+    ]);
 
-    // Validate responses
+    if (!currentResult.ok) return currentResult;
+    if (!nextResult.ok) return nextResult;
+
+    const currentData = currentResult.data;
+    const nextData = nextResult.data;
+
     if (!currentData.instructors || !currentData.students || !currentData.classes || !currentData.registrations) {
-      throw new Error('Invalid response: missing required data from current trimester');
+      return { ok: false, error: { message: 'Invalid response: missing required data from current trimester' } };
     }
     if (!nextData.registrations) {
-      throw new Error('Invalid response: missing required data from next trimester');
+      return { ok: false, error: { message: 'Invalid response: missing required data from next trimester' } };
     }
 
-    // Assemble combined view matching the shape the form expects
     return {
-      instructors: currentData.instructors,
-      students: currentData.students,
-      classes: currentData.classes,
-      nextTrimesterRegistrations: nextData.registrations,
-      currentTrimesterRegistrations: currentData.registrations,
-    } as Record<string, unknown>;
+      ok: true,
+      data: {
+        instructors: currentData.instructors,
+        students: currentData.students,
+        classes: currentData.classes,
+        nextTrimesterRegistrations: nextData.registrations,
+        currentTrimesterRegistrations: currentData.registrations,
+      },
+    };
   }
 
   /**
@@ -129,8 +136,10 @@ export class ParentRegistrationTab extends BaseTab {
    * @private
    */
   async #createRegistration(registrationData: RegistrationSubmitData): Promise<void> {
-    await RegistrationService.create(registrationData, {}, { isAdmin: false });
-    await this.reload();
+    const result = await RegistrationService.create(registrationData, {}, { isAdmin: false });
+    if (result.ok) {
+      await this.reload();
+    }
   }
 
   /**

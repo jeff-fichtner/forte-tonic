@@ -44,7 +44,7 @@ function createMocks() {
       update: jest.fn(),
     },
     registrationRepository: {
-      findById: jest.fn(),
+      findByIdInTrimester: jest.fn(),
       delete: jest.fn(),
     },
     studentRepository: {
@@ -93,8 +93,9 @@ describe('DropRequestService', () => {
     test('should create a drop request during REGISTRATION period', async () => {
       mocks.periodService.getCurrentPeriod.mockResolvedValue({
         periodType: PeriodType.REGISTRATION,
+        trimester: 'fall',
       });
-      mocks.registrationRepository.findById.mockResolvedValue({
+      mocks.registrationRepository.findByIdInTrimester.mockResolvedValue({
         id: registrationId,
         studentId: 'student-001',
       });
@@ -121,6 +122,7 @@ describe('DropRequestService', () => {
         {
           registrationId,
           parentId,
+          trimester: 'fall',
           reason,
           status: DropRequestStatus.PENDING,
         },
@@ -131,8 +133,9 @@ describe('DropRequestService', () => {
     test('should throw ForbiddenError when parent does not own student', async () => {
       mocks.periodService.getCurrentPeriod.mockResolvedValue({
         periodType: PeriodType.REGISTRATION,
+        trimester: 'fall',
       });
-      mocks.registrationRepository.findById.mockResolvedValue({
+      mocks.registrationRepository.findByIdInTrimester.mockResolvedValue({
         id: registrationId,
         studentId: 'student-001',
       });
@@ -160,8 +163,9 @@ describe('DropRequestService', () => {
     test('should throw ConflictError when pending request already exists', async () => {
       mocks.periodService.getCurrentPeriod.mockResolvedValue({
         periodType: PeriodType.REGISTRATION,
+        trimester: 'fall',
       });
-      mocks.registrationRepository.findById.mockResolvedValue({
+      mocks.registrationRepository.findByIdInTrimester.mockResolvedValue({
         id: registrationId,
         studentId: 'student-001',
       });
@@ -183,8 +187,9 @@ describe('DropRequestService', () => {
     test('should throw NotFoundError when registration does not exist', async () => {
       mocks.periodService.getCurrentPeriod.mockResolvedValue({
         periodType: PeriodType.REGISTRATION,
+        trimester: 'fall',
       });
-      mocks.registrationRepository.findById.mockResolvedValue(null);
+      mocks.registrationRepository.findByIdInTrimester.mockResolvedValue(null);
 
       await expect(
         service.createDropRequest(registrationId, parentId, reason),
@@ -311,8 +316,8 @@ describe('DropRequestService', () => {
   describe('getPendingDropRequests', () => {
     test('should return enriched pending requests with student and registration data', async () => {
       const pendingRequests = [
-        { id: 'dr-001', registrationId: 'reg-001', status: DropRequestStatus.PENDING },
-        { id: 'dr-002', registrationId: 'reg-002', status: DropRequestStatus.PENDING },
+        { id: 'dr-001', registrationId: 'reg-001', trimester: 'fall', status: DropRequestStatus.PENDING },
+        { id: 'dr-002', registrationId: 'reg-002', trimester: 'fall', status: DropRequestStatus.PENDING },
       ];
       mocks.dropRequestRepository.findByStatus.mockResolvedValue(pendingRequests);
 
@@ -322,7 +327,7 @@ describe('DropRequestService', () => {
       ];
       mocks.studentRepository.getStudents.mockResolvedValue(students);
 
-      mocks.registrationRepository.findById
+      mocks.registrationRepository.findByIdInTrimester
         .mockResolvedValueOnce({ id: 'reg-001', studentId: 'student-001' })
         .mockResolvedValueOnce({ id: 'reg-002', studentId: 'student-002' });
 
@@ -356,12 +361,12 @@ describe('DropRequestService', () => {
 
     test('should return enriched requests for a parent', async () => {
       const requests = [
-        { id: 'dr-001', registrationId: 'reg-001', parentId },
-        { id: 'dr-002', registrationId: 'reg-002', parentId },
+        { id: 'dr-001', registrationId: 'reg-001', trimester: 'fall', parentId },
+        { id: 'dr-002', registrationId: 'reg-002', trimester: 'fall', parentId },
       ];
       mocks.dropRequestRepository.findByParentId.mockResolvedValue(requests);
 
-      mocks.registrationRepository.findById
+      mocks.registrationRepository.findByIdInTrimester
         .mockResolvedValueOnce({ id: 'reg-001', studentId: 'student-001' })
         .mockResolvedValueOnce({ id: 'reg-002', studentId: 'student-002' });
 
@@ -384,7 +389,7 @@ describe('DropRequestService', () => {
       const result = await service.getDropRequestsByParent(parentId);
 
       expect(result).toEqual([]);
-      expect(mocks.registrationRepository.findById).not.toHaveBeenCalled();
+      expect(mocks.registrationRepository.findByIdInTrimester).not.toHaveBeenCalled();
     });
   });
 

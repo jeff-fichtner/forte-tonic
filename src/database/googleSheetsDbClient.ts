@@ -14,7 +14,7 @@ import { Room } from '../models/shared/room.js';
 import { Registration } from '../models/shared/registration.js';
 import { AttendanceRecord as AttendanceRecordModel } from '../models/shared/attendanceRecord.js';
 import { DropRequest } from '../models/shared/dropRequest.js';
-import { PERIOD_COLUMNS } from '../services/periodService.js';
+import { PERIOD_COLUMNS } from '../repositories/periodRepository.js';
 
 /** Minimal per-sheet configuration referencing a model's column schema */
 export interface SheetConfig {
@@ -99,6 +99,11 @@ const roomMappings: FieldMapping = {
   includeRoomId: (val) => val === 'TRUE' || val === 'true',
 };
 
+/** Registrations: length string to number (null if empty/NaN for waitlist classes) */
+const registrationMappings: FieldMapping = {
+  length: (val) => { const n = parseInt(val); return isNaN(n) ? null : n; },
+};
+
 /** Periods: trimester to lowercase, startDate to Date */
 const periodMappings: FieldMapping = {
   trimester: (val) => val ? val.toLowerCase() : null,
@@ -180,7 +185,7 @@ export class GoogleSheetsDbClient extends BaseService {
       drop_requests: { sheet: 'drop_requests', startRow: 2, columns: DropRequest.columns },
       // Generate trimester-specific registration and audit sheets from shared schemas
       ...Object.fromEntries(trimesters.flatMap(t => [
-        [`registrations_${t}`, { sheet: `registrations_${t}`, startRow: 2, columns: Registration.columns }],
+        [`registrations_${t}`, { sheet: `registrations_${t}`, startRow: 2, columns: Registration.columns, mappings: registrationMappings }],
         [`registrations_${t}_audit`, { sheet: `registrations_${t}_audit`, startRow: 2, columns: Registration.auditColumns }],
       ])),
     };

@@ -57,37 +57,16 @@ export class Admin {
    * Creates an Admin API model instance
    */
   constructor(data: AdminData) {
-    // Validate input
-    if (!data || typeof data !== 'object') {
-      throw new Error('Admin data object is required');
-    }
-
-    const {
-      id,
-      email,
-      lastName,
-      firstName,
-      phoneNumber,
-      accessCode,
-      role,
-      displayEmail,
-      displayPhone,
-      isDirector,
-    } = data;
-
-    // Required fields
-    this.id = id;
-    this.email = email;
-    this.lastName = lastName;
-    this.firstName = firstName;
-
-    // Optional database fields
-    this.phoneNumber = phoneNumber || null;
-    this.accessCode = accessCode || null;
-    this.role = role || null;
-    this.displayEmail = displayEmail || null;
-    this.displayPhone = displayPhone || null;
-    this.isDirector = isDirector || false;
+    this.id = data.id;
+    this.email = data.email;
+    this.lastName = data.lastName;
+    this.firstName = data.firstName;
+    this.phoneNumber = data.phoneNumber || null;
+    this.accessCode = data.accessCode || null;
+    this.role = data.role || null;
+    this.displayEmail = data.displayEmail || null;
+    this.displayPhone = data.displayPhone || null;
+    this.isDirector = data.isDirector || false;
   }
 
   /**

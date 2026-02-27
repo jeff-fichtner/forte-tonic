@@ -124,7 +124,11 @@ export class Class {
   get formattedEndTime(): string {
     if (!this.endTime) return '';
 
-    return this.endTime.toString();
+    try {
+      return String(DateHelpers.convertTimeFormat(this.endTime, '12hour'));
+    } catch {
+      return this.endTime.toString();
+    }
   }
 
   /**

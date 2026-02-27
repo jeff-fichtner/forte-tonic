@@ -141,7 +141,7 @@ declare global {
 
     // Console helper functions (assigned at runtime in main.ts)
     overrideMaintenanceMode: () => boolean;
-    clearServerCache: (adminCode: string) => Promise<boolean>;
+    clearServerCache: () => Promise<boolean>;
   }
 
   // Allow direct access without window. prefix

@@ -41,8 +41,8 @@ describe('UserRepository', () => {
   describe('getAdmins', () => {
     test('should return array of admin models', async () => {
       const mockSheetData = [
-        { id: 'admin-1', email: 'admin1@test.com', lastName: 'Smith', firstName: 'John', phone: '555-1234', accessCode: '', role: '', displayEmail: '', displayPhone: '', isDirector: '' },
-        { id: 'admin-2', email: 'admin2@test.com', lastName: 'Doe', firstName: 'Jane', phone: '555-5678', accessCode: '', role: '', displayEmail: '', displayPhone: '', isDirector: '' },
+        { id: 'admin-1', email: 'admin1@test.com', lastName: 'Smith', firstName: 'John', phone: '5551234000', accessCode: '', role: '', displayEmail: '', displayPhone: '', isDirector: '' },
+        { id: 'admin-2', email: 'admin2@test.com', lastName: 'Doe', firstName: 'Jane', phone: '5555678000', accessCode: '', role: '', displayEmail: '', displayPhone: '', isDirector: '' },
       ];
 
       // Mock getAllRecords to return admin instances
@@ -63,7 +63,7 @@ describe('UserRepository', () => {
         email: 'admin1@test.com',
         lastName: 'Smith',
         firstName: 'John',
-        phone: '555-1234',
+        phone: '5551234000',
         role: null,
         displayEmail: null,
         displayPhone: null,
@@ -101,7 +101,7 @@ describe('UserRepository', () => {
           email: 'instructor1@test.com',
           lastName: 'Brown',
           firstName: 'Mike',
-          phone: '555-9999',
+          phone: '5559999000',
           instrument1: 'Piano',
           role: 'instructor',
           isActive: true,
@@ -111,7 +111,7 @@ describe('UserRepository', () => {
           email: 'instructor2@test.com',
           lastName: 'Wilson',
           firstName: 'Sarah',
-          phone: '555-8888',
+          phone: '5558888000',
           instrument1: 'Violin',
           role: 'instructor',
           isActive: true,
@@ -215,8 +215,8 @@ describe('UserRepository', () => {
   describe('getParents', () => {
     test('should return array of parent models', async () => {
       const mockParents = [
-        Parent.fromDatabaseRow({ id: 'parent-1', email: 'parent1@test.com', lastName: 'Johnson', firstName: 'Robert', phone: '555-1111', accessCode: '' }),
-        Parent.fromDatabaseRow({ id: 'parent-2', email: 'parent2@test.com', lastName: 'Davis', firstName: 'Linda', phone: '555-2222', accessCode: '' }),
+        Parent.fromDatabaseRow({ id: 'parent-1', email: 'parent1@test.com', lastName: 'Johnson', firstName: 'Robert', phone: '5551111000', accessCode: '' }),
+        Parent.fromDatabaseRow({ id: 'parent-2', email: 'parent2@test.com', lastName: 'Davis', firstName: 'Linda', phone: '5552222000', accessCode: '' }),
       ];
 
       mockGoogleSheetsDbClient.getAllRecords.mockResolvedValue(mockParents);
@@ -235,7 +235,7 @@ describe('UserRepository', () => {
           email: 'parent1@test.com',
           lastName: 'Johnson',
           firstName: 'Robert',
-          phone: '555-1111',
+          phone: '5551111000',
         })
       );
     });
@@ -286,7 +286,7 @@ describe('UserRepository', () => {
 
       const result = await repository.getStudentById('non-existent');
 
-      expect(result).toBeUndefined(); // find() returns undefined, not null
+      expect(result).toBeNull();
     });
   });
 
@@ -297,7 +297,7 @@ describe('UserRepository', () => {
         email: 'admin@test.com',
         lastName: 'Smith',
         firstName: 'John',
-        phone: '555-1234',
+        phone: '5551234000',
         accessCode: '',
         role: '',
         displayEmail: '',
@@ -315,7 +315,7 @@ describe('UserRepository', () => {
         email: 'admin@test.com',
         lastName: 'Smith',
         firstName: 'John',
-        phone: '555-1234',
+        phone: '5551234000',
         role: null,
         displayEmail: null,
         displayPhone: null,
@@ -325,12 +325,12 @@ describe('UserRepository', () => {
       });
     });
 
-    test('should return undefined when admin not found', async () => {
+    test('should return null when admin not found', async () => {
       mockGoogleSheetsDbClient.getAllRecords.mockResolvedValue([]);
 
       const result = await repository.getAdminByEmail('notfound@test.com');
 
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
     });
   });
 });

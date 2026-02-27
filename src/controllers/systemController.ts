@@ -10,8 +10,7 @@ import { configService } from '../services/configurationService.js';
 import { successResponse, errorResponse } from '../common/responseHelpers.js';
 import { HTTP_STATUS } from '../common/errorConstants.js';
 import { ValidationError, UnauthorizedError } from '../common/errors.js';
-import { serviceContainer } from '../infrastructure/container/serviceContainer.js';
-import type { GoogleSheetsDbClient } from '../database/googleSheetsDbClient.js';
+import { serviceContainer, ServiceKeys } from '../infrastructure/container/serviceContainer.js';
 
 const logger = getLogger();
 
@@ -77,138 +76,29 @@ export class SystemController {
   }
 
   /**
-   * Test endpoint to verify Google Sheets connectivity
-   */
-  static async testConnection(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      logger.info('Testing Google Sheets connection...');
-      const dbClient = req.dbClient as GoogleSheetsDbClient;
-
-      const authConfig = configService.getGoogleSheetsAuth();
-      const sheetsConfig = configService.getGoogleSheetsConfig();
-
-      logger.info('Service Account Email:', authConfig.clientEmail);
-      logger.info('Spreadsheet ID:', sheetsConfig.spreadsheetId);
-
-      // First, let's test basic authentication
-      const auth = dbClient.auth;
-      logger.info('Auth type:', auth.constructor.name);
-
-      // Try to get spreadsheet metadata (requires less permissions)
-      const spreadsheetId = dbClient.spreadsheetId;
-      const sheets = dbClient.sheets;
-
-      const response = await sheets.spreadsheets.get({
-        spreadsheetId: spreadsheetId,
-        auth: auth,
-      });
-
-      const availableSheets = (response.data.sheets || []).map(sheet => sheet.properties?.title);
-      logger.info('Available sheets:', availableSheets);
-
-      const testResult = {
-        success: true,
-        message: 'Google Sheets connection successful!',
-        spreadsheetId: response.data.spreadsheetId,
-        spreadsheetTitle: response.data.properties?.title,
-        availableSheets: availableSheets,
-        sheetCount: (response.data.sheets || []).length,
-        serviceAccountEmail: authConfig.clientEmail,
-      };
-
-      logger.info('Connection test result:', testResult);
-
-      successResponse(res, testResult, {
-        req,
-        startTime,
-        context: { controller: 'SystemController', method: 'testConnection' },
-      });
-    } catch (error) {
-      logger.error('Error testing Google Sheets connection:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'SystemController', method: 'testConnection' },
-      });
-    }
-  }
-
-  /**
-   * Test sheet data retrieval endpoint
-   */
-  static async testSheetData(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      const { sheetName = 'Students', range = 'A1:Z1000' } = req.body;
-      const dbClient = req.dbClient as GoogleSheetsDbClient;
-
-      logger.info(`Testing data retrieval from sheet: ${sheetName}, range: ${sheetName}!${range}`);
-
-      const spreadsheetId = dbClient.spreadsheetId;
-      const sheets = dbClient.sheets;
-      const auth = dbClient.auth;
-
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId: spreadsheetId,
-        range: `${sheetName}!${range}`,
-        auth: auth,
-      });
-
-      const values = response.data.values || [];
-      const testResult = {
-        success: true,
-        sheetName: sheetName,
-        range: `${sheetName}!${range}`,
-        rowCount: values.length,
-        columnCount: values.length > 0 ? values[0].length : 0,
-        headers: values.length > 0 ? values[0] : [],
-        sampleData: values.slice(0, 2), // First 2 rows as sample
-      };
-
-      logger.info('Sheet data test result:', testResult);
-
-      successResponse(res, testResult, {
-        req,
-        startTime,
-        context: { controller: 'SystemController', method: 'testSheetData' },
-      });
-    } catch (error) {
-      logger.error('Error testing sheet data retrieval:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: { controller: 'SystemController', method: 'testSheetData' },
-      });
-    }
-  }
-
-  /**
    * Admin-only cache clearing endpoint
    */
   static async clearCache(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
 
     try {
-      const { adminCode } = req.body;
+      const adminCode = req.currentUser?.accessCode;
 
       if (!adminCode) {
         throw new ValidationError('Admin code is required');
       }
 
       // Use dependency injection to get the same repository instances used throughout the app
-      const userRepository = serviceContainer.get('userRepository');
+      const userRepository = serviceContainer.get(ServiceKeys.userRepository);
 
-      // Validate admin access code using the repository
+      // Validate the authenticated user is actually an admin
       const validAdmin = await userRepository.getAdminByAccessCode(adminCode);
       if (!validAdmin) {
         throw new UnauthorizedError('Invalid admin code');
       }
 
       // Clear cache at the database client level (single source of truth)
-      const dbClient = serviceContainer.get('databaseClient');
+      const dbClient = serviceContainer.get(ServiceKeys.databaseClient);
       if (dbClient && typeof dbClient.clearAllCache === 'function') {
         dbClient.clearAllCache();
         logger.info('✅ All Google Sheets cache cleared');

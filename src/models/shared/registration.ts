@@ -7,8 +7,6 @@
 
 import { UuidUtility } from '../../utils/uuidUtility.js';
 
-const DayNames: string[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
 export type RegistrationType = 'private' | 'group';
 export type ReenrollmentIntent = 'keep' | 'drop' | 'change';
 
@@ -19,7 +17,7 @@ export interface RegistrationData {
   instructorId: string;
   day: string;
   startTime: string;
-  length?: string | number;
+  length?: number | null;
   registrationType: string;    // normalized to RegistrationType in constructor
   roomId?: string;
   instrument?: string;
@@ -40,7 +38,7 @@ export interface RegistrationData {
 interface CreateNewOptions {
   day: string;
   startTime: string;
-  length?: string | number;
+  length?: string | number | null;
   registrationType: string;
   roomId?: string;
   instrument?: string;
@@ -75,13 +73,6 @@ export interface RegistrationJSON {
   intentSubmittedBy: string | null;
   linkedPreviousRegistrationId: string | null;
   isWaitlistClass: boolean;
-}
-
-interface ScheduleLesson {
-  lessonNumber: number;
-  date: Date;
-  startTime: string;
-  length: number | null;
 }
 
 export class Registration {
@@ -127,8 +118,6 @@ export class Registration {
   linkedPreviousRegistrationId: string | null;
 
   constructor(data: RegistrationData) {
-    this.#validateConstructorData(data);
-
     // UUID primary key
     this.id = data.id || UuidUtility.generateUuid();
 
@@ -140,26 +129,15 @@ export class Registration {
     this.day = data.day;
     this.startTime = data.startTime;
 
-    // Length validation: strict for everything EXCEPT waitlist
-    const parsedLength = parseInt(data.length as string);
+    // Length: already coerced to number|null by DB client mappings or createNew
     const isWaitlistClass = data.isWaitlistClass === true;
-
-    if (!isWaitlistClass) {
-      // All non-waitlist registrations require valid length
-      if (isNaN(parsedLength)) {
-        throw new Error('length must be a valid number');
-      }
-      this.length = parsedLength;
-    } else {
-      // Waitlist: length is completely ignored
-      this.length = !isNaN(parsedLength) ? parsedLength : null;
-    }
+    this.length = data.length ?? null;
 
     // Store waitlist class flag for persistence
     this.isWaitlistClass = isWaitlistClass;
 
-    // Registration details
-    this.registrationType = data.registrationType as RegistrationType; // Already normalized in validation
+    // Registration details — normalize type from DB variations
+    this.registrationType = this.#normalizeRegistrationType(data.registrationType);
     this.roomId = data.roomId || '';
     this.instrument = data.instrument || '';
     this.transportationType = data.transportationType || '';
@@ -181,32 +159,6 @@ export class Registration {
 
     // Linked registration for tracking changes between trimesters
     this.linkedPreviousRegistrationId = data.linkedPreviousRegistrationId || null;
-  }
-
-  #validateConstructorData(data: RegistrationData): void {
-    if (!data) {
-      throw new Error('Registration data is required');
-    }
-
-    const required: (keyof RegistrationData)[] = ['studentId', 'instructorId', 'day', 'startTime', 'registrationType'];
-    const missing = required.filter(field => data[field] === undefined || data[field] === null);
-
-    if (missing.length > 0) {
-      throw new Error(`Missing required fields: ${missing.join(', ')}`);
-    }
-
-    // Validate registration type (normalize common variations)
-    const normalizedType = this.#normalizeRegistrationType(data.registrationType);
-    if (!['private', 'group'].includes(normalizedType)) {
-      data.registrationType = 'private';
-    } else {
-      data.registrationType = normalizedType;
-    }
-
-    // Validate group lessons have classId
-    if (data.registrationType === 'group' && !data.classId) {
-      data.registrationType = 'private';
-    }
   }
 
   /**
@@ -252,7 +204,8 @@ export class Registration {
   /**
    * Create Registration from database row data
    */
-  static fromDatabaseRow(record: Record<string, string>): Registration | null {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  static fromDatabaseRow(record: Record<string, any>): Registration | null {
     if (!record || !record.id) {
       return null;
     }
@@ -320,9 +273,10 @@ export class Registration {
    * Factory method: Create new registration
    */
   static createNew(studentId: string, instructorId: string, options: CreateNewOptions): Registration {
-    // Length validation: strict for non-waitlist classes, optional for waitlist classes
     const isWaitlistClass = options.isWaitlistClass === true;
-    if (!isWaitlistClass && !options.length) {
+    const parsedLength = options.length != null ? parseInt(String(options.length)) : null;
+
+    if (!isWaitlistClass && (parsedLength == null || isNaN(parsedLength))) {
       throw new Error('length is required');
     }
     if (!options.registrationType) {
@@ -333,7 +287,7 @@ export class Registration {
       instructorId,
       day: options.day,
       startTime: options.startTime,
-      length: options.length,
+      length: parsedLength != null && !isNaN(parsedLength) ? parsedLength : null,
       registrationType: options.registrationType,
       roomId: options.roomId,
       instrument: options.instrument,
@@ -348,39 +302,4 @@ export class Registration {
     });
   }
 
-  /**
-   * Generate lesson schedule for this registration
-   * Returns array of lesson dates with timing information
-   */
-  generateSchedule(numberOfLessons: number = 12): ScheduleLesson[] {
-    const lessons: ScheduleLesson[] = [];
-    const startDate = new Date(this.expectedStartDate as Date);
-    const dayOfWeek = DayNames.indexOf(this.day);
-
-    if (dayOfWeek === -1) {
-      throw new Error(`Invalid day: ${this.day}`);
-    }
-
-    // Find the first occurrence of the day
-    const currentDate = new Date(startDate);
-    while (currentDate.getDay() !== (dayOfWeek + 1) % 7) {
-      // Adjust for JavaScript's Sunday=0
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    // Generate lesson dates
-    for (let i = 0; i < numberOfLessons; i++) {
-      lessons.push({
-        lessonNumber: i + 1,
-        date: new Date(currentDate),
-        startTime: this.startTime,
-        length: this.length,
-      });
-
-      // Move to next week
-      currentDate.setDate(currentDate.getDate() + 7);
-    }
-
-    return lessons;
-  }
 }

@@ -90,6 +90,15 @@ describe('Standardized Error Handling Integration Tests', () => {
 
     // Mock the service container
     jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js', () => ({
+      ServiceKeys: {
+        databaseClient: 'databaseClient', emailClient: 'emailClient', cacheService: 'cacheService',
+        configurationService: 'configurationService', registrationRepository: 'registrationRepository',
+        userRepository: 'userRepository', programRepository: 'programRepository',
+        attendanceRepository: 'attendanceRepository', dropRequestRepository: 'dropRequestRepository',
+        periodRepository: 'periodRepository', registrationService: 'registrationService',
+        periodService: 'periodService', dropRequestService: 'dropRequestService',
+        entityQueryService: 'entityQueryService',
+      },
       serviceContainer: {
         get: jest.fn().mockImplementation(serviceName => {
           if (serviceName === 'userRepository') return mockUserRepository;

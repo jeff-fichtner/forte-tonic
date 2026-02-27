@@ -20,9 +20,10 @@ import { UserRepository } from '../../repositories/userRepository.js';
 import { ProgramRepository } from '../../repositories/programRepository.js';
 import { AttendanceRepository } from '../../repositories/attendanceRepository.js';
 import { DropRequestRepository } from '../../repositories/dropRequestRepository.js';
+import { PeriodRepository } from '../../repositories/periodRepository.js';
 
 // Import services
-import { RegistrationApplicationService } from '../../services/registrationApplicationService.js';
+import { RegistrationService } from '../../services/registrationService.js';
 import { PeriodService } from '../../services/periodService.js';
 import { DropRequestService } from '../../services/dropRequestService.js';
 import { EntityQueryService } from '../../services/entityQueryService.js';
@@ -52,11 +53,31 @@ interface ServiceMap {
   programRepository: ProgramRepository;
   attendanceRepository: AttendanceRepository;
   dropRequestRepository: DropRequestRepository;
-  registrationApplicationService: RegistrationApplicationService;
+  periodRepository: PeriodRepository;
+  registrationService: RegistrationService;
   periodService: PeriodService;
   dropRequestService: DropRequestService;
   entityQueryService: EntityQueryService;
 }
+
+export type ServiceKey = keyof ServiceMap;
+
+export const ServiceKeys = {
+  databaseClient: 'databaseClient',
+  emailClient: 'emailClient',
+  cacheService: 'cacheService',
+  configurationService: 'configurationService',
+  registrationRepository: 'registrationRepository',
+  userRepository: 'userRepository',
+  programRepository: 'programRepository',
+  attendanceRepository: 'attendanceRepository',
+  dropRequestRepository: 'dropRequestRepository',
+  periodRepository: 'periodRepository',
+  registrationService: 'registrationService',
+  periodService: 'periodService',
+  dropRequestService: 'dropRequestService',
+  entityQueryService: 'entityQueryService',
+} as const satisfies Record<ServiceKey, ServiceKey>;
 
 export class ServiceContainer {
   services: Map<string, ServiceFactory>;
@@ -203,7 +224,7 @@ export class ServiceContainer {
   /**
    * Register a service factory
    */
-  register(serviceName: string, factory: ServiceFactory): void {
+  register(serviceName: ServiceKey, factory: ServiceFactory): void {
     this.services.set(serviceName, factory);
   }
 
@@ -235,7 +256,7 @@ export class ServiceContainer {
       };
 
       // Check if critical repositories can be instantiated
-      const criticalServices = ['registrationRepository', 'userRepository'];
+      const criticalServices: ServiceKey[] = [ServiceKeys.registrationRepository, ServiceKeys.userRepository];
 
       for (const serviceName of criticalServices) {
         try {
@@ -293,28 +314,32 @@ export class ServiceContainer {
    * Register repositories with direct dependencies - simplified for MVC
    */
   #registerRepositories(): void {
-    this.register('registrationRepository', () => {
+    this.register(ServiceKeys.registrationRepository, () => {
       return new RegistrationRepository(
         this.dbClient as GoogleSheetsDbClient,
         configService,
-        this.get('periodService') as PeriodService
+        this.get(ServiceKeys.periodService) as PeriodService
       );
     });
 
-    this.register('userRepository', () => {
+    this.register(ServiceKeys.userRepository, () => {
       return new UserRepository(this.dbClient as GoogleSheetsDbClient, configService);
     });
 
-    this.register('programRepository', () => {
+    this.register(ServiceKeys.programRepository, () => {
       return new ProgramRepository(this.dbClient as GoogleSheetsDbClient, configService);
     });
 
-    this.register('attendanceRepository', () => {
+    this.register(ServiceKeys.attendanceRepository, () => {
       return new AttendanceRepository(this.dbClient as GoogleSheetsDbClient, configService);
     });
 
-    this.register('dropRequestRepository', () => {
+    this.register(ServiceKeys.dropRequestRepository, () => {
       return new DropRequestRepository(this.dbClient as GoogleSheetsDbClient, configService);
+    });
+
+    this.register(ServiceKeys.periodRepository, () => {
+      return new PeriodRepository(this.dbClient as GoogleSheetsDbClient, configService);
     });
   }
 
@@ -322,33 +347,33 @@ export class ServiceContainer {
    * Register application services with dependencies - simplified for MVC
    */
   #registerServices(): void {
-    this.register('registrationApplicationService', () => {
-      return new RegistrationApplicationService({
-        registrationRepository: this.get('registrationRepository') as RegistrationRepository,
-        userRepository: this.get('userRepository') as UserRepository,
-        programRepository: this.get('programRepository') as ProgramRepository,
+    this.register(ServiceKeys.registrationService, () => {
+      return new RegistrationService({
+        registrationRepository: this.get(ServiceKeys.registrationRepository) as RegistrationRepository,
+        userRepository: this.get(ServiceKeys.userRepository) as UserRepository,
+        programRepository: this.get(ServiceKeys.programRepository) as ProgramRepository,
       });
     });
 
-    this.register('periodService', () => {
-      return new PeriodService(this.dbClient as GoogleSheetsDbClient, configService);
+    this.register(ServiceKeys.periodService, () => {
+      return new PeriodService(this.get(ServiceKeys.periodRepository) as PeriodRepository, configService);
     });
 
-    this.register('dropRequestService', () => {
+    this.register(ServiceKeys.dropRequestService, () => {
       return new DropRequestService(
-        this.get('dropRequestRepository') as DropRequestRepository,
-        this.get('registrationRepository') as RegistrationRepository,
-        this.get('userRepository') as UserRepository,
-        this.get('periodService') as PeriodService,
+        this.get(ServiceKeys.dropRequestRepository) as DropRequestRepository,
+        this.get(ServiceKeys.registrationRepository) as RegistrationRepository,
+        this.get(ServiceKeys.userRepository) as UserRepository,
+        this.get(ServiceKeys.periodService) as PeriodService,
         configService
       );
     });
 
-    this.register('entityQueryService', () => {
+    this.register(ServiceKeys.entityQueryService, () => {
       return new EntityQueryService(
-        this.get('userRepository') as UserRepository,
-        this.get('programRepository') as ProgramRepository,
-        this.get('registrationRepository') as RegistrationRepository,
+        this.get(ServiceKeys.userRepository) as UserRepository,
+        this.get(ServiceKeys.programRepository) as ProgramRepository,
+        this.get(ServiceKeys.registrationRepository) as RegistrationRepository,
         configService
       );
     });
