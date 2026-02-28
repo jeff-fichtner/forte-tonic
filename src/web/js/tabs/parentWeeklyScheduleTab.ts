@@ -1,23 +1,17 @@
-import { BaseTab, SessionInfo } from '../core/baseTab.js';
+import { BaseTab, SessionInfo, getParentId } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatGrade, formatTime } from '../extensions/numberExtensions.js';
 import { RegistrationType } from '../constants.js';
-import { PeriodType } from '/utils/values/periodType.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { formatDateTime } from '../utilities/formatHelpers.js';
 import { ClassManager } from '../utilities/classManager.js';
 import { resolveParentTrimesters } from '../utilities/trimesterHelpers.js';
+import { isCurrentPeriodIntent } from '../utilities/periodHelpers.js';
 import { withFeedback } from '../utilities/actionFeedback.js';
 import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
 import { validateResponseFields } from '../data/responseValidation.js';
-
-// Intent labels (matching viewModel.js)
-const INTENT_LABELS: Record<string, string> = {
-  keep: '✅ Keep',
-  drop: '❌ Drop',
-  change: '🔄 Change',
-};
+import { INTENT_LABELS } from '../constants/intentConstants.js';
 
 interface TrimesterData {
   registrations: Record<string, unknown>[];
@@ -70,8 +64,7 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
    * Returns registrations for BOTH current and next trimester
    */
   async fetchData(sessionInfo: SessionInfo | null): Promise<HttpResult<WeeklyScheduleData>> {
-    const parentObj = (sessionInfo?.user as Record<string, unknown> | undefined)?.parent as Record<string, unknown> | undefined;
-    const parentId = parentObj?.id as string | undefined;
+    const parentId = getParentId(sessionInfo);
     if (!parentId) {
       return { ok: false, error: { message: 'No parent ID found in session' } };
     }
@@ -318,8 +311,7 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
    */
   #buildWeeklyScheduleTable(tableId: string, enrollments: Record<string, unknown>[], trimesterData: TrimesterData): Table {
     // Check if we're in the intent period to show the Intent column
-    const currentPeriod = window.UserSession?.getCurrentPeriod();
-    const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
+    const isIntentPeriod = isCurrentPeriodIntent();
 
     const headers: string[] = [
       'Weekday',
@@ -413,8 +405,7 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
         : (enrollment.instrument as string) || 'N/A';
 
     // Build intent cell for parent view during intent period only
-    const currentPeriod = window.UserSession?.getCurrentPeriod();
-    const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
+    const isIntentPeriod = isCurrentPeriodIntent();
 
     let intentCell = '';
     if (isIntentPeriod) {

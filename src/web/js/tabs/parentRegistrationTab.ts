@@ -1,4 +1,4 @@
-import { BaseTab, SessionInfo } from '../core/baseTab.js';
+import { BaseTab, SessionInfo, getParentId } from '../core/baseTab.js';
 import {
   ParentRegistrationForm,
   InstructorLike,
@@ -52,13 +52,12 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
 
   /**
    * Fetch registration form data for parent
-   * Makes 2 calls (current + next trimester) and assembles combined view
+   * Makes 1 call during registration period, 2 during enrollment (current + next trimester).
    * Returns instructors, parent's children, classes, next trimester registrations,
    * current trimester registrations
    */
-  async fetchData(sessionInfo: { user: Record<string, unknown>; userType: string } | null): Promise<HttpResult<RegistrationTabData>> {
-    const parentObj = (sessionInfo?.user as Record<string, unknown> | undefined)?.parent as Record<string, unknown> | undefined;
-    const parentId = parentObj?.id as string | undefined;
+  async fetchData(sessionInfo: SessionInfo | null): Promise<HttpResult<RegistrationTabData>> {
+    const parentId = getParentId(sessionInfo);
     if (!parentId) {
       return { ok: false, error: { message: 'No parent ID found in session' } };
     }
@@ -68,25 +67,29 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
       return { ok: false, error: { message: 'Period information not available' } };
     }
 
-    const currentTrimester = ctx.currentTrimester;
-    const nextTrimester = ctx.nextTrimester || ctx.currentTrimester;
     const signal = this.getAbortSignal();
 
-    const [currentResult, nextResult] = await Promise.all([
-      HttpService.get<RegistrationApiResponse>(`parent/tabs/registration/${currentTrimester}?parentId=${parentId}`, { signal }),
-      HttpService.get<RegistrationApiResponse>(`parent/tabs/registration/${nextTrimester}?parentId=${parentId}`, { signal }),
-    ]);
-
+    const currentResult = await HttpService.get<RegistrationApiResponse>(
+      `parent/tabs/registration/${ctx.currentTrimester}?parentId=${parentId}`, { signal }
+    );
     if (!currentResult.ok) return currentResult;
-    if (!nextResult.ok) return nextResult;
-
     const currentValidated = validateResponseFields(currentResult, ['instructors', 'students', 'classes', 'registrations']);
     if (!currentValidated.ok) return currentValidated;
-    const nextValidated = validateResponseFields(nextResult, ['registrations']);
-    if (!nextValidated.ok) return nextValidated;
-
     const currentData = currentValidated.data;
-    const nextData = nextValidated.data;
+
+    let nextTrimesterRegistrations: Record<string, unknown>[];
+
+    if (ctx.nextTrimester) {
+      const nextResult = await HttpService.get<RegistrationApiResponse>(
+        `parent/tabs/registration/${ctx.nextTrimester}?parentId=${parentId}`, { signal }
+      );
+      if (!nextResult.ok) return nextResult;
+      const nextValidated = validateResponseFields(nextResult, ['registrations']);
+      if (!nextValidated.ok) return nextValidated;
+      nextTrimesterRegistrations = nextValidated.data.registrations;
+    } else {
+      nextTrimesterRegistrations = currentData.registrations;
+    }
 
     return {
       ok: true,
@@ -94,7 +97,7 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
         instructors: currentData.instructors,
         students: currentData.students,
         classes: currentData.classes,
-        nextTrimesterRegistrations: nextData.registrations,
+        nextTrimesterRegistrations,
         currentTrimesterRegistrations: currentData.registrations,
       },
     };

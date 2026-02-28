@@ -1,4 +1,4 @@
-import { BaseTab, SessionInfo } from '../core/baseTab.js';
+import { BaseTab, SessionInfo, getInstructorId } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatGrade, formatTime } from '../extensions/numberExtensions.js';
 import { RegistrationType } from '../constants.js';
@@ -41,8 +41,7 @@ export class InstructorWeeklyScheduleTab extends BaseTab<InstructorScheduleData>
    * Returns registrations for this instructor + associated students + classes
    */
   async fetchData(sessionInfo: SessionInfo | null): Promise<HttpResult<InstructorScheduleData>> {
-    const instructorId = (sessionInfo?.user as Record<string, unknown> | undefined)?.instructor as Record<string, unknown> | undefined;
-    const id = instructorId?.id as string | undefined;
+    const id = getInstructorId(sessionInfo);
     if (!id) {
       return { ok: false, error: { message: 'No instructor ID found in session' } };
     }

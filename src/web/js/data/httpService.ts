@@ -1,9 +1,7 @@
 /**
- * Updated httpService to work with Node.js server instead of Google Apps Script
- * This replaces the google.script.run calls with fetch API calls to the Node.js server.
+ * HttpService - Typed HTTP client for the Tonic API.
+ * All methods return HttpResult<T> — callers never need try/catch.
  */
-
-type Mapper<T = unknown> = (item: unknown) => T;
 
 export interface HttpError {
   message: string;
@@ -17,176 +15,42 @@ export type HttpResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: HttpError };
 
-interface PaginatedResponse<T = unknown> {
-  data: T[];
-  total: number;
-}
-
 export class HttpService {
-  static async fetch<T = unknown>(
-    serverFunctionName: string,
-    mapper: Mapper<T> | null = null,
-    paginationOptions: Record<string, unknown> = {},
-    context: unknown = null,
-    ...args: unknown[]
-  ): Promise<HttpResult<T>> {
-    const payload = paginationOptions ? [paginationOptions, ...args] : args;
-    return this.#callServerFunction(serverFunctionName, payload, mapper, context, 'GET');
-  }
-
-  static async fetchPage<T = unknown>(
-    serverFunctionName: string,
-    mapper: Mapper<T>,
-    page = 0,
-    pageSize = 1000,
-    context: unknown = null,
-    ...args: unknown[]
-  ): Promise<HttpResult<PaginatedResponse<T>>> {
-    const result = await this.fetch<Record<string, unknown> | unknown[] | null>(
-      serverFunctionName,
-      null,
-      { page, pageSize },
-      context,
-      ...args
-    );
-
-    if (!result.ok) return result;
-
-    const response = result.data;
-
-    if (!response) {
-      return { ok: true, data: { data: [], total: 0 } };
-    }
-
-    let responseData: unknown[];
-    let responseTotal: number;
-
-    if (!Array.isArray(response) && (response as Record<string, unknown>).data) {
-      responseData = (response as Record<string, unknown>).data as unknown[];
-      responseTotal = ((response as Record<string, unknown>).total as number) || 0;
-    } else if (Array.isArray(response)) {
-      responseData = response;
-      responseTotal = response.length;
-    } else {
-      console.warn(
-        `⚠️ HttpService.fetchPage: Unexpected response format for ${serverFunctionName}. Response:`,
-        response
-      );
-      return { ok: true, data: { data: [], total: 0 } };
-    }
-
-    return {
-      ok: true,
-      data: {
-        data: responseData.map((y: unknown) => mapper(y)),
-        total: responseTotal,
-      },
-    };
-  }
-
-  static async fetchAllPages<T = unknown>(
-    serverFunctionName: string,
-    mapper: Mapper<T>,
-    pageSize = 1000,
-    context: unknown = null,
-    ...args: unknown[]
-  ): Promise<HttpResult<T[]>> {
-    let allResults: T[] = [];
-
-    const firstResult = await this.fetchPage(
-      serverFunctionName,
-      mapper,
-      0,
-      pageSize,
-      context,
-      ...args
-    );
-
-    if (!firstResult.ok) return firstResult;
-
-    const { data, total } = firstResult.data;
-
-    if (!data || data.length === 0) {
-      return { ok: true, data: allResults };
-    }
-
-    allResults = allResults.concat(data);
-
-    const done = total === undefined
-      ? data.length < pageSize
-      : total <= pageSize || data.length < pageSize;
-
-    if (done) {
-      return { ok: true, data: allResults };
-    }
-
-    const totalPages = Math.ceil(total / pageSize);
-    let currentPage = 1;
-
-    while (currentPage < totalPages) {
-      const pageResult = await this.fetchPage(
-        serverFunctionName,
-        mapper,
-        currentPage,
-        pageSize,
-        context,
-        ...args
-      );
-
-      if (!pageResult.ok) break; // partial result — return what we have
-
-      const { data: nextPageData } = pageResult.data;
-
-      if (!nextPageData || nextPageData.length === 0) break;
-
-      allResults = allResults.concat(nextPageData);
-      currentPage++;
-    }
-
-    return { ok: true, data: allResults };
-  }
-
-  static post<T = unknown>(
-    serverFunctionName: string,
-    data: unknown,
-    mapper: Mapper<T> | null = null,
-    context: unknown = null,
-    ..._args: unknown[]
-  ): Promise<HttpResult<T>> {
-    return this.#callServerFunction(serverFunctionName, data, mapper, context, 'POST');
-  }
-
-  static patch<T = unknown>(
-    serverFunctionName: string,
-    data: unknown,
-    mapper: Mapper<T> | null = null,
-    context: unknown = null
-  ): Promise<HttpResult<T>> {
-    return this.#callServerFunction(serverFunctionName, data, mapper, context, 'PATCH');
-  }
-
-  static delete<T = unknown>(
-    serverFunctionName: string,
-    mapper: Mapper<T> | null = null,
-    context: unknown = null
-  ): Promise<HttpResult<T>> {
-    return this.#callServerFunction(serverFunctionName, null, mapper, context, 'DELETE');
-  }
-
   static get<T = unknown>(
     path: string,
     { signal }: { signal?: AbortSignal } = {}
   ): Promise<HttpResult<T>> {
-    return this.#callServerFunction(path, null, null, null, 'GET', signal ?? null);
+    return this.#callServerFunction(path, null, 'GET', signal ?? null);
+  }
+
+  static post<T = unknown>(
+    path: string,
+    data: unknown,
+    { signal }: { signal?: AbortSignal } = {}
+  ): Promise<HttpResult<T>> {
+    return this.#callServerFunction(path, data, 'POST', signal ?? null);
+  }
+
+  static patch<T = unknown>(
+    path: string,
+    data: unknown,
+    { signal }: { signal?: AbortSignal } = {}
+  ): Promise<HttpResult<T>> {
+    return this.#callServerFunction(path, data, 'PATCH', signal ?? null);
+  }
+
+  static delete<T = unknown>(
+    path: string,
+    { signal }: { signal?: AbortSignal } = {}
+  ): Promise<HttpResult<T>> {
+    return this.#callServerFunction(path, null, 'DELETE', signal ?? null);
   }
 
   static async #callServerFunction<T>(
-    serverFunctionName: string,
+    path: string,
     payload: unknown,
-    mapper: Mapper<T> | null = null,
-    _context: unknown = null,
-    httpMethod = 'POST',
-    signal: AbortSignal | null = null
+    httpMethod: string,
+    signal: AbortSignal | null
   ): Promise<HttpResult<T>> {
     try {
       const headers: Record<string, string> = {
@@ -212,7 +76,7 @@ export class HttpService {
         fetchOptions.body = JSON.stringify(payload);
       }
 
-      const response = await fetch(`/api/${serverFunctionName}`, fetchOptions);
+      const response = await fetch(`/api/${path}`, fetchOptions);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -257,7 +121,7 @@ export class HttpService {
           ? parsedResponse.data
           : parsedResponse;
 
-        return { ok: true, data: mapper ? mapper(data) : (data as T) };
+        return { ok: true, data: data as T };
       } catch (e) {
         return { ok: false, error: { message: `Error parsing response - ${e}: ${responseText}` } };
       }
@@ -267,7 +131,7 @@ export class HttpService {
         throw error;
       }
       const message = error instanceof Error ? error.message : 'Unknown network error';
-      console.error(`Error in server function call to ${serverFunctionName}:`, error);
+      console.error(`Error in server function call to ${path}:`, error);
       return { ok: false, error: { message } };
     }
   }

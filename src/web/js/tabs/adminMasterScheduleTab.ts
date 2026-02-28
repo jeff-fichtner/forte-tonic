@@ -3,19 +3,14 @@ import type { SessionInfo } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatGrade, formatTime } from '../extensions/numberExtensions.js';
 import { RegistrationType } from '../constants.js';
-import { PeriodType } from '/utils/values/periodType.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
+import { isCurrentPeriodIntent } from '../utilities/periodHelpers.js';
+import { isDevelopment } from '../utilities/environmentHelpers.js';
 import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
 import { validateResponseFields } from '../data/responseValidation.js';
 import { RegistrationService } from '../data/registrationService.js';
-
-// Intent labels (matching viewModel.js)
-const INTENT_LABELS: Record<string, string> = {
-  keep: '\u2705 Keep',
-  drop: '\u274C Drop',
-  change: '\uD83D\uDD04 Change',
-};
+import { INTENT_LABELS } from '../constants/intentConstants.js';
 
 interface MasterScheduleRegistration {
   id: string;
@@ -115,11 +110,10 @@ export class AdminMasterScheduleTab extends AdminBaseTab<MasterScheduleData> {
     const container = this.getContainer();
 
     // Check if we're in development to show the Recurring column
-    const showRecurringColumn = window.TONIC_ENV?.isDevelopment;
+    const showRecurringColumn = isDevelopment();
 
     // Check if we're in the intent period to show the Intent column
-    const currentPeriod = window.UserSession?.getCurrentPeriod();
-    const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
+    const isIntentPeriod = isCurrentPeriodIntent();
 
     const headers: string[] = [];
 
@@ -213,11 +207,10 @@ export class AdminMasterScheduleTab extends AdminBaseTab<MasterScheduleData> {
    */
   #buildTableRow(registration: MasterScheduleRegistration): string {
     // Check if we're in development to show the Recurring column
-    const showRecurringColumn = window.TONIC_ENV?.isDevelopment;
+    const showRecurringColumn = isDevelopment();
 
     // Check if we're in the intent period to show the Intent column
-    const currentPeriod = window.UserSession?.getCurrentPeriod();
-    const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
+    const isIntentPeriod = isCurrentPeriodIntent();
 
     // Extract primitive values for comparison
     const instructorIdToFind = registration.instructorId;
@@ -559,8 +552,7 @@ export class AdminMasterScheduleTab extends AdminBaseTab<MasterScheduleData> {
     }
 
     // Populate intent dropdown (only during intent period)
-    const currentPeriod = window.UserSession?.getCurrentPeriod();
-    const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
+    const isIntentPeriod = isCurrentPeriodIntent();
 
     const intentFilterContainer = document.getElementById(
       'master-schedule-intent-filter-container'

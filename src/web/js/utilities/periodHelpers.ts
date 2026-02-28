@@ -15,3 +15,12 @@ export function isEnrollmentPeriod(period: Period | null | undefined): boolean {
     period.periodType === PeriodType.OPEN_ENROLLMENT
   );
 }
+
+/**
+ * Check if the current active period is the intent/reenrollment period.
+ * Reads from window.UserSession — use in render methods for UI conditionals.
+ */
+export function isCurrentPeriodIntent(): boolean {
+  const period = window.UserSession?.getCurrentPeriod();
+  return period?.periodType === PeriodType.INTENT;
+}

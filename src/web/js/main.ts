@@ -35,7 +35,7 @@ import { AccessCodeManager, UserSession } from './auth/session.js';
 import { initializeVersionDisplay, loadDirectorInfo } from './startup/versionAndDirector.js';
 import { DomHelpers } from './utilities/domHelpers.js';
 import { Sections, ServerFunctions } from './constants.js';
-import { AppConfigurationResponse } from '../../models/shared/responses/appConfigurationResponse.js';
+import { AppConfigurationResponse, AppConfigurationResponseData } from '../../models/shared/responses/appConfigurationResponse.js';
 import { PeriodType } from '/utils/values/periodType.js';
 
 // Tab-based architecture
@@ -418,11 +418,11 @@ async function initializeApplication(): Promise<void> {
     TermsModal.init();
 
     // Get application configuration
-    const configResult = await HttpService.fetch(ServerFunctions.getAppConfiguration, data =>
-      new AppConfigurationResponse(data as AppConfigurationResponse)
+    const configResult = await HttpService.get<AppConfigurationResponseData>(
+      ServerFunctions.getAppConfiguration
     );
 
-    const appConfig = configResult.ok ? configResult.data : null;
+    const appConfig = configResult.ok ? new AppConfigurationResponse(configResult.data) : null;
 
     if (!appConfig) {
       showConfigError();

@@ -27,10 +27,28 @@
 
 import type { HttpResult } from '../data/httpService.js';
 
+export interface SessionUser {
+  email?: string;
+  admin?: { id: string; [key: string]: unknown } | null;
+  instructor?: { id: string; [key: string]: unknown } | null;
+  parent?: { id: string; [key: string]: unknown } | null;
+  [key: string]: unknown;
+}
+
 export interface SessionInfo {
-  user?: Record<string, unknown>;
+  user?: SessionUser;
   userType?: string;
   [key: string]: unknown;
+}
+
+/** Extract parent ID from session, or null */
+export function getParentId(sessionInfo: SessionInfo | null): string | null {
+  return sessionInfo?.user?.parent?.id ?? null;
+}
+
+/** Extract instructor ID from session, or null */
+export function getInstructorId(sessionInfo: SessionInfo | null): string | null {
+  return sessionInfo?.user?.instructor?.id ?? null;
 }
 
 interface TrackedEventListener {

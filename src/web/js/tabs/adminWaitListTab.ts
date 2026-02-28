@@ -4,6 +4,7 @@ import { Table } from '../components/table.js';
 import { formatGrade } from '../extensions/numberExtensions.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { formatDateTime } from '../utilities/formatHelpers.js';
+import { isDevelopment } from '../utilities/environmentHelpers.js';
 import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
 import { validateResponseFields } from '../data/responseValidation.js';
@@ -73,7 +74,7 @@ export class AdminWaitListTab extends AdminBaseTab<WaitListData> {
     const container = this.getContainer();
 
     // Check if we're in development to show the Recurring column
-    const showRecurringColumn = window.TONIC_ENV?.isDevelopment;
+    const showRecurringColumn = isDevelopment();
 
     const headers: string[] = [];
 
@@ -119,7 +120,7 @@ export class AdminWaitListTab extends AdminBaseTab<WaitListData> {
    */
   #buildTableRow(registration: WaitListRegistration): string {
     // Check if we're in development to show the Recurring column
-    const showRecurringColumn = window.TONIC_ENV?.isDevelopment;
+    const showRecurringColumn = isDevelopment();
 
     // Extract primitive values for comparison
     const studentIdToFind = registration.studentId;

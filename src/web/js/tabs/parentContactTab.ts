@@ -1,4 +1,4 @@
-import { BaseTab, SessionInfo } from '../core/baseTab.js';
+import { BaseTab, SessionInfo, getParentId } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatPhone } from '../utilities/phoneHelpers.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
@@ -39,8 +39,7 @@ export class ParentContactTab extends BaseTab<ContactData> {
    * Makes 2 calls during enrollment (current + next trimester), 1 during registration period
    */
   async fetchData(sessionInfo: SessionInfo | null): Promise<HttpResult<ContactData>> {
-    const parentId = (sessionInfo?.user as Record<string, unknown> | undefined)?.parent as Record<string, unknown> | undefined;
-    const id = parentId?.id as string | undefined;
+    const id = getParentId(sessionInfo);
     if (!id) {
       return { ok: false, error: { message: 'No parent ID found in session' } };
     }
