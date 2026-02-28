@@ -9,7 +9,16 @@ import {
 } from '../workflows/parentRegistrationForm.js';
 import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
+import { validateResponseFields } from '../data/responseValidation.js';
+import { resolveParentTrimesters } from '../utilities/trimesterHelpers.js';
 import { RegistrationService } from '../data/registrationService.js';
+
+interface RegistrationApiResponse {
+  instructors: Record<string, unknown>[];
+  students: Record<string, unknown>[];
+  classes: Record<string, unknown>[];
+  registrations: Record<string, unknown>[];
+}
 
 interface RegistrationTabData {
   instructors: Record<string, unknown>[];
@@ -32,7 +41,7 @@ interface RegistrationTabData {
  *              current trimester registrations (for recurring enrollment)
  * Data waste eliminated: ~1800+ records (other parents' students, unrelated registrations)
  */
-export class ParentRegistrationTab extends BaseTab {
+export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
   private registrationForm: ParentRegistrationForm | null;
 
   constructor() {
@@ -47,41 +56,37 @@ export class ParentRegistrationTab extends BaseTab {
    * Returns instructors, parent's children, classes, next trimester registrations,
    * current trimester registrations
    */
-  async fetchData(sessionInfo: { user: Record<string, unknown>; userType: string } | null): Promise<HttpResult<Record<string, unknown>>> {
+  async fetchData(sessionInfo: { user: Record<string, unknown>; userType: string } | null): Promise<HttpResult<RegistrationTabData>> {
     const parentObj = (sessionInfo?.user as Record<string, unknown> | undefined)?.parent as Record<string, unknown> | undefined;
     const parentId = parentObj?.id as string | undefined;
     if (!parentId) {
       return { ok: false, error: { message: 'No parent ID found in session' } };
     }
 
-    const currentPeriod = window.UserSession?.getCurrentPeriod();
-    const appConfig = window.UserSession?.getAppConfig();
-
-    if (!currentPeriod) {
+    const ctx = resolveParentTrimesters();
+    if (!ctx) {
       return { ok: false, error: { message: 'Period information not available' } };
     }
 
-    const currentTrimester = appConfig?.currentTrimester || currentPeriod.trimester;
-    const nextTrimester = appConfig?.nextTrimester || currentPeriod.trimester;
+    const currentTrimester = ctx.currentTrimester;
+    const nextTrimester = ctx.nextTrimester || ctx.currentTrimester;
     const signal = this.getAbortSignal();
 
     const [currentResult, nextResult] = await Promise.all([
-      HttpService.get<Record<string, unknown>>(`parent/tabs/registration/${currentTrimester}?parentId=${parentId}`, { signal }),
-      HttpService.get<Record<string, unknown>>(`parent/tabs/registration/${nextTrimester}?parentId=${parentId}`, { signal }),
+      HttpService.get<RegistrationApiResponse>(`parent/tabs/registration/${currentTrimester}?parentId=${parentId}`, { signal }),
+      HttpService.get<RegistrationApiResponse>(`parent/tabs/registration/${nextTrimester}?parentId=${parentId}`, { signal }),
     ]);
 
     if (!currentResult.ok) return currentResult;
     if (!nextResult.ok) return nextResult;
 
-    const currentData = currentResult.data;
-    const nextData = nextResult.data;
+    const currentValidated = validateResponseFields(currentResult, ['instructors', 'students', 'classes', 'registrations']);
+    if (!currentValidated.ok) return currentValidated;
+    const nextValidated = validateResponseFields(nextResult, ['registrations']);
+    if (!nextValidated.ok) return nextValidated;
 
-    if (!currentData.instructors || !currentData.students || !currentData.classes || !currentData.registrations) {
-      return { ok: false, error: { message: 'Invalid response: missing required data from current trimester' } };
-    }
-    if (!nextData.registrations) {
-      return { ok: false, error: { message: 'Invalid response: missing required data from next trimester' } };
-    }
+    const currentData = currentValidated.data;
+    const nextData = nextValidated.data;
 
     return {
       ok: true,
@@ -100,33 +105,32 @@ export class ParentRegistrationTab extends BaseTab {
    */
   async render(): Promise<void> {
     const container = this.getContainer();
-    const typedData = this.data as unknown as RegistrationTabData;
 
     // The ParentRegistrationForm expects to render into the container
     // If form already exists, update its data instead of recreating
     if (this.registrationForm) {
       // Update existing form with new data
       this.registrationForm.updateData(
-        typedData.instructors as unknown as InstructorLike[],
-        typedData.students as unknown as StudentLike[],
-        typedData.classes as unknown as ClassLike[],
-        typedData.nextTrimesterRegistrations as unknown as RegistrationLike[],
-        typedData.students as unknown as StudentLike[], // parentChildren = all students for this parent
-        typedData.currentTrimesterRegistrations as unknown as RegistrationLike[] // for recurring enrollment
+        this.data!.instructors as unknown as InstructorLike[],
+        this.data!.students as unknown as StudentLike[],
+        this.data!.classes as unknown as ClassLike[],
+        this.data!.nextTrimesterRegistrations as unknown as RegistrationLike[],
+        this.data!.students as unknown as StudentLike[], // parentChildren = all students for this parent
+        this.data!.currentTrimesterRegistrations as unknown as RegistrationLike[] // for recurring enrollment
       );
     } else {
       // Create new form instance
       this.registrationForm = new ParentRegistrationForm(
-        typedData.instructors as unknown as InstructorLike[],
-        typedData.students as unknown as StudentLike[],
-        typedData.classes as unknown as ClassLike[],
-        typedData.nextTrimesterRegistrations as unknown as RegistrationLike[], // registrations for availability calculation
+        this.data!.instructors as unknown as InstructorLike[],
+        this.data!.students as unknown as StudentLike[],
+        this.data!.classes as unknown as ClassLike[],
+        this.data!.nextTrimesterRegistrations as unknown as RegistrationLike[], // registrations for availability calculation
         async (registrationData: RegistrationSubmitData) => {
           // Send data function - delegate to viewModel for registration creation
           await this.#createRegistration(registrationData);
         },
-        typedData.students as unknown as StudentLike[], // parentChildren = all students for this parent
-        typedData.currentTrimesterRegistrations as unknown as RegistrationLike[] // for recurring enrollment options
+        this.data!.students as unknown as StudentLike[], // parentChildren = all students for this parent
+        this.data!.currentTrimesterRegistrations as unknown as RegistrationLike[] // for recurring enrollment options
       );
     }
   }

@@ -3,10 +3,11 @@ import type { SessionInfo } from '../core/baseTab.js';
 import { AdminRegistrationForm } from '../workflows/adminRegistrationForm.js';
 import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
+import { validateResponseFields } from '../data/responseValidation.js';
 import { RegistrationService } from '../data/registrationService.js';
 import type { InstructorLike, StudentLike, ClassLike, RegistrationLike } from '../types/registrationTypes.js';
 
-interface RegistrationFormData extends Record<string, unknown> {
+interface RegistrationFormData {
   instructors: Record<string, unknown>[];
   students: Record<string, unknown>[];
   classes: Record<string, unknown>[];
@@ -22,8 +23,7 @@ interface RegistrationFormData extends Record<string, unknown> {
  * Data needed: all instructors, all students, classes for selected trimester, registrations for selected trimester
  * Data waste: None - admins need full dataset for registration management
  */
-export class AdminRegistrationTab extends AdminBaseTab {
-  declare protected data: RegistrationFormData | null;
+export class AdminRegistrationTab extends AdminBaseTab<RegistrationFormData> {
   private registrationForm: AdminRegistrationForm | null;
   private currentTrimester: string | null;
 
@@ -52,14 +52,7 @@ export class AdminRegistrationTab extends AdminBaseTab {
     this.currentTrimester = trimester;
 
     const result = await HttpService.get<RegistrationFormData>(`admin/tabs/registration/${trimester}`, { signal: this.getAbortSignal() });
-
-    if (!result.ok) return result;
-
-    if (!result.data.instructors || !result.data.students || !result.data.classes || !result.data.registrations) {
-      return { ok: false, error: { message: 'Invalid response: missing required data' } };
-    }
-
-    return result;
+    return validateResponseFields(result, ['instructors', 'students', 'classes', 'registrations']);
   }
 
   /**

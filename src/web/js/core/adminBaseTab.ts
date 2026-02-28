@@ -1,16 +1,12 @@
 import { BaseTab } from './baseTab.js';
+import { resolveSelectedTrimester } from '../utilities/trimesterHelpers.js';
 
-export abstract class AdminBaseTab extends BaseTab {
+export abstract class AdminBaseTab<TData = Record<string, unknown>> extends BaseTab<TData> {
   /**
    * Returns the currently selected trimester string, or null if none is determinable.
-   * Checks the active .trimester-btn in #admin-trimester-buttons first,
-   * then falls back to window.UserSession?.getCurrentPeriod()?.trimester.
    */
   getTrimester(): string | null {
-    const trimesterButtons = document.getElementById('admin-trimester-buttons');
-    const activeButton = trimesterButtons?.querySelector<HTMLElement>('.trimester-btn.active');
-    const currentPeriod = window.UserSession?.getCurrentPeriod();
-    return activeButton?.dataset.trimester || currentPeriod?.trimester || null;
+    return resolveSelectedTrimester('admin-trimester-buttons');
   }
 
   /**

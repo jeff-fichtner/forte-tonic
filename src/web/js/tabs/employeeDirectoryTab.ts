@@ -4,6 +4,7 @@ import { formatPhone } from '../utilities/phoneHelpers.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
+import { validateResponseFields } from '../data/responseValidation.js';
 import { EmployeeDisplay, sortEmployeesForDirectory, buildDirectoryTableRow } from '../utilities/directoryHelpers.js';
 
 interface DirectoryAdmin {
@@ -24,7 +25,7 @@ interface DirectoryInstructor {
   specialties: string[];
 }
 
-interface DirectoryData extends Record<string, unknown> {
+interface DirectoryData {
   admins: DirectoryAdmin[];
   instructors: DirectoryInstructor[];
 }
@@ -39,8 +40,7 @@ interface DirectoryData extends Record<string, unknown> {
  * Data needed: admins (~5-10 records) + instructors (~20-30 records)
  * Data waste eliminated: ~2150+ records (students, registrations, classes, rooms)
  */
-export class EmployeeDirectoryTab extends BaseTab {
-  declare protected data: DirectoryData | null;
+export class EmployeeDirectoryTab extends BaseTab<DirectoryData> {
   private directoryTable: Table | null;
 
   constructor() {
@@ -57,14 +57,7 @@ export class EmployeeDirectoryTab extends BaseTab {
    */
   async fetchData(_sessionInfo: SessionInfo | null): Promise<HttpResult<DirectoryData>> {
     const result = await HttpService.get<DirectoryData>('instructor/tabs/directory', { signal: this.getAbortSignal() });
-
-    if (!result.ok) return result;
-
-    if (!result.data.admins || !result.data.instructors) {
-      return { ok: false, error: { message: 'Invalid response: missing admins or instructors' } };
-    }
-
-    return result;
+    return validateResponseFields(result, ['admins', 'instructors']);
   }
 
   /**

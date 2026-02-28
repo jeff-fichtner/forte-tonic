@@ -2,9 +2,10 @@ import { BaseTab, SessionInfo } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatPhone } from '../utilities/phoneHelpers.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
-import { isEnrollmentPeriod } from '../utilities/periodHelpers.js';
+import { resolveParentTrimesters } from '../utilities/trimesterHelpers.js';
 import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
+import { validateResponseFields } from '../data/responseValidation.js';
 import { EmployeeDisplay, sortEmployeesForDirectory, buildDirectoryTableRow } from '../utilities/directoryHelpers.js';
 
 interface ContactData {
@@ -23,7 +24,7 @@ interface ContactData {
  * Data needed: admins (~5-10 records) + relevant instructors (~1-10 records)
  * Data waste eliminated: ~2050+ records (other students, unrelated instructors, registrations, classes, rooms)
  */
-export class ParentContactTab extends BaseTab {
+export class ParentContactTab extends BaseTab<ContactData> {
   private directoryTable: Table | null;
 
   constructor() {
@@ -37,36 +38,28 @@ export class ParentContactTab extends BaseTab {
    * Returns admins + instructors teaching this parent's children
    * Makes 2 calls during enrollment (current + next trimester), 1 during registration period
    */
-  async fetchData(sessionInfo: SessionInfo | null): Promise<HttpResult<Record<string, unknown>>> {
+  async fetchData(sessionInfo: SessionInfo | null): Promise<HttpResult<ContactData>> {
     const parentId = (sessionInfo?.user as Record<string, unknown> | undefined)?.parent as Record<string, unknown> | undefined;
     const id = parentId?.id as string | undefined;
     if (!id) {
       return { ok: false, error: { message: 'No parent ID found in session' } };
     }
 
-    const currentPeriod = window.UserSession?.getCurrentPeriod();
-    const appConfig = window.UserSession?.getAppConfig();
-
-    if (!currentPeriod) {
+    const ctx = resolveParentTrimesters();
+    if (!ctx) {
       return { ok: false, error: { message: 'Period information not available' } };
     }
 
-    const currentTrimester = appConfig?.currentTrimester || currentPeriod.trimester;
     const signal = this.getAbortSignal();
 
-    const currentResult = await HttpService.get<ContactData>(`parent/tabs/contact/${currentTrimester}?parentId=${id}`, { signal });
+    const currentResult = await HttpService.get<ContactData>(`parent/tabs/contact/${ctx.currentTrimester}?parentId=${id}`, { signal });
+    const validatedResult = validateResponseFields(currentResult, ['admins', 'instructors']);
+    if (!validatedResult.ok) return validatedResult;
 
-    if (!currentResult.ok) return currentResult;
+    const currentData = validatedResult.data;
 
-    if (!currentResult.data.admins || !currentResult.data.instructors) {
-      return { ok: false, error: { message: 'Invalid response: missing admins or instructors' } };
-    }
-
-    const currentData = currentResult.data;
-
-    if (isEnrollmentPeriod(currentPeriod)) {
-      const nextTrimester = appConfig?.nextTrimester || currentPeriod.trimester;
-      const nextResult = await HttpService.get<ContactData>(`parent/tabs/contact/${nextTrimester}?parentId=${id}`, { signal });
+    if (ctx.showBothTrimesters && ctx.nextTrimester) {
+      const nextResult = await HttpService.get<ContactData>(`parent/tabs/contact/${ctx.nextTrimester}?parentId=${id}`, { signal });
 
       if (nextResult.ok) {
         const seenIds = new Set<string>(currentData.instructors.map((i: Record<string, unknown>) => i.id as string));
@@ -78,12 +71,12 @@ export class ParentContactTab extends BaseTab {
           data: {
             admins: currentData.admins,
             instructors: [...currentData.instructors, ...uniqueNextInstructors],
-          } as unknown as Record<string, unknown>,
+          },
         };
       }
     }
 
-    return { ok: true, data: currentData as unknown as Record<string, unknown> };
+    return { ok: true, data: currentData };
   }
 
   /**
@@ -91,11 +84,10 @@ export class ParentContactTab extends BaseTab {
    */
   async render(): Promise<void> {
     const container = this.getContainer();
-    const typedData = this.data as unknown as ContactData;
 
     // Map admins and instructors to employee format
-    const adminEmployees = this.#mapAdminsToEmployees(typedData.admins);
-    const instructorEmployees = typedData.instructors.map((instructor: Record<string, unknown>) =>
+    const adminEmployees = this.#mapAdminsToEmployees(this.data!.admins);
+    const instructorEmployees = this.data!.instructors.map((instructor: Record<string, unknown>) =>
       this.#mapInstructorToEmployee(instructor, true)
     );
 

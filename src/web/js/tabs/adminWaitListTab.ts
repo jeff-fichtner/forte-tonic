@@ -6,6 +6,7 @@ import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { formatDateTime } from '../utilities/formatHelpers.js';
 import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
+import { validateResponseFields } from '../data/responseValidation.js';
 import { RegistrationService } from '../data/registrationService.js';
 
 interface WaitListRegistration {
@@ -26,7 +27,7 @@ interface WaitListStudent {
   parentEmails: string;
 }
 
-interface WaitListData extends Record<string, unknown> {
+interface WaitListData {
   registrations: WaitListRegistration[];
   students: WaitListStudent[];
 }
@@ -42,8 +43,7 @@ interface WaitListData extends Record<string, unknown> {
  * Data needed: wait list registrations (~50 records) + students for those registrations
  * Data waste eliminated: ~2020+ records (non-wait-list registrations, instructors, classes, rooms)
  */
-export class AdminWaitListTab extends AdminBaseTab {
-  declare protected data: WaitListData | null;
+export class AdminWaitListTab extends AdminBaseTab<WaitListData> {
   private waitListTable: Table | null;
 
   constructor() {
@@ -63,14 +63,7 @@ export class AdminWaitListTab extends AdminBaseTab {
     }
 
     const result = await HttpService.get<WaitListData>(`admin/tabs/wait-list/${trimester}`, { signal: this.getAbortSignal() });
-
-    if (!result.ok) return result;
-
-    if (!result.data.registrations || !result.data.students) {
-      return { ok: false, error: { message: 'Invalid response: missing registrations or students' } };
-    }
-
-    return result;
+    return validateResponseFields(result, ['registrations', 'students']);
   }
 
   /**

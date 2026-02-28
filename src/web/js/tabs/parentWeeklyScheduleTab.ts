@@ -5,10 +5,12 @@ import { RegistrationType } from '../constants.js';
 import { PeriodType } from '/utils/values/periodType.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { formatDateTime } from '../utilities/formatHelpers.js';
-import { isEnrollmentPeriod } from '../utilities/periodHelpers.js';
 import { ClassManager } from '../utilities/classManager.js';
+import { resolveParentTrimesters } from '../utilities/trimesterHelpers.js';
+import { withFeedback } from '../utilities/actionFeedback.js';
 import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
+import { validateResponseFields } from '../data/responseValidation.js';
 
 // Intent labels (matching viewModel.js)
 const INTENT_LABELS: Record<string, string> = {
@@ -52,7 +54,7 @@ interface WeeklyScheduleData {
  * Data needed: registrations for parent's children, students, instructors, classes
  * Data waste eliminated: ~1800+ records (other parents' data, unrelated students)
  */
-export class ParentWeeklyScheduleTab extends BaseTab {
+export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
   private studentTables: Map<string, Table>;
   private waitListTable: Table | null;
 
@@ -67,53 +69,39 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    * Fetch weekly schedule data for parent's children
    * Returns registrations for BOTH current and next trimester
    */
-  async fetchData(sessionInfo: SessionInfo | null): Promise<HttpResult<Record<string, unknown>>> {
+  async fetchData(sessionInfo: SessionInfo | null): Promise<HttpResult<WeeklyScheduleData>> {
     const parentObj = (sessionInfo?.user as Record<string, unknown> | undefined)?.parent as Record<string, unknown> | undefined;
     const parentId = parentObj?.id as string | undefined;
     if (!parentId) {
       return { ok: false, error: { message: 'No parent ID found in session' } };
     }
 
-    const currentPeriod = window.UserSession?.getCurrentPeriod();
-    const appConfig = window.UserSession?.getAppConfig();
-
-    if (!currentPeriod) {
+    const ctx = resolveParentTrimesters();
+    if (!ctx) {
       return { ok: false, error: { message: 'Period information not available' } };
     }
 
-    let firstTrimester: string;
-    let secondTrimester: string | undefined;
-    let showTwoTrimesters = false;
-
-    if (isEnrollmentPeriod(currentPeriod)) {
-      firstTrimester = appConfig?.currentTrimester || currentPeriod.trimester || '';
-      secondTrimester = appConfig?.nextTrimester || currentPeriod.trimester || '';
-      showTwoTrimesters = true;
-    } else {
-      firstTrimester = currentPeriod.trimester || '';
-    }
-
-    const firstResult = await this.#fetchTrimesterData(parentId, firstTrimester);
+    const firstResult = await this.#fetchTrimesterData(parentId, ctx.currentTrimester);
     if (!firstResult.ok) return firstResult;
     const firstData = firstResult.data;
 
     let secondData: TrimesterData | null = null;
-    if (showTwoTrimesters && secondTrimester) {
-      const secondResult = await this.#fetchTrimesterData(parentId, secondTrimester);
+    if (ctx.showBothTrimesters && ctx.nextTrimester) {
+      const secondResult = await this.#fetchTrimesterData(parentId, ctx.nextTrimester);
       if (!secondResult.ok) return secondResult;
       secondData = secondResult.data;
     }
 
-    const responseData: Record<string, unknown> = {
-      currentTrimester: { name: firstTrimester, data: firstData },
-      showTwoTrimesters,
+    const responseData: WeeklyScheduleData = {
+      currentTrimester: { name: ctx.currentTrimester, data: firstData },
+      showTwoTrimesters: ctx.showBothTrimesters,
       students: this.#mergeUnique([...firstData.students, ...(secondData?.students || [])], 'id'),
       instructors: this.#mergeUnique([...firstData.instructors, ...(secondData?.instructors || [])], 'id'),
       classes: this.#mergeUnique([...firstData.classes, ...(secondData?.classes || [])], 'id'),
     };
 
-    if (showTwoTrimesters) {
-      responseData.nextTrimester = { name: secondTrimester, data: secondData };
+    if (ctx.showBothTrimesters && ctx.nextTrimester) {
+      responseData.nextTrimester = { name: ctx.nextTrimester, data: secondData! };
     }
 
     return { ok: true, data: responseData };
@@ -125,14 +113,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    */
   async #fetchTrimesterData(parentId: string, trimester: string): Promise<HttpResult<TrimesterData>> {
     const result = await HttpService.get<TrimesterData>(`parent/tabs/weekly-schedule/${trimester}?parentId=${parentId}`, { signal: this.getAbortSignal() });
-
-    if (!result.ok) return result;
-
-    if (!result.data.registrations || !result.data.students || !result.data.instructors || !result.data.classes) {
-      return { ok: false, error: { message: 'Invalid response: missing required data' } };
-    }
-
-    return result;
+    return validateResponseFields(result, ['registrations', 'students', 'instructors', 'classes']);
   }
 
   /**
@@ -157,7 +138,6 @@ export class ParentWeeklyScheduleTab extends BaseTab {
    */
   async render(): Promise<void> {
     const container = this.getContainer();
-    const typedData = this.data as unknown as WeeklyScheduleData;
 
     // Find or create the schedule container
     let scheduleContainer = container.querySelector<HTMLElement>('#parent-weekly-schedule-section');
@@ -173,11 +153,11 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     this.waitListTable = null;
 
     // Render Current Trimester Section
-    this.#renderTrimesterSection(scheduleContainer, typedData.currentTrimester, 'current');
+    this.#renderTrimesterSection(scheduleContainer, this.data!.currentTrimester, 'current');
 
     // Render Next Trimester Section (only during enrollment periods)
-    if (typedData.showTwoTrimesters && typedData.nextTrimester) {
-      this.#renderTrimesterSection(scheduleContainer, typedData.nextTrimester, 'next');
+    if (this.data!.showTwoTrimesters && this.data!.nextTrimester) {
+      this.#renderTrimesterSection(scheduleContainer, this.data!.nextTrimester, 'next');
     }
 
     // Attach event listeners for intent dropdowns
@@ -535,16 +515,14 @@ export class ParentWeeklyScheduleTab extends BaseTab {
     const registrationId = buttonElement?.getAttribute('data-registration-id');
     if (!registrationId) return;
 
-    const typedData = this.data as unknown as WeeklyScheduleData;
-
     // Find the enrollment by ID - search in both current and next trimester data
-    let currentEnrollment = typedData.currentTrimester.data.registrations.find(
+    let currentEnrollment = this.data!.currentTrimester.data.registrations.find(
       (e: Record<string, unknown>) => e.id === registrationId
     );
 
     // If not found in current trimester, check next trimester (if it exists)
-    if (!currentEnrollment && typedData.nextTrimester) {
-      currentEnrollment = typedData.nextTrimester.data.registrations.find(
+    if (!currentEnrollment && this.data!.nextTrimester) {
+      currentEnrollment = this.data!.nextTrimester.data.registrations.find(
         (e: Record<string, unknown>) => e.id === registrationId
       );
     }
@@ -553,7 +531,7 @@ export class ParentWeeklyScheduleTab extends BaseTab {
 
     // For parent view: show instructor emails
     const instructorIdToFind = currentEnrollment.instructorId as string;
-    const instructor = this.findInstructor(instructorIdToFind);
+    const instructor = this.data!.instructors.find((i: Record<string, unknown>) => i.id === instructorIdToFind);
 
     if (instructor && instructor.email && (instructor.email as string).trim()) {
       await copyToClipboard(instructor.email as string);
@@ -621,32 +599,14 @@ export class ParentWeeklyScheduleTab extends BaseTab {
       return;
     }
 
-    // Find the status indicator for this dropdown
     const statusIndicator = dropdown.parentElement?.querySelector<HTMLElement>(
       `.intent-status-indicator[data-registration-id="${registrationId}"]`
     );
-    if (statusIndicator) {
-      statusIndicator.textContent = '⏳ Saving...';
-      statusIndicator.style.display = 'inline';
-    }
 
-    const result = await HttpService.patch(`registrations/${registrationId}/intent`, { intent });
-
-    if (result.ok) {
-      if (statusIndicator) {
-        statusIndicator.textContent = '✅ Saved';
-        statusIndicator.style.color = 'green';
-        setTimeout(() => { statusIndicator.style.display = 'none'; }, 2000);
-      }
-      M.toast({ html: 'Intent updated successfully!' });
-    } else {
-      if (statusIndicator) {
-        statusIndicator.textContent = '❌ Error';
-        statusIndicator.style.color = 'red';
-        setTimeout(() => { statusIndicator.style.display = 'none'; }, 3000);
-      }
-      M.toast({ html: result.error.message || 'Failed to update intent. Please try again.' });
-    }
+    await withFeedback(
+      () => HttpService.patch(`registrations/${registrationId}/intent`, { intent }),
+      { statusElement: statusIndicator, successToast: 'Intent updated successfully!', failureToast: null }
+    );
   }
 
   /**

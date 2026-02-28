@@ -3,8 +3,10 @@ import { Table } from '../components/table.js';
 import { formatGrade, formatTime } from '../extensions/numberExtensions.js';
 import { RegistrationType } from '../constants.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
+import { resolveSelectedTrimester } from '../utilities/trimesterHelpers.js';
 import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
+import { validateResponseFields } from '../data/responseValidation.js';
 
 interface InstructorScheduleData {
   registrations: Record<string, unknown>[];
@@ -25,7 +27,7 @@ interface InstructorScheduleData {
  * Data needed: registrations for instructor, students, instructors (for table building), classes
  * Data waste eliminated: ~2000+ records (other instructors' registrations, unrelated students)
  */
-export class InstructorWeeklyScheduleTab extends BaseTab {
+export class InstructorWeeklyScheduleTab extends BaseTab<InstructorScheduleData> {
   private dayTables: Map<string, Table>;
 
   constructor() {
@@ -38,27 +40,17 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
    * Fetch weekly schedule data for instructor
    * Returns registrations for this instructor + associated students + classes
    */
-  async fetchData(sessionInfo: SessionInfo | null): Promise<HttpResult<Record<string, unknown>>> {
+  async fetchData(sessionInfo: SessionInfo | null): Promise<HttpResult<InstructorScheduleData>> {
     const instructorId = (sessionInfo?.user as Record<string, unknown> | undefined)?.instructor as Record<string, unknown> | undefined;
     const id = instructorId?.id as string | undefined;
     if (!id) {
       return { ok: false, error: { message: 'No instructor ID found in session' } };
     }
 
-    const trimesterButtons = document.getElementById('instructor-trimester-buttons');
-    const activeButton = trimesterButtons?.querySelector<HTMLElement>('.trimester-btn.active');
-    const currentPeriod = window.UserSession?.getCurrentPeriod();
-    const trimester = activeButton?.dataset.trimester || currentPeriod?.trimester;
+    const trimester = resolveSelectedTrimester('instructor-trimester-buttons');
 
     const result = await HttpService.get<InstructorScheduleData>(`instructor/tabs/weekly-schedule/${trimester}?instructorId=${id}`, { signal: this.getAbortSignal() });
-
-    if (!result.ok) return result;
-
-    if (!result.data.registrations || !result.data.students || !result.data.instructors || !result.data.classes) {
-      return { ok: false, error: { message: 'Invalid response: missing required data' } };
-    }
-
-    return { ok: true, data: result.data as unknown as Record<string, unknown> };
+    return validateResponseFields(result, ['registrations', 'students', 'instructors', 'classes']);
   }
 
   /**
@@ -66,7 +58,6 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
    */
   async render(): Promise<void> {
     const container = this.getContainer();
-    const typedData = this.data as unknown as InstructorScheduleData;
 
     // Find or create the tables container
     let tablesContainer = container.querySelector<HTMLElement>('#instructor-weekly-schedule-tables');
@@ -81,7 +72,7 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
     this.dayTables.clear();
 
     // Show 'no matching registrations' message if instructor has no registrations
-    if (typedData.registrations.length === 0) {
+    if (this.data!.registrations.length === 0) {
       const noRegistrationsMessage = document.createElement('div');
       noRegistrationsMessage.className = 'card-panel orange lighten-4';
       noRegistrationsMessage.style.cssText = 'text-align: center; padding: 30px; margin: 20px 0;';
@@ -97,7 +88,7 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
 
     // Get unique days with registrations, sorted by day of week
     const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const daysWithRegistrations = [...new Set(typedData.registrations.map((reg: Record<string, unknown>) => reg.day as string))].sort(
+    const daysWithRegistrations = [...new Set(this.data!.registrations.map((reg: Record<string, unknown>) => reg.day as string))].sort(
       (a: string, b: string) => dayOrder.indexOf(a) - dayOrder.indexOf(b)
     );
 
@@ -123,7 +114,7 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
       tablesContainer!.appendChild(dayContainer);
 
       // Sort registrations for this day by start time, length, instrument, and grade
-      const dayRegistrations = typedData.registrations
+      const dayRegistrations = this.data!.registrations
         .filter((reg: Record<string, unknown>) => reg.day === day)
         .sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
           // First, sort by start time
@@ -148,8 +139,8 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
           }
 
           // Finally sort by student grade
-          const studentA = this.findStudent(a.studentId as string);
-          const studentB = this.findStudent(b.studentId as string);
+          const studentA = this.data!.students.find((s: Record<string, unknown>) => s.id === a.studentId);
+          const studentB = this.data!.students.find((s: Record<string, unknown>) => s.id === b.studentId);
           const gradeA = (studentA?.grade as string) || '';
           const gradeB = (studentB?.grade as string) || '';
           return String(gradeA).localeCompare(String(gradeB));
@@ -191,8 +182,8 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
    * @private
    */
   #buildTableRow(enrollment: Record<string, unknown>): string {
-    const instructor = this.findInstructor(enrollment.instructorId as string);
-    const student = this.findStudent(enrollment.studentId as string);
+    const instructor = this.data!.instructors.find((i: Record<string, unknown>) => i.id === enrollment.instructorId);
+    const student = this.data!.students.find((s: Record<string, unknown>) => s.id === enrollment.studentId);
 
     if (!instructor || !student) {
       console.warn(`Instructor or student not found for enrollment: ${enrollment.id}`);
@@ -240,15 +231,13 @@ export class InstructorWeeklyScheduleTab extends BaseTab {
     const registrationId = buttonElement?.getAttribute('data-registration-id');
     if (!registrationId) return;
 
-    const typedData = this.data as unknown as InstructorScheduleData;
-
     // Find the enrollment by ID
-    const currentEnrollment = typedData.registrations.find((e: Record<string, unknown>) => e.id === registrationId);
+    const currentEnrollment = this.data!.registrations.find((e: Record<string, unknown>) => e.id === registrationId);
     if (!currentEnrollment) return;
 
     // For instructor view: show parent emails
     const studentIdToFind = currentEnrollment.studentId as string;
-    const student = this.findStudent(studentIdToFind);
+    const student = this.data!.students.find((s: Record<string, unknown>) => s.id === studentIdToFind);
 
     if (student && student.parentEmails && (student.parentEmails as string).trim()) {
       await copyToClipboard(student.parentEmails as string);

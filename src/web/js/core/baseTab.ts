@@ -15,19 +15,12 @@
  *    - Removes event listeners
  *
  * Usage:
- *   class MyTab extends BaseTab {
- *     constructor() {
- *       super('my-tab');
- *     }
- *
- *     async fetchData(sessionInfo) {
- *       const response = await fetch('/api/my-tab/data');
- *       return response.json();
- *     }
- *
+ *   interface MyData { items: Item[]; }
+ *   class MyTab extends BaseTab<MyData> {
+ *     constructor() { super('my-tab'); }
+ *     async fetchData(sessionInfo) { ... }
  *     async render() {
- *       const container = this.getContainer();
- *       container.innerHTML = `<div>${this.data.message}</div>`;
+ *       // this.data is MyData | null — no casting needed
  *     }
  *   }
  */
@@ -47,9 +40,9 @@ interface TrackedEventListener {
   options: AddEventListenerOptions;
 }
 
-export class BaseTab {
+export class BaseTab<TData = Record<string, unknown>> {
   protected tabId: string;
-  protected data: Record<string, unknown> | null;
+  protected data: TData | null;
   protected sessionInfo: SessionInfo | null;
   protected isLoaded: boolean;
   protected abortController: AbortController | null;
@@ -130,7 +123,7 @@ export class BaseTab {
    * Fetch tab-specific data from API
    * MUST be implemented by subclasses — return HttpResult, never throw
    */
-  async fetchData(_sessionInfo: SessionInfo | null): Promise<HttpResult<Record<string, unknown>>> {
+  async fetchData(_sessionInfo: SessionInfo | null): Promise<HttpResult<TData>> {
     throw new Error(`fetchData() must be implemented by ${this.constructor.name}`);
   }
 
@@ -277,33 +270,4 @@ export class BaseTab {
     return this.abortController?.signal;
   }
 
-  /**
-   * Find a student by ID from the tab's data
-   */
-  findStudent(studentId: string): Record<string, unknown> | undefined {
-    if (!this.data?.students) return undefined;
-
-    const idToFind = studentId;
-    return (this.data.students as Record<string, unknown>[]).find(
-      (student: Record<string, unknown>) => {
-        const id = student.id;
-        return id === idToFind;
-      }
-    );
-  }
-
-  /**
-   * Find an instructor by ID from the tab's data
-   */
-  findInstructor(instructorId: string): Record<string, unknown> | undefined {
-    if (!this.data?.instructors) return undefined;
-
-    const idToFind = instructorId;
-    return (this.data.instructors as Record<string, unknown>[]).find(
-      (instructor: Record<string, unknown>) => {
-        const id = instructor.id;
-        return id === idToFind;
-      }
-    );
-  }
 }

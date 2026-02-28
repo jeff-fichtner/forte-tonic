@@ -7,6 +7,7 @@ import { PeriodType } from '/utils/values/periodType.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
+import { validateResponseFields } from '../data/responseValidation.js';
 import { RegistrationService } from '../data/registrationService.js';
 
 // Intent labels (matching viewModel.js)
@@ -46,7 +47,7 @@ interface MasterScheduleInstructor {
   lastName: string;
 }
 
-interface MasterScheduleData extends Record<string, unknown> {
+interface MasterScheduleData {
   registrations: MasterScheduleRegistration[];
   students: MasterScheduleStudent[];
   instructors: MasterScheduleInstructor[];
@@ -81,8 +82,7 @@ interface FilterConfig {
  * Data needed: registrations (for trimester), students, instructors, classes
  * Data waste eliminated: ~1500+ records (other trimesters, rooms not needed)
  */
-export class AdminMasterScheduleTab extends AdminBaseTab {
-  declare protected data: MasterScheduleData | null;
+export class AdminMasterScheduleTab extends AdminBaseTab<MasterScheduleData> {
   private masterScheduleTable: Table | null;
 
   constructor() {
@@ -105,14 +105,7 @@ export class AdminMasterScheduleTab extends AdminBaseTab {
     }
 
     const result = await HttpService.get<MasterScheduleData>(`admin/tabs/master-schedule/${trimester}`, { signal: this.getAbortSignal() });
-
-    if (!result.ok) return result;
-
-    if (!result.data.registrations || !result.data.students || !result.data.instructors || !result.data.classes) {
-      return { ok: false, error: { message: 'Invalid response: missing required data' } };
-    }
-
-    return result;
+    return validateResponseFields(result, ['registrations', 'students', 'instructors', 'classes']);
   }
 
   /**
@@ -697,8 +690,8 @@ export class AdminMasterScheduleTab extends AdminBaseTab {
       }
 
       // Finally sort by student grade
-      const studentA = this.findStudent(a.studentId);
-      const studentB = this.findStudent(b.studentId);
+      const studentA = this.data!.students.find(s => s.id === a.studentId);
+      const studentB = this.data!.students.find(s => s.id === b.studentId);
       const gradeA = studentA?.grade || '';
       const gradeB = studentB?.grade || '';
       return String(gradeA).localeCompare(String(gradeB));

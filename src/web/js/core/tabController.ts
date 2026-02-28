@@ -16,9 +16,12 @@
 
 import type { BaseTab, SessionInfo } from './baseTab.js';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyTab = BaseTab<any>;
+
 export class TabController {
-  private tabs: Map<string, BaseTab>;
-  private currentTab: BaseTab | null;
+  private tabs: Map<string, AnyTab>;
+  private currentTab: AnyTab | null;
   private currentTabId: string | null;
   private sessionInfo: SessionInfo | null;
   private initialized: boolean;
@@ -58,7 +61,7 @@ export class TabController {
   /**
    * Register a tab instance
    */
-  registerTab(tabId: string, tabInstance: BaseTab): void {
+  registerTab(tabId: string, tabInstance: AnyTab): void {
     if (!tabId || typeof tabId !== 'string') {
       throw new Error('Tab ID must be a non-empty string');
     }
@@ -162,7 +165,7 @@ export class TabController {
   /**
    * Get the currently active tab instance
    */
-  getCurrentTab(): BaseTab | null {
+  getCurrentTab(): AnyTab | null {
     return this.currentTab;
   }
 
