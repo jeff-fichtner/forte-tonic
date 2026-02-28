@@ -24,7 +24,6 @@ import './utilities/promiseHelpers.js';
 import './utilities/phoneHelpers.js';
 import './utilities/modalKeyboardHandler.js';
 import './utilities/classManager.js';
-import './extensions/durationExtensions.js';
 import './extensions/numberExtensions.js';
 import './extensions/stringExtensions.js';
 import { NavTabs } from './components/navTabs.js';
@@ -230,15 +229,10 @@ function resetUIState(): void {
 
 async function resetInitializationFlags(): Promise<void> {
   if (window.tabController) {
-    const currentTab = window.tabController.getCurrentTab();
-    if (currentTab) {
-      try {
-        await currentTab.onUnload();
-        (window.tabController as unknown as Record<string, unknown>).currentTab = null;
-        (window.tabController as unknown as Record<string, unknown>).currentTabId = null;
-      } catch (error: unknown) {
-        console.error('Error unloading tab during user switch:', error);
-      }
+    try {
+      await window.tabController.cleanup();
+    } catch (error: unknown) {
+      console.error('Error unloading tab during user switch:', error);
     }
   }
 

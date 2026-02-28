@@ -14,18 +14,18 @@ import { resolveParentTrimesters } from '../utilities/trimesterHelpers.js';
 import { RegistrationService } from '../data/registrationService.js';
 
 interface RegistrationApiResponse {
-  instructors: Record<string, unknown>[];
-  students: Record<string, unknown>[];
-  classes: Record<string, unknown>[];
-  registrations: Record<string, unknown>[];
+  instructors: InstructorLike[];
+  students: StudentLike[];
+  classes: ClassLike[];
+  registrations: RegistrationLike[];
 }
 
 interface RegistrationTabData {
-  instructors: Record<string, unknown>[];
-  students: Record<string, unknown>[];
-  classes: Record<string, unknown>[];
-  nextTrimesterRegistrations: Record<string, unknown>[];
-  currentTrimesterRegistrations: Record<string, unknown>[];
+  instructors: InstructorLike[];
+  students: StudentLike[];
+  classes: ClassLike[];
+  nextTrimesterRegistrations: RegistrationLike[];
+  currentTrimesterRegistrations: RegistrationLike[];
 }
 
 /**
@@ -77,7 +77,7 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
     if (!currentValidated.ok) return currentValidated;
     const currentData = currentValidated.data;
 
-    let nextTrimesterRegistrations: Record<string, unknown>[];
+    let nextTrimesterRegistrations: RegistrationLike[];
 
     if (ctx.nextTrimester) {
       const nextResult = await HttpService.get<RegistrationApiResponse>(
@@ -114,26 +114,25 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
     if (this.registrationForm) {
       // Update existing form with new data
       this.registrationForm.updateData(
-        this.data!.instructors as unknown as InstructorLike[],
-        this.data!.students as unknown as StudentLike[],
-        this.data!.classes as unknown as ClassLike[],
-        this.data!.nextTrimesterRegistrations as unknown as RegistrationLike[],
-        this.data!.students as unknown as StudentLike[], // parentChildren = all students for this parent
-        this.data!.currentTrimesterRegistrations as unknown as RegistrationLike[] // for recurring enrollment
+        this.data!.instructors,
+        this.data!.students,
+        this.data!.classes,
+        this.data!.nextTrimesterRegistrations,
+        this.data!.students, // parentChildren = all students for this parent
+        this.data!.currentTrimesterRegistrations // for recurring enrollment
       );
     } else {
       // Create new form instance
       this.registrationForm = new ParentRegistrationForm(
-        this.data!.instructors as unknown as InstructorLike[],
-        this.data!.students as unknown as StudentLike[],
-        this.data!.classes as unknown as ClassLike[],
-        this.data!.nextTrimesterRegistrations as unknown as RegistrationLike[], // registrations for availability calculation
+        this.data!.instructors,
+        this.data!.students,
+        this.data!.classes,
+        this.data!.nextTrimesterRegistrations, // registrations for availability calculation
         async (registrationData: RegistrationSubmitData) => {
-          // Send data function - delegate to viewModel for registration creation
           await this.#createRegistration(registrationData);
         },
-        this.data!.students as unknown as StudentLike[], // parentChildren = all students for this parent
-        this.data!.currentTrimesterRegistrations as unknown as RegistrationLike[] // for recurring enrollment options
+        this.data!.students, // parentChildren = all students for this parent
+        this.data!.currentTrimesterRegistrations // for recurring enrollment options
       );
     }
   }

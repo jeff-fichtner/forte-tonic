@@ -20,7 +20,9 @@ const NodeEnv = {
 
 export async function initializeVersionDisplay(): Promise<void> {
   try {
-    const versionInfo = (await HttpService.get('version')) as unknown as VersionInfo;
+    const result = await HttpService.get<VersionInfo>('version');
+    if (!result.ok) return;
+    const versionInfo = result.data;
 
     window.TONIC_ENV = {
       environment: versionInfo.environment,

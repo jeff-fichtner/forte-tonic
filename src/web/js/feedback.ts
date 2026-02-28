@@ -22,27 +22,9 @@ interface FeedbackState {
     parentId: unknown;
   };
   currentSection?: unknown;
-  dataCounts?: {
-    students: number;
-    instructors: number;
-    classes: number;
-    registrations: number;
-    nextTrimesterRegistrations: number;
-  };
-  selectedTrimester?: unknown;
   currentPeriod?: {
     periodType: unknown;
     trimester: unknown;
-  };
-  parentRegistrationForm?: {
-    selectedLesson: {
-      instructorId: unknown;
-      instrument: unknown;
-      day: unknown;
-      time: unknown;
-      length: unknown;
-    } | null;
-    selectedPreviousRegistrationId: unknown;
   };
 }
 
@@ -118,22 +100,6 @@ export class FeedbackManager {
       }
     }
 
-    // Capture counts of key data
-    if (this.viewModel) {
-      state.dataCounts = {
-        students: (this.viewModel.students as unknown[] | undefined)?.length || 0,
-        instructors: (this.viewModel.instructors as unknown[] | undefined)?.length || 0,
-        classes: (this.viewModel.classes as unknown[] | undefined)?.length || 0,
-        registrations: (this.viewModel.registrations as unknown[] | undefined)?.length || 0,
-        nextTrimesterRegistrations: (this.viewModel.nextTrimesterRegistrations as unknown[] | undefined)?.length || 0,
-      };
-    }
-
-    // Capture selected trimester
-    if (this.viewModel?.selectedTrimester) {
-      state.selectedTrimester = this.viewModel.selectedTrimester;
-    }
-
     // Capture current period info
     if (window.UserSession?.getCurrentPeriod) {
       const period = window.UserSession.getCurrentPeriod();
@@ -143,25 +109,6 @@ export class FeedbackManager {
           trimester: period.trimester,
         };
       }
-    }
-
-    // Capture parent registration form state if exists
-    if (this.viewModel?.parentRegistrationForm) {
-      const form = this.viewModel.parentRegistrationForm as Record<string, unknown>;
-      const selectedLesson = form.selectedLesson as Record<string, unknown> | null | undefined;
-      state.parentRegistrationForm = {
-        selectedLesson: selectedLesson
-          ? {
-              instructorId: selectedLesson.instructorId,
-              instrument: selectedLesson.instrument,
-              day: selectedLesson.day,
-              time: selectedLesson.time,
-              length: selectedLesson.length,
-            }
-          : null,
-        selectedPreviousRegistrationId:
-          (form as Record<string, unknown>)._selectedPreviousRegistrationId || null,
-      };
     }
 
     return state;

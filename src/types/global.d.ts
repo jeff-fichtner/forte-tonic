@@ -17,7 +17,6 @@ import type { TabController } from '../web/js/core/tabController.js';
 import type { Table } from '../web/js/components/table.js';
 import type { Select } from '../web/js/components/select.js';
 import type { NavTabs } from '../web/js/components/navTabs.js';
-import type { IndexedDbClient } from '../web/js/data/indexedDbClient.js';
 import type { DomHelpers } from '../web/js/utilities/domHelpers.js';
 import type { DurationHelpers } from '../web/js/utilities/durationHelpers.js';
 import type { PromiseHelpers } from '../web/js/utilities/promiseHelpers.js';
@@ -53,13 +52,6 @@ interface TonicEnv {
   NodeEnv: Record<string, string>;
 }
 
-declare module '../utils/nativeDateTimeHelpers.js' {
-  interface TonicDuration {
-    to12HourFormat(): string;
-    to24HourFormat(): string;
-  }
-}
-
 declare global {
 
   // Prototype extension declarations (T003)
@@ -87,9 +79,6 @@ declare global {
     Select: typeof Select;
     NavTabs: typeof NavTabs;
 
-    // Data layer
-    IndexedDbClient: typeof IndexedDbClient;
-
     // Utilities
     DomHelpers: typeof DomHelpers;
     DurationHelpers: typeof DurationHelpers;
@@ -101,12 +90,9 @@ declare global {
     DateHelpers: typeof DateHelpers;
 
     // Constants (from constants.ts)
-    MonthNames: string[];
     Sections: Record<string, string>;
     ServerFunctions: Record<string, string>;
-    DataStores: Record<string, string>;
     RegistrationType: Record<string, string>;
-    FilterValue: Record<string, string>;
     FORTE_PROGRAM_EMAIL: string;
     FORTE_PROGRAM_PHONE: string;
     UserType: Readonly<{ ADMIN: string; INSTRUCTOR: string; PARENT: string }>;

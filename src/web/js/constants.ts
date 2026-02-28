@@ -51,22 +51,6 @@ export const UserType = Object.freeze({
   PARENT: 'parent',
 });
 
-// Month abbreviations
-export const MonthNames = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-
 // Application sections/roles
 export const Sections = {
   ADMIN: 'admin',
@@ -85,11 +69,6 @@ export const ServerFunctions = {
   submitFeedback: 'feedback',
 };
 
-// IndexedDB data stores
-export const DataStores = {
-  STUDENTS: 'students',
-};
-
 // Registration types
 export const RegistrationType = {
   PRIVATE: 'private',
@@ -97,21 +76,13 @@ export const RegistrationType = {
   // REMOTE: 'remote',
 };
 
-// Filter constants
-export const FilterValue = {
-  ALL: 'all',
-};
-
 // Expose to window for console debugging and runtime access
 window.DateTime = DateTime;
 window.Duration = Duration;
 window.DateHelpers = DateHelpers;
-window.MonthNames = MonthNames;
 window.Sections = Sections;
 window.ServerFunctions = ServerFunctions;
-window.DataStores = DataStores;
 window.RegistrationType = RegistrationType;
-window.FilterValue = FilterValue;
 window.FORTE_PROGRAM_EMAIL = FORTE_PROGRAM_EMAIL;
 window.FORTE_PROGRAM_PHONE = FORTE_PROGRAM_PHONE;
 window.UserType = UserType;
