@@ -123,6 +123,21 @@ jest.unstable_mockModule(
         return this.data;
       }
     },
+    DEFAULT_REGISTRATION_CONFIG: {
+      busDeadlines: {
+        Monday: '16:45', Tuesday: '16:45', Wednesday: '16:15',
+        Thursday: '16:45', Friday: '16:45',
+      },
+      lessonLengths: [30, 45, 60],
+      operationalHours: { startHour: 14, endHour: 18 },
+      schedulingIntervalMinutes: 15,
+      defaultInstruments: ['Piano', 'Guitar', 'Violin', 'Voice', 'Drums', 'Bass', 'Other'],
+      defaultInstrument: 'Piano',
+      rockBandDisplayConfig: {
+        timesDescription: 'Monday 3-4 PM or Monday 4-5 PM or Friday 3-4 PM',
+        defaultLengthMinutes: 60,
+      },
+    },
   })
 );
 

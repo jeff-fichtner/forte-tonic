@@ -301,6 +301,8 @@ describe('RegistrationService', () => {
           day: 'Monday',
           startTime: '15:00',
           length: 60,
+          transportationType: 'pickup',
+          roomId: 'R1',
           trimester: 'winter',
         },
         'user-1'
@@ -342,6 +344,8 @@ describe('RegistrationService', () => {
             day: 'Monday',
             startTime: '15:00',
             length: 60,
+            transportationType: 'pickup',
+            roomId: 'R1',
             trimester: 'winter',
           },
           'user-1'
@@ -369,6 +373,7 @@ describe('RegistrationService', () => {
           length: 30,
           instrument: 'Piano',
           transportationType: 'pickup',
+          roomId: 'R1',
           trimester: 'winter',
         },
         'user-1'
@@ -396,6 +401,7 @@ describe('RegistrationService', () => {
             length: 30,
             instrument: 'Piano',
             transportationType: 'bus',
+            roomId: 'R1',
             trimester: 'winter',
           },
           'user-1'
@@ -425,6 +431,7 @@ describe('RegistrationService', () => {
           length: 30,
           instrument: 'Piano',
           transportationType: 'bus',
+          roomId: 'R1',
           trimester: 'winter',
         },
         'user-1'
@@ -455,6 +462,8 @@ describe('RegistrationService', () => {
           day: 'Monday',
           startTime: '15:00',
           length: 60,
+          transportationType: 'pickup',
+          roomId: 'R1',
           trimester: 'winter',
         },
         'user-1'
@@ -484,6 +493,8 @@ describe('RegistrationService', () => {
           day: 'Monday',
           startTime: '15:00',
           length: 60,
+          transportationType: 'pickup',
+          roomId: 'R1',
           trimester: 'winter',
         },
         'user-1'
@@ -537,6 +548,8 @@ describe('RegistrationService', () => {
           day: 'Monday',
           startTime: '15:00',
           length: 60,
+          transportationType: 'pickup',
+          roomId: 'R1',
           trimester: 'winter',
         },
         'admin-user',
@@ -583,6 +596,8 @@ describe('RegistrationService', () => {
             day: 'Monday',
             startTime: '15:00',
             length: 60,
+            transportationType: 'pickup',
+            roomId: 'R1',
             trimester: 'winter',
           },
           'user-1'
@@ -620,6 +635,7 @@ describe('RegistrationService', () => {
             length: 30,
             instrument: 'Piano',
             transportationType: 'pickup',
+            roomId: 'R1',
             trimester: 'winter',
           },
           'user-1'
@@ -660,6 +676,7 @@ describe('RegistrationService', () => {
             length: 30,
             instrument: 'Piano',
             transportationType: 'pickup',
+            roomId: 'R1',
             trimester: 'winter',
           },
           'user-1'
@@ -682,6 +699,7 @@ describe('RegistrationService', () => {
             length: 30,
             instrument: 'Piano',
             transportationType: 'pickup',
+            roomId: 'R1',
             trimester: 'winter',
           },
           'user-1'
@@ -706,6 +724,7 @@ describe('RegistrationService', () => {
             length: 30,
             instrument: 'Piano',
             transportationType: 'pickup',
+            roomId: 'R1',
             // trimester intentionally omitted
           },
           'user-1'
@@ -1017,20 +1036,19 @@ describe('RegistrationService - Validation', () => {
 
   describe('isValidLessonLength', () => {
     it('should accept valid lesson lengths', () => {
-      expect(RegistrationService.isValidLessonLength(15)).toBe(true);
       expect(RegistrationService.isValidLessonLength(30)).toBe(true);
       expect(RegistrationService.isValidLessonLength(45)).toBe(true);
       expect(RegistrationService.isValidLessonLength(60)).toBe(true);
     });
 
     it('should accept string numbers', () => {
-      expect(RegistrationService.isValidLessonLength('15')).toBe(true);
       expect(RegistrationService.isValidLessonLength('30')).toBe(true);
       expect(RegistrationService.isValidLessonLength('45')).toBe(true);
       expect(RegistrationService.isValidLessonLength('60')).toBe(true);
     });
 
     it('should reject invalid lengths', () => {
+      expect(RegistrationService.isValidLessonLength(15)).toBe(false);
       expect(RegistrationService.isValidLessonLength(10)).toBe(false);
       expect(RegistrationService.isValidLessonLength(20)).toBe(false);
       expect(RegistrationService.isValidLessonLength(90)).toBe(false);
@@ -1067,6 +1085,7 @@ describe('RegistrationService - Validation', () => {
         studentId: 'STUDENT1',
         registrationType: RegistrationType.GROUP,
         classId: 'CLASS1',
+        transportationType: 'pickup',
         schoolYear: '2024-2025',
         trimester: 'winter',
       });
@@ -1131,6 +1150,7 @@ describe('RegistrationService - Validation', () => {
         studentId: 'STUDENT1',
         registrationType: RegistrationType.GROUP,
         classId: 'CLASS1',
+        transportationType: 'pickup',
         trimester: 'fall',
       });
       expect(fallResult.isValid).toBe(true);
@@ -1139,6 +1159,7 @@ describe('RegistrationService - Validation', () => {
         studentId: 'STUDENT1',
         registrationType: RegistrationType.GROUP,
         classId: 'CLASS1',
+        transportationType: 'pickup',
         trimester: 'winter',
       });
       expect(winterResult.isValid).toBe(true);
@@ -1147,6 +1168,7 @@ describe('RegistrationService - Validation', () => {
         studentId: 'STUDENT1',
         registrationType: RegistrationType.GROUP,
         classId: 'CLASS1',
+        transportationType: 'pickup',
         trimester: 'spring',
       });
       expect(springResult.isValid).toBe(true);
@@ -1187,7 +1209,7 @@ describe('RegistrationService - Validation', () => {
       expect(result.errors).toContain('Day is required for private lessons');
       expect(result.errors).toContain('Start time is required for private lessons');
       expect(result.errors).toContain('Lesson length is required for private lessons');
-      expect(result.errors).toContain('Transportation type is required for private lessons');
+      expect(result.errors).toContain('Transportation type is required');
     });
 
     it('should add error for invalid school year', () => {
@@ -1227,7 +1249,7 @@ describe('RegistrationService - Validation', () => {
       });
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain('Invalid lesson length. Must be 15, 30, 45, or 60 minutes');
+      expect(result.errors).toContain('Invalid lesson length. Must be 30, 45, 60 minutes');
     });
 
     it('should not validate start time for group registrations', () => {
@@ -1235,6 +1257,7 @@ describe('RegistrationService - Validation', () => {
         studentId: 'STUDENT1',
         registrationType: RegistrationType.GROUP,
         classId: 'CLASS1',
+        transportationType: 'pickup',
         startTime: 'invalid',
       });
 

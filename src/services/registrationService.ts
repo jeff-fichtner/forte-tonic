@@ -12,6 +12,7 @@ import { isValidTrimester as validateTrimester } from '../utils/values/trimester
 import { ConfigurationService } from './configurationService.js';
 import { Registration } from '../models/shared/registration.js';
 import { ConflictError } from '../common/errors.js';
+import { DEFAULT_REGISTRATION_CONFIG } from '../models/shared/responses/appConfigurationResponse.js';
 import { getLogger } from '../utils/logger.js';
 import type { Logger } from '../utils/logger.js';
 import type { RegistrationData } from '../models/shared/registration.js';
@@ -544,7 +545,7 @@ export class RegistrationService extends BaseService {
 
     // Lesson length validation
     if (registrationData.length && !this.isValidLessonLength(registrationData.length)) {
-      errors.push('Invalid lesson length. Must be 15, 30, 45, or 60 minutes');
+      errors.push(`Invalid lesson length. Must be ${DEFAULT_REGISTRATION_CONFIG.lessonLengths.join(', ')} minutes`);
     }
   }
 
@@ -568,8 +569,7 @@ export class RegistrationService extends BaseService {
   }
 
   static isValidLessonLength(length: unknown): boolean {
-    const validLengths = [15, 30, 45, 60];
-    return validLengths.includes(Number(length));
+    return DEFAULT_REGISTRATION_CONFIG.lessonLengths.includes(Number(length));
   }
 
   // =========================================================================

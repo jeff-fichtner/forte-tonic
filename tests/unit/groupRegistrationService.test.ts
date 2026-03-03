@@ -17,7 +17,7 @@ describe('Group Registration Service', () => {
     mockUserRepository = {
       getStudentById: jest.fn(),
       getInstructorById: jest.fn(),
-      getRoomById: jest.fn().mockResolvedValue({ id: 'R1', name: 'Room 1' }),
+      getRoomById: jest.fn().mockImplementation((id: string) => Promise.resolve({ id, name: `Room ${id}` })),
     };
 
     mockProgramRepository = {
@@ -86,6 +86,8 @@ describe('Group Registration Service', () => {
         studentId: 'STU-001',
         registrationType: 'group',
         classId: 'CLASS-001',
+        transportationType: 'pickup',
+        roomId: 'ROOM-001',
         trimester: 'fall', // Explicit trimester required
       };
 
@@ -177,8 +179,9 @@ describe('Group Registration Service', () => {
         studentId: 'STU-002',
         registrationType: 'group',
         classId: 'CLASS-001',
+        transportationType: 'pickup',
+        roomId: 'ROOM-002',
         trimester: 'winter', // Explicit trimester required
-        // No transportationType specified
       };
 
       mockProgramRepository.getClassById.mockResolvedValue(classData);
@@ -243,6 +246,7 @@ describe('Group Registration Service', () => {
         classId: 'CLASS-001',
         trimester: 'spring', // Explicit trimester required
         transportationType: 'both', // Already specified - should not be overridden
+        roomId: 'ROOM-003',
       };
 
       mockProgramRepository.getClassById.mockResolvedValue(classData);

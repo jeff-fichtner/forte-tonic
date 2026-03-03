@@ -9,7 +9,7 @@
 import { serviceContainer, ServiceKeys } from '../infrastructure/container/serviceContainer.js';
 import type { Request, Response } from 'express';
 import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
-import { AppConfigurationResponse } from '../models/shared/responses/appConfigurationResponse.js';
+import { AppConfigurationResponse, DEFAULT_REGISTRATION_CONFIG } from '../models/shared/responses/appConfigurationResponse.js';
 import { configService } from '../services/configurationService.js';
 import { getLogger } from '../utils/logger.js';
 import { successResponse, errorResponse, asString } from '../common/responseHelpers.js';
@@ -68,24 +68,7 @@ export class UserController {
         maintenanceMode: appConfig.maintenanceMode,
         maintenanceMessage: appConfig.maintenanceMessage,
         director,
-        registrationConfig: {
-          busDeadlines: {
-            Monday: '16:45',
-            Tuesday: '16:45',
-            Wednesday: '16:15',
-            Thursday: '16:45',
-            Friday: '16:45',
-          },
-          lessonLengths: [30, 45, 60],
-          operationalHours: { startHour: 14, endHour: 18 },
-          schedulingIntervalMinutes: 15,
-          defaultInstruments: ['Piano', 'Guitar', 'Violin', 'Voice', 'Drums', 'Bass', 'Other'],
-          defaultInstrument: 'Piano',
-          rockBandDisplayConfig: {
-            timesDescription: 'Monday 3-4 PM or Monday 4-5 PM or Friday 3-4 PM',
-            defaultLengthMinutes: 60,
-          },
-        },
+        registrationConfig: DEFAULT_REGISTRATION_CONFIG,
       };
 
       const configuration = new AppConfigurationResponse(configurationData);

@@ -7,27 +7,10 @@
  */
 
 import type { RegistrationConfig } from '../../../../models/shared/responses/appConfigurationResponse.js';
+import { DEFAULT_REGISTRATION_CONFIG } from '../../../../models/shared/responses/appConfigurationResponse.js';
 import { UserSession } from '../../auth/session.js';
 
-/** Default values matching the previously-hardcoded constants */
-const DEFAULTS: RegistrationConfig = {
-  busDeadlines: {
-    Monday: '16:45',
-    Tuesday: '16:45',
-    Wednesday: '16:15',
-    Thursday: '16:45',
-    Friday: '16:45',
-  },
-  lessonLengths: [30, 45, 60],
-  operationalHours: { startHour: 14, endHour: 18 },
-  schedulingIntervalMinutes: 15,
-  defaultInstruments: ['Piano', 'Guitar', 'Violin', 'Voice', 'Drums', 'Bass', 'Other'],
-  defaultInstrument: 'Piano',
-  rockBandDisplayConfig: {
-    timesDescription: 'Monday 3-4 PM or Monday 4-5 PM or Friday 3-4 PM',
-    defaultLengthMinutes: 60,
-  },
-};
+const DEFAULTS: RegistrationConfig = DEFAULT_REGISTRATION_CONFIG;
 
 /**
  * Get the registration configuration from the backend-served app config,
