@@ -4,18 +4,18 @@
  * Manages the cascading instrument → day → length → instructor filter chip UI,
  * the instructor time-slot grid, and time-slot selection state. Communicates the
  * selected time slot to the parent form via the `onTimeSlotSelected` callback.
+ *
+ * Chip counts and time slot grids are derived from a pre-computed
+ * `AvailableTimeSlot[]` array (server-computed, grade-specific). No engine
+ * functions are called — all filtering is `Array.filter()` + counting.
  */
 
 import { TransportationType } from '/utils/values/transportationType.js';
 import { createFilterChip, createInstructorCard } from './registrationFormElements.js';
-import {
-  isInstructorGradeEligible,
-  calculateCascadingAvailability,
-  generateInstructorTimeSlots,
-  filterByInstrument,
-} from '../../utilities/registrationForm/availabilityEngine.js';
+import { isInstructorGradeEligible } from '../../utilities/registrationForm/availabilityEngine.js';
 import { formatDisplayTime } from '../../utilities/registrationForm/timeHelpers.js';
 import { ModalKeyboardHandler } from '../../utilities/modalKeyboardHandler.js';
+import type { AvailableTimeSlot } from '../../../../models/shared/availableTimeSlot.js';
 import type {
   InstructorLike,
   StudentLike,
@@ -35,6 +35,7 @@ export interface CascadingFilterChipsConfig {
   isEnrollmentPeriod: boolean;
   onTimeSlotSelected: (slot: TimeSlot | null) => void;
   parentChildren: StudentLike[];
+  availableTimeSlots: AvailableTimeSlot[];
 }
 
 // ---------------------------------------------------------------------------
@@ -50,6 +51,7 @@ export class CascadingFilterChips {
   #isEnrollmentPeriod: boolean;
   #onTimeSlotSelected: (slot: TimeSlot | null) => void;
   #parentChildren: StudentLike[];
+  #availableTimeSlots: AvailableTimeSlot[];
 
   // Internal selection state
   #selectedLesson: TimeSlot | null = null;
@@ -63,6 +65,7 @@ export class CascadingFilterChips {
     this.#isEnrollmentPeriod = config.isEnrollmentPeriod;
     this.#onTimeSlotSelected = config.onTimeSlotSelected;
     this.#parentChildren = config.parentChildren;
+    this.#availableTimeSlots = config.availableTimeSlots;
   }
 
   // -----------------------------------------------------------------------
@@ -94,6 +97,8 @@ export class CascadingFilterChips {
     if (config.onTimeSlotSelected !== undefined)
       this.#onTimeSlotSelected = config.onTimeSlotSelected;
     if (config.parentChildren !== undefined) this.#parentChildren = config.parentChildren;
+    if (config.availableTimeSlots !== undefined)
+      this.#availableTimeSlots = config.availableTimeSlots;
   }
 
   /** Return the currently selected time slot, or null. */
@@ -124,32 +129,84 @@ export class CascadingFilterChips {
   }
 
   // -----------------------------------------------------------------------
-  // DOM helpers
+  // Slot filtering helpers
   // -----------------------------------------------------------------------
 
   /**
-   * Read the currently-selected student grade from the DOM.
-   * Returns a numeric grade (0-8) or null.
+   * Read the active chip value for a given dimension from the DOM.
+   * Returns the data-value of the active chip, or 'all'.
    */
-  #getSelectedStudentGrade(): number | null {
-    const studentSelect = document.getElementById(
-      'parent-student-select'
-    ) as HTMLSelectElement | null;
-    const selectedStudentId = studentSelect?.value;
-    if (!selectedStudentId) return null;
+  #getActiveChipValue(dimension: string): string {
+    const parentContainer = document.getElementById('parent-registration');
+    if (!parentContainer) return 'all';
+    const chip = parentContainer.querySelector(`.${dimension}-chip.active`) as HTMLElement | null;
+    return chip?.dataset.value || 'all';
+  }
 
-    const selectedStudent = this.#parentChildren.find((s: StudentLike) => {
-      const studentId = s.id;
-      return studentId && studentId.toString() === selectedStudentId.toString();
-    });
+  /**
+   * Filter the pre-computed slot array by all active selections upstream
+   * of the given dimension. Cascade order: instrument → day → length → instructor.
+   */
+  #applyUpstreamFilters(dimension: 'instrument' | 'day' | 'length' | 'instructor'): AvailableTimeSlot[] {
+    let filtered = this.#availableTimeSlots;
 
-    const grade = selectedStudent?.grade;
-    if (grade === null || grade === undefined) return null;
-    return typeof grade === 'number' ? grade : Number(grade);
+    // instrument has no upstream filters
+    if (dimension === 'instrument') return filtered;
+
+    const instrument = this.#getActiveChipValue('instrument');
+    if (instrument !== 'all') {
+      filtered = filtered.filter(s => s.instrument === instrument);
+    }
+
+    if (dimension === 'day') return filtered;
+
+    const day = this.#getActiveChipValue('day');
+    if (day !== 'all') {
+      filtered = filtered.filter(s => s.day === day);
+    }
+
+    if (dimension === 'length') return filtered;
+
+    const length = this.#getActiveChipValue('length');
+    if (length !== 'all') {
+      filtered = filtered.filter(s => s.length === parseInt(length));
+    }
+
+    // dimension === 'instructor' — all upstream filters applied
+    return filtered;
+  }
+
+  /**
+   * Filter the pre-computed slot array by ALL active selections (all four dimensions).
+   */
+  #applyAllFilters(): AvailableTimeSlot[] {
+    let filtered = this.#availableTimeSlots;
+
+    const instrument = this.#getActiveChipValue('instrument');
+    if (instrument !== 'all') {
+      filtered = filtered.filter(s => s.instrument === instrument);
+    }
+
+    const day = this.#getActiveChipValue('day');
+    if (day !== 'all') {
+      filtered = filtered.filter(s => s.day === day);
+    }
+
+    const length = this.#getActiveChipValue('length');
+    if (length !== 'all') {
+      filtered = filtered.filter(s => s.length === parseInt(length));
+    }
+
+    const instructor = this.#getActiveChipValue('instructor');
+    if (instructor !== 'all') {
+      filtered = filtered.filter(s => s.instructorId === instructor);
+    }
+
+    return filtered;
   }
 
   // -----------------------------------------------------------------------
-  // Chip generation
+  // Chip generation (filter + count on pre-computed slots)
   // -----------------------------------------------------------------------
 
   #generateInstrumentChips(): void {
@@ -171,21 +228,14 @@ export class CascadingFilterChips {
       parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null
     )?.dataset.value;
 
-    // Calculate availability for each instrument (no upstream filters — top of cascade)
-    const instrumentAvailabilityMap = calculateCascadingAvailability(
-      'instrument',
-      this.#instructors,
-      this.#registrations,
-      this.#nextTrimesterRegistrations,
-      this.#getSelectedStudentGrade(),
-      this.#selectedPreviousRegistrationId,
-      this.#isEnrollmentPeriod,
-      {}
-    );
+    // No upstream filters — count all slots by instrument
+    const slots = this.#applyUpstreamFilters('instrument');
+    const counts = new Map<string, number>();
     let totalSlots = 0;
-    instrumentAvailabilityMap.forEach(v => {
-      totalSlots += v.available;
-    });
+    for (const slot of slots) {
+      counts.set(slot.instrument, (counts.get(slot.instrument) || 0) + 1);
+      totalSlots++;
+    }
 
     // Create "All Instruments" chip
     const isAllDefault = !selectedInstrument || selectedInstrument === 'all';
@@ -199,11 +249,11 @@ export class CascadingFilterChips {
     instrumentContainer.appendChild(allChip);
 
     // Create individual instrument chips
-    const uniqueInstruments = Array.from(instrumentAvailabilityMap.keys()).sort();
+    const uniqueInstruments = Array.from(counts.keys()).sort();
     uniqueInstruments.forEach(instrument => {
-      const slots = instrumentAvailabilityMap.get(instrument)?.available || 0;
-      const chipText = `${instrument} (${slots} slots)`;
-      const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
+      const count = counts.get(instrument) || 0;
+      const chipText = `${instrument} (${count} slots)`;
+      const availability = count > 3 ? 'available' : count > 0 ? 'limited' : 'unavailable';
       const chip = createFilterChip('instrument', instrument, chipText, false, availability);
       instrumentContainer.appendChild(chip);
     });
@@ -223,27 +273,17 @@ export class CascadingFilterChips {
     const existingDayChips = dayContainer.querySelectorAll('.day-chip');
     existingDayChips.forEach(chip => chip.remove());
 
-    // Get current filter context — only consider upstream filters (instrument)
-    const selectedInstrument = (
-      parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null
-    )?.dataset.value;
     const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)
       ?.dataset.value;
 
-    const dayAvailabilityMap = calculateCascadingAvailability(
-      'day',
-      this.#instructors,
-      this.#registrations,
-      this.#nextTrimesterRegistrations,
-      this.#getSelectedStudentGrade(),
-      this.#selectedPreviousRegistrationId,
-      this.#isEnrollmentPeriod,
-      { instrument: selectedInstrument }
-    );
+    // Upstream filter: instrument
+    const slots = this.#applyUpstreamFilters('day');
+    const counts = new Map<string, number>();
     let totalSlots = 0;
-    dayAvailabilityMap.forEach(v => {
-      totalSlots += v.available;
-    });
+    for (const slot of slots) {
+      counts.set(slot.day, (counts.get(slot.day) || 0) + 1);
+      totalSlots++;
+    }
 
     const isAllDefault = !selectedDay || selectedDay === 'all';
     const allChip = createFilterChip(
@@ -259,9 +299,9 @@ export class CascadingFilterChips {
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
     days.forEach((day, index) => {
-      const slots = dayAvailabilityMap.get(day)?.available || 0;
-      const chipText = `${dayNames[index]} (${slots} slots)`;
-      const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
+      const count = counts.get(day) || 0;
+      const chipText = `${dayNames[index]} (${count} slots)`;
+      const availability = count > 3 ? 'available' : count > 0 ? 'limited' : 'unavailable';
       const chip = createFilterChip('day', day, chipText, false, availability);
       dayContainer.appendChild(chip);
     });
@@ -281,31 +321,19 @@ export class CascadingFilterChips {
     const existingLengthChips = lengthContainer.querySelectorAll('.length-chip');
     existingLengthChips.forEach(chip => chip.remove());
 
-    // Get current filter context — only consider upstream filters (instrument and day)
-    const selectedInstrument = (
-      parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null
-    )?.dataset.value;
-    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)
-      ?.dataset.value;
     const selectedLength = (
       parentContainer.querySelector('.length-chip.active') as HTMLElement | null
     )?.dataset.value;
 
-    const lengthAvailabilityMap = calculateCascadingAvailability(
-      'length',
-      this.#instructors,
-      this.#registrations,
-      this.#nextTrimesterRegistrations,
-      this.#getSelectedStudentGrade(),
-      this.#selectedPreviousRegistrationId,
-      this.#isEnrollmentPeriod,
-      { instrument: selectedInstrument, day: selectedDay }
-    );
-
+    // Upstream filters: instrument + day
+    const slots = this.#applyUpstreamFilters('length');
+    const counts = new Map<string, number>();
     let totalSlots = 0;
-    lengthAvailabilityMap.forEach(v => {
-      totalSlots += v.available;
-    });
+    for (const slot of slots) {
+      const key = String(slot.length);
+      counts.set(key, (counts.get(key) || 0) + 1);
+      totalSlots++;
+    }
 
     const isAllDefault = !selectedLength || selectedLength === 'all';
     const allChip = createFilterChip(
@@ -319,9 +347,9 @@ export class CascadingFilterChips {
 
     const standardLengths = [30, 45, 60];
     standardLengths.forEach(length => {
-      const slots = lengthAvailabilityMap.get(String(length))?.available || 0;
-      const chipText = `${length} min (${slots} slots)`;
-      const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
+      const count = counts.get(String(length)) || 0;
+      const chipText = `${length} min (${count} slots)`;
+      const availability = count > 3 ? 'available' : count > 0 ? 'limited' : 'unavailable';
       const chip = createFilterChip('length', length.toString(), chipText, false, availability);
       lengthContainer.appendChild(chip);
     });
@@ -353,37 +381,18 @@ export class CascadingFilterChips {
     const existingInstructorChips = instructorContainer.querySelectorAll('.instructor-chip');
     existingInstructorChips.forEach(chip => chip.remove());
 
-    // Get current filter context — only consider upstream filters (instrument, day, length)
-    const selectedInstrument = (
-      parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null
-    )?.dataset.value;
-    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)
-      ?.dataset.value;
-    const selectedLength = (
-      parentContainer.querySelector('.length-chip.active') as HTMLElement | null
-    )?.dataset.value;
     const selectedInstructor = (
       parentContainer.querySelector('.instructor-chip.active') as HTMLElement | null
     )?.dataset.value;
 
-    const instructorAvailabilityMap = calculateCascadingAvailability(
-      'instructor',
-      this.#instructors,
-      this.#registrations,
-      this.#nextTrimesterRegistrations,
-      this.#getSelectedStudentGrade(),
-      this.#selectedPreviousRegistrationId,
-      this.#isEnrollmentPeriod,
-      {
-        instrument: selectedInstrument,
-        day: selectedDay,
-        length: selectedLength ? parseInt(selectedLength) : undefined,
-      }
-    );
+    // Upstream filters: instrument + day + length
+    const slots = this.#applyUpstreamFilters('instructor');
+    const counts = new Map<string, number>();
     let totalSlots = 0;
-    instructorAvailabilityMap.forEach(v => {
-      totalSlots += v.available;
-    });
+    for (const slot of slots) {
+      counts.set(slot.instructorId, (counts.get(slot.instructorId) || 0) + 1);
+      totalSlots++;
+    }
 
     // Create "All Instructors" chip
     const isAllDefault = !selectedInstructor || selectedInstructor === 'all';
@@ -396,23 +405,48 @@ export class CascadingFilterChips {
     );
     instructorContainer.appendChild(allChip);
 
-    // Create individual instructor chips (filtered by student grade)
+    // Create individual instructor chips (filtered by student grade for display)
     const studentGrade = this.#getSelectedStudentGrade();
     const eligibleInstructors = this.#instructors.filter((instructor: InstructorLike) =>
       isInstructorGradeEligible(instructor, studentGrade)
     );
 
     eligibleInstructors.forEach((instructor: InstructorLike) => {
-      const slots = instructorAvailabilityMap.get(instructor.id)?.available || 0;
-      const chipText = `${instructor.firstName} ${instructor.lastName} (${slots} slots)`;
-      const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
+      const count = counts.get(instructor.id) || 0;
+      const chipText = `${instructor.firstName} ${instructor.lastName} (${count} slots)`;
+      const availability = count > 3 ? 'available' : count > 0 ? 'limited' : 'unavailable';
       const chip = createFilterChip('instructor', instructor.id, chipText, false, availability);
       instructorContainer.appendChild(chip);
     });
   }
 
   // -----------------------------------------------------------------------
-  // Time slot generation
+  // DOM helpers
+  // -----------------------------------------------------------------------
+
+  /**
+   * Read the currently-selected student grade from the DOM.
+   * Returns a numeric grade (0-8) or null.
+   */
+  #getSelectedStudentGrade(): number | null {
+    const studentSelect = document.getElementById(
+      'parent-student-select'
+    ) as HTMLSelectElement | null;
+    const selectedStudentId = studentSelect?.value;
+    if (!selectedStudentId) return null;
+
+    const selectedStudent = this.#parentChildren.find((s: StudentLike) => {
+      const studentId = s.id;
+      return studentId && studentId.toString() === selectedStudentId.toString();
+    });
+
+    const grade = selectedStudent?.grade;
+    if (grade === null || grade === undefined) return null;
+    return typeof grade === 'number' ? grade : Number(grade);
+  }
+
+  // -----------------------------------------------------------------------
+  // Time slot generation (filter pre-computed slots, group by instructor)
   // -----------------------------------------------------------------------
 
   #generateTimeSlots(): void {
@@ -426,26 +460,24 @@ export class CascadingFilterChips {
     const existingCards = timeslotGrid.querySelectorAll('.instructor-card');
     existingCards.forEach(card => card.remove());
 
-    // Filter instructors by student grade eligibility
-    const studentGrade = this.#getSelectedStudentGrade();
-    const eligibleInstructors = this.#instructors.filter((instructor: InstructorLike) =>
-      isInstructorGradeEligible(instructor, studentGrade)
-    );
-
-    // Generate cards for each eligible instructor
-    eligibleInstructors.forEach((instructor: InstructorLike) => {
-      const timeSlots = generateInstructorTimeSlots(
-        instructor,
-        this.#registrations,
-        this.#nextTrimesterRegistrations,
-        this.#selectedPreviousRegistrationId,
-        this.#isEnrollmentPeriod
-      );
-      if (timeSlots.length > 0) {
-        const card = createInstructorCard(instructor, timeSlots);
-        timeslotGrid.appendChild(card);
+    // Group all slots by instructorId
+    const slotsByInstructor = new Map<string, AvailableTimeSlot[]>();
+    for (const slot of this.#availableTimeSlots) {
+      const existing = slotsByInstructor.get(slot.instructorId);
+      if (existing) {
+        existing.push(slot);
+      } else {
+        slotsByInstructor.set(slot.instructorId, [slot]);
       }
-    });
+    }
+
+    // Render a card for each instructor that has slots
+    for (const [instructorId, slots] of slotsByInstructor) {
+      const instructor = this.#instructors.find(i => i.id === instructorId);
+      if (!instructor) continue;
+      const card = createInstructorCard(instructor, slots);
+      timeslotGrid.appendChild(card);
+    }
 
     // Attach listeners after generating
     this.#attachTimeSlotListeners();
@@ -501,7 +533,6 @@ export class CascadingFilterChips {
         clearTimeout(this.#regenerateTimeout);
         this.#regenerateTimeout = setTimeout(() => {
           this.#regenerateFilteredTimeSlots();
-          this.#filterTimeSlots();
         }, 50);
       });
       chip.dataset.listenerAttached = 'true';
@@ -568,42 +599,6 @@ export class CascadingFilterChips {
     this.#attachFilterChipListeners();
   }
 
-  #filterTimeSlots(): void {
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) return;
-
-    const selectedInstructor =
-      (parentContainer.querySelector('.instructor-chip.active') as HTMLElement | null)?.dataset
-        .value || 'all';
-    const selectedDay =
-      (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value ||
-      'all';
-    const selectedLength =
-      (parentContainer.querySelector('.length-chip.active') as HTMLElement | null)?.dataset.value ||
-      'all';
-    const selectedInstrument =
-      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset
-        .value || 'all';
-
-    const timeSlots = parentContainer.querySelectorAll('.timeslot');
-
-    timeSlots.forEach((_slot: Element) => {
-      const slot = _slot as HTMLElement;
-      let show = true;
-
-      if (selectedInstructor !== 'all' && slot.dataset.instructorId !== selectedInstructor)
-        show = false;
-      if (selectedDay !== 'all' && slot.dataset.day !== selectedDay) show = false;
-      if (selectedLength !== 'all' && slot.dataset.length !== selectedLength) show = false;
-      if (selectedInstrument !== 'all' && slot.dataset.instrument !== selectedInstrument)
-        show = false;
-
-      slot.style.display = show ? 'block' : 'none';
-    });
-
-    this.#updateInstructorCardVisibility();
-  }
-
   #regenerateFilteredTimeSlots(): void {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
@@ -613,64 +608,32 @@ export class CascadingFilterChips {
 
     // Store current selection before regenerating
     const currentSelection = this.#selectedLesson;
-    console.log('Regenerating slots, preserving selection:', currentSelection);
 
-    // Get current filter selections
-    const selectedInstructor =
-      (parentContainer.querySelector('.instructor-chip.active') as HTMLElement | null)?.dataset
-        .value || 'all';
-    const selectedDay =
-      (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value ||
-      'all';
-    const selectedInstrument =
-      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset
-        .value || 'all';
-    const selectedLength =
-      (parentContainer.querySelector('.length-chip.active') as HTMLElement | null)?.dataset.value ||
-      'all';
+    // Filter pre-computed slots by all active selections
+    const filteredSlots = this.#applyAllFilters();
 
     // Clear existing instructor cards
     const existingCards = timeslotGrid.querySelectorAll('.instructor-card');
     existingCards.forEach(card => card.remove());
 
-    // Determine which instructors to include (filter by student grade first)
-    const studentGrade = this.#getSelectedStudentGrade();
-    let instructorsToInclude = this.#instructors.filter(inst =>
-      isInstructorGradeEligible(inst, studentGrade)
-    );
-
-    // Filter by selected instructor
-    if (selectedInstructor !== 'all') {
-      instructorsToInclude = instructorsToInclude.filter(i => i.id === selectedInstructor);
-    }
-
-    // Filter by selected instrument (using shared engine function)
-    if (selectedInstrument !== 'all') {
-      instructorsToInclude = filterByInstrument(instructorsToInclude, selectedInstrument);
-    }
-
-    // Generate cards for filtered instructors using the canonical engine function
-    instructorsToInclude.forEach((instructor: InstructorLike) => {
-      let timeSlots = generateInstructorTimeSlots(
-        instructor,
-        this.#registrations,
-        this.#nextTrimesterRegistrations,
-        this.#selectedPreviousRegistrationId,
-        this.#isEnrollmentPeriod
-      );
-
-      // Apply cascading filter selections
-      if (selectedDay !== 'all') timeSlots = timeSlots.filter(s => s.day === selectedDay);
-      if (selectedInstrument !== 'all')
-        timeSlots = timeSlots.filter(s => s.instrument === selectedInstrument);
-      if (selectedLength !== 'all')
-        timeSlots = timeSlots.filter(s => s.length === parseInt(selectedLength));
-
-      if (timeSlots.length > 0) {
-        const card = createInstructorCard(instructor, timeSlots);
-        timeslotGrid.appendChild(card);
+    // Group filtered slots by instructorId
+    const slotsByInstructor = new Map<string, AvailableTimeSlot[]>();
+    for (const slot of filteredSlots) {
+      const existing = slotsByInstructor.get(slot.instructorId);
+      if (existing) {
+        existing.push(slot);
+      } else {
+        slotsByInstructor.set(slot.instructorId, [slot]);
       }
-    });
+    }
+
+    // Render a card for each instructor that has matching slots
+    for (const [instructorId, slots] of slotsByInstructor) {
+      const instructor = this.#instructors.find(i => i.id === instructorId);
+      if (!instructor) continue;
+      const card = createInstructorCard(instructor, slots);
+      timeslotGrid.appendChild(card);
+    }
 
     // Attach listeners after generating
     this.#attachTimeSlotListeners();
@@ -705,8 +668,6 @@ export class CascadingFilterChips {
       slot.addEventListener('click', (event: Event) => {
         event.preventDefault();
         event.stopPropagation();
-
-        console.log('Time slot clicked:', slot.dataset);
 
         // Remove previous selection and reset styling for all slots
         parentContainer.querySelectorAll('.timeslot').forEach((_s: Element) => {
@@ -750,8 +711,6 @@ export class CascadingFilterChips {
           instrument: instrument,
         };
 
-        console.log('Selected lesson stored:', this.#selectedLesson);
-
         // Update the selection display
         this.#updateSelectionDisplay(slot);
 
@@ -782,54 +741,21 @@ export class CascadingFilterChips {
       // Notify the parent form
       this.#onTimeSlotSelected(this.#selectedLesson);
 
-      console.log('Time slot selection restored:', selectionData);
     } else {
-      console.log(
-        'Could not restore time slot selection - slot no longer available:',
-        selectionData
-      );
       const stillAvailableSlot = document.querySelector(
         `.timeslot[data-instructor-id="${selectionData.instructorId}"][data-day="${selectionData.day}"][data-time="${selectionData.time}"][data-length="${selectionData.length}"][data-instrument="${selectionData.instrument}"]`
       ) as HTMLElement | null;
 
       if (!stillAvailableSlot) {
-        console.log('Confirmed: slot no longer exists in DOM, clearing selection');
         this.#selectedLesson = null;
         this.#onTimeSlotSelected(null);
       } else {
-        console.log('Slot still exists in DOM, keeping selection but re-selecting it');
         stillAvailableSlot.classList.add('selected');
         stillAvailableSlot.style.border = '3px solid #1976d2';
         stillAvailableSlot.style.background = '#e3f2fd';
         this.#updateSelectionDisplay(stillAvailableSlot);
       }
     }
-  }
-
-  #updateInstructorCardVisibility(): void {
-    const parentContainer = document.getElementById('parent-registration');
-    if (!parentContainer) return;
-
-    const instructorCards = parentContainer.querySelectorAll('.instructor-card');
-
-    instructorCards.forEach((_card: Element) => {
-      const card = _card as HTMLElement;
-      const visibleSlots = card.querySelectorAll(
-        '.timeslot[style*="display: block"], .timeslot:not([style*="display: none"])'
-      );
-      const availableCount = visibleSlots.length;
-
-      const availabilitySpan = card.querySelector('h6 span') as HTMLElement | null;
-      if (availabilitySpan) {
-        availabilitySpan.textContent = `${availableCount} available`;
-        availabilitySpan.style.background =
-          availableCount > 3 ? '#e8f5e8' : availableCount > 0 ? '#fff3e0' : '#ffebee';
-        availabilitySpan.style.color =
-          availableCount > 3 ? '#4caf50' : availableCount > 0 ? '#ff9800' : '#f44336';
-      }
-
-      card.style.display = availableCount > 0 ? 'block' : 'none';
-    });
   }
 
   #updateSelectionDisplay(slot: HTMLElement): void {
@@ -875,7 +801,6 @@ export class CascadingFilterChips {
 
     ModalKeyboardHandler.attachTimeSlotKeyboardHandlers(parentContainer, {
       onConfirm: (_event: KeyboardEvent, _selectedSlot: Element) => {
-        console.log('Time slot keyboard: Enter pressed on selected slot');
         const submitButton = document.getElementById(
           'parent-confirm-registration-btn'
         ) as HTMLButtonElement | null;
@@ -884,7 +809,6 @@ export class CascadingFilterChips {
         }
       },
       onCancel: (_event: KeyboardEvent) => {
-        console.log('Time slot keyboard: ESC pressed, clearing selection');
         this.#clearTimeSlotSelection();
         this.#onTimeSlotSelected(null);
         const submitButton = document.getElementById(

@@ -6,7 +6,8 @@
  * These are stateless — they take data and return DOM nodes.
  */
 
-import type { InstructorLike, TimeSlot } from '../../types/registrationTypes.js';
+import type { InstructorLike } from '../../types/registrationTypes.js';
+import type { AvailableTimeSlot } from '../../../../models/shared/availableTimeSlot.js';
 
 /**
  * Create a filter chip element with availability-based styling
@@ -81,10 +82,10 @@ export function createFilterChip(
 /**
  * Create a time slot element
  */
-export function createTimeSlotElement(slot: TimeSlot): HTMLDivElement {
+export function createTimeSlotElement(slot: AvailableTimeSlot): HTMLDivElement {
   const element = document.createElement('div');
   element.className = 'timeslot available';
-  element.dataset.instructorId = slot.instructor!.id;
+  element.dataset.instructorId = slot.instructorId;
   element.dataset.day = slot.day;
   element.dataset.time = slot.time;
   element.dataset.length = String(slot.length);
@@ -107,7 +108,7 @@ export function createTimeSlotElement(slot: TimeSlot): HTMLDivElement {
  */
 export function createInstructorCard(
   instructor: InstructorLike,
-  timeSlots: TimeSlot[]
+  timeSlots: AvailableTimeSlot[]
 ): HTMLDivElement {
   const card = document.createElement('div');
   card.className = 'instructor-card';

@@ -16,6 +16,7 @@ import { INTENT_TYPES } from '../constants/intentTypes.js';
 import { UserType } from '../config/constants.js';
 import { RegistrationService } from '../services/registrationService.js';
 import { isValidTrimester, TRIMESTER_SEQUENCE } from '../utils/values/trimester.js';
+import { DEFAULT_REGISTRATION_CONFIG } from '../models/shared/responses/appConfigurationResponse.js';
 
 const logger = getLogger();
 
@@ -523,6 +524,8 @@ export class RegistrationController {
       }
 
       const queryService = serviceContainer.get(ServiceKeys.entityQueryService);
+      const availabilityService = serviceContainer.get(ServiceKeys.availabilityService);
+      const excludeRegistrationId = asString(req.query.excludeRegistrationId) || null;
 
       // Fetch parent's students + registrations for the provided trimester + instructors + classes
       const [parentStudents, registrations, instructors, classes] = await Promise.all([
@@ -532,11 +535,25 @@ export class RegistrationController {
         queryService.getClasses(),
       ]);
 
+      // Extract unique grades from parent's children for grade-keyed availability
+      const uniqueGrades = [
+        ...new Set(parentStudents.map(s => s.grade ?? null)),
+      ];
+
+      const availableTimeSlots = availabilityService.computeAvailableTimeSlots(
+        instructors,
+        registrations,
+        uniqueGrades,
+        DEFAULT_REGISTRATION_CONFIG.lessonLengths,
+        excludeRegistrationId
+      );
+
       const responseData = {
         instructors,
         students: parentStudents,
         classes,
         registrations,
+        availableTimeSlots,
       };
 
       successResponse(res, responseData, {

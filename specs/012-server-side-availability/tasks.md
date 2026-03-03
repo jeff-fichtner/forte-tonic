@@ -13,8 +13,8 @@
 
 **Purpose**: Shared type and service registration — no behavior changes yet
 
-- [ ] T001 [P] Create `AvailableTimeSlot` interface in `src/models/shared/availableTimeSlot.ts` per data-model.md (fields: instructorId, day, dayName, time, timeFormatted, length, instrument)
-- [ ] T002 [P] Add `export type { AvailableTimeSlot }` re-export to `src/models/shared/index.ts`
+- [x] T001 [P] Create `AvailableTimeSlot` interface in `src/models/shared/availableTimeSlot.ts` per data-model.md (fields: instructorId, day, dayName, time, timeFormatted, length, instrument)
+- [x] T002 [P] Add `export type { AvailableTimeSlot }` re-export to `src/models/shared/index.ts`
 
 ---
 
@@ -24,9 +24,9 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Create `AvailabilityService` class in `src/services/availabilityService.ts` with `computeAvailableTimeSlots(instructors, registrations, studentGrades, lessonLengths, excludeRegistrationId)` method. Port algorithm from client-side `generateInstructorTimeSlots()` + `isInstructorGradeEligible()` in `src/web/js/utilities/registrationForm/availabilityEngine.ts`. Reuse `RegistrationService.timeToMinutes()` and `RegistrationService.timesOverlap()` for time parsing and conflict detection. Include private helpers `formatTimeFromMinutes()` and `formatDisplayTime()` for slot display fields. Return `Record<string, AvailableTimeSlot[]>` keyed by `String(grade)`. See plan.md Phase 1b for full algorithm.
-- [ ] T004 Register `AvailabilityService` in `src/infrastructure/container/serviceContainer.ts`: add to `ServiceMap` interface, `ServiceKeys` array, and `#registerServices()` factory. No constructor dependencies.
-- [ ] T005 Create `tests/unit/services/availabilityService.test.ts` with test cases: grade eligibility filtering, time conflict detection, slot generation with various instructor schedules, multi-grade keying, `excludeRegistrationId` exclusion, null grade key, empty instructors/registrations edge cases. Use test data factory pattern (`makeInstructor()`, `makeRegistration()`) matching existing patterns in `tests/unit/web/availabilityEngine.test.ts`.
+- [x] T003 Create `AvailabilityService` class in `src/services/availabilityService.ts` with `computeAvailableTimeSlots(instructors, registrations, studentGrades, lessonLengths, excludeRegistrationId)` method. Port algorithm from client-side `generateInstructorTimeSlots()` + `isInstructorGradeEligible()` in `src/web/js/utilities/registrationForm/availabilityEngine.ts`. Reuse `RegistrationService.timeToMinutes()` and `RegistrationService.timesOverlap()` for time parsing and conflict detection. Include private helpers `formatTimeFromMinutes()` and `formatDisplayTime()` for slot display fields. Return `Record<string, AvailableTimeSlot[]>` keyed by `String(grade)`. See plan.md Phase 1b for full algorithm.
+- [x] T004 Register `AvailabilityService` in `src/infrastructure/container/serviceContainer.ts`: add to `ServiceMap` interface, `ServiceKeys` array, and `#registerServices()` factory. No constructor dependencies.
+- [x] T005 Create `tests/unit/services/availabilityService.test.ts` with test cases: grade eligibility filtering, time conflict detection, slot generation with various instructor schedules, multi-grade keying, `excludeRegistrationId` exclusion, null grade key, empty instructors/registrations edge cases. Use test data factory pattern (`makeInstructor()`, `makeRegistration()`) matching existing patterns in `tests/unit/web/availabilityEngine.test.ts`.
 
 **Checkpoint**: `AvailabilityService` exists with passing tests. No endpoint or client changes yet.
 
@@ -42,22 +42,22 @@
 
 ### Server — Endpoint Integration
 
-- [ ] T006 [US1] Modify `getParentRegistrationTabData()` in `src/controllers/registrationController.ts`: after the existing `Promise.all` fetch, extract unique grades from `parentStudents`, read optional `excludeRegistrationId` from `req.query`, call `availabilityService.computeAvailableTimeSlots()` with fetched instructors, the correct trimester's registrations (current trimester during registration periods, next trimester during enrollment — per existing endpoint logic and FR-010), unique grades, and lesson lengths from `registrationConfig` (same source as `userController.ts` line 79 — not a hardcoded duplicate), include `availableTimeSlots` in response data object.
-- [ ] T007 [US1] Update integration test in `tests/integration/registrationController.test.ts`: add test case for `GET /api/parent/tabs/registration/:trimester` asserting response includes `availableTimeSlots` field with correct shape (`Record<string, AvailableTimeSlot[]>`).
+- [x] T006 [US1] Modify `getParentRegistrationTabData()` in `src/controllers/registrationController.ts`: after the existing `Promise.all` fetch, extract unique grades from `parentStudents`, read optional `excludeRegistrationId` from `req.query`, call `availabilityService.computeAvailableTimeSlots()` with fetched instructors, the correct trimester's registrations (current trimester during registration periods, next trimester during enrollment — per existing endpoint logic and FR-010), unique grades, and lesson lengths from `registrationConfig` (same source as `userController.ts` line 79 — not a hardcoded duplicate), include `availableTimeSlots` in response data object.
+- [x] T007 [US1] Update integration test in `tests/integration/registrationController.test.ts`: add test case for `GET /api/parent/tabs/registration/:trimester` asserting response includes `availableTimeSlots` field with correct shape (`Record<string, AvailableTimeSlot[]>`).
 
 ### Client — Data Pipeline
 
-- [ ] T008 [US1] Update `src/web/js/tabs/parentRegistrationTab.ts`: add `availableTimeSlots: Record<string, AvailableTimeSlot[]>` to `RegistrationTabData` and `RegistrationApiResponse` interfaces. Pass `availableTimeSlots` to `ParentRegistrationForm` constructor and `updateData()`.
-- [ ] T009 [US1] Update `src/web/js/workflows/parentRegistrationForm.ts`: accept `availableTimeSlots: Record<string, AvailableTimeSlot[]>` in constructor and `updateData()`. Store as instance property. When student changes, look up `availableTimeSlots[String(selectedStudent.grade)]` and pass grade-specific array to `CascadingFilterChips`. Pass `instructors` array to `CascadingFilterChips` for name display on cards.
+- [x] T008 [US1] Update `src/web/js/tabs/parentRegistrationTab.ts`: add `availableTimeSlots: Record<string, AvailableTimeSlot[]>` to `RegistrationTabData` and `RegistrationApiResponse` interfaces. Pass `availableTimeSlots` to `ParentRegistrationForm` constructor and `updateData()`.
+- [x] T009 [US1] Update `src/web/js/workflows/parentRegistrationForm.ts`: accept `availableTimeSlots: Record<string, AvailableTimeSlot[]>` in constructor and `updateData()`. Store as instance property. When student changes, look up `availableTimeSlots[String(selectedStudent.grade)]` and pass grade-specific array to `CascadingFilterChips`. Pass `instructors` array to `CascadingFilterChips` for name display on cards.
 
 ### Client — Cascading Filter Chips Rewrite
 
-- [ ] T010 [US1] Rewrite computation logic in `src/web/js/components/registrationForm/cascadingFilterChips.ts`: add `availableTimeSlots: AvailableTimeSlot[]` and `instructors: InstructorLike[]` to config. Add instance state for selections (`#selectedInstrument`, `#selectedDay`, `#selectedLength`, `#selectedInstructor`). Add `#applyUpstreamFilters(dimension)` helper. Replace all `calculateCascadingAvailability()` and `generateInstructorTimeSlots()` calls with flat array filter+count operations per plan.md Phase 2c. Keep existing DOM rendering functions (`createFilterChip()`, `createInstructorCard()`, chip click handlers, cascading reset logic) unchanged.
+- [x] T010 [US1] Rewrite computation logic in `src/web/js/components/registrationForm/cascadingFilterChips.ts`: add `availableTimeSlots: AvailableTimeSlot[]` and `instructors: InstructorLike[]` to config. Add instance state for selections (`#selectedInstrument`, `#selectedDay`, `#selectedLength`, `#selectedInstructor`). Add `#applyUpstreamFilters(dimension)` helper. Replace all `calculateCascadingAvailability()` and `generateInstructorTimeSlots()` calls with flat array filter+count operations per plan.md Phase 2c. Keep existing DOM rendering functions (`createFilterChip()`, `createInstructorCard()`, chip click handlers, cascading reset logic) unchanged.
 
 ### Client — Dead Code Removal
 
-- [ ] T011 [US1] Remove server-ported functions from `src/web/js/utilities/registrationForm/availabilityEngine.ts`: delete `calculateCascadingAvailability()`, `generateInstructorTimeSlots()`, `checkTimeSlotConflict()`, `calculateAvailableSlotsForDay()`, `getDimensionKeys()`, `getInstructorInstruments()`, `getFilteredRegistrationsForConflictCheck()`. Keep `isInstructorGradeEligible()`, `filterByInstrument()`, `getRegistrationDayName()`, `isInstructorAvailableOnDay()` (only if still referenced).
-- [ ] T012 [US1] Update `tests/unit/web/availabilityEngine.test.ts`: remove test suites for deleted functions. Keep tests for retained functions (`isInstructorGradeEligible`, `filterByInstrument`, etc.).
+- [x] T011 [US1] Remove server-ported functions from `src/web/js/utilities/registrationForm/availabilityEngine.ts`: delete `calculateCascadingAvailability()`, `generateInstructorTimeSlots()`, `checkTimeSlotConflict()`, `calculateAvailableSlotsForDay()`, `getDimensionKeys()`, `getInstructorInstruments()`, `getFilteredRegistrationsForConflictCheck()`. Keep `isInstructorGradeEligible()`, `filterByInstrument()`, `getRegistrationDayName()`, `isInstructorAvailableOnDay()` (only if still referenced).
+- [x] T012 [US1] Update `tests/unit/web/availabilityEngine.test.ts`: remove test suites for deleted functions. Keep tests for retained functions (`isInstructorGradeEligible`, `filterByInstrument`, etc.).
 
 **Checkpoint**: Parent registration tab loads with server-computed slots. Chips filter locally. All unit and integration tests pass. `npm run build:frontend` succeeds.
 
@@ -69,7 +69,7 @@
 
 **Independent Test**: Log in as parent with children in different grades. Switch between children. Verify chip counts and visible instructors change. Verify no network requests fire.
 
-- [ ] T013 [US2] Verify student-switch behavior in `src/web/js/workflows/parentRegistrationForm.ts`: confirm that the student-change handler looks up `availableTimeSlots[String(grade)]` for the newly selected student and passes the grade-specific array to `CascadingFilterChips`. Confirm all filter selections and time slot grid are reset on student switch. If a modify-registration was active (excludeRegistrationId), switching students must clear that state and revert to the original (non-excluded) slot data. Add or adjust logic if the existing student-change handler does not already trigger chip re-initialization with the new slot array.
+- [x] T013 [US2] Verify student-switch behavior in `src/web/js/workflows/parentRegistrationForm.ts`: confirm that the student-change handler looks up `availableTimeSlots[String(grade)]` for the newly selected student and passes the grade-specific array to `CascadingFilterChips`. Confirm all filter selections and time slot grid are reset on student switch. If a modify-registration was active (excludeRegistrationId), switching students must clear that state and revert to the original (non-excluded) slot data. Add or adjust logic if the existing student-change handler does not already trigger chip re-initialization with the new slot array.
 
 **Checkpoint**: Switching students updates chips with grade-appropriate data. No network requests on switch.
 
@@ -81,8 +81,8 @@
 
 **Independent Test**: During enrollment period, select "Modify" from dropdown. Verify one network request fires with `excludeRegistrationId` param. Verify parent's current slot appears in the available grid.
 
-- [ ] T014 [US3] Add re-fetch method to `src/web/js/tabs/parentRegistrationTab.ts`: when a modify-registration is selected, re-fetch the same endpoint with `?excludeRegistrationId=<id>` appended. Update `availableTimeSlots` in stored data and push to `ParentRegistrationForm.updateData()`. Provide a callback to `ParentRegistrationForm` for triggering the re-fetch.
-- [ ] T015 [US3] Update `src/web/js/workflows/parentRegistrationForm.ts`: when modify-registration is selected from the dropdown, call the tab-level re-fetch callback. When re-fetch completes and `updateData()` is called with new slot data, re-initialize `CascadingFilterChips` with updated slots. When "Create New" is selected, revert to original slot data (no exclusion).
+- [x] T014 [US3] Add re-fetch method to `src/web/js/tabs/parentRegistrationTab.ts`: when a modify-registration is selected, re-fetch the same endpoint with `?excludeRegistrationId=<id>` appended. Update `availableTimeSlots` in stored data and push to `ParentRegistrationForm.updateData()`. Provide a callback to `ParentRegistrationForm` for triggering the re-fetch.
+- [x] T015 [US3] Update `src/web/js/workflows/parentRegistrationForm.ts`: when modify-registration is selected from the dropdown, call the tab-level re-fetch callback. When re-fetch completes and `updateData()` is called with new slot data, re-initialize `CascadingFilterChips` with updated slots. When "Create New" is selected, revert to original slot data (no exclusion).
 
 **Checkpoint**: Modify-registration triggers re-fetch with exclusion. Chips update with freed slots. "Create New" reverts to full conflict set.
 
@@ -92,8 +92,8 @@
 
 **Purpose**: Documentation and final validation
 
-- [ ] T016 [P] Update Postman collection in `scripts/postman/tonic-api.postman_collection.json`: document `excludeRegistrationId` query parameter and `availableTimeSlots` response field on the parent registration tab endpoint.
-- [ ] T017 Run `quickstart.md` validation: execute all verification steps from `specs/012-server-side-availability/quickstart.md` (run tests, build frontend, manual verification of chips, network activity, student switching, modify-registration flow).
+- [x] T016 [P] Update Postman collection in `scripts/postman/tonic-api.postman_collection.json`: document `excludeRegistrationId` query parameter and `availableTimeSlots` response field on the parent registration tab endpoint.
+- [x] T017 Run `quickstart.md` validation: execute all verification steps from `specs/012-server-side-availability/quickstart.md` (run tests, build frontend, manual verification of chips, network activity, student switching, modify-registration flow).
 
 ---
 

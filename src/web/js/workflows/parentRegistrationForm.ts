@@ -15,6 +15,7 @@ import type {
   RegistrationSubmitData,
   TimeSlot,
 } from '../types/registrationTypes.js';
+import type { AvailableTimeSlot } from '../../../models/shared/availableTimeSlot.js';
 import { CascadingFilterChips } from '../components/registrationForm/cascadingFilterChips.js';
 import { ParentGroupRegistration } from '../components/registrationForm/parentGroupRegistration.js';
 import { ParentPrivateSubmission } from '../components/registrationForm/parentPrivateSubmission.js';
@@ -40,6 +41,8 @@ export class ParentRegistrationForm {
   parentChildren: StudentLike[];
   currentTrimesterRegistrations: RegistrationLike[];
   nextTrimesterRegistrations: RegistrationLike[];
+  availableTimeSlots: Record<string, AvailableTimeSlot[]>;
+  #onRefetchAvailability: ((excludeId: string | null) => Promise<void>) | null;
   selectedLesson: TimeSlot | null;
   _selectedPreviousRegistrationId: string | null;
   cascadingFilterChips: CascadingFilterChips | null;
@@ -56,7 +59,9 @@ export class ParentRegistrationForm {
     nextTrimesterRegistrations: RegistrationLike[],
     sendDataFunction: (data: RegistrationSubmitData) => Promise<unknown>,
     parentChildren: StudentLike[] = [],
-    currentTrimesterRegistrations: RegistrationLike[] = []
+    currentTrimesterRegistrations: RegistrationLike[] = [],
+    availableTimeSlots: Record<string, AvailableTimeSlot[]> = {},
+    onRefetchAvailability: ((excludeId: string | null) => Promise<void>) | null = null
   ) {
     this.instructors = instructors;
     this.students = students;
@@ -66,6 +71,8 @@ export class ParentRegistrationForm {
     this.parentChildren = parentChildren || [];
     this.currentTrimesterRegistrations = currentTrimesterRegistrations || [];
     this.nextTrimesterRegistrations = nextTrimesterRegistrations || [];
+    this.availableTimeSlots = availableTimeSlots || {};
+    this.#onRefetchAvailability = onRefetchAvailability;
 
     // Initialize basic properties
     this.selectedLesson = null;
@@ -89,7 +96,8 @@ export class ParentRegistrationForm {
     classes: ClassLike[],
     nextTrimesterRegistrations: RegistrationLike[],
     parentChildren: StudentLike[],
-    currentTrimesterRegistrations: RegistrationLike[] = []
+    currentTrimesterRegistrations: RegistrationLike[] = [],
+    availableTimeSlots: Record<string, AvailableTimeSlot[]> = {}
   ): void {
     this.instructors = instructors;
     this.students = students;
@@ -98,6 +106,7 @@ export class ParentRegistrationForm {
     this.parentChildren = parentChildren || [];
     this.currentTrimesterRegistrations = currentTrimesterRegistrations || [];
     this.nextTrimesterRegistrations = nextTrimesterRegistrations || [];
+    this.availableTimeSlots = availableTimeSlots || {};
 
     // Refresh the interface with new data by re-running initialization
     this.#refreshInterface();
@@ -125,6 +134,7 @@ export class ParentRegistrationForm {
         selectedPreviousRegistrationId: this._selectedPreviousRegistrationId,
         isEnrollmentPeriod: this._isEnrollmentPeriodActive(),
         parentChildren: this.parentChildren,
+        availableTimeSlots: this.getSlotsForSelectedStudent(),
       });
       this.cascadingFilterChips.refreshChips();
     }
@@ -162,6 +172,7 @@ export class ParentRegistrationForm {
       selectedPreviousRegistrationId: this._selectedPreviousRegistrationId,
       isEnrollmentPeriod: this._isEnrollmentPeriodActive(),
       parentChildren: this.parentChildren,
+      availableTimeSlots: this.getSlotsForSelectedStudent(),
       onTimeSlotSelected: (slot: TimeSlot | null) => {
         this.selectedLesson = slot;
       },
@@ -305,6 +316,7 @@ export class ParentRegistrationForm {
             this.cascadingFilterChips.updateData({
               selectedPreviousRegistrationId: this._selectedPreviousRegistrationId,
               isEnrollmentPeriod: this._isEnrollmentPeriodActive(),
+              availableTimeSlots: this.getSlotsForSelectedStudent(),
             });
             this.cascadingFilterChips.refreshChips();
             this.cascadingFilterChips.clearSelection();
@@ -648,12 +660,30 @@ export class ParentRegistrationForm {
     const selectedId = (event.target as HTMLSelectElement).value;
 
     if (!selectedId) {
-      // "Create New" selected - clear tracking
+      // "Create New" selected - clear tracking and revert to full conflict set
       this._selectedPreviousRegistrationId = null;
+      this.#onRefetchAvailability?.(null);
     } else {
-      // Existing registration selected - track for linking only (don't prefill form)
+      // Existing registration selected - track for linking and re-fetch with exclusion
       this._selectedPreviousRegistrationId = selectedId;
+      this.#onRefetchAvailability?.(selectedId);
     }
+  }
+
+  /**
+   * Get the pre-computed time slots for the currently selected student's grade.
+   */
+  getSlotsForSelectedStudent(): AvailableTimeSlot[] {
+    const studentSelect = document.getElementById(
+      'parent-student-select'
+    ) as HTMLSelectElement | null;
+    const selectedStudentId = studentSelect?.value;
+    if (!selectedStudentId) return [];
+
+    const student = this.parentChildren.find(s => s.id === selectedStudentId);
+    const grade = student?.grade;
+    const gradeKey = String(grade ?? 'null');
+    return this.availableTimeSlots[gradeKey] || [];
   }
 
   /**

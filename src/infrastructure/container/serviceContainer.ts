@@ -27,6 +27,7 @@ import { RegistrationService } from '../../services/registrationService.js';
 import { PeriodService } from '../../services/periodService.js';
 import { DropRequestService } from '../../services/dropRequestService.js';
 import { EntityQueryService } from '../../services/entityQueryService.js';
+import { AvailabilityService } from '../../services/availabilityService.js';
 
 type ServiceFactory = () => unknown;
 
@@ -58,6 +59,7 @@ interface ServiceMap {
   periodService: PeriodService;
   dropRequestService: DropRequestService;
   entityQueryService: EntityQueryService;
+  availabilityService: AvailabilityService;
 }
 
 export type ServiceKey = keyof ServiceMap;
@@ -77,6 +79,7 @@ export const ServiceKeys = {
   periodService: 'periodService',
   dropRequestService: 'dropRequestService',
   entityQueryService: 'entityQueryService',
+  availabilityService: 'availabilityService',
 } as const satisfies Record<ServiceKey, ServiceKey>;
 
 export class ServiceContainer {
@@ -377,6 +380,10 @@ export class ServiceContainer {
         this.get(ServiceKeys.periodService) as PeriodService,
         configService
       );
+    });
+
+    this.register(ServiceKeys.availabilityService, () => {
+      return new AvailabilityService();
     });
 
     this.register(ServiceKeys.entityQueryService, () => {

@@ -12,12 +12,14 @@ import type { HttpResult } from '../data/httpService.js';
 import { validateResponseFields } from '../data/responseValidation.js';
 import { resolveParentTrimesters } from '../utilities/trimesterHelpers.js';
 import { RegistrationService } from '../data/registrationService.js';
+import type { AvailableTimeSlot } from '../../../models/shared/availableTimeSlot.js';
 
 interface RegistrationApiResponse {
   instructors: InstructorLike[];
   students: StudentLike[];
   classes: ClassLike[];
   registrations: RegistrationLike[];
+  availableTimeSlots: Record<string, AvailableTimeSlot[]>;
 }
 
 interface RegistrationTabData {
@@ -26,6 +28,7 @@ interface RegistrationTabData {
   classes: ClassLike[];
   nextTrimesterRegistrations: RegistrationLike[];
   currentTrimesterRegistrations: RegistrationLike[];
+  availableTimeSlots: Record<string, AvailableTimeSlot[]>;
 }
 
 /**
@@ -79,6 +82,7 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
       'students',
       'classes',
       'registrations',
+      'availableTimeSlots',
     ]);
     if (!currentValidated.ok) return currentValidated;
     const currentData = currentValidated.data;
@@ -106,6 +110,7 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
         classes: currentData.classes,
         nextTrimesterRegistrations,
         currentTrimesterRegistrations: currentData.registrations,
+        availableTimeSlots: currentData.availableTimeSlots,
       },
     };
   }
@@ -114,9 +119,6 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
    * Render the registration form
    */
   async render(): Promise<void> {
-    const container = this.getContainer();
-
-    // The ParentRegistrationForm expects to render into the container
     // If form already exists, update its data instead of recreating
     if (this.registrationForm) {
       // Update existing form with new data
@@ -126,7 +128,8 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
         this.data!.classes,
         this.data!.nextTrimesterRegistrations,
         this.data!.students, // parentChildren = all students for this parent
-        this.data!.currentTrimesterRegistrations // for recurring enrollment
+        this.data!.currentTrimesterRegistrations, // for recurring enrollment
+        this.data!.availableTimeSlots
       );
     } else {
       // Create new form instance
@@ -139,8 +142,44 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
           await this.#createRegistration(registrationData);
         },
         this.data!.students, // parentChildren = all students for this parent
-        this.data!.currentTrimesterRegistrations // for recurring enrollment options
+        this.data!.currentTrimesterRegistrations, // for recurring enrollment options
+        this.data!.availableTimeSlots,
+        (excludeId: string | null) => this.refetchAvailability(excludeId)
       );
+    }
+  }
+
+  /**
+   * Re-fetch availability with an exclusion for modify-registration flow.
+   * When excludeRegistrationId is null, fetches without exclusion (revert to full conflicts).
+   */
+  async refetchAvailability(excludeRegistrationId: string | null): Promise<void> {
+    const parentId = getParentId(this.sessionInfo);
+    if (!parentId || !this.data) return;
+
+    const ctx = resolveParentTrimesters();
+    if (!ctx) return;
+
+    const signal = this.getAbortSignal();
+    let url = `parent/tabs/registration/${ctx.currentTrimester}?parentId=${parentId}`;
+    if (excludeRegistrationId) {
+      url += `&excludeRegistrationId=${excludeRegistrationId}`;
+    }
+
+    const result = await HttpService.get<RegistrationApiResponse>(url, { signal });
+    if (!result.ok || !result.data?.availableTimeSlots) return;
+
+    // Update stored data and push to form
+    this.data.availableTimeSlots = result.data.availableTimeSlots;
+    if (this.registrationForm) {
+      this.registrationForm.availableTimeSlots = result.data.availableTimeSlots;
+      // Refresh chips with the updated slot data for the selected student
+      if (this.registrationForm.cascadingFilterChips) {
+        this.registrationForm.cascadingFilterChips.updateData({
+          availableTimeSlots: this.registrationForm.getSlotsForSelectedStudent(),
+        });
+        this.registrationForm.cascadingFilterChips.refreshChips();
+      }
     }
   }
 

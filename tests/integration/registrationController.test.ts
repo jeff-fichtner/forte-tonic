@@ -131,6 +131,47 @@ const mockRegistrationService = {
   getStudentConflicts: jest.fn().mockResolvedValue([]),
 };
 
+const mockAvailabilityService = {
+  computeAvailableTimeSlots: jest.fn().mockReturnValue({
+    '5': [
+      {
+        instructorId: 'INSTRUCTOR1@TEST.COM',
+        day: 'monday',
+        dayName: 'Monday',
+        time: '14:00',
+        timeFormatted: '2:00 PM',
+        length: 30,
+        instrument: 'Piano',
+      },
+    ],
+  }),
+};
+
+const mockEntityQueryService = {
+  getStudents: jest.fn().mockResolvedValue([
+    {
+      id: 'STUDENT1',
+      firstName: 'Child',
+      lastName: 'Doe',
+      parentId: 'PARENT1',
+      grade: 5,
+    },
+  ]),
+  getRegistrations: jest.fn().mockResolvedValue([mockRegistration]),
+  getInstructors: jest.fn().mockResolvedValue([
+    {
+      id: 'INSTRUCTOR1@TEST.COM',
+      firstName: 'Jane',
+      lastName: 'Smith',
+      specialties: ['Piano'],
+      availability: {
+        monday: { isAvailable: true, startTime: '08:00', endTime: '17:00' },
+      },
+    },
+  ]),
+  getClasses: jest.fn().mockResolvedValue([]),
+};
+
 const mockPeriodService = {
   getCurrentPeriod: jest.fn().mockResolvedValue({
     trimester: 'fall',
@@ -161,6 +202,7 @@ jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js
     periodService: 'periodService',
     dropRequestService: 'dropRequestService',
     entityQueryService: 'entityQueryService',
+    availabilityService: 'availabilityService',
   },
   serviceContainer: {
     get: jest.fn().mockImplementation(serviceName => {
@@ -168,6 +210,8 @@ jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js
       if (serviceName === 'registrationRepository') return mockRegistrationRepository;
       if (serviceName === 'registrationService') return mockRegistrationService;
       if (serviceName === 'periodService') return mockPeriodService;
+      if (serviceName === 'entityQueryService') return mockEntityQueryService;
+      if (serviceName === 'availabilityService') return mockAvailabilityService;
       return null;
     }),
     register: jest.fn(),
@@ -352,6 +396,67 @@ describe('RegistrationController Integration Tests', () => {
         }),
         expect.any(String),
         { isAdmin: false }
+      );
+    });
+  });
+
+  describe('GET /api/parent/tabs/registration/:trimester (getParentRegistrationTabData)', () => {
+    test('should return availableTimeSlots keyed by grade', async () => {
+      const response = await request(app)
+        .get('/api/parent/tabs/registration/fall?parentId=PARENT1')
+        .set('x-access-code', '123456')
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.availableTimeSlots).toBeDefined();
+
+      // Verify shape: Record<string, AvailableTimeSlot[]>
+      const slots = response.body.data.availableTimeSlots;
+      expect(typeof slots).toBe('object');
+      expect(Array.isArray(slots['5'])).toBe(true);
+      expect(slots['5'][0]).toEqual(
+        expect.objectContaining({
+          instructorId: expect.any(String),
+          day: expect.any(String),
+          dayName: expect.any(String),
+          time: expect.any(String),
+          timeFormatted: expect.any(String),
+          length: expect.any(Number),
+          instrument: expect.any(String),
+        })
+      );
+    });
+
+    test('should pass excludeRegistrationId to availability service', async () => {
+      const excludeId = '123e4567-e89b-42d3-8456-426614174000';
+      await request(app)
+        .get(`/api/parent/tabs/registration/fall?parentId=PARENT1&excludeRegistrationId=${excludeId}`)
+        .set('x-access-code', '123456')
+        .expect(200);
+
+      expect(mockAvailabilityService.computeAvailableTimeSlots).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.any(Array),
+        expect.any(Array),
+        expect.any(Array),
+        excludeId
+      );
+    });
+
+    test('should return standard response fields alongside availableTimeSlots', async () => {
+      const response = await request(app)
+        .get('/api/parent/tabs/registration/fall?parentId=PARENT1')
+        .set('x-access-code', '123456')
+        .expect(200);
+
+      expect(response.body.data).toEqual(
+        expect.objectContaining({
+          instructors: expect.any(Array),
+          students: expect.any(Array),
+          classes: expect.any(Array),
+          registrations: expect.any(Array),
+          availableTimeSlots: expect.any(Object),
+        })
       );
     });
   });

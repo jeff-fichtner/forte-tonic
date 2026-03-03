@@ -45,3 +45,4 @@ export type {
   AuthenticatedUserResponseData,
   AuthenticatedUserResponseJSON,
 } from './responses/authenticatedUserResponse.js';
+export type { AvailableTimeSlot } from './availableTimeSlot.js';

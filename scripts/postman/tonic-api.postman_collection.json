@@ -395,6 +395,10 @@
                 "type": "text/javascript",
                 "exec": [
                   "const res = pm.response.json();",
+                  "pm.test('response includes availableTimeSlots', () => {",
+                  "  pm.expect(res.data).to.have.property('availableTimeSlots');",
+                  "  pm.expect(typeof res.data.availableTimeSlots).to.equal('object');",
+                  "});",
                   "if (res.success && res.data && res.data.students && res.data.students.length) {",
                   "  pm.environment.set('studentId', res.data.students[0].id);",
                   "}"
@@ -414,7 +418,10 @@
                 "registration",
                 "{{trimester}}"
               ],
-              "query": [{ "key": "parentId", "value": "{{parentId}}" }]
+              "query": [
+                { "key": "parentId", "value": "{{parentId}}" },
+                { "key": "excludeRegistrationId", "value": "", "description": "Optional. Registration ID to exclude from conflict detection (modify-registration flow)", "disabled": true }
+              ]
             },
             "header": [
               { "key": "x-access-code", "value": "{{parentPhone}}" },
