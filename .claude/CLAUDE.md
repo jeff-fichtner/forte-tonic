@@ -30,6 +30,8 @@ Today's date is 2026-02-18.
 - N/A — frontend only; API calls via `HttpService` (010-frontend-tab-cleanup)
 - TypeScript 5.x targeting ES2022, browser environmen + MaterializeCSS 1.0.0 (CDN), `ModalKeyboardHandler`, `HttpService` (011-dissolve-viewmodel)
 - Google Sheets API v4 (single spreadsheet, column-index mapped, 5-min in-memory cache) (012-server-side-availability)
+- TypeScript 5.x targeting ES2022, Node.js ESM + Express 4, googleapis (Google Sheets API v4), tsx (runtime) (013-migration-system)
+- Google Sheets (single spreadsheet, column-index mapped) — new `_migrations` sheet for tracking (013-migration-system)
 
 ## Recent Changes
 - 002-typescript-migration: Added TypeScript 5.x targeting ES2022, running on Node.js (ESM) + Express 4, Google Sheets API v4, tsx (runtime), ts-jest (testing), typescript-eslint (linting)

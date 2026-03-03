@@ -1,15 +1,16 @@
 <!--
   SYNC IMPACT REPORT
   ==================
-  Version change: 2.2.0 → 2.2.1
-  Bump rationale: PATCH — added Postman collection maintenance requirement
-    to Testing section, clarifying that API endpoint changes must be reflected
-    in scripts/postman/tonic-api.postman_collection.json
-  Modified principles: None
+  Version change: 2.2.1 → 2.2.2
+  Bump rationale: PATCH — updated Principle X (Google Sheets Is the Database)
+    to reflect the addition of a migration system. Removed "no migrations"
+    language (was descriptive, not prescriptive) and added migration system
+    description as a bullet point.
+  Modified principles: X (Google Sheets Is the Database)
   Added sections: None
   Removed sections: None
   Modified sections:
-    - Testing — added Postman collection sync rule
+    - Principle X — replaced "no migrations" with migration system description
   Templates requiring updates:
     - .specify/templates/plan-template.md ✅ no changes needed
     - .specify/templates/spec-template.md ✅ no changes needed
@@ -126,9 +127,10 @@ The application operates on a trimester cycle (fall → winter → spring → fa
 
 ### X. Google Sheets Is the Database
 
-All persistence is through Google Sheets API v4. There is no ORM, no migrations, no schema enforcement.
+All persistence is through Google Sheets API v4. There is no ORM or external schema enforcement.
 
-- The column-index mapping in `googleSheetsDbClient.js` is the schema — changes there are the equivalent of a migration
+- Schema evolution is managed through idempotent migration scripts (`src/migrations/`) that run on app startup and are tracked in a `_migrations` sheet
+- The column-index mapping in `googleSheetsDbClient.js` is the runtime schema — migrations keep it in sync with the spreadsheet
 - All reads go through `getAllRecords()` with a 5-minute in-memory cache
 - Writes find the target row by scanning all records for a matching ID, then update that specific row
 - The database layer MUST return plain objects or model instances — no Sheets API artifacts leak to callers
@@ -195,4 +197,4 @@ The backend is a generic application server. Every entity flows through the same
 - All implementation plans MUST include a Constitution Check section verifying compliance
 - Complexity added in violation of these principles MUST include a Complexity Tracking entry justifying the deviation
 
-**Version**: 2.2.1 | **Ratified**: 2026-02-18 | **Last Amended**: 2026-03-02
+**Version**: 2.2.2 | **Ratified**: 2026-02-18 | **Last Amended**: 2026-03-02
