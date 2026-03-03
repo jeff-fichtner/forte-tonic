@@ -3,6 +3,8 @@
  * All methods return HttpResult<T> — callers never need try/catch.
  */
 
+import { AccessCodeManager } from '../auth/session.js';
+
 export interface HttpError {
   message: string;
   status?: number;
@@ -11,11 +13,16 @@ export interface HttpError {
 }
 
 /** Discriminated union result — callers never need try/catch */
-export type HttpResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: HttpError };
+export type HttpResult<T> = { ok: true; data: T } | { ok: false; error: HttpError };
 
 export class HttpService {
+  static #onSessionExpired: (() => void) | null = null;
+
+  /** Register a callback for 401 responses. Called once from main.ts startup. */
+  static onSessionExpired(handler: () => void): void {
+    this.#onSessionExpired = handler;
+  }
+
   static get<T = unknown>(
     path: string,
     { signal }: { signal?: AbortSignal } = {}
@@ -57,12 +64,10 @@ export class HttpService {
         'Content-Type': 'application/json',
       };
 
-      if (window.AccessCodeManager) {
-        const storedAuthData = window.AccessCodeManager.getStoredAuthData();
-        if (storedAuthData) {
-          headers['x-access-code'] = storedAuthData.accessCode;
-          headers['x-login-type'] = storedAuthData.loginType;
-        }
+      const storedAuthData = AccessCodeManager.getStoredAuthData();
+      if (storedAuthData) {
+        headers['x-access-code'] = storedAuthData.accessCode;
+        headers['x-login-type'] = storedAuthData.loginType;
       }
 
       const fetchOptions: RequestInit = {
@@ -98,7 +103,7 @@ export class HttpService {
 
         if (response.status === 401) {
           M.toast({ html: 'Session expired. Please log in again.' });
-          window.dispatchEvent(new CustomEvent('auth:sessionExpired'));
+          this.#onSessionExpired?.();
         }
 
         return { ok: false, error: httpError };
@@ -106,20 +111,22 @@ export class HttpService {
 
       const responseText = await response.text();
       if (!responseText) {
-        return { ok: false, error: { message: 'Successful but empty response', status: response.status } };
+        return {
+          ok: false,
+          error: { message: 'Successful but empty response', status: response.status },
+        };
       }
 
       try {
         const parsedResponse = JSON.parse(responseText);
 
-        const data = (
+        const data =
           parsedResponse &&
           typeof parsedResponse === 'object' &&
           'success' in parsedResponse &&
           'data' in parsedResponse
-        )
-          ? parsedResponse.data
-          : parsedResponse;
+            ? parsedResponse.data
+            : parsedResponse;
 
         return { ok: true, data: data as T };
       } catch (e) {
@@ -136,6 +143,3 @@ export class HttpService {
     }
   }
 }
-
-// Expose to window for console debugging and runtime access
-window.HttpService = HttpService;

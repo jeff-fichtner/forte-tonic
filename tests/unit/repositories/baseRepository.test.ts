@@ -90,7 +90,11 @@ describe('BaseRepository', () => {
 
   beforeEach(() => {
     mockDbClient = createMockDbClient();
-    repo = new BaseRepository('testEntity', testMapper, mockDbClient as unknown as import('../../../src/database/googleSheetsDbClient.js').GoogleSheetsDbClient);
+    repo = new BaseRepository(
+      'testEntity',
+      testMapper,
+      mockDbClient as unknown as import('../../../src/database/googleSheetsDbClient.js').GoogleSheetsDbClient
+    );
   });
 
   afterEach(() => {
@@ -108,22 +112,22 @@ describe('BaseRepository', () => {
 
       const result = await repo.create(
         { id: 'abc-123', name: 'Item A', value: 42 },
-        'user@example.com',
+        'user@example.com'
       );
 
       // BaseRepository.create passes entityData directly to appendRecord (no createdBy arg)
       expect(mockDbClient.appendRecord).toHaveBeenCalledWith(
         'testEntity',
-        expect.objectContaining({ id: 'abc-123', name: 'Item A' }),
+        expect.objectContaining({ id: 'abc-123', name: 'Item A' })
       );
 
       expect(result).toEqual({ id: 'abc-123', name: 'Item A', value: 42 });
     });
 
     test('should require createdBy for audit trail', async () => {
-      await expect(
-        repo.create({ id: 'abc-123', name: 'Item A' }, ''),
-      ).rejects.toThrow('createdBy is required');
+      await expect(repo.create({ id: 'abc-123', name: 'Item A' }, '')).rejects.toThrow(
+        'createdBy is required'
+      );
     });
   });
 
@@ -138,7 +142,8 @@ describe('BaseRepository', () => {
       // findById calls findAll which calls getAllRecords
       const updatedRow = { id: '123', name: 'Updated', value: 99 };
       mockDbClient.getAllRecords.mockImplementation(
-        (_sheet: string, mapper: Function) => Promise.resolve([mapper(updatedRow)]),
+        (_sheet: string, mapper: (row: Record<string, unknown>) => unknown) =>
+          Promise.resolve([mapper(updatedRow)])
       );
 
       const result = await repo.update('123', { name: 'Updated', value: 99 });
@@ -146,7 +151,7 @@ describe('BaseRepository', () => {
       expect(mockDbClient.updateRecord).toHaveBeenCalledWith(
         'testEntity',
         expect.objectContaining({ id: '123', name: 'Updated' }),
-        '',
+        ''
       );
 
       expect(result).toEqual({ id: '123', name: 'Updated', value: 99 });
@@ -163,8 +168,8 @@ describe('BaseRepository', () => {
       const invalidRow = { name: 'No ID', value: 5 }; // mapper returns null for missing id
 
       mockDbClient.getAllRecords.mockImplementation(
-        (_sheet: string, mapper: Function) =>
-          Promise.resolve([mapper(validRow), mapper(invalidRow)]),
+        (_sheet: string, mapper: (row: Record<string, unknown>) => unknown) =>
+          Promise.resolve([mapper(validRow), mapper(invalidRow)])
       );
 
       const results = await repo.findAll();
@@ -185,14 +190,14 @@ describe('BaseRepository', () => {
       const c = { id: '3', name: 'test', value: 30 };
 
       mockDbClient.getAllRecords.mockImplementation(
-        (_sheet: string, mapper: Function) =>
-          Promise.resolve([a, b, c].map((row) => mapper(row))),
+        (_sheet: string, mapper: (row: Record<string, unknown>) => unknown) =>
+          Promise.resolve([a, b, c].map(row => mapper(row)))
       );
 
       const results = await repo.findBy('name', 'test');
 
       expect(results).toHaveLength(2);
-      expect(results.map((r: any) => r.id)).toEqual(['1', '3']);
+      expect(results.map((r: Record<string, unknown>) => r.id)).toEqual(['1', '3']);
     });
   });
 
@@ -204,7 +209,8 @@ describe('BaseRepository', () => {
     test('should find record by string ID comparison', async () => {
       const row = { id: '123', name: 'Found', value: 42 };
       mockDbClient.getAllRecords.mockImplementation(
-        (_sheet: string, mapper: Function) => Promise.resolve([mapper(row)]),
+        (_sheet: string, mapper: (row: Record<string, unknown>) => unknown) =>
+          Promise.resolve([mapper(row)])
       );
 
       const result = await repo.findById('123');
@@ -214,7 +220,7 @@ describe('BaseRepository', () => {
 
     test('should return null when no record matches', async () => {
       mockDbClient.getAllRecords.mockImplementation(
-        (_sheet: string, _mapper: Function) => Promise.resolve([]),
+        (_sheet: string, _mapper: (row: Record<string, unknown>) => unknown) => Promise.resolve([])
       );
 
       const result = await repo.findById('non-existent');
@@ -236,7 +242,11 @@ describe('BaseRepository', () => {
 
     test('should return data as-is with identity mapper', () => {
       const identityMapper = (record: Record<string, unknown>) => record;
-      const identityRepo = new BaseRepository('raw', identityMapper, mockDbClient as unknown as import('../../../src/database/googleSheetsDbClient.js').GoogleSheetsDbClient);
+      const identityRepo = new BaseRepository(
+        'raw',
+        identityMapper,
+        mockDbClient as unknown as import('../../../src/database/googleSheetsDbClient.js').GoogleSheetsDbClient
+      );
       const data = { id: 'r1', arbitrary: 'field' };
 
       const result = identityRepo.convertToModel(data);

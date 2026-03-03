@@ -1,5 +1,6 @@
 import { HttpService } from '../data/httpService.js';
 import { UserSession } from '../auth/session.js';
+import { formatPhone } from '../utilities/phoneHelpers.js';
 
 /** Shape of the /api/version response */
 export interface VersionInfo {
@@ -33,6 +34,10 @@ export async function initializeVersionDisplay(): Promise<void> {
       gitCommit: versionInfo.gitCommit,
       NodeEnv,
     };
+
+    console.log(
+      `Tonic v${versionInfo.number} (${versionInfo.environment}) [${versionInfo.gitCommit.substring(0, 7)}]`
+    );
 
     if (versionInfo.displayVersion) {
       const versionDisplay = document.getElementById('version-display');
@@ -85,5 +90,6 @@ export function loadDirectorInfo(): void {
 
   if (nameElement) nameElement.textContent = director.fullName;
   if (emailElement) emailElement.textContent = director.displayEmail || director.email;
-  if (phoneElement) phoneElement.textContent = director.displayPhone || director.phone || 'N/A';
+  const rawPhone = director.displayPhone || director.phone || '';
+  if (phoneElement) phoneElement.textContent = rawPhone ? formatPhone(rawPhone) : 'N/A';
 }

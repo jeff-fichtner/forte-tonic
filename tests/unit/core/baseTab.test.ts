@@ -19,7 +19,10 @@ class TestTab extends BaseTab {
 
   async fetchData(sessionInfo) {
     this.fetchDataCalled = true;
-    return { message: 'Test data', userId: sessionInfo?.user?.id };
+    return {
+      ok: true,
+      data: { message: 'Test data', userId: sessionInfo?.user?.id },
+    };
   }
 
   async render() {
@@ -122,12 +125,15 @@ describe('BaseTab', () => {
     });
 
     it('should handle errors during fetch', async () => {
-      tab.fetchData = jest.fn().mockRejectedValue(new Error('Fetch failed'));
+      tab.fetchData = jest.fn().mockResolvedValue({
+        ok: false,
+        error: { message: 'Fetch failed' },
+      });
       tab.showError = jest.fn();
 
-      await expect(tab.onLoad(sessionInfo)).rejects.toThrow('Fetch failed');
+      await tab.onLoad(sessionInfo);
       expect(tab.isLoaded).toBe(false);
-      expect(tab.showError).toHaveBeenCalled();
+      expect(tab.showError).toHaveBeenCalledWith('Fetch failed');
     });
 
     it('should not log abort errors', async () => {
@@ -307,19 +313,18 @@ describe('BaseTab', () => {
 
   describe('showError', () => {
     it('should display error message', () => {
-      const error = new Error('Test error');
-      tab.showError(error);
+      tab.showError('Test error');
 
       const container = tab.getContainer();
       expect(container.innerHTML).toContain('Test error');
-      expect(container.innerHTML).toContain('Error:');
     });
 
     it('should show default message if no error message', () => {
-      tab.showError({});
+      tab.showError('');
 
       const container = tab.getContainer();
-      expect(container.innerHTML).toContain('An error occurred loading this tab');
+      // Empty string is rendered directly — showError now takes a string
+      expect(container.innerHTML).toContain('tab-error-banner');
     });
   });
 
@@ -355,11 +360,14 @@ describe('BaseTab', () => {
     });
 
     it('should handle errors', async () => {
-      tab.fetchData = jest.fn().mockRejectedValue(new Error('Reload failed'));
+      tab.fetchData = jest.fn().mockResolvedValue({
+        ok: false,
+        error: { message: 'Reload failed' },
+      });
       tab.showError = jest.fn();
 
-      await expect(tab.reload()).rejects.toThrow('Reload failed');
-      expect(tab.showError).toHaveBeenCalled();
+      await tab.reload();
+      expect(tab.showError).toHaveBeenCalledWith('Reload failed');
     });
   });
 
@@ -397,7 +405,7 @@ describe('BaseTab', () => {
         }
 
         async fetchData() {
-          return {};
+          return { ok: true, data: {} };
         }
         async render() {}
       }
@@ -422,7 +430,7 @@ describe('BaseTab', () => {
         }
 
         async fetchData() {
-          return {};
+          return { ok: true, data: {} };
         }
         async render() {}
       }
@@ -444,7 +452,7 @@ describe('BaseTab', () => {
         }
 
         async fetchData() {
-          return {};
+          return { ok: true, data: {} };
         }
         async render() {}
         // Don't override attachEventListeners

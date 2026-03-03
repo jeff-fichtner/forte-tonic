@@ -1,3 +1,6 @@
+import { UserSession } from './session.js';
+import { ModalKeyboardHandler } from '../utilities/modalKeyboardHandler.js';
+
 /** Extended HTMLElement with temp handler storage for terms modal */
 interface TermsModalElement extends HTMLElement {
   _tempKeydownHandler?: (e: KeyboardEvent) => void;
@@ -7,6 +10,7 @@ interface TermsModalElement extends HTMLElement {
 // Module-level state
 let termsModal: MaterializeModalInstance | null = null;
 let privacyModal: MaterializeModalInstance | null = null;
+let termsOnConfirmationCallback: (() => void) | null = null;
 
 /**
  * Initialize terms and privacy modal DOM bindings.
@@ -22,9 +26,9 @@ export function init(): void {
  */
 export function showIfNeeded(onConfirmed: () => void): void {
   const termsModalEl = document.getElementById('terms-modal') as TermsModalElement | null;
-  const hasAcceptedTerms = window.UserSession.hasAcceptedTermsOfService();
+  const hasAcceptedTerms = UserSession.hasAcceptedTermsOfService();
 
-  window.termsOnConfirmationCallback = onConfirmed;
+  termsOnConfirmationCallback = onConfirmed;
 
   if (!hasAcceptedTerms && termsModal) {
     termsModal.destroy();
@@ -57,7 +61,9 @@ export function showIfNeeded(onConfirmed: () => void): void {
     termsModalEl!._tempKeydownHandler = keydownHandler;
     termsModalEl!._tempClickHandler = clickHandler;
 
-    const termsBtn = termsModalEl!.querySelector('.modal-footer .modal-close') as HTMLElement | null;
+    const termsBtn = termsModalEl!.querySelector(
+      '.modal-footer .modal-close'
+    ) as HTMLElement | null;
     ModalKeyboardHandler.attachKeyboardHandlers(termsModalEl!, {
       allowEscape: false,
       allowEnter: true,
@@ -106,10 +112,10 @@ function initTermsModal(): void {
       e.preventDefault();
       e.stopPropagation();
 
-      const hasAcceptedTerms = window.UserSession.hasAcceptedTermsOfService();
+      const hasAcceptedTerms = UserSession.hasAcceptedTermsOfService();
 
       if (!hasAcceptedTerms) {
-        window.UserSession.acceptTermsOfService();
+        UserSession.acceptTermsOfService();
 
         if (termsModalEl._tempKeydownHandler) {
           termsModalEl.removeEventListener('keydown', termsModalEl._tempKeydownHandler);
@@ -127,7 +133,9 @@ function initTermsModal(): void {
           preventScrolling: true,
         } as MaterializeModalOptions);
 
-        const newTermsBtn = termsModalEl.querySelector('.modal-footer .modal-close') as HTMLElement | null;
+        const newTermsBtn = termsModalEl.querySelector(
+          '.modal-footer .modal-close'
+        ) as HTMLElement | null;
         ModalKeyboardHandler.attachKeyboardHandlers(termsModalEl, {
           allowEscape: true,
           allowEnter: true,
@@ -141,9 +149,9 @@ function initTermsModal(): void {
           },
         });
 
-        if (window.termsOnConfirmationCallback) {
-          window.termsOnConfirmationCallback();
-          window.termsOnConfirmationCallback = null;
+        if (termsOnConfirmationCallback) {
+          termsOnConfirmationCallback();
+          termsOnConfirmationCallback = null;
         }
       }
 
@@ -160,8 +168,8 @@ function initTermsModal(): void {
       }
     },
     onCancel: (_event: KeyboardEvent) => {
-      const hasAcceptedTerms = window.UserSession.hasAcceptedTermsOfService();
-      if (!hasAcceptedTerms && window.termsOnConfirmationCallback) {
+      const hasAcceptedTerms = UserSession.hasAcceptedTermsOfService();
+      if (!hasAcceptedTerms && termsOnConfirmationCallback) {
         return;
       }
       termsModal!.close();
@@ -176,7 +184,9 @@ function initPrivacyModal(): void {
     return;
   }
 
-  const privacyBtn = privacyModalEl.querySelector('.modal-footer .modal-close') as HTMLElement | null;
+  const privacyBtn = privacyModalEl.querySelector(
+    '.modal-footer .modal-close'
+  ) as HTMLElement | null;
 
   privacyModal = M.Modal.init(privacyModalEl, {
     dismissible: true,

@@ -21,29 +21,33 @@ const mockDatabaseClient = {
   clearAllCache: jest.fn(),
 };
 
-jest.unstable_mockModule(
-  '../../../src/infrastructure/container/serviceContainer.js',
-  () => ({
-    ServiceKeys: {
-      databaseClient: 'databaseClient', emailClient: 'emailClient', cacheService: 'cacheService',
-      configurationService: 'configurationService', registrationRepository: 'registrationRepository',
-      userRepository: 'userRepository', programRepository: 'programRepository',
-      attendanceRepository: 'attendanceRepository', dropRequestRepository: 'dropRequestRepository',
-      periodRepository: 'periodRepository', registrationService: 'registrationService',
-      periodService: 'periodService', dropRequestService: 'dropRequestService',
-      entityQueryService: 'entityQueryService',
-    },
-    serviceContainer: {
-      get: jest.fn().mockImplementation((name) => {
-        const services = {
-          userRepository: mockUserRepository,
-          databaseClient: mockDatabaseClient,
-        };
-        return services[name] ?? null;
-      }),
-    },
-  }),
-);
+jest.unstable_mockModule('../../../src/infrastructure/container/serviceContainer.js', () => ({
+  ServiceKeys: {
+    databaseClient: 'databaseClient',
+    emailClient: 'emailClient',
+    cacheService: 'cacheService',
+    configurationService: 'configurationService',
+    registrationRepository: 'registrationRepository',
+    userRepository: 'userRepository',
+    programRepository: 'programRepository',
+    attendanceRepository: 'attendanceRepository',
+    dropRequestRepository: 'dropRequestRepository',
+    periodRepository: 'periodRepository',
+    registrationService: 'registrationService',
+    periodService: 'periodService',
+    dropRequestService: 'dropRequestService',
+    entityQueryService: 'entityQueryService',
+  },
+  serviceContainer: {
+    get: jest.fn().mockImplementation(name => {
+      const services = {
+        userRepository: mockUserRepository,
+        databaseClient: mockDatabaseClient,
+      };
+      return services[name] ?? null;
+    }),
+  },
+}));
 
 jest.unstable_mockModule('../../../src/services/configurationService.js', () => ({
   configService: {
@@ -104,9 +108,7 @@ jest.unstable_mockModule('../../../src/common/errors.js', () => ({
 }));
 
 // Import controller after all mocks are wired
-const { SystemController } = await import(
-  '../../../src/controllers/systemController.js'
-);
+const { SystemController } = await import('../../../src/controllers/systemController.js');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -116,7 +118,7 @@ function createRes() {
   return {
     status: jest.fn().mockReturnThis(),
     json: jest.fn(),
-  } as any;
+  } as unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -124,7 +126,7 @@ function createRes() {
 // ---------------------------------------------------------------------------
 
 describe('SystemController', () => {
-  let res: any;
+  let res: ReturnType<typeof createRes>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -137,7 +139,7 @@ describe('SystemController', () => {
 
   describe('getHealth', () => {
     it('should return healthy status with environment, version, and features', async () => {
-      const req = {} as any;
+      const req = {} as unknown;
 
       await SystemController.getHealth(req, res);
 
@@ -158,7 +160,7 @@ describe('SystemController', () => {
             spreadsheetConfigured: true,
           }),
         }),
-        expect.any(Object),
+        expect.any(Object)
       );
     });
   });
@@ -169,7 +171,7 @@ describe('SystemController', () => {
 
   describe('clearCache', () => {
     it('should clear cache when a valid admin code is provided', async () => {
-      const req = { currentUser: { accessCode: '123456' } } as any;
+      const req = { currentUser: { accessCode: '123456' } } as unknown;
 
       mockUserRepository.getAdminByAccessCode.mockResolvedValue({
         email: 'admin@test.com',
@@ -187,12 +189,12 @@ describe('SystemController', () => {
           message: 'All caches cleared successfully',
           clearedBy: 'admin@test.com',
         }),
-        expect.any(Object),
+        expect.any(Object)
       );
     });
 
     it('should call errorResponse with UnauthorizedError for non-admin access code', async () => {
-      const req = { currentUser: { accessCode: 'wrong-code' } } as any;
+      const req = { currentUser: { accessCode: 'wrong-code' } } as unknown;
 
       mockUserRepository.getAdminByAccessCode.mockResolvedValue(null);
 
@@ -201,24 +203,24 @@ describe('SystemController', () => {
       expect(mockErrorResponse).toHaveBeenCalledWith(
         res,
         expect.objectContaining({ name: 'UnauthorizedError' }),
-        expect.any(Object),
+        expect.any(Object)
       );
     });
 
     it('should call errorResponse with ValidationError when currentUser is missing', async () => {
-      const req = { currentUser: null } as any;
+      const req = { currentUser: null } as unknown;
 
       await SystemController.clearCache(req, res);
 
       expect(mockErrorResponse).toHaveBeenCalledWith(
         res,
         expect.objectContaining({ name: 'ValidationError' }),
-        expect.any(Object),
+        expect.any(Object)
       );
     });
 
     it('should succeed even when databaseClient lacks clearAllCache method', async () => {
-      const req = { currentUser: { accessCode: '123456' } } as any;
+      const req = { currentUser: { accessCode: '123456' } } as unknown;
 
       mockUserRepository.getAdminByAccessCode.mockResolvedValue({
         email: 'admin@test.com',
@@ -229,7 +231,7 @@ describe('SystemController', () => {
       // Temporarily replace clearAllCache with a non-function to simulate
       // a dbClient that does not support cache clearing
       const original = mockDatabaseClient.clearAllCache;
-      (mockDatabaseClient as any).clearAllCache = undefined;
+      (mockDatabaseClient as unknown as Record<string, unknown>).clearAllCache = undefined;
 
       await SystemController.clearCache(req, res);
 
@@ -239,7 +241,7 @@ describe('SystemController', () => {
           message: 'All caches cleared successfully',
           clearedBy: 'admin@test.com',
         }),
-        expect.any(Object),
+        expect.any(Object)
       );
 
       // Restore for other tests
@@ -247,7 +249,7 @@ describe('SystemController', () => {
     });
 
     it('should use firstName + lastName as clearedBy when email is absent', async () => {
-      const req = { currentUser: { accessCode: '123456' } } as any;
+      const req = { currentUser: { accessCode: '123456' } } as unknown;
 
       mockUserRepository.getAdminByAccessCode.mockResolvedValue({
         email: '',
@@ -262,7 +264,7 @@ describe('SystemController', () => {
         expect.objectContaining({
           clearedBy: 'Admin User',
         }),
-        expect.any(Object),
+        expect.any(Object)
       );
     });
   });

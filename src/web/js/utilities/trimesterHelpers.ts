@@ -1,4 +1,5 @@
 import { isEnrollmentPeriod } from './periodHelpers.js';
+import { UserSession } from '../auth/session.js';
 
 export interface TrimesterContext {
   currentTrimester: string;
@@ -11,12 +12,12 @@ export interface TrimesterContext {
  * Used by admin and instructor tabs that have trimester button groups.
  *
  * Checks for an active .trimester-btn in the given container, then falls back
- * to window.UserSession.getCurrentPeriod().trimester.
+ * to UserSession.getCurrentPeriod().trimester.
  */
 export function resolveSelectedTrimester(buttonContainerId: string): string | null {
   const container = document.getElementById(buttonContainerId);
   const activeButton = container?.querySelector<HTMLElement>('.trimester-btn.active');
-  const currentPeriod = window.UserSession?.getCurrentPeriod();
+  const currentPeriod = UserSession?.getCurrentPeriod();
   return activeButton?.dataset.trimester || currentPeriod?.trimester || null;
 }
 
@@ -27,8 +28,8 @@ export function resolveSelectedTrimester(buttonContainerId: string): string | nu
  * Returns null if period information is not available.
  */
 export function resolveParentTrimesters(): TrimesterContext | null {
-  const currentPeriod = window.UserSession?.getCurrentPeriod();
-  const appConfig = window.UserSession?.getAppConfig();
+  const currentPeriod = UserSession?.getCurrentPeriod();
+  const appConfig = UserSession?.getAppConfig();
 
   if (!currentPeriod) return null;
 

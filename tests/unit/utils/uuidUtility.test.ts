@@ -39,5 +39,4 @@ describe('UuidUtility', () => {
       expect(UuidUtility.isValidUuid('')).toBe(false);
     });
   });
-
 });

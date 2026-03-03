@@ -24,12 +24,19 @@ const mockEntityQueryService = {
 
 jest.unstable_mockModule('../../../src/infrastructure/container/serviceContainer.js', () => ({
   ServiceKeys: {
-    databaseClient: 'databaseClient', emailClient: 'emailClient', cacheService: 'cacheService',
-    configurationService: 'configurationService', registrationRepository: 'registrationRepository',
-    userRepository: 'userRepository', programRepository: 'programRepository',
-    attendanceRepository: 'attendanceRepository', dropRequestRepository: 'dropRequestRepository',
-    periodRepository: 'periodRepository', registrationService: 'registrationService',
-    periodService: 'periodService', dropRequestService: 'dropRequestService',
+    databaseClient: 'databaseClient',
+    emailClient: 'emailClient',
+    cacheService: 'cacheService',
+    configurationService: 'configurationService',
+    registrationRepository: 'registrationRepository',
+    userRepository: 'userRepository',
+    programRepository: 'programRepository',
+    attendanceRepository: 'attendanceRepository',
+    dropRequestRepository: 'dropRequestRepository',
+    periodRepository: 'periodRepository',
+    registrationService: 'registrationService',
+    periodService: 'periodService',
+    dropRequestService: 'dropRequestService',
     entityQueryService: 'entityQueryService',
   },
   serviceContainer: {
@@ -154,16 +161,14 @@ const { Trimester } = await import('../../../src/utils/values/trimester.js');
 // ---------------------------------------------------------------------------
 // Import the controller AFTER all mocks are wired
 // ---------------------------------------------------------------------------
-const { UserController } = await import(
-  '../../../src/controllers/userController.js'
-);
+const { UserController } = await import('../../../src/controllers/userController.js');
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 function createMockReqRes(overrides: Record<string, unknown> = {}) {
-  const req = { body: {}, params: {}, query: {}, ...overrides } as any;
-  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() } as any;
+  const req = { body: {}, params: {}, query: {}, ...overrides } as unknown;
+  const res = { status: jest.fn().mockReturnThis(), json: jest.fn() } as unknown;
   return { req, res };
 }
 
@@ -276,10 +281,7 @@ describe('UserController', () => {
       await UserController.getAppConfiguration(req, res);
 
       const data = getConfigData();
-      expect(data.availableTrimesters).toEqual([
-        Trimester.WINTER,
-        Trimester.SPRING,
-      ]);
+      expect(data.availableTrimesters).toEqual([Trimester.WINTER, Trimester.SPRING]);
     });
 
     it('should return [spring, fall] for spring priority enrollment', async () => {
@@ -335,9 +337,7 @@ describe('UserController', () => {
 
       await UserController.authenticateByAccessCode(req, res);
 
-      expect(mockUserRepository.getParentByPhone).toHaveBeenCalledWith(
-        '5551234567'
-      );
+      expect(mockUserRepository.getParentByPhone).toHaveBeenCalledWith('5551234567');
       expect(mockSuccessResponse).toHaveBeenCalledTimes(1);
       const responseData = mockSuccessResponse.mock.calls[0][1] as {
         email: string;
@@ -357,9 +357,7 @@ describe('UserController', () => {
 
       await UserController.authenticateByAccessCode(req, res);
 
-      expect(mockUserRepository.getAdminByAccessCode).toHaveBeenCalledWith(
-        '123456'
-      );
+      expect(mockUserRepository.getAdminByAccessCode).toHaveBeenCalledWith('123456');
       expect(mockSuccessResponse).toHaveBeenCalledTimes(1);
       const responseData = mockSuccessResponse.mock.calls[0][1] as {
         email: string;
@@ -372,9 +370,7 @@ describe('UserController', () => {
     it('should fall through to instructor when admin not found with 6-digit code', async () => {
       const instructorObj = { email: 'instructor@test.com', id: 'i1' };
       mockUserRepository.getAdminByAccessCode.mockResolvedValue(null);
-      mockUserRepository.getInstructorByAccessCode.mockResolvedValue(
-        instructorObj
-      );
+      mockUserRepository.getInstructorByAccessCode.mockResolvedValue(instructorObj);
 
       const { req, res } = createMockReqRes({
         body: { accessCode: '654321', loginType: 'employee' },
@@ -382,12 +378,8 @@ describe('UserController', () => {
 
       await UserController.authenticateByAccessCode(req, res);
 
-      expect(mockUserRepository.getAdminByAccessCode).toHaveBeenCalledWith(
-        '654321'
-      );
-      expect(
-        mockUserRepository.getInstructorByAccessCode
-      ).toHaveBeenCalledWith('654321');
+      expect(mockUserRepository.getAdminByAccessCode).toHaveBeenCalledWith('654321');
+      expect(mockUserRepository.getInstructorByAccessCode).toHaveBeenCalledWith('654321');
       expect(mockSuccessResponse).toHaveBeenCalledTimes(1);
       const responseData = mockSuccessResponse.mock.calls[0][1] as {
         email: string;
@@ -453,9 +445,7 @@ describe('UserController', () => {
 
       mockEntityQueryService.getStudents.mockResolvedValue(parentStudents);
       mockEntityQueryService.getRegistrations.mockResolvedValue(registrations);
-      mockEntityQueryService.getInstructors.mockResolvedValue(
-        scopedInstructors
-      );
+      mockEntityQueryService.getInstructors.mockResolvedValue(scopedInstructors);
       mockEntityQueryService.getAdmins.mockResolvedValue(admins);
 
       const { req, res } = createMockReqRes({

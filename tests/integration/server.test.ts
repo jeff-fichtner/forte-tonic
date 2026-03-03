@@ -65,11 +65,15 @@ jest.unstable_mockModule('../../src/database/googleSheetsDbClient.js', () => ({
 
 // Mock the repositories and client directly
 const mockUserRepository = {
-  getAdmins: jest
-    .fn()
-    .mockResolvedValue([
-      { id: '1', email: 'admin@test.com', firstName: 'Test', lastName: 'Admin', phone: '5551234000' },
-    ]),
+  getAdmins: jest.fn().mockResolvedValue([
+    {
+      id: '1',
+      email: 'admin@test.com',
+      firstName: 'Test',
+      lastName: 'Admin',
+      phone: '5551234000',
+    },
+  ]),
   getAdminByAccessCode: jest.fn().mockResolvedValue({
     id: '1',
     email: 'admin@test.com',
@@ -114,7 +118,12 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
   initializeRepositories: (req, res, next) => {
     req.currentUser = {
       email: 'test-user@example.com',
-      admin: { id: '1', email: 'admin@test.com', firstName: 'Test', lastName: 'Admin' },
+      admin: {
+        id: '1',
+        email: 'admin@test.com',
+        firstName: 'Test',
+        lastName: 'Admin',
+      },
       instructor: null,
       parent: null,
       displayName: 'Test Admin',
@@ -139,12 +148,19 @@ jest.unstable_mockModule('../../src/middleware/auth.js', () => ({
 // Mock the service container
 jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js', () => ({
   ServiceKeys: {
-    databaseClient: 'databaseClient', emailClient: 'emailClient', cacheService: 'cacheService',
-    configurationService: 'configurationService', registrationRepository: 'registrationRepository',
-    userRepository: 'userRepository', programRepository: 'programRepository',
-    attendanceRepository: 'attendanceRepository', dropRequestRepository: 'dropRequestRepository',
-    periodRepository: 'periodRepository', registrationService: 'registrationService',
-    periodService: 'periodService', dropRequestService: 'dropRequestService',
+    databaseClient: 'databaseClient',
+    emailClient: 'emailClient',
+    cacheService: 'cacheService',
+    configurationService: 'configurationService',
+    registrationRepository: 'registrationRepository',
+    userRepository: 'userRepository',
+    programRepository: 'programRepository',
+    attendanceRepository: 'attendanceRepository',
+    dropRequestRepository: 'dropRequestRepository',
+    periodRepository: 'periodRepository',
+    registrationService: 'registrationService',
+    periodService: 'periodService',
+    dropRequestService: 'dropRequestService',
     entityQueryService: 'entityQueryService',
   },
   serviceContainer: {
@@ -184,7 +200,7 @@ describe('Server Integration Tests', () => {
 
     test('GET /js/:filename should serve TypeScript files with correct MIME type', async () => {
       // This will try to load an actual file, so we'll test with a known file
-      const response = await request(app).get('/js/viewModel.ts');
+      const response = await request(app).get('/js/main.ts');
       expect(response.status).toBe(200);
       expect(response.get('Content-Type')).toBe('text/javascript; charset=utf-8');
     });

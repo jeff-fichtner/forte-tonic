@@ -48,7 +48,10 @@ export class InstructorWeeklyScheduleTab extends BaseTab<InstructorScheduleData>
 
     const trimester = resolveSelectedTrimester('instructor-trimester-buttons');
 
-    const result = await HttpService.get<InstructorScheduleData>(`instructor/tabs/weekly-schedule/${trimester}?instructorId=${id}`, { signal: this.getAbortSignal() });
+    const result = await HttpService.get<InstructorScheduleData>(
+      `instructor/tabs/weekly-schedule/${trimester}?instructorId=${id}`,
+      { signal: this.getAbortSignal() }
+    );
     return validateResponseFields(result, ['registrations', 'students', 'instructors', 'classes']);
   }
 
@@ -59,7 +62,9 @@ export class InstructorWeeklyScheduleTab extends BaseTab<InstructorScheduleData>
     const container = this.getContainer();
 
     // Find or create the tables container
-    let tablesContainer = container.querySelector<HTMLElement>('#instructor-weekly-schedule-tables');
+    let tablesContainer = container.querySelector<HTMLElement>(
+      '#instructor-weekly-schedule-tables'
+    );
     if (!tablesContainer) {
       tablesContainer = document.createElement('div');
       tablesContainer.id = 'instructor-weekly-schedule-tables';
@@ -87,9 +92,9 @@ export class InstructorWeeklyScheduleTab extends BaseTab<InstructorScheduleData>
 
     // Get unique days with registrations, sorted by day of week
     const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const daysWithRegistrations = [...new Set(this.data!.registrations.map((reg: Record<string, unknown>) => reg.day as string))].sort(
-      (a: string, b: string) => dayOrder.indexOf(a) - dayOrder.indexOf(b)
-    );
+    const daysWithRegistrations = [
+      ...new Set(this.data!.registrations.map((reg: Record<string, unknown>) => reg.day as string)),
+    ].sort((a: string, b: string) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
 
     // Create a table for each day
     daysWithRegistrations.forEach((day: string) => {
@@ -113,37 +118,41 @@ export class InstructorWeeklyScheduleTab extends BaseTab<InstructorScheduleData>
       tablesContainer!.appendChild(dayContainer);
 
       // Sort registrations for this day by start time, length, instrument, and grade
-      const dayRegistrations = this.data!.registrations
-        .filter((reg: Record<string, unknown>) => reg.day === day)
-        .sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
-          // First, sort by start time
-          const timeA = (a.startTime as string) || '';
-          const timeB = (b.startTime as string) || '';
-          if (timeA !== timeB) {
-            return timeA.localeCompare(timeB);
-          }
+      const dayRegistrations = this.data!.registrations.filter(
+        (reg: Record<string, unknown>) => reg.day === day
+      ).sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+        // First, sort by start time
+        const timeA = (a.startTime as string) || '';
+        const timeB = (b.startTime as string) || '';
+        if (timeA !== timeB) {
+          return timeA.localeCompare(timeB);
+        }
 
-          // Then sort by length
-          const lengthA = (a.length as number) || 0;
-          const lengthB = (b.length as number) || 0;
-          if (lengthA !== lengthB) {
-            return lengthA - lengthB;
-          }
+        // Then sort by length
+        const lengthA = (a.length as number) || 0;
+        const lengthB = (b.length as number) || 0;
+        if (lengthA !== lengthB) {
+          return lengthA - lengthB;
+        }
 
-          // Then sort by instrument/class
-          const instrumentA = (a.instrument as string) || (a.classTitle as string) || '';
-          const instrumentB = (b.instrument as string) || (b.classTitle as string) || '';
-          if (instrumentA !== instrumentB) {
-            return instrumentA.localeCompare(instrumentB);
-          }
+        // Then sort by instrument/class
+        const instrumentA = (a.instrument as string) || (a.classTitle as string) || '';
+        const instrumentB = (b.instrument as string) || (b.classTitle as string) || '';
+        if (instrumentA !== instrumentB) {
+          return instrumentA.localeCompare(instrumentB);
+        }
 
-          // Finally sort by student grade
-          const studentA = this.data!.students.find((s: Record<string, unknown>) => s.id === a.studentId);
-          const studentB = this.data!.students.find((s: Record<string, unknown>) => s.id === b.studentId);
-          const gradeA = (studentA?.grade as string) || '';
-          const gradeB = (studentB?.grade as string) || '';
-          return String(gradeA).localeCompare(String(gradeB));
-        });
+        // Finally sort by student grade
+        const studentA = this.data!.students.find(
+          (s: Record<string, unknown>) => s.id === a.studentId
+        );
+        const studentB = this.data!.students.find(
+          (s: Record<string, unknown>) => s.id === b.studentId
+        );
+        const gradeA = (studentA?.grade as string) || '';
+        const gradeB = (studentB?.grade as string) || '';
+        return String(gradeA).localeCompare(String(gradeB));
+      });
 
       // Build the table for this day
       const table = this.#buildWeeklyScheduleTable(tableId, dayRegistrations);
@@ -181,8 +190,12 @@ export class InstructorWeeklyScheduleTab extends BaseTab<InstructorScheduleData>
    * @private
    */
   #buildTableRow(enrollment: Record<string, unknown>): string {
-    const instructor = this.data!.instructors.find((i: Record<string, unknown>) => i.id === enrollment.instructorId);
-    const student = this.data!.students.find((s: Record<string, unknown>) => s.id === enrollment.studentId);
+    const instructor = this.data!.instructors.find(
+      (i: Record<string, unknown>) => i.id === enrollment.instructorId
+    );
+    const student = this.data!.students.find(
+      (s: Record<string, unknown>) => s.id === enrollment.studentId
+    );
 
     if (!instructor || !student) {
       console.warn(`Instructor or student not found for enrollment: ${enrollment.id}`);
@@ -231,12 +244,16 @@ export class InstructorWeeklyScheduleTab extends BaseTab<InstructorScheduleData>
     if (!registrationId) return;
 
     // Find the enrollment by ID
-    const currentEnrollment = this.data!.registrations.find((e: Record<string, unknown>) => e.id === registrationId);
+    const currentEnrollment = this.data!.registrations.find(
+      (e: Record<string, unknown>) => e.id === registrationId
+    );
     if (!currentEnrollment) return;
 
     // For instructor view: show parent emails
     const studentIdToFind = currentEnrollment.studentId as string;
-    const student = this.data!.students.find((s: Record<string, unknown>) => s.id === studentIdToFind);
+    const student = this.data!.students.find(
+      (s: Record<string, unknown>) => s.id === studentIdToFind
+    );
 
     if (student && student.parentEmails && (student.parentEmails as string).trim()) {
       await copyToClipboard(student.parentEmails as string);

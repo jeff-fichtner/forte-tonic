@@ -2,11 +2,11 @@
  *
  */
 
-interface TableOptions {
+interface TableOptions<T extends object = Record<string, unknown>> {
   pagination?: boolean;
   itemsPerPage?: number;
   pageSizeOptions?: number[] | null;
-  rowClassFunction?: ((row: any) => string | null) | null;
+  rowClassFunction?: ((row: T) => string | null) | null;
   onCountChange?: ((filteredCount: number, totalCount: number) => void) | null;
 }
 
@@ -23,18 +23,18 @@ interface FilterHTMLElement extends HTMLElement {
   _changeHandler?: (event: Event) => void;
 }
 
-export class Table {
+export class Table<T extends object = Record<string, unknown>> {
   table: TableHTMLElement;
   pagination: boolean;
   itemsPerPage: number;
   pageSizeOptions: number[] | null;
   currentPage: number;
-  rowClassFunction: ((row: any) => string | null) | null;
+  rowClassFunction: ((row: T) => string | null) | null;
   onCountChange: ((filteredCount: number, totalCount: number) => void) | null;
-  filterFunction: ((row: any) => boolean) | null;
-  rowFunction: (row: any) => string;
+  filterFunction: ((row: T) => boolean) | null;
+  rowFunction: (row: T) => string;
   paginationContainer: HTMLDivElement | undefined;
-  rows: any[] = [];
+  rows: T[] = [];
 
   /**
    *
@@ -42,12 +42,12 @@ export class Table {
   constructor(
     tableId: string,
     headers: string[],
-    rowFunction: (row: any) => string,
-    initialRows: any[] | null = null,
+    rowFunction: (row: T) => string,
+    initialRows: T[] | null = null,
     onClickFunction: ((event: Event) => void) | null = null,
-    filterFunction: ((row: any) => boolean) | null = null,
+    filterFunction: ((row: T) => boolean) | null = null,
     onFilterChanges: FilterChange[] | null = null,
-    options: TableOptions = {}
+    options: TableOptions<T> = {}
   ) {
     this.table = document.getElementById(tableId) as TableHTMLElement;
     this.table.innerHTML = ''; // Clear existing content
@@ -75,7 +75,9 @@ export class Table {
     // Create pagination container if pagination is enabled
     if (this.pagination) {
       // Clean up any existing pagination containers to prevent duplicates
-      const existingPagination = (this.table.parentNode as HTMLElement).querySelector('.pagination-container');
+      const existingPagination = (this.table.parentNode as HTMLElement).querySelector(
+        '.pagination-container'
+      );
       if (existingPagination) {
         existingPagination.remove();
       }
@@ -83,7 +85,10 @@ export class Table {
       this.paginationContainer = document.createElement('div');
       this.paginationContainer.className = 'pagination-container center-align';
       this.paginationContainer.style.marginTop = '20px';
-      (this.table.parentNode as HTMLElement).insertBefore(this.paginationContainer, this.table.nextSibling);
+      (this.table.parentNode as HTMLElement).insertBefore(
+        this.paginationContainer,
+        this.table.nextSibling
+      );
     }
 
     if (initialRows) {
@@ -104,7 +109,9 @@ export class Table {
     // Remove old filter handlers if they exist
     if (onFilterChanges && onFilterChanges.length > 0) {
       for (const onFilterChange of onFilterChanges) {
-        const filterElement = document.getElementById(onFilterChange.filterId) as FilterHTMLElement | null;
+        const filterElement = document.getElementById(
+          onFilterChange.filterId
+        ) as FilterHTMLElement | null;
         if (filterElement && filterElement._changeHandler) {
           filterElement.removeEventListener('change', filterElement._changeHandler);
         }
@@ -243,7 +250,7 @@ export class Table {
   /**
    *
    */
-  replaceRange(rows: any[]): void {
+  replaceRange(rows: T[]): void {
     this.rows = rows;
     const body = this.table.querySelector('tbody') as HTMLTableSectionElement;
     body.innerHTML = ''; // Clear existing rows
@@ -262,7 +269,7 @@ export class Table {
       }
 
       // Filter rows first
-      const filteredRows = rows.filter((row: any) => {
+      const filteredRows = rows.filter((row: T) => {
         if (this.filterFunction && !this.filterFunction(row)) {
           return false;
         }
@@ -308,6 +315,3 @@ export class Table {
     }
   }
 }
-
-// Expose to window for console debugging and runtime access
-window.Table = Table;

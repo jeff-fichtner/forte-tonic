@@ -163,10 +163,7 @@ describe('DropRequestRepository', () => {
       expect(result.reason).toBe('Test reason');
       expect(result.status).toBe(DropRequestStatus.PENDING);
       // DropRequestRepository.create calls appendRecord with 2 args (no createdBy)
-      expect(mockDbClient.appendRecord).toHaveBeenCalledWith(
-        'drop_requests',
-        expect.any(Object),
-      );
+      expect(mockDbClient.appendRecord).toHaveBeenCalledWith('drop_requests', expect.any(Object));
     });
 
     test('should throw error on database failure', async () => {

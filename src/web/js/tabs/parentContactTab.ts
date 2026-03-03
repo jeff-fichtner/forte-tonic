@@ -6,13 +6,16 @@ import { resolveParentTrimesters } from '../utilities/trimesterHelpers.js';
 import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
 import { validateResponseFields } from '../data/responseValidation.js';
-import { EmployeeDisplay, sortEmployeesForDirectory, buildDirectoryTableRow } from '../utilities/directoryHelpers.js';
+import {
+  EmployeeDisplay,
+  sortEmployeesForDirectory,
+  buildDirectoryTableRow,
+} from '../utilities/directoryHelpers.js';
 
 interface ContactData {
   admins: Record<string, unknown>[];
   instructors: Record<string, unknown>[];
 }
-
 
 /**
  * ParentContactTab - Contact directory for parents
@@ -25,7 +28,7 @@ interface ContactData {
  * Data waste eliminated: ~2050+ records (other students, unrelated instructors, registrations, classes, rooms)
  */
 export class ParentContactTab extends BaseTab<ContactData> {
-  private directoryTable: Table | null;
+  private directoryTable: Table<EmployeeDisplay> | null;
 
   constructor() {
     super('parent-contact-us');
@@ -51,17 +54,25 @@ export class ParentContactTab extends BaseTab<ContactData> {
 
     const signal = this.getAbortSignal();
 
-    const currentResult = await HttpService.get<ContactData>(`parent/tabs/contact/${ctx.currentTrimester}?parentId=${id}`, { signal });
+    const currentResult = await HttpService.get<ContactData>(
+      `parent/tabs/contact/${ctx.currentTrimester}?parentId=${id}`,
+      { signal }
+    );
     const validatedResult = validateResponseFields(currentResult, ['admins', 'instructors']);
     if (!validatedResult.ok) return validatedResult;
 
     const currentData = validatedResult.data;
 
     if (ctx.showBothTrimesters && ctx.nextTrimester) {
-      const nextResult = await HttpService.get<ContactData>(`parent/tabs/contact/${ctx.nextTrimester}?parentId=${id}`, { signal });
+      const nextResult = await HttpService.get<ContactData>(
+        `parent/tabs/contact/${ctx.nextTrimester}?parentId=${id}`,
+        { signal }
+      );
 
       if (nextResult.ok) {
-        const seenIds = new Set<string>(currentData.instructors.map((i: Record<string, unknown>) => i.id as string));
+        const seenIds = new Set<string>(
+          currentData.instructors.map((i: Record<string, unknown>) => i.id as string)
+        );
         const uniqueNextInstructors = (nextResult.data.instructors || []).filter(
           (i: Record<string, unknown>) => !seenIds.has(i.id as string)
         );
@@ -165,7 +176,10 @@ export class ParentContactTab extends BaseTab<ContactData> {
    * For parent contact, show public contact info (displayEmail, displayPhone)
    * @private
    */
-  #mapInstructorToEmployee(instructor: Record<string, unknown>, obscurePhone: boolean = false): EmployeeDisplay {
+  #mapInstructorToEmployee(
+    instructor: Record<string, unknown>,
+    obscurePhone: boolean = false
+  ): EmployeeDisplay {
     // Get instruments from specialties field
     const instruments = (instructor.specialties as string[]) || [];
     const instrumentsText = instruments.length > 0 ? instruments.join(', ') : 'Instructor';
@@ -176,7 +190,8 @@ export class ParentContactTab extends BaseTab<ContactData> {
     return {
       id: instructor.id as string,
       fullName:
-        (instructor.fullName as string) || `${(instructor.firstName as string) || ''} ${(instructor.lastName as string) || ''}`.trim(),
+        (instructor.fullName as string) ||
+        `${(instructor.firstName as string) || ''} ${(instructor.lastName as string) || ''}`.trim(),
       email: displayEmail,
       phone: formatPhone(displayPhone),
       role: instrumentsText,

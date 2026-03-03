@@ -133,9 +133,9 @@ describe('RegistrationRepository - Delete Functionality', () => {
     test('should require trimester parameter', async () => {
       repository.findByIdInTrimester = jest.fn().mockResolvedValue(mockRegistration);
 
-      await expect(repository.delete(testRegistrationId, 'test-user-id', undefined)).rejects.toThrow(
-        'trimester is required to locate the registration table'
-      );
+      await expect(
+        repository.delete(testRegistrationId, 'test-user-id', undefined)
+      ).rejects.toThrow('trimester is required to locate the registration table');
     });
 
     test('should handle deleteRecord failure gracefully', async () => {
@@ -323,7 +323,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
       expect(result.studentId).toBe('student-1');
       expect(mockDbClient.appendRecord).toHaveBeenCalledWith(
         'registrations_winter',
-        expect.any(Object),
+        expect.any(Object)
       );
       // Cache is handled at dbClient layer
     });
@@ -338,9 +338,9 @@ describe('RegistrationRepository - Delete Functionality', () => {
         registrationType: 'private',
       };
 
-      await expect(
-        repository.create(registrationData, 'fall')
-      ).rejects.toThrow('createdBy is required for audit trail');
+      await expect(repository.create(registrationData, 'fall')).rejects.toThrow(
+        'createdBy is required for audit trail'
+      );
     });
 
     test('should generate UUID if not provided', async () => {

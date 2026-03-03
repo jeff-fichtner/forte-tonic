@@ -37,12 +37,13 @@ export class PromiseHelpers {
   /**
    *
    */
-  static promisifyEvent(eventName: string, target: EventTarget, resolveOnce: boolean = true): Promise<Event> {
+  static promisifyEvent(
+    eventName: string,
+    target: EventTarget,
+    resolveOnce: boolean = true
+  ): Promise<Event> {
     return new Promise(resolve => {
       target.addEventListener(eventName, resolve, { once: resolveOnce });
     });
   }
 }
-
-// Expose to window for console debugging and runtime access
-window.PromiseHelpers = PromiseHelpers;

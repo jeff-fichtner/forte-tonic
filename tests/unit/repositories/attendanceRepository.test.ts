@@ -43,9 +43,7 @@ jest.unstable_mockModule('../../../src/database/googleSheetsDbClient.js', () => 
   GoogleSheetsDbClient: jest.fn(),
 }));
 
-const { AttendanceRepository } = await import(
-  '../../../src/repositories/attendanceRepository.js'
-);
+const { AttendanceRepository } = await import('../../../src/repositories/attendanceRepository.js');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -99,7 +97,9 @@ describe('AttendanceRepository', () => {
 
   beforeEach(() => {
     mockDbClient = createMockDbClient();
-    repo = new AttendanceRepository(mockDbClient as unknown as import('../../../src/database/googleSheetsDbClient.js').GoogleSheetsDbClient);
+    repo = new AttendanceRepository(
+      mockDbClient as unknown as import('../../../src/database/googleSheetsDbClient.js').GoogleSheetsDbClient
+    );
   });
 
   afterEach(() => {
@@ -131,7 +131,7 @@ describe('AttendanceRepository', () => {
     test('should create a new attendance record and write audit', async () => {
       // findById (via findAll -> getAllRecords) returns empty — no duplicate
       mockDbClient.getAllRecords.mockImplementation(
-        (_sheet: string, mapper: Function) => Promise.resolve([]),
+        (_sheet: string, _mapper: (row: Record<string, unknown>) => unknown) => Promise.resolve([])
       );
 
       // appendRecord returns a row object (the "created" row from the sheet)
@@ -159,18 +159,17 @@ describe('AttendanceRepository', () => {
       // appendRecord should have been called for the attendance record (no createdBy arg)
       expect(mockDbClient.appendRecord).toHaveBeenCalledWith(
         'attendance',
-        expect.objectContaining({ id: 'R1_3_2025-2026_fall' }),
+        expect.objectContaining({ id: 'R1_3_2025-2026_fall' })
       );
 
-      // Audit record should have been written via appendRecord with USER_ENTERED
+      // Audit record should have been written via appendRecord
       expect(mockDbClient.appendRecord).toHaveBeenCalledWith(
         'attendance_audit',
         expect.objectContaining({
           action: 'CREATE',
           attendanceId: 'R1_3_2025-2026_fall',
           performedBy: 'teacher@example.com',
-        }),
-        'USER_ENTERED',
+        })
       );
     });
 
@@ -178,7 +177,8 @@ describe('AttendanceRepository', () => {
       // findById finds a matching record — duplicate
       const existing = makeAttendanceRow();
       mockDbClient.getAllRecords.mockImplementation(
-        (_sheet: string, mapper: Function) => Promise.resolve([mapper(existing)]),
+        (_sheet: string, mapper: (row: Record<string, unknown>) => unknown) =>
+          Promise.resolve([mapper(existing)])
       );
 
       const entityData = {
@@ -191,7 +191,7 @@ describe('AttendanceRepository', () => {
       };
 
       await expect(repo.create(entityData, 'teacher@example.com')).rejects.toThrow(
-        'already recorded',
+        'already recorded'
       );
 
       expect(mockDbClient.appendRecord).not.toHaveBeenCalled();
@@ -209,14 +209,14 @@ describe('AttendanceRepository', () => {
       const r2 = makeAttendanceRow({ id: 'R2_1_2025-2026_fall', registrationId: 'R2', week: 1 });
 
       mockDbClient.getAllRecords.mockImplementation(
-        (_sheet: string, mapper: Function) =>
-          Promise.resolve([r1a, r1b, r2].map((row) => mapper(row))),
+        (_sheet: string, mapper: (row: Record<string, unknown>) => unknown) =>
+          Promise.resolve([r1a, r1b, r2].map(row => mapper(row)))
       );
 
       const results = await repo.findByRegistrationId('R1');
 
       expect(results).toHaveLength(2);
-      expect(results.every((r: any) => r.registrationId === 'R1')).toBe(true);
+      expect(results.every((r: Record<string, unknown>) => r.registrationId === 'R1')).toBe(true);
     });
   });
 
@@ -235,8 +235,8 @@ describe('AttendanceRepository', () => {
       });
 
       mockDbClient.getAllRecords.mockImplementation(
-        (_sheet: string, mapper: Function) =>
-          Promise.resolve([w3fall, w4fall, w3winter].map((row) => mapper(row))),
+        (_sheet: string, mapper: (row: Record<string, unknown>) => unknown) =>
+          Promise.resolve([w3fall, w4fall, w3winter].map(row => mapper(row)))
       );
 
       const results = await repo.findByWeek(3, '2025-2026', 'fall');
@@ -313,10 +313,10 @@ describe('AttendanceRepository', () => {
       });
 
       mockDbClient.getAllRecords.mockImplementation(
-        (_sheet: string, mapper: Function) =>
+        (_sheet: string, mapper: (row: Record<string, unknown>) => unknown) =>
           Promise.resolve(
-            [r1w2, r1w5, r1w8, r2w2, r2w5, r2w8, r2w10, winterRec].map((row) => mapper(row)),
-          ),
+            [r1w2, r1w5, r1w8, r2w2, r2w5, r2w8, r2w10, winterRec].map(row => mapper(row))
+          )
       );
 
       const summary = await repo.getAttendanceSummary('R1', '2025-2026', 'fall');
@@ -327,12 +327,12 @@ describe('AttendanceRepository', () => {
       // attendanceRate = (3 / 4) * 100 = 75
       expect(summary.attendanceRate).toBe(75);
       // Records should be sorted ascending by week
-      expect(summary.records.map((r: any) => r.week)).toEqual([2, 5, 8]);
+      expect(summary.records.map((r: Record<string, unknown>) => r.week)).toEqual([2, 5, 8]);
     });
 
     test('should return zero totals when no records exist', async () => {
       mockDbClient.getAllRecords.mockImplementation(
-        (_sheet: string, _mapper: Function) => Promise.resolve([]),
+        (_sheet: string, _mapper: (row: Record<string, unknown>) => unknown) => Promise.resolve([])
       );
 
       const summary = await repo.getAttendanceSummary('R1', '2025-2026', 'fall');
@@ -361,8 +361,8 @@ describe('AttendanceRepository', () => {
       });
 
       mockDbClient.getAllRecords.mockImplementation(
-        (_sheet: string, mapper: Function) =>
-          Promise.resolve([w1, w2].map((row) => mapper(row))),
+        (_sheet: string, mapper: (row: Record<string, unknown>) => unknown) =>
+          Promise.resolve([w1, w2].map(row => mapper(row)))
       );
 
       const summary = await repo.getAttendanceSummary('R1', '2025-2026', 'fall');
@@ -381,7 +381,8 @@ describe('AttendanceRepository', () => {
     test('should return true when attendance record exists', async () => {
       const existing = makeAttendanceRow({ id: 'R1_3_2025-2026_fall' });
       mockDbClient.getAllRecords.mockImplementation(
-        (_sheet: string, mapper: Function) => Promise.resolve([mapper(existing)]),
+        (_sheet: string, mapper: (row: Record<string, unknown>) => unknown) =>
+          Promise.resolve([mapper(existing)])
       );
 
       const result = await repo.hasAttendance('R1', 3, '2025-2026', 'fall');
@@ -391,7 +392,7 @@ describe('AttendanceRepository', () => {
 
     test('should return false when attendance record does not exist', async () => {
       mockDbClient.getAllRecords.mockImplementation(
-        (_sheet: string, _mapper: Function) => Promise.resolve([]),
+        (_sheet: string, _mapper: (row: Record<string, unknown>) => unknown) => Promise.resolve([])
       );
 
       const result = await repo.hasAttendance('R1', 3, '2025-2026', 'fall');
@@ -411,14 +412,14 @@ describe('AttendanceRepository', () => {
       const r3 = makeAttendanceRow({ id: 'R3_1_2025-2026_fall', registrationId: 'R3' });
 
       mockDbClient.getAllRecords.mockImplementation(
-        (_sheet: string, mapper: Function) =>
-          Promise.resolve([r1, r2, r3].map((row) => mapper(row))),
+        (_sheet: string, mapper: (row: Record<string, unknown>) => unknown) =>
+          Promise.resolve([r1, r2, r3].map(row => mapper(row)))
       );
 
       const results = await repo.getAttendanceForRegistrations(['R1', 'R3']);
 
       expect(results).toHaveLength(2);
-      const ids = results.map((r: any) => r.registrationId);
+      const ids = results.map((r: Record<string, unknown>) => r.registrationId);
       expect(ids).toContain('R1');
       expect(ids).toContain('R3');
       expect(ids).not.toContain('R2');

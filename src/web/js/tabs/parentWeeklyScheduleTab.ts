@@ -89,7 +89,10 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
       currentTrimester: { name: ctx.currentTrimester, data: firstData },
       showTwoTrimesters: ctx.showBothTrimesters,
       students: this.#mergeUnique([...firstData.students, ...(secondData?.students || [])], 'id'),
-      instructors: this.#mergeUnique([...firstData.instructors, ...(secondData?.instructors || [])], 'id'),
+      instructors: this.#mergeUnique(
+        [...firstData.instructors, ...(secondData?.instructors || [])],
+        'id'
+      ),
       classes: this.#mergeUnique([...firstData.classes, ...(secondData?.classes || [])], 'id'),
     };
 
@@ -104,8 +107,14 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
    * Fetch data for a specific trimester
    * @private
    */
-  async #fetchTrimesterData(parentId: string, trimester: string): Promise<HttpResult<TrimesterData>> {
-    const result = await HttpService.get<TrimesterData>(`parent/tabs/weekly-schedule/${trimester}?parentId=${parentId}`, { signal: this.getAbortSignal() });
+  async #fetchTrimesterData(
+    parentId: string,
+    trimester: string
+  ): Promise<HttpResult<TrimesterData>> {
+    const result = await HttpService.get<TrimesterData>(
+      `parent/tabs/weekly-schedule/${trimester}?parentId=${parentId}`,
+      { signal: this.getAbortSignal() }
+    );
     return validateResponseFields(result, ['registrations', 'students', 'instructors', 'classes']);
   }
 
@@ -161,7 +170,11 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
    * Render a section for a specific trimester
    * @private
    */
-  #renderTrimesterSection(container: HTMLElement, trimesterInfo: TrimesterInfo, sectionType: string): void {
+  #renderTrimesterSection(
+    container: HTMLElement,
+    trimesterInfo: TrimesterInfo,
+    sectionType: string
+  ): void {
     const { name: trimesterName, data: trimesterData } = trimesterInfo;
     const registrations = trimesterData.registrations;
 
@@ -209,7 +222,13 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
    * Render the main schedule section (one table per student)
    * @private
    */
-  #renderScheduleSection(container: HTMLElement, registrations: Record<string, unknown>[], trimesterName: string, sectionType: string, trimesterData: TrimesterData): void {
+  #renderScheduleSection(
+    container: HTMLElement,
+    registrations: Record<string, unknown>[],
+    trimesterName: string,
+    sectionType: string,
+    trimesterData: TrimesterData
+  ): void {
     // Show 'no matching registrations' message if no registrations
     if (registrations.length === 0) {
       const noRegistrationsMessage = document.createElement('div');
@@ -226,13 +245,15 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
     }
 
     // Get parent's students from this trimester's data who have registrations
-    const studentsWithRegistrations = trimesterData.students.filter((student: Record<string, unknown>) => {
-      const studentId = student.id as string;
-      return registrations.some((reg: Record<string, unknown>) => {
-        const regStudentId = reg.studentId as string;
-        return regStudentId === studentId;
-      });
-    });
+    const studentsWithRegistrations = trimesterData.students.filter(
+      (student: Record<string, unknown>) => {
+        const studentId = student.id as string;
+        return registrations.some((reg: Record<string, unknown>) => {
+          const regStudentId = reg.studentId as string;
+          return regStudentId === studentId;
+        });
+      }
+    );
 
     // Sort students by grade
     studentsWithRegistrations.sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
@@ -309,7 +330,11 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
    * Build a weekly schedule table for a specific student
    * @private
    */
-  #buildWeeklyScheduleTable(tableId: string, enrollments: Record<string, unknown>[], trimesterData: TrimesterData): Table {
+  #buildWeeklyScheduleTable(
+    tableId: string,
+    enrollments: Record<string, unknown>[],
+    trimesterData: TrimesterData
+  ): Table {
     // Check if we're in the intent period to show the Intent column
     const isIntentPeriod = isCurrentPeriodIntent();
 
@@ -330,7 +355,8 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
     headers.push('Contact');
 
     // Create a wrapper function that has access to trimesterData
-    const rowBuilder = (enrollment: Record<string, unknown>): string => this.#buildScheduleTableRow(enrollment, trimesterData);
+    const rowBuilder = (enrollment: Record<string, unknown>): string =>
+      this.#buildScheduleTableRow(enrollment, trimesterData);
 
     return new Table(
       tableId,
@@ -355,11 +381,16 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
    * Build a wait list table
    * @private
    */
-  #buildWaitListTable(tableId: string, enrollments: Record<string, unknown>[], trimesterData: TrimesterData): Table {
+  #buildWaitListTable(
+    tableId: string,
+    enrollments: Record<string, unknown>[],
+    trimesterData: TrimesterData
+  ): Table {
     const headers = ['Student', 'Grade', 'Class Title', 'Timestamp'];
 
     // Create a wrapper function that has access to trimesterData
-    const rowBuilder = (enrollment: Record<string, unknown>): string => this.#buildWaitListTableRow(enrollment, trimesterData);
+    const rowBuilder = (enrollment: Record<string, unknown>): string =>
+      this.#buildWaitListTableRow(enrollment, trimesterData);
 
     return new Table(
       tableId,
@@ -379,12 +410,17 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
    * Build a table row for a schedule enrollment
    * @private
    */
-  #buildScheduleTableRow(enrollment: Record<string, unknown>, trimesterData: TrimesterData): string {
+  #buildScheduleTableRow(
+    enrollment: Record<string, unknown>,
+    trimesterData: TrimesterData
+  ): string {
     // Find instructor and student from trimesterData
     const instructorId = enrollment.instructorId as string;
     const studentId = enrollment.studentId as string;
 
-    const instructor = trimesterData.instructors.find((i: Record<string, unknown>) => i.id === instructorId);
+    const instructor = trimesterData.instructors.find(
+      (i: Record<string, unknown>) => i.id === instructorId
+    );
     const student = trimesterData.students.find((s: Record<string, unknown>) => s.id === studentId);
 
     // Handle orphaned enrollments (student or instructor deleted but enrollment remains)
@@ -464,7 +500,10 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
    * Build a table row for a wait list enrollment
    * @private
    */
-  #buildWaitListTableRow(enrollment: Record<string, unknown>, trimesterData: TrimesterData): string {
+  #buildWaitListTableRow(
+    enrollment: Record<string, unknown>,
+    trimesterData: TrimesterData
+  ): string {
     // Find student from trimesterData
     const studentId = enrollment.studentId as string;
     const student = trimesterData.students.find((s: Record<string, unknown>) => s.id === studentId);
@@ -522,7 +561,9 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
 
     // For parent view: show instructor emails
     const instructorIdToFind = currentEnrollment.instructorId as string;
-    const instructor = this.data!.instructors.find((i: Record<string, unknown>) => i.id === instructorIdToFind);
+    const instructor = this.data!.instructors.find(
+      (i: Record<string, unknown>) => i.id === instructorIdToFind
+    );
 
     if (instructor && instructor.email && (instructor.email as string).trim()) {
       await copyToClipboard(instructor.email as string);
@@ -596,7 +637,11 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
 
     await withFeedback(
       () => HttpService.patch(`registrations/${registrationId}/intent`, { intent }),
-      { statusElement: statusIndicator, successToast: 'Intent updated successfully!', failureToast: null }
+      {
+        statusElement: statusIndicator,
+        successToast: 'Intent updated successfully!',
+        failureToast: null,
+      }
     );
   }
 

@@ -30,9 +30,7 @@ jest.unstable_mockModule('../../../src/common/responseHelpers.js', () => ({
 }));
 
 // Import controller after all mocks are wired
-const { FeedbackController } = await import(
-  '../../../src/controllers/feedbackController.js'
-);
+const { FeedbackController } = await import('../../../src/controllers/feedbackController.js');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -42,7 +40,7 @@ function createRes() {
   return {
     status: jest.fn().mockReturnThis(),
     json: jest.fn(),
-  } as any;
+  } as unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -50,7 +48,7 @@ function createRes() {
 // ---------------------------------------------------------------------------
 
 describe('FeedbackController', () => {
-  let res: any;
+  let res: ReturnType<typeof createRes>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -66,7 +64,7 @@ describe('FeedbackController', () => {
             currentUser: { email: 'user@test.com' },
           },
         },
-      } as any;
+      } as unknown;
 
       await FeedbackController.submitFeedback(req, res);
 
@@ -78,13 +76,13 @@ describe('FeedbackController', () => {
             message: 'Great app!',
             userEmail: 'user@test.com',
           }),
-        }),
+        })
       );
 
       expect(mockSuccessResponse).toHaveBeenCalledWith(
         res,
         { received: true },
-        expect.objectContaining({ message: 'Feedback received successfully' }),
+        expect.objectContaining({ message: 'Feedback received successfully' })
       );
     });
 
@@ -95,7 +93,7 @@ describe('FeedbackController', () => {
             currentUser: { email: 'user@test.com' },
           },
         },
-      } as any;
+      } as unknown;
 
       await FeedbackController.submitFeedback(req, res);
 
@@ -106,18 +104,14 @@ describe('FeedbackController', () => {
             message: '(no message provided)',
             userEmail: 'user@test.com',
           }),
-        }),
+        })
       );
 
-      expect(mockSuccessResponse).toHaveBeenCalledWith(
-        res,
-        { received: true },
-        expect.any(Object),
-      );
+      expect(mockSuccessResponse).toHaveBeenCalledWith(res, { received: true }, expect.any(Object));
     });
 
     it('should succeed with empty body (no message, no state)', async () => {
-      const req = { body: {} } as any;
+      const req = { body: {} } as unknown;
 
       await FeedbackController.submitFeedback(req, res);
 
@@ -128,14 +122,10 @@ describe('FeedbackController', () => {
             message: '(no message provided)',
             userEmail: 'unknown',
           }),
-        }),
+        })
       );
 
-      expect(mockSuccessResponse).toHaveBeenCalledWith(
-        res,
-        { received: true },
-        expect.any(Object),
-      );
+      expect(mockSuccessResponse).toHaveBeenCalledWith(res, { received: true }, expect.any(Object));
     });
   });
 });

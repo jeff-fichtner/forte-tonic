@@ -5,6 +5,7 @@
  */
 
 import { getRegistrationConfig } from './registrationForm/registrationConfig.js';
+import { UserSession } from '../auth/session.js';
 
 interface ClassLike {
   id: string;
@@ -22,7 +23,7 @@ class ClassManager {
    * Get Rock Band class IDs from app configuration
    */
   static getRockBandClassIds(): string[] {
-    return (window.UserSession?.getAppConfig()?.rockBandClassIds as string[]) || [];
+    return (UserSession?.getAppConfig()?.rockBandClassIds as string[]) || [];
   }
 
   /**
@@ -87,8 +88,5 @@ class ClassManager {
     return getRegistrationConfig().rockBandDisplayConfig.defaultLengthMinutes;
   }
 }
-
-// Make it available globally like other managers
-window.ClassManager = ClassManager;
 
 export { ClassManager };

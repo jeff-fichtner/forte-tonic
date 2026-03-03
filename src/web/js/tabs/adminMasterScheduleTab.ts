@@ -78,7 +78,7 @@ interface FilterConfig {
  * Data waste eliminated: ~1500+ records (other trimesters, rooms not needed)
  */
 export class AdminMasterScheduleTab extends AdminBaseTab<MasterScheduleData> {
-  private masterScheduleTable: Table | null;
+  private masterScheduleTable: Table<MasterScheduleRegistration> | null;
 
   constructor() {
     super('admin-master-schedule');
@@ -96,10 +96,18 @@ export class AdminMasterScheduleTab extends AdminBaseTab<MasterScheduleData> {
   async fetchData(_sessionInfo: SessionInfo | null): Promise<HttpResult<MasterScheduleData>> {
     const trimester = this.getTrimester();
     if (!trimester) {
-      return { ok: false, error: { message: 'Could not determine trimester: no button selected and no current period' } };
+      return {
+        ok: false,
+        error: {
+          message: 'Could not determine trimester: no button selected and no current period',
+        },
+      };
     }
 
-    const result = await HttpService.get<MasterScheduleData>(`admin/tabs/master-schedule/${trimester}`, { signal: this.getAbortSignal() });
+    const result = await HttpService.get<MasterScheduleData>(
+      `admin/tabs/master-schedule/${trimester}`,
+      { signal: this.getAbortSignal() }
+    );
     return validateResponseFields(result, ['registrations', 'students', 'instructors', 'classes']);
   }
 
@@ -393,10 +401,18 @@ export class AdminMasterScheduleTab extends AdminBaseTab<MasterScheduleData> {
    */
   #filterRegistration(registration: MasterScheduleRegistration): boolean {
     // Get filter values
-    const instructorSelect = document.getElementById('master-schedule-instructor-filter-select') as HTMLSelectElement | null;
-    const daySelect = document.getElementById('master-schedule-day-filter-select') as HTMLSelectElement | null;
-    const gradeSelect = document.getElementById('master-schedule-grade-filter-select') as HTMLSelectElement | null;
-    const intentSelect = document.getElementById('master-schedule-intent-filter-select') as HTMLSelectElement | null;
+    const instructorSelect = document.getElementById(
+      'master-schedule-instructor-filter-select'
+    ) as HTMLSelectElement | null;
+    const daySelect = document.getElementById(
+      'master-schedule-day-filter-select'
+    ) as HTMLSelectElement | null;
+    const gradeSelect = document.getElementById(
+      'master-schedule-grade-filter-select'
+    ) as HTMLSelectElement | null;
+    const intentSelect = document.getElementById(
+      'master-schedule-intent-filter-select'
+    ) as HTMLSelectElement | null;
 
     // Get selected values from each filter
     const selectedInstructors = instructorSelect
@@ -442,7 +458,9 @@ export class AdminMasterScheduleTab extends AdminBaseTab<MasterScheduleData> {
    */
   #populateFilterDropdowns(registrations: MasterScheduleRegistration[]): void {
     // Populate instructor dropdown
-    const instructorSelect = document.getElementById('master-schedule-instructor-filter-select') as HTMLSelectElement | null;
+    const instructorSelect = document.getElementById(
+      'master-schedule-instructor-filter-select'
+    ) as HTMLSelectElement | null;
     if (instructorSelect) {
       // Clear existing options except the first (placeholder)
       while (instructorSelect.children.length > 1) {
@@ -476,7 +494,9 @@ export class AdminMasterScheduleTab extends AdminBaseTab<MasterScheduleData> {
     }
 
     // Populate day dropdown
-    const daySelect = document.getElementById('master-schedule-day-filter-select') as HTMLSelectElement | null;
+    const daySelect = document.getElementById(
+      'master-schedule-day-filter-select'
+    ) as HTMLSelectElement | null;
     if (daySelect) {
       // Clear existing options except the first (placeholder)
       while (daySelect.children.length > 1) {
@@ -515,7 +535,9 @@ export class AdminMasterScheduleTab extends AdminBaseTab<MasterScheduleData> {
     }
 
     // Populate grade dropdown
-    const gradeSelect = document.getElementById('master-schedule-grade-filter-select') as HTMLSelectElement | null;
+    const gradeSelect = document.getElementById(
+      'master-schedule-grade-filter-select'
+    ) as HTMLSelectElement | null;
     if (gradeSelect) {
       // Clear existing options except the first (placeholder)
       while (gradeSelect.children.length > 1) {
@@ -557,7 +579,9 @@ export class AdminMasterScheduleTab extends AdminBaseTab<MasterScheduleData> {
     const intentFilterContainer = document.getElementById(
       'master-schedule-intent-filter-container'
     );
-    const intentSelect = document.getElementById('master-schedule-intent-filter-select') as HTMLSelectElement | null;
+    const intentSelect = document.getElementById(
+      'master-schedule-intent-filter-select'
+    ) as HTMLSelectElement | null;
 
     // Adjust column widths based on whether intent filter is shown
     const instructorFilter = document.getElementById('master-schedule-instructor-filter-select')
@@ -638,7 +662,9 @@ export class AdminMasterScheduleTab extends AdminBaseTab<MasterScheduleData> {
    * Waitlist registrations are identified by the isWaitlistClass property
    * @private
    */
-  #excludeRockBandClasses(registrations: MasterScheduleRegistration[]): MasterScheduleRegistration[] {
+  #excludeRockBandClasses(
+    registrations: MasterScheduleRegistration[]
+  ): MasterScheduleRegistration[] {
     return registrations.filter(reg => !reg.isWaitlistClass);
   }
 

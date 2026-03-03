@@ -10,15 +10,6 @@ jest.mock('../../src/web/js/data/httpService.js', () => ({
   },
 }));
 
-jest.mock('../../src/web/js/data/indexedDbClient.js', () => ({
-  IndexedDbClient: jest.fn().mockImplementation(() => ({
-    init: jest.fn(),
-    hasItems: jest.fn(),
-    getAll: jest.fn(),
-    insertRange: jest.fn(),
-  })),
-}));
-
 jest.mock('../../src/web/js/utilities/domHelpers.js', () => ({
   DomHelpers: {
     waitForDocumentReadyAsync: jest.fn(),

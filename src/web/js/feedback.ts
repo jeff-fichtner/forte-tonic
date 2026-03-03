@@ -5,6 +5,7 @@
 
 import { HttpService } from './data/httpService.js';
 import { ServerFunctions } from './constants.js';
+import { UserSession } from './auth/session.js';
 
 interface FeedbackState {
   timestamp: string;
@@ -83,9 +84,9 @@ export class FeedbackManager {
       const currentUser = this.viewModel.currentUser as Record<string, unknown>;
       state.currentUser = {
         email: currentUser.email,
-        isAdmin: !!(currentUser.admin),
-        isInstructor: !!(currentUser.instructor),
-        isParent: !!(currentUser.parent),
+        isAdmin: !!currentUser.admin,
+        isInstructor: !!currentUser.instructor,
+        isParent: !!currentUser.parent,
         adminId: (currentUser.admin as Record<string, unknown> | undefined)?.id,
         instructorId: (currentUser.instructor as Record<string, unknown> | undefined)?.id,
         parentId: (currentUser.parent as Record<string, unknown> | undefined)?.id,
@@ -101,8 +102,8 @@ export class FeedbackManager {
     }
 
     // Capture current period info
-    if (window.UserSession?.getCurrentPeriod) {
-      const period = window.UserSession.getCurrentPeriod();
+    if (UserSession.getCurrentPeriod) {
+      const period = UserSession.getCurrentPeriod();
       if (period) {
         state.currentPeriod = {
           periodType: period.periodType,

@@ -104,6 +104,3 @@ export class Select {
     });
   }
 }
-
-// Expose to window for console debugging and runtime access
-window.Select = Select;

@@ -41,8 +41,30 @@ describe('UserRepository', () => {
   describe('getAdmins', () => {
     test('should return array of admin models', async () => {
       const mockSheetData = [
-        { id: 'admin-1', email: 'admin1@test.com', lastName: 'Smith', firstName: 'John', phone: '5551234000', accessCode: '', role: '', displayEmail: '', displayPhone: '', isDirector: '' },
-        { id: 'admin-2', email: 'admin2@test.com', lastName: 'Doe', firstName: 'Jane', phone: '5555678000', accessCode: '', role: '', displayEmail: '', displayPhone: '', isDirector: '' },
+        {
+          id: 'admin-1',
+          email: 'admin1@test.com',
+          lastName: 'Smith',
+          firstName: 'John',
+          phone: '5551234000',
+          accessCode: '',
+          role: '',
+          displayEmail: '',
+          displayPhone: '',
+          isDirector: '',
+        },
+        {
+          id: 'admin-2',
+          email: 'admin2@test.com',
+          lastName: 'Doe',
+          firstName: 'Jane',
+          phone: '5555678000',
+          accessCode: '',
+          role: '',
+          displayEmail: '',
+          displayPhone: '',
+          isDirector: '',
+        },
       ];
 
       // Mock getAllRecords to return admin instances
@@ -215,8 +237,22 @@ describe('UserRepository', () => {
   describe('getParents', () => {
     test('should return array of parent models', async () => {
       const mockParents = [
-        Parent.fromDatabaseRow({ id: 'parent-1', email: 'parent1@test.com', lastName: 'Johnson', firstName: 'Robert', phone: '5551111000', accessCode: '' }),
-        Parent.fromDatabaseRow({ id: 'parent-2', email: 'parent2@test.com', lastName: 'Davis', firstName: 'Linda', phone: '5552222000', accessCode: '' }),
+        Parent.fromDatabaseRow({
+          id: 'parent-1',
+          email: 'parent1@test.com',
+          lastName: 'Johnson',
+          firstName: 'Robert',
+          phone: '5551111000',
+          accessCode: '',
+        }),
+        Parent.fromDatabaseRow({
+          id: 'parent-2',
+          email: 'parent2@test.com',
+          lastName: 'Davis',
+          firstName: 'Linda',
+          phone: '5552222000',
+          accessCode: '',
+        }),
       ];
 
       mockGoogleSheetsDbClient.getAllRecords.mockResolvedValue(mockParents);
@@ -253,8 +289,26 @@ describe('UserRepository', () => {
     test('should return student by id', async () => {
       // Student.fromDatabaseRow expects a Record with keys: id, lastName, firstName, lastNickname, firstNickname, grade, parent1Id, parent2Id
       const mockStudentRecords = [
-        { id: 'student-1', lastName: 'Johnson', firstName: 'Emma', lastNickname: '', firstNickname: '', grade: '5', parent1Id: 'parent-1', parent2Id: '' },
-        { id: 'student-2', lastName: 'Davis', firstName: 'Liam', lastNickname: '', firstNickname: '', grade: '4', parent1Id: 'parent-2', parent2Id: '' },
+        {
+          id: 'student-1',
+          lastName: 'Johnson',
+          firstName: 'Emma',
+          lastNickname: '',
+          firstNickname: '',
+          grade: '5',
+          parent1Id: 'parent-1',
+          parent2Id: '',
+        },
+        {
+          id: 'student-2',
+          lastName: 'Davis',
+          firstName: 'Liam',
+          lastNickname: '',
+          firstNickname: '',
+          grade: '4',
+          parent1Id: 'parent-2',
+          parent2Id: '',
+        },
       ];
 
       // Mock the db client calls

@@ -29,6 +29,3 @@ export class DurationHelpers {
     return duration.toDate();
   }
 }
-
-// Expose to window for console debugging and runtime access
-window.DurationHelpers = DurationHelpers;

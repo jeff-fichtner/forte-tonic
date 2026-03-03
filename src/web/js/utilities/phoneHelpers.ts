@@ -88,12 +88,3 @@ export function isValidPhoneNumber(phoneNumber: string): boolean {
 
   return true;
 }
-
-// Expose to window for console debugging and runtime access (browser only)
-if (typeof window !== 'undefined') {
-  window.formatPhone = formatPhone;
-  window.isValidUnformattedPhone = isValidUnformattedPhone;
-  window.stripPhoneFormatting = stripPhoneFormatting;
-  window.formatPhoneAsTyped = formatPhoneAsTyped;
-  window.isValidPhoneNumber = isValidPhoneNumber;
-}

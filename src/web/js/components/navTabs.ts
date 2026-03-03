@@ -1,6 +1,8 @@
 import { PeriodType } from '/utils/values/periodType.js';
 import { UserType } from '/utils/values/userType.js';
 import { isEnrollmentPeriod } from '../utilities/periodHelpers.js';
+import { UserSession } from '../auth/session.js';
+import { getTabController } from '../core/tabControllerInstance.js';
 
 /**
  *
@@ -48,8 +50,8 @@ export class NavTabs {
 
       // Phase 2: Check if this tab is registered with TabController
       const tabId = targetContent.id;
-      const isTabControllerRegistered =
-        window.tabController && window.tabController.isTabRegistered(tabId);
+      const tc = getTabController();
+      const isTabControllerRegistered = tc && tc.isTabRegistered(tabId);
 
       if (isTabControllerRegistered) {
         try {
@@ -68,7 +70,7 @@ export class NavTabs {
 
           // Update TabController session if needed
           if (sessionInfo) {
-            window.tabController.updateSession(sessionInfo);
+            tc.updateSession(sessionInfo);
           }
 
           // Hide all tab contents first
@@ -80,7 +82,7 @@ export class NavTabs {
           targetContent.hidden = false;
 
           // Activate the tab via TabController (fetches data and renders)
-          await window.tabController.activateTab(tabId);
+          await tc.activateTab(tabId);
         } catch (error) {
           console.error(`Error activating tab ${tabId} via TabController:`, error);
           // Fallback: just show the content without TabController
@@ -100,7 +102,7 @@ export class NavTabs {
       const adminTrimesterSelector = document.getElementById('admin-trimester-selector-container');
       if (adminTrimesterSelector) {
         const isAdmin = !!this.#currentUser?.admin;
-        const currentPeriod = window.UserSession?.getCurrentPeriod();
+        const currentPeriod = UserSession?.getCurrentPeriod();
 
         const adminTrimesterTabs = [
           '#admin-master-schedule',
@@ -119,7 +121,7 @@ export class NavTabs {
       );
       if (instructorTrimesterSelector) {
         const isInstructor = !!this.#currentUser?.instructor;
-        const currentPeriod = window.UserSession?.getCurrentPeriod();
+        const currentPeriod = UserSession?.getCurrentPeriod();
 
         const instructorTrimesterTabs = ['#instructor-weekly-schedule'];
         const shouldShowInstructorTrimester =
@@ -183,12 +185,12 @@ export class NavTabs {
     const pageContent = document.getElementById('page-content');
     if (pageContent) {
       // Trigger reflow by reading offsetHeight (forces browser to recalculate layout)
-      pageContent.offsetHeight;
+      void pageContent.offsetHeight;
 
       // Also force reflow on the main container
       const container = document.querySelector<HTMLElement>('.container');
       if (container) {
-        container.offsetHeight;
+        void container.offsetHeight;
       }
     }
 
@@ -205,13 +207,13 @@ export class NavTabs {
         const activeTabContent = document.querySelector<HTMLElement>(firstTabHref);
         if (activeTabContent && !activeTabContent.hidden) {
           // Force reflow on the tab content
-          activeTabContent.offsetHeight;
+          void activeTabContent.offsetHeight;
 
           // Find any tables in the content and force reflow on them too
           const tables = activeTabContent.querySelectorAll<HTMLTableElement>('table');
           tables.forEach((table: HTMLTableElement) => {
             if (!table.hidden) {
-              table.offsetHeight;
+              void table.offsetHeight;
 
               // If this is a MaterializeCSS table, reinitialize it
               if (window.M && window.M.updateTextFields) {
@@ -263,18 +265,18 @@ export class NavTabs {
     window.scrollTo(0, 0);
 
     // Force reflow on the tab content
-    tabContent.offsetHeight;
+    void tabContent.offsetHeight;
 
     // Find any tables and force reflow on them
     const tables = tabContent.querySelectorAll<HTMLTableElement>('table');
     tables.forEach((table: HTMLTableElement) => {
       if (!table.hidden) {
-        table.offsetHeight;
+        void table.offsetHeight;
 
         // For tables with complex content, also check their parent containers
         const tableContainer = table.closest<HTMLElement>('.card, .card-content, .row, .col');
         if (tableContainer) {
-          tableContainer.offsetHeight;
+          void tableContainer.offsetHeight;
         }
       }
     });
@@ -319,7 +321,7 @@ export class NavTabs {
 
     // Hide registration tab for parents during intent period
     if (section === 'parent') {
-      const currentPeriod = window.UserSession?.getCurrentPeriod();
+      const currentPeriod = UserSession?.getCurrentPeriod();
       const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
 
       if (isIntentPeriod) {
@@ -347,8 +349,8 @@ export class NavTabs {
   #initializeSectionUI(section: string): void {
     if (section === 'admin') {
       const isAdmin = !!this.#currentUser?.admin;
-      const currentPeriod = window.UserSession?.getCurrentPeriod();
-      const appConfig = window.UserSession?.getAppConfig();
+      const currentPeriod = UserSession?.getCurrentPeriod();
+      const appConfig = UserSession?.getAppConfig();
 
       const trimesterSelector = document.getElementById('admin-trimester-selector-container');
 
@@ -389,8 +391,8 @@ export class NavTabs {
 
     if (section === 'instructor') {
       const isInstructor = !!this.#currentUser?.instructor;
-      const currentPeriod = window.UserSession?.getCurrentPeriod();
-      const appConfig = window.UserSession?.getAppConfig();
+      const currentPeriod = UserSession?.getCurrentPeriod();
+      const appConfig = UserSession?.getAppConfig();
 
       const trimesterSelector = document.getElementById('instructor-trimester-selector-container');
 
@@ -471,7 +473,8 @@ export class NavTabs {
 
           // Phase 2: Try to activate via TabController if registered
           const tabId = targetContent.id;
-          const isRegistered = window.tabController && window.tabController.isTabRegistered(tabId);
+          const tc2 = getTabController();
+          const isRegistered = tc2 && tc2.isTabRegistered(tabId);
 
           if (isRegistered) {
             const currentUser = this.#currentUser;
@@ -487,7 +490,7 @@ export class NavTabs {
               : null;
 
             if (sessionInfo) {
-              window.tabController.updateSession(sessionInfo);
+              tc2.updateSession(sessionInfo);
             }
 
             // Add active class to the tab link BEFORE activating
@@ -499,7 +502,7 @@ export class NavTabs {
 
             // Activate the tab via TabController (await to ensure it completes)
             try {
-              await window.tabController.activateTab(tabId);
+              await tc2.activateTab(tabId);
             } catch (error) {
               console.error(`Error activating first tab ${tabId}:`, error);
             }
@@ -567,6 +570,3 @@ export class NavTabs {
     if (pageError) pageError.hidden = true; // Hide errors
   }
 }
-
-// Expose to window for console debugging and runtime access
-window.NavTabs = NavTabs;

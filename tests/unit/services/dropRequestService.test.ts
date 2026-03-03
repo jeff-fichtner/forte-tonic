@@ -25,7 +25,9 @@ jest.unstable_mockModule('../../../src/services/configurationService.js', () => 
 
 // Import AFTER mocking base dependencies
 const { DropRequestService } = await import('../../../src/services/dropRequestService.js');
-const { NotFoundError, ValidationError, ForbiddenError, ConflictError } = await import('../../../src/common/errors.js');
+const { NotFoundError, ValidationError, ForbiddenError, ConflictError } = await import(
+  '../../../src/common/errors.js'
+);
 const { DropRequestStatus } = await import('../../../src/utils/values/dropRequestStatus.js');
 const { PeriodType } = await import('../../../src/utils/values/periodType.js');
 
@@ -61,10 +63,10 @@ type Mocks = ReturnType<typeof createMocks>;
 
 function createService(mocks: Mocks) {
   return new DropRequestService(
-    mocks.dropRequestRepository as any,
-    mocks.registrationRepository as any,
-    mocks.studentRepository as any,
-    mocks.periodService as any,
+    mocks.dropRequestRepository as unknown as ConstructorParameters<typeof DropRequestService>[0],
+    mocks.registrationRepository as unknown as ConstructorParameters<typeof DropRequestService>[1],
+    mocks.studentRepository as unknown as ConstructorParameters<typeof DropRequestService>[2],
+    mocks.periodService as unknown as ConstructorParameters<typeof DropRequestService>[3]
   );
 }
 
@@ -126,7 +128,7 @@ describe('DropRequestService', () => {
           reason,
           status: DropRequestStatus.PENDING,
         },
-        parentId,
+        parentId
       );
     });
 
@@ -145,9 +147,9 @@ describe('DropRequestService', () => {
         parent2Id: 'other-parent-2',
       });
 
-      await expect(
-        service.createDropRequest(registrationId, parentId, reason),
-      ).rejects.toThrow(ForbiddenError);
+      await expect(service.createDropRequest(registrationId, parentId, reason)).rejects.toThrow(
+        ForbiddenError
+      );
     });
 
     test('should throw ValidationError when not in REGISTRATION period', async () => {
@@ -155,9 +157,9 @@ describe('DropRequestService', () => {
         periodType: PeriodType.INTENT,
       });
 
-      await expect(
-        service.createDropRequest(registrationId, parentId, reason),
-      ).rejects.toThrow(ValidationError);
+      await expect(service.createDropRequest(registrationId, parentId, reason)).rejects.toThrow(
+        ValidationError
+      );
     });
 
     test('should throw ConflictError when pending request already exists', async () => {
@@ -179,9 +181,9 @@ describe('DropRequestService', () => {
         status: DropRequestStatus.PENDING,
       });
 
-      await expect(
-        service.createDropRequest(registrationId, parentId, reason),
-      ).rejects.toThrow(ConflictError);
+      await expect(service.createDropRequest(registrationId, parentId, reason)).rejects.toThrow(
+        ConflictError
+      );
     });
 
     test('should throw NotFoundError when registration does not exist', async () => {
@@ -191,9 +193,9 @@ describe('DropRequestService', () => {
       });
       mocks.registrationRepository.findByIdInTrimester.mockResolvedValue(null);
 
-      await expect(
-        service.createDropRequest(registrationId, parentId, reason),
-      ).rejects.toThrow(NotFoundError);
+      await expect(service.createDropRequest(registrationId, parentId, reason)).rejects.toThrow(
+        NotFoundError
+      );
     });
   });
 
@@ -229,7 +231,7 @@ describe('DropRequestService', () => {
       expect(mocks.registrationRepository.delete).toHaveBeenCalledWith(
         'reg-001',
         adminEmail,
-        'fall',
+        'fall'
       );
       expect(mocks.dropRequestRepository.update).toHaveBeenCalledWith(
         requestId,
@@ -238,16 +240,16 @@ describe('DropRequestService', () => {
           reviewedBy: adminEmail,
           adminNotes,
         }),
-        adminEmail,
+        adminEmail
       );
     });
 
     test('should throw NotFoundError when request does not exist', async () => {
       mocks.dropRequestRepository.findById.mockResolvedValue(null);
 
-      await expect(
-        service.approveDropRequest(requestId, adminEmail, adminNotes),
-      ).rejects.toThrow(NotFoundError);
+      await expect(service.approveDropRequest(requestId, adminEmail, adminNotes)).rejects.toThrow(
+        NotFoundError
+      );
     });
 
     test('should throw ValidationError when request is already approved', async () => {
@@ -256,9 +258,9 @@ describe('DropRequestService', () => {
         status: DropRequestStatus.APPROVED,
       });
 
-      await expect(
-        service.approveDropRequest(requestId, adminEmail, adminNotes),
-      ).rejects.toThrow(ValidationError);
+      await expect(service.approveDropRequest(requestId, adminEmail, adminNotes)).rejects.toThrow(
+        ValidationError
+      );
     });
   });
 
@@ -294,7 +296,7 @@ describe('DropRequestService', () => {
           reviewedBy: adminEmail,
           adminNotes,
         }),
-        adminEmail,
+        adminEmail
       );
     });
 
@@ -304,9 +306,9 @@ describe('DropRequestService', () => {
         status: DropRequestStatus.REJECTED,
       });
 
-      await expect(
-        service.rejectDropRequest(requestId, adminEmail, adminNotes),
-      ).rejects.toThrow(ValidationError);
+      await expect(service.rejectDropRequest(requestId, adminEmail, adminNotes)).rejects.toThrow(
+        ValidationError
+      );
     });
   });
 
@@ -316,8 +318,18 @@ describe('DropRequestService', () => {
   describe('getPendingDropRequests', () => {
     test('should return enriched pending requests with student and registration data', async () => {
       const pendingRequests = [
-        { id: 'dr-001', registrationId: 'reg-001', trimester: 'fall', status: DropRequestStatus.PENDING },
-        { id: 'dr-002', registrationId: 'reg-002', trimester: 'fall', status: DropRequestStatus.PENDING },
+        {
+          id: 'dr-001',
+          registrationId: 'reg-001',
+          trimester: 'fall',
+          status: DropRequestStatus.PENDING,
+        },
+        {
+          id: 'dr-002',
+          registrationId: 'reg-002',
+          trimester: 'fall',
+          status: DropRequestStatus.PENDING,
+        },
       ];
       mocks.dropRequestRepository.findByStatus.mockResolvedValue(pendingRequests);
 
@@ -410,9 +422,7 @@ describe('DropRequestService', () => {
     test('should throw NotFoundError when request does not exist', async () => {
       mocks.dropRequestRepository.findById.mockResolvedValue(null);
 
-      await expect(
-        service.getDropRequestById('dr-nonexistent'),
-      ).rejects.toThrow(NotFoundError);
+      await expect(service.getDropRequestById('dr-nonexistent')).rejects.toThrow(NotFoundError);
     });
   });
 });

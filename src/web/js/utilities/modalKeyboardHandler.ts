@@ -210,6 +210,3 @@ export class ModalKeyboardHandler {
     };
   }
 }
-
-// Expose to window for console debugging and runtime access
-window.ModalKeyboardHandler = ModalKeyboardHandler;

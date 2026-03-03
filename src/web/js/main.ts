@@ -34,11 +34,16 @@ import { AccessCodeManager, UserSession } from './auth/session.js';
 import { initializeVersionDisplay, loadDirectorInfo } from './startup/versionAndDirector.js';
 import { DomHelpers } from './utilities/domHelpers.js';
 import { Sections, ServerFunctions } from './constants.js';
-import { AppConfigurationResponse, AppConfigurationResponseData } from '../../models/shared/responses/appConfigurationResponse.js';
+import {
+  AppConfigurationResponse,
+  AppConfigurationResponseData,
+} from '../../models/shared/responses/appConfigurationResponse.js';
 import { PeriodType } from '/utils/values/periodType.js';
 
 // Tab-based architecture
+import { setPageLoading } from './ui/pageLoading.js';
 import { TabController } from './core/tabController.js';
+import { getTabController, setTabController } from './core/tabControllerInstance.js';
 import { EmployeeDirectoryTab } from './tabs/employeeDirectoryTab.js';
 import { InstructorWeeklyScheduleTab } from './tabs/instructorWeeklyScheduleTab.js';
 import { ParentContactTab } from './tabs/parentContactTab.js';
@@ -81,29 +86,6 @@ let roleToClick: string | null = null;
 // ---------------------------------------------------------------------------
 // Plain module-level functions (absorbed from ViewModel)
 // ---------------------------------------------------------------------------
-
-function setPageLoading(isLoading: boolean, errorMessage: string = ''): void {
-  const loadingContainer = document.getElementById('page-loading-container');
-  const pageContent = document.getElementById('page-content');
-  const pageErrorContent = document.getElementById('page-error-content');
-  const pageErrorContentMessage = document.getElementById('page-error-content-message');
-
-  if (loadingContainer) {
-    loadingContainer.style.display = isLoading ? 'flex' : 'none';
-    loadingContainer.hidden = !isLoading;
-  }
-
-  if (pageContent) {
-    pageContent.hidden = isLoading || !!errorMessage;
-  }
-
-  if (pageErrorContent) {
-    pageErrorContent.hidden = !errorMessage;
-  }
-  if (pageErrorContentMessage) {
-    pageErrorContentMessage.textContent = errorMessage;
-  }
-}
 
 function showMaintenanceMode(message: string | null): void {
   const overlay = document.getElementById('maintenance-mode-overlay');
@@ -151,7 +133,7 @@ function hideMaintenanceMode(): void {
 }
 
 function updateEnrollmentBanner(): void {
-  const currentPeriod = window.UserSession.getCurrentPeriod();
+  const currentPeriod = UserSession.getCurrentPeriod();
   const banner = document.getElementById('enrollment-period-banner');
   const bannerText = document.getElementById('enrollment-banner-text');
 
@@ -228,9 +210,9 @@ function resetUIState(): void {
 }
 
 async function resetInitializationFlags(): Promise<void> {
-  if (window.tabController) {
+  if (getTabController()) {
     try {
-      await window.tabController.cleanup();
+      await getTabController()!.cleanup();
     } catch (error: unknown) {
       console.error('Error unloading tab during user switch:', error);
     }
@@ -239,7 +221,10 @@ async function resetInitializationFlags(): Promise<void> {
   resetUIState();
 }
 
-async function loadUserData(user: AuthenticatedUser | null, roleToClickArg: string | null = null): Promise<void> {
+async function loadUserData(
+  user: AuthenticatedUser | null,
+  roleToClickArg: string | null = null
+): Promise<void> {
   if (!user || (!user.admin && !user.instructor && !user.parent)) {
     return;
   }
@@ -274,8 +259,10 @@ async function loadUserData(user: AuthenticatedUser | null, roleToClickArg: stri
 
   roleToClick = roleToClickArg;
 
-  if (roleToClickArg && window.tabController) {
-    const navLink = document.querySelector<HTMLAnchorElement>(`a[data-section="${roleToClickArg}"]`);
+  if (roleToClickArg && getTabController()) {
+    const navLink = document.querySelector<HTMLAnchorElement>(
+      `a[data-section="${roleToClickArg}"]`
+    );
     if (navLink) {
       navLink.click();
     }
@@ -295,16 +282,19 @@ async function loadUserData(user: AuthenticatedUser | null, roleToClickArg: stri
 async function attemptAutoLogin(accessCode: string, loginType: string): Promise<void> {
   setPageLoading(true);
 
-  const authResult = await HttpService.post<AuthenticatedUser>(ServerFunctions.authenticateByAccessCode, {
-    accessCode,
-    loginType,
-  });
+  const authResult = await HttpService.post<AuthenticatedUser>(
+    ServerFunctions.authenticateByAccessCode,
+    {
+      accessCode,
+      loginType,
+    }
+  );
 
   const authenticatedUser = authResult.ok ? authResult.data : null;
   const loginSuccess = authenticatedUser !== null && !authenticatedUser?.systemError;
 
   if (loginSuccess) {
-    window.AccessCodeManager.saveAccessCodeSecurely(accessCode, loginType);
+    AccessCodeManager.saveAccessCodeSecurely(accessCode, loginType);
     LoginModal.updateLoginButtonState();
 
     await resetInitializationFlags();
@@ -365,7 +355,7 @@ function initTabController(): void {
   tabController.registerTab('parent-registration', new ParentRegistrationTab());
   tabController.registerTab('admin-registration', new AdminRegistrationTab());
 
-  window.tabController = tabController;
+  setTabController(tabController);
 
   if (roleToClick) {
     const navLink = document.querySelector<HTMLAnchorElement>(`a[data-section="${roleToClick}"]`);
@@ -381,27 +371,10 @@ function initTabController(): void {
 
 async function initializeApplication(): Promise<void> {
   try {
-    // Log version information (window.TONIC_ENV set by initializeVersionDisplay in main())
-    if (window.TONIC_ENV) {
-      console.log(
-        `Tonic v${window.TONIC_ENV.version} (${window.TONIC_ENV.environment}) [${window.TONIC_ENV.gitCommit.substring(0, 7)}]`
-      );
-    }
-
-    // Make UserSession and AccessCodeManager available globally
-    window.UserSession = UserSession;
-    window.AccessCodeManager = AccessCodeManager;
-
-    // Forward page loading state requests from auth modules
-    window.addEventListener('app:setPageLoading', (e: Event) => {
-      const { isLoading } = (e as CustomEvent<{ isLoading: boolean }>).detail;
-      setPageLoading(isLoading);
-    });
-
-    // Listen for session expiry events fired by HttpService on 401 responses
-    window.addEventListener('auth:sessionExpired', () => {
-      window.AccessCodeManager.clearStoredAccessCode();
-      window.UserSession.clearAppConfig();
+    // Register session expiry handler — HttpService calls this on 401 responses
+    HttpService.onSessionExpired(() => {
+      AccessCodeManager.clearStoredAccessCode();
+      UserSession.clearAppConfig();
       LoginModal.init(loadUserData);
       TermsModal.init();
       LoginModal.open();
@@ -423,7 +396,7 @@ async function initializeApplication(): Promise<void> {
       return;
     }
 
-    window.UserSession.saveAppConfig(appConfig);
+    UserSession.saveAppConfig(appConfig);
 
     const hasOverride = sessionStorage.getItem('maintenance_mode_override') === 'true';
     if (appConfig.maintenanceMode && !hasOverride) {
@@ -437,7 +410,7 @@ async function initializeApplication(): Promise<void> {
     exposeConsoleHelpers();
     loadDirectorInfo();
 
-    const storedAuthData = window.AccessCodeManager.getStoredAuthData();
+    const storedAuthData = AccessCodeManager.getStoredAuthData();
     if (storedAuthData) {
       await attemptAutoLogin(storedAuthData.accessCode, storedAuthData.loginType);
       return;
@@ -445,7 +418,7 @@ async function initializeApplication(): Promise<void> {
 
     setPageLoading(false);
 
-    const hasAcceptedTermsOfService = window.UserSession.hasAcceptedTermsOfService();
+    const hasAcceptedTermsOfService = UserSession.hasAcceptedTermsOfService();
     if (!hasAcceptedTermsOfService) {
       TermsModal.showIfNeeded(() => {
         LoginModal.open();
@@ -485,13 +458,13 @@ function exposeConsoleHelpers(): void {
       LoginModal.showLoginButton();
       setPageLoading(false);
 
-      const hasAcceptedTerms = window.UserSession.hasAcceptedTermsOfService();
+      const hasAcceptedTerms = UserSession.hasAcceptedTermsOfService();
       if (!hasAcceptedTerms) {
         TermsModal.showIfNeeded(() => {
           LoginModal.open();
         });
       } else {
-        const stored = window.AccessCodeManager.getStoredAuthData();
+        const stored = AccessCodeManager.getStoredAuthData();
         if (stored) {
           attemptAutoLogin(stored.accessCode, stored.loginType);
         } else {

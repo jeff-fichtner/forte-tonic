@@ -20,7 +20,7 @@ class MockTab extends BaseTab {
 
   async fetchData(sessionInfo) {
     this.fetchDataCalled = true;
-    return { message: 'Test data', sessionInfo };
+    return { ok: true, data: { message: 'Test data', sessionInfo } };
   }
 
   async render() {
@@ -236,13 +236,17 @@ describe('TabController', () => {
 
     it('should handle errors during tab activation', async () => {
       const errorTab = new MockTab('error-tab');
-      errorTab.fetchData = jest.fn().mockRejectedValue(new Error('Fetch failed'));
+      errorTab.fetchData = jest.fn().mockResolvedValue({
+        ok: false,
+        error: { message: 'Fetch failed' },
+      });
       document.body.innerHTML += '<div id="error-tab"></div>';
       controller.registerTab('error-tab', errorTab);
 
-      await expect(controller.activateTab('error-tab')).rejects.toThrow('Fetch failed');
-      expect(controller.currentTab).toBeNull();
-      expect(controller.currentTabId).toBeNull();
+      // fetchData error is handled internally — onLoad shows an error banner and resolves
+      await controller.activateTab('error-tab');
+      expect(controller.currentTab).toBe(errorTab);
+      expect(controller.currentTabId).toBe('error-tab');
     });
   });
 

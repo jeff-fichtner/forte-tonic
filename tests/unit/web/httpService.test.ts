@@ -1,10 +1,10 @@
 import { jest } from '@jest/globals';
 
 /**
- * Tests for HttpService response unwrapping compatibility layer
- * This ensures backward compatibility when migrating to standardized response format
+ * Tests for HttpService — typed HTTP client returning HttpResult<T>.
+ * All methods return { ok: true, data } | { ok: false, error } — callers never need try/catch.
  */
-describe('HttpService Response Compatibility', () => {
+describe('HttpService', () => {
   let HttpService;
   let originalFetch;
 
@@ -30,39 +30,32 @@ describe('HttpService Response Compatibility', () => {
     jest.clearAllMocks();
   });
 
-  describe('Response Format Unwrapping', () => {
-    test('should handle standardized success response format', async () => {
-      // Mock a standardized response: { success: true, data: {...} }
+  describe('Response Envelope Unwrapping', () => {
+    test('should unwrap standardized success response and return data in HttpResult', async () => {
       const mockData = { id: '123', name: 'Test User' };
       global.fetch.mockResolvedValueOnce({
         ok: true,
         text: async () => JSON.stringify({ success: true, data: mockData }),
       });
 
-      const result = await HttpService.fetch('testEndpoint');
+      const result = await HttpService.get('testEndpoint');
 
-      // Should auto-unwrap and return just the data
-      expect(result).toEqual(mockData);
-      expect(result).not.toHaveProperty('success');
-      expect(result).not.toHaveProperty('data');
+      expect(result).toEqual({ ok: true, data: mockData });
     });
 
-    test('should handle legacy raw data response format', async () => {
-      // Mock a legacy response: {...} (raw data, no wrapper)
+    test('should pass through legacy raw data response in HttpResult', async () => {
       const mockData = { id: '456', name: 'Legacy User' };
       global.fetch.mockResolvedValueOnce({
         ok: true,
         text: async () => JSON.stringify(mockData),
       });
 
-      const result = await HttpService.fetch('legacyEndpoint');
+      const result = await HttpService.get('legacyEndpoint');
 
-      // Should return data as-is
-      expect(result).toEqual(mockData);
+      expect(result).toEqual({ ok: true, data: mockData });
     });
 
-    test('should handle standardized response with array data', async () => {
-      // Mock array data in standardized format
+    test('should unwrap standardized response with array data', async () => {
       const mockData = [
         { id: '1', name: 'User 1' },
         { id: '2', name: 'User 2' },
@@ -72,15 +65,14 @@ describe('HttpService Response Compatibility', () => {
         text: async () => JSON.stringify({ success: true, data: mockData }),
       });
 
-      const result = await HttpService.fetch('arrayEndpoint');
+      const result = await HttpService.get('arrayEndpoint');
 
-      // Should unwrap and return array
-      expect(Array.isArray(result)).toBe(true);
-      expect(result).toEqual(mockData);
+      expect(result.ok).toBe(true);
+      expect(Array.isArray(result.data)).toBe(true);
+      expect(result.data).toEqual(mockData);
     });
 
-    test('should handle legacy array response format', async () => {
-      // Mock legacy array response
+    test('should pass through legacy array response', async () => {
       const mockData = [
         { id: '3', name: 'User 3' },
         { id: '4', name: 'User 4' },
@@ -90,84 +82,62 @@ describe('HttpService Response Compatibility', () => {
         text: async () => JSON.stringify(mockData),
       });
 
-      const result = await HttpService.fetch('legacyArrayEndpoint');
+      const result = await HttpService.get('legacyArrayEndpoint');
 
-      // Should return array as-is
-      expect(Array.isArray(result)).toBe(true);
-      expect(result).toEqual(mockData);
+      expect(result.ok).toBe(true);
+      expect(Array.isArray(result.data)).toBe(true);
+      expect(result.data).toEqual(mockData);
     });
 
-    test('should apply mapper to unwrapped data', async () => {
-      // Mock standardized response
-      const mockData = { id: '789', value: 10 };
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => JSON.stringify({ success: true, data: mockData }),
-      });
-
-      const mapper = data => ({ ...data, value: data.value * 2 });
-      const result = await HttpService.fetch('mappedEndpoint', mapper);
-
-      // Mapper should be applied to unwrapped data
-      expect(result).toEqual({ id: '789', value: 20 });
-    });
-
-    test('should handle null data in standardized format', async () => {
-      // Mock null response (used by authenticateByAccessCode)
+    test('should handle null JSON response', async () => {
       global.fetch.mockResolvedValueOnce({
         ok: true,
         text: async () => JSON.stringify(null),
       });
 
-      const result = await HttpService.fetch('nullEndpoint');
+      const result = await HttpService.get('nullEndpoint');
 
-      // Should return null as-is (not unwrapped)
-      expect(result).toBeNull();
+      expect(result).toEqual({ ok: true, data: null });
     });
 
-    test('should handle standardized response with null data field', async () => {
-      // Mock standardized response with null data
+    test('should unwrap standardized response with null data field', async () => {
       global.fetch.mockResolvedValueOnce({
         ok: true,
         text: async () => JSON.stringify({ success: true, data: null }),
       });
 
-      const result = await HttpService.fetch('nullDataEndpoint');
+      const result = await HttpService.get('nullDataEndpoint');
 
-      // Should unwrap and return null
-      expect(result).toBeNull();
+      expect(result).toEqual({ ok: true, data: null });
     });
 
     test('should NOT unwrap response without success field', async () => {
-      // Mock response with 'data' but no 'success' field
       const mockData = { data: { id: '999' }, other: 'field' };
       global.fetch.mockResolvedValueOnce({
         ok: true,
         text: async () => JSON.stringify(mockData),
       });
 
-      const result = await HttpService.fetch('noSuccessFieldEndpoint');
+      const result = await HttpService.get('noSuccessFieldEndpoint');
 
-      // Should return as-is (not unwrapped)
-      expect(result).toEqual(mockData);
+      // Without 'success' field, the object is returned as-is (not unwrapped)
+      expect(result).toEqual({ ok: true, data: mockData });
     });
 
     test('should NOT unwrap response without data field', async () => {
-      // Mock response with 'success' but no 'data' field
       const mockData = { success: true, message: 'Operation completed' };
       global.fetch.mockResolvedValueOnce({
         ok: true,
         text: async () => JSON.stringify(mockData),
       });
 
-      const result = await HttpService.fetch('noDataFieldEndpoint');
+      const result = await HttpService.get('noDataFieldEndpoint');
 
-      // Should return as-is (not unwrapped)
-      expect(result).toEqual(mockData);
+      // Without 'data' field, the object is returned as-is (not unwrapped)
+      expect(result).toEqual({ ok: true, data: mockData });
     });
 
-    test('should handle standardized response with message field', async () => {
-      // Mock standardized response with optional message
+    test('should unwrap standardized response with extra message field', async () => {
       const mockData = { id: '111', status: 'active' };
       global.fetch.mockResolvedValueOnce({
         ok: true,
@@ -179,17 +149,15 @@ describe('HttpService Response Compatibility', () => {
           }),
       });
 
-      const result = await HttpService.fetch('messageEndpoint');
+      const result = await HttpService.get('messageEndpoint');
 
-      // Should unwrap data, message is ignored by frontend
-      expect(result).toEqual(mockData);
-      expect(result).not.toHaveProperty('message');
+      // Unwraps to just the data — message is discarded
+      expect(result).toEqual({ ok: true, data: mockData });
     });
   });
 
-  describe('Backward Compatibility Verification', () => {
-    test('should maintain compatibility with existing POST /api/registrations', async () => {
-      // This endpoint already uses standardized format
+  describe('POST Method', () => {
+    test('should unwrap standardized POST response', async () => {
       const mockRegistration = {
         id: 'reg-123',
         studentId: 'stu-456',
@@ -209,12 +177,10 @@ describe('HttpService Response Compatibility', () => {
         classId: 'cls-789',
       });
 
-      // Should unwrap and return just the registration data
-      expect(result).toEqual(mockRegistration);
+      expect(result).toEqual({ ok: true, data: mockRegistration });
     });
 
-    test('should maintain compatibility with legacy endpoints', async () => {
-      // Most existing endpoints return raw data
+    test('should pass through legacy GET response', async () => {
       const mockClasses = [
         { id: 'cls-1', name: 'Class 1' },
         { id: 'cls-2', name: 'Class 2' },
@@ -224,42 +190,73 @@ describe('HttpService Response Compatibility', () => {
         text: async () => JSON.stringify(mockClasses),
       });
 
-      const result = await HttpService.fetch('getClasses');
+      const result = await HttpService.get('getClasses');
 
-      // Should return raw data as-is
-      expect(result).toEqual(mockClasses);
+      expect(result).toEqual({ ok: true, data: mockClasses });
     });
   });
 
   describe('Error Handling', () => {
-    test('should throw error for failed responses', async () => {
+    test('should return HttpResult error for failed responses', async () => {
       global.fetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
         text: async () => 'Internal Server Error',
       });
 
-      await expect(HttpService.fetch('failingEndpoint')).rejects.toThrow('HTTP 500');
+      const result = await HttpService.get('failingEndpoint');
+
+      expect(result.ok).toBe(false);
+      expect(result.error.message).toContain('HTTP 500');
+      expect(result.error.status).toBe(500);
     });
 
-    test('should throw error for empty successful response', async () => {
+    test('should return HttpResult error for empty successful response', async () => {
       global.fetch.mockResolvedValueOnce({
         ok: true,
         text: async () => '',
       });
 
-      await expect(HttpService.fetch('emptyEndpoint')).rejects.toThrow(
-        'Successful but empty response'
-      );
+      const result = await HttpService.get('emptyEndpoint');
+
+      expect(result.ok).toBe(false);
+      expect(result.error.message).toContain('Successful but empty response');
     });
 
-    test('should throw error for invalid JSON', async () => {
+    test('should return HttpResult error for invalid JSON', async () => {
       global.fetch.mockResolvedValueOnce({
         ok: true,
         text: async () => 'not valid json{',
       });
 
-      await expect(HttpService.fetch('invalidJsonEndpoint')).rejects.toThrow('Error parsing');
+      const result = await HttpService.get('invalidJsonEndpoint');
+
+      expect(result.ok).toBe(false);
+      expect(result.error.message).toContain('Error parsing');
+    });
+
+    test('should parse structured error response from server', async () => {
+      global.fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        text: async () =>
+          JSON.stringify({
+            success: false,
+            error: {
+              message: 'Validation failed',
+              type: 'VALIDATION_ERROR',
+              code: 'INVALID_INPUT',
+            },
+          }),
+      });
+
+      const result = await HttpService.get('validationEndpoint');
+
+      expect(result.ok).toBe(false);
+      expect(result.error.message).toBe('Validation failed');
+      expect(result.error.type).toBe('VALIDATION_ERROR');
+      expect(result.error.code).toBe('INVALID_INPUT');
+      expect(result.error.status).toBe(400);
     });
   });
 });

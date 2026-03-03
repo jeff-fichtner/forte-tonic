@@ -32,9 +32,7 @@ describe('EntityQueryService', () => {
     { id: 'c2', title: 'Piano' },
   ];
 
-  const mockAdmins = [
-    { id: 'a1', firstName: 'Admin', lastName: 'One' },
-  ];
+  const mockAdmins = [{ id: 'a1', firstName: 'Admin', lastName: 'One' }];
 
   const mockRooms = [
     { id: 'rm1', name: 'Room A' },
@@ -44,7 +42,9 @@ describe('EntityQueryService', () => {
   beforeEach(() => {
     mockUserRepository = {
       getStudents: jest.fn<() => Promise<typeof mockStudents>>().mockResolvedValue(mockStudents),
-      getInstructors: jest.fn<() => Promise<typeof mockInstructors>>().mockResolvedValue(mockInstructors),
+      getInstructors: jest
+        .fn<() => Promise<typeof mockInstructors>>()
+        .mockResolvedValue(mockInstructors),
       getAdmins: jest.fn<() => Promise<typeof mockAdmins>>().mockResolvedValue(mockAdmins),
       getRooms: jest.fn<() => Promise<typeof mockRooms>>().mockResolvedValue(mockRooms),
     };
@@ -54,7 +54,9 @@ describe('EntityQueryService', () => {
     };
 
     mockRegistrationRepository = {
-      getRegistrationsForTrimester: jest.fn<() => Promise<typeof mockRegistrations>>().mockResolvedValue(mockRegistrations),
+      getRegistrationsForTrimester: jest
+        .fn<() => Promise<typeof mockRegistrations>>()
+        .mockResolvedValue(mockRegistrations),
     };
 
     mockConfigService = {
@@ -62,10 +64,10 @@ describe('EntityQueryService', () => {
     };
 
     service = new EntityQueryService(
-      mockUserRepository as any,
-      mockProgramRepository as any,
-      mockRegistrationRepository as any,
-      mockConfigService as any
+      mockUserRepository as unknown as ConstructorParameters<typeof EntityQueryService>[0],
+      mockProgramRepository as unknown as ConstructorParameters<typeof EntityQueryService>[1],
+      mockRegistrationRepository as unknown as ConstructorParameters<typeof EntityQueryService>[2],
+      mockConfigService as unknown as ConstructorParameters<typeof EntityQueryService>[3]
     );
   });
 

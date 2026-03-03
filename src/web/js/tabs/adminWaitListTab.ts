@@ -45,7 +45,7 @@ interface WaitListData {
  * Data waste eliminated: ~2020+ records (non-wait-list registrations, instructors, classes, rooms)
  */
 export class AdminWaitListTab extends AdminBaseTab<WaitListData> {
-  private waitListTable: Table | null;
+  private waitListTable: Table<WaitListRegistration> | null;
 
   constructor() {
     super('admin-wait-list');
@@ -60,10 +60,17 @@ export class AdminWaitListTab extends AdminBaseTab<WaitListData> {
   async fetchData(_sessionInfo: SessionInfo | null): Promise<HttpResult<WaitListData>> {
     const trimester = this.getTrimester();
     if (!trimester) {
-      return { ok: false, error: { message: 'Could not determine trimester: no button selected and no current period' } };
+      return {
+        ok: false,
+        error: {
+          message: 'Could not determine trimester: no button selected and no current period',
+        },
+      };
     }
 
-    const result = await HttpService.get<WaitListData>(`admin/tabs/wait-list/${trimester}`, { signal: this.getAbortSignal() });
+    const result = await HttpService.get<WaitListData>(`admin/tabs/wait-list/${trimester}`, {
+      signal: this.getAbortSignal(),
+    });
     return validateResponseFields(result, ['registrations', 'students']);
   }
 

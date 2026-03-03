@@ -20,7 +20,9 @@ export abstract class AdminBaseTab<TData = Record<string, unknown>> extends Base
         const target = event.target as HTMLElement;
         const button = target.closest('.trimester-btn');
         if (button) {
-          trimesterButtons.querySelectorAll('.trimester-btn').forEach(btn => btn.classList.remove('active'));
+          trimesterButtons
+            .querySelectorAll('.trimester-btn')
+            .forEach(btn => btn.classList.remove('active'));
           button.classList.add('active');
           await this.reload();
         }

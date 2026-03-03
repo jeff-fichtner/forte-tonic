@@ -287,5 +287,4 @@ export class BaseTab<TData = Record<string, unknown>> {
   getAbortSignal(): AbortSignal | undefined {
     return this.abortController?.signal;
   }
-
 }

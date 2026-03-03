@@ -1,5 +1,13 @@
 import { HttpService } from '../data/httpService.js';
 import { ServerFunctions } from '../constants.js';
+import { setPageLoading } from '../ui/pageLoading.js';
+import { ModalKeyboardHandler } from '../utilities/modalKeyboardHandler.js';
+import { AccessCodeManager } from './session.js';
+import {
+  formatPhoneAsTyped,
+  isValidPhoneNumber,
+  stripPhoneFormatting,
+} from '../utilities/phoneHelpers.js';
 
 /** Authenticated user shape returned from HttpService.post (raw JSON, not model class) */
 interface AuthenticatedUser {
@@ -17,7 +25,9 @@ let loginModal: MaterializeModalInstance | null = null;
 let currentLoginType: string = 'parent';
 
 // Stored callback for login success — set once in init(), called on each successful login
-let onLoginSuccessCallback: ((user: AuthenticatedUser, roleToClick: string | null) => Promise<void>) | null = null;
+let onLoginSuccessCallback:
+  | ((user: AuthenticatedUser, roleToClick: string | null) => Promise<void>)
+  | null = null;
 
 /**
  * Initialize the login modal DOM bindings.
@@ -57,7 +67,7 @@ export function updateLoginButtonState(): void {
     return;
   }
 
-  const storedCode = window.AccessCodeManager.getStoredAccessCode();
+  const storedCode = AccessCodeManager.getStoredAccessCode();
 
   const buttonTextNode = loginButton.childNodes[loginButton.childNodes.length - 1];
   if (buttonTextNode && buttonTextNode.nodeType === Node.TEXT_NODE) {
@@ -107,7 +117,9 @@ function initLoginModal(): void {
   const parentSection = document.getElementById('parent-login-section');
   const employeeSection = document.getElementById('employee-login-section');
   const parentPhoneInput = document.getElementById('parent-phone-input') as HTMLInputElement | null;
-  const employeeCodeInput = document.getElementById('employee-access-code') as HTMLInputElement | null;
+  const employeeCodeInput = document.getElementById(
+    'employee-access-code'
+  ) as HTMLInputElement | null;
   const loginButton = document.getElementById('login-submit-btn');
 
   if (
@@ -214,19 +226,7 @@ function initLoginTypeSwitching(
 function initParentPhoneInput(phoneInput: HTMLInputElement, _loginButton: HTMLElement): void {
   phoneInput.addEventListener('input', (e: Event) => {
     const target = e.target as HTMLInputElement;
-    if (typeof window.formatPhoneAsTyped === 'function') {
-      const formattedValue = window.formatPhoneAsTyped(target.value);
-      target.value = formattedValue;
-    } else {
-      const digits = target.value.replace(/\D/g, '').substring(0, 10);
-      if (digits.length <= 3) {
-        target.value = digits;
-      } else if (digits.length <= 6) {
-        target.value = `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-      } else {
-        target.value = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-      }
-    }
+    target.value = formatPhoneAsTyped(target.value);
 
     if (currentLoginType === 'parent') {
       validateCurrentInput();
@@ -244,10 +244,7 @@ function initParentPhoneInput(phoneInput: HTMLInputElement, _loginButton: HTMLEl
   phoneInput.addEventListener('paste', (e: Event) => {
     const target = e.target as HTMLInputElement;
     setTimeout(() => {
-      if (typeof window.formatPhoneAsTyped === 'function') {
-        const formattedValue = window.formatPhoneAsTyped(target.value);
-        target.value = formattedValue;
-      }
+      target.value = formatPhoneAsTyped(target.value);
       if (currentLoginType === 'parent') {
         validateCurrentInput();
       }
@@ -286,13 +283,7 @@ function validateCurrentInput(): void {
     if (!phoneInput) return;
     const phoneValue = phoneInput.value;
 
-    if (typeof window.isValidPhoneNumber === 'function') {
-      isValid = window.isValidPhoneNumber(phoneValue);
-    } else {
-      const digits = phoneValue.replace(/\D/g, '');
-      isValid = digits.length === 10 && digits !== '0000000000';
-      console.warn('Phone validation function not available, using fallback:', phoneValue, '->', isValid);
-    }
+    isValid = isValidPhoneNumber(phoneValue);
 
     if (phoneValue.length > 0) {
       if (isValid) {
@@ -402,7 +393,7 @@ async function handleLogin(): Promise<void> {
     if (!phoneInput) return;
     const phoneValue = phoneInput.value.trim();
 
-    if (!window.isValidPhoneNumber(phoneValue)) {
+    if (!isValidPhoneNumber(phoneValue)) {
       M.toast({
         html: 'Please enter a valid 10-digit phone number.',
         classes: 'red darken-1',
@@ -412,7 +403,7 @@ async function handleLogin(): Promise<void> {
       return;
     }
 
-    loginValue = window.stripPhoneFormatting(phoneValue);
+    loginValue = stripPhoneFormatting(phoneValue);
   } else {
     const codeInput = document.getElementById('employee-access-code') as HTMLInputElement | null;
     if (!codeInput) return;
@@ -438,7 +429,9 @@ async function handleLogin(): Promise<void> {
     loginType,
     () => {
       const parentInput = document.getElementById('parent-phone-input') as HTMLInputElement | null;
-      const employeeInput = document.getElementById('employee-access-code') as HTMLInputElement | null;
+      const employeeInput = document.getElementById(
+        'employee-access-code'
+      ) as HTMLInputElement | null;
       if (parentInput) parentInput.value = '';
       if (employeeInput) employeeInput.value = '';
     },
@@ -457,18 +450,21 @@ async function attemptLoginWithCode(
   onSuccessfulLogin: (() => void) | null = null,
   onFailedLogin: (() => void) | null = null
 ): Promise<void> {
-  setPageLoadingExternal(true);
+  setPageLoading(true);
 
-  const authResult = await HttpService.post<AuthenticatedUser>(ServerFunctions.authenticateByAccessCode, {
-    accessCode: loginValue,
-    loginType: loginType,
-  });
+  const authResult = await HttpService.post<AuthenticatedUser>(
+    ServerFunctions.authenticateByAccessCode,
+    {
+      accessCode: loginValue,
+      loginType: loginType,
+    }
+  );
 
   const authenticatedUser = authResult.ok ? authResult.data : null;
   const loginSuccess = authenticatedUser !== null && !authenticatedUser?.systemError;
 
   if (loginSuccess) {
-    window.AccessCodeManager.saveAccessCodeSecurely(loginValue, loginType);
+    AccessCodeManager.saveAccessCodeSecurely(loginValue, loginType);
     updateLoginButtonState();
     onSuccessfulLogin?.();
 
@@ -509,13 +505,5 @@ async function attemptLoginWithCode(
     onFailedLogin?.();
   }
 
-  setPageLoadingExternal(false);
-}
-
-/**
- * Forward page loading state changes to main.ts via a custom event.
- * This avoids a circular import — main.ts listens for 'app:setPageLoading'.
- */
-function setPageLoadingExternal(isLoading: boolean): void {
-  window.dispatchEvent(new CustomEvent('app:setPageLoading', { detail: { isLoading } }));
+  setPageLoading(false);
 }

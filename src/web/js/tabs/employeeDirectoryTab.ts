@@ -5,7 +5,11 @@ import { copyToClipboard } from '../utilities/clipboardHelpers.js';
 import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
 import { validateResponseFields } from '../data/responseValidation.js';
-import { EmployeeDisplay, sortEmployeesForDirectory, buildDirectoryTableRow } from '../utilities/directoryHelpers.js';
+import {
+  EmployeeDisplay,
+  sortEmployeesForDirectory,
+  buildDirectoryTableRow,
+} from '../utilities/directoryHelpers.js';
 
 interface DirectoryAdmin {
   id: string;
@@ -30,7 +34,6 @@ interface DirectoryData {
   instructors: DirectoryInstructor[];
 }
 
-
 /**
  * EmployeeDirectoryTab - Employee directory for instructors and admins
  *
@@ -41,7 +44,7 @@ interface DirectoryData {
  * Data waste eliminated: ~2150+ records (students, registrations, classes, rooms)
  */
 export class EmployeeDirectoryTab extends BaseTab<DirectoryData> {
-  private directoryTable: Table | null;
+  private directoryTable: Table<EmployeeDisplay> | null;
 
   constructor() {
     super('instructor-forte-directory');
@@ -56,7 +59,9 @@ export class EmployeeDirectoryTab extends BaseTab<DirectoryData> {
    * @returns {Promise<object>} Directory data
    */
   async fetchData(_sessionInfo: SessionInfo | null): Promise<HttpResult<DirectoryData>> {
-    const result = await HttpService.get<DirectoryData>('instructor/tabs/directory', { signal: this.getAbortSignal() });
+    const result = await HttpService.get<DirectoryData>('instructor/tabs/directory', {
+      signal: this.getAbortSignal(),
+    });
     return validateResponseFields(result, ['admins', 'instructors']);
   }
 
@@ -141,7 +146,10 @@ export class EmployeeDirectoryTab extends BaseTab<DirectoryData> {
    * For employee directory, show internal contact info (email, phoneNumber)
    * @private
    */
-  #mapInstructorToEmployee(instructor: DirectoryInstructor, obscurePhone: boolean = false): EmployeeDisplay {
+  #mapInstructorToEmployee(
+    instructor: DirectoryInstructor,
+    obscurePhone: boolean = false
+  ): EmployeeDisplay {
     // Get instruments from specialties field
     const instruments = instructor.specialties || [];
     const instrumentsText = instruments.length > 0 ? instruments.join(', ') : 'Instructor';

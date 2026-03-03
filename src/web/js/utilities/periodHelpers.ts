@@ -1,5 +1,6 @@
 import { PeriodType } from '/utils/values/periodType.js';
 import type { Period } from '/models/shared/responses/appConfigurationResponse.js';
+import { UserSession } from '../auth/session.js';
 
 /**
  * Check if the current period is an enrollment period
@@ -18,9 +19,9 @@ export function isEnrollmentPeriod(period: Period | null | undefined): boolean {
 
 /**
  * Check if the current active period is the intent/reenrollment period.
- * Reads from window.UserSession — use in render methods for UI conditionals.
+ * Reads from UserSession — use in render methods for UI conditionals.
  */
 export function isCurrentPeriodIntent(): boolean {
-  const period = window.UserSession?.getCurrentPeriod();
+  const period = UserSession.getCurrentPeriod();
   return period?.periodType === PeriodType.INTENT;
 }

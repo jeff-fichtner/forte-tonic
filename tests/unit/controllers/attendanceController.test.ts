@@ -45,23 +45,38 @@ jest.unstable_mockModule('../../../src/common/responseHelpers.js', () => ({
 jest.unstable_mockModule('../../../src/common/errors.js', () => ({
   ValidationError: class ValidationError extends Error {
     statusCode = 400;
-    constructor(msg: string) { super(msg); this.name = 'ValidationError'; }
+    constructor(msg: string) {
+      super(msg);
+      this.name = 'ValidationError';
+    }
   },
   ConflictError: class ConflictError extends Error {
     statusCode = 409;
-    constructor(msg: string) { super(msg); this.name = 'ConflictError'; }
+    constructor(msg: string) {
+      super(msg);
+      this.name = 'ConflictError';
+    }
   },
   NotFoundError: class NotFoundError extends Error {
     statusCode = 404;
-    constructor(msg: string) { super(msg); this.name = 'NotFoundError'; }
+    constructor(msg: string) {
+      super(msg);
+      this.name = 'NotFoundError';
+    }
   },
   ForbiddenError: class ForbiddenError extends Error {
     statusCode = 403;
-    constructor(msg: string) { super(msg); this.name = 'ForbiddenError'; }
+    constructor(msg: string) {
+      super(msg);
+      this.name = 'ForbiddenError';
+    }
   },
   UnauthorizedError: class UnauthorizedError extends Error {
     statusCode = 401;
-    constructor(msg: string) { super(msg); this.name = 'UnauthorizedError'; }
+    constructor(msg: string) {
+      super(msg);
+      this.name = 'UnauthorizedError';
+    }
   },
 }));
 
@@ -71,21 +86,26 @@ const mockServiceContainer = {
 };
 jest.unstable_mockModule('../../../src/infrastructure/container/serviceContainer.js', () => ({
   ServiceKeys: {
-    databaseClient: 'databaseClient', emailClient: 'emailClient', cacheService: 'cacheService',
-    configurationService: 'configurationService', registrationRepository: 'registrationRepository',
-    userRepository: 'userRepository', programRepository: 'programRepository',
-    attendanceRepository: 'attendanceRepository', dropRequestRepository: 'dropRequestRepository',
-    periodRepository: 'periodRepository', registrationService: 'registrationService',
-    periodService: 'periodService', dropRequestService: 'dropRequestService',
+    databaseClient: 'databaseClient',
+    emailClient: 'emailClient',
+    cacheService: 'cacheService',
+    configurationService: 'configurationService',
+    registrationRepository: 'registrationRepository',
+    userRepository: 'userRepository',
+    programRepository: 'programRepository',
+    attendanceRepository: 'attendanceRepository',
+    dropRequestRepository: 'dropRequestRepository',
+    periodRepository: 'periodRepository',
+    registrationService: 'registrationService',
+    periodService: 'periodService',
+    dropRequestService: 'dropRequestService',
     entityQueryService: 'entityQueryService',
   },
   serviceContainer: mockServiceContainer,
 }));
 
 // Import controller after all mocks are wired
-const { AttendanceController } = await import(
-  '../../../src/controllers/attendanceController.js'
-);
+const { AttendanceController } = await import('../../../src/controllers/attendanceController.js');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -103,7 +123,7 @@ function createRes() {
   return {
     status: jest.fn().mockReturnThis(),
     json: jest.fn(),
-  } as any;
+  } as unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -112,7 +132,7 @@ function createRes() {
 
 describe('AttendanceController', () => {
   let mockAttendanceRepo: ReturnType<typeof createMockAttendanceRepo>;
-  let res: any;
+  let res: ReturnType<typeof createRes>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -135,7 +155,7 @@ describe('AttendanceController', () => {
           schoolYear: '2025-2026',
           trimester: 'fall',
         },
-      } as any;
+      } as unknown;
 
       mockAttendanceRepo.hasAttendance.mockResolvedValue(false);
       mockAttendanceRepo.create.mockResolvedValue({
@@ -154,7 +174,7 @@ describe('AttendanceController', () => {
         'reg1',
         '3',
         '2025-2026',
-        'fall',
+        'fall'
       );
       expect(mockAttendanceRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -164,7 +184,7 @@ describe('AttendanceController', () => {
           trimester: 'fall',
           recordedBy: 'admin@test.com',
         }),
-        'admin@test.com',
+        'admin@test.com'
       );
       expect(mockSuccessResponse).toHaveBeenCalledWith(
         res,
@@ -173,7 +193,7 @@ describe('AttendanceController', () => {
           registrationId: 'reg1',
           week: 3,
         }),
-        expect.objectContaining({ message: 'Attendance recorded successfully' }),
+        expect.objectContaining({ message: 'Attendance recorded successfully' })
       );
     });
 
@@ -185,7 +205,7 @@ describe('AttendanceController', () => {
           schoolYear: '2025-2026',
           trimester: 'fall',
         },
-      } as any;
+      } as unknown;
 
       mockAttendanceRepo.hasAttendance.mockResolvedValue(true);
 
@@ -195,35 +215,35 @@ describe('AttendanceController', () => {
       expect(mockErrorResponse).toHaveBeenCalledWith(
         res,
         expect.objectContaining({ name: 'ConflictError' }),
-        expect.any(Object),
+        expect.any(Object)
       );
     });
 
     it('should call errorResponse when registrationId is missing (ValidationError)', async () => {
       const req = {
         body: { week: '3', schoolYear: '2025-2026', trimester: 'fall' },
-      } as any;
+      } as unknown;
 
       await AttendanceController.markAttendance(req, res);
 
       expect(mockErrorResponse).toHaveBeenCalledWith(
         res,
         expect.objectContaining({ name: 'ValidationError' }),
-        expect.any(Object),
+        expect.any(Object)
       );
     });
 
     it('should call errorResponse when week is missing (ValidationError)', async () => {
       const req = {
         body: { registrationId: 'reg1', schoolYear: '2025-2026', trimester: 'fall' },
-      } as any;
+      } as unknown;
 
       await AttendanceController.markAttendance(req, res);
 
       expect(mockErrorResponse).toHaveBeenCalledWith(
         res,
         expect.objectContaining({ name: 'ValidationError' }),
-        expect.any(Object),
+        expect.any(Object)
       );
     });
   });
@@ -237,7 +257,7 @@ describe('AttendanceController', () => {
       const req = {
         params: { registrationId: 'reg1' },
         query: { schoolYear: '2025-2026', trimester: 'Spring' },
-      } as any;
+      } as unknown;
 
       const summary = { totalWeeks: 12, attended: 8, missed: 4 };
       mockAttendanceRepo.getAttendanceSummary.mockResolvedValue(summary);
@@ -247,13 +267,9 @@ describe('AttendanceController', () => {
       expect(mockAttendanceRepo.getAttendanceSummary).toHaveBeenCalledWith(
         'reg1',
         '2025-2026',
-        'Spring',
+        'Spring'
       );
-      expect(mockSuccessResponse).toHaveBeenCalledWith(
-        res,
-        summary,
-        expect.any(Object),
-      );
+      expect(mockSuccessResponse).toHaveBeenCalledWith(res, summary, expect.any(Object));
     });
 
     it('should use default schoolYear and trimester when query params are absent', async () => {
@@ -265,7 +281,7 @@ describe('AttendanceController', () => {
       const req = {
         params: { registrationId: 'reg1' },
         query: {},
-      } as any;
+      } as unknown;
 
       mockAttendanceRepo.getAttendanceSummary.mockResolvedValue({});
 
@@ -274,7 +290,7 @@ describe('AttendanceController', () => {
       expect(mockAttendanceRepo.getAttendanceSummary).toHaveBeenCalledWith(
         'reg1',
         DEFAULT_SCHOOL_YEAR,
-        DEFAULT_TRIMESTER,
+        DEFAULT_TRIMESTER
       );
     });
 
@@ -282,19 +298,13 @@ describe('AttendanceController', () => {
       const req = {
         params: { registrationId: 'reg1' },
         query: {},
-      } as any;
+      } as unknown;
 
-      mockAttendanceRepo.getAttendanceSummary.mockRejectedValue(
-        new Error('DB failure'),
-      );
+      mockAttendanceRepo.getAttendanceSummary.mockRejectedValue(new Error('DB failure'));
 
       await AttendanceController.getAttendanceSummary(req, res);
 
-      expect(mockErrorResponse).toHaveBeenCalledWith(
-        res,
-        expect.any(Error),
-        expect.any(Object),
-      );
+      expect(mockErrorResponse).toHaveBeenCalledWith(res, expect.any(Error), expect.any(Object));
     });
   });
 });

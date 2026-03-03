@@ -1,4 +1,7 @@
-import type { AppConfigurationResponse, Period } from '../../../models/shared/responses/appConfigurationResponse.js';
+import type {
+  AppConfigurationResponse,
+  Period,
+} from '../../../models/shared/responses/appConfigurationResponse.js';
 
 interface AccessCodeManagerShape {
   _accessCodeCache: { accessCode: string; loginType: string } | null;

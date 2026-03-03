@@ -7,6 +7,7 @@
  */
 
 import type { RegistrationConfig } from '../../../../models/shared/responses/appConfigurationResponse.js';
+import { UserSession } from '../../auth/session.js';
 
 /** Default values matching the previously-hardcoded constants */
 const DEFAULTS: RegistrationConfig = {
@@ -33,7 +34,7 @@ const DEFAULTS: RegistrationConfig = {
  * falling back to hardcoded defaults for any missing fields.
  */
 export function getRegistrationConfig(): RegistrationConfig {
-  const remote = (window.UserSession?.getAppConfig?.() as Record<string, unknown> | null)
+  const remote = (UserSession.getAppConfig?.() as Record<string, unknown> | null)
     ?.registrationConfig as Partial<RegistrationConfig> | null | undefined;
 
   if (!remote) return DEFAULTS;
@@ -42,7 +43,8 @@ export function getRegistrationConfig(): RegistrationConfig {
     busDeadlines: remote.busDeadlines ?? DEFAULTS.busDeadlines,
     lessonLengths: remote.lessonLengths ?? DEFAULTS.lessonLengths,
     operationalHours: remote.operationalHours ?? DEFAULTS.operationalHours,
-    schedulingIntervalMinutes: remote.schedulingIntervalMinutes ?? DEFAULTS.schedulingIntervalMinutes,
+    schedulingIntervalMinutes:
+      remote.schedulingIntervalMinutes ?? DEFAULTS.schedulingIntervalMinutes,
     defaultInstruments: remote.defaultInstruments ?? DEFAULTS.defaultInstruments,
     defaultInstrument: remote.defaultInstrument ?? DEFAULTS.defaultInstrument,
     rockBandDisplayConfig: remote.rockBandDisplayConfig ?? DEFAULTS.rockBandDisplayConfig,
