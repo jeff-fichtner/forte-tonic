@@ -11,5 +11,4 @@ export const DropRequestStatus = Object.freeze({
   REJECTED: 'rejected',
 } as const);
 
-export type DropRequestStatusValue =
-  (typeof DropRequestStatus)[keyof typeof DropRequestStatus];
+export type DropRequestStatusValue = (typeof DropRequestStatus)[keyof typeof DropRequestStatus];

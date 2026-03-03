@@ -114,7 +114,9 @@ export class LessonDetailsForm {
     // Reset start time, lesson length, and instrument when day is cleared
     if (!hasDay) {
       // Reset lesson length radio buttons to default (30 minutes)
-      const lengthRadios = document.querySelectorAll<HTMLInputElement>(`input[name="${this.lessonLengthRadioName}"]`);
+      const lengthRadios = document.querySelectorAll<HTMLInputElement>(
+        `input[name="${this.lessonLengthRadioName}"]`
+      );
       if (lengthRadios.length > 0) {
         lengthRadios[0].checked = true;
       }
@@ -227,7 +229,10 @@ export class LessonDetailsForm {
       }));
     } else {
       // Fallback to default instruments from config
-      instrumentOptions = getRegistrationConfig().defaultInstruments.map(i => ({ value: i, label: i }));
+      instrumentOptions = getRegistrationConfig().defaultInstruments.map(i => ({
+        value: i,
+        label: i,
+      }));
     }
 
     this.instrumentSelect.populateOptions(instrumentOptions, true);
@@ -242,7 +247,9 @@ export class LessonDetailsForm {
     this.instrumentSelect.clearSelectedOption();
 
     // Reset lesson length to default
-    const lengthRadios = document.querySelectorAll<HTMLInputElement>(`input[name="${this.lessonLengthRadioName}"]`);
+    const lengthRadios = document.querySelectorAll<HTMLInputElement>(
+      `input[name="${this.lessonLengthRadioName}"]`
+    );
     if (lengthRadios.length > 0) {
       lengthRadios[0].checked = true;
     }

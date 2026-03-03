@@ -54,7 +54,8 @@ export class DropRequestModal {
   constructor(registration: DropRegistration, options: DropRequestModalOptions = {}) {
     this.registration = registration;
     this.onSuccess = options.onSuccess || (() => {});
-    this.onError = options.onError || ((error: Error) => console.error('Drop request error:', error));
+    this.onError =
+      options.onError || ((error: Error) => console.error('Drop request error:', error));
 
     this.isSubmitting = false;
 
@@ -418,7 +419,8 @@ export class DropRequestModal {
     // Trigger animation
     window.requestAnimationFrame(() => {
       this.modalElement.style.opacity = '1';
-      this.modalElement.querySelector<HTMLDivElement>('#dropRequestModal')!.style.transform = 'translateY(0)';
+      this.modalElement.querySelector<HTMLDivElement>('#dropRequestModal')!.style.transform =
+        'translateY(0)';
     });
     // Focus on textarea
     setTimeout(() => {
@@ -432,7 +434,8 @@ export class DropRequestModal {
   close(): void {
     // Animate out
     this.modalElement.style.opacity = '0';
-    this.modalElement.querySelector<HTMLDivElement>('#dropRequestModal')!.style.transform = 'translateY(-20px)';
+    this.modalElement.querySelector<HTMLDivElement>('#dropRequestModal')!.style.transform =
+      'translateY(-20px)';
 
     // Remove after animation
     setTimeout(() => {

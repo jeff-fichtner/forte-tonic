@@ -26,7 +26,11 @@ export class InstructorSelector {
    * @param {Array} instructors - Array of instructor objects
    * @param {Function} onChangeCallback - Callback when instructor changes
    */
-  constructor(selectId: string, instructors: InstructorLike[] = [], onChangeCallback: InstructorChangeCallback | null = null) {
+  constructor(
+    selectId: string,
+    instructors: InstructorLike[] = [],
+    onChangeCallback: InstructorChangeCallback | null = null
+  ) {
     this.selectId = selectId;
     this.instructors = instructors;
     this.onChangeCallback = onChangeCallback;

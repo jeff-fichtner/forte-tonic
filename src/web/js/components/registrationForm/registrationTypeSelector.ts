@@ -32,7 +32,11 @@ export class RegistrationTypeSelector {
    * @param {object} containerIds - Object with privateContainerId and groupContainerId
    * @param {Function} onChangeCallback - Callback when registration type changes
    */
-  constructor(selectId: string, containerIds: ContainerIds = {}, onChangeCallback: RegistrationTypeChangeCallback | null = null) {
+  constructor(
+    selectId: string,
+    containerIds: ContainerIds = {},
+    onChangeCallback: RegistrationTypeChangeCallback | null = null
+  ) {
     this.selectId = selectId;
     this.privateContainerId = containerIds.privateContainerId || 'private-registration-container';
     this.groupContainerId = containerIds.groupContainerId || 'group-registration-container';
@@ -43,7 +47,9 @@ export class RegistrationTypeSelector {
     this.#showContainer(this.groupContainerId, false);
 
     // Build registration type options
-    const options: SelectOption[] = (Object.keys(RegistrationType) as Array<keyof typeof RegistrationType>).map(key => ({
+    const options: SelectOption[] = (
+      Object.keys(RegistrationType) as Array<keyof typeof RegistrationType>
+    ).map(key => ({
       value: RegistrationType[key],
       label: RegistrationType[key].capitalize(),
     }));

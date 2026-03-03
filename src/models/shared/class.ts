@@ -48,8 +48,18 @@ export interface ClassJSON {
 export class Class {
   /** Column schema: positional order of fields in the classes spreadsheet */
   static readonly columns = [
-    'id', 'instructorId', 'day', 'startTime', 'length', 'endTime',
-    'instrument', 'title', 'size', 'minimumGrade', 'maximumGrade', 'isRestricted',
+    'id',
+    'instructorId',
+    'day',
+    'startTime',
+    'length',
+    'endTime',
+    'instrument',
+    'title',
+    'size',
+    'minimumGrade',
+    'maximumGrade',
+    'isRestricted',
   ] as const;
 
   id: string;
@@ -88,7 +98,8 @@ export class Class {
    * DB client mappings produce: startTime/endTime (string), length (number), isRestricted (boolean).
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static fromDatabaseRow(record: Record<string, any>): Class { // SC-005: mappings produce number/boolean
+  static fromDatabaseRow(record: Record<string, any>): Class {
+    // SC-005: mappings produce number/boolean
     return new Class({
       id: record.id,
       instructorId: record.instructorId,

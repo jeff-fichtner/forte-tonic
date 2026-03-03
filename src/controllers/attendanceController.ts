@@ -61,7 +61,10 @@ export class AttendanceController {
         recordedAt: new Date().toISOString(),
       };
 
-      const savedAttendance = await attendanceRepository.create(attendanceData, authenticatedUserEmail);
+      const savedAttendance = await attendanceRepository.create(
+        attendanceData,
+        authenticatedUserEmail
+      );
 
       successResponse(
         res,
@@ -147,5 +150,4 @@ export class AttendanceController {
       });
     }
   }
-
 }

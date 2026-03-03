@@ -12,7 +12,6 @@ import { serviceContainer } from './infrastructure/container/serviceContainer.js
 import { errorResponse } from './common/responseHelpers.js';
 import { ERROR_CODE, ERROR_TYPE } from './common/errorConstants.js';
 
-
 const appDir = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();

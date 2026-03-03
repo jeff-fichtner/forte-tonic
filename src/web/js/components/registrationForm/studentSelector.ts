@@ -22,7 +22,11 @@ export class StudentSelector {
    * @param {Array} students - Array of student objects
    * @param {Function} onSelectCallback - Callback when student is selected
    */
-  constructor(elementId: string, students: StudentLike[] = [], onSelectCallback: StudentSelectCallback | null = null) {
+  constructor(
+    elementId: string,
+    students: StudentLike[] = [],
+    onSelectCallback: StudentSelectCallback | null = null
+  ) {
     this.elementId = elementId;
     this.element = document.getElementById(elementId) as HTMLInputElement;
     this.onSelectCallback = onSelectCallback;
@@ -53,13 +57,16 @@ export class StudentSelector {
     }
 
     // Build autocomplete data object
-    const data: Record<string, null> = this.students.reduce((acc: Record<string, null>, student: StudentLike) => {
-      const fullName = student.getFullName
-        ? student.getFullName()
-        : `${student.firstName || ''} ${student.lastName || ''}`.trim();
-      acc[fullName] = null; // Materialize autocomplete format
-      return acc;
-    }, {});
+    const data: Record<string, null> = this.students.reduce(
+      (acc: Record<string, null>, student: StudentLike) => {
+        const fullName = student.getFullName
+          ? student.getFullName()
+          : `${student.firstName || ''} ${student.lastName || ''}`.trim();
+        acc[fullName] = null; // Materialize autocomplete format
+        return acc;
+      },
+      {}
+    );
 
     // Build student ID mapping
     this.studentMap = this.students.reduce((acc: Record<string, string>, student: StudentLike) => {

@@ -62,7 +62,9 @@ export class EntityQueryService extends BaseService {
   }
 
   async getRegistrations(filters: RegistrationFilters): Promise<Registration[]> {
-    let registrations = await this.#registrationRepository.getRegistrationsForTrimester(filters.trimester);
+    let registrations = await this.#registrationRepository.getRegistrationsForTrimester(
+      filters.trimester
+    );
     if (filters.studentIds) {
       const idSet = new Set(filters.studentIds);
       registrations = registrations.filter(r => idSet.has(r.studentId));

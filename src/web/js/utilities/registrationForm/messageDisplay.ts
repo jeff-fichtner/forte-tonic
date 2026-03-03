@@ -9,7 +9,10 @@
  * @param {string} targetElementId - ID of element to insert after
  * @returns {HTMLElement} The error container element
  */
-export function getOrCreateErrorContainer(containerId: string, targetElementId: string): HTMLElement {
+export function getOrCreateErrorContainer(
+  containerId: string,
+  targetElementId: string
+): HTMLElement {
   let errorContainer = document.getElementById(containerId);
 
   if (!errorContainer) {
@@ -61,7 +64,10 @@ export function clearErrorMessage(containerId: string): void {
  * @param {string} targetElementId - ID of element to insert after
  * @returns {HTMLElement} The message container element
  */
-export function getOrCreateInfoContainer(containerId: string, targetElementId: string): HTMLElement {
+export function getOrCreateInfoContainer(
+  containerId: string,
+  targetElementId: string
+): HTMLElement {
   let messageContainer = document.getElementById(containerId);
 
   if (!messageContainer) {

@@ -213,7 +213,11 @@ export class ConfigurationService {
   }
 
   validate(): void {
-    const requiredConfigs: (keyof InternalConfig)[] = ['googleServiceAccountEmail', 'googlePrivateKey', 'spreadsheetId'];
+    const requiredConfigs: (keyof InternalConfig)[] = [
+      'googleServiceAccountEmail',
+      'googlePrivateKey',
+      'spreadsheetId',
+    ];
 
     const missing = requiredConfigs.filter(key => !this._config[key]);
 
@@ -221,7 +225,6 @@ export class ConfigurationService {
       throw new Error(`Missing required configuration: ${missing.join(', ')}`);
     }
   }
-
 }
 
 // Export singleton instance

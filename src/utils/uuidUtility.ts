@@ -1,7 +1,7 @@
 /**
  * UUID Utility for generating cryptographically secure UUIDs
+ * Uses globalThis.crypto.randomUUID() which works in both Node.js (≥19) and browsers.
  */
-import { randomUUID } from 'crypto';
 
 export class UuidUtility {
   /**
@@ -9,7 +9,7 @@ export class UuidUtility {
    * @returns A properly formatted UUID v4 string
    */
   static generateUuid(): string {
-    return randomUUID();
+    return globalThis.crypto.randomUUID();
   }
 
   /**
@@ -18,8 +18,8 @@ export class UuidUtility {
    * @returns True if valid UUID v4
    */
   static isValidUuid(uuid: string): boolean {
-    const uuidRegex: RegExp = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const uuidRegex: RegExp =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return uuidRegex.test(uuid);
   }
-
 }

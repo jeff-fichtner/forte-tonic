@@ -11,7 +11,7 @@ import type { ConfigurationService } from '../services/configurationService.js';
  */
 export class ProgramRepository extends BaseRepository<Class> {
   constructor(dbClient: GoogleSheetsDbClient, configService?: ConfigurationService) {
-    super(Keys.CLASSES, (record) => Class.fromDatabaseRow(record), dbClient, configService);
+    super(Keys.CLASSES, record => Class.fromDatabaseRow(record), dbClient, configService);
   }
 
   /**

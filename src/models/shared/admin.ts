@@ -38,8 +38,16 @@ export interface AdminJSON {
 export class Admin {
   /** Column schema: positional order of fields in the admins spreadsheet */
   static readonly columns = [
-    'id', 'email', 'lastName', 'firstName', 'phone', 'accessCode',
-    'role', 'displayEmail', 'displayPhone', 'isDirector',
+    'id',
+    'email',
+    'lastName',
+    'firstName',
+    'phone',
+    'accessCode',
+    'role',
+    'displayEmail',
+    'displayPhone',
+    'isDirector',
   ] as const;
 
   id: string;
@@ -74,7 +82,8 @@ export class Admin {
    * DB client mappings produce: isDirector (boolean).
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static fromDatabaseRow(record: Record<string, any>): Admin { // SC-005: mappings produce boolean
+  static fromDatabaseRow(record: Record<string, any>): Admin {
+    // SC-005: mappings produce boolean
     return new Admin({
       id: record.id,
       email: record.email,

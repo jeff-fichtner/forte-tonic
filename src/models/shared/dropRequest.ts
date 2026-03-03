@@ -36,8 +36,16 @@ export interface DropRequestJSON {
 export class DropRequest {
   /** Column schema: positional order of fields in the drop_requests spreadsheet */
   static readonly columns = [
-    'id', 'registrationId', 'parentId', 'trimester', 'reason',
-    'requestedAt', 'status', 'reviewedBy', 'reviewedAt', 'adminNotes',
+    'id',
+    'registrationId',
+    'parentId',
+    'trimester',
+    'reason',
+    'requestedAt',
+    'status',
+    'reviewedBy',
+    'reviewedAt',
+    'adminNotes',
   ] as const;
 
   id: string;

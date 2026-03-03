@@ -69,7 +69,7 @@ export function buildHttpRequestLog(
   req: Request,
   res: Response,
   startTime: number,
-  statusCode: number | null = null,
+  statusCode: number | null = null
 ): HttpRequestLog {
   const latencyMs = Date.now() - startTime;
 

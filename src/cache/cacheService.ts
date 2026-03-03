@@ -39,7 +39,10 @@ export class CacheService {
     this.cache.set(key, { value, timestamp: Date.now(), expiresIn: expiresInMs });
 
     if (expiresInMs && expiresInMs > 0) {
-      this.timers.set(key, setTimeout(() => this.delete(key), expiresInMs));
+      this.timers.set(
+        key,
+        setTimeout(() => this.delete(key), expiresInMs)
+      );
     }
   }
 

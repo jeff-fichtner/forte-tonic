@@ -33,8 +33,14 @@ export interface StudentJSON {
 export class Student {
   /** Column schema: positional order of fields in the students spreadsheet */
   static readonly columns = [
-    'id', 'lastName', 'firstName', 'lastNickname', 'firstNickname',
-    'grade', 'parent1Id', 'parent2Id',
+    'id',
+    'lastName',
+    'firstName',
+    'lastNickname',
+    'firstNickname',
+    'grade',
+    'parent1Id',
+    'parent2Id',
   ] as const;
 
   givenFirstName: string;

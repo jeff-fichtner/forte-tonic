@@ -3,5 +3,4 @@ export const RegistrationType = {
   GROUP: 'group',
 } as const;
 
-export type RegistrationTypeValue =
-  (typeof RegistrationType)[keyof typeof RegistrationType];
+export type RegistrationTypeValue = (typeof RegistrationType)[keyof typeof RegistrationType];

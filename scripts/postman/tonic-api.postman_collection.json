@@ -3,9 +3,6 @@
     "name": "Tonic API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
-  "variable": [
-    { "key": "trimester", "value": "fall", "type": "string" }
-  ],
   "item": [
     {
       "name": "Public",
@@ -33,12 +30,25 @@
         },
         {
           "name": "Auth - Admin (6-digit code)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data) {",
+                  "  if (res.data.admin) pm.environment.set('adminId', res.data.admin.id);",
+                  "  pm.environment.set('accessCode', pm.environment.get('adminAccessCode'));",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/api/auth/access-code",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"accessCode\": \"{{adminAccessCode}}\",\n  \"loginType\": \"employee\"\n}"
@@ -47,12 +57,25 @@
         },
         {
           "name": "Auth - Instructor (6-digit code)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data) {",
+                  "  if (res.data.instructor) pm.environment.set('instructorId', res.data.instructor.id);",
+                  "  pm.environment.set('accessCode', pm.environment.get('instructorAccessCode'));",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/api/auth/access-code",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"accessCode\": \"{{instructorAccessCode}}\",\n  \"loginType\": \"employee\"\n}"
@@ -61,12 +84,25 @@
         },
         {
           "name": "Auth - Parent (10-digit phone)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data) {",
+                  "  if (res.data.parent) pm.environment.set('parentId', res.data.parent.id);",
+                  "  pm.environment.set('accessCode', pm.environment.get('parentPhone'));",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/api/auth/access-code",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"accessCode\": \"{{parentPhone}}\",\n  \"loginType\": \"parent\"\n}"
@@ -80,6 +116,20 @@
       "item": [
         {
           "name": "Create Registration (private lesson)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data.id) {",
+                  "  pm.environment.set('registrationId', res.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/api/registrations",
@@ -90,12 +140,26 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"studentId\": \"STUDENT1\",\n  \"instructorId\": \"{{instructorId}}\",\n  \"registrationType\": \"private\",\n  \"day\": \"Monday\",\n  \"startTime\": \"14:00\",\n  \"length\": 30,\n  \"instrument\": \"Piano\",\n  \"roomId\": \"ROOM1\",\n  \"transportationType\": \"parent\",\n  \"trimester\": \"{{trimester}}\"\n}"
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"instructorId\": \"{{instructorId}}\",\n  \"registrationType\": \"private\",\n  \"day\": \"Monday\",\n  \"startTime\": \"14:00\",\n  \"length\": 30,\n  \"instrument\": \"Piano\",\n  \"roomId\": \"ROOM1\",\n  \"transportationType\": \"parent\",\n  \"trimester\": \"{{trimester}}\"\n}"
             }
           }
         },
         {
           "name": "Create Registration (group class)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data.id) {",
+                  "  pm.environment.set('registrationId', res.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/api/registrations",
@@ -106,7 +170,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"studentId\": \"STUDENT1\",\n  \"registrationType\": \"group\",\n  \"classId\": \"G015\",\n  \"trimester\": \"{{trimester}}\"\n}"
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"registrationType\": \"group\",\n  \"classId\": \"G018\",\n  \"transportationType\": \"parent\",\n  \"trimester\": \"{{trimester}}\"\n}"
             }
           }
         },
@@ -114,7 +178,7 @@
           "name": "Delete Registration",
           "request": {
             "method": "DELETE",
-            "url": "{{baseUrl}}/api/registrations/{{trimester}}/REGISTRATION-ID-HERE",
+            "url": "{{baseUrl}}/api/registrations/{{trimester}}/{{registrationId}}",
             "header": [
               { "key": "x-access-code", "value": "{{adminAccessCode}}" },
               { "key": "x-login-type", "value": "employee" }
@@ -125,7 +189,7 @@
           "name": "Update Reenrollment Intent",
           "request": {
             "method": "PATCH",
-            "url": "{{baseUrl}}/api/registrations/REGISTRATION-ID-HERE/intent",
+            "url": "{{baseUrl}}/api/registrations/{{registrationId}}/intent",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
               { "key": "x-access-code", "value": "{{parentPhone}}" },
@@ -136,33 +200,6 @@
               "raw": "{\n  \"intent\": \"keep\"\n}",
               "description": "intent must be one of: keep, drop, change"
             }
-          }
-        },
-        {
-          "name": "Create Next Trimester Registration",
-          "request": {
-            "method": "POST",
-            "url": "{{baseUrl}}/api/registrations/next-trimester",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "x-access-code", "value": "{{adminAccessCode}}" },
-              { "key": "x-login-type", "value": "employee" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"studentId\": \"STUDENT1\",\n  \"instructorId\": \"{{instructorId}}\",\n  \"registrationType\": \"private\",\n  \"day\": \"Monday\",\n  \"startTime\": \"14:00\",\n  \"length\": 30,\n  \"linkedPreviousRegistrationId\": null\n}"
-            }
-          }
-        },
-        {
-          "name": "Delete Next Trimester Registration",
-          "request": {
-            "method": "DELETE",
-            "url": "{{baseUrl}}/api/registrations/next-trimester/REGISTRATION-ID-HERE",
-            "header": [
-              { "key": "x-access-code", "value": "{{adminAccessCode}}" },
-              { "key": "x-login-type", "value": "employee" }
-            ]
           }
         }
       ]
@@ -182,7 +219,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"registrationId\": \"REGISTRATION-ID-HERE\",\n  \"week\": 1,\n  \"schoolYear\": \"2025-2026\",\n  \"trimester\": \"{{trimester}}\"\n}"
+              "raw": "{\n  \"registrationId\": \"{{registrationId}}\",\n  \"week\": 1,\n  \"schoolYear\": \"2025-2026\",\n  \"trimester\": \"{{trimester}}\"\n}"
             }
           }
         },
@@ -191,9 +228,9 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/api/attendance/summary/REGISTRATION-ID-HERE?schoolYear=2025-2026&trimester={{trimester}}",
+              "raw": "{{baseUrl}}/api/attendance/summary/{{registrationId}}?schoolYear=2025-2026&trimester={{trimester}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "attendance", "summary", "REGISTRATION-ID-HERE"],
+              "path": ["api", "attendance", "summary", "{{registrationId}}"],
               "query": [
                 { "key": "schoolYear", "value": "2025-2026" },
                 { "key": "trimester", "value": "{{trimester}}" }
@@ -277,10 +314,14 @@
             "url": {
               "raw": "{{baseUrl}}/api/instructor/tabs/weekly-schedule/{{trimester}}?instructorId={{instructorId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "instructor", "tabs", "weekly-schedule", "{{trimester}}"],
-              "query": [
-                { "key": "instructorId", "value": "{{instructorId}}" }
-              ]
+              "path": [
+                "api",
+                "instructor",
+                "tabs",
+                "weekly-schedule",
+                "{{trimester}}"
+              ],
+              "query": [{ "key": "instructorId", "value": "{{instructorId}}" }]
             },
             "header": [
               { "key": "x-access-code", "value": "{{instructorAccessCode}}" },
@@ -301,9 +342,7 @@
               "raw": "{{baseUrl}}/api/parent/tabs/contact/{{trimester}}?parentId={{parentId}}",
               "host": ["{{baseUrl}}"],
               "path": ["api", "parent", "tabs", "contact", "{{trimester}}"],
-              "query": [
-                { "key": "parentId", "value": "{{parentId}}" }
-              ]
+              "query": [{ "key": "parentId", "value": "{{parentId}}" }]
             },
             "header": [
               { "key": "x-access-code", "value": "{{parentPhone}}" },
@@ -313,15 +352,33 @@
         },
         {
           "name": "Weekly Schedule",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data.students && res.data.students.length) {",
+                  "  pm.environment.set('studentId', res.data.students[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/api/parent/tabs/weekly-schedule/{{trimester}}?parentId={{parentId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "parent", "tabs", "weekly-schedule", "{{trimester}}"],
-              "query": [
-                { "key": "parentId", "value": "{{parentId}}" }
-              ]
+              "path": [
+                "api",
+                "parent",
+                "tabs",
+                "weekly-schedule",
+                "{{trimester}}"
+              ],
+              "query": [{ "key": "parentId", "value": "{{parentId}}" }]
             },
             "header": [
               { "key": "x-access-code", "value": "{{parentPhone}}" },
@@ -331,15 +388,33 @@
         },
         {
           "name": "Registration Tab",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data && res.data.students && res.data.students.length) {",
+                  "  pm.environment.set('studentId', res.data.students[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/api/parent/tabs/registration/{{trimester}}?parentId={{parentId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "parent", "tabs", "registration", "{{trimester}}"],
-              "query": [
-                { "key": "parentId", "value": "{{parentId}}" }
-              ]
+              "path": [
+                "api",
+                "parent",
+                "tabs",
+                "registration",
+                "{{trimester}}"
+              ],
+              "query": [{ "key": "parentId", "value": "{{parentId}}" }]
             },
             "header": [
               { "key": "x-access-code", "value": "{{parentPhone}}" },

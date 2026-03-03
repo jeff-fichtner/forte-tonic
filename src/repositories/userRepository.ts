@@ -16,7 +16,7 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
   constructor(dbClient: GoogleSheetsDbClient, configService?: ConfigurationService) {
     // Call parent with a generic entity name since this repo manages multiple entity types
     // Identity mapper: this repo uses entity-specific mappers in each method, not the base class mapper
-    super('users', (record) => record as Record<string, unknown>, dbClient, configService);
+    super('users', record => record as Record<string, unknown>, dbClient, configService);
 
     // Cache for enriched students to avoid re-enriching on every getStudentById call
     this._enrichedStudentsCache = null;
@@ -28,7 +28,7 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    * Caching is handled at the GoogleSheetsDbClient layer
    */
   async getAdmins(): Promise<Admin[]> {
-    return this.fetchAll(Keys.ADMINS, (record) => Admin.fromDatabaseRow(record));
+    return this.fetchAll(Keys.ADMINS, record => Admin.fromDatabaseRow(record));
   }
 
   /** Find admin by email address */
@@ -52,8 +52,10 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    * Caching is handled at the GoogleSheetsDbClient layer
    */
   async getInstructors(): Promise<Instructor[]> {
-    const allInstructors = await this.fetchAll(Keys.INSTRUCTORS, (record) => Instructor.fromDatabaseRow(record));
-    return allInstructors.filter((x) => x.isActive);
+    const allInstructors = await this.fetchAll(Keys.INSTRUCTORS, record =>
+      Instructor.fromDatabaseRow(record)
+    );
+    return allInstructors.filter(x => x.isActive);
   }
 
   /** Find instructor by ID */
@@ -86,13 +88,17 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
   async getStudents(): Promise<Student[]> {
     // Check if we have a valid cache (enriched students) — 5 min expiration matches dbClient
     const ENRICHED_CACHE_EXPIRATION = 5 * 60 * 1000;
-    if (this._enrichedStudentsCache && this._enrichedStudentsCacheTime && (Date.now() - this._enrichedStudentsCacheTime) < ENRICHED_CACHE_EXPIRATION) {
+    if (
+      this._enrichedStudentsCache &&
+      this._enrichedStudentsCacheTime &&
+      Date.now() - this._enrichedStudentsCacheTime < ENRICHED_CACHE_EXPIRATION
+    ) {
       this.logger.info(`📦 Cache hit for enriched students`);
       return this._enrichedStudentsCache;
     }
 
     // First, get the basic student data
-    const students = await this.fetchAll(Keys.STUDENTS, (record) => Student.fromDatabaseRow(record));
+    const students = await this.fetchAll(Keys.STUDENTS, record => Student.fromDatabaseRow(record));
 
     // Then, enrich with parent emails
     const parents = await this.getParents();
@@ -135,7 +141,7 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    * Caching is handled at the GoogleSheetsDbClient layer
    */
   async getParents(): Promise<Parent[]> {
-    return this.fetchAll(Keys.PARENTS, (record) => Parent.fromDatabaseRow(record));
+    return this.fetchAll(Keys.PARENTS, record => Parent.fromDatabaseRow(record));
   }
 
   /** Find parent by email address */
@@ -169,7 +175,7 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    * Caching is handled at the GoogleSheetsDbClient layer
    */
   async getRooms(): Promise<Room[]> {
-    return this.fetchAll(Keys.ROOMS, (record) => Room.fromDatabaseRow(record));
+    return this.fetchAll(Keys.ROOMS, record => Room.fromDatabaseRow(record));
   }
 
   /** Find room by ID */
@@ -183,7 +189,9 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    * @param accessCode - The access code to search for
    * @returns User object with type, or null if not found
    */
-  async getUserByAccessCode(accessCode: string): Promise<{ user: Admin | Instructor | Parent; userType: string } | null> {
+  async getUserByAccessCode(
+    accessCode: string
+  ): Promise<{ user: Admin | Instructor | Parent; userType: string } | null> {
     // Try to find admin first
     const admin = await this.getAdminByAccessCode(accessCode);
     if (admin) {

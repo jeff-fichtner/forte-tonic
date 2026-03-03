@@ -108,8 +108,6 @@ export class UserController {
     }
   }
 
-
-
   /**
    * Determine which trimesters should be visible/accessible based on current period
    *
@@ -156,7 +154,6 @@ export class UserController {
     // Fallback: show only current trimester
     return [currentTrimester];
   }
-
 
   /**
    * Authenticate user by access code
@@ -320,7 +317,10 @@ export class UserController {
       const parentStudentIds = parentStudents.map(s => s.id);
 
       // Fetch registrations for the provided trimester
-      const registrations = await queryService.getRegistrations({ trimester, studentIds: parentStudentIds });
+      const registrations = await queryService.getRegistrations({
+        trimester,
+        studentIds: parentStudentIds,
+      });
 
       // Get instructors teaching parent's children
       const instructorIds = [

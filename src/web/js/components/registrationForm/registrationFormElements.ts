@@ -11,7 +11,13 @@ import type { InstructorLike, TimeSlot } from '../../types/registrationTypes.js'
 /**
  * Create a filter chip element with availability-based styling
  */
-export function createFilterChip(type: string, value: string, text: string, isDefault: boolean = false, availability: string = 'available'): HTMLDivElement {
+export function createFilterChip(
+  type: string,
+  value: string,
+  text: string,
+  isDefault: boolean = false,
+  availability: string = 'available'
+): HTMLDivElement {
   const chip = document.createElement('div');
   chip.className = `chip ${type}-chip`;
   chip.dataset.type = type;
@@ -99,15 +105,17 @@ export function createTimeSlotElement(slot: TimeSlot): HTMLDivElement {
 /**
  * Create an instructor card with time slot grid
  */
-export function createInstructorCard(instructor: InstructorLike, timeSlots: TimeSlot[]): HTMLDivElement {
+export function createInstructorCard(
+  instructor: InstructorLike,
+  timeSlots: TimeSlot[]
+): HTMLDivElement {
   const card = document.createElement('div');
   card.className = 'instructor-card';
   card.style.cssText =
     'border: 2px solid #ddd; margin: 15px 0; padding: 20px; border-radius: 8px; transition: border-color 0.3s;';
 
   const header = document.createElement('h6');
-  header.style.cssText =
-    'margin: 0 0 15px 0; color: #2b68a4; display: flex; align-items: center;';
+  header.style.cssText = 'margin: 0 0 15px 0; color: #2b68a4; display: flex; align-items: center;';
 
   // Get all instruments this instructor teaches
   const instructorInstruments =

@@ -68,8 +68,14 @@ export function formatClassNameWithGradeCorrection(cls: ClassInfo): string {
 
   if (cls.title && (cls.minimumGrade !== undefined || cls.maximumGrade !== undefined)) {
     // Format grade range using the same logic as Class model
-    const minGrade = cls.formattedMinimumGrade || (cls.minimumGrade !== undefined ? formatGrade(cls.minimumGrade) : '') || '';
-    const maxGrade = cls.formattedMaximumGrade || (cls.maximumGrade !== undefined ? formatGrade(cls.maximumGrade) : '') || '';
+    const minGrade =
+      cls.formattedMinimumGrade ||
+      (cls.minimumGrade !== undefined ? formatGrade(cls.minimumGrade) : '') ||
+      '';
+    const maxGrade =
+      cls.formattedMaximumGrade ||
+      (cls.maximumGrade !== undefined ? formatGrade(cls.maximumGrade) : '') ||
+      '';
 
     if (minGrade && maxGrade) {
       displayName = `${cls.title} (${minGrade}-${maxGrade})`;

@@ -23,13 +23,21 @@ export type { DropRequestData, DropRequestJSON } from '../models/shared/dropRequ
  */
 export class DropRequestRepository extends BaseRepository<DropRequest> {
   constructor(dbClient: GoogleSheetsDbClient, configService?: ConfigurationService) {
-    super(Keys.DROP_REQUESTS, (record) => DropRequest.fromDatabaseRow(record), dbClient, configService);
+    super(
+      Keys.DROP_REQUESTS,
+      record => DropRequest.fromDatabaseRow(record),
+      dbClient,
+      configService
+    );
   }
 
   /**
    * Create a new drop request
    */
-  override async create(requestData: Record<string, unknown>, createdBy: string): Promise<DropRequest> {
+  override async create(
+    requestData: Record<string, unknown>,
+    createdBy: string
+  ): Promise<DropRequest> {
     try {
       this.logger.info(
         `📝 Creating new drop request for registration: ${String(requestData.registrationId)} by ${createdBy}`

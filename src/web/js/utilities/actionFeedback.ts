@@ -38,7 +38,9 @@ export async function withFeedback<T>(
     if (statusElement) {
       statusElement.textContent = '✅ Saved';
       statusElement.style.color = 'green';
-      setTimeout(() => { statusElement.style.display = 'none'; }, 2000);
+      setTimeout(() => {
+        statusElement.style.display = 'none';
+      }, 2000);
     }
     if (successToast && typeof M !== 'undefined') {
       M.toast({ html: successToast });
@@ -47,7 +49,9 @@ export async function withFeedback<T>(
     if (statusElement) {
       statusElement.textContent = '❌ Error';
       statusElement.style.color = 'red';
-      setTimeout(() => { statusElement.style.display = 'none'; }, 3000);
+      setTimeout(() => {
+        statusElement.style.display = 'none';
+      }, 3000);
     }
     const message = failureToast ?? result.error.message ?? 'An error occurred. Please try again.';
     if (typeof M !== 'undefined') {

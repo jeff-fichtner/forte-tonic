@@ -12,6 +12,11 @@
       "@utils/*": ["src/utils/*"]
     }
   },
-  "include": ["src/web/**/*.ts", "src/models/shared/**/*.ts", "src/utils/**/*.ts", "src/types/**/*.d.ts"],
+  "include": [
+    "src/web/**/*.ts",
+    "src/models/shared/**/*.ts",
+    "src/utils/**/*.ts",
+    "src/types/**/*.d.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }

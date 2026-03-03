@@ -1,5 +1,9 @@
 import nodemailer, { Transporter, SendMailOptions } from 'nodemailer';
-import { ConfigurationService, EmailConfig, configService } from '../services/configurationService.js';
+import {
+  ConfigurationService,
+  EmailConfig,
+  configService,
+} from '../services/configurationService.js';
 import { createLogger, Logger } from '../utils/logger.js';
 
 type NotificationTemplateName = 'welcome' | 'registration_confirmation' | 'reminder';
@@ -117,7 +121,7 @@ export class EmailClient {
     subject: string,
     text: string,
     html: string | null = null,
-    from: string | null = null,
+    from: string | null = null
   ): Promise<EmailSendResult> {
     if (!this.transporter) {
       throw new Error('Email client not properly initialized');
@@ -161,7 +165,7 @@ export class EmailClient {
     text: string,
     attachments: Attachment[] = [],
     html: string | null = null,
-    from: string | null = null,
+    from: string | null = null
   ): Promise<EmailSendResult> {
     if (!this.transporter) {
       throw new Error('Email client not properly initialized');
@@ -209,7 +213,7 @@ export class EmailClient {
     subject: string,
     text: string,
     html: string | null = null,
-    from: string | null = null,
+    from: string | null = null
   ): Promise<BulkEmailResult> {
     const results: BulkEmailRecipientResult[] = [];
 
@@ -277,7 +281,7 @@ export class EmailClient {
   async sendNotification(
     type: NotificationTemplateName,
     recipient: string,
-    data: NotificationData,
+    data: NotificationData
   ): Promise<EmailSendResult> {
     const templates: Record<NotificationTemplateName, NotificationTemplate> = {
       welcome: {

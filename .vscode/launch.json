@@ -5,7 +5,8 @@
             "name": "Debug Node.js App",
             "type": "node",
             "request": "launch",
-            "program": "${workspaceFolder}/src/server.js",
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+            "program": "${workspaceFolder}/src/server.ts",
             "env": {
                 "NODE_ENV": "development"
             },
@@ -17,8 +18,7 @@
             "outputCapture": "console",
             "runtimeArgs": [
                 "--inspect",
-                "--no-warnings",
-                "--experimental-specifier-resolution=node"
+                "--no-warnings"
             ]
         },
         {
@@ -116,9 +116,10 @@
         },
         {
             "name": "Debug with External Terminal",
-            "type": "node", 
+            "type": "node",
             "request": "launch",
-            "program": "${workspaceFolder}/src/server.js",
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+            "program": "${workspaceFolder}/src/server.ts",
             "console": "externalTerminal",
             "env": {
                 "NODE_ENV": "development"

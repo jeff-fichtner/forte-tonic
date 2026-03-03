@@ -30,7 +30,11 @@ export class ClassSelector {
    * @param {Array} classes - Array of class objects
    * @param {Function} onChangeCallback - Callback when class changes
    */
-  constructor(selectId: string, classes: ClassLike[] = [], onChangeCallback: ClassChangeCallback | null = null) {
+  constructor(
+    selectId: string,
+    classes: ClassLike[] = [],
+    onChangeCallback: ClassChangeCallback | null = null
+  ) {
     this.selectId = selectId;
     this.classes = classes;
     this.onChangeCallback = onChangeCallback;

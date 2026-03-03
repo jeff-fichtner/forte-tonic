@@ -10,7 +10,11 @@ import { ERROR_CODE, ERROR_TYPE } from '../common/errorConstants.js';
 const logger = createLogger(configService);
 
 // Extract authenticated user from request for all API routes
-export const initializeRepositories = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const initializeRepositories = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const userRepository = serviceContainer.get(ServiceKeys.userRepository);
     await extractAuthenticatedUser(req, userRepository);
@@ -64,7 +68,10 @@ export function getAuthenticatedUserEmail(req: Request): string {
 /**
  * Middleware to initialize repositories with authentication check
  */
-async function extractAuthenticatedUser(req: Request, userRepository: UserRepository): Promise<void> {
+async function extractAuthenticatedUser(
+  req: Request,
+  userRepository: UserRepository
+): Promise<void> {
   try {
     req.currentUser = null;
 
@@ -85,7 +92,8 @@ async function extractAuthenticatedUser(req: Request, userRepository: UserReposi
       // Check for login type in headers to determine authentication method
       const loginType = req.headers['x-login-type'] as string | undefined;
 
-      let userResult: { user: { id: string; email: string | null }; userType: string } | null = null;
+      let userResult: { user: { id: string; email: string | null }; userType: string } | null =
+        null;
 
       // Auto-detect login type based on access code format if needed
       const isPhoneNumber = accessCode.length === 10 && /^\d{10}$/.test(accessCode);

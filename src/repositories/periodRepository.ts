@@ -19,7 +19,12 @@ export interface Period {
  */
 export class PeriodRepository extends BaseRepository<Period> {
   constructor(dbClient: GoogleSheetsDbClient, configService?: ConfigurationService) {
-    super(Keys.PERIODS, (record) => PeriodRepository.fromDatabaseRow(record), dbClient, configService);
+    super(
+      Keys.PERIODS,
+      record => PeriodRepository.fromDatabaseRow(record),
+      dbClient,
+      configService
+    );
   }
 
   /**

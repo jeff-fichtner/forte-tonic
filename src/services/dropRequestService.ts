@@ -59,7 +59,11 @@ export class DropRequestService extends BaseService {
   /**
    * Create a new drop request
    */
-  async createDropRequest(registrationId: string, parentId: string, reason: string): Promise<DropRequest> {
+  async createDropRequest(
+    registrationId: string,
+    parentId: string,
+    reason: string
+  ): Promise<DropRequest> {
     try {
       this.logger.info(
         `📝 Creating drop request for registration ${registrationId} by parent ${parentId}`
@@ -71,7 +75,9 @@ export class DropRequestService extends BaseService {
         this.logger.warn(
           `Drop request rejected: Not in registration period (current: ${currentPeriod?.periodType})`
         );
-        throw new ValidationError('Drop requests can only be submitted during active registration periods');
+        throw new ValidationError(
+          'Drop requests can only be submitted during active registration periods'
+        );
       }
 
       // 2. Verify registration exists in the current trimester
@@ -79,7 +85,10 @@ export class DropRequestService extends BaseService {
       if (!trimester) {
         throw new ValidationError('Current period has no trimester configured');
       }
-      const registration = await this.#registrationRepository.findByIdInTrimester(registrationId, trimester);
+      const registration = await this.#registrationRepository.findByIdInTrimester(
+        registrationId,
+        trimester
+      );
       if (!registration) {
         this.logger.warn(`Drop request rejected: Registration not found ${registrationId}`);
         throw new NotFoundError(`Registration not found: ${registrationId}`);
@@ -106,7 +115,8 @@ export class DropRequestService extends BaseService {
       }
 
       // 4. Check for existing pending drop request
-      const existingRequest = await this.#dropRequestRepository.findByRegistrationId(registrationId);
+      const existingRequest =
+        await this.#dropRequestRepository.findByRegistrationId(registrationId);
       if (existingRequest && existingRequest.status === DropRequestStatus.PENDING) {
         this.logger.warn(
           `Drop request rejected: Pending request already exists ${existingRequest.id}`
@@ -129,7 +139,12 @@ export class DropRequestService extends BaseService {
       this.logger.info(`✅ Created drop request ${dropRequest.id}`);
       return dropRequest;
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof ValidationError || error instanceof ForbiddenError || error instanceof ConflictError) {
+      if (
+        error instanceof NotFoundError ||
+        error instanceof ValidationError ||
+        error instanceof ForbiddenError ||
+        error instanceof ConflictError
+      ) {
         throw error;
       }
       this.logger.error('❌ Error creating drop request:', error);
@@ -156,12 +171,18 @@ export class DropRequestService extends BaseService {
 
       // 2. Validate status transition
       if (dropRequest.status !== DropRequestStatus.PENDING) {
-        throw new ValidationError(`Invalid status transition from ${dropRequest.status} to ${DropRequestStatus.APPROVED}. Only pending requests can be approved or rejected.`);
+        throw new ValidationError(
+          `Invalid status transition from ${dropRequest.status} to ${DropRequestStatus.APPROVED}. Only pending requests can be approved or rejected.`
+        );
       }
 
       // 3. Delete the registration
       this.logger.info(`🗑️ Deleting registration ${dropRequest.registrationId}`);
-      await this.#registrationRepository.delete(dropRequest.registrationId, adminEmail, dropRequest.trimester);
+      await this.#registrationRepository.delete(
+        dropRequest.registrationId,
+        adminEmail,
+        dropRequest.trimester
+      );
 
       // 4. Update drop request status
       const updated = await this.#dropRequestRepository.update(
@@ -178,7 +199,12 @@ export class DropRequestService extends BaseService {
       this.logger.info(`✅ Approved drop request ${requestId} and deleted registration`);
       return updated;
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof ValidationError || error instanceof ForbiddenError || error instanceof ConflictError) {
+      if (
+        error instanceof NotFoundError ||
+        error instanceof ValidationError ||
+        error instanceof ForbiddenError ||
+        error instanceof ConflictError
+      ) {
         throw error;
       }
       this.logger.error('❌ Error approving drop request:', error);
@@ -205,7 +231,9 @@ export class DropRequestService extends BaseService {
 
       // 2. Validate status transition
       if (dropRequest.status !== DropRequestStatus.PENDING) {
-        throw new ValidationError(`Invalid status transition from ${dropRequest.status} to ${DropRequestStatus.REJECTED}. Only pending requests can be approved or rejected.`);
+        throw new ValidationError(
+          `Invalid status transition from ${dropRequest.status} to ${DropRequestStatus.REJECTED}. Only pending requests can be approved or rejected.`
+        );
       }
 
       // 3. Update drop request status (registration stays active)
@@ -223,7 +251,12 @@ export class DropRequestService extends BaseService {
       this.logger.info(`✅ Rejected drop request ${requestId}, registration remains active`);
       return updated;
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof ValidationError || error instanceof ForbiddenError || error instanceof ConflictError) {
+      if (
+        error instanceof NotFoundError ||
+        error instanceof ValidationError ||
+        error instanceof ForbiddenError ||
+        error instanceof ConflictError
+      ) {
         throw error;
       }
       this.logger.error('❌ Error rejecting drop request:', error);
@@ -256,11 +289,15 @@ export class DropRequestService extends BaseService {
       for (const request of pendingRequests) {
         try {
           const reg = await this.#registrationRepository.findByIdInTrimester(
-            request.registrationId, request.trimester
+            request.registrationId,
+            request.trimester
           );
           if (reg) registrationMap.set(request.registrationId, reg);
         } catch (error) {
-          this.logger.warn(`Could not fetch registration ${request.registrationId}:`, (error as Error).message);
+          this.logger.warn(
+            `Could not fetch registration ${request.registrationId}:`,
+            (error as Error).message
+          );
         }
       }
 
@@ -307,11 +344,15 @@ export class DropRequestService extends BaseService {
       for (const request of requests) {
         try {
           const reg = await this.#registrationRepository.findByIdInTrimester(
-            request.registrationId, request.trimester
+            request.registrationId,
+            request.trimester
           );
           if (reg) registrationMap.set(request.registrationId, reg);
         } catch (error) {
-          this.logger.warn(`Could not fetch registration ${request.registrationId}:`, (error as Error).message);
+          this.logger.warn(
+            `Could not fetch registration ${request.registrationId}:`,
+            (error as Error).message
+          );
         }
       }
 
@@ -343,7 +384,12 @@ export class DropRequestService extends BaseService {
 
       return dropRequest;
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof ValidationError || error instanceof ForbiddenError || error instanceof ConflictError) {
+      if (
+        error instanceof NotFoundError ||
+        error instanceof ValidationError ||
+        error instanceof ForbiddenError ||
+        error instanceof ConflictError
+      ) {
         throw error;
       }
       this.logger.error('❌ Error getting drop request by ID:', error);

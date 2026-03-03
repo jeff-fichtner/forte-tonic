@@ -60,15 +60,41 @@ export interface InstructorJSON {
 export class Instructor {
   /** Column schema: positional order of fields in the instructors spreadsheet */
   static readonly columns = [
-    'id', 'email', 'lastName', 'firstName', 'phone', 'isDeactivated',
-    'minimumGrade', 'maximumGrade',
-    'instrument1', 'instrument2', 'instrument3', 'instrument4',
-    'isAvailableMonday', 'mondayStartTime', 'mondayEndTime', 'mondayRoomId',
-    'isAvailableTuesday', 'tuesdayStartTime', 'tuesdayEndTime', 'tuesdayRoomId',
-    'isAvailableWednesday', 'wednesdayStartTime', 'wednesdayEndTime', 'wednesdayRoomId',
-    'isAvailableThursday', 'thursdayStartTime', 'thursdayEndTime', 'thursdayRoomId',
-    'isAvailableFriday', 'fridayStartTime', 'fridayEndTime', 'fridayRoomId',
-    'accessCode', 'displayEmail', 'displayPhone',
+    'id',
+    'email',
+    'lastName',
+    'firstName',
+    'phone',
+    'isDeactivated',
+    'minimumGrade',
+    'maximumGrade',
+    'instrument1',
+    'instrument2',
+    'instrument3',
+    'instrument4',
+    'isAvailableMonday',
+    'mondayStartTime',
+    'mondayEndTime',
+    'mondayRoomId',
+    'isAvailableTuesday',
+    'tuesdayStartTime',
+    'tuesdayEndTime',
+    'tuesdayRoomId',
+    'isAvailableWednesday',
+    'wednesdayStartTime',
+    'wednesdayEndTime',
+    'wednesdayRoomId',
+    'isAvailableThursday',
+    'thursdayStartTime',
+    'thursdayEndTime',
+    'thursdayRoomId',
+    'isAvailableFriday',
+    'fridayStartTime',
+    'fridayEndTime',
+    'fridayRoomId',
+    'accessCode',
+    'displayEmail',
+    'displayPhone',
   ] as const;
 
   id: string;
@@ -110,7 +136,8 @@ export class Instructor {
    * availability (InstructorAvailability), gradeRange (GradeRange).
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static fromDatabaseRow(record: Record<string, any>): Instructor { // SC-005: mappings produce nested objects
+  static fromDatabaseRow(record: Record<string, any>): Instructor {
+    // SC-005: mappings produce nested objects
     return new Instructor({
       id: record.id,
       email: record.email,

@@ -99,7 +99,7 @@ export function asString(value: unknown, fallback: string = ''): string {
 export function successResponse<T>(
   res: Response,
   data: T,
-  options: SuccessResponseOptions = {},
+  options: SuccessResponseOptions = {}
 ): void {
   const { message = null, statusCode = HTTP_STATUS.OK, req = null, startTime = null } = options;
 
@@ -132,7 +132,7 @@ export function errorResponse(
   res: Response,
   error: unknown,
   options: ErrorResponseOptions = {},
-  fallbackStatusCode?: number,
+  fallbackStatusCode?: number
 ): void {
   const normalizedError = normalizeError(error);
   const { req = null, startTime = null, context = {}, includeRequestData = false } = options;
@@ -176,7 +176,11 @@ export function errorResponse(
   }
 
   // Build error response payload
-  const errorPayload: { success: false; error: ApiErrorDetail; requestData?: Record<string, unknown> } = {
+  const errorPayload: {
+    success: false;
+    error: ApiErrorDetail;
+    requestData?: Record<string, unknown>;
+  } = {
     success: false,
     error: {
       message: getClientMessage(normalizedError, statusCode),

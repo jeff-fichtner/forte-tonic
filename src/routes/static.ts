@@ -45,7 +45,11 @@ if (isDevelopment) {
             : `<link${attrs} href="${href}?v=${version.frontendHash}"`
         );
     }
-    res.set({ 'Cache-Control': 'no-cache, no-store, must-revalidate', Pragma: 'no-cache', Expires: '0' });
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
+    });
     res.send(cachedHtml as string);
   });
 } else {

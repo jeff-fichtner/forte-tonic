@@ -152,7 +152,11 @@ export function showConflictModal(message: string): void {
 /**
  * Set button loading state
  */
-export function setButtonLoading(button: HTMLButtonElement | null, isLoading: boolean, originalText: string | null = null): void {
+export function setButtonLoading(
+  button: HTMLButtonElement | null,
+  isLoading: boolean,
+  originalText: string | null = null
+): void {
   if (!button) return;
 
   if (isLoading) {

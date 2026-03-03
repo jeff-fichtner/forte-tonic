@@ -28,7 +28,12 @@ export interface ParentJSON {
 export class Parent {
   /** Column schema: positional order of fields in the parents spreadsheet */
   static readonly columns = [
-    'id', 'email', 'lastName', 'firstName', 'phone', 'accessCode',
+    'id',
+    'email',
+    'lastName',
+    'firstName',
+    'phone',
+    'accessCode',
   ] as const;
 
   id: string;

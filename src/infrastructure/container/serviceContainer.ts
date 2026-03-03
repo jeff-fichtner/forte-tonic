@@ -256,7 +256,10 @@ export class ServiceContainer {
       };
 
       // Check if critical repositories can be instantiated
-      const criticalServices: ServiceKey[] = [ServiceKeys.registrationRepository, ServiceKeys.userRepository];
+      const criticalServices: ServiceKey[] = [
+        ServiceKeys.registrationRepository,
+        ServiceKeys.userRepository,
+      ];
 
       for (const serviceName of criticalServices) {
         try {
@@ -288,9 +291,11 @@ export class ServiceContainer {
     this.logger.info('🛑 Shutting down Service Container');
 
     // Shutdown infrastructure services directly
-    const emailClientWithShutdown = this.emailClient as (EmailClient & {
-      shutdown?: () => Promise<void>;
-    }) | null;
+    const emailClientWithShutdown = this.emailClient as
+      | (EmailClient & {
+          shutdown?: () => Promise<void>;
+        })
+      | null;
     if (emailClientWithShutdown && typeof emailClientWithShutdown.shutdown === 'function') {
       await emailClientWithShutdown.shutdown();
     }
@@ -349,14 +354,19 @@ export class ServiceContainer {
   #registerServices(): void {
     this.register(ServiceKeys.registrationService, () => {
       return new RegistrationService({
-        registrationRepository: this.get(ServiceKeys.registrationRepository) as RegistrationRepository,
+        registrationRepository: this.get(
+          ServiceKeys.registrationRepository
+        ) as RegistrationRepository,
         userRepository: this.get(ServiceKeys.userRepository) as UserRepository,
         programRepository: this.get(ServiceKeys.programRepository) as ProgramRepository,
       });
     });
 
     this.register(ServiceKeys.periodService, () => {
-      return new PeriodService(this.get(ServiceKeys.periodRepository) as PeriodRepository, configService);
+      return new PeriodService(
+        this.get(ServiceKeys.periodRepository) as PeriodRepository,
+        configService
+      );
     });
 
     this.register(ServiceKeys.dropRequestService, () => {
@@ -378,7 +388,6 @@ export class ServiceContainer {
       );
     });
   }
-
 }
 
 // Export singleton instance

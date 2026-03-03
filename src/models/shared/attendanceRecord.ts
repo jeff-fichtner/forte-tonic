@@ -33,14 +33,30 @@ export interface AttendanceRecordJSON {
 export class AttendanceRecord {
   /** Column schema: positional order of fields in the attendance spreadsheet */
   static readonly columns = [
-    'id', 'registrationId', 'week', 'schoolYear', 'trimester',
-    'attended', 'notes', 'recordedBy', 'recordedAt', 'createdAt', 'createdBy',
+    'id',
+    'registrationId',
+    'week',
+    'schoolYear',
+    'trimester',
+    'attended',
+    'notes',
+    'recordedBy',
+    'recordedAt',
+    'createdAt',
+    'createdBy',
   ] as const;
 
   /** Column schema for attendance audit sheet */
   static readonly auditColumns = [
-    'id', 'action', 'attendanceId', 'registrationId', 'week',
-    'schoolYear', 'trimester', 'performedBy', 'performedAt',
+    'id',
+    'action',
+    'attendanceId',
+    'registrationId',
+    'week',
+    'schoolYear',
+    'trimester',
+    'performedBy',
+    'performedAt',
   ] as const;
 
   id: string;
@@ -93,7 +109,8 @@ export class AttendanceRecord {
    * DB client mappings produce: week (number), attended (boolean).
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static fromDatabaseRow(record: Record<string, any>): AttendanceRecord { // SC-005: mappings produce number/boolean
+  static fromDatabaseRow(record: Record<string, any>): AttendanceRecord {
+    // SC-005: mappings produce number/boolean
     return new AttendanceRecord({
       id: record.id,
       registrationId: record.registrationId || '',

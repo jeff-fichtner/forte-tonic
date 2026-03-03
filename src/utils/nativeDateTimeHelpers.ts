@@ -325,7 +325,10 @@ export class TonicDateTimeHelpers {
   /**
    * Convert between different time formats
    */
-  static convertTimeFormat(timeValue: TimeStringInput, outputFormat: TimeOutputFormat | string = '12hour'): string | number {
+  static convertTimeFormat(
+    timeValue: TimeStringInput,
+    outputFormat: TimeOutputFormat | string = '12hour'
+  ): string | number {
     const duration: TonicDuration = TonicDateTimeHelpers.parseTimeString(timeValue);
 
     switch (outputFormat.toLowerCase()) {
@@ -370,7 +373,11 @@ export class TonicDateTimeHelpers {
   /**
    * Check if time is in range
    */
-  static isTimeInRange(timeValue: TimeStringInput, startTime: TimeStringInput, endTime: TimeStringInput): boolean {
+  static isTimeInRange(
+    timeValue: TimeStringInput,
+    startTime: TimeStringInput,
+    endTime: TimeStringInput
+  ): boolean {
     const time: TonicDuration = TonicDateTimeHelpers.parseTimeString(timeValue);
     const start: TonicDuration = TonicDateTimeHelpers.parseTimeString(startTime);
     const end: TonicDuration = TonicDateTimeHelpers.parseTimeString(endTime);

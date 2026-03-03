@@ -1,14 +1,15 @@
 <!--
   SYNC IMPACT REPORT
   ==================
-  Version change: 2.1.0 → 2.2.0
-  Bump rationale: MINOR — added Principle XI (Uniform CRUD Backend) codifying
-    that the backend is a generic app server with uniform CRUD patterns, no
-    UI-term wrappers, no feature-named routes, and strict layer separation
+  Version change: 2.2.0 → 2.2.1
+  Bump rationale: PATCH — added Postman collection maintenance requirement
+    to Testing section, clarifying that API endpoint changes must be reflected
+    in scripts/postman/tonic-api.postman_collection.json
   Modified principles: None
-  Added sections:
-    - XI. Uniform CRUD Backend
+  Added sections: None
   Removed sections: None
+  Modified sections:
+    - Testing — added Postman collection sync rule
   Templates requiring updates:
     - .specify/templates/plan-template.md ✅ no changes needed
     - .specify/templates/spec-template.md ✅ no changes needed
@@ -167,6 +168,7 @@ The backend is a generic application server. Every entity flows through the same
 - Tests MUST mock `googleSheetsDbClient` — never hit the real Sheets API in tests
 - New features MUST include tests for business logic; controller-level integration tests are encouraged for new endpoints
 - Existing tests MUST pass before merge — do not disable tests to work around failures
+- When API endpoints are added, changed, or removed, the Postman collection (`scripts/postman/tonic-api.postman_collection.json`) MUST be updated to match
 
 ## Versioning & Deployment
 
@@ -193,4 +195,4 @@ The backend is a generic application server. Every entity flows through the same
 - All implementation plans MUST include a Constitution Check section verifying compliance
 - Complexity added in violation of these principles MUST include a Complexity Tracking entry justifying the deviation
 
-**Version**: 2.2.0 | **Ratified**: 2026-02-18 | **Last Amended**: 2026-02-26
+**Version**: 2.2.1 | **Ratified**: 2026-02-18 | **Last Amended**: 2026-03-02
