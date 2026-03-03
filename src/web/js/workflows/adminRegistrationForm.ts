@@ -355,7 +355,9 @@ export class AdminRegistrationForm {
    * Set loading state
    */
   #setAdminRegistrationLoading(isLoading: boolean): void {
-    const submitButton = document.getElementById('create-registration-submit-btn') as HTMLButtonElement | null;
+    const submitButton = document.getElementById(
+      'create-registration-submit-btn'
+    ) as HTMLButtonElement | null;
     if (submitButton) {
       if (isLoading) {
         submitButton.disabled = true;
@@ -398,7 +400,9 @@ export class AdminRegistrationForm {
    * Attach event listener to registration selector dropdown
    */
   #attachRegistrationSelectorListener(): void {
-    const selectorDropdown = document.getElementById('admin-registration-selector') as HTMLSelectElement | null;
+    const selectorDropdown = document.getElementById(
+      'admin-registration-selector'
+    ) as HTMLSelectElement | null;
     if (selectorDropdown) {
       selectorDropdown.addEventListener('change', (event: Event) => {
         const selectedId = (event.target as HTMLSelectElement).value;
@@ -426,7 +430,9 @@ export class AdminRegistrationForm {
    * Attach listener to detect when student input is manually cleared
    */
   #attachStudentSelectorListener(): void {
-    const studentInput = document.getElementById('student-autocomplete-input') as HTMLInputElement | null;
+    const studentInput = document.getElementById(
+      'student-autocomplete-input'
+    ) as HTMLInputElement | null;
     if (studentInput) {
       // Listen for input events to detect when field is cleared
       studentInput.addEventListener('input', (event: Event) => {
@@ -443,7 +449,9 @@ export class AdminRegistrationForm {
    */
   #renderRegistrationSelector(): void {
     const selectorSection = document.getElementById('admin-registration-selector-section');
-    const selectorDropdown = document.getElementById('admin-registration-selector') as HTMLSelectElement | null;
+    const selectorDropdown = document.getElementById(
+      'admin-registration-selector'
+    ) as HTMLSelectElement | null;
 
     if (!selectorSection || !selectorDropdown) {
       return; // Elements not found
@@ -491,14 +499,16 @@ export class AdminRegistrationForm {
       // Build descriptive label
       let label = '';
       const regType = registration.registrationType;
-      if (regType === 'private') {
+      if (regType === RegistrationType.PRIVATE) {
         const instrument = registration.instrument || 'Lesson';
         const day = registration.day || '';
         const time = registration.startTime || '';
-        const instructor = this.instructors.find((i: InstructorLike) => i.id === registration.instructorId);
+        const instructor = this.instructors.find(
+          (i: InstructorLike) => i.id === registration.instructorId
+        );
         const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : '';
         label = `${instrument} - ${day} ${time} with ${instructorName}`;
-      } else if (regType === 'group') {
+      } else if (regType === RegistrationType.GROUP) {
         const classTitle = registration.classTitle || 'Class';
         label = `${classTitle}`;
       } else {

@@ -5,7 +5,12 @@ import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
 import { validateResponseFields } from '../data/responseValidation.js';
 import { RegistrationService } from '../data/registrationService.js';
-import type { InstructorLike, StudentLike, ClassLike, RegistrationLike } from '../types/registrationTypes.js';
+import type {
+  InstructorLike,
+  StudentLike,
+  ClassLike,
+  RegistrationLike,
+} from '../types/registrationTypes.js';
 
 interface RegistrationFormData {
   instructors: Record<string, unknown>[];
@@ -46,12 +51,20 @@ export class AdminRegistrationTab extends AdminBaseTab<RegistrationFormData> {
   async fetchData(_sessionInfo: SessionInfo | null): Promise<HttpResult<RegistrationFormData>> {
     const trimester = this.getTrimester();
     if (!trimester) {
-      return { ok: false, error: { message: 'Could not determine trimester: no button selected and no current period' } };
+      return {
+        ok: false,
+        error: {
+          message: 'Could not determine trimester: no button selected and no current period',
+        },
+      };
     }
 
     this.currentTrimester = trimester;
 
-    const result = await HttpService.get<RegistrationFormData>(`admin/tabs/registration/${trimester}`, { signal: this.getAbortSignal() });
+    const result = await HttpService.get<RegistrationFormData>(
+      `admin/tabs/registration/${trimester}`,
+      { signal: this.getAbortSignal() }
+    );
     return validateResponseFields(result, ['instructors', 'students', 'classes', 'registrations']);
   }
 
@@ -73,21 +86,25 @@ export class AdminRegistrationTab extends AdminBaseTab<RegistrationFormData> {
       form.students = this.data!.students as StudentLike[];
       form.classes = this.data!.classes as ClassLike[];
       this.registrationForm.setTrimester(this.currentTrimester ?? '');
-      this.registrationForm.setTrimesterRegistrations(this.data!.registrations as RegistrationLike[]);
+      this.registrationForm.setTrimesterRegistrations(
+        this.data!.registrations as RegistrationLike[]
+      );
     } else {
       // Create new form instance
       this.registrationForm = new AdminRegistrationForm(
         this.data!.instructors as InstructorLike[],
         this.data!.students as StudentLike[],
         this.data!.classes as ClassLike[],
-        async (registrationData) => {
+        async registrationData => {
           await this.#createRegistration(registrationData);
         }
       );
 
       // Set trimester context
       this.registrationForm.setTrimester(this.currentTrimester ?? '');
-      this.registrationForm.setTrimesterRegistrations(this.data!.registrations as RegistrationLike[]);
+      this.registrationForm.setTrimesterRegistrations(
+        this.data!.registrations as RegistrationLike[]
+      );
     }
   }
 
@@ -98,8 +115,10 @@ export class AdminRegistrationTab extends AdminBaseTab<RegistrationFormData> {
   async #createRegistration(registrationData: unknown): Promise<void> {
     const result = await RegistrationService.create(
       registrationData as Record<string, unknown>,
-      { students: this.data!.students as Array<{ id: string; [key: string]: unknown }>, instructors: this.data!.instructors as Array<{ id: string; [key: string]: unknown }> },
-      { isAdmin: true }
+      {
+        students: this.data!.students as Array<{ id: string; [key: string]: unknown }>,
+        instructors: this.data!.instructors as Array<{ id: string; [key: string]: unknown }>,
+      }
     );
     if (result.ok) {
       await this.reload();

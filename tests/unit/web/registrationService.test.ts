@@ -7,12 +7,12 @@
  * Tests for the RegistrationService static methods extracted from the viewModel
  * (009-frontend-decomposition, Step US3).
  *
- * Covers endpoint routing (admin vs parent, enrollment vs non-enrollment),
- * delete-then-create replacement flow, response enrichment, delete with
- * confirmation, and intent submission.
+ * Covers delete-then-create replacement flow, response enrichment, delete with
+ * confirmation, and intent submission. All registrations use a single endpoint;
+ * trimester is always required.
  *
- * All external dependencies (HttpService, periodHelpers, Registration model,
- * window globals) are mocked so the service logic is tested in isolation.
+ * All external dependencies (HttpService, Registration model, window globals)
+ * are mocked so the service logic is tested in isolation.
  */
 
 import { jest } from '@jest/globals';
@@ -25,68 +25,54 @@ const mockHttpPost = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockHttpDelete = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockHttpPatch = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 
-const mockIsEnrollmentPeriod = jest.fn<(period: unknown) => boolean>();
-
 // ---------------------------------------------------------------------------
 // Mocks — must be declared before importing the module under test
 // ---------------------------------------------------------------------------
 
-jest.unstable_mockModule(
-  '../../../src/web/js/data/httpService.js',
-  () => ({
-    HttpService: {
-      post: mockHttpPost,
-      delete: mockHttpDelete,
-      patch: mockHttpPatch,
-    },
-  }),
-);
+jest.unstable_mockModule('../../../src/web/js/data/httpService.js', () => ({
+  HttpService: {
+    post: mockHttpPost,
+    delete: mockHttpDelete,
+    patch: mockHttpPatch,
+  },
+}));
 
-jest.unstable_mockModule(
-  '../../../src/web/js/utilities/periodHelpers.js',
-  () => ({
-    isEnrollmentPeriod: mockIsEnrollmentPeriod,
-  }),
-);
+const mockGetCurrentPeriod = jest.fn<() => unknown>();
 
-jest.unstable_mockModule(
-  '../../../src/web/js/constants.js',
-  () => ({
-    ServerFunctions: {
-      register: 'registrations',
-      createNextTrimesterRegistration: 'registrations/next-trimester',
-    },
-  }),
-);
+jest.unstable_mockModule('../../../src/web/js/auth/session.js', () => ({
+  UserSession: {
+    getCurrentPeriod: mockGetCurrentPeriod,
+  },
+}));
+
+jest.unstable_mockModule('../../../src/web/js/constants.js', () => ({
+  ServerFunctions: {
+    register: 'registrations',
+  },
+}));
 
 // Registration constructor mock — returns a plain object with the data passed
 // plus predictable studentId/instructorId for enrichment testing.
-jest.unstable_mockModule(
-  '../../../src/models/shared/index.js',
-  () => ({
-    Registration: jest.fn((data: Record<string, unknown>) => ({
-      ...data,
-      studentId: data.studentId ?? 'stu-1',
-      instructorId: data.instructorId ?? 'inst-1',
-    })),
-  }),
-);
+jest.unstable_mockModule('../../../src/models/shared/index.js', () => ({
+  Registration: jest.fn((data: Record<string, unknown>) => ({
+    ...data,
+    studentId: data.studentId ?? 'stu-1',
+    instructorId: data.instructorId ?? 'inst-1',
+  })),
+}));
 
 // ---------------------------------------------------------------------------
 // Dynamic import — required after jest.unstable_mockModule with ESM
 // ---------------------------------------------------------------------------
 
-const { RegistrationService } = await import(
-  '../../../src/web/js/data/registrationService.js'
-);
+const { RegistrationService } = await import('../../../src/web/js/data/registrationService.js');
 
 // ---------------------------------------------------------------------------
-// Global stubs (window.confirm, M.toast, window.UserSession)
+// Global stubs (window.confirm, M.toast)
 // ---------------------------------------------------------------------------
 
 const mockConfirm = jest.fn<(message?: string) => boolean>();
 const mockToast = jest.fn();
-const mockGetCurrentPeriod = jest.fn<() => unknown>();
 
 beforeEach(() => {
   // Reset all mock state before each test
@@ -98,13 +84,6 @@ beforeEach(() => {
   // Materialize toast
   (globalThis as Record<string, unknown>).M = { toast: mockToast };
 
-  // window.UserSession
-  (globalThis as Record<string, unknown>).UserSession = {
-    getCurrentPeriod: mockGetCurrentPeriod,
-  };
-
-  // Default: not an enrollment period
-  mockIsEnrollmentPeriod.mockReturnValue(false);
   mockGetCurrentPeriod.mockReturnValue(undefined);
 });
 
@@ -131,56 +110,26 @@ function makeApiResponse(overrides: Record<string, unknown> = {}): Record<string
 // ===========================================================================
 
 // ---------------------------------------------------------------------------
-// 1. create() — endpoint routing
+// 1. create() — always uses single endpoint
 // ---------------------------------------------------------------------------
 describe('RegistrationService.create()', () => {
   describe('endpoint routing', () => {
-    test('admin always uses regular endpoint regardless of enrollment period', async () => {
-      mockIsEnrollmentPeriod.mockReturnValue(true);
-      mockGetCurrentPeriod.mockReturnValue({ trimester: 'Spring', periodType: 'Priority Enrollment' });
-      mockHttpPost.mockResolvedValue(makeApiResponse());
-
-      await RegistrationService.create(
-        { trimester: 'Spring' },
-        {},
-        { isAdmin: true },
-      );
-
-      expect(mockHttpPost).toHaveBeenCalledWith('registrations', expect.any(Object));
-    });
-
-    test('parent uses next trimester endpoint during enrollment', async () => {
-      mockIsEnrollmentPeriod.mockReturnValue(true);
-      mockGetCurrentPeriod.mockReturnValue({ trimester: 'Spring', periodType: 'Priority Enrollment' });
-      mockHttpPost.mockResolvedValue(makeApiResponse());
-
-      await RegistrationService.create({ trimester: 'Spring' }, {}, { isAdmin: false });
-
-      expect(mockHttpPost).toHaveBeenCalledWith(
-        'registrations/next-trimester',
-        expect.any(Object),
-      );
-    });
-
-    test('parent uses regular endpoint outside enrollment', async () => {
-      mockIsEnrollmentPeriod.mockReturnValue(false);
-      mockHttpPost.mockResolvedValue(makeApiResponse());
-
-      await RegistrationService.create({ trimester: 'Fall' }, {}, { isAdmin: false });
-
-      expect(mockHttpPost).toHaveBeenCalledWith('registrations', expect.any(Object));
-    });
-
-    test('defaults isAdmin to false when options omitted', async () => {
-      mockIsEnrollmentPeriod.mockReturnValue(true);
-      mockGetCurrentPeriod.mockReturnValue({ trimester: 'Spring', periodType: 'Open Enrollment' });
-      mockHttpPost.mockResolvedValue(makeApiResponse());
+    test('always uses registrations endpoint', async () => {
+      mockHttpPost.mockResolvedValue({ ok: true, data: makeApiResponse() });
 
       await RegistrationService.create({ trimester: 'Spring' });
 
+      expect(mockHttpPost).toHaveBeenCalledWith('registrations', expect.any(Object));
+    });
+
+    test('passes trimester through to the endpoint', async () => {
+      mockHttpPost.mockResolvedValue({ ok: true, data: makeApiResponse() });
+
+      await RegistrationService.create({ trimester: 'winter' });
+
       expect(mockHttpPost).toHaveBeenCalledWith(
-        'registrations/next-trimester',
-        expect.any(Object),
+        'registrations',
+        expect.objectContaining({ trimester: 'winter' })
       );
     });
   });
@@ -190,72 +139,54 @@ describe('RegistrationService.create()', () => {
   // -------------------------------------------------------------------------
   describe('replacement flow', () => {
     test('deletes old registration before creating new one when replaceRegistrationId is set', async () => {
-      mockIsEnrollmentPeriod.mockReturnValue(false);
-      mockHttpDelete.mockResolvedValue(undefined);
-      mockHttpPost.mockResolvedValue(makeApiResponse());
+      mockHttpDelete.mockResolvedValue({ ok: true, data: undefined });
+      mockHttpPost.mockResolvedValue({ ok: true, data: makeApiResponse() });
 
-      await RegistrationService.create(
-        { trimester: 'Fall', replaceRegistrationId: 'old-reg-1' },
-        {},
-        { isAdmin: false },
-      );
+      await RegistrationService.create({
+        trimester: 'Fall',
+        replaceRegistrationId: 'old-reg-1',
+      });
 
       expect(mockHttpDelete).toHaveBeenCalledWith('registrations/Fall/old-reg-1');
       expect(mockHttpPost).toHaveBeenCalled();
     });
 
-    test('uses next-trimester delete endpoint during enrollment for parents', async () => {
-      mockIsEnrollmentPeriod.mockReturnValue(true);
-      mockGetCurrentPeriod.mockReturnValue({ trimester: 'Spring', periodType: 'Priority Enrollment' });
-      mockHttpDelete.mockResolvedValue(undefined);
-      mockHttpPost.mockResolvedValue(makeApiResponse());
+    test('always uses trimester-based delete endpoint', async () => {
+      mockHttpDelete.mockResolvedValue({ ok: true, data: undefined });
+      mockHttpPost.mockResolvedValue({ ok: true, data: makeApiResponse() });
 
-      await RegistrationService.create(
-        { trimester: 'Spring', replaceRegistrationId: 'old-reg-2' },
-        {},
-        { isAdmin: false },
-      );
+      await RegistrationService.create({
+        trimester: 'Spring',
+        replaceRegistrationId: 'old-reg-2',
+      });
 
-      expect(mockHttpDelete).toHaveBeenCalledWith('registrations/next-trimester/old-reg-2');
+      expect(mockHttpDelete).toHaveBeenCalledWith('registrations/Spring/old-reg-2');
     });
 
-    test('uses regular delete endpoint for admin even during enrollment', async () => {
-      mockIsEnrollmentPeriod.mockReturnValue(true);
-      mockGetCurrentPeriod.mockReturnValue({ trimester: 'Spring', periodType: 'Priority Enrollment' });
-      mockHttpDelete.mockResolvedValue(undefined);
-      mockHttpPost.mockResolvedValue(makeApiResponse());
+    test('returns error and does not create new registration when delete fails', async () => {
+      mockHttpDelete.mockResolvedValue({
+        ok: false,
+        error: { message: 'delete failed' },
+      });
 
-      await RegistrationService.create(
-        { trimester: 'Spring', replaceRegistrationId: 'old-reg-3' },
-        {},
-        { isAdmin: true },
-      );
+      const result = await RegistrationService.create({
+        trimester: 'Fall',
+        replaceRegistrationId: 'old-reg-4',
+      });
 
-      expect(mockHttpDelete).toHaveBeenCalledWith('registrations/Spring/old-reg-3');
-    });
-
-    test('throws and does not create new registration when delete fails', async () => {
-      mockIsEnrollmentPeriod.mockReturnValue(false);
-      mockHttpDelete.mockRejectedValue(new Error('delete failed'));
-
-      await expect(
-        RegistrationService.create(
-          { trimester: 'Fall', replaceRegistrationId: 'old-reg-4' },
-          {},
-          { isAdmin: false },
-        ),
-      ).rejects.toThrow('Failed to delete old registration: delete failed');
-
+      expect(result).toEqual({
+        ok: false,
+        error: { message: 'Failed to delete old registration: delete failed' },
+      });
       expect(mockHttpPost).not.toHaveBeenCalled();
     });
 
     test('strips replaceRegistrationId from data before POST', async () => {
-      mockIsEnrollmentPeriod.mockReturnValue(false);
-      mockHttpDelete.mockResolvedValue(undefined);
-      mockHttpPost.mockResolvedValue(makeApiResponse());
+      mockHttpDelete.mockResolvedValue({ ok: true, data: undefined });
+      mockHttpPost.mockResolvedValue({ ok: true, data: makeApiResponse() });
 
       const data = { trimester: 'Fall', replaceRegistrationId: 'old-reg-5' };
-      await RegistrationService.create(data, {}, { isAdmin: false });
+      await RegistrationService.create(data);
 
       // The POST payload should not contain replaceRegistrationId
       const postPayload = mockHttpPost.mock.calls[0][1] as Record<string, unknown>;
@@ -268,7 +199,10 @@ describe('RegistrationService.create()', () => {
   // -------------------------------------------------------------------------
   describe('enrichment', () => {
     test('attaches student and instructor objects to returned registration', async () => {
-      mockHttpPost.mockResolvedValue(makeApiResponse({ studentId: 'stu-1', instructorId: 'inst-1' }));
+      mockHttpPost.mockResolvedValue({
+        ok: true,
+        data: makeApiResponse({ studentId: 'stu-1', instructorId: 'inst-1' }),
+      });
 
       const students = [
         { id: 'stu-1', firstName: 'Alice' },
@@ -281,52 +215,60 @@ describe('RegistrationService.create()', () => {
 
       const result = await RegistrationService.create(
         { trimester: 'Fall' },
-        { students, instructors },
+        { students, instructors }
       );
 
-      expect(result.student).toEqual({ id: 'stu-1', firstName: 'Alice' });
-      expect(result.instructor).toEqual({ id: 'inst-1', firstName: 'Carol' });
+      expect(result.ok).toBe(true);
+      const data = (result as { ok: true; data: Record<string, unknown> }).data;
+      expect(data.student).toEqual({ id: 'stu-1', firstName: 'Alice' });
+      expect(data.instructor).toEqual({ id: 'inst-1', firstName: 'Carol' });
     });
 
     test('missing student logs warning but does not fail', async () => {
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-      mockHttpPost.mockResolvedValue(makeApiResponse({ studentId: 'stu-unknown' }));
+      mockHttpPost.mockResolvedValue({
+        ok: true,
+        data: makeApiResponse({ studentId: 'stu-unknown' }),
+      });
 
       const students = [{ id: 'stu-other', firstName: 'Eve' }];
 
       const result = await RegistrationService.create(
         { trimester: 'Fall' },
-        { students, instructors: [] },
+        { students, instructors: [] }
       );
 
-      expect(result.student).toBeUndefined();
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Student not found'),
-      );
+      expect(result.ok).toBe(true);
+      const data = (result as { ok: true; data: Record<string, unknown> }).data;
+      expect(data.student).toBeUndefined();
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Student not found'));
       warnSpy.mockRestore();
     });
 
     test('missing instructor logs warning but does not fail', async () => {
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-      mockHttpPost.mockResolvedValue(makeApiResponse({ instructorId: 'inst-unknown' }));
+      mockHttpPost.mockResolvedValue({
+        ok: true,
+        data: makeApiResponse({ instructorId: 'inst-unknown' }),
+      });
 
       const instructors = [{ id: 'inst-other', firstName: 'Frank' }];
 
       const result = await RegistrationService.create(
         { trimester: 'Fall' },
-        { students: [], instructors },
+        { students: [], instructors }
       );
 
-      expect(result.instructor).toBeUndefined();
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Instructor not found'),
-      );
+      expect(result.ok).toBe(true);
+      const data = (result as { ok: true; data: Record<string, unknown> }).data;
+      expect(data.instructor).toBeUndefined();
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Instructor not found'));
       warnSpy.mockRestore();
     });
 
     test('does not warn when lookup arrays are empty', async () => {
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-      mockHttpPost.mockResolvedValue(makeApiResponse());
+      mockHttpPost.mockResolvedValue({ ok: true, data: makeApiResponse() });
 
       await RegistrationService.create({ trimester: 'Fall' }, { students: [], instructors: [] });
 
@@ -336,7 +278,7 @@ describe('RegistrationService.create()', () => {
 
     test('does not warn when lookup arrays are null (default)', async () => {
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-      mockHttpPost.mockResolvedValue(makeApiResponse());
+      mockHttpPost.mockResolvedValue({ ok: true, data: makeApiResponse() });
 
       await RegistrationService.create({ trimester: 'Fall' });
 
@@ -349,64 +291,41 @@ describe('RegistrationService.create()', () => {
   // 4. create() — trimester handling
   // -------------------------------------------------------------------------
   describe('trimester handling', () => {
-    test('sets trimester from currentPeriod when using regular endpoint and not provided', async () => {
-      mockIsEnrollmentPeriod.mockReturnValue(false);
+    test('sets trimester from currentPeriod when not provided', async () => {
       mockGetCurrentPeriod.mockReturnValue({ trimester: 'Fall 2025' });
-      mockHttpPost.mockResolvedValue(makeApiResponse());
+      mockHttpPost.mockResolvedValue({ ok: true, data: makeApiResponse() });
 
       const data: Record<string, unknown> = {};
-      await RegistrationService.create(data, {}, { isAdmin: false });
+      await RegistrationService.create(data);
 
-      // The data object should have been mutated to include the trimester
       expect(mockHttpPost).toHaveBeenCalledWith(
         'registrations',
-        expect.objectContaining({ trimester: 'Fall 2025' }),
+        expect.objectContaining({ trimester: 'Fall 2025' })
       );
     });
 
     test('does not override trimester when already provided', async () => {
-      mockIsEnrollmentPeriod.mockReturnValue(false);
       mockGetCurrentPeriod.mockReturnValue({ trimester: 'Fall 2025' });
-      mockHttpPost.mockResolvedValue(makeApiResponse());
+      mockHttpPost.mockResolvedValue({ ok: true, data: makeApiResponse() });
 
-      await RegistrationService.create(
-        { trimester: 'Spring 2026' },
-        {},
-        { isAdmin: false },
-      );
+      await RegistrationService.create({ trimester: 'Spring 2026' });
 
       expect(mockHttpPost).toHaveBeenCalledWith(
         'registrations',
-        expect.objectContaining({ trimester: 'Spring 2026' }),
+        expect.objectContaining({ trimester: 'Spring 2026' })
       );
     });
 
     test('does not set trimester when currentPeriod has no trimester', async () => {
-      mockIsEnrollmentPeriod.mockReturnValue(false);
       mockGetCurrentPeriod.mockReturnValue({});
-      mockHttpPost.mockResolvedValue(makeApiResponse());
+      mockHttpPost.mockResolvedValue({ ok: true, data: makeApiResponse() });
 
       const data: Record<string, unknown> = {};
-      await RegistrationService.create(data, {}, { isAdmin: false });
+      await RegistrationService.create(data);
 
       expect(mockHttpPost).toHaveBeenCalledWith(
         'registrations',
-        expect.not.objectContaining({ trimester: expect.anything() }),
-      );
-    });
-
-    test('does not set trimester when using next-trimester endpoint', async () => {
-      mockIsEnrollmentPeriod.mockReturnValue(true);
-      mockGetCurrentPeriod.mockReturnValue({ trimester: 'Fall 2025', periodType: 'Priority Enrollment' });
-      mockHttpPost.mockResolvedValue(makeApiResponse());
-
-      const data: Record<string, unknown> = {};
-      await RegistrationService.create(data, {}, { isAdmin: false });
-
-      // Should use next-trimester endpoint, and trimester should NOT be auto-set
-      expect(mockHttpPost).toHaveBeenCalledWith(
-        'registrations/next-trimester',
-        expect.not.objectContaining({ trimester: expect.anything() }),
+        expect.not.objectContaining({ trimester: expect.anything() })
       );
     });
   });
@@ -418,7 +337,7 @@ describe('RegistrationService.create()', () => {
 describe('RegistrationService.delete()', () => {
   test('confirms with user before deleting', async () => {
     mockConfirm.mockReturnValue(true);
-    mockHttpDelete.mockResolvedValue(undefined);
+    mockHttpDelete.mockResolvedValue({ ok: true, data: undefined });
 
     await RegistrationService.delete('reg-100', 'fall');
 
@@ -429,37 +348,47 @@ describe('RegistrationService.delete()', () => {
   test('does nothing if user cancels confirmation', async () => {
     mockConfirm.mockReturnValue(false);
 
-    await RegistrationService.delete('reg-100', 'fall');
+    const result = await RegistrationService.delete('reg-100', 'fall');
 
     expect(mockHttpDelete).not.toHaveBeenCalled();
     expect(mockToast).not.toHaveBeenCalled();
+    expect(result).toEqual({ ok: false, error: { message: 'Cancelled' } });
   });
 
   test('shows success toast on completion', async () => {
     mockConfirm.mockReturnValue(true);
-    mockHttpDelete.mockResolvedValue(undefined);
+    mockHttpDelete.mockResolvedValue({ ok: true, data: undefined });
 
     await RegistrationService.delete('reg-100', 'fall');
 
-    expect(mockToast).toHaveBeenCalledWith({ html: 'Registration deleted successfully.' });
+    expect(mockToast).toHaveBeenCalledWith({
+      html: 'Registration deleted successfully.',
+    });
   });
 
   test('shows error toast on failure', async () => {
     mockConfirm.mockReturnValue(true);
-    mockHttpDelete.mockRejectedValue(new Error('network error'));
+    mockHttpDelete.mockResolvedValue({
+      ok: false,
+      error: { message: 'network error' },
+    });
 
     await RegistrationService.delete('reg-100', 'fall');
 
-    expect(mockToast).toHaveBeenCalledWith({ html: 'Error deleting registration.' });
+    expect(mockToast).toHaveBeenCalledWith({ html: 'network error' });
   });
 
-  test('shows error toast when no registration ID provided', async () => {
+  test('returns error when no registration ID provided', async () => {
     mockConfirm.mockReturnValue(true);
 
-    await RegistrationService.delete('', 'fall');
+    const result = await RegistrationService.delete('', 'fall');
 
     expect(mockHttpDelete).not.toHaveBeenCalled();
-    expect(mockToast).toHaveBeenCalledWith({ html: 'Error: No registration ID provided for deletion.' });
+    expect(mockToast).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      ok: false,
+      error: { message: 'No registration ID provided for deletion' },
+    });
   });
 });
 
@@ -468,60 +397,68 @@ describe('RegistrationService.delete()', () => {
 // ---------------------------------------------------------------------------
 describe('RegistrationService.submitIntent()', () => {
   test('sends PATCH request with correct endpoint and payload', async () => {
-    mockHttpPatch.mockResolvedValue({ success: true });
+    mockHttpPatch.mockResolvedValue({ ok: true, data: { success: true } });
 
     await RegistrationService.submitIntent('reg-200', 'keep');
 
-    expect(mockHttpPatch).toHaveBeenCalledWith(
-      'registrations/reg-200/intent',
-      { intent: 'keep' },
-    );
+    expect(mockHttpPatch).toHaveBeenCalledWith('registrations/reg-200/intent', {
+      intent: 'keep',
+    });
   });
 
   test('shows success toast on completion', async () => {
-    mockHttpPatch.mockResolvedValue({ success: true });
+    mockHttpPatch.mockResolvedValue({ ok: true, data: { success: true } });
 
     await RegistrationService.submitIntent('reg-200', 'drop');
 
-    expect(mockToast).toHaveBeenCalledWith({ html: 'Intent submitted successfully.' });
+    expect(mockToast).toHaveBeenCalledWith({
+      html: 'Intent submitted successfully.',
+    });
   });
 
-  test('returns the response data on success', async () => {
+  test('returns the HttpResult on success', async () => {
     const responseData = { id: 'reg-200', reenrollmentIntent: 'change' };
-    mockHttpPatch.mockResolvedValue(responseData);
+    mockHttpPatch.mockResolvedValue({ ok: true, data: responseData });
 
     const result = await RegistrationService.submitIntent('reg-200', 'change');
 
-    expect(result).toEqual(responseData);
+    expect(result).toEqual({ ok: true, data: responseData });
   });
 
   test('shows error toast on failure', async () => {
-    mockHttpPatch.mockRejectedValue(new Error('Server error'));
+    mockHttpPatch.mockResolvedValue({
+      ok: false,
+      error: { message: 'Server error' },
+    });
 
-    await expect(
-      RegistrationService.submitIntent('reg-200', 'keep'),
-    ).rejects.toThrow('Server error');
+    const result = await RegistrationService.submitIntent('reg-200', 'keep');
 
+    expect(result).toEqual({ ok: false, error: { message: 'Server error' } });
     expect(mockToast).toHaveBeenCalledWith({ html: 'Server error' });
   });
 
-  test('re-throws error after showing toast', async () => {
-    const error = new Error('intent failed');
-    mockHttpPatch.mockRejectedValue(error);
+  test('returns error result after showing toast', async () => {
+    mockHttpPatch.mockResolvedValue({
+      ok: false,
+      error: { message: 'intent failed' },
+    });
 
-    await expect(
-      RegistrationService.submitIntent('reg-200', 'drop'),
-    ).rejects.toThrow(error);
+    const result = await RegistrationService.submitIntent('reg-200', 'drop');
+
+    expect(result.ok).toBe(false);
+    expect((result as { ok: false; error: { message: string } }).error.message).toBe(
+      'intent failed'
+    );
   });
 
   test('uses generic message when error has no message', async () => {
-    const error = { message: '' };
-    mockHttpPatch.mockRejectedValue(error);
+    mockHttpPatch.mockResolvedValue({ ok: false, error: { message: '' } });
 
-    await expect(
-      RegistrationService.submitIntent('reg-200', 'keep'),
-    ).rejects.toBe(error);
+    const result = await RegistrationService.submitIntent('reg-200', 'keep');
 
-    expect(mockToast).toHaveBeenCalledWith({ html: 'Error submitting intent.' });
+    expect(result.ok).toBe(false);
+    expect(mockToast).toHaveBeenCalledWith({
+      html: 'Error submitting intent.',
+    });
   });
 });

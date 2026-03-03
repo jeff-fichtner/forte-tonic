@@ -70,10 +70,16 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
     const signal = this.getAbortSignal();
 
     const currentResult = await HttpService.get<RegistrationApiResponse>(
-      `parent/tabs/registration/${ctx.currentTrimester}?parentId=${parentId}`, { signal }
+      `parent/tabs/registration/${ctx.currentTrimester}?parentId=${parentId}`,
+      { signal }
     );
     if (!currentResult.ok) return currentResult;
-    const currentValidated = validateResponseFields(currentResult, ['instructors', 'students', 'classes', 'registrations']);
+    const currentValidated = validateResponseFields(currentResult, [
+      'instructors',
+      'students',
+      'classes',
+      'registrations',
+    ]);
     if (!currentValidated.ok) return currentValidated;
     const currentData = currentValidated.data;
 
@@ -81,7 +87,8 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
 
     if (ctx.nextTrimester) {
       const nextResult = await HttpService.get<RegistrationApiResponse>(
-        `parent/tabs/registration/${ctx.nextTrimester}?parentId=${parentId}`, { signal }
+        `parent/tabs/registration/${ctx.nextTrimester}?parentId=${parentId}`,
+        { signal }
       );
       if (!nextResult.ok) return nextResult;
       const nextValidated = validateResponseFields(nextResult, ['registrations']);
@@ -142,7 +149,7 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
    * @private
    */
   async #createRegistration(registrationData: RegistrationSubmitData): Promise<void> {
-    const result = await RegistrationService.create(registrationData, {}, { isAdmin: false });
+    const result = await RegistrationService.create(registrationData);
     if (result.ok) {
       await this.reload();
     }

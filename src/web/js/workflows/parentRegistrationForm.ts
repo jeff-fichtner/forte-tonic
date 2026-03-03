@@ -4,10 +4,9 @@
  */
 
 import { RegistrationType } from '/utils/values/registrationType.js';
+import { TransportationType } from '/utils/values/transportationType.js';
 import { DomHelpers } from '../utilities/domHelpers.js';
-import {
-  clearErrorMessage,
-} from '../utilities/registrationForm/messageDisplay.js';
+import { clearErrorMessage } from '../utilities/registrationForm/messageDisplay.js';
 import type {
   InstructorLike,
   StudentLike,
@@ -19,6 +18,7 @@ import type {
 import { CascadingFilterChips } from '../components/registrationForm/cascadingFilterChips.js';
 import { ParentGroupRegistration } from '../components/registrationForm/parentGroupRegistration.js';
 import { ParentPrivateSubmission } from '../components/registrationForm/parentPrivateSubmission.js';
+import { UserSession } from '../auth/session.js';
 import {
   showConfirmationModal,
   showConflictModal,
@@ -172,11 +172,13 @@ export class ParentRegistrationForm {
     this.privateSubmission = new ParentPrivateSubmission({
       instructors: this.instructors,
       getSelectedLesson: () => this.selectedLesson,
-      setSelectedLesson: (slot: TimeSlot | null) => { this.selectedLesson = slot; },
+      setSelectedLesson: (slot: TimeSlot | null) => {
+        this.selectedLesson = slot;
+      },
       isEnrollmentPeriodActive: () => this._isEnrollmentPeriodActive(),
       selectedPreviousRegistrationId: () => this._selectedPreviousRegistrationId,
       showConfirmationModal: (message, onConfirm) => showConfirmationModal(message, onConfirm),
-      showConflictModal: (message) => showConflictModal(message),
+      showConflictModal: message => showConflictModal(message),
       setButtonLoading: (button, isLoading) => setButtonLoading(button, isLoading),
       onSubmitSuccess: () => {
         this.#clearForm();
@@ -194,13 +196,15 @@ export class ParentRegistrationForm {
       students: this.students,
       instructors: this.instructors,
       getSelectedStudentId: () => {
-        const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
+        const studentSelect = document.getElementById(
+          'parent-student-select'
+        ) as HTMLSelectElement | null;
         return studentSelect?.value || null;
       },
       isEnrollmentPeriodActive: () => this._isEnrollmentPeriodActive(),
       selectedPreviousRegistrationId: () => this._selectedPreviousRegistrationId,
       showConfirmationModal: (message, onConfirm) => showConfirmationModal(message, onConfirm),
-      showConflictModal: (message) => showConflictModal(message),
+      showConflictModal: message => showConflictModal(message),
       setButtonLoading: (button, isLoading) => setButtonLoading(button, isLoading),
       onSubmitSuccess: () => {
         this.groupRegistration!.clearForm();
@@ -218,7 +222,9 @@ export class ParentRegistrationForm {
    * Populate the student selector with parent's children
    */
   #populateStudentSelector(): void {
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
+    const studentSelect = document.getElementById(
+      'parent-student-select'
+    ) as HTMLSelectElement | null;
     const studentSection = document.getElementById('parent-student-selection-section');
 
     if (!studentSelect || !studentSection) {
@@ -228,7 +234,7 @@ export class ParentRegistrationForm {
 
     // Clear existing options (except the first placeholder)
     while (studentSelect.children.length > 1) {
-      studentSelect.removeChild(studentSelect.lastChild!)
+      studentSelect.removeChild(studentSelect.lastChild!);
     }
 
     // Handle based on number of students
@@ -277,13 +283,17 @@ export class ParentRegistrationForm {
           this._renderRegistrationSelector();
 
           // If group registration type is already selected, repopulate classes for new student
-          const registrationTypeSelect = document.getElementById('parent-registration-type-select') as HTMLSelectElement | null;
+          const registrationTypeSelect = document.getElementById(
+            'parent-registration-type-select'
+          ) as HTMLSelectElement | null;
           if (registrationTypeSelect && registrationTypeSelect.value === RegistrationType.GROUP) {
             if (this.groupRegistration) {
               this.groupRegistration.populateClassesDropdown();
 
               // Re-check any currently selected class for conflicts with the new student
-              const classSelect = document.getElementById('parent-class-select') as HTMLSelectElement | null;
+              const classSelect = document.getElementById(
+                'parent-class-select'
+              ) as HTMLSelectElement | null;
               if (classSelect && classSelect.value) {
                 this.groupRegistration.handleClassSelection(classSelect.value);
               }
@@ -314,7 +324,9 @@ export class ParentRegistrationForm {
    * Show the registration type container
    */
   #showRegistrationTypeContainer(): void {
-    const registrationTypeSection = document.querySelector('.registration-type-section') as HTMLElement | null;
+    const registrationTypeSection = document.querySelector(
+      '.registration-type-section'
+    ) as HTMLElement | null;
     if (registrationTypeSection) {
       registrationTypeSection.style.display = 'block';
     }
@@ -324,7 +336,9 @@ export class ParentRegistrationForm {
    * Hide all registration containers (type, private, group)
    */
   #hideAllRegistrationContainers(): void {
-    const registrationTypeSection = document.querySelector('.registration-type-section') as HTMLElement | null;
+    const registrationTypeSection = document.querySelector(
+      '.registration-type-section'
+    ) as HTMLElement | null;
     const privateContainer = document.getElementById('parent-private-registration-container');
     const groupContainer = document.getElementById('parent-group-registration-container');
 
@@ -340,7 +354,9 @@ export class ParentRegistrationForm {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
-    const registrationTypeSelect = document.getElementById('parent-registration-type-select') as HTMLSelectElement | null;
+    const registrationTypeSelect = document.getElementById(
+      'parent-registration-type-select'
+    ) as HTMLSelectElement | null;
     const privateContainer = document.getElementById('parent-private-registration-container');
     const groupContainer = document.getElementById('parent-group-registration-container');
 
@@ -383,7 +399,6 @@ export class ParentRegistrationForm {
     }
   }
 
-
   /**
    * Attach event listener to clear button
    */
@@ -416,7 +431,9 @@ export class ParentRegistrationForm {
     if (!parentContainer) return;
 
     // Hide the fixed registration preview (using the correct ID)
-    const selectedDisplay = parentContainer.querySelector('#admin-selected-lesson-display') as HTMLElement | null;
+    const selectedDisplay = parentContainer.querySelector(
+      '#admin-selected-lesson-display'
+    ) as HTMLElement | null;
     if (selectedDisplay) {
       selectedDisplay.style.display = 'none';
       selectedDisplay.style.pointerEvents = 'none'; // Ensure it doesn't interfere when hidden
@@ -424,7 +441,7 @@ export class ParentRegistrationForm {
 
     // Reset transportation type to default (pickup)
     const pickupRadio = document.querySelector(
-      'input[name="parent-transportation-type"][value="pickup"]'
+      `input[name="parent-transportation-type"][value="${TransportationType.PICKUP}"]`
     ) as HTMLInputElement | null;
     if (pickupRadio) {
       pickupRadio.checked = true;
@@ -432,7 +449,7 @@ export class ParentRegistrationForm {
 
     // Reset group transportation type to default (pickup) for consistency
     const groupPickupRadio = document.querySelector(
-      'input[name="parent-group-transportation-type"][value="pickup"]'
+      `input[name="parent-group-transportation-type"][value="${TransportationType.PICKUP}"]`
     ) as HTMLInputElement | null;
     if (groupPickupRadio) {
       groupPickupRadio.checked = true;
@@ -450,8 +467,6 @@ export class ParentRegistrationForm {
     // Reinitialize the hybrid interface to restore proper form state
     this.#initializeHybridInterface();
   }
-
-
 
   /**
    * Public method to clear the form selection (can be called externally)
@@ -504,7 +519,9 @@ export class ParentRegistrationForm {
    */
   #resetCompleteForm(): void {
     // Reset registration type dropdown to default state
-    const registrationTypeSelect = document.getElementById('parent-registration-type-select') as HTMLSelectElement | null;
+    const registrationTypeSelect = document.getElementById(
+      'parent-registration-type-select'
+    ) as HTMLSelectElement | null;
     if (registrationTypeSelect) {
       registrationTypeSelect.value = '';
       // Re-initialize Materialize select to update the display
@@ -537,7 +554,6 @@ export class ParentRegistrationForm {
     this.#showRegistrationTypeContainer();
   }
 
-
   /**
    * Render registration selector dropdown during enrollment periods
    * Shows existing registrations that can be modified for next trimester
@@ -545,7 +561,9 @@ export class ParentRegistrationForm {
    */
   _renderRegistrationSelector(): void {
     const selectorSection = document.getElementById('parent-registration-selector-section');
-    const selectorDropdown = document.getElementById('parent-registration-selector') as HTMLSelectElement | null;
+    const selectorDropdown = document.getElementById(
+      'parent-registration-selector'
+    ) as HTMLSelectElement | null;
 
     if (!selectorSection || !selectorDropdown) {
       return; // Elements not found, skip
@@ -561,7 +579,9 @@ export class ParentRegistrationForm {
     selectorSection.style.display = 'block';
 
     // Get selected student
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
+    const studentSelect = document.getElementById(
+      'parent-student-select'
+    ) as HTMLSelectElement | null;
     const selectedStudentId = studentSelect?.value;
 
     // Clear existing options (except first "Create New")
@@ -592,14 +612,16 @@ export class ParentRegistrationForm {
 
       // Build descriptive label
       let label = '';
-      if (registration.registrationType === 'private') {
+      if (registration.registrationType === RegistrationType.PRIVATE) {
         const instrument = registration.instrument || 'Lesson';
         const day = registration.day || '';
         const time = registration.startTime || '';
-        const instructor = this.instructors.find((i: InstructorLike) => i.id === registration.instructorId);
+        const instructor = this.instructors.find(
+          (i: InstructorLike) => i.id === registration.instructorId
+        );
         const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : '';
         label = `Modify: ${instrument} - ${day} ${time} with ${instructorName}`;
-      } else if (registration.registrationType === 'group') {
+      } else if (registration.registrationType === RegistrationType.GROUP) {
         const classTitle = registration.classTitle || 'Class';
         label = `Modify: ${classTitle}`;
       }
@@ -639,7 +661,7 @@ export class ParentRegistrationForm {
    * @returns {boolean} True if current period allows next trimester registration
    */
   _isEnrollmentPeriodActive(): boolean {
-    const currentPeriod = window.UserSession?.getCurrentPeriod?.();
+    const currentPeriod = UserSession?.getCurrentPeriod?.();
     return !!(
       currentPeriod &&
       (currentPeriod.periodType === 'priorityEnrollment' ||
@@ -654,7 +676,7 @@ export class ParentRegistrationForm {
    * @returns {boolean} True if user has access to next trimester registration
    */
   _canAccessNextTrimester() {
-    const currentPeriod = window.UserSession?.getCurrentPeriod?.();
+    const currentPeriod = UserSession?.getCurrentPeriod?.();
     if (!currentPeriod) return false;
 
     // Open enrollment: everyone can access
@@ -670,5 +692,4 @@ export class ParentRegistrationForm {
 
     return false;
   }
-
 }

@@ -34,7 +34,13 @@ jest.unstable_mockModule('../../../src/common/errors.js', () => {
       super(message);
     }
   }
-  return { ConflictError, NotFoundError: Error, ValidationError: Error, ForbiddenError: Error, UnauthorizedError: Error };
+  return {
+    ConflictError,
+    NotFoundError: Error,
+    ValidationError: Error,
+    ForbiddenError: Error,
+    UnauthorizedError: Error,
+  };
 });
 
 jest.unstable_mockModule('../../../src/utils/logger.js', () => ({
@@ -93,9 +99,7 @@ jest.unstable_mockModule('../../../src/utils/nativeDateTimeHelpers.js', () => {
 // Dynamic import of the system under test (AFTER all mocks are wired)
 // ---------------------------------------------------------------------------
 
-const { RegistrationService } = await import(
-  '../../../src/services/registrationService.js'
-);
+const { RegistrationService } = await import('../../../src/services/registrationService.js');
 const { ConflictError } = await import('../../../src/common/errors.js');
 const { RegistrationType } = await import('../../../src/utils/values/registrationType.js');
 
@@ -121,6 +125,7 @@ function buildMockUserRepository() {
     getInstructorById: jest.fn(),
     getStudents: jest.fn(),
     getInstructors: jest.fn(),
+    getRoomById: jest.fn(),
   };
 }
 
@@ -239,7 +244,7 @@ describe('RegistrationService', () => {
         userRepository: mockUserRepo,
         programRepository: mockProgramRepo,
       },
-      mockConfigService as any,
+      mockConfigService as unknown as ConstructorParameters<typeof RegistrationService>[1]
     );
   });
 
@@ -262,9 +267,8 @@ describe('RegistrationService', () => {
 
       mockUserRepo.getStudentById.mockResolvedValue(student);
       mockUserRepo.getInstructorById.mockResolvedValue(instructor);
-      mockProgramRepo.getClassById.mockResolvedValue(
-        overrides?.classData ?? null,
-      );
+      mockUserRepo.getRoomById.mockResolvedValue({ id: 'R1', name: 'Room 1' });
+      mockProgramRepo.getClassById.mockResolvedValue(overrides?.classData ?? null);
 
       const reg = fakeRegistration(overrides?.registrationData);
       mockCreateNew.mockReturnValue(reg);
@@ -299,7 +303,7 @@ describe('RegistrationService', () => {
           length: 60,
           trimester: 'winter',
         },
-        'user-1',
+        'user-1'
       );
 
       expect(result.success).toBe(true);
@@ -340,8 +344,8 @@ describe('RegistrationService', () => {
             length: 60,
             trimester: 'winter',
           },
-          'user-1',
-        ),
+          'user-1'
+        )
       ).rejects.toThrow(/Registration conflicts detected/);
     });
 
@@ -367,7 +371,7 @@ describe('RegistrationService', () => {
           transportationType: 'pickup',
           trimester: 'winter',
         },
-        'user-1',
+        'user-1'
       );
 
       expect(result.success).toBe(true);
@@ -394,15 +398,20 @@ describe('RegistrationService', () => {
             transportationType: 'bus',
             trimester: 'winter',
           },
-          'user-1',
-        ),
+          'user-1'
+        )
       ).rejects.toThrow(/Late Bus is not available/);
     });
 
     it('should allow bus transportation when lesson ends before the deadline', async () => {
       setupHappyPathMocks();
 
-      const reg = fakeRegistration({ transportationType: 'bus', day: 'Monday', startTime: '15:00', length: 30 });
+      const reg = fakeRegistration({
+        transportationType: 'bus',
+        day: 'Monday',
+        startTime: '15:00',
+        length: 30,
+      });
       mockCreateNew.mockReturnValue(reg);
       mockRegRepo.create.mockResolvedValue(reg);
 
@@ -418,7 +427,7 @@ describe('RegistrationService', () => {
           transportationType: 'bus',
           trimester: 'winter',
         },
-        'user-1',
+        'user-1'
       );
 
       expect(result.success).toBe(true);
@@ -448,7 +457,7 @@ describe('RegistrationService', () => {
           length: 60,
           trimester: 'winter',
         },
-        'user-1',
+        'user-1'
       );
 
       // Verify that Registration.createNew was called with isWaitlistClass=true
@@ -477,7 +486,7 @@ describe('RegistrationService', () => {
           length: 60,
           trimester: 'winter',
         },
-        'user-1',
+        'user-1'
       );
 
       const createNewCall = mockCreateNew.mock.calls[0];
@@ -495,8 +504,24 @@ describe('RegistrationService', () => {
 
       // Class is full: 2 registrations, capacity 2
       mockRegRepo.getNextTrimesterRegistrations.mockResolvedValue([
-        { studentId: 'student-1', classId: 'G001', registrationType: 'group', instructorId: 'instructor-200', day: 'Monday', startTime: '15:00', length: 60 },
-        { studentId: 'student-2', classId: 'G001', registrationType: 'group', instructorId: 'instructor-200', day: 'Monday', startTime: '15:00', length: 60 },
+        {
+          studentId: 'student-1',
+          classId: 'G001',
+          registrationType: 'group',
+          instructorId: 'instructor-200',
+          day: 'Monday',
+          startTime: '15:00',
+          length: 60,
+        },
+        {
+          studentId: 'student-2',
+          classId: 'G001',
+          registrationType: 'group',
+          instructorId: 'instructor-200',
+          day: 'Monday',
+          startTime: '15:00',
+          length: 60,
+        },
       ]);
 
       const reg = fakeRegistration({ registrationType: 'group', classId: 'G001' });
@@ -515,7 +540,7 @@ describe('RegistrationService', () => {
           trimester: 'winter',
         },
         'admin-user',
-        { isAdmin: true },
+        { isAdmin: true }
       );
 
       expect(result.success).toBe(true);
@@ -528,8 +553,24 @@ describe('RegistrationService', () => {
 
       // Class is full: 2 registrations, capacity 2
       mockRegRepo.getNextTrimesterRegistrations.mockResolvedValue([
-        { studentId: 'student-1', classId: 'G001', registrationType: 'group', instructorId: 'instructor-200', day: 'Monday', startTime: '15:00', length: 60 },
-        { studentId: 'student-2', classId: 'G001', registrationType: 'group', instructorId: 'instructor-200', day: 'Monday', startTime: '15:00', length: 60 },
+        {
+          studentId: 'student-1',
+          classId: 'G001',
+          registrationType: 'group',
+          instructorId: 'instructor-200',
+          day: 'Monday',
+          startTime: '15:00',
+          length: 60,
+        },
+        {
+          studentId: 'student-2',
+          classId: 'G001',
+          registrationType: 'group',
+          instructorId: 'instructor-200',
+          day: 'Monday',
+          startTime: '15:00',
+          length: 60,
+        },
       ]);
 
       await expect(
@@ -544,8 +585,8 @@ describe('RegistrationService', () => {
             length: 60,
             trimester: 'winter',
           },
-          'user-1',
-        ),
+          'user-1'
+        )
       ).rejects.toThrow(/Registration conflicts detected/);
     });
 
@@ -581,8 +622,8 @@ describe('RegistrationService', () => {
             transportationType: 'pickup',
             trimester: 'winter',
           },
-          'user-1',
-        ),
+          'user-1'
+        )
       ).rejects.toThrow(/Registration conflicts detected/);
     });
 
@@ -599,8 +640,8 @@ describe('RegistrationService', () => {
             length: 30,
             trimester: 'winter',
           },
-          'user-1',
-        ),
+          'user-1'
+        )
       ).rejects.toThrow(/Registration validation failed/);
     });
 
@@ -621,8 +662,8 @@ describe('RegistrationService', () => {
             transportationType: 'pickup',
             trimester: 'winter',
           },
-          'user-1',
-        ),
+          'user-1'
+        )
       ).rejects.toThrow(/Student not found/);
     });
 
@@ -643,8 +684,8 @@ describe('RegistrationService', () => {
             transportationType: 'pickup',
             trimester: 'winter',
           },
-          'user-1',
-        ),
+          'user-1'
+        )
       ).rejects.toThrow(/Instructor not found/);
     });
 
@@ -667,8 +708,8 @@ describe('RegistrationService', () => {
             transportationType: 'pickup',
             // trimester intentionally omitted
           },
-          'user-1',
-        ),
+          'user-1'
+        )
       ).rejects.toThrow(/Trimester must be explicitly provided/);
     });
 
@@ -688,8 +729,8 @@ describe('RegistrationService', () => {
             length: 60,
             trimester: 'winter',
           },
-          'user-1',
-        ),
+          'user-1'
+        )
       ).rejects.toThrow(/Class not found/);
     });
   });
@@ -704,18 +745,10 @@ describe('RegistrationService', () => {
     it('should delete a registration and log the audit event', async () => {
       mockRegRepo.delete.mockResolvedValue(true);
 
-      const result = await service.deleteRegistration(
-        'reg-cancel-1',
-        'admin-user',
-        'winter',
-      );
+      const result = await service.deleteRegistration('reg-cancel-1', 'admin-user', 'winter');
 
       expect(result).toBe(true);
-      expect(mockRegRepo.delete).toHaveBeenCalledWith(
-        'reg-cancel-1',
-        'admin-user',
-        'winter',
-      );
+      expect(mockRegRepo.delete).toHaveBeenCalledWith('reg-cancel-1', 'admin-user', 'winter');
     });
 
     // ------------------------------------------------------------------
@@ -725,22 +758,14 @@ describe('RegistrationService', () => {
       mockRegRepo.delete.mockRejectedValue(new Error('Registration not found'));
 
       await expect(
-        service.deleteRegistration(
-          'nonexistent-id',
-          'admin-user',
-          'winter',
-        ),
+        service.deleteRegistration('nonexistent-id', 'admin-user', 'winter')
       ).rejects.toThrow(/Registration not found/);
     });
 
     it('should throw when trimester is not provided', async () => {
-      await expect(
-        service.deleteRegistration(
-          'reg-cancel-2',
-          'admin-user',
-          null,
-        ),
-      ).rejects.toThrow(/trimester is required/);
+      await expect(service.deleteRegistration('reg-cancel-2', 'admin-user', null)).rejects.toThrow(
+        /trimester is required/
+      );
     });
   });
 
@@ -777,9 +802,22 @@ describe('RegistrationService', () => {
 
       const student1 = fakeStudent({ id: 'student-100', firstName: 'Alice', lastName: 'Smith' });
       const student2 = fakeStudent({ id: 'student-101', firstName: 'Carol', lastName: 'Brown' });
-      const instructor1 = fakeInstructor({ id: 'instructor-200', firstName: 'Bob', lastName: 'Jones' });
-      const instructor2 = fakeInstructor({ id: 'instructor-201', firstName: 'Dave', lastName: 'Lee' });
-      const cls1 = fakeClass({ id: 'G001', title: 'Guitar Ensemble', instrument: 'Guitar', size: 10 });
+      const instructor1 = fakeInstructor({
+        id: 'instructor-200',
+        firstName: 'Bob',
+        lastName: 'Jones',
+      });
+      const instructor2 = fakeInstructor({
+        id: 'instructor-201',
+        firstName: 'Dave',
+        lastName: 'Lee',
+      });
+      const cls1 = fakeClass({
+        id: 'G001',
+        title: 'Guitar Ensemble',
+        instrument: 'Guitar',
+        size: 10,
+      });
 
       mockUserRepo.getStudents.mockResolvedValue([student1, student2]);
       mockUserRepo.getInstructors.mockResolvedValue([instructor1, instructor2]);
@@ -1296,16 +1334,42 @@ describe('RegistrationService - Conflict Detection', () => {
 
       it('should allow: different student + same instructor + same day + same time', () => {
         const result = RegistrationService.checkDuplicateRegistration(
-          { studentId: 'student-123', instructorId: 'instructor-456', day: 'Monday', startTime: '14:00', registrationType: RegistrationType.PRIVATE },
-          [{ studentId: 'student-999', instructorId: 'instructor-456', day: 'Monday', startTime: '14:00' }]
+          {
+            studentId: 'student-123',
+            instructorId: 'instructor-456',
+            day: 'Monday',
+            startTime: '14:00',
+            registrationType: RegistrationType.PRIVATE,
+          },
+          [
+            {
+              studentId: 'student-999',
+              instructorId: 'instructor-456',
+              day: 'Monday',
+              startTime: '14:00',
+            },
+          ]
         );
         expect(result).toBeNull();
       });
 
       it('should allow: same student + same instructor + different day + same time', () => {
         const result = RegistrationService.checkDuplicateRegistration(
-          { studentId: 'student-123', instructorId: 'instructor-456', day: 'Monday', startTime: '14:00', registrationType: RegistrationType.PRIVATE },
-          [{ studentId: 'student-123', instructorId: 'instructor-456', day: 'Tuesday', startTime: '14:00' }]
+          {
+            studentId: 'student-123',
+            instructorId: 'instructor-456',
+            day: 'Monday',
+            startTime: '14:00',
+            registrationType: RegistrationType.PRIVATE,
+          },
+          [
+            {
+              studentId: 'student-123',
+              instructorId: 'instructor-456',
+              day: 'Tuesday',
+              startTime: '14:00',
+            },
+          ]
         );
         expect(result).toBeNull();
       });
@@ -1314,7 +1378,11 @@ describe('RegistrationService - Conflict Detection', () => {
     describe('Group Classes', () => {
       it('should detect duplicate: same student + same class', () => {
         const result = RegistrationService.checkDuplicateRegistration(
-          { studentId: 'student-123', classId: 'class-789', registrationType: RegistrationType.GROUP },
+          {
+            studentId: 'student-123',
+            classId: 'class-789',
+            registrationType: RegistrationType.GROUP,
+          },
           [{ studentId: 'student-123', classId: 'class-789' }]
         );
         expect(result).not.toBeNull();
@@ -1323,7 +1391,11 @@ describe('RegistrationService - Conflict Detection', () => {
 
       it('should allow: same student + different class', () => {
         const result = RegistrationService.checkDuplicateRegistration(
-          { studentId: 'student-123', classId: 'class-789', registrationType: RegistrationType.GROUP },
+          {
+            studentId: 'student-123',
+            classId: 'class-789',
+            registrationType: RegistrationType.GROUP,
+          },
           [{ studentId: 'student-123', classId: 'class-999' }]
         );
         expect(result).toBeNull();
@@ -1331,7 +1403,11 @@ describe('RegistrationService - Conflict Detection', () => {
 
       it('should allow: different student + same class', () => {
         const result = RegistrationService.checkDuplicateRegistration(
-          { studentId: 'student-123', classId: 'class-789', registrationType: RegistrationType.GROUP },
+          {
+            studentId: 'student-123',
+            classId: 'class-789',
+            registrationType: RegistrationType.GROUP,
+          },
           [{ studentId: 'student-999', classId: 'class-789' }]
         );
         expect(result).toBeNull();
@@ -1341,8 +1417,21 @@ describe('RegistrationService - Conflict Detection', () => {
     describe('Value Object Handling', () => {
       it('should work with plain string IDs on both sides', () => {
         const result = RegistrationService.checkDuplicateRegistration(
-          { studentId: 'student-123', instructorId: 'instructor-456', day: 'Monday', startTime: '14:00', registrationType: RegistrationType.PRIVATE },
-          [{ studentId: 'student-123', instructorId: 'instructor-456', day: 'Monday', startTime: '14:00' }]
+          {
+            studentId: 'student-123',
+            instructorId: 'instructor-456',
+            day: 'Monday',
+            startTime: '14:00',
+            registrationType: RegistrationType.PRIVATE,
+          },
+          [
+            {
+              studentId: 'student-123',
+              instructorId: 'instructor-456',
+              day: 'Monday',
+              startTime: '14:00',
+            },
+          ]
         );
         expect(result).not.toBeNull();
         expect(result.type).toBe('duplicate');
@@ -1350,8 +1439,21 @@ describe('RegistrationService - Conflict Detection', () => {
 
       it('should work with value objects on existing and plain strings on new', () => {
         const result = RegistrationService.checkDuplicateRegistration(
-          { studentId: 'student-123', instructorId: 'instructor-456', day: 'Monday', startTime: '14:00', registrationType: RegistrationType.PRIVATE },
-          [{ studentId: 'student-123', instructorId: 'instructor-456', day: 'Monday', startTime: '14:00' }]
+          {
+            studentId: 'student-123',
+            instructorId: 'instructor-456',
+            day: 'Monday',
+            startTime: '14:00',
+            registrationType: RegistrationType.PRIVATE,
+          },
+          [
+            {
+              studentId: 'student-123',
+              instructorId: 'instructor-456',
+              day: 'Monday',
+              startTime: '14:00',
+            },
+          ]
         );
         expect(result).not.toBeNull();
         expect(result.type).toBe('duplicate');
@@ -1639,8 +1741,23 @@ describe('RegistrationService - Conflict Detection', () => {
     describe('Private Lessons', () => {
       it('should detect instructor conflict only (different student, same instructor, overlapping)', async () => {
         const result = await RegistrationService.checkConflicts(
-          { studentId: 'student-123', instructorId: 'instructor-456', day: 'Monday', startTime: '14:00', length: 30, registrationType: RegistrationType.PRIVATE },
-          [{ studentId: 'student-999', instructorId: 'instructor-456', day: 'Monday', startTime: '14:00', length: 30 }]
+          {
+            studentId: 'student-123',
+            instructorId: 'instructor-456',
+            day: 'Monday',
+            startTime: '14:00',
+            length: 30,
+            registrationType: RegistrationType.PRIVATE,
+          },
+          [
+            {
+              studentId: 'student-999',
+              instructorId: 'instructor-456',
+              day: 'Monday',
+              startTime: '14:00',
+              length: 30,
+            },
+          ]
         );
         expect(result.hasConflicts).toBe(true);
         expect(result.conflicts).toHaveLength(1);
@@ -1649,8 +1766,23 @@ describe('RegistrationService - Conflict Detection', () => {
 
       it('should detect student conflict only (same student, different instructor, overlapping)', async () => {
         const result = await RegistrationService.checkConflicts(
-          { studentId: 'student-123', instructorId: 'instructor-456', day: 'Monday', startTime: '14:00', length: 30, registrationType: RegistrationType.PRIVATE },
-          [{ studentId: 'student-123', instructorId: 'instructor-999', day: 'Monday', startTime: '14:00', length: 30 }]
+          {
+            studentId: 'student-123',
+            instructorId: 'instructor-456',
+            day: 'Monday',
+            startTime: '14:00',
+            length: 30,
+            registrationType: RegistrationType.PRIVATE,
+          },
+          [
+            {
+              studentId: 'student-123',
+              instructorId: 'instructor-999',
+              day: 'Monday',
+              startTime: '14:00',
+              length: 30,
+            },
+          ]
         );
         expect(result.hasConflicts).toBe(true);
         expect(result.conflicts).toHaveLength(1);
@@ -1659,8 +1791,23 @@ describe('RegistrationService - Conflict Detection', () => {
 
       it('should detect duplicate conflict (exact match)', async () => {
         const result = await RegistrationService.checkConflicts(
-          { studentId: 'student-123', instructorId: 'instructor-456', day: 'Monday', startTime: '14:00', length: 30, registrationType: RegistrationType.PRIVATE },
-          [{ studentId: 'student-123', instructorId: 'instructor-456', day: 'Monday', startTime: '14:00', length: 30 }]
+          {
+            studentId: 'student-123',
+            instructorId: 'instructor-456',
+            day: 'Monday',
+            startTime: '14:00',
+            length: 30,
+            registrationType: RegistrationType.PRIVATE,
+          },
+          [
+            {
+              studentId: 'student-123',
+              instructorId: 'instructor-456',
+              day: 'Monday',
+              startTime: '14:00',
+              length: 30,
+            },
+          ]
         );
         expect(result.hasConflicts).toBe(true);
         expect(result.conflicts.length).toBe(1);
@@ -1669,8 +1816,23 @@ describe('RegistrationService - Conflict Detection', () => {
 
       it('should allow registration with no conflicts', async () => {
         const result = await RegistrationService.checkConflicts(
-          { studentId: 'student-123', instructorId: 'instructor-456', day: 'Monday', startTime: '14:00', length: 30, registrationType: RegistrationType.PRIVATE },
-          [{ studentId: 'student-999', instructorId: 'instructor-999', day: 'Tuesday', startTime: '10:00', length: 30 }]
+          {
+            studentId: 'student-123',
+            instructorId: 'instructor-456',
+            day: 'Monday',
+            startTime: '14:00',
+            length: 30,
+            registrationType: RegistrationType.PRIVATE,
+          },
+          [
+            {
+              studentId: 'student-999',
+              instructorId: 'instructor-999',
+              day: 'Tuesday',
+              startTime: '10:00',
+              length: 30,
+            },
+          ]
         );
         expect(result.hasConflicts).toBe(false);
         expect(result.conflicts).toHaveLength(0);
@@ -1680,7 +1842,11 @@ describe('RegistrationService - Conflict Detection', () => {
     describe('Group Classes', () => {
       it('should detect duplicate group registration', async () => {
         const result = await RegistrationService.checkConflicts(
-          { studentId: 'student-123', classId: 'class-789', registrationType: RegistrationType.GROUP },
+          {
+            studentId: 'student-123',
+            classId: 'class-789',
+            registrationType: RegistrationType.GROUP,
+          },
           [{ studentId: 'student-123', classId: 'class-789' }]
         );
         expect(result.hasConflicts).toBe(true);
@@ -1689,7 +1855,11 @@ describe('RegistrationService - Conflict Detection', () => {
 
       it('should detect capacity conflict for group class', async () => {
         const result = await RegistrationService.checkConflicts(
-          { studentId: 'student-NEW', classId: 'class-789', registrationType: RegistrationType.GROUP },
+          {
+            studentId: 'student-NEW',
+            classId: 'class-789',
+            registrationType: RegistrationType.GROUP,
+          },
           [
             { studentId: 'student-1', classId: 'class-789' },
             { studentId: 'student-2', classId: 'class-789' },
@@ -1703,7 +1873,11 @@ describe('RegistrationService - Conflict Detection', () => {
 
       it('should allow admin to bypass capacity check', async () => {
         const result = await RegistrationService.checkConflicts(
-          { studentId: 'student-NEW', classId: 'class-789', registrationType: RegistrationType.GROUP },
+          {
+            studentId: 'student-NEW',
+            classId: 'class-789',
+            registrationType: RegistrationType.GROUP,
+          },
           [
             { studentId: 'student-1', classId: 'class-789' },
             { studentId: 'student-2', classId: 'class-789' },
@@ -1716,8 +1890,23 @@ describe('RegistrationService - Conflict Detection', () => {
 
       it('should check student schedule conflicts for group registrations', async () => {
         const result = await RegistrationService.checkConflicts(
-          { studentId: 'student-123', classId: 'class-789', day: 'Monday', startTime: '14:00', length: 60, registrationType: RegistrationType.GROUP },
-          [{ studentId: 'student-123', instructorId: 'instructor-456', day: 'Monday', startTime: '14:00', length: 30 }]
+          {
+            studentId: 'student-123',
+            classId: 'class-789',
+            day: 'Monday',
+            startTime: '14:00',
+            length: 60,
+            registrationType: RegistrationType.GROUP,
+          },
+          [
+            {
+              studentId: 'student-123',
+              instructorId: 'instructor-456',
+              day: 'Monday',
+              startTime: '14:00',
+              length: 30,
+            },
+          ]
         );
         expect(result.hasConflicts).toBe(true);
         expect(result.conflicts.find(c => c.type === 'student_schedule')).toBeDefined();
@@ -1728,7 +1917,14 @@ describe('RegistrationService - Conflict Detection', () => {
     describe('Edge Cases', () => {
       it('should handle empty existing registrations', async () => {
         const result = await RegistrationService.checkConflicts(
-          { studentId: 'student-123', instructorId: 'instructor-456', day: 'Monday', startTime: '14:00', length: 30, registrationType: RegistrationType.PRIVATE },
+          {
+            studentId: 'student-123',
+            instructorId: 'instructor-456',
+            day: 'Monday',
+            startTime: '14:00',
+            length: 30,
+            registrationType: RegistrationType.PRIVATE,
+          },
           []
         );
         expect(result.hasConflicts).toBe(false);
@@ -1737,8 +1933,23 @@ describe('RegistrationService - Conflict Detection', () => {
 
       it('should handle null/undefined length gracefully', async () => {
         const result = await RegistrationService.checkConflicts(
-          { studentId: 'student-123', instructorId: 'instructor-456', day: 'Monday', startTime: '14:00', length: null, registrationType: RegistrationType.PRIVATE },
-          [{ studentId: 'student-123', instructorId: 'instructor-456', day: 'Monday', startTime: '14:00', length: undefined }]
+          {
+            studentId: 'student-123',
+            instructorId: 'instructor-456',
+            day: 'Monday',
+            startTime: '14:00',
+            length: null,
+            registrationType: RegistrationType.PRIVATE,
+          },
+          [
+            {
+              studentId: 'student-123',
+              instructorId: 'instructor-456',
+              day: 'Monday',
+              startTime: '14:00',
+              length: undefined,
+            },
+          ]
         );
         expect(result).toBeDefined();
       });

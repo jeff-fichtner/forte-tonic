@@ -37,17 +37,15 @@ const getStandardLengths = (): number[] => getRegistrationConfig().lessonLengths
 export function isInstructorAvailableOnDay(
   _instructor: InstructorLike,
   _day: string,
-  daySchedule: DaySchedule | undefined,
+  daySchedule: DaySchedule | undefined
 ): boolean {
   if (!daySchedule) return false;
   if (!daySchedule.isAvailable) return false;
   if (!daySchedule.startTime) return false;
-
-  const endTime = daySchedule.endTime || '17:00';
-  if (!endTime) return false;
+  if (!daySchedule.endTime) return false;
 
   const startMinutes = parseTime(daySchedule.startTime);
-  const endMinutes = parseTime(endTime);
+  const endMinutes = parseTime(daySchedule.endTime);
 
   if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
     return false;
@@ -64,19 +62,14 @@ export function isInstructorAvailableOnDay(
  */
 export function isInstructorGradeEligible(
   instructor: InstructorLike,
-  studentGrade: number | null,
+  studentGrade: number | null
 ): boolean {
   if (studentGrade === null || studentGrade === undefined) return true;
 
   const minGrade = instructor.gradeRange?.minimum;
   const maxGrade = instructor.gradeRange?.maximum;
 
-  if (
-    minGrade === null ||
-    minGrade === undefined ||
-    maxGrade === null ||
-    maxGrade === undefined
-  ) {
+  if (minGrade === null || minGrade === undefined || maxGrade === null || maxGrade === undefined) {
     return true;
   }
 
@@ -100,7 +93,7 @@ export function getRegistrationDayName(day: string): string {
  */
 export function getFilteredRegistrationsForConflictCheck(
   registrations: RegistrationLike[],
-  selectedPreviousRegistrationId: string | null,
+  selectedPreviousRegistrationId: string | null
 ): RegistrationLike[] {
   if (!selectedPreviousRegistrationId) return registrations;
   return registrations.filter(reg => reg.id !== selectedPreviousRegistrationId);
@@ -116,13 +109,13 @@ export function checkTimeSlotConflict(
   slotStartMinutes: number,
   slotLengthMinutes: number,
   existingRegistrations: RegistrationLike[],
-  selectedPreviousRegistrationId: string | null,
+  selectedPreviousRegistrationId: string | null
 ): boolean {
   const slotEndMinutes = slotStartMinutes + slotLengthMinutes;
 
   const filteredRegistrations = getFilteredRegistrationsForConflictCheck(
     existingRegistrations,
-    selectedPreviousRegistrationId,
+    selectedPreviousRegistrationId
   );
 
   return filteredRegistrations.some((reg: RegistrationLike) => {
@@ -143,16 +136,20 @@ export function calculateAvailableSlotsForDay(
   startMinutes: number,
   endMinutes: number,
   existingRegistrations: RegistrationLike[],
-  selectedPreviousRegistrationId: string | null,
+  selectedPreviousRegistrationId: string | null
 ): number {
   let availableSlots = 0;
 
-  for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += SLOT_STEP_MINUTES) {
+  for (
+    let currentMinutes = startMinutes;
+    currentMinutes < endMinutes;
+    currentMinutes += SLOT_STEP_MINUTES
+  ) {
     const hasConflict = checkTimeSlotConflict(
       currentMinutes,
       SLOT_STEP_MINUTES,
       existingRegistrations,
-      selectedPreviousRegistrationId,
+      selectedPreviousRegistrationId
     );
     if (!hasConflict) {
       availableSlots++;
@@ -171,20 +168,21 @@ export function calculateAvailableSlotsForDay(
  *
  * Produces a TimeSlot array covering every valid instrument x day x time x
  * length combination for the instructor, after filtering out conflicts with
- * existing registrations. Results are capped at 15 entries (matching the
- * pre-extraction behaviour).
+ * existing registrations.
  */
 export function generateInstructorTimeSlots(
   instructor: InstructorLike,
   registrations: RegistrationLike[],
   nextTrimesterRegistrations: RegistrationLike[],
   selectedPreviousRegistrationId: string | null,
-  isEnrollmentPeriod: boolean,
+  isEnrollmentPeriod: boolean
 ): TimeSlot[] {
   const timeSlots: TimeSlot[] = [];
 
   ALL_DAYS.forEach((day, index) => {
-    const daySchedule = (instructor.availability?.[day] || instructor[day]) as DaySchedule | undefined;
+    const daySchedule = (instructor.availability?.[day] || instructor[day]) as
+      | DaySchedule
+      | undefined;
 
     // Instructor must be available with valid start/end times
     if (!daySchedule || !daySchedule.isAvailable) return;
@@ -216,7 +214,11 @@ export function generateInstructorTimeSlots(
     });
 
     // Generate potential time slots (every 30 minutes from start to end)
-    for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += SLOT_STEP_MINUTES) {
+    for (
+      let currentMinutes = startMinutes;
+      currentMinutes < endMinutes;
+      currentMinutes += SLOT_STEP_MINUTES
+    ) {
       const currentTimeStr = formatTimeFromMinutes(currentMinutes);
 
       // Skip if base 30-min slot has a conflict
@@ -224,7 +226,7 @@ export function generateInstructorTimeSlots(
         currentMinutes,
         SLOT_STEP_MINUTES,
         existingRegistrations,
-        selectedPreviousRegistrationId,
+        selectedPreviousRegistrationId
       );
       if (hasConflict) continue;
 
@@ -237,7 +239,7 @@ export function generateInstructorTimeSlots(
             currentMinutes,
             length,
             existingRegistrations,
-            selectedPreviousRegistrationId,
+            selectedPreviousRegistrationId
           );
           if (lengthConflict) return;
 
@@ -256,7 +258,7 @@ export function generateInstructorTimeSlots(
     }
   });
 
-  return timeSlots.slice(0, 15);
+  return timeSlots;
 }
 
 // ---------------------------------------------------------------------------
@@ -273,26 +275,26 @@ export interface AvailabilityCounts {
  */
 function getInstructorInstruments(instructor: InstructorLike): string[] {
   const raw =
-    instructor.specialties ||
-    (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
+    instructor.specialties || (instructor.primaryInstrument ? [instructor.primaryInstrument] : []);
 
   const normalized = Array.isArray(raw) ? raw : [raw].filter(Boolean);
-  return normalized.filter((s: string) => s && s.trim()) as string[];
+  const result = normalized.filter((s: string) => s && s.trim()) as string[];
+  return result.length > 0 ? result : ['Piano'];
 }
 
 /**
  * Filter an instructor list by instrument match.
  */
-function filterByInstrument(
+export function filterByInstrument(
   instructors: InstructorLike[],
-  instrument: string | undefined,
+  instrument: string | undefined
 ): InstructorLike[] {
   if (!instrument || instrument === 'all') return instructors;
 
   return instructors.filter((inst: InstructorLike) => {
     const instruments = getInstructorInstruments(inst);
     return instruments.some(
-      (i: string) => i && i.toLowerCase().includes(instrument.toLowerCase()),
+      (i: string) => i && i.trim().toLowerCase() === instrument.trim().toLowerCase()
     );
   });
 }
@@ -326,7 +328,7 @@ export function calculateCascadingAvailability(
   studentGrade: number | null,
   selectedPreviousRegistrationId: string | null,
   isEnrollmentPeriod: boolean,
-  filters: { instrument?: string; day?: string; length?: number },
+  filters: { instrument?: string; day?: string; length?: number }
 ): Map<string, { available: number; total: number }> {
   const result = new Map<string, { available: number; total: number }>();
 
@@ -350,8 +352,11 @@ export function calculateCascadingAvailability(
       : [...ALL_DAYS];
 
   const lengthsToCheck: number[] =
-    dimension !== 'instrument' && dimension !== 'day' && dimension !== 'length' &&
-    filters.length && filters.length !== 0
+    dimension !== 'instrument' &&
+    dimension !== 'day' &&
+    dimension !== 'length' &&
+    filters.length &&
+    filters.length !== 0
       ? [filters.length]
       : getStandardLengths();
 
@@ -375,11 +380,13 @@ export function calculateCascadingAvailability(
     const instructorInstruments = getInstructorInstruments(instructor);
 
     daysToCheck.forEach(day => {
-      const daySchedule = (instructor.availability?.[day] || instructor[day]) as DaySchedule | undefined;
+      const daySchedule = (instructor.availability?.[day] || instructor[day]) as
+        | DaySchedule
+        | undefined;
       if (!daySchedule || !isInstructorAvailableOnDay(instructor, day, daySchedule)) return;
 
       const startTime = daySchedule.startTime || '';
-      const endTime = daySchedule.endTime || '17:00';
+      const endTime = daySchedule.endTime || '';
 
       const startMinutes = parseTime(startTime);
       const endMinutes = parseTime(endTime);
@@ -404,7 +411,7 @@ export function calculateCascadingAvailability(
             currentMinutes,
             length,
             existingRegistrations,
-            selectedPreviousRegistrationId,
+            selectedPreviousRegistrationId
           );
           const available = hasConflict ? 0 : 1;
 
@@ -436,14 +443,12 @@ function getDimensionKeys(
   day: string,
   length: number,
   instructor: InstructorLike,
-  instructorInstruments: string[],
+  instructorInstruments: string[]
 ): string[] {
   switch (dimension) {
     case 'instrument':
       // Each instrument the instructor teaches gets a count for this slot
-      return instructorInstruments.length > 0
-        ? instructorInstruments.map(i => i.trim())
-        : [];
+      return instructorInstruments.length > 0 ? instructorInstruments.map(i => i.trim()) : [];
     case 'day':
       return [day];
     case 'length':

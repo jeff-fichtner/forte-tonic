@@ -7,7 +7,8 @@
   "scripts": {
     "start": "tsx src/server.ts",
     "start:direct": "tsx src/server.ts",
-    "dev": "nodemon --exec tsx src/server.ts",
+    "dev": "concurrently -n api,vite -c blue,green \"nodemon --exec tsx src/server.ts\" \"vite\"",
+    "dev:api": "nodemon --exec tsx src/server.ts",
     "dev:frontend": "vite",
     "test": "tsx tests/scripts/test.ts all",
     "test:watch": "tsx tests/scripts/test.ts watch",
@@ -69,6 +70,7 @@
     "@types/nodemailer": "^7.0.11",
     "@types/supertest": "^6.0.3",
     "@vitejs/plugin-legacy": "^7.2.1",
+    "concurrently": "^9.2.1",
     "documentation": "^14.0.3",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.8",

@@ -5,7 +5,7 @@
  * HTTP request handlers — thin layer between Express routes and services.
  * Controllers validate input, delegate to services/repositories, and format responses.
  *
- * - RegistrationController — registration CRUD, next-trimester enrollment, tab data endpoints
+ * - RegistrationController — registration CRUD, enrollment access control, tab data endpoints
  * - UserController         — authentication, user lookups, app configuration, contact/directory tabs
  * - AttendanceController   — attendance recording and summary reporting
  * - SystemController       — health checks, Google Sheets diagnostics, cache management

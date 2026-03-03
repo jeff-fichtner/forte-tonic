@@ -63,26 +63,8 @@ export const ServerFunctions = {
   getAppConfiguration: 'configuration',
   register: 'registrations',
   authenticateByAccessCode: 'auth/access-code',
-  // Next trimester registration (enrollment periods only)
-  createNextTrimesterRegistration: 'registrations/next-trimester',
-  // Feedback
   submitFeedback: 'feedback',
 };
 
-// Registration types
-export const RegistrationType = {
-  PRIVATE: 'private',
-  GROUP: 'group',
-  // REMOTE: 'remote',
-};
-
-// Expose to window for console debugging and runtime access
-window.DateTime = DateTime;
-window.Duration = Duration;
-window.DateHelpers = DateHelpers;
-window.Sections = Sections;
-window.ServerFunctions = ServerFunctions;
-window.RegistrationType = RegistrationType;
-window.FORTE_PROGRAM_EMAIL = FORTE_PROGRAM_EMAIL;
-window.FORTE_PROGRAM_PHONE = FORTE_PROGRAM_PHONE;
-window.UserType = UserType;
+// Registration types — re-exported from shared values
+export { RegistrationType } from '/utils/values/registrationType.js';

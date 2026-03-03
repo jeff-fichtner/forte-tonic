@@ -6,8 +6,10 @@
  */
 
 import { UuidUtility } from '../../utils/uuidUtility.js';
-
-export type RegistrationType = 'private' | 'group';
+import { RegistrationType } from '../../utils/values/registrationType.js';
+import type { RegistrationTypeValue } from '../../utils/values/registrationType.js';
+// Re-export the value type for consumers that imported `RegistrationType` as a type from here
+export type { RegistrationTypeValue };
 export type ReenrollmentIntent = 'keep' | 'drop' | 'change';
 
 export interface RegistrationData {
@@ -18,7 +20,7 @@ export interface RegistrationData {
   day: string;
   startTime: string;
   length?: number | null;
-  registrationType: string;    // normalized to RegistrationType in constructor
+  registrationType: string; // normalized to RegistrationType in constructor
   roomId?: string;
   instrument?: string;
   transportationType?: string;
@@ -58,7 +60,7 @@ export interface RegistrationJSON {
   day: string;
   startTime: string;
   length: number | null;
-  registrationType: RegistrationType;
+  registrationType: RegistrationTypeValue;
   roomId: string;
   instrument: string;
   transportationType: string;
@@ -78,21 +80,56 @@ export interface RegistrationJSON {
 export class Registration {
   /** Column schema: positional order of fields in the registrations spreadsheet */
   static readonly columns = [
-    'id', 'studentId', 'instructorId', 'day', 'startTime', 'length',
-    'registrationType', 'roomId', 'instrument', 'transportationType', 'notes',
-    'classId', 'classTitle', 'expectedStartDate', 'createdAt', 'createdBy',
-    'reenrollmentIntent', 'intentSubmittedAt', 'intentSubmittedBy',
+    'id',
+    'studentId',
+    'instructorId',
+    'day',
+    'startTime',
+    'length',
+    'registrationType',
+    'roomId',
+    'instrument',
+    'transportationType',
+    'notes',
+    'classId',
+    'classTitle',
+    'expectedStartDate',
+    'createdAt',
+    'createdBy',
+    'reenrollmentIntent',
+    'intentSubmittedAt',
+    'intentSubmittedBy',
     'linkedPreviousRegistrationId',
   ] as const;
 
   /** Column schema for registration audit sheets */
   static readonly auditColumns = [
-    'id', 'registrationId', 'studentId', 'instructorId', 'day', 'startTime', 'length',
-    'registrationType', 'roomId', 'instrument', 'transportationType', 'notes',
-    'classId', 'classTitle', 'expectedStartDate', 'createdAt', 'createdBy',
-    'isDeleted', 'deletedAt', 'deletedBy',
-    'reenrollmentIntent', 'intentSubmittedAt', 'intentSubmittedBy',
-    'updatedAt', 'updatedBy', 'linkedPreviousRegistrationId',
+    'id',
+    'registrationId',
+    'studentId',
+    'instructorId',
+    'day',
+    'startTime',
+    'length',
+    'registrationType',
+    'roomId',
+    'instrument',
+    'transportationType',
+    'notes',
+    'classId',
+    'classTitle',
+    'expectedStartDate',
+    'createdAt',
+    'createdBy',
+    'isDeleted',
+    'deletedAt',
+    'deletedBy',
+    'reenrollmentIntent',
+    'intentSubmittedAt',
+    'intentSubmittedBy',
+    'updatedAt',
+    'updatedBy',
+    'linkedPreviousRegistrationId',
   ] as const;
 
   id: string;
@@ -102,7 +139,7 @@ export class Registration {
   startTime: string;
   length: number | null;
   isWaitlistClass: boolean;
-  registrationType: RegistrationType;
+  registrationType: RegistrationTypeValue;
   roomId: string;
   instrument: string;
   transportationType: string;
@@ -148,13 +185,17 @@ export class Registration {
     this.classTitle = data.classTitle || '';
 
     // Lifecycle fields (simplified - no audit trail)
-    this.expectedStartDate = data.expectedStartDate ? new Date(data.expectedStartDate as string | number) : null;
+    this.expectedStartDate = data.expectedStartDate
+      ? new Date(data.expectedStartDate as string | number)
+      : null;
     this.createdAt = data.createdAt ? new Date(data.createdAt as string | number) : new Date();
     this.createdBy = data.createdBy || '';
 
     // Reenrollment intent fields
     this.reenrollmentIntent = data.reenrollmentIntent || null;
-    this.intentSubmittedAt = data.intentSubmittedAt ? new Date(data.intentSubmittedAt as string | number) : null;
+    this.intentSubmittedAt = data.intentSubmittedAt
+      ? new Date(data.intentSubmittedAt as string | number)
+      : null;
     this.intentSubmittedBy = data.intentSubmittedBy || null;
 
     // Linked registration for tracking changes between trimesters
@@ -164,28 +205,31 @@ export class Registration {
   /**
    * Normalize registration type to handle variations in data
    */
-  #normalizeRegistrationType(type: string): RegistrationType {
+  #normalizeRegistrationType(type: string): RegistrationTypeValue {
     if (!type || typeof type !== 'string') {
-      return 'private'; // Default fallback
+      return RegistrationType.PRIVATE; // Default fallback
     }
 
     const normalized = type.toLowerCase().trim();
 
     // Handle common variations
     if (normalized.includes('group') || normalized.includes('class')) {
-      return 'group';
+      return RegistrationType.GROUP;
     }
     if (normalized.includes('private') || normalized.includes('individual')) {
-      return 'private';
+      return RegistrationType.PRIVATE;
     }
 
     // If it's exactly 'private' or 'group', return as-is
-    if (['private', 'group'].includes(normalized)) {
-      return normalized as RegistrationType;
+    if (
+      normalized === RegistrationType.PRIVATE ||
+      normalized === RegistrationType.GROUP
+    ) {
+      return normalized as RegistrationTypeValue;
     }
 
     // Default fallback for unknown types
-    return 'private';
+    return RegistrationType.PRIVATE;
   }
 
   /**
@@ -272,7 +316,11 @@ export class Registration {
   /**
    * Factory method: Create new registration
    */
-  static createNew(studentId: string, instructorId: string, options: CreateNewOptions): Registration {
+  static createNew(
+    studentId: string,
+    instructorId: string,
+    options: CreateNewOptions
+  ): Registration {
     const isWaitlistClass = options.isWaitlistClass === true;
     const parsedLength = options.length != null ? parseInt(String(options.length)) : null;
 
@@ -301,5 +349,4 @@ export class Registration {
       isWaitlistClass: options.isWaitlistClass, // Pass flag to constructor for validation
     });
   }
-
 }

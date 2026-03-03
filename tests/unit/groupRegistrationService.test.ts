@@ -17,6 +17,7 @@ describe('Group Registration Service', () => {
     mockUserRepository = {
       getStudentById: jest.fn(),
       getInstructorById: jest.fn(),
+      getRoomById: jest.fn().mockResolvedValue({ id: 'R1', name: 'Room 1' }),
     };
 
     mockProgramRepository = {

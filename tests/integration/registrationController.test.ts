@@ -122,9 +122,7 @@ const mockRegistrationService = {
     warnings: [],
   }),
   updateRegistration: jest.fn().mockResolvedValue(mockRegistration),
-  deleteRegistration: jest
-    .fn()
-    .mockResolvedValue(true),
+  deleteRegistration: jest.fn().mockResolvedValue(true),
   validateRegistration: jest.fn().mockResolvedValue({
     isValid: true,
     conflicts: [],
@@ -149,12 +147,19 @@ const mockPeriodService = {
 // Mock the service container
 jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js', () => ({
   ServiceKeys: {
-    databaseClient: 'databaseClient', emailClient: 'emailClient', cacheService: 'cacheService',
-    configurationService: 'configurationService', registrationRepository: 'registrationRepository',
-    userRepository: 'userRepository', programRepository: 'programRepository',
-    attendanceRepository: 'attendanceRepository', dropRequestRepository: 'dropRequestRepository',
-    periodRepository: 'periodRepository', registrationService: 'registrationService',
-    periodService: 'periodService', dropRequestService: 'dropRequestService',
+    databaseClient: 'databaseClient',
+    emailClient: 'emailClient',
+    cacheService: 'cacheService',
+    configurationService: 'configurationService',
+    registrationRepository: 'registrationRepository',
+    userRepository: 'userRepository',
+    programRepository: 'programRepository',
+    attendanceRepository: 'attendanceRepository',
+    dropRequestRepository: 'dropRequestRepository',
+    periodRepository: 'periodRepository',
+    registrationService: 'registrationService',
+    periodService: 'periodService',
+    dropRequestService: 'dropRequestService',
     entityQueryService: 'entityQueryService',
   },
   serviceContainer: {
@@ -184,12 +189,15 @@ describe('RegistrationController Integration Tests', () => {
       studentId: 'STUDENT1',
       instructorId: 'INSTRUCTOR1@TEST.COM',
       registrationType: 'private',
+      trimester: 'fall',
       day: 'Monday',
       startTime: '14:00',
       length: 30,
+      instrument: 'Piano',
+      transportationType: 'parent',
     };
 
-    test('should create registration successfully', async () => {
+    test('should create registration successfully for current trimester', async () => {
       const response = await request(app)
         .post('/api/registrations')
         .set('x-access-code', '123456')
@@ -205,15 +213,52 @@ describe('RegistrationController Integration Tests', () => {
       );
     });
 
-    test('should reject missing required fields', async () => {
+    test('should reject missing trimester', async () => {
       const response = await request(app)
         .post('/api/registrations')
         .set('x-access-code', '123456')
-        .send({ studentId: 'STUDENT1' }) // Missing registrationType
+        .send({ studentId: 'STUDENT1', registrationType: 'private' })
         .expect(400);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error.message).toContain('Missing required fields');
+      expect(response.body.error.message).toContain('Missing required field: trimester');
+    });
+
+    test('should reject invalid trimester', async () => {
+      const response = await request(app)
+        .post('/api/registrations')
+        .set('x-access-code', '123456')
+        .send({ studentId: 'STUDENT1', registrationType: 'private', trimester: 'summer' })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.message).toContain('Invalid trimester');
+    });
+
+    test('should reject missing registrationType', async () => {
+      const response = await request(app)
+        .post('/api/registrations')
+        .set('x-access-code', '123456')
+        .send({ studentId: 'STUDENT1', trimester: 'fall' })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.message).toContain('Registration type is required');
+    });
+
+    test('should reject private registration missing type-specific fields', async () => {
+      const response = await request(app)
+        .post('/api/registrations')
+        .set('x-access-code', '123456')
+        .send({ studentId: 'STUDENT1', registrationType: 'private', trimester: 'fall' })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      const message = response.body.error.message;
+      expect(message).toContain('Instructor ID is required');
+      expect(message).toContain('Instrument is required');
+      expect(message).toContain('Start time is required');
+      expect(message).toContain('Transportation type is required');
     });
 
     test('should handle service layer errors', async () => {
@@ -228,6 +273,86 @@ describe('RegistrationController Integration Tests', () => {
         .expect(500);
 
       expect(response.body.success).toBe(false);
+    });
+  });
+
+  describe('POST /api/registrations (next trimester — enrollment access control)', () => {
+    const nextTrimesterData = {
+      studentId: 'STUDENT1',
+      registrationType: 'private',
+      trimester: 'winter',
+      instructorId: 'INSTRUCTOR1@TEST.COM',
+      day: 'Monday',
+      startTime: '14:00',
+      length: 30,
+      instrument: 'Piano',
+      transportationType: 'parent',
+    };
+
+    test('should create registration for returning family targeting next trimester', async () => {
+      const response = await request(app)
+        .post('/api/registrations')
+        .set('x-access-code', '123456')
+        .send(nextTrimesterData)
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(mockPeriodService.canAccessNextTrimester).toHaveBeenCalledWith(true);
+      expect(mockRegistrationService.processRegistration).toHaveBeenCalledWith(
+        expect.objectContaining(nextTrimesterData),
+        expect.any(String),
+        { isAdmin: false }
+      );
+    });
+
+    test('should reject when enrollment table not available for next trimester', async () => {
+      mockPeriodService.getEnrollmentTrimesterTable.mockResolvedValueOnce(null);
+
+      const response = await request(app)
+        .post('/api/registrations')
+        .set('x-access-code', '123456')
+        .send(nextTrimesterData)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+
+    test('should reject non-returning families during priority enrollment', async () => {
+      mockRegistrationRepository.findAll.mockResolvedValueOnce([]); // No current registrations
+      mockPeriodService.canAccessNextTrimester.mockResolvedValueOnce(false);
+
+      const response = await request(app)
+        .post('/api/registrations')
+        .set('x-access-code', '123456')
+        .send(nextTrimesterData)
+        .expect(401);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.message).toContain(
+        'Priority enrollment is for returning families'
+      );
+    });
+
+    test('should handle backward link when replacing registration', async () => {
+      const dataWithLink = {
+        ...nextTrimesterData,
+        linkedPreviousRegistrationId: 'OLD-REG-ID',
+      };
+
+      const response = await request(app)
+        .post('/api/registrations')
+        .set('x-access-code', '123456')
+        .send(dataWithLink)
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(mockRegistrationService.processRegistration).toHaveBeenCalledWith(
+        expect.objectContaining({
+          linkedPreviousRegistrationId: 'OLD-REG-ID',
+        }),
+        expect.any(String),
+        { isAdmin: false }
+      );
     });
   });
 
@@ -254,93 +379,6 @@ describe('RegistrationController Integration Tests', () => {
         .expect(401);
 
       expect(response.body.success).toBe(false);
-    });
-  });
-
-  describe('POST /api/registrations/next-trimester', () => {
-    const validNextTrimesterData = {
-      studentId: 'STUDENT1',
-      registrationType: 'private',
-      instructorId: 'INSTRUCTOR1@TEST.COM',
-      day: 'Monday',
-      startTime: '14:00',
-    };
-
-    test('should create next trimester registration for returning family', async () => {
-      const response = await request(app)
-        .post('/api/registrations/next-trimester')
-        .set('x-access-code', '123456')
-        .send(validNextTrimesterData)
-        .expect(201);
-
-      expect(response.body.success).toBe(true);
-      expect(mockPeriodService.canAccessNextTrimester).toHaveBeenCalledWith(true);
-      expect(mockRegistrationService.processRegistration).toHaveBeenCalledWith(
-        expect.objectContaining(validNextTrimesterData),
-        expect.any(String),
-        { isAdmin: false }
-      );
-    });
-
-    test('should reject when next trimester not available', async () => {
-      mockPeriodService.getEnrollmentTrimesterTable.mockResolvedValueOnce(null);
-
-      const response = await request(app)
-        .post('/api/registrations/next-trimester')
-        .set('x-access-code', '123456')
-        .send(validNextTrimesterData)
-        .expect(400);
-
-      expect(response.body.success).toBe(false);
-    });
-
-    test('should reject non-returning families during priority enrollment', async () => {
-      mockRegistrationRepository._fetchRegistrations.mockResolvedValueOnce([]); // No current registrations
-      mockPeriodService.canAccessNextTrimester.mockResolvedValueOnce(false);
-
-      const response = await request(app)
-        .post('/api/registrations/next-trimester')
-        .set('x-access-code', '123456')
-        .send(validNextTrimesterData)
-        .expect(401);
-
-      expect(response.body.success).toBe(false);
-      expect(response.body.error.message).toContain(
-        'Priority enrollment is for returning families'
-      );
-    });
-
-    test('should reject missing required fields', async () => {
-      const response = await request(app)
-        .post('/api/registrations/next-trimester')
-        .set('x-access-code', '123456')
-        .send({ studentId: 'STUDENT1' }) // Missing registrationType
-        .expect(400);
-
-      expect(response.body.success).toBe(false);
-      expect(response.body.error.message).toContain('Missing required fields');
-    });
-
-    test('should handle backward link when replacing registration', async () => {
-      const dataWithLink = {
-        ...validNextTrimesterData,
-        linkedPreviousRegistrationId: 'OLD-REG-ID',
-      };
-
-      const response = await request(app)
-        .post('/api/registrations/next-trimester')
-        .set('x-access-code', '123456')
-        .send(dataWithLink)
-        .expect(201);
-
-      expect(response.body.success).toBe(true);
-      expect(mockRegistrationService.processRegistration).toHaveBeenCalledWith(
-        expect.objectContaining({
-          linkedPreviousRegistrationId: 'OLD-REG-ID',
-        }),
-        expect.any(String),
-        { isAdmin: false }
-      );
     });
   });
 });

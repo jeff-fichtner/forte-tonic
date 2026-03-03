@@ -15,7 +15,9 @@ const router = express.Router();
 // ===== PUBLIC ROUTES (no auth required) =====
 
 router.get('/health', SystemController.getHealth);
-router.get('/version', (_req: Request, res: Response) => { successResponse(res, version); });
+router.get('/version', (_req: Request, res: Response) => {
+  successResponse(res, version);
+});
 router.get('/configuration', UserController.getAppConfiguration);
 router.post('/auth/access-code', UserController.authenticateByAccessCode);
 
@@ -24,23 +26,53 @@ router.post('/auth/access-code', UserController.authenticateByAccessCode);
 router.post('/admin/clear-cache', requireAuth, SystemController.clearCache);
 
 router.post('/registrations', requireAuth, RegistrationController.createRegistration);
-router.delete('/registrations/:trimester/:id', requireAuth, RegistrationController.deleteRegistration);
+router.delete(
+  '/registrations/:trimester/:id',
+  requireAuth,
+  RegistrationController.deleteRegistration
+);
 router.patch('/registrations/:id/intent', requireAuth, RegistrationController.updateIntent);
-router.post('/registrations/next-trimester', requireAuth, RegistrationController.createNextTrimesterRegistration);
-router.delete('/registrations/next-trimester/:id', requireAuth, RegistrationController.deleteNextTrimesterRegistration);
 
 router.post('/attendance', requireAuth, AttendanceController.markAttendance);
-router.get('/attendance/summary/:registrationId', requireAuth, AttendanceController.getAttendanceSummary);
+router.get(
+  '/attendance/summary/:registrationId',
+  requireAuth,
+  AttendanceController.getAttendanceSummary
+);
 
 router.post('/feedback', requireAuth, FeedbackController.submitFeedback);
 
 router.get('/instructor/tabs/directory', requireAuth, UserController.getInstructorDirectoryTabData);
-router.get('/instructor/tabs/weekly-schedule/:trimester', requireAuth, RegistrationController.getInstructorWeeklyScheduleTabData);
+router.get(
+  '/instructor/tabs/weekly-schedule/:trimester',
+  requireAuth,
+  RegistrationController.getInstructorWeeklyScheduleTabData
+);
 router.get('/parent/tabs/contact/:trimester', requireAuth, UserController.getParentContactTabData);
-router.get('/parent/tabs/weekly-schedule/:trimester', requireAuth, RegistrationController.getParentWeeklyScheduleTabData);
-router.get('/parent/tabs/registration/:trimester', requireAuth, RegistrationController.getParentRegistrationTabData);
-router.get('/admin/tabs/wait-list/:trimester', requireAuth, RegistrationController.getAdminWaitListTabData);
-router.get('/admin/tabs/master-schedule/:trimester', requireAuth, RegistrationController.getAdminMasterScheduleTabData);
-router.get('/admin/tabs/registration/:trimester', requireAuth, RegistrationController.getAdminRegistrationTabData);
+router.get(
+  '/parent/tabs/weekly-schedule/:trimester',
+  requireAuth,
+  RegistrationController.getParentWeeklyScheduleTabData
+);
+router.get(
+  '/parent/tabs/registration/:trimester',
+  requireAuth,
+  RegistrationController.getParentRegistrationTabData
+);
+router.get(
+  '/admin/tabs/wait-list/:trimester',
+  requireAuth,
+  RegistrationController.getAdminWaitListTabData
+);
+router.get(
+  '/admin/tabs/master-schedule/:trimester',
+  requireAuth,
+  RegistrationController.getAdminMasterScheduleTabData
+);
+router.get(
+  '/admin/tabs/registration/:trimester',
+  requireAuth,
+  RegistrationController.getAdminRegistrationTabData
+);
 
 export default router;

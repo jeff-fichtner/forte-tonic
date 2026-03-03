@@ -7,6 +7,7 @@
 
 import { BaseService } from '../infrastructure/base/baseService.js';
 import { RegistrationType } from '../utils/values/registrationType.js';
+import { TransportationType } from '../utils/values/transportationType.js';
 import { isValidTrimester as validateTrimester } from '../utils/values/trimester.js';
 import { ConfigurationService } from './configurationService.js';
 import { Registration } from '../models/shared/registration.js';
@@ -18,7 +19,6 @@ import type { RegistrationRepository } from '../repositories/registrationReposit
 import type { UserRepository } from '../repositories/userRepository.js';
 import type { ProgramRepository } from '../repositories/programRepository.js';
 import type { Class, ClassData } from '../models/shared/class.js';
-import type { Instructor, InstructorAvailability } from '../models/shared/instructor.js';
 import type { Student } from '../models/shared/student.js';
 import { DateHelpers, TonicDuration } from '../utils/nativeDateTimeHelpers.js';
 
@@ -103,8 +103,18 @@ interface ScheduleLesson {
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 interface EnrichedRegistration {
-  student: { id: string | undefined; firstName: string; lastName: string; grade: string | undefined } | null;
-  instructor: { id: string; firstName: string | null; lastName: string | null; email: string | null } | null;
+  student: {
+    id: string | undefined;
+    firstName: string;
+    lastName: string;
+    grade: string | undefined;
+  } | null;
+  instructor: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+  } | null;
   class: { id: string; title: string; instrument: string; size: string | null } | null;
   isActive: boolean;
   [key: string]: unknown;
@@ -149,11 +159,9 @@ export class RegistrationService extends BaseService {
       this.logger.info('🎵 Processing new registration', { isAdmin });
 
       // Step 1: Handle group registration data population
-      if (registrationData.registrationType === 'group' && registrationData.classId) {
+      if (registrationData.registrationType === RegistrationType.GROUP && registrationData.classId) {
         // For group registrations, populate missing fields from class data
-        const groupClass = await this.#programRepository.getClassById(
-          registrationData.classId
-        );
+        const groupClass = await this.#programRepository.getClassById(registrationData.classId);
         if (!groupClass) {
           throw new Error(`Class not found: ${registrationData.classId}`);
         }
@@ -171,11 +179,6 @@ export class RegistrationService extends BaseService {
         registrationData.classTitle = groupClass.title;
         registrationData.isWaitlistClass = isWaitlistClass;
 
-        // Set default transportation for group registrations if not specified
-        if (!registrationData.transportationType) {
-          registrationData.transportationType = 'pickup';
-        }
-
         this.logger.info('🎓 Group registration data populated from class:', {
           classId: registrationData.classId,
           instructorId: registrationData.instructorId,
@@ -187,21 +190,17 @@ export class RegistrationService extends BaseService {
       }
 
       // Step 2: Validate basic registration data (now with populated fields)
-      const basicValidation =
-        RegistrationService.validateRegistrationData(registrationData);
+      const basicValidation = RegistrationService.validateRegistrationData(registrationData);
       if (!basicValidation.isValid) {
         throw new Error(`Registration validation failed: ${basicValidation.errors.join(', ')}`);
       }
 
       // Step 2.5: Validate bus time restrictions for Late Bus transportation
-      if (registrationData.transportationType === 'bus') {
-        // Ensure length is a number (convert from string if needed)
-        const lengthMinutes = parseInt(String(registrationData.length), 10) || 0;
-
+      if (registrationData.transportationType === TransportationType.BUS) {
         const busValidation = this.#validateBusTimeRestrictions(
           registrationData.day,
           registrationData.startTime,
-          lengthMinutes
+          Number(registrationData.length)
         );
 
         if (!busValidation.isValid) {
@@ -226,27 +225,21 @@ export class RegistrationService extends BaseService {
         throw new Error(`Instructor not found: ${registrationData.instructorId}`);
       }
 
-      // Step 3.5: Populate room assignment from instructor's schedule for both group and private registrations
-      const dayName = registrationData.day.toLowerCase();
-      const instructorData = instructor;
-
-      // Get room ID from instructor's availability for the specific day
-      const dayKey = dayName as keyof InstructorAvailability;
-      const dayAvailability = instructorData.availability?.[dayKey];
-      if (dayAvailability?.roomId) {
-        registrationData.roomId = dayAvailability.roomId;
-      } else {
-        this.logger.warn(
-          `No room assignment found for instructor ${instructorData.id} on ${dayName}`
-        );
-        registrationData.roomId = 'unknown';
+      // Step 3.5: Validate room assignment
+      // The frontend is responsible for sending a valid roomId.
+      if (!registrationData.roomId) {
+        throw new Error('Room ID is required');
+      }
+      const room = await this.#userRepository.getRoomById(registrationData.roomId);
+      if (!room) {
+        throw new Error(`Invalid room: "${registrationData.roomId}" does not match any known room`);
       }
 
       this.logger.info(
         `🏫 Room assignment for ${registrationData.registrationType} registration:`,
         {
-          day: dayName,
-          instructorId: instructorData.id,
+          day: registrationData.day,
+          instructorId: instructor.id,
           roomId: registrationData.roomId,
         }
       );
@@ -258,7 +251,8 @@ export class RegistrationService extends BaseService {
       }
 
       // Step 5: Check for conflicts with existing registrations in the enrollment trimester
-      const existingRegistrations = await this.#registrationRepository.getNextTrimesterRegistrations();
+      const existingRegistrations =
+        await this.#registrationRepository.getNextTrimesterRegistrations();
 
       const conflictData: ConflictRegistrationData = {
         studentId: registrationData.studentId,
@@ -346,11 +340,18 @@ export class RegistrationService extends BaseService {
       // Generate lesson schedule with complete registration data
       let lessonSchedule: ScheduleLesson[] | null = null;
       try {
-        if (persistedRegistration.day && persistedRegistration.startTime && persistedRegistration.length) {
+        if (
+          persistedRegistration.day &&
+          persistedRegistration.startTime &&
+          persistedRegistration.length
+        ) {
           lessonSchedule = this.#generateLessonSchedule(persistedRegistration);
         }
       } catch (scheduleError) {
-        this.logger.warn('⚠️ Could not generate lesson schedule:', (scheduleError as Error).message);
+        this.logger.warn(
+          '⚠️ Could not generate lesson schedule:',
+          (scheduleError as Error).message
+        );
         lessonSchedule = [];
       }
 
@@ -396,9 +397,7 @@ export class RegistrationService extends BaseService {
    * Get registrations enriched with student, instructor, and class data.
    * Pagination is handled by the controller layer.
    */
-  async getRegistrations(
-    options: RegistrationsOptions = {}
-  ): Promise<EnrichedRegistration[]> {
+  async getRegistrations(options: RegistrationsOptions = {}): Promise<EnrichedRegistration[]> {
     try {
       this.logger.info('📋 Getting registrations with options:', options);
 
@@ -424,7 +423,9 @@ export class RegistrationService extends BaseService {
       const enrichedRegistrations = registrations.map(registration => {
         const studentData = studentMap.get(registration.studentId);
         const instructorData = instructorMap.get(registration.instructorId);
-        const groupClassData = registration.classId ? classMap.get(registration.classId) : undefined;
+        const groupClassData = registration.classId
+          ? classMap.get(registration.classId)
+          : undefined;
 
         return {
           ...registration,
@@ -478,6 +479,7 @@ export class RegistrationService extends BaseService {
     // Core validation
     if (!registrationData.studentId) errors.push('Student ID is required');
     if (!registrationData.registrationType) errors.push('Registration type is required');
+    if (!registrationData.transportationType) errors.push('Transportation type is required');
 
     // Type-specific validation
     if (registrationData.registrationType === RegistrationType.GROUP) {
@@ -516,9 +518,6 @@ export class RegistrationService extends BaseService {
     }
     if (registrationData.length == null) {
       errors.push('Lesson length is required for private lessons');
-    }
-    if (!registrationData.transportationType) {
-      errors.push('Transportation type is required for private lessons');
     }
   }
 
@@ -651,7 +650,9 @@ export class RegistrationService extends BaseService {
     }
 
     if (conflicts.length > 0) {
-      this.#staticLogger.info(`Registration conflicts found: ${conflicts.map(c => `${c.type}: ${c.message}`).join('; ')}`);
+      this.#staticLogger.info(
+        `Registration conflicts found: ${conflicts.map(c => `${c.type}: ${c.message}`).join('; ')}`
+      );
     } else {
       this.#staticLogger.debug('No registration conflicts found');
     }
@@ -824,7 +825,9 @@ export class RegistrationService extends BaseService {
     existingRegistrations: ConflictRegistrationData[],
     groupClass: ConflictGroupClass | null = null
   ): Conflict | null {
-    this.#staticLogger.debug(`Checking class capacity: classId=${newRegistration.classId}, groupClass.size=${groupClass?.size}`);
+    this.#staticLogger.debug(
+      `Checking class capacity: classId=${newRegistration.classId}, groupClass.size=${groupClass?.size}`
+    );
 
     const maxCapacity = groupClass?.size;
     if (maxCapacity == null) {
@@ -841,7 +844,9 @@ export class RegistrationService extends BaseService {
     );
 
     if (classRegistrations.length >= maxCapacity) {
-      this.#staticLogger.debug(`CLASS CAPACITY CONFLICT: ${classRegistrations.length} >= ${maxCapacity}`);
+      this.#staticLogger.debug(
+        `CLASS CAPACITY CONFLICT: ${classRegistrations.length} >= ${maxCapacity}`
+      );
       return {
         type: 'class_capacity',
         message: `Class has reached maximum capacity (${maxCapacity} students)`,
@@ -887,9 +892,7 @@ export class RegistrationService extends BaseService {
   /**
    * Validate program-specific business rules for a registration.
    */
-  #validateProgramRules(
-    groupClass: ClassData | null
-  ): { isValid: boolean; errors: string[] } {
+  #validateProgramRules(groupClass: ClassData | null): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
 
     if (groupClass) {
@@ -975,7 +978,10 @@ export class RegistrationService extends BaseService {
   /**
    * Generate weekly lesson schedule from registration data
    */
-  #generateLessonSchedule(registration: Registration, numberOfLessons: number = 12): ScheduleLesson[] {
+  #generateLessonSchedule(
+    registration: Registration,
+    numberOfLessons: number = 12
+  ): ScheduleLesson[] {
     const startDate = new Date(registration.expectedStartDate || new Date());
     const dayOfWeek = DAY_NAMES.indexOf(registration.day);
 

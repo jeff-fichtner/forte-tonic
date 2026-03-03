@@ -29,6 +29,7 @@ Today's date is 2026-02-18.
 - TypeScript 5.x targeting ES2022, browser environmen + MaterializeCSS 1.0.0 (CDN), Vite 7.x (build) (010-frontend-tab-cleanup)
 - N/A — frontend only; API calls via `HttpService` (010-frontend-tab-cleanup)
 - TypeScript 5.x targeting ES2022, browser environmen + MaterializeCSS 1.0.0 (CDN), `ModalKeyboardHandler`, `HttpService` (011-dissolve-viewmodel)
+- Google Sheets API v4 (single spreadsheet, column-index mapped, 5-min in-memory cache) (012-server-side-availability)
 
 ## Recent Changes
 - 002-typescript-migration: Added TypeScript 5.x targeting ES2022, running on Node.js (ESM) + Express 4, Google Sheets API v4, tsx (runtime), ts-jest (testing), typescript-eslint (linting)

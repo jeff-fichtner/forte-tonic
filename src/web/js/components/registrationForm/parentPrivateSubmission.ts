@@ -5,13 +5,11 @@
  */
 
 import { RegistrationType } from '/utils/values/registrationType.js';
-import {
-  formatDisplayTime,
-} from '../../utilities/registrationForm/timeHelpers.js';
-import {
-  validateBusTimeRestrictions,
-} from '../../utilities/registrationForm/registrationValidator.js';
+import { TransportationType } from '/utils/values/transportationType.js';
+import { formatDisplayTime } from '../../utilities/registrationForm/timeHelpers.js';
+import { validateBusTimeRestrictions } from '../../utilities/registrationForm/registrationValidator.js';
 import { FORTE_PROGRAM_EMAIL } from '../../constants.js';
+import { UserSession } from '../../auth/session.js';
 import type {
   InstructorLike,
   RegistrationLike,
@@ -78,7 +76,9 @@ export class ParentPrivateSubmission {
         const confirmationMessage = this.#buildPrivateLessonConfirmationMessage(registrationData);
 
         this.config.showConfirmationModal(confirmationMessage, async () => {
-          const submitButton = document.getElementById('parent-confirm-registration-btn') as HTMLButtonElement | null;
+          const submitButton = document.getElementById(
+            'parent-confirm-registration-btn'
+          ) as HTMLButtonElement | null;
           try {
             this.config.setButtonLoading(submitButton, true);
             await this.config.sendDataFunction(registrationData);
@@ -110,7 +110,9 @@ export class ParentPrivateSubmission {
 
     // Check if student is selected (only if dropdown is visible for multiple students)
     const studentSection = document.getElementById('parent-student-selection-section');
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
+    const studentSelect = document.getElementById(
+      'parent-student-select'
+    ) as HTMLSelectElement | null;
     const studentId = studentSelect?.value;
 
     // Only validate student selection if the section is visible (multiple students)
@@ -179,12 +181,11 @@ export class ParentPrivateSubmission {
     // Time conflict checking is handled server-side by RegistrationService
 
     // Check bus time restrictions for Late Bus transportation
-    const dayName =
-      currentLesson.day.charAt(0).toUpperCase() + currentLesson.day.slice(1);
+    const dayName = currentLesson.day.charAt(0).toUpperCase() + currentLesson.day.slice(1);
     const transportationTypeRadio = document.querySelector(
       'input[name="parent-transportation-type"]:checked'
     ) as HTMLInputElement | null;
-    const transportationType = transportationTypeRadio?.value || 'pickup';
+    const transportationType = transportationTypeRadio?.value || TransportationType.PICKUP;
 
     const busValidation = validateBusTimeRestrictions(
       dayName,
@@ -211,7 +212,9 @@ export class ParentPrivateSubmission {
     }
 
     // Get selected student ID
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
+    const studentSelect = document.getElementById(
+      'parent-student-select'
+    ) as HTMLSelectElement | null;
     const studentId = studentSelect?.value;
 
     if (!studentId) {
@@ -222,7 +225,7 @@ export class ParentPrivateSubmission {
     const transportationTypeRadio = document.querySelector(
       'input[name="parent-transportation-type"]:checked'
     ) as HTMLInputElement | null;
-    const transportationType = transportationTypeRadio?.value || 'pickup'; // Default to pickup if not selected
+    const transportationType = transportationTypeRadio?.value || TransportationType.PICKUP; // Default to pickup if not selected
 
     const dayMap: Record<string, string> = {
       monday: 'Monday',
@@ -233,7 +236,7 @@ export class ParentPrivateSubmission {
     };
 
     // Determine the target trimester
-    const appConfig = window.UserSession?.getAppConfig?.();
+    const appConfig = UserSession?.getAppConfig?.();
     const trimester = this.config.isEnrollmentPeriodActive()
       ? appConfig?.nextTrimester
       : appConfig?.currentTrimester;
@@ -263,11 +266,15 @@ export class ParentPrivateSubmission {
    * Build confirmation message for private lesson registration
    */
   #buildPrivateLessonConfirmationMessage(registrationData: RegistrationSubmitData): string {
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
+    const studentSelect = document.getElementById(
+      'parent-student-select'
+    ) as HTMLSelectElement | null;
     const studentName = studentSelect?.selectedOptions[0]?.textContent || 'your child';
 
     // Find instructor name
-    const instructor = this.config.instructors.find((inst: InstructorLike) => inst.id === registrationData.instructorId);
+    const instructor = this.config.instructors.find(
+      (inst: InstructorLike) => inst.id === registrationData.instructorId
+    );
     const instructorName = instructor
       ? `${instructor.firstName} ${instructor.lastName}`
       : 'the instructor';
@@ -277,7 +284,7 @@ export class ParentPrivateSubmission {
 
     // Format transportation type
     const transportationDisplay =
-      registrationData.transportationType === 'bus' ? 'Late Bus' : 'Late Pick Up';
+      registrationData.transportationType === TransportationType.BUS ? 'Late Bus' : 'Late Pick Up';
 
     return `
       <strong>Are you sure you want to register ${studentName} for a private lesson?</strong>

@@ -7,6 +7,7 @@ import {
   RegistrationFormText,
   TransportationType,
 } from '../../constants/registrationFormConstants.js';
+import { RegistrationType } from '/utils/values/registrationType.js';
 import { parseTime, formatTimeFromMinutes } from './timeHelpers.js';
 import { getRegistrationConfig } from './registrationConfig.js';
 
@@ -28,9 +29,15 @@ interface BusValidationResult {
  * @param {string} transportationType - Selected transportation type
  * @returns {{isValid: boolean, errorMessage: string|null}} Validation result
  */
-export function validateBusTimeRestrictions(day: string, startTime: string, lengthMinutes: number, transportationType: string, busDeadlines?: Record<string, string>): BusValidationResult {
+export function validateBusTimeRestrictions(
+  day: string,
+  startTime: string,
+  lengthMinutes: number,
+  transportationType: string,
+  busDeadlines?: Record<string, string>
+): BusValidationResult {
   // Only validate if Late Bus is selected
-  if (transportationType !== TransportationType.BUS && transportationType !== 'bus') {
+  if (transportationType !== TransportationType.BUS) {
     return { isValid: true, errorMessage: null };
   }
 
@@ -124,16 +131,19 @@ export function validateGroupRegistration(data: Record<string, unknown>): Valida
  * @param {string} registrationType - 'private' or 'group'
  * @returns {{isValid: boolean, errors: string[]}} Validation result
  */
-export function validateRegistrationData(data: Record<string, unknown>, registrationType?: string): ValidationResult {
+export function validateRegistrationData(
+  data: Record<string, unknown>,
+  registrationType?: string
+): ValidationResult {
   if (!data.registrationType && !registrationType) {
     return { isValid: false, errors: ['Registration Type'] };
   }
 
   const type = registrationType || data.registrationType;
 
-  if (type === 'private') {
+  if (type === RegistrationType.PRIVATE) {
     return validatePrivateRegistration(data);
-  } else if (type === 'group') {
+  } else if (type === RegistrationType.GROUP) {
     return validateGroupRegistration(data);
   }
 

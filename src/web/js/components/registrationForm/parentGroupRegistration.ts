@@ -4,6 +4,7 @@
  */
 
 import { RegistrationType } from '/utils/values/registrationType.js';
+import { TransportationType } from '/utils/values/transportationType.js';
 import { DomHelpers } from '../../utilities/domHelpers.js';
 import { formatClassNameWithGradeCorrection } from '../../utilities/classNameFormatter.js';
 import { ClassManager } from '../../utilities/classManager.js';
@@ -19,6 +20,7 @@ import {
   clearInfoMessage,
 } from '../../utilities/registrationForm/messageDisplay.js';
 import { FORTE_PROGRAM_EMAIL } from '../../constants.js';
+import { UserSession } from '../../auth/session.js';
 import type {
   InstructorLike,
   StudentLike,
@@ -75,7 +77,9 @@ export class ParentGroupRegistration {
     }
 
     // Get selected student ID
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
+    const studentSelect = document.getElementById(
+      'parent-student-select'
+    ) as HTMLSelectElement | null;
     const selectedStudentId = studentSelect?.value;
 
     if (!selectedStudentId) {
@@ -93,7 +97,11 @@ export class ParentGroupRegistration {
 
     // Helper function to check grade eligibility
     // Grades are always numbers 0-8 (0 = Kindergarten, 1-8 = grades 1-8)
-    const isGradeEligible = (studentGrade: number | string | null | undefined, minGrade: number | undefined, maxGrade: number | undefined): boolean => {
+    const isGradeEligible = (
+      studentGrade: number | string | null | undefined,
+      minGrade: number | undefined,
+      maxGrade: number | undefined
+    ): boolean => {
       const gradeNum = Number(studentGrade);
       const minNum = Number(minGrade);
       const maxNum = Number(maxGrade);
@@ -128,7 +136,9 @@ export class ParentGroupRegistration {
 
     // Destroy existing Materialize select instance before modifying
     if (typeof M !== 'undefined') {
-      const existingInstance = M.FormSelect.getInstance(classSelect) as { destroy(): void } | undefined;
+      const existingInstance = M.FormSelect.getInstance(classSelect) as
+        | { destroy(): void }
+        | undefined;
       if (existingInstance) {
         existingInstance.destroy();
       }
@@ -180,7 +190,9 @@ export class ParentGroupRegistration {
    * Handle class selection and check capacity
    */
   handleClassSelection(classId: string): void {
-    const registerButton = document.getElementById('parent-create-group-registration-btn') as HTMLButtonElement | null;
+    const registerButton = document.getElementById(
+      'parent-create-group-registration-btn'
+    ) as HTMLButtonElement | null;
     // Get or create containers and clear previous states
     getOrCreateErrorContainer('parent-class-error-message', 'parent-class-select');
     getOrCreateInfoContainer('parent-class-info-message', 'parent-class-select');
@@ -295,7 +307,7 @@ export class ParentGroupRegistration {
 
     // Reset transportation type to default (pickup) for both forms
     const pickupRadio = document.querySelector(
-      'input[name="parent-transportation-type"][value="pickup"]'
+      `input[name="parent-transportation-type"][value="${TransportationType.PICKUP}"]`
     ) as HTMLInputElement | null;
     if (pickupRadio) {
       pickupRadio.checked = true;
@@ -303,7 +315,7 @@ export class ParentGroupRegistration {
 
     // Reset group transportation type to default (pickup)
     const groupPickupRadio = document.querySelector(
-      'input[name="parent-group-transportation-type"][value="pickup"]'
+      `input[name="parent-group-transportation-type"][value="${TransportationType.PICKUP}"]`
     ) as HTMLInputElement | null;
     if (groupPickupRadio) {
       groupPickupRadio.checked = true;
@@ -313,7 +325,9 @@ export class ParentGroupRegistration {
     clearErrorMessage('parent-class-error-message');
 
     // Disable register button again
-    const registerButton = document.getElementById('parent-create-group-registration-btn') as HTMLButtonElement | null;
+    const registerButton = document.getElementById(
+      'parent-create-group-registration-btn'
+    ) as HTMLButtonElement | null;
     if (registerButton) {
       registerButton.disabled = true;
       registerButton.style.opacity = '0.6';
@@ -332,7 +346,9 @@ export class ParentGroupRegistration {
   #validateGroupRegistration(): boolean {
     // Check if student is selected (only if dropdown is visible for multiple students)
     const studentSection = document.getElementById('parent-student-selection-section');
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
+    const studentSelect = document.getElementById(
+      'parent-student-select'
+    ) as HTMLSelectElement | null;
     const studentId = studentSelect?.value;
 
     // Only validate student selection if the section is visible (multiple students)
@@ -366,7 +382,7 @@ export class ParentGroupRegistration {
       const transportationTypeRadio = document.querySelector(
         'input[name="parent-group-transportation-type"]:checked'
       ) as HTMLInputElement | null;
-      const transportationType = transportationTypeRadio?.value || 'pickup';
+      const transportationType = transportationTypeRadio?.value || TransportationType.PICKUP;
 
       const busValidation = validateBusTimeRestrictions(
         selectedClass.day,
@@ -390,7 +406,9 @@ export class ParentGroupRegistration {
    */
   #getCreateGroupRegistrationData(): RegistrationSubmitData {
     // Get selected student ID
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
+    const studentSelect = document.getElementById(
+      'parent-student-select'
+    ) as HTMLSelectElement | null;
     const studentId = studentSelect?.value;
 
     if (!studentId) {
@@ -416,10 +434,10 @@ export class ParentGroupRegistration {
     const transportationTypeRadio = document.querySelector(
       'input[name="parent-group-transportation-type"]:checked'
     ) as HTMLInputElement | null;
-    const transportationType = transportationTypeRadio?.value || 'pickup'; // Default to pickup if not selected
+    const transportationType = transportationTypeRadio?.value || TransportationType.PICKUP; // Default to pickup if not selected
 
     // Determine the target trimester
-    const appConfig = window.UserSession?.getAppConfig?.();
+    const appConfig = UserSession?.getAppConfig?.();
     const trimester = this.config.isEnrollmentPeriodActive()
       ? appConfig?.nextTrimester
       : appConfig?.currentTrimester;
@@ -480,7 +498,9 @@ export class ParentGroupRegistration {
         }
 
         this.config.showConfirmationModal(confirmationMessage, async () => {
-          const confirmButton = document.getElementById('parent-confirmation-confirm') as HTMLButtonElement | null;
+          const confirmButton = document.getElementById(
+            'parent-confirmation-confirm'
+          ) as HTMLButtonElement | null;
           try {
             this.config.setButtonLoading(confirmButton, true);
             await this.config.sendDataFunction(registrationData);
@@ -513,17 +533,23 @@ export class ParentGroupRegistration {
    * Build confirmation message for group class registration
    */
   #buildGroupClassConfirmationMessage(registrationData: RegistrationSubmitData): string {
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
+    const studentSelect = document.getElementById(
+      'parent-student-select'
+    ) as HTMLSelectElement | null;
     const studentName = studentSelect?.selectedOptions[0]?.textContent || 'your child';
 
     // Find class details
-    const selectedClass = this.config.classes.find((cls: ClassLike) => cls.id === registrationData.classId);
+    const selectedClass = this.config.classes.find(
+      (cls: ClassLike) => cls.id === registrationData.classId
+    );
     const className = selectedClass
       ? formatClassNameWithGradeCorrection(selectedClass)
       : 'the class';
 
     // Find instructor name
-    const instructor = this.config.instructors.find((inst: InstructorLike) => inst.id === registrationData.instructorId);
+    const instructor = this.config.instructors.find(
+      (inst: InstructorLike) => inst.id === registrationData.instructorId
+    );
     const instructorName = instructor
       ? `${instructor.firstName} ${instructor.lastName}`
       : 'the instructor';
@@ -533,7 +559,7 @@ export class ParentGroupRegistration {
 
     // Format transportation type
     const transportationDisplay =
-      registrationData.transportationType === 'bus' ? 'Late Bus' : 'Late Pick Up';
+      registrationData.transportationType === TransportationType.BUS ? 'Late Bus' : 'Late Pick Up';
 
     return `
       <strong>Are you sure you want to register ${studentName} for this group class?</strong>
@@ -566,17 +592,23 @@ export class ParentGroupRegistration {
    * Build confirmation message for waitlist group class registration (Rock Band classes)
    */
   #buildWaitlistClassConfirmationMessage(registrationData: RegistrationSubmitData): string {
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
+    const studentSelect = document.getElementById(
+      'parent-student-select'
+    ) as HTMLSelectElement | null;
     const studentName = studentSelect?.selectedOptions[0]?.textContent || 'your child';
 
     // Find class details
-    const selectedClass = this.config.classes.find((cls: ClassLike) => cls.id === registrationData.classId);
+    const selectedClass = this.config.classes.find(
+      (cls: ClassLike) => cls.id === registrationData.classId
+    );
     const className = selectedClass
       ? formatClassNameWithGradeCorrection(selectedClass)
       : 'the class';
 
     // Find instructor name
-    const instructor = this.config.instructors.find((inst: InstructorLike) => inst.id === registrationData.instructorId);
+    const instructor = this.config.instructors.find(
+      (inst: InstructorLike) => inst.id === registrationData.instructorId
+    );
     const instructorName = instructor
       ? `${instructor.firstName} ${instructor.lastName}`
       : 'the instructor';
@@ -586,7 +618,7 @@ export class ParentGroupRegistration {
 
     // Format transportation type
     const transportationDisplay =
-      registrationData.transportationType === 'bus' ? 'Late Bus' : 'Late Pick Up';
+      registrationData.transportationType === TransportationType.BUS ? 'Late Bus' : 'Late Pick Up';
 
     return `
       <strong>All new registrations for Rock Band are put on a waitlist and then assigned to one of the three Rock Band classes (class meeting times below). We at FORTE work with the Rock Band teacher, Paul Montes, to match students to the Rock Band that is right for them based on skill level, ensemble dynamics, and current Rock Band instrument needs.</strong>

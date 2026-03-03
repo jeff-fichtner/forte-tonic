@@ -6,25 +6,18 @@
  * selected time slot to the parent form via the `onTimeSlotSelected` callback.
  */
 
-import {
-  createFilterChip,
-  createInstructorCard,
-} from './registrationFormElements.js';
+import { TransportationType } from '/utils/values/transportationType.js';
+import { createFilterChip, createInstructorCard } from './registrationFormElements.js';
 import {
   isInstructorGradeEligible,
   calculateCascadingAvailability,
   generateInstructorTimeSlots,
-  getRegistrationDayName,
-  checkTimeSlotConflict,
+  filterByInstrument,
 } from '../../utilities/registrationForm/availabilityEngine.js';
-import {
-  parseTime,
-  formatTimeFromMinutes,
-  formatDisplayTime,
-} from '../../utilities/registrationForm/timeHelpers.js';
+import { formatDisplayTime } from '../../utilities/registrationForm/timeHelpers.js';
+import { ModalKeyboardHandler } from '../../utilities/modalKeyboardHandler.js';
 import type {
   InstructorLike,
-  DaySchedule,
   StudentLike,
   RegistrationLike,
   TimeSlot,
@@ -139,7 +132,9 @@ export class CascadingFilterChips {
    * Returns a numeric grade (0-8) or null.
    */
   #getSelectedStudentGrade(): number | null {
-    const studentSelect = document.getElementById('parent-student-select') as HTMLSelectElement | null;
+    const studentSelect = document.getElementById(
+      'parent-student-select'
+    ) as HTMLSelectElement | null;
     const selectedStudentId = studentSelect?.value;
     if (!selectedStudentId) return null;
 
@@ -172,8 +167,9 @@ export class CascadingFilterChips {
     existingInstrumentChips.forEach(chip => chip.remove());
 
     // Get current selection (for restoring active state)
-    const selectedInstrument =
-      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value;
+    const selectedInstrument = (
+      parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null
+    )?.dataset.value;
 
     // Calculate availability for each instrument (no upstream filters — top of cascade)
     const instrumentAvailabilityMap = calculateCascadingAvailability(
@@ -187,7 +183,9 @@ export class CascadingFilterChips {
       {}
     );
     let totalSlots = 0;
-    instrumentAvailabilityMap.forEach(v => { totalSlots += v.available; });
+    instrumentAvailabilityMap.forEach(v => {
+      totalSlots += v.available;
+    });
 
     // Create "All Instruments" chip
     const isAllDefault = !selectedInstrument || selectedInstrument === 'all';
@@ -226,9 +224,11 @@ export class CascadingFilterChips {
     existingDayChips.forEach(chip => chip.remove());
 
     // Get current filter context — only consider upstream filters (instrument)
-    const selectedInstrument =
-      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value;
-    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value;
+    const selectedInstrument = (
+      parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null
+    )?.dataset.value;
+    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)
+      ?.dataset.value;
 
     const dayAvailabilityMap = calculateCascadingAvailability(
       'day',
@@ -241,7 +241,9 @@ export class CascadingFilterChips {
       { instrument: selectedInstrument }
     );
     let totalSlots = 0;
-    dayAvailabilityMap.forEach(v => { totalSlots += v.available; });
+    dayAvailabilityMap.forEach(v => {
+      totalSlots += v.available;
+    });
 
     const isAllDefault = !selectedDay || selectedDay === 'all';
     const allChip = createFilterChip(
@@ -280,10 +282,14 @@ export class CascadingFilterChips {
     existingLengthChips.forEach(chip => chip.remove());
 
     // Get current filter context — only consider upstream filters (instrument and day)
-    const selectedInstrument =
-      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value;
-    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value;
-    const selectedLength = (parentContainer.querySelector('.length-chip.active') as HTMLElement | null)?.dataset.value;
+    const selectedInstrument = (
+      parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null
+    )?.dataset.value;
+    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)
+      ?.dataset.value;
+    const selectedLength = (
+      parentContainer.querySelector('.length-chip.active') as HTMLElement | null
+    )?.dataset.value;
 
     const lengthAvailabilityMap = calculateCascadingAvailability(
       'length',
@@ -297,7 +303,9 @@ export class CascadingFilterChips {
     );
 
     let totalSlots = 0;
-    lengthAvailabilityMap.forEach(v => { totalSlots += v.available; });
+    lengthAvailabilityMap.forEach(v => {
+      totalSlots += v.available;
+    });
 
     const isAllDefault = !selectedLength || selectedLength === 'all';
     const allChip = createFilterChip(
@@ -314,13 +322,7 @@ export class CascadingFilterChips {
       const slots = lengthAvailabilityMap.get(String(length))?.available || 0;
       const chipText = `${length} min (${slots} slots)`;
       const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
-      const chip = createFilterChip(
-        'length',
-        length.toString(),
-        chipText,
-        false,
-        availability
-      );
+      const chip = createFilterChip('length', length.toString(), chipText, false, availability);
       lengthContainer.appendChild(chip);
     });
   }
@@ -352,12 +354,17 @@ export class CascadingFilterChips {
     existingInstructorChips.forEach(chip => chip.remove());
 
     // Get current filter context — only consider upstream filters (instrument, day, length)
-    const selectedInstrument =
-      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value;
-    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value;
-    const selectedLength = (parentContainer.querySelector('.length-chip.active') as HTMLElement | null)?.dataset.value;
-    const selectedInstructor =
-      (parentContainer.querySelector('.instructor-chip.active') as HTMLElement | null)?.dataset.value;
+    const selectedInstrument = (
+      parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null
+    )?.dataset.value;
+    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)
+      ?.dataset.value;
+    const selectedLength = (
+      parentContainer.querySelector('.length-chip.active') as HTMLElement | null
+    )?.dataset.value;
+    const selectedInstructor = (
+      parentContainer.querySelector('.instructor-chip.active') as HTMLElement | null
+    )?.dataset.value;
 
     const instructorAvailabilityMap = calculateCascadingAvailability(
       'instructor',
@@ -374,7 +381,9 @@ export class CascadingFilterChips {
       }
     );
     let totalSlots = 0;
-    instructorAvailabilityMap.forEach(v => { totalSlots += v.available; });
+    instructorAvailabilityMap.forEach(v => {
+      totalSlots += v.available;
+    });
 
     // Create "All Instructors" chip
     const isAllDefault = !selectedInstructor || selectedInstructor === 'all';
@@ -397,13 +406,7 @@ export class CascadingFilterChips {
       const slots = instructorAvailabilityMap.get(instructor.id)?.available || 0;
       const chipText = `${instructor.firstName} ${instructor.lastName} (${slots} slots)`;
       const availability = slots > 3 ? 'available' : slots > 0 ? 'limited' : 'unavailable';
-      const chip = createFilterChip(
-        'instructor',
-        instructor.id,
-        chipText,
-        false,
-        availability
-      );
+      const chip = createFilterChip('instructor', instructor.id, chipText, false, availability);
       instructorContainer.appendChild(chip);
     });
   }
@@ -446,99 +449,6 @@ export class CascadingFilterChips {
 
     // Attach listeners after generating
     this.#attachTimeSlotListeners();
-  }
-
-  #generateFilteredInstructorTimeSlots(
-    instructor: InstructorLike,
-    dayFilter: string = 'all',
-    instrumentFilter: string = 'all',
-    lengthFilter: string = 'all'
-  ): TimeSlot[] {
-    const timeSlots: TimeSlot[] = [];
-    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-
-    // Filter days if a specific day is selected
-    const daysToProcess = dayFilter !== 'all' ? [dayFilter] : days;
-
-    daysToProcess.forEach(day => {
-      const index = days.indexOf(day);
-      if (index === -1) return;
-
-      const daySchedule = (instructor.availability?.[day] || instructor[day]) as DaySchedule | undefined;
-      if (!daySchedule || !daySchedule.isAvailable) return;
-      if (!daySchedule.startTime || !daySchedule.endTime) return;
-
-      const startMinutes = parseTime(daySchedule.startTime);
-      const endMinutes = parseTime(daySchedule.endTime);
-      if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) return;
-
-      // Get instructor's instruments
-      const instructorInstruments =
-        instructor.specialties ||
-        (instructor.primaryInstrument ? [instructor.primaryInstrument] : ['Piano']);
-      const normalizedInstruments = Array.isArray(instructorInstruments)
-        ? instructorInstruments
-        : [instructorInstruments].filter(Boolean);
-
-      // Filter instruments if a specific instrument is selected
-      const instrumentsToProcess =
-        instrumentFilter !== 'all'
-          ? normalizedInstruments.filter(inst => inst.trim() === instrumentFilter)
-          : normalizedInstruments.length > 0
-            ? normalizedInstruments
-            : ['Piano'];
-
-      // Get existing registrations for this instructor on this day
-      const registrationsToCheck = this.#isEnrollmentPeriod
-        ? this.#nextTrimesterRegistrations || []
-        : this.#registrations;
-
-      const existingRegistrations = registrationsToCheck.filter((reg: RegistrationLike) => {
-        return reg.instructorId === instructor.id && reg.day === getRegistrationDayName(day);
-      });
-
-      // Generate potential time slots (every 30 minutes from start to end)
-      for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += 30) {
-        const currentTimeStr = formatTimeFromMinutes(currentMinutes);
-
-        const hasConflict = checkTimeSlotConflict(
-          currentMinutes, 30, existingRegistrations, this.#selectedPreviousRegistrationId
-        );
-        if (hasConflict) continue;
-
-        instrumentsToProcess.forEach(instrument => {
-          const lengthsToProcess = lengthFilter !== 'all' ? [parseInt(lengthFilter)] : [30, 45, 60];
-
-          lengthsToProcess.forEach(length => {
-            if (currentMinutes + length > endMinutes) return;
-
-            const lengthConflict = checkTimeSlotConflict(
-              currentMinutes,
-              length,
-              existingRegistrations,
-              this.#selectedPreviousRegistrationId
-            );
-            if (lengthConflict) return;
-
-            const slotTime = formatDisplayTime(currentTimeStr);
-
-            timeSlots.push({
-              day: day,
-              dayName: dayNames[index],
-              time: currentTimeStr,
-              timeFormatted: slotTime,
-              length: length,
-              instrument: instrument.trim(),
-              instructor: instructor,
-              instructorId: instructor.id,
-            });
-          });
-        });
-      }
-    });
-
-    return timeSlots.slice(0, 20);
   }
 
   // -----------------------------------------------------------------------
@@ -623,7 +533,9 @@ export class CascadingFilterChips {
       });
 
       // Activate the "All" chip for downstream categories
-      const allChip = parentContainer.querySelector(`.${downstreamType}-chip[data-value="all"]`) as HTMLElement | null;
+      const allChip = parentContainer.querySelector(
+        `.${downstreamType}-chip[data-value="all"]`
+      ) as HTMLElement | null;
       if (allChip && !allChip.classList.contains('unavailable')) {
         allChip.classList.add('active', 'selected');
         allChip.style.background = '#2b68a4';
@@ -661,12 +573,17 @@ export class CascadingFilterChips {
     if (!parentContainer) return;
 
     const selectedInstructor =
-      (parentContainer.querySelector('.instructor-chip.active') as HTMLElement | null)?.dataset.value || 'all';
-    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value || 'all';
+      (parentContainer.querySelector('.instructor-chip.active') as HTMLElement | null)?.dataset
+        .value || 'all';
+    const selectedDay =
+      (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value ||
+      'all';
     const selectedLength =
-      (parentContainer.querySelector('.length-chip.active') as HTMLElement | null)?.dataset.value || 'all';
+      (parentContainer.querySelector('.length-chip.active') as HTMLElement | null)?.dataset.value ||
+      'all';
     const selectedInstrument =
-      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value || 'all';
+      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset
+        .value || 'all';
 
     const timeSlots = parentContainer.querySelectorAll('.timeslot');
 
@@ -674,10 +591,12 @@ export class CascadingFilterChips {
       const slot = _slot as HTMLElement;
       let show = true;
 
-      if (selectedInstructor !== 'all' && slot.dataset.instructorId !== selectedInstructor) show = false;
+      if (selectedInstructor !== 'all' && slot.dataset.instructorId !== selectedInstructor)
+        show = false;
       if (selectedDay !== 'all' && slot.dataset.day !== selectedDay) show = false;
       if (selectedLength !== 'all' && slot.dataset.length !== selectedLength) show = false;
-      if (selectedInstrument !== 'all' && slot.dataset.instrument !== selectedInstrument) show = false;
+      if (selectedInstrument !== 'all' && slot.dataset.instrument !== selectedInstrument)
+        show = false;
 
       slot.style.display = show ? 'block' : 'none';
     });
@@ -698,12 +617,17 @@ export class CascadingFilterChips {
 
     // Get current filter selections
     const selectedInstructor =
-      (parentContainer.querySelector('.instructor-chip.active') as HTMLElement | null)?.dataset.value || 'all';
-    const selectedDay = (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value || 'all';
+      (parentContainer.querySelector('.instructor-chip.active') as HTMLElement | null)?.dataset
+        .value || 'all';
+    const selectedDay =
+      (parentContainer.querySelector('.day-chip.active') as HTMLElement | null)?.dataset.value ||
+      'all';
     const selectedInstrument =
-      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset.value || 'all';
+      (parentContainer.querySelector('.instrument-chip.active') as HTMLElement | null)?.dataset
+        .value || 'all';
     const selectedLength =
-      (parentContainer.querySelector('.length-chip.active') as HTMLElement | null)?.dataset.value || 'all';
+      (parentContainer.querySelector('.length-chip.active') as HTMLElement | null)?.dataset.value ||
+      'all';
 
     // Clear existing instructor cards
     const existingCards = timeslotGrid.querySelectorAll('.instructor-card');
@@ -711,38 +635,37 @@ export class CascadingFilterChips {
 
     // Determine which instructors to include (filter by student grade first)
     const studentGrade = this.#getSelectedStudentGrade();
-    let instructorsToInclude = this.#instructors.filter((instructor: InstructorLike) =>
-      isInstructorGradeEligible(instructor, studentGrade)
+    let instructorsToInclude = this.#instructors.filter(inst =>
+      isInstructorGradeEligible(inst, studentGrade)
     );
 
     // Filter by selected instructor
     if (selectedInstructor !== 'all') {
-      instructorsToInclude = instructorsToInclude.filter(
-        instructor => instructor.id === selectedInstructor
-      );
+      instructorsToInclude = instructorsToInclude.filter(i => i.id === selectedInstructor);
     }
 
-    // Filter by selected instrument
+    // Filter by selected instrument (using shared engine function)
     if (selectedInstrument !== 'all') {
-      instructorsToInclude = instructorsToInclude.filter((instructor: InstructorLike) => {
-        const instructorInstruments =
-          instructor.specialties ||
-          (instructor.primaryInstrument ? [instructor.primaryInstrument] : ['Piano']);
-        const normalizedInstruments = Array.isArray(instructorInstruments)
-          ? instructorInstruments
-          : [instructorInstruments].filter(Boolean);
-        return normalizedInstruments.some(inst => inst.trim() === selectedInstrument);
-      });
+      instructorsToInclude = filterByInstrument(instructorsToInclude, selectedInstrument);
     }
 
-    // Generate cards for filtered instructors
+    // Generate cards for filtered instructors using the canonical engine function
     instructorsToInclude.forEach((instructor: InstructorLike) => {
-      const timeSlots = this.#generateFilteredInstructorTimeSlots(
+      let timeSlots = generateInstructorTimeSlots(
         instructor,
-        selectedDay,
-        selectedInstrument,
-        selectedLength
+        this.#registrations,
+        this.#nextTrimesterRegistrations,
+        this.#selectedPreviousRegistrationId,
+        this.#isEnrollmentPeriod
       );
+
+      // Apply cascading filter selections
+      if (selectedDay !== 'all') timeSlots = timeSlots.filter(s => s.day === selectedDay);
+      if (selectedInstrument !== 'all')
+        timeSlots = timeSlots.filter(s => s.instrument === selectedInstrument);
+      if (selectedLength !== 'all')
+        timeSlots = timeSlots.filter(s => s.length === parseInt(selectedLength));
+
       if (timeSlots.length > 0) {
         const card = createInstructorCard(instructor, timeSlots);
         timeslotGrid.appendChild(card);
@@ -911,10 +834,13 @@ export class CascadingFilterChips {
 
   #updateSelectionDisplay(slot: HTMLElement): void {
     const parentContainer = document.getElementById('parent-registration');
-    const selectionDisplay = parentContainer?.querySelector('#admin-selected-lesson-display') as HTMLElement | null;
+    const selectionDisplay = parentContainer?.querySelector(
+      '#admin-selected-lesson-display'
+    ) as HTMLElement | null;
     if (selectionDisplay) {
       const instructor = slot.dataset.instructorId;
-      const dayName = (slot.dataset.day || '').charAt(0).toUpperCase() + (slot.dataset.day || '').slice(1);
+      const dayName =
+        (slot.dataset.day || '').charAt(0).toUpperCase() + (slot.dataset.day || '').slice(1);
       const timeFormatted = formatDisplayTime(slot.dataset.time || '');
       const instrument = slot.dataset.instrument;
       const length = slot.dataset.length;
@@ -948,18 +874,22 @@ export class CascadingFilterChips {
     }
 
     ModalKeyboardHandler.attachTimeSlotKeyboardHandlers(parentContainer, {
-      onConfirm: (event: Event, selectedSlot: HTMLElement) => {
+      onConfirm: (_event: KeyboardEvent, _selectedSlot: Element) => {
         console.log('Time slot keyboard: Enter pressed on selected slot');
-        const submitButton = document.getElementById('parent-confirm-registration-btn') as HTMLButtonElement | null;
+        const submitButton = document.getElementById(
+          'parent-confirm-registration-btn'
+        ) as HTMLButtonElement | null;
         if (submitButton && !submitButton.disabled && this.#selectedLesson) {
           submitButton.click();
         }
       },
-      onCancel: (event: Event) => {
+      onCancel: (_event: KeyboardEvent) => {
         console.log('Time slot keyboard: ESC pressed, clearing selection');
         this.#clearTimeSlotSelection();
         this.#onTimeSlotSelected(null);
-        const submitButton = document.getElementById('parent-confirm-registration-btn') as HTMLButtonElement | null;
+        const submitButton = document.getElementById(
+          'parent-confirm-registration-btn'
+        ) as HTMLButtonElement | null;
         if (submitButton) {
           submitButton.disabled = true;
         }
@@ -979,10 +909,18 @@ export class CascadingFilterChips {
         'padding: 8px 12px; border-radius: 16px; display: flex; align-items: center; border: 2px solid #ddd; background: #f5f5f5; color: #666; transition: all 0.3s; cursor: pointer;';
     });
 
-    const allInstrumentChip = parentContainer.querySelector('.instrument-chip[data-value="all"]') as HTMLElement | null;
-    const allDayChip = parentContainer.querySelector('.day-chip[data-value="all"]') as HTMLElement | null;
-    const allLengthChip = parentContainer.querySelector('.length-chip[data-value="all"]') as HTMLElement | null;
-    const allInstructorChip = parentContainer.querySelector('.instructor-chip[data-value="all"]') as HTMLElement | null;
+    const allInstrumentChip = parentContainer.querySelector(
+      '.instrument-chip[data-value="all"]'
+    ) as HTMLElement | null;
+    const allDayChip = parentContainer.querySelector(
+      '.day-chip[data-value="all"]'
+    ) as HTMLElement | null;
+    const allLengthChip = parentContainer.querySelector(
+      '.length-chip[data-value="all"]'
+    ) as HTMLElement | null;
+    const allInstructorChip = parentContainer.querySelector(
+      '.instructor-chip[data-value="all"]'
+    ) as HTMLElement | null;
 
     [allInstrumentChip, allDayChip, allLengthChip, allInstructorChip].forEach(chip => {
       if (chip) {
@@ -999,7 +937,9 @@ export class CascadingFilterChips {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
-    const selectedDisplay = parentContainer.querySelector('#admin-selected-lesson-display') as HTMLElement | null;
+    const selectedDisplay = parentContainer.querySelector(
+      '#admin-selected-lesson-display'
+    ) as HTMLElement | null;
     if (selectedDisplay) {
       selectedDisplay.style.display = 'none';
       selectedDisplay.style.pointerEvents = 'none';
@@ -1007,14 +947,14 @@ export class CascadingFilterChips {
 
     // Reset transportation type to default (pickup) when clearing selection
     const pickupRadio = document.querySelector(
-      'input[name="parent-transportation-type"][value="pickup"]'
+      `input[name="parent-transportation-type"][value="${TransportationType.PICKUP}"]`
     ) as HTMLInputElement | null;
     if (pickupRadio) {
       pickupRadio.checked = true;
     }
 
     const groupPickupRadio = document.querySelector(
-      'input[name="parent-group-transportation-type"][value="pickup"]'
+      `input[name="parent-group-transportation-type"][value="${TransportationType.PICKUP}"]`
     ) as HTMLInputElement | null;
     if (groupPickupRadio) {
       groupPickupRadio.checked = true;

@@ -18,51 +18,57 @@ import { jest } from '@jest/globals';
 // Mocks — must be declared before importing the module under test
 // ---------------------------------------------------------------------------
 
-jest.unstable_mockModule(
-  '../../../src/web/js/utilities/registrationForm/timeHelpers.js',
-  () => ({
-    parseTime: jest.fn((timeStr: string): number | null => {
-      if (!timeStr) return null;
-      // Minimal re-implementation for deterministic test control
-      if (timeStr.includes('AM') || timeStr.includes('PM')) {
-        const [time, period] = timeStr.split(' ');
-        const [hours, minutes] = time.split(':').map(Number);
-        let h = hours;
-        if (period === 'PM' && hours !== 12) h += 12;
-        else if (period === 'AM' && hours === 12) h = 0;
-        return h * 60 + (minutes || 0);
-      }
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      if (isNaN(hours)) return null;
-      return hours * 60 + (minutes || 0);
-    }),
-    formatTimeFromMinutes: jest.fn((minutes: number): string => {
-      const h = Math.floor(minutes / 60);
-      const m = minutes % 60;
-      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-    }),
-    formatDisplayTime: jest.fn((time24: string): string => {
-      const [hours, minutes] = time24.split(':');
-      const hour12 = parseInt(hours) % 12 || 12;
-      const ampm = parseInt(hours) >= 12 ? 'PM' : 'AM';
-      return `${hour12}:${minutes} ${ampm}`;
-    }),
+jest.unstable_mockModule('../../../src/web/js/utilities/registrationForm/timeHelpers.js', () => ({
+  parseTime: jest.fn((timeStr: string): number | null => {
+    if (!timeStr) return null;
+    // Minimal re-implementation for deterministic test control
+    if (timeStr.includes('AM') || timeStr.includes('PM')) {
+      const [time, period] = timeStr.split(' ');
+      const [hours, minutes] = time.split(':').map(Number);
+      let h = hours;
+      if (period === 'PM' && hours !== 12) h += 12;
+      else if (period === 'AM' && hours === 12) h = 0;
+      return h * 60 + (minutes || 0);
+    }
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    if (isNaN(hours)) return null;
+    return hours * 60 + (minutes || 0);
   }),
-);
+  formatTimeFromMinutes: jest.fn((minutes: number): string => {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  }),
+  formatDisplayTime: jest.fn((time24: string): string => {
+    const [hours, minutes] = time24.split(':');
+    const hour12 = parseInt(hours) % 12 || 12;
+    const ampm = parseInt(hours) >= 12 ? 'PM' : 'AM';
+    return `${hour12}:${minutes} ${ampm}`;
+  }),
+}));
 
 jest.unstable_mockModule(
   '../../../src/web/js/utilities/registrationForm/registrationConfig.js',
   () => ({
     getRegistrationConfig: () => ({
       lessonLengths: [30, 45, 60],
-      busDeadlines: { Monday: '16:45', Tuesday: '16:45', Wednesday: '16:15', Thursday: '16:45', Friday: '16:45' },
+      busDeadlines: {
+        Monday: '16:45',
+        Tuesday: '16:45',
+        Wednesday: '16:15',
+        Thursday: '16:45',
+        Friday: '16:45',
+      },
       operationalHours: { startHour: 14, endHour: 18 },
       schedulingIntervalMinutes: 15,
       defaultInstruments: ['Piano', 'Guitar', 'Violin', 'Voice', 'Drums', 'Bass', 'Other'],
       defaultInstrument: 'Piano',
-      rockBandDisplayConfig: { timesDescription: 'Monday 3-4 PM or Monday 4-5 PM or Friday 3-4 PM', defaultLengthMinutes: 60 },
+      rockBandDisplayConfig: {
+        timesDescription: 'Monday 3-4 PM or Monday 4-5 PM or Friday 3-4 PM',
+        defaultLengthMinutes: 60,
+      },
     }),
-  }),
+  })
 );
 
 // ---------------------------------------------------------------------------
@@ -78,9 +84,7 @@ const {
   calculateAvailableSlotsForDay,
   generateInstructorTimeSlots,
   calculateCascadingAvailability,
-} = await import(
-  '../../../src/web/js/utilities/registrationForm/availabilityEngine.js'
-);
+} = await import('../../../src/web/js/utilities/registrationForm/availabilityEngine.js');
 
 // ---------------------------------------------------------------------------
 // Mock data factories
@@ -164,10 +168,10 @@ describe('isInstructorAvailableOnDay', () => {
     expect(isInstructorAvailableOnDay(instructor, 'monday', schedule)).toBe(false);
   });
 
-  test('defaults to 17:00 when endTime is not provided', () => {
-    // startTime 09:00 (540) < default 17:00 (1020) => true
+  test('returns false when endTime is not provided', () => {
+    // Missing endTime means the day is unavailable (no default fallback)
     const schedule = makeDaySchedule({ startTime: '09:00', endTime: undefined });
-    expect(isInstructorAvailableOnDay(instructor, 'monday', schedule)).toBe(true);
+    expect(isInstructorAvailableOnDay(instructor, 'monday', schedule)).toBe(false);
   });
 });
 
@@ -450,7 +454,7 @@ describe('generateInstructorTimeSlots', () => {
     expect(slotTimes).not.toContain('09:00');
   });
 
-  test('caps results at 15 entries', () => {
+  test('returns all valid slots without artificial cap', () => {
     // Instructor available all 5 days with wide time windows = many possible slots
     const availability: Record<string, DaySchedule> = {};
     for (const day of ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']) {
@@ -463,7 +467,8 @@ describe('generateInstructorTimeSlots', () => {
     });
 
     const slots = generateInstructorTimeSlots(instructor, [], [], null, false);
-    expect(slots.length).toBeLessThanOrEqual(15);
+    // Should return all valid combinations, not capped at 15
+    expect(slots.length).toBeGreaterThan(15);
   });
 
   test('generates slots for multiple instruments', () => {
@@ -571,8 +576,12 @@ describe('calculateCascadingAvailability', () => {
       const result = calculateCascadingAvailability(
         'instrument',
         [baseInstructor],
-        [], [], null, null, false,
-        {},
+        [],
+        [],
+        null,
+        null,
+        false,
+        {}
       );
 
       expect(result.has('Piano')).toBe(true);
@@ -588,8 +597,12 @@ describe('calculateCascadingAvailability', () => {
       const result = calculateCascadingAvailability(
         'instrument',
         [baseInstructor],
-        [], [], null, null, false,
-        { instrument: 'Piano' },
+        [],
+        [],
+        null,
+        null,
+        false,
+        { instrument: 'Piano' }
       );
 
       // Both instruments should still appear because instrument filter is upstream
@@ -606,8 +619,12 @@ describe('calculateCascadingAvailability', () => {
       const result = calculateCascadingAvailability(
         'day',
         [baseInstructor],
-        [], [], null, null, false,
-        {},
+        [],
+        [],
+        null,
+        null,
+        false,
+        {}
       );
 
       expect(result.size).toBe(5);
@@ -622,8 +639,12 @@ describe('calculateCascadingAvailability', () => {
       const result = calculateCascadingAvailability(
         'day',
         [baseInstructor],
-        [], [], null, null, false,
-        {},
+        [],
+        [],
+        null,
+        null,
+        false,
+        {}
       );
 
       expect(result.get('monday')!.available).toBeGreaterThan(0);
@@ -650,8 +671,12 @@ describe('calculateCascadingAvailability', () => {
       const result = calculateCascadingAvailability(
         'day',
         [pianoInstructor, drumsInstructor],
-        [], [], null, null, false,
-        { instrument: 'Piano' },
+        [],
+        [],
+        null,
+        null,
+        false,
+        { instrument: 'Piano' }
       );
 
       expect(result.get('monday')!.available).toBeGreaterThan(0);
@@ -668,8 +693,12 @@ describe('calculateCascadingAvailability', () => {
       const result = calculateCascadingAvailability(
         'length',
         [baseInstructor],
-        [], [], null, null, false,
-        {},
+        [],
+        [],
+        null,
+        null,
+        false,
+        {}
       );
 
       expect(result.has('30')).toBe(true);
@@ -681,8 +710,12 @@ describe('calculateCascadingAvailability', () => {
       const result = calculateCascadingAvailability(
         'length',
         [baseInstructor],
-        [], [], null, null, false,
-        {},
+        [],
+        [],
+        null,
+        null,
+        false,
+        {}
       );
 
       expect(result.get('30')!.available).toBeGreaterThan(0);
@@ -694,8 +727,12 @@ describe('calculateCascadingAvailability', () => {
       const result = calculateCascadingAvailability(
         'length',
         [baseInstructor],
-        [], [], null, null, false,
-        { instrument: 'Piano', day: 'monday' },
+        [],
+        [],
+        null,
+        null,
+        false,
+        { instrument: 'Piano', day: 'monday' }
       );
 
       // Only monday Piano slots counted
@@ -719,8 +756,12 @@ describe('calculateCascadingAvailability', () => {
       const result = calculateCascadingAvailability(
         'instructor',
         [baseInstructor, inst2],
-        [], [], null, null, false,
-        {},
+        [],
+        [],
+        null,
+        null,
+        false,
+        {}
       );
 
       expect(result.has('inst-1')).toBe(true);
@@ -733,8 +774,12 @@ describe('calculateCascadingAvailability', () => {
       const result = calculateCascadingAvailability(
         'instructor',
         [baseInstructor],
-        [], [], null, null, false,
-        { instrument: 'Piano', day: 'monday', length: 30 },
+        [],
+        [],
+        null,
+        null,
+        false,
+        { instrument: 'Piano', day: 'monday', length: 30 }
       );
 
       expect(result.has('inst-1')).toBe(true);
@@ -748,13 +793,18 @@ describe('calculateCascadingAvailability', () => {
   describe('edge cases', () => {
     test('empty instructor array returns zero availability across all dimensions', () => {
       const instrumentResult = calculateCascadingAvailability(
-        'instrument', [], [], [], null, null, false, {},
+        'instrument',
+        [],
+        [],
+        [],
+        null,
+        null,
+        false,
+        {}
       );
       expect(instrumentResult.size).toBe(0);
 
-      const dayResult = calculateCascadingAvailability(
-        'day', [], [], [], null, null, false, {},
-      );
+      const dayResult = calculateCascadingAvailability('day', [], [], [], null, null, false, {});
       expect(dayResult.size).toBe(5); // Pre-initialized for all 5 days
       dayResult.forEach(val => {
         expect(val.available).toBe(0);
@@ -762,7 +812,14 @@ describe('calculateCascadingAvailability', () => {
       });
 
       const lengthResult = calculateCascadingAvailability(
-        'length', [], [], [], null, null, false, {},
+        'length',
+        [],
+        [],
+        [],
+        null,
+        null,
+        false,
+        {}
       );
       expect(lengthResult.size).toBe(3); // "30", "45", "60"
       lengthResult.forEach(val => {
@@ -771,7 +828,14 @@ describe('calculateCascadingAvailability', () => {
       });
 
       const instructorResult = calculateCascadingAvailability(
-        'instructor', [], [], [], null, null, false, {},
+        'instructor',
+        [],
+        [],
+        [],
+        null,
+        null,
+        false,
+        {}
       );
       expect(instructorResult.size).toBe(0);
     });
@@ -790,8 +854,12 @@ describe('calculateCascadingAvailability', () => {
       const result = calculateCascadingAvailability(
         'instrument',
         [instructor],
-        [], [], 2, null, false,
-        {},
+        [],
+        [],
+        2,
+        null,
+        false,
+        {}
       );
 
       expect(result.size).toBe(0);
@@ -816,15 +884,27 @@ describe('calculateCascadingAvailability', () => {
       ];
 
       const withoutRegs = calculateCascadingAvailability(
-        'day', [instructor], [], [], null, null, false, {},
+        'day',
+        [instructor],
+        [],
+        [],
+        null,
+        null,
+        false,
+        {}
       );
       const withRegs = calculateCascadingAvailability(
-        'day', [instructor], regs, [], null, null, false, {},
+        'day',
+        [instructor],
+        regs,
+        [],
+        null,
+        null,
+        false,
+        {}
       );
 
-      expect(withRegs.get('monday')!.available).toBeLessThan(
-        withoutRegs.get('monday')!.available,
-      );
+      expect(withRegs.get('monday')!.available).toBeLessThan(withoutRegs.get('monday')!.available);
     });
 
     test('uses nextTrimesterRegistrations when isEnrollmentPeriod is true', () => {
@@ -847,7 +927,14 @@ describe('calculateCascadingAvailability', () => {
 
       // During enrollment, current regs are ignored and next trimester (empty) is used
       const result = calculateCascadingAvailability(
-        'day', [instructor], currentRegs, [], null, null, true, {},
+        'day',
+        [instructor],
+        currentRegs,
+        [],
+        null,
+        null,
+        true,
+        {}
       );
 
       expect(result.get('monday')!.available).toBeGreaterThan(0);

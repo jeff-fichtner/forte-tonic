@@ -4,17 +4,16 @@
  * Extracted from viewModel.createRegistrationWithEnrichment, requestDeleteRegistrationAsync,
  * and submitIntent (Step US3 of 009-frontend-decomposition).
  *
- * Handles endpoint routing (admin vs parent, enrollment vs non-enrollment),
- * delete-then-create replacement flow, and response enrichment.
+ * Handles delete-then-create replacement flow and response enrichment.
+ * All registrations go through a single endpoint; trimester is always required.
  */
 
 import { HttpService } from './httpService.js';
 import type { HttpResult } from './httpService.js';
 import { ServerFunctions } from '../constants.js';
 import { Registration } from '../../../models/shared/index.js';
-import { isEnrollmentPeriod } from '../utilities/periodHelpers.js';
+import { UserSession } from '../auth/session.js';
 
-import type { Period } from '../../../models/shared/responses/appConfigurationResponse.js';
 import type { RegistrationData } from '../../../models/shared/registration.js';
 
 /** Registration creation data */
@@ -43,31 +42,23 @@ export interface EnrichedRegistration extends Registration {
  */
 export class RegistrationService {
   /**
-   * Create a registration with proper endpoint routing and response enrichment.
+   * Create a registration with response enrichment.
+   * Trimester must be set on data by callers. Uses a single endpoint for all registrations.
    */
   static async create(
     data: RegistrationCreateData,
-    { students = null, instructors = null }: EnrichmentOptions = {},
-    options: { isAdmin?: boolean } = {}
+    { students = null, instructors = null }: EnrichmentOptions = {}
   ): Promise<HttpResult<EnrichedRegistration>> {
-    const isAdmin = options.isAdmin ?? false;
-
-    const currentPeriod: Period | undefined = window.UserSession?.getCurrentPeriod?.();
-
-    const endpoint =
-      isEnrollmentPeriod(currentPeriod) && !isAdmin
-        ? ServerFunctions.createNextTrimesterRegistration
-        : ServerFunctions.register;
-
-    if (endpoint === ServerFunctions.register && !data.trimester && currentPeriod?.trimester) {
-      data.trimester = currentPeriod.trimester;
+    // Ensure trimester is set — fall back to current period if callers omit it
+    if (!data.trimester) {
+      const currentPeriod = UserSession.getCurrentPeriod?.();
+      if (currentPeriod?.trimester) {
+        data.trimester = currentPeriod.trimester;
+      }
     }
 
     if (data.replaceRegistrationId) {
-      const deleteEndpoint =
-        isEnrollmentPeriod(currentPeriod) && !isAdmin
-          ? `registrations/next-trimester/${data.replaceRegistrationId}`
-          : `registrations/${data.trimester}/${data.replaceRegistrationId}`;
+      const deleteEndpoint = `registrations/${data.trimester}/${data.replaceRegistrationId}`;
 
       const deleteResult = await HttpService.delete(deleteEndpoint);
       if (!deleteResult.ok) {
@@ -83,10 +74,12 @@ export class RegistrationService {
       delete data.replaceRegistrationId;
     }
 
-    const result = await HttpService.post(endpoint, data);
+    const result = await HttpService.post(ServerFunctions.register, data);
     if (!result.ok) return result;
 
-    const newRegistration = new Registration(result.data as RegistrationData) as EnrichedRegistration;
+    const newRegistration = new Registration(
+      result.data as RegistrationData
+    ) as EnrichedRegistration;
 
     const studentsLookup = students || [];
     const instructorsLookup = instructors || [];
@@ -94,14 +87,20 @@ export class RegistrationService {
     if (!newRegistration.student) {
       newRegistration.student = studentsLookup.find(x => x.id === newRegistration.studentId);
       if (!newRegistration.student && studentsLookup.length > 0) {
-        console.warn(`❌ Student not found for new registration with studentId "${newRegistration.studentId}"`);
+        console.warn(
+          `❌ Student not found for new registration with studentId "${newRegistration.studentId}"`
+        );
       }
     }
 
     if (!newRegistration.instructor) {
-      newRegistration.instructor = instructorsLookup.find(x => x.id === newRegistration.instructorId);
+      newRegistration.instructor = instructorsLookup.find(
+        x => x.id === newRegistration.instructorId
+      );
       if (!newRegistration.instructor && instructorsLookup.length > 0) {
-        console.warn(`❌ Instructor not found for new registration with instructorId "${newRegistration.instructorId}"`);
+        console.warn(
+          `❌ Instructor not found for new registration with instructorId "${newRegistration.instructorId}"`
+        );
       }
     }
 

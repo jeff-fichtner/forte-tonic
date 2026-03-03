@@ -17,12 +17,17 @@ export class TransportationSelector {
    * @param {string} radioGroupName - Name attribute of the radio button group
    * @param {Function} onChangeCallback - Callback when transportation type changes
    */
-  constructor(radioGroupName: string = 'transportation-type', onChangeCallback: TransportationChangeCallback | null = null) {
+  constructor(
+    radioGroupName: string = 'transportation-type',
+    onChangeCallback: TransportationChangeCallback | null = null
+  ) {
     this.radioGroupName = radioGroupName;
     this.onChangeCallback = onChangeCallback;
 
     // Get all radio buttons in this group
-    this.radioButtons = document.querySelectorAll<HTMLInputElement>(`input[name="${radioGroupName}"]`);
+    this.radioButtons = document.querySelectorAll<HTMLInputElement>(
+      `input[name="${radioGroupName}"]`
+    );
 
     if (this.radioButtons.length === 0) {
       console.warn(`No transportation radio buttons found with name '${radioGroupName}'`);
@@ -58,7 +63,9 @@ export class TransportationSelector {
    * @returns {string|null} Selected transportation type value or null
    */
   getSelectedType(): string | null {
-    const checkedRadio = document.querySelector<HTMLInputElement>(`input[name="${this.radioGroupName}"]:checked`);
+    const checkedRadio = document.querySelector<HTMLInputElement>(
+      `input[name="${this.radioGroupName}"]:checked`
+    );
     return checkedRadio ? checkedRadio.value : null;
   }
 
@@ -89,7 +96,7 @@ export class TransportationSelector {
    */
   isBusSelected(): boolean {
     const selected = this.getSelectedType();
-    return selected === TransportationType.BUS || selected === 'bus';
+    return selected === TransportationType.BUS;
   }
 
   /**

@@ -14,12 +14,16 @@ import { successResponse, errorResponse, asString } from '../common/responseHelp
 import { ValidationError, UnauthorizedError, NotFoundError } from '../common/errors.js';
 import { INTENT_TYPES } from '../constants/intentTypes.js';
 import { UserType } from '../config/constants.js';
+import { RegistrationService } from '../services/registrationService.js';
+import { isValidTrimester, TRIMESTER_SEQUENCE } from '../utils/values/trimester.js';
 
 const logger = getLogger();
 
 export class RegistrationController {
   /**
-   * Create Registration using application service with comprehensive validation
+   * Create Registration using application service with comprehensive validation.
+   * Requires trimester in request body. When targeting a future trimester,
+   * enforces enrollment-period access control for non-admin users.
    */
   static async createRegistration(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
@@ -37,15 +41,56 @@ export class RegistrationController {
         hasAccessCode: !!requestData.accessCode,
       });
 
-      // Basic validation
-      if (!requestData.studentId || !requestData.registrationType) {
-        throw new ValidationError('Missing required fields: studentId, registrationType');
+      // Trimester is required — the service layer needs it to target the correct sheet
+      if (!requestData.trimester) {
+        throw new ValidationError('Missing required field: trimester');
+      }
+      if (!isValidTrimester(requestData.trimester)) {
+        throw new ValidationError(
+          `Invalid trimester: "${requestData.trimester}". Must be one of: ${TRIMESTER_SEQUENCE.join(', ')}`
+        );
+      }
+
+      // Comprehensive field validation (type-specific required fields + business rules)
+      const validation = RegistrationService.validateRegistrationData(requestData);
+      if (!validation.isValid) {
+        throw new ValidationError(
+          `Registration validation failed: ${validation.errors.join(', ')}`
+        );
       }
 
       const registrationService = serviceContainer.get(ServiceKeys.registrationService);
+      const periodService = serviceContainer.get(ServiceKeys.periodService);
 
-      // Check if user is an admin (admins can bypass capacity restrictions and specify trimester)
+      // Check if user is an admin (admins can bypass capacity and enrollment restrictions)
       const isAdmin = req.currentUser?.userType === UserType.ADMIN;
+
+      // Enrollment-period access control for non-admin users targeting a future trimester
+      if (!isAdmin) {
+        const currentTrimester = await periodService.getCurrentTrimester();
+        if (currentTrimester && requestData.trimester !== currentTrimester) {
+          // Verify the enrollment table is available
+          const enrollmentTable = await periodService.getEnrollmentTrimesterTable();
+          if (!enrollmentTable) {
+            throw new ValidationError('Next trimester registration is not currently available');
+          }
+
+          // Check access permissions (priority enrollment = returning families only)
+          const registrationRepository = serviceContainer.get(ServiceKeys.registrationRepository);
+          const currentRegistrations = await registrationRepository.findAll();
+          const hasActiveRegistrations = currentRegistrations.some(
+            reg => reg.studentId === requestData.studentId
+          );
+
+          const canAccess = await periodService.canAccessNextTrimester(hasActiveRegistrations);
+          if (!canAccess) {
+            throw new UnauthorizedError(
+              'You do not have access to next trimester registration at this time. ' +
+                'Priority enrollment is for returning families only.'
+            );
+          }
+        }
+      }
 
       // Process registration through application service with authenticated user
       const result = await registrationService.processRegistration(
@@ -222,171 +267,6 @@ export class RegistrationController {
   }
 
   /**
-   * Create registration in next trimester (enrollment periods only)
-   * Enforces access control and creates backward link if modifying existing registration
-   * POST /api/registrations/next-trimester
-   */
-  static async createNextTrimesterRegistration(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      const requestData = req.body;
-      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
-      const periodService = serviceContainer.get(ServiceKeys.periodService);
-      const registrationRepository = serviceContainer.get(ServiceKeys.registrationRepository);
-      const registrationService = serviceContainer.get(ServiceKeys.registrationService);
-
-      logger.info('🎯 Next trimester registration creation:', {
-        studentId: requestData.studentId,
-        replacesId: requestData.linkedPreviousRegistrationId,
-        authenticatedUser: authenticatedUserEmail,
-      });
-
-      // Validation
-      if (!requestData.studentId || !requestData.registrationType) {
-        throw new ValidationError('Missing required fields: studentId, registrationType');
-      }
-
-      // Check if next trimester table is available
-      const nextTable = await periodService.getEnrollmentTrimesterTable();
-      if (!nextTable) {
-        throw new ValidationError('Next trimester registration is not currently available');
-      }
-
-      // Admins bypass enrollment period restrictions
-      const isAdmin = req.currentUser?.userType === UserType.ADMIN;
-
-      if (!isAdmin) {
-        // Check access permissions for non-admin users
-        const currentRegistrations = await registrationRepository.findAll();
-        const hasActiveRegistrations = currentRegistrations.some(
-          reg => reg.studentId === requestData.studentId
-        );
-
-        const canAccess = await periodService.canAccessNextTrimester(hasActiveRegistrations);
-        if (!canAccess) {
-          throw new UnauthorizedError(
-            'You do not have access to next trimester registration at this time. ' +
-              'Priority enrollment is for returning families only.'
-          );
-        }
-      }
-
-      // Use application service to validate and create registration with conflict checking
-      // This ensures the same validation rules apply as regular registration creation
-      const result = await registrationService.processRegistration(
-        requestData,
-        authenticatedUserEmail,
-        { isAdmin }
-      );
-
-      logger.info(`✅ Created next trimester registration: ${result.registration.id}`);
-
-      successResponse(res, result.registration, {
-        message: 'Next trimester registration created successfully',
-        statusCode: 201,
-        req,
-        startTime,
-        context: {
-          controller: 'RegistrationController',
-          method: 'createNextTrimesterRegistration',
-          table: nextTable,
-          hasBackwardLink: !!requestData.linkedPreviousRegistrationId,
-        },
-      });
-    } catch (error) {
-      logger.error('Error creating next trimester registration:', {
-        error: (error as Error).message,
-        stack: (error as Error).stack,
-        requestData: {
-          studentId: req.body?.studentId,
-          instructorId: req.body?.instructorId,
-          registrationType: req.body?.registrationType,
-          classId: req.body?.classId,
-          linkedPreviousRegistrationId: req.body?.linkedPreviousRegistrationId,
-        },
-      });
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: {
-          controller: 'RegistrationController',
-          method: 'createNextTrimesterRegistration',
-          studentId: req.body?.studentId,
-          registrationType: req.body?.registrationType,
-        },
-        includeRequestData: true,
-      });
-    }
-  }
-
-  /**
-   * Delete a next trimester registration (enrollment periods only)
-   * DELETE /api/registrations/next-trimester/:id
-   */
-  static async deleteNextTrimesterRegistration(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      const registrationId = asString(req.params.id);
-
-      // Get the authenticated user's email for audit purposes
-      const authenticatedUserEmail = getAuthenticatedUserEmail(req);
-
-      if (!authenticatedUserEmail) {
-        throw new UnauthorizedError('Authentication required for registration deletion');
-      }
-
-      if (!registrationId) {
-        throw new ValidationError('Missing registrationId');
-      }
-
-      const periodService = serviceContainer.get(ServiceKeys.periodService);
-      const registrationService = serviceContainer.get(ServiceKeys.registrationService);
-
-      // Get next trimester
-      const nextTrimester = await periodService.getNextTrimester();
-      if (!nextTrimester) {
-        throw new ValidationError('Next trimester registration is not currently available');
-      }
-
-      logger.info('🎯 Deleting next trimester registration:', {
-        registrationId,
-        trimester: nextTrimester,
-        authenticatedUser: authenticatedUserEmail,
-      });
-
-      const result = await registrationService.deleteRegistration(
-        registrationId,
-        authenticatedUserEmail,
-        nextTrimester
-      );
-
-      successResponse(res, result, {
-        message: 'Next trimester registration removed',
-        req,
-        startTime,
-        context: {
-          controller: 'RegistrationController',
-          method: 'deleteNextTrimesterRegistration',
-          registrationId,
-          trimester: nextTrimester,
-        },
-      });
-    } catch (error) {
-      logger.error('Error deleting next trimester registration:', error);
-      errorResponse(res, error, {
-        req,
-        startTime,
-        context: {
-          controller: 'RegistrationController',
-          method: 'deleteNextTrimesterRegistration',
-        },
-      });
-    }
-  }
-
-  /**
    * Get admin wait list tab data
    * Returns only Rock Band registrations + associated students for wait list
    * REST: GET /api/admin/tabs/wait-list/:trimester
@@ -467,12 +347,14 @@ export class RegistrationController {
       const queryService = serviceContainer.get(ServiceKeys.entityQueryService);
 
       // Fetch registrations for this instructor, excluding waitlist
-      const registrations = await queryService.getRegistrations({ trimester, instructorId, excludeWaitlist: true });
+      const registrations = await queryService.getRegistrations({
+        trimester,
+        instructorId,
+        excludeWaitlist: true,
+      });
 
       // Get student IDs from instructor's registrations
-      const studentIdsInSchedule = new Set(
-        registrations.map(reg => reg.studentId).filter(Boolean)
-      );
+      const studentIdsInSchedule = new Set(registrations.map(reg => reg.studentId).filter(Boolean));
 
       // Fetch remaining data in parallel
       const [allStudents, instructors, classes] = await Promise.all([
@@ -643,13 +525,12 @@ export class RegistrationController {
       const queryService = serviceContainer.get(ServiceKeys.entityQueryService);
 
       // Fetch parent's students + registrations for the provided trimester + instructors + classes
-      const [parentStudents, registrations, instructors, classes] =
-        await Promise.all([
-          queryService.getStudents({ parentId }),
-          queryService.getRegistrations({ trimester }),
-          queryService.getInstructors(),
-          queryService.getClasses(),
-        ]);
+      const [parentStudents, registrations, instructors, classes] = await Promise.all([
+        queryService.getStudents({ parentId }),
+        queryService.getRegistrations({ trimester }),
+        queryService.getInstructors(),
+        queryService.getClasses(),
+      ]);
 
       const responseData = {
         instructors,
