@@ -36,12 +36,19 @@ export function rowToObject(row: string[], columns: readonly string[]): Record<s
   return obj;
 }
 
-/** Convert a named Record back to a positional string[] row using a column schema */
+/** Convert a named Record back to a positional string[] row using a column schema.
+ *  Date instances are serialized to ISO-8601 for predictable round-tripping. */
 export function objectToRow(obj: Record<string, unknown>, columns: readonly string[]): string[] {
   const row: string[] = new Array(columns.length).fill('');
   for (let i = 0; i < columns.length; i++) {
     const val = obj[columns[i]];
-    row[i] = val == null ? '' : String(val);
+    if (val == null) {
+      row[i] = '';
+    } else if (val instanceof Date) {
+      row[i] = val.toISOString();
+    } else {
+      row[i] = String(val);
+    }
   }
   return row;
 }
@@ -63,51 +70,80 @@ export function applyMappings(
 
 /** Classes: parse time strings to 24h format, length to number, isRestricted to boolean */
 const classMappings: FieldMapping = {
-  startTime: (val) => DateHelpers.parseTimeString(val).to24Hour(),
-  endTime: (val) => DateHelpers.parseTimeString(val).to24Hour(),
-  length: (val) => parseInt(val) || 0,
-  isRestricted: (val) => val === 'TRUE' || val === 'true',
+  startTime: val => DateHelpers.parseTimeString(val).to24Hour(),
+  endTime: val => DateHelpers.parseTimeString(val).to24Hour(),
+  length: val => parseInt(val) || 0,
+  isRestricted: val => val === 'TRUE' || val === 'true',
 };
 
 /** Instructors: isDeactivated→isActive inversion, flat fields→nested objects */
 const instructorMappings: FieldMapping = {
   isActive: (_val, row) => !row.isDeactivated || row.isDeactivated.toLowerCase() === 'false',
-  specialties: (_val, row) => [row.instrument1, row.instrument2, row.instrument3, row.instrument4].filter(Boolean),
+  specialties: (_val, row) =>
+    [row.instrument1, row.instrument2, row.instrument3, row.instrument4].filter(Boolean),
   availability: (_val, row) => ({
-    monday: { isAvailable: row.isAvailableMonday === 'TRUE' || row.isAvailableMonday === 'true', startTime: row.mondayStartTime, endTime: row.mondayEndTime, roomId: row.mondayRoomId },
-    tuesday: { isAvailable: row.isAvailableTuesday === 'TRUE' || row.isAvailableTuesday === 'true', startTime: row.tuesdayStartTime, endTime: row.tuesdayEndTime, roomId: row.tuesdayRoomId },
-    wednesday: { isAvailable: row.isAvailableWednesday === 'TRUE' || row.isAvailableWednesday === 'true', startTime: row.wednesdayStartTime, endTime: row.wednesdayEndTime, roomId: row.wednesdayRoomId },
-    thursday: { isAvailable: row.isAvailableThursday === 'TRUE' || row.isAvailableThursday === 'true', startTime: row.thursdayStartTime, endTime: row.thursdayEndTime, roomId: row.thursdayRoomId },
-    friday: { isAvailable: row.isAvailableFriday === 'TRUE' || row.isAvailableFriday === 'true', startTime: row.fridayStartTime, endTime: row.fridayEndTime, roomId: row.fridayRoomId },
+    monday: {
+      isAvailable: row.isAvailableMonday === 'TRUE' || row.isAvailableMonday === 'true',
+      startTime: row.mondayStartTime,
+      endTime: row.mondayEndTime,
+      roomId: row.mondayRoomId,
+    },
+    tuesday: {
+      isAvailable: row.isAvailableTuesday === 'TRUE' || row.isAvailableTuesday === 'true',
+      startTime: row.tuesdayStartTime,
+      endTime: row.tuesdayEndTime,
+      roomId: row.tuesdayRoomId,
+    },
+    wednesday: {
+      isAvailable: row.isAvailableWednesday === 'TRUE' || row.isAvailableWednesday === 'true',
+      startTime: row.wednesdayStartTime,
+      endTime: row.wednesdayEndTime,
+      roomId: row.wednesdayRoomId,
+    },
+    thursday: {
+      isAvailable: row.isAvailableThursday === 'TRUE' || row.isAvailableThursday === 'true',
+      startTime: row.thursdayStartTime,
+      endTime: row.thursdayEndTime,
+      roomId: row.thursdayRoomId,
+    },
+    friday: {
+      isAvailable: row.isAvailableFriday === 'TRUE' || row.isAvailableFriday === 'true',
+      startTime: row.fridayStartTime,
+      endTime: row.fridayEndTime,
+      roomId: row.fridayRoomId,
+    },
   }),
   gradeRange: (_val, row) => ({ minimum: row.minimumGrade, maximum: row.maximumGrade }),
 };
 
 /** Attendance: week to number, attended to boolean */
 const attendanceMappings: FieldMapping = {
-  week: (val) => Number(val || 0),
-  attended: (val) => val ? val.toLowerCase() === 'true' : true,
+  week: val => Number(val || 0),
+  attended: val => (val ? val.toLowerCase() === 'true' : true),
 };
 
 /** Admins: isDirector to boolean */
 const adminMappings: FieldMapping = {
-  isDirector: (val) => val === 'TRUE' || val === 'true',
+  isDirector: val => val === 'TRUE' || val === 'true',
 };
 
 /** Rooms: includeRoomId to boolean */
 const roomMappings: FieldMapping = {
-  includeRoomId: (val) => val === 'TRUE' || val === 'true',
+  includeRoomId: val => val === 'TRUE' || val === 'true',
 };
 
 /** Registrations: length string to number (null if empty/NaN for waitlist classes) */
 const registrationMappings: FieldMapping = {
-  length: (val) => { const n = parseInt(val); return isNaN(n) ? null : n; },
+  length: val => {
+    const n = parseInt(val);
+    return isNaN(n) ? null : n;
+  },
 };
 
 /** Periods: trimester to lowercase, startDate to Date */
 const periodMappings: FieldMapping = {
-  trimester: (val) => val ? val.toLowerCase() : null,
-  startDate: (val) => {
+  trimester: val => (val ? val.toLowerCase() : null),
+  startDate: val => {
     if (!val) return null;
     const d = new Date(val);
     return isNaN(d.getTime()) ? null : d;
@@ -173,21 +209,68 @@ export class GoogleSheetsDbClient extends BaseService {
     // Initialize sheet info — compact configs referencing model column schemas
     const trimesters = ['fall', 'winter', 'spring'] as const;
     this.workingSheetInfo = {
-      [Keys.ADMINS]: { sheet: Keys.ADMINS, startRow: 2, columns: Admin.columns, mappings: adminMappings },
-      [Keys.INSTRUCTORS]: { sheet: Keys.INSTRUCTORS, startRow: 2, columns: Instructor.columns, mappings: instructorMappings },
+      [Keys.ADMINS]: {
+        sheet: Keys.ADMINS,
+        startRow: 2,
+        columns: Admin.columns,
+        mappings: adminMappings,
+      },
+      [Keys.INSTRUCTORS]: {
+        sheet: Keys.INSTRUCTORS,
+        startRow: 2,
+        columns: Instructor.columns,
+        mappings: instructorMappings,
+      },
       [Keys.PARENTS]: { sheet: Keys.PARENTS, startRow: 2, columns: Parent.columns },
       [Keys.STUDENTS]: { sheet: Keys.STUDENTS, startRow: 2, columns: Student.columns },
-      [Keys.CLASSES]: { sheet: Keys.CLASSES, startRow: 2, columns: Class.columns, mappings: classMappings },
-      [Keys.ROOMS]: { sheet: Keys.ROOMS, startRow: 2, columns: Room.columns, mappings: roomMappings },
-      [Keys.ATTENDANCE]: { sheet: Keys.ATTENDANCE, startRow: 2, columns: AttendanceRecordModel.columns, mappings: attendanceMappings },
-      [Keys.ATTENDANCEAUDIT]: { sheet: Keys.ATTENDANCEAUDIT, startRow: 2, columns: AttendanceRecordModel.auditColumns },
-      [Keys.PERIODS]: { sheet: Keys.PERIODS, startRow: 2, columns: PERIOD_COLUMNS, mappings: periodMappings },
+      [Keys.CLASSES]: {
+        sheet: Keys.CLASSES,
+        startRow: 2,
+        columns: Class.columns,
+        mappings: classMappings,
+      },
+      [Keys.ROOMS]: {
+        sheet: Keys.ROOMS,
+        startRow: 2,
+        columns: Room.columns,
+        mappings: roomMappings,
+      },
+      [Keys.ATTENDANCE]: {
+        sheet: Keys.ATTENDANCE,
+        startRow: 2,
+        columns: AttendanceRecordModel.columns,
+        mappings: attendanceMappings,
+      },
+      [Keys.ATTENDANCEAUDIT]: {
+        sheet: Keys.ATTENDANCEAUDIT,
+        startRow: 2,
+        columns: AttendanceRecordModel.auditColumns,
+      },
+      [Keys.PERIODS]: {
+        sheet: Keys.PERIODS,
+        startRow: 2,
+        columns: PERIOD_COLUMNS,
+        mappings: periodMappings,
+      },
       drop_requests: { sheet: 'drop_requests', startRow: 2, columns: DropRequest.columns },
       // Generate trimester-specific registration and audit sheets from shared schemas
-      ...Object.fromEntries(trimesters.flatMap(t => [
-        [`registrations_${t}`, { sheet: `registrations_${t}`, startRow: 2, columns: Registration.columns, mappings: registrationMappings }],
-        [`registrations_${t}_audit`, { sheet: `registrations_${t}_audit`, startRow: 2, columns: Registration.auditColumns }],
-      ])),
+      ...Object.fromEntries(
+        trimesters.flatMap(t => [
+          [
+            `registrations_${t}`,
+            {
+              sheet: `registrations_${t}`,
+              startRow: 2,
+              columns: Registration.columns,
+              mappings: registrationMappings,
+            },
+          ],
+          [
+            `registrations_${t}_audit`,
+            { sheet: `registrations_${t}_audit`, startRow: 2, columns: Registration.auditColumns },
+          ],
+        ])
+      ),
     };
   }
 
@@ -196,7 +279,7 @@ export class GoogleSheetsDbClient extends BaseService {
    * Used internally by update/delete operations that need unmapped data for ID matching and writes.
    */
   async #getRawRecords(sheetKey: string): Promise<Record<string, string>[]> {
-    return this.getAllRecords(sheetKey, (rec) => rec as Record<string, string>, true);
+    return this.getAllRecords(sheetKey, rec => rec as Record<string, string>, true);
   }
 
   /**
@@ -205,8 +288,11 @@ export class GoogleSheetsDbClient extends BaseService {
    * Implements caching to minimize API calls.
    * Field mappings (if configured) are applied before passing data to mapFunc.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async getAllRecords<T>(sheetKey: string, mapFunc: (record: Record<string, any>) => T, skipMappings = false): Promise<T[]> { // SC-005: Record<string, any> because field mappings produce mixed types
+  async getAllRecords<T>(
+    sheetKey: string,
+    mapFunc: (record: Record<string, unknown>) => T,
+    skipMappings = false
+  ): Promise<T[]> {
     try {
       const sheetInfo = this.workingSheetInfo[sheetKey];
 
@@ -229,7 +315,9 @@ export class GoogleSheetsDbClient extends BaseService {
       // Convert raw row to record, applying field mappings if configured
       const processRow = (row: string[]): Record<string, unknown> => {
         const record = rowToObject(row, sheetInfo.columns);
-        return (!skipMappings && sheetInfo.mappings) ? applyMappings(record, sheetInfo.mappings) : record;
+        return !skipMappings && sheetInfo.mappings
+          ? applyMappings(record, sheetInfo.mappings)
+          : record;
       };
 
       // Check cache if available and caching is allowed for this sheet
@@ -245,20 +333,21 @@ export class GoogleSheetsDbClient extends BaseService {
 
       // Cache miss - fetch from Google Sheets API
       this.logger.info(`🌐 API call for ${sheetKey}`);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const response: any = await this.sheets.spreadsheets.values.get({ // Google Sheets API boundary
+      const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: spreadsheetId,
         range: range,
       });
 
-      const rows: string[][] = response.data.values || [];
+      const rows: string[][] = (response.data.values as string[][] | undefined) || [];
 
       // Store raw rows in cache if available and caching is allowed for this sheet
       if (this.cacheService && shouldCache) {
         this.cacheService.set(cacheKey, rows, this.cacheExpirationMs);
       }
 
-      return rows.map((row: string[]) => mapFunc(processRow(row))).filter((item: T): item is NonNullable<T> => item !== null && item !== undefined);
+      return rows
+        .map((row: string[]) => mapFunc(processRow(row)))
+        .filter((item: T): item is NonNullable<T> => item !== null && item !== undefined);
     } catch (error) {
       this.logger.error(`Error getting data from sheet ${sheetKey}:`, (error as Error).message);
       throw error;
@@ -276,15 +365,10 @@ export class GoogleSheetsDbClient extends BaseService {
     return letter;
   }
 
-  /**
-   * Append a record to a sheet.
-   * @param inputOption - 'RAW' preserves data as-is (default for domain records),
-   *   'USER_ENTERED' lets Sheets interpret values (used for audit records).
-   */
+  /** Append a record to a sheet. Always uses RAW input to preserve data as-is. */
   async appendRecord(
     sheetKey: string,
-    record: Record<string, unknown>,
-    inputOption: 'RAW' | 'USER_ENTERED' = 'RAW'
+    record: Record<string, unknown>
   ): Promise<Record<string, unknown>> {
     try {
       const sheetInfo = this.workingSheetInfo[sheetKey];
@@ -298,7 +382,7 @@ export class GoogleSheetsDbClient extends BaseService {
       await this.sheets.spreadsheets.values.append({
         spreadsheetId: this.spreadsheetId,
         range: `${sheetInfo.sheet}!A:A`,
-        valueInputOption: inputOption,
+        valueInputOption: 'RAW',
         requestBody: {
           values: [row],
         },
@@ -352,8 +436,11 @@ export class GoogleSheetsDbClient extends BaseService {
   /**
    * Update data in sheet
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async #updateInSheet(sheetKey: string, rowIndex: number, data: Record<string, unknown>): Promise<any> { // Google Sheets API boundary
+  async #updateInSheet(
+    sheetKey: string,
+    rowIndex: number,
+    data: Record<string, unknown>
+  ): Promise<sheets_v4.Schema$UpdateValuesResponse> {
     try {
       const sheetInfo = this.workingSheetInfo[sheetKey];
       if (!sheetInfo) {
@@ -369,7 +456,7 @@ export class GoogleSheetsDbClient extends BaseService {
       const response = await this.sheets.spreadsheets.values.update({
         spreadsheetId: spreadsheetId,
         range: `${sheetInfo.sheet}!A${actualRowIndex}:${lastColumn}${actualRowIndex}`,
-        valueInputOption: 'USER_ENTERED',
+        valueInputOption: 'RAW',
         requestBody: {
           values: [row],
         },
@@ -407,8 +494,10 @@ export class GoogleSheetsDbClient extends BaseService {
   }
 
   /** Delete a row from a sheet by index */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async #deleteFromSheet(sheetKey: string, rowIndex: number): Promise<any> { // Google Sheets API boundary
+  async #deleteFromSheet(
+    sheetKey: string,
+    rowIndex: number
+  ): Promise<sheets_v4.Schema$BatchUpdateSpreadsheetResponse> {
     try {
       const sheetInfo = this.workingSheetInfo[sheetKey];
       if (!sheetInfo) {
@@ -418,13 +507,13 @@ export class GoogleSheetsDbClient extends BaseService {
       const spreadsheetId = this.spreadsheetId;
 
       // Get sheet ID first
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const spreadsheet: any = await this.sheets.spreadsheets.get({ // Google Sheets API boundary
+      const spreadsheet = await this.sheets.spreadsheets.get({
         spreadsheetId: spreadsheetId,
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const sheet = spreadsheet.data.sheets.find((s: any) => s.properties.title === sheetInfo.sheet); // Google Sheets API boundary
+      const sheet = spreadsheet.data.sheets?.find(
+        (s: sheets_v4.Schema$Sheet) => s.properties?.title === sheetInfo.sheet
+      );
       if (!sheet) {
         throw new Error(`Sheet not found: ${sheetInfo.sheet}`);
       }
@@ -438,7 +527,7 @@ export class GoogleSheetsDbClient extends BaseService {
             {
               deleteDimension: {
                 range: {
-                  sheetId: sheet.properties.sheetId,
+                  sheetId: sheet.properties?.sheetId,
                   dimension: 'ROWS',
                   startIndex: actualRowIndex - 1,
                   endIndex: actualRowIndex,

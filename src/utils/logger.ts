@@ -15,7 +15,7 @@ export const LogLevel = {
   DEBUG: 'debug',
 } as const;
 
-export type LogLevelValue = typeof LogLevel[keyof typeof LogLevel];
+export type LogLevelValue = (typeof LogLevel)[keyof typeof LogLevel];
 
 /**
  * Node environment enum
@@ -27,7 +27,7 @@ export const NodeEnv = {
   TEST: 'test',
 } as const;
 
-export type NodeEnvValue = typeof NodeEnv[keyof typeof NodeEnv];
+export type NodeEnvValue = (typeof NodeEnv)[keyof typeof NodeEnv];
 
 interface ServerConfig {
   logLevel?: string;

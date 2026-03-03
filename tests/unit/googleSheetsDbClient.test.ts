@@ -256,7 +256,9 @@ describe('GoogleSheetsDbClient', () => {
         range: 'admins!A:A',
         valueInputOption: 'RAW',
         requestBody: {
-          values: [['admin-1', 'test@test.com', 'Doe', 'John', '5551234000', '', '', '', '', 'false']],
+          values: [
+            ['admin-1', 'test@test.com', 'Doe', 'John', '5551234000', '', '', '', '', 'false'],
+          ],
         },
       });
     });
@@ -329,7 +331,7 @@ describe('GoogleSheetsDbClient', () => {
       expect(mockSheetsApi.spreadsheets.values.update).toHaveBeenCalledWith({
         spreadsheetId: 'test-spreadsheet-id',
         range: 'admins!A3:J3',
-        valueInputOption: 'USER_ENTERED',
+        valueInputOption: 'RAW',
         requestBody: {
           values: [
             ['admin-2', 'updated@test.com', 'Smith', 'Jane', '5559999000', '', '', '', '', 'false'],
@@ -418,5 +420,4 @@ describe('GoogleSheetsDbClient', () => {
       expect(mockSheetsApi.spreadsheets.batchUpdate).not.toHaveBeenCalled();
     });
   });
-
 });

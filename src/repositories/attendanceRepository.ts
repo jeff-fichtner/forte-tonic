@@ -46,7 +46,7 @@ export class AttendanceRepository extends BaseRepository<AttendanceRecord> {
   constructor(dbClient: GoogleSheetsDbClient, configService?: ConfigurationService) {
     super(
       Keys.ATTENDANCE,
-      (record) => AttendanceRecord.fromDatabaseRow(record),
+      record => AttendanceRecord.fromDatabaseRow(record),
       dbClient,
       configService
     );
@@ -72,7 +72,7 @@ export class AttendanceRepository extends BaseRepository<AttendanceRecord> {
       performedBy,
       performedAt: new Date().toISOString(),
     };
-    await this.dbClient.appendRecord(Keys.ATTENDANCEAUDIT, auditRecord, 'USER_ENTERED');
+    await this.dbClient.appendRecord(Keys.ATTENDANCEAUDIT, auditRecord);
   }
 
   /**
@@ -114,10 +114,7 @@ export class AttendanceRepository extends BaseRepository<AttendanceRecord> {
       attendanceData.recordedAt = new Date().toISOString();
 
       // Save via parent
-      const created = await super.create(
-        attendanceData,
-        attendanceData.recordedBy
-      );
+      const created = await super.create(attendanceData, attendanceData.recordedBy);
 
       // Write audit record
       await this.#writeAuditRecord(created, attendanceData.recordedBy);
@@ -205,5 +202,4 @@ export class AttendanceRepository extends BaseRepository<AttendanceRecord> {
     const all = await this.findAll();
     return all.filter(x => registrationIds.includes(x.registrationId));
   }
-
 }

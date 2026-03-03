@@ -8,16 +8,13 @@ import { GoogleSheetsDbClient } from '../database/googleSheetsDbClient.js';
 import type { ConfigurationService } from '../services/configurationService.js';
 
 /** Function that converts a mapped DB record into a model instance */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- SC-005: field mappings produce mixed types
-export type RecordMapper<T> = (record: Record<string, any>) => T | null;
+export type RecordMapper<T> = (record: Record<string, unknown>) => T | null;
 
 /**
  * Abstract base repository with standardized data access
  * Caching is handled at the GoogleSheetsDbClient layer
  */
-export class BaseRepository<T extends object>
-  extends BaseService
-{
+export class BaseRepository<T extends object> extends BaseService {
   entityName: string;
   dbClient: GoogleSheetsDbClient;
   protected mapRecord: RecordMapper<T>;
@@ -45,10 +42,7 @@ export class BaseRepository<T extends object>
 
       this.logger.info(`📝 Creating new ${this.entityName} by ${createdBy}`);
 
-      const created = await this.dbClient.appendRecord(
-        this.entityName,
-        entityData
-      );
+      const created = await this.dbClient.appendRecord(this.entityName, entityData);
 
       this.logger.info(`✅ Created ${this.entityName} with ID:`, created.id);
       const converted = this.convertToModel(created as Record<string, unknown>);
@@ -65,15 +59,15 @@ export class BaseRepository<T extends object>
   /**
    * Updates an existing record
    */
-  async update(id: string, entityData: Record<string, unknown>, updatedBy: string = ''): Promise<T | null> {
+  async update(
+    id: string,
+    entityData: Record<string, unknown>,
+    updatedBy: string = ''
+  ): Promise<T | null> {
     try {
       this.logger.info(`📝 Updating ${this.entityName} with ID:`, id);
 
-      await this.dbClient.updateRecord(
-        this.entityName,
-        { ...entityData, id },
-        updatedBy
-      );
+      await this.dbClient.updateRecord(this.entityName, { ...entityData, id }, updatedBy);
 
       this.logger.info(`✅ Updated ${this.entityName} with ID:`, id);
 
@@ -121,11 +115,16 @@ export class BaseRepository<T extends object>
    * Fetch and map all records from a specific sheet.
    * Subclasses managing multiple entity types can call this directly.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- SC-005: field mappings produce mixed types
-  protected async fetchAll<U extends object>(sheetKey: string, mapper: RecordMapper<U>): Promise<U[]> {
-    const records = await this.dbClient.getAllRecords(sheetKey, (record: Record<string, any>) => {
-      return mapper(record);
-    });
+  protected async fetchAll<U extends object>(
+    sheetKey: string,
+    mapper: RecordMapper<U>
+  ): Promise<U[]> {
+    const records = await this.dbClient.getAllRecords(
+      sheetKey,
+      (record: Record<string, unknown>) => {
+        return mapper(record);
+      }
+    );
     return records.filter((record): record is U => record !== null);
   }
 
@@ -154,7 +153,9 @@ export class BaseRepository<T extends object>
       return allRecords.filter(record => (record as Record<string, unknown>)[field] === value);
     } catch (error) {
       this.logger.error(`❌ Error finding ${this.entityName}s by ${field}:`, error);
-      throw new Error(`Failed to find ${this.entityName}s by ${field}: ${(error as Error).message}`);
+      throw new Error(
+        `Failed to find ${this.entityName}s by ${field}: ${(error as Error).message}`
+      );
     }
   }
 

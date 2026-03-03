@@ -22,7 +22,7 @@ export class RegistrationRepository extends BaseRepository<Registration> {
     configService: ConfigurationService,
     periodService: PeriodService
   ) {
-    super('registrations', (record) => Registration.fromDatabaseRow(record), dbClient, configService);
+    super('registrations', record => Registration.fromDatabaseRow(record), dbClient, configService);
     this.periodService = periodService;
   }
 
@@ -32,7 +32,7 @@ export class RegistrationRepository extends BaseRepository<Registration> {
    */
   private async _fetchRegistrations(tableName: string): Promise<Registration[]> {
     const rockBandClassIds = this.configService.getRockBandClassIds();
-    const registrations = await this.fetchAll(tableName, (record) => {
+    const registrations = await this.fetchAll(tableName, record => {
       if (!record || !record.id) return null;
       try {
         return Registration.fromDatabaseRow(record);
@@ -120,11 +120,16 @@ export class RegistrationRepository extends BaseRepository<Registration> {
   /**
    * Create a new registration in a trimester-specific table
    */
-  override async create(registrationData: Record<string, unknown>, targetTrimester: string): Promise<Registration> {
+  override async create(
+    registrationData: Record<string, unknown>,
+    targetTrimester: string
+  ): Promise<Registration> {
     const data = registrationData as RegistrationData;
     try {
       if (!targetTrimester) {
-        throw new Error('targetTrimester is required - must explicitly specify which trimester to save to');
+        throw new Error(
+          'targetTrimester is required - must explicitly specify which trimester to save to'
+        );
       }
 
       const tableName = this._tableName(targetTrimester);
@@ -224,7 +229,7 @@ export class RegistrationRepository extends BaseRepository<Registration> {
       updatedAt: now,
       updatedBy: performedBy,
     };
-    await this.dbClient.appendRecord(auditSheet, auditRecord, 'USER_ENTERED');
+    await this.dbClient.appendRecord(auditSheet, auditRecord);
   }
 
   /**
@@ -246,11 +251,7 @@ export class RegistrationRepository extends BaseRepository<Registration> {
 
     registration.updateIntent(intent as 'keep' | 'drop' | 'change', submittedBy);
 
-    await this.dbClient.updateRecord(
-      targetSheet,
-      { ...registration.toJSON() },
-      submittedBy
-    );
+    await this.dbClient.updateRecord(targetSheet, { ...registration.toJSON() }, submittedBy);
 
     const auditSheet = `${targetSheet}_audit`;
     await this.#writeAuditRecord(registration, submittedBy, auditSheet);
