@@ -229,36 +229,37 @@ export class RegistrationService extends BaseService {
       }
 
       // Step 3.5: Validate instructor availability for the selected day
-      const dayKey = registrationData.day?.toLowerCase();
-      const dayAvailability = dayKey
-        ? (instructor.availability as Record<string, { isAvailable: boolean }> | null)?.[dayKey]
-        : undefined;
+      // TODO: Re-enable once availability data is fully populated
+      // const dayKey = registrationData.day?.toLowerCase();
+      // const dayAvailability = dayKey
+      //   ? (instructor.availability as Record<string, { isAvailable: boolean }> | null)?.[dayKey]
+      //   : undefined;
+      //
+      // if (!dayAvailability?.isAvailable) {
+      //   throw new ValidationError(
+      //     `${instructor.firstName ?? ''} ${instructor.lastName ?? ''} is not available on ${registrationData.day}`.trim()
+      //   );
+      // }
 
-      if (!dayAvailability?.isAvailable) {
-        throw new ValidationError(
-          `${instructor.firstName ?? ''} ${instructor.lastName ?? ''} is not available on ${registrationData.day}`.trim()
-        );
-      }
-
-      // Step 3.6: Validate room assignment
-      if (!registrationData.roomId) {
-        throw new ValidationError('Room ID is required');
-      }
-      const room = await this.#userRepository.getRoomById(registrationData.roomId);
-      if (!room) {
-        throw new ValidationError(
-          `Invalid room: "${registrationData.roomId}" does not match any known room`
-        );
-      }
-
-      this.logger.info(
-        `🏫 Room assignment for ${registrationData.registrationType} registration:`,
-        {
-          day: registrationData.day,
-          instructorId: instructor.id,
-          roomId: registrationData.roomId,
+      // Step 3.6: Validate room assignment (optional for now, validated if provided)
+      // TODO: Make roomId required once all registration flows populate it
+      if (registrationData.roomId) {
+        const room = await this.#userRepository.getRoomById(registrationData.roomId);
+        if (!room) {
+          throw new ValidationError(
+            `Invalid room: "${registrationData.roomId}" does not match any known room`
+          );
         }
-      );
+
+        this.logger.info(
+          `🏫 Room assignment for ${registrationData.registrationType} registration:`,
+          {
+            day: registrationData.day,
+            instructorId: instructor.id,
+            roomId: registrationData.roomId,
+          }
+        );
+      }
 
       // Step 4: Program-specific validation (catalog/class rules)
       const programValidation = this.#validateProgramRules(groupClass ?? null);
