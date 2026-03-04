@@ -536,9 +536,7 @@ export class RegistrationController {
       ]);
 
       // Extract unique grades from parent's children for grade-keyed availability
-      const uniqueGrades = [
-        ...new Set(parentStudents.map(s => s.grade ?? null)),
-      ];
+      const uniqueGrades = [...new Set(parentStudents.map(s => s.grade ?? null))];
 
       const availableTimeSlots = availabilityService.computeAvailableTimeSlots(
         instructors,

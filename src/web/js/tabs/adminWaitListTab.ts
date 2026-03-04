@@ -24,6 +24,7 @@ interface WaitListStudent {
   id: string;
   firstName: string;
   lastName: string;
+  fullName: string;
   grade: number | string;
   parentEmails: string;
 }

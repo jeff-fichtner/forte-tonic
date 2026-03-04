@@ -1,6 +1,5 @@
 import { jest } from '@jest/globals';
 import { PeriodService } from '../../../src/services/periodService.js';
-import { PeriodType } from '../../../src/utils/values/periodType.js';
 
 // Test helpers
 function createPeriodService(periods) {

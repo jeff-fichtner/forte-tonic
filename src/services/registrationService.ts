@@ -19,8 +19,7 @@ import type { RegistrationData } from '../models/shared/registration.js';
 import type { RegistrationRepository } from '../repositories/registrationRepository.js';
 import type { UserRepository } from '../repositories/userRepository.js';
 import type { ProgramRepository } from '../repositories/programRepository.js';
-import type { Class, ClassData } from '../models/shared/class.js';
-import type { Student } from '../models/shared/student.js';
+import type { ClassData } from '../models/shared/class.js';
 import { DateHelpers, TonicDuration } from '../utils/nativeDateTimeHelpers.js';
 
 // ---------------------------------------------------------------------------
@@ -160,7 +159,10 @@ export class RegistrationService extends BaseService {
       this.logger.info('🎵 Processing new registration', { isAdmin });
 
       // Step 1: Handle group registration data population
-      if (registrationData.registrationType === RegistrationType.GROUP && registrationData.classId) {
+      if (
+        registrationData.registrationType === RegistrationType.GROUP &&
+        registrationData.classId
+      ) {
         // For group registrations, populate missing fields from class data
         const groupClass = await this.#programRepository.getClassById(registrationData.classId);
         if (!groupClass) {
@@ -545,7 +547,9 @@ export class RegistrationService extends BaseService {
 
     // Lesson length validation
     if (registrationData.length && !this.isValidLessonLength(registrationData.length)) {
-      errors.push(`Invalid lesson length. Must be ${DEFAULT_REGISTRATION_CONFIG.lessonLengths.join(', ')} minutes`);
+      errors.push(
+        `Invalid lesson length. Must be ${DEFAULT_REGISTRATION_CONFIG.lessonLengths.join(', ')} minutes`
+      );
     }
   }
 

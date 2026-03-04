@@ -259,7 +259,11 @@ export class GoogleSheetsDbClient extends BaseService {
         columns: PERIOD_COLUMNS,
         mappings: periodMappings,
       },
-      [Keys.DROP_REQUESTS]: { sheet: Keys.DROP_REQUESTS, startRow: 2, columns: DropRequest.columns },
+      [Keys.DROP_REQUESTS]: {
+        sheet: Keys.DROP_REQUESTS,
+        startRow: 2,
+        columns: DropRequest.columns,
+      },
       // Generate trimester-specific registration and audit sheets from shared schemas
       ...Object.fromEntries(
         trimesters.flatMap(t => [
@@ -410,7 +414,7 @@ export class GoogleSheetsDbClient extends BaseService {
   async updateRecord(
     sheetKey: string,
     record: Record<string, unknown>,
-    updatedBy: string
+    _updatedBy: string
   ): Promise<void> {
     try {
       const sheetInfo = this.workingSheetInfo[sheetKey];

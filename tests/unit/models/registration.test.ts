@@ -1,4 +1,3 @@
-import { jest } from '@jest/globals';
 import { Registration } from '../../../src/models/shared/registration.js';
 
 describe('Registration', () => {

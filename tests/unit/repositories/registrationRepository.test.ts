@@ -264,7 +264,7 @@ describe('RegistrationRepository - Delete Functionality', () => {
 
   describe('_fetchRegistrations', () => {
     test('should get registrations from specific table', async () => {
-      const mockData = [
+      const _mockData = [
         ['reg-1', 'student-1', 'instructor-1'],
         ['reg-2', 'student-2', 'instructor-2'],
       ];

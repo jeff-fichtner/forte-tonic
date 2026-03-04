@@ -17,7 +17,9 @@ describe('Group Registration Service', () => {
     mockUserRepository = {
       getStudentById: jest.fn(),
       getInstructorById: jest.fn(),
-      getRoomById: jest.fn().mockImplementation((id: string) => Promise.resolve({ id, name: `Room ${id}` })),
+      getRoomById: jest
+        .fn()
+        .mockImplementation((id: string) => Promise.resolve({ id, name: `Room ${id}` })),
     };
 
     mockProgramRepository = {
@@ -104,7 +106,7 @@ describe('Group Registration Service', () => {
       });
 
       // Act
-      const result = await registrationService.processRegistration(registrationData, 'test-user');
+      const _result = await registrationService.processRegistration(registrationData, 'test-user');
 
       // Assert
       expect(mockProgramRepository.getClassById).toHaveBeenCalledWith('CLASS-001');

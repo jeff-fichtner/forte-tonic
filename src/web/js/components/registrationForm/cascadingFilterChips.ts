@@ -46,10 +46,6 @@ export interface CascadingFilterChipsConfig {
 export class CascadingFilterChips {
   // Data arrays (mutable via updateData)
   #instructors: InstructorLike[];
-  #registrations: RegistrationLike[];
-  #nextTrimesterRegistrations: RegistrationLike[];
-  #selectedPreviousRegistrationId: string | null;
-  #isEnrollmentPeriod: boolean;
   #onTimeSlotSelected: (slot: TimeSlot | null) => void;
   #parentChildren: StudentLike[];
   #availableTimeSlots: AvailableTimeSlot[];
@@ -60,10 +56,6 @@ export class CascadingFilterChips {
 
   constructor(config: CascadingFilterChipsConfig) {
     this.#instructors = config.instructors;
-    this.#registrations = config.registrations;
-    this.#nextTrimesterRegistrations = config.nextTrimesterRegistrations;
-    this.#selectedPreviousRegistrationId = config.selectedPreviousRegistrationId;
-    this.#isEnrollmentPeriod = config.isEnrollmentPeriod;
     this.#onTimeSlotSelected = config.onTimeSlotSelected;
     this.#parentChildren = config.parentChildren;
     this.#availableTimeSlots = config.availableTimeSlots;
@@ -88,13 +80,6 @@ export class CascadingFilterChips {
   /** Patch one or more config properties and refresh the UI. */
   updateData(config: Partial<CascadingFilterChipsConfig>): void {
     if (config.instructors !== undefined) this.#instructors = config.instructors;
-    if (config.registrations !== undefined) this.#registrations = config.registrations;
-    if (config.nextTrimesterRegistrations !== undefined)
-      this.#nextTrimesterRegistrations = config.nextTrimesterRegistrations;
-    if (config.selectedPreviousRegistrationId !== undefined)
-      this.#selectedPreviousRegistrationId = config.selectedPreviousRegistrationId;
-    if (config.isEnrollmentPeriod !== undefined)
-      this.#isEnrollmentPeriod = config.isEnrollmentPeriod;
     if (config.onTimeSlotSelected !== undefined)
       this.#onTimeSlotSelected = config.onTimeSlotSelected;
     if (config.parentChildren !== undefined) this.#parentChildren = config.parentChildren;
@@ -148,7 +133,9 @@ export class CascadingFilterChips {
    * Filter the pre-computed slot array by all active selections upstream
    * of the given dimension. Cascade order: instrument → day → length → instructor.
    */
-  #applyUpstreamFilters(dimension: 'instrument' | 'day' | 'length' | 'instructor'): AvailableTimeSlot[] {
+  #applyUpstreamFilters(
+    dimension: 'instrument' | 'day' | 'length' | 'instructor'
+  ): AvailableTimeSlot[] {
     let filtered = this.#availableTimeSlots;
 
     // instrument has no upstream filters
@@ -741,7 +728,6 @@ export class CascadingFilterChips {
 
       // Notify the parent form
       this.#onTimeSlotSelected(this.#selectedLesson);
-
     } else {
       const stillAvailableSlot = document.querySelector(
         `.timeslot[data-instructor-id="${selectionData.instructorId}"][data-day="${selectionData.day}"][data-time="${selectionData.time}"][data-length="${selectionData.length}"][data-instrument="${selectionData.instrument}"]`

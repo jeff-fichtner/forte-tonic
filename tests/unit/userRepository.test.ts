@@ -334,7 +334,7 @@ describe('UserRepository', () => {
 
     test('should return null when student not found', async () => {
       // Mock empty students array
-      mockGoogleSheetsDbClient.getAllRecords.mockImplementation(async (key, transformer) => {
+      mockGoogleSheetsDbClient.getAllRecords.mockImplementation(async (_key, _transformer) => {
         return [];
       });
 

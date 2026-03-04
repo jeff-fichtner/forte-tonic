@@ -4,7 +4,6 @@
  */
 
 import { jest } from '@jest/globals';
-import type { MigrationContext } from '../../../src/infrastructure/migration/types.js';
 
 // --- Mocks ---
 
@@ -48,16 +47,6 @@ function createMockDbClient() {
 }
 
 // --- Helpers ---
-
-function registerMigration(filename: string, id: string, migrateFn?: jest.Mock) {
-  const mod = {
-    id,
-    migrate:
-      migrateFn ?? jest.fn<(ctx: MigrationContext) => Promise<void>>().mockResolvedValue(undefined),
-  };
-  migrationModules.set(filename, mod);
-  return mod;
-}
 
 function mockMigrationsSheetExists(exists: boolean) {
   if (exists) {

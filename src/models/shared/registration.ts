@@ -221,10 +221,7 @@ export class Registration {
     }
 
     // If it's exactly 'private' or 'group', return as-is
-    if (
-      normalized === RegistrationType.PRIVATE ||
-      normalized === RegistrationType.GROUP
-    ) {
+    if (normalized === RegistrationType.PRIVATE || normalized === RegistrationType.GROUP) {
       return normalized as RegistrationTypeValue;
     }
 
@@ -277,7 +274,7 @@ export class Registration {
         intentSubmittedBy: record.intentSubmittedBy,
         linkedPreviousRegistrationId: record.linkedPreviousRegistrationId,
       });
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }

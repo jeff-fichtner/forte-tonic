@@ -7,8 +7,6 @@
  */
 
 import { HttpService } from '../data/httpService.js';
-import { DropRequestStatus } from '/utils/values/dropRequestStatus.js';
-
 
 interface DropRegistration {
   id: string;

@@ -5,7 +5,6 @@
  * Tests for trimester constants and validation utilities
  */
 
-import { jest } from '@jest/globals';
 import {
   Trimester,
   TRIMESTER_SEQUENCE,

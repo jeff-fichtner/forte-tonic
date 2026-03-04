@@ -13,7 +13,6 @@ import { FORTE_PROGRAM_EMAIL } from '../../constants.js';
 import { UserSession } from '../../auth/session.js';
 import type {
   InstructorLike,
-  RegistrationLike,
   RegistrationSubmitData,
   TimeSlot,
 } from '../../types/registrationTypes.js';

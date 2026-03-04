@@ -45,7 +45,7 @@ jest.unstable_mockModule('../../src/services/configurationService.js', () => ({
 
 // Mock the GoogleSheetsDbClient before importing anything else
 jest.unstable_mockModule('../../src/database/googleSheetsDbClient.js', () => ({
-  GoogleSheetsDbClient: jest.fn().mockImplementation((configService = mockConfigService) => ({
+  GoogleSheetsDbClient: jest.fn().mockImplementation((_configService = mockConfigService) => ({
     spreadsheetId: 'test-sheet-id',
     getAllRecords: jest.fn().mockResolvedValue([
       ['admin@test.com', 'Test', 'Admin', '555-1234'],
@@ -265,11 +265,11 @@ describe('Server Integration Tests', () => {
 
   describe('Error Handling', () => {
     test('should handle 404 for non-existent routes', async () => {
-      const response = await request(app).get('/non-existent-route').expect(404);
+      const _response = await request(app).get('/non-existent-route').expect(404);
     });
 
     test('should handle 404 for non-existent API endpoints', async () => {
-      const response = await request(app).post('/api/non-existent-endpoint').expect(404);
+      const _response = await request(app).post('/api/non-existent-endpoint').expect(404);
     });
   });
 

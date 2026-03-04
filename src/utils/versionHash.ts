@@ -41,7 +41,7 @@ export function generateFrontendVersionHash(): string {
     const versionString: string = `${packageJson.version}-${Date.now()}`;
     const hash: string = createHash('sha256').update(versionString).digest('hex');
     return hash.substring(0, 8);
-  } catch (error) {
+  } catch (_error) {
     // Ultimate fallback: timestamp-based hash
     const fallbackHash: string = createHash('sha256').update(Date.now().toString()).digest('hex');
     return fallbackHash.substring(0, 8);

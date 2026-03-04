@@ -27,7 +27,7 @@ export async function migrate(ctx: MigrationContext): Promise<void> {
 
   // 3. Read classes and resolve roomId from instructor's day availability
   const classes = await ctx.readAllRows(Keys.CLASSES);
-  const values = classes.map((cls) => {
+  const values = classes.map(cls => {
     const rooms = instructorRooms.get(cls.InstructorId);
     return rooms?.[cls.Day] ?? '';
   });

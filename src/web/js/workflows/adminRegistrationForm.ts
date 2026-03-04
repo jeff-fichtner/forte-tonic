@@ -4,7 +4,7 @@
  */
 
 import { RegistrationType } from '/utils/values/registrationType.js';
-import { RegistrationFormText, DayNames } from '../constants/registrationFormConstants.js';
+import { RegistrationFormText } from '../constants/registrationFormConstants.js';
 import {
   validateBusTimeRestrictions,
   validateRegistrationData,
@@ -24,7 +24,6 @@ import type {
   ClassLike,
   RegistrationLike,
 } from '../types/registrationTypes.js';
-
 
 /** Registration data built for submission (admin form allows null for some fields) */
 interface RegistrationData {
@@ -315,7 +314,7 @@ export class AdminRegistrationForm {
       };
     } else if (registrationType === RegistrationType.PRIVATE) {
       // For private lessons
-      const dayValue = this.lessonDetailsForm.getSelectedDayValue();
+      const _dayValue = this.lessonDetailsForm.getSelectedDayValue();
       const dayName = this.lessonDetailsForm.getSelectedDayName();
       const startTime = this.lessonDetailsForm.getSelectedTime();
       const length = this.lessonDetailsForm.getSelectedLength();

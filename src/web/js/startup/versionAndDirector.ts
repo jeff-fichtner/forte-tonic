@@ -72,7 +72,7 @@ Git Commit: ${versionInfo.gitCommit}
         });
       }
     }
-  } catch (error) {
+  } catch (_error) {
     // Don't throw - version display is not critical
   }
 }

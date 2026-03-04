@@ -6,7 +6,6 @@
 import { currentConfig, isProduction, isStaging, version } from '../config/environment.js';
 import type { Request, Response } from 'express';
 import { getLogger } from '../utils/logger.js';
-import { configService } from '../services/configurationService.js';
 import { successResponse, errorResponse } from '../common/responseHelpers.js';
 import { HTTP_STATUS } from '../common/errorConstants.js';
 import { ValidationError, UnauthorizedError } from '../common/errors.js';

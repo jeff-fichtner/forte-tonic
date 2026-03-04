@@ -9,7 +9,10 @@
 import { serviceContainer, ServiceKeys } from '../infrastructure/container/serviceContainer.js';
 import type { Request, Response } from 'express';
 import { AuthenticatedUserResponse } from '../models/shared/responses/authenticatedUserResponse.js';
-import { AppConfigurationResponse, DEFAULT_REGISTRATION_CONFIG } from '../models/shared/responses/appConfigurationResponse.js';
+import {
+  AppConfigurationResponse,
+  DEFAULT_REGISTRATION_CONFIG,
+} from '../models/shared/responses/appConfigurationResponse.js';
 import { configService } from '../services/configurationService.js';
 import { getLogger } from '../utils/logger.js';
 import { successResponse, errorResponse, asString } from '../common/responseHelpers.js';

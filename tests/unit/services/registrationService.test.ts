@@ -100,7 +100,7 @@ jest.unstable_mockModule('../../../src/utils/nativeDateTimeHelpers.js', () => {
 // ---------------------------------------------------------------------------
 
 const { RegistrationService } = await import('../../../src/services/registrationService.js');
-const { ConflictError } = await import('../../../src/common/errors.js');
+const { ConflictError: _ConflictError } = await import('../../../src/common/errors.js');
 const { RegistrationType } = await import('../../../src/utils/values/registrationType.js');
 
 // ---------------------------------------------------------------------------

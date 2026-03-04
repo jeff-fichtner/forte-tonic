@@ -33,6 +33,7 @@ interface MasterScheduleStudent {
   id: string;
   firstName: string;
   lastName: string;
+  fullName: string;
   grade: number | string;
   parentEmails: string;
 }
@@ -41,6 +42,7 @@ interface MasterScheduleInstructor {
   id: string;
   firstName: string;
   lastName: string;
+  fullName: string;
 }
 
 interface MasterScheduleData {
@@ -310,10 +312,12 @@ export class AdminMasterScheduleTab extends AdminBaseTab<MasterScheduleData> {
         : registration.instrument || 'N/A';
 
     // Display names - use placeholders for orphaned records
-    const studentName = student?.fullName ||
+    const studentName =
+      student?.fullName ||
       `<span class="red-text text-darken-2" title="Student ID: ${studentIdToFind}">\u26A0 Unknown Student</span>`;
     const studentGrade = student ? formatGrade(student.grade) || 'N/A' : '\u2014';
-    const instructorName = instructor?.fullName ||
+    const instructorName =
+      instructor?.fullName ||
       `<span class="red-text text-darken-2" title="Instructor ID: ${instructorIdToFind}">\u26A0 Unknown Instructor</span>`;
 
     // Add visual indicator for orphaned rows

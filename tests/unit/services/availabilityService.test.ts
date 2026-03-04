@@ -7,7 +7,6 @@
  */
 
 import { AvailabilityService } from '../../../src/services/availabilityService.js';
-import type { AvailableTimeSlot } from '../../../src/models/shared/availableTimeSlot.js';
 
 // ---------------------------------------------------------------------------
 // Test data factories
@@ -87,13 +86,7 @@ describe('AvailabilityService', () => {
   describe('computeAvailableTimeSlots', () => {
     it('should generate slots for a simple instructor schedule', () => {
       const instructor = makeInstructor();
-      const result = service.computeAvailableTimeSlots(
-        [instructor],
-        [],
-        [5],
-        [30, 45, 60],
-        null
-      );
+      const result = service.computeAvailableTimeSlots([instructor], [], [5], [30, 45, 60], null);
 
       expect(result['5']).toBeDefined();
       expect(result['5'].length).toBeGreaterThan(0);
@@ -109,13 +102,7 @@ describe('AvailabilityService', () => {
 
     it('should generate correct time format fields', () => {
       const instructor = makeInstructor();
-      const result = service.computeAvailableTimeSlots(
-        [instructor],
-        [],
-        [5],
-        [30],
-        null
-      );
+      const result = service.computeAvailableTimeSlots([instructor], [], [5], [30], null);
 
       const slot = result['5'][0];
       expect(slot.time).toBe('14:00');
@@ -135,13 +122,7 @@ describe('AvailabilityService', () => {
         },
       });
 
-      const result = service.computeAvailableTimeSlots(
-        [instructor],
-        [],
-        [5],
-        [30],
-        null
-      );
+      const result = service.computeAvailableTimeSlots([instructor], [], [5], [30], null);
 
       // One 30-min slot × 2 instruments = 2 slots
       expect(result['5']).toHaveLength(2);
@@ -160,13 +141,7 @@ describe('AvailabilityService', () => {
         },
       });
 
-      const result = service.computeAvailableTimeSlots(
-        [instructor],
-        [],
-        [5],
-        [30, 45, 60],
-        null
-      );
+      const result = service.computeAvailableTimeSlots([instructor], [], [5], [30, 45, 60], null);
 
       // Only 30 fits in a 30-min window. 45 and 60 exceed the end time.
       expect(result['5']).toHaveLength(1);
@@ -184,13 +159,7 @@ describe('AvailabilityService', () => {
         },
       });
 
-      const result = service.computeAvailableTimeSlots(
-        [instructor],
-        [],
-        [5],
-        [30],
-        null
-      );
+      const result = service.computeAvailableTimeSlots([instructor], [], [5], [30], null);
 
       expect(result['5']).toHaveLength(0);
     });
@@ -283,13 +252,7 @@ describe('AvailabilityService', () => {
         gradeRange: { minimum: 3, maximum: 6 },
       });
 
-      const result = service.computeAvailableTimeSlots(
-        [instructor],
-        [],
-        [3, 5, 9],
-        [30],
-        null
-      );
+      const result = service.computeAvailableTimeSlots([instructor], [], [3, 5, 9], [30], null);
 
       // Grade 3 and 5 are in range — should have slots
       expect(result['3'].length).toBeGreaterThan(0);
@@ -303,13 +266,7 @@ describe('AvailabilityService', () => {
         gradeRange: { minimum: 3, maximum: 6 },
       });
 
-      const result = service.computeAvailableTimeSlots(
-        [instructor],
-        [],
-        [null],
-        [30],
-        null
-      );
+      const result = service.computeAvailableTimeSlots([instructor], [], [null], [30], null);
 
       // Null grade = all instructors eligible
       expect(result['null']).toBeDefined();
@@ -350,38 +307,20 @@ describe('AvailabilityService', () => {
 
     it('should return empty arrays when no lesson lengths provided', () => {
       const instructor = makeInstructor();
-      const result = service.computeAvailableTimeSlots(
-        [instructor],
-        [],
-        [5],
-        [],
-        null
-      );
+      const result = service.computeAvailableTimeSlots([instructor], [], [5], [], null);
       expect(result['5']).toEqual([]);
     });
 
     it('should handle instructor with no specialties (defaults to Piano)', () => {
       const instructor = makeInstructor({ specialties: null });
-      const result = service.computeAvailableTimeSlots(
-        [instructor],
-        [],
-        [5],
-        [30],
-        null
-      );
+      const result = service.computeAvailableTimeSlots([instructor], [], [5], [30], null);
 
       expect(result['5'].every(s => s.instrument === 'Piano')).toBe(true);
     });
 
     it('should handle instructor with empty specialties array (defaults to Piano)', () => {
       const instructor = makeInstructor({ specialties: [] });
-      const result = service.computeAvailableTimeSlots(
-        [instructor],
-        [],
-        [5],
-        [30],
-        null
-      );
+      const result = service.computeAvailableTimeSlots([instructor], [], [5], [30], null);
 
       expect(result['5'].every(s => s.instrument === 'Piano')).toBe(true);
     });
@@ -397,13 +336,7 @@ describe('AvailabilityService', () => {
         },
       });
 
-      const result = service.computeAvailableTimeSlots(
-        [instructor],
-        [],
-        [5],
-        [30],
-        null
-      );
+      const result = service.computeAvailableTimeSlots([instructor], [], [5], [30], null);
 
       const days = [...new Set(result['5'].map(s => s.day))].sort();
       expect(days).toEqual(['monday', 'wednesday']);
@@ -416,13 +349,7 @@ describe('AvailabilityService', () => {
       // Registration blocks inst-1 at 14:00, but not inst-2
       const reg = makeRegistration({ instructorId: 'inst-1', day: 'Monday', startTime: '14:00' });
 
-      const result = service.computeAvailableTimeSlots(
-        [inst1, inst2],
-        [reg],
-        [5],
-        [30],
-        null
-      );
+      const result = service.computeAvailableTimeSlots([inst1, inst2], [reg], [5], [30], null);
 
       const inst1Slots = result['5'].filter(s => s.instructorId === 'inst-1');
       const inst2Slots = result['5'].filter(s => s.instructorId === 'inst-2');
@@ -435,13 +362,7 @@ describe('AvailabilityService', () => {
 
     it('should deduplicate grades', () => {
       const instructor = makeInstructor();
-      const result = service.computeAvailableTimeSlots(
-        [instructor],
-        [],
-        [5, 5, 5],
-        [30],
-        null
-      );
+      const result = service.computeAvailableTimeSlots([instructor], [], [5, 5, 5], [30], null);
 
       // Should only have one key for grade 5
       expect(Object.keys(result)).toEqual(['5']);

@@ -593,7 +593,7 @@ export class ParentGroupRegistration {
     const studentSelect = document.getElementById(
       'parent-student-select'
     ) as HTMLSelectElement | null;
-    const studentName = studentSelect?.selectedOptions[0]?.textContent || 'your child';
+    const _studentName = studentSelect?.selectedOptions[0]?.textContent || 'your child';
 
     // Find class details
     const selectedClass = this.config.classes.find(
@@ -610,7 +610,7 @@ export class ParentGroupRegistration {
     const instructorName = instructor?.fullName || 'the instructor';
 
     // Format time
-    const timeFormatted = formatDisplayTime(registrationData.startTime || '');
+    const _timeFormatted = formatDisplayTime(registrationData.startTime || '');
 
     // Format transportation type
     const transportationDisplay =

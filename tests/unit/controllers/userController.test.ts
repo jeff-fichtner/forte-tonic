@@ -125,8 +125,11 @@ jest.unstable_mockModule(
     },
     DEFAULT_REGISTRATION_CONFIG: {
       busDeadlines: {
-        Monday: '16:45', Tuesday: '16:45', Wednesday: '16:15',
-        Thursday: '16:45', Friday: '16:45',
+        Monday: '16:45',
+        Tuesday: '16:45',
+        Wednesday: '16:15',
+        Thursday: '16:45',
+        Friday: '16:45',
       },
       lessonLengths: [30, 45, 60],
       operationalHours: { startHour: 14, endHour: 18 },

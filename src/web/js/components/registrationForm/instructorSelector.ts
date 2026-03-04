@@ -7,7 +7,6 @@ import { Select } from '../select.js';
 import { RegistrationFormText } from '../../constants/registrationFormConstants.js';
 import type { InstructorLike } from '../../types/registrationTypes.js';
 
-
 interface SelectOption {
   value: string;
   label: string;

@@ -468,11 +468,11 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
     }
 
     // Display names - use placeholders for orphaned records
-    const studentName = student?.fullName ||
-      `<span class="red-text text-darken-2">⚠ Unknown Student</span>`;
+    const studentName =
+      student?.fullName || `<span class="red-text text-darken-2">⚠ Unknown Student</span>`;
     const studentGrade = student ? formatGrade(student.grade as number | string) || 'N/A' : '—';
-    const instructorName = instructor?.fullName ||
-      `<span class="red-text text-darken-2">⚠ Unknown Instructor</span>`;
+    const instructorName =
+      instructor?.fullName || `<span class="red-text text-darken-2">⚠ Unknown Instructor</span>`;
 
     // Add visual indicator for orphaned rows
     const rowStyle = isOrphaned ? 'background-color: #ffebee;' : '';
@@ -510,8 +510,8 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
       console.warn(`Student not found for wait list enrollment: ${enrollment.id}`, { studentId });
     }
 
-    const studentName = student?.fullName ||
-      `<span class="red-text text-darken-2">⚠ Unknown Student</span>`;
+    const studentName =
+      student?.fullName || `<span class="red-text text-darken-2">⚠ Unknown Student</span>`;
     const studentGrade = student ? formatGrade(student.grade as number | string) || 'N/A' : '—';
     const rowStyle = !student ? 'background-color: #ffebee;' : '';
 

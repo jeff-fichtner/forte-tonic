@@ -3,9 +3,7 @@
  * Handles student autocomplete selection for registration forms
  */
 
-import { RegistrationFormText } from '../../constants/registrationFormConstants.js';
 import type { StudentLike } from '../../types/registrationTypes.js';
-
 
 type StudentSelectCallback = (selectedStudent: StudentLike | undefined) => void;
 

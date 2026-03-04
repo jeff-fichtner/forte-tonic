@@ -17,7 +17,7 @@ export class NavTabs {
   /**
    *
    */
-  constructor(defaultSection: string) {
+  constructor(_defaultSection: string) {
     const tabsContainer = document.querySelector<HTMLElement>('.tabs');
     const tabs = document.querySelectorAll<HTMLElement>('.tabs .tab');
     const tabLinks = document.querySelectorAll<HTMLAnchorElement>('.tabs .tab a');

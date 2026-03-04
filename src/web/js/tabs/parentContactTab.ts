@@ -179,7 +179,7 @@ export class ParentContactTab extends BaseTab<ContactData> {
    */
   #mapInstructorToEmployee(
     instructor: Record<string, unknown>,
-    obscurePhone: boolean = false
+    _obscurePhone: boolean = false
   ): EmployeeDisplay {
     // Get instruments from specialties field
     const instruments = (instructor.specialties as string[]) || [];

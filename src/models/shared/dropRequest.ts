@@ -3,9 +3,6 @@
  * Simple data holder - no complex business logic
  */
 
-import { UuidUtility } from '../../utils/uuidUtility.js';
-import { DropRequestStatus } from '../../utils/values/dropRequestStatus.js';
-
 export interface DropRequestData {
   [key: string]: unknown;
   id: string;

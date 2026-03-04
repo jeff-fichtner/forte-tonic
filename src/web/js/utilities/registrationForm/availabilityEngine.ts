@@ -20,5 +20,7 @@ export function isInstructorGradeEligible(
   if (studentGrade === null || studentGrade === undefined) return true;
   if (!instructor.gradeRange) return true;
 
-  return studentGrade >= instructor.gradeRange.minimum && studentGrade <= instructor.gradeRange.maximum;
+  return (
+    studentGrade >= instructor.gradeRange.minimum && studentGrade <= instructor.gradeRange.maximum
+  );
 }

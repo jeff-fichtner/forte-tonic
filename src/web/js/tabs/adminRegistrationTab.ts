@@ -72,7 +72,7 @@ export class AdminRegistrationTab extends AdminBaseTab<RegistrationFormData> {
    * Render the registration form
    */
   async render(): Promise<void> {
-    const container = this.getContainer();
+    const _container = this.getContainer();
 
     // If form already exists, update its data instead of recreating
     if (this.registrationForm) {
@@ -113,13 +113,10 @@ export class AdminRegistrationTab extends AdminBaseTab<RegistrationFormData> {
    * @private
    */
   async #createRegistration(registrationData: unknown): Promise<void> {
-    const result = await RegistrationService.create(
-      registrationData as Record<string, unknown>,
-      {
-        students: this.data!.students as Array<{ id: string; [key: string]: unknown }>,
-        instructors: this.data!.instructors as Array<{ id: string; [key: string]: unknown }>,
-      }
-    );
+    const result = await RegistrationService.create(registrationData as Record<string, unknown>, {
+      students: this.data!.students as Array<{ id: string; [key: string]: unknown }>,
+      instructors: this.data!.instructors as Array<{ id: string; [key: string]: unknown }>,
+    });
     if (result.ok) {
       await this.reload();
     }

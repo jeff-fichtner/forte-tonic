@@ -9,7 +9,6 @@
 import type { InstructorLike } from '../../types/registrationTypes.js';
 import type { AvailableTimeSlot } from '../../../../models/shared/availableTimeSlot.js';
 
-
 /**
  * Create a filter chip element with availability-based styling
  */

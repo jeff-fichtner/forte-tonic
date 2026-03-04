@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
 import { serviceContainer, ServiceKeys } from '../infrastructure/container/serviceContainer.js';
-import { currentConfig } from '../config/environment.js';
 import { createLogger } from '../utils/logger.js';
 import { configService } from '../services/configurationService.js';
 import { UserType } from '../config/constants.js';

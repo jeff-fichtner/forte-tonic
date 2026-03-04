@@ -216,7 +216,7 @@ async function discoverMigrationFiles(
 async function importMigrations(
   filenames: string[],
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  logger: any
+  _logger: any
 ): Promise<DiscoveredMigration[]> {
   const migrationsDir = getMigrationsDir();
   const migrations: DiscoveredMigration[] = [];

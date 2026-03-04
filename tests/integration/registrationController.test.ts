@@ -430,7 +430,9 @@ describe('RegistrationController Integration Tests', () => {
     test('should pass excludeRegistrationId to availability service', async () => {
       const excludeId = '123e4567-e89b-42d3-8456-426614174000';
       await request(app)
-        .get(`/api/parent/tabs/registration/fall?parentId=PARENT1&excludeRegistrationId=${excludeId}`)
+        .get(
+          `/api/parent/tabs/registration/fall?parentId=PARENT1&excludeRegistrationId=${excludeId}`
+        )
         .set('x-access-code', '123456')
         .expect(200);
 
