@@ -18,7 +18,7 @@ on run
 
 		-- Verify gcloud is installed
 		try
-			do shell script "export PATH=\"/usr/local/bin:/opt/homebrew/bin:/usr/bin:$PATH\" && command -v gcloud"
+			do shell script "export PATH=\"$HOME/google-cloud-sdk/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:$PATH\" && command -v gcloud"
 		on error
 			display alert "gcloud Not Found" message "The Google Cloud CLI (gcloud) is not installed." & return & return & "Install it from: https://cloud.google.com/sdk/docs/install" as critical
 			return
@@ -71,18 +71,18 @@ on run
 		end if
 
 		-- Step 5: Execute
-		set shellCmd to "export PATH=\"/usr/local/bin:/opt/homebrew/bin:/usr/bin:$PATH\" && " & quoted form of toggleScript & " " & envArg & " " & modeArg
+		set shellCmd to "export PATH=\"$HOME/google-cloud-sdk/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:$PATH\" && " & quoted form of toggleScript & " " & envArg & " " & modeArg
 		if customMessage is not "" then
 			set shellCmd to shellCmd & " " & quoted form of customMessage
 		end if
 		set shellCmd to shellCmd & " --no-confirm"
 
-		display dialog "Updating " & envChoice & "..." & return & "This may take a minute." buttons {"OK"} default button "OK" giving up after 2 with title "Working..."
+		display dialog "Deploying to " & envChoice & " now." & return & return & "This takes about a minute. The screen will be blank until it finishes — sit tight." & return & return & "Click OK to start." buttons {"OK"} default button "OK" with title "Deploying..." with icon caution
 
 		set shellOutput to do shell script shellCmd
 
 		-- Step 6: Success
-		display alert "Maintenance mode is now " & actionChoice message "Environment: " & envChoice & return & return & "Script output:" & return & shellOutput as informational
+		display alert "Done" message "Maintenance mode is now " & actionChoice & " for " & envChoice & "." as informational
 
 	on error errMsg number errNum
 		if errNum is -128 then

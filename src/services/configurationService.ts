@@ -98,7 +98,7 @@ export class ConfigurationService {
       maintenanceMode: process.env.MAINTENANCE_MODE === 'true' || false,
       maintenanceMessage:
         process.env.MAINTENANCE_MESSAGE ||
-        'The Forte registration system is currently undergoing updates. We will be back shortly. Thank you for your patience!',
+        'The Tonic website is currently under maintenance. Please contact forte@mcds.org with any questions or concerns.',
     };
   }
 

@@ -71,13 +71,15 @@ fi
 
 ENVIRONMENT=$1
 MODE=$2
-CUSTOM_MESSAGE="$3"
 
 # Check for --no-confirm flag (used by GUI app which handles its own confirmation)
 NO_CONFIRM=false
-for arg in "$@"; do
+CUSTOM_MESSAGE=""
+for arg in "${@:3}"; do
     if [ "$arg" == "--no-confirm" ]; then
         NO_CONFIRM=true
+    elif [ -z "$CUSTOM_MESSAGE" ]; then
+        CUSTOM_MESSAGE="$arg"
     fi
 done
 
@@ -137,6 +139,9 @@ if [ "$ENVIRONMENT" == "production" ] && [ "$NO_CONFIRM" != "true" ]; then
         exit 0
     fi
 fi
+
+# Ensure gcloud is on PATH (common install locations)
+export PATH="$HOME/google-cloud-sdk/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"
 
 # Check if gcloud is installed
 if ! command -v gcloud &> /dev/null; then
