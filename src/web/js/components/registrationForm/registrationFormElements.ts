@@ -20,7 +20,7 @@ export function createFilterChip(
   availability: string = 'available'
 ): HTMLDivElement {
   const chip = document.createElement('div');
-  chip.className = `chip ${type}-chip`;
+  chip.className = `filter-chip ${type}-chip`;
   chip.dataset.type = type;
   chip.dataset.value = value;
   chip.textContent = text;

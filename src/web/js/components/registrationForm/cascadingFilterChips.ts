@@ -359,7 +359,7 @@ export class CascadingFilterChips {
       return;
     }
 
-    const instructorContainer = instructorSection.querySelector('.chip-container');
+    const instructorContainer = instructorSection.querySelector('.filter-chip-container');
     if (!instructorContainer) {
       console.warn('Parent instructor chip container not found');
       return;
@@ -480,7 +480,7 @@ export class CascadingFilterChips {
     if (!parentContainer) return;
 
     const chips = parentContainer.querySelectorAll(
-      '.chip:not(.unavailable):not([data-listener-attached])'
+      '.filter-chip:not(.unavailable):not([data-listener-attached])'
     );
     chips.forEach((_chip: Element) => {
       const chip = _chip as HTMLElement;
@@ -491,7 +491,7 @@ export class CascadingFilterChips {
         this.#clearDownstreamSelections(chipType);
 
         // Handle chip selection logic
-        const siblings = chip.parentElement!.querySelectorAll('.chip');
+        const siblings = chip.parentElement!.querySelectorAll('.filter-chip');
         siblings.forEach((_sibling: Element) => {
           const sibling = _sibling as HTMLElement;
           sibling.classList.remove('active', 'selected');
@@ -816,7 +816,7 @@ export class CascadingFilterChips {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
-    const allChips = parentContainer.querySelectorAll('.chip');
+    const allChips = parentContainer.querySelectorAll('.filter-chip');
     allChips.forEach((_chip: Element) => {
       const chip = _chip as HTMLElement;
       chip.classList.remove('active');
