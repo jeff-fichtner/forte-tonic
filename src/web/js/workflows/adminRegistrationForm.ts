@@ -4,6 +4,7 @@
  */
 
 import { RegistrationType } from '/utils/values/registrationType.js';
+import { ALL_DAYS } from '/utils/values/days.js';
 import { RegistrationFormText } from '../constants/registrationFormConstants.js';
 import {
   validateBusTimeRestrictions,
@@ -37,6 +38,7 @@ interface RegistrationData {
   startTime?: string;
   length?: number | null;
   instrument?: string;
+  roomId?: string;
   replaceRegistrationId?: string;
   trimester?: string;
 }
@@ -311,24 +313,37 @@ export class AdminRegistrationForm {
         startTime: selectedClass.startTime,
         length: selectedClass.length as number | undefined,
         instrument: selectedClass.instrument as string | undefined,
+        roomId: selectedClass.roomId as string | undefined,
       };
     } else if (registrationType === RegistrationType.PRIVATE) {
       // For private lessons
-      const _dayValue = this.lessonDetailsForm.getSelectedDayValue();
+      const dayValue = this.lessonDetailsForm.getSelectedDayValue();
       const dayName = this.lessonDetailsForm.getSelectedDayName();
       const startTime = this.lessonDetailsForm.getSelectedTime();
       const length = this.lessonDetailsForm.getSelectedLength();
       const instrument = this.lessonDetailsForm.getSelectedInstrument();
+      const instructorId = this.instructorSelector.getSelectedInstructorId();
+
+      // Resolve roomId from instructor's availability for the selected day
+      const selectedInstructor = this.instructors.find(i => i.id === instructorId);
+      const dayKey = dayValue ? ALL_DAYS[parseInt(dayValue)] : undefined;
+      const dayAvailability = dayKey
+        ? selectedInstructor?.availability?.[dayKey]
+        : undefined;
+      const roomId = (dayAvailability as Record<string, unknown> | undefined)?.roomId as
+        | string
+        | undefined;
 
       registrationData = {
         studentId: studentId,
         registrationType: registrationType,
         transportationType: transportationType,
-        instructorId: this.instructorSelector.getSelectedInstructorId(),
+        instructorId: instructorId,
         day: dayName,
         startTime: startTime,
         length: length,
         instrument: instrument,
+        roomId: roomId,
       };
     } else {
       registrationData = {

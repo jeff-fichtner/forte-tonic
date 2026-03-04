@@ -154,6 +154,7 @@ export class AvailabilityService {
                 timeFormatted: AvailabilityService.#formatDisplayTime(m),
                 length,
                 instrument: instrument.trim(),
+                roomId: schedule.roomId,
               });
             }
           }

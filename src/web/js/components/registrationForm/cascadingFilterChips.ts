@@ -684,6 +684,7 @@ export class CascadingFilterChips {
         const time = slot.dataset.time;
         const length = slot.dataset.length;
         const instrument = slot.dataset.instrument;
+        const roomId = slot.dataset.roomId;
 
         if (!instructorId || !day || !time || !length || !instrument) {
           console.error('Invalid time slot data:', slot.dataset);
@@ -697,6 +698,7 @@ export class CascadingFilterChips {
           time: time,
           length: parseInt(length),
           instrument: instrument,
+          roomId: roomId,
         };
 
         // Update the selection display

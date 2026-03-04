@@ -90,6 +90,7 @@ export function createTimeSlotElement(slot: AvailableTimeSlot): HTMLDivElement {
   element.dataset.time = slot.time;
   element.dataset.length = String(slot.length);
   element.dataset.instrument = slot.instrument;
+  element.dataset.roomId = slot.roomId;
 
   element.style.cssText =
     'border: 2px solid #4caf50; background: #e8f5e8; padding: 12px 16px; border-radius: 8px; cursor: pointer; min-width: 110px; text-align: center; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);';

@@ -51,6 +51,7 @@ export interface ClassLike {
   maximumGrade?: number;
   size?: number;
   isRestricted?: boolean;
+  roomId?: string;
   [key: string]: unknown;
 }
 
@@ -98,4 +99,5 @@ export interface TimeSlot {
   timeFormatted?: string;
   length: number;
   instrument: string;
+  roomId?: string;
 }

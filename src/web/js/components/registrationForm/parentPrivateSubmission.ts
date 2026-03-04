@@ -141,6 +141,7 @@ export class ParentPrivateSubmission {
         const time = slot.dataset.time;
         const length = slot.dataset.length;
         const instrument = slot.dataset.instrument;
+        const roomId = slot.dataset.roomId;
 
         if (instructorId && day && time && length && instrument) {
           this.config.setSelectedLesson({
@@ -149,6 +150,7 @@ export class ParentPrivateSubmission {
             time: time,
             length: parseInt(length),
             instrument: instrument,
+            roomId: roomId,
           });
         } else {
           M.toast({ html: 'Please select a lesson time slot' });
@@ -250,6 +252,7 @@ export class ParentPrivateSubmission {
       day: dayMap[selectedLesson.day],
       startTime: selectedLesson.time,
       length: selectedLesson.length,
+      roomId: selectedLesson.roomId,
       trimester: trimester ?? undefined,
     };
 

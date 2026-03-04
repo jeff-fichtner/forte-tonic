@@ -7,4 +7,5 @@ export interface AvailableTimeSlot {
   timeFormatted: string; // "2:00 PM"
   length: number; // 30, 45, 60
   instrument: string;
+  roomId: string;
 }

@@ -457,6 +457,7 @@ export class ParentGroupRegistration {
       startTime: selectedClass.startTime,
       length: selectedClass.length,
       instrument: selectedClass.instrument,
+      roomId: selectedClass.roomId,
       trimester: trimester ?? undefined,
     };
 

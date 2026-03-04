@@ -170,7 +170,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"registrationType\": \"group\",\n  \"classId\": \"G018\",\n  \"transportationType\": \"parent\",\n  \"trimester\": \"{{trimester}}\"\n}"
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"registrationType\": \"group\",\n  \"classId\": \"G018\",\n  \"roomId\": \"ROOM1\",\n  \"transportationType\": \"parent\",\n  \"trimester\": \"{{trimester}}\"\n}"
             }
           }
         },
