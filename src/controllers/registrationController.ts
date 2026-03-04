@@ -61,37 +61,9 @@ export class RegistrationController {
       }
 
       const registrationService = serviceContainer.get(ServiceKeys.registrationService);
-      const periodService = serviceContainer.get(ServiceKeys.periodService);
 
-      // Check if user is an admin (admins can bypass capacity and enrollment restrictions)
+      // Check if user is an admin (admins can bypass capacity restrictions)
       const isAdmin = req.currentUser?.userType === UserType.ADMIN;
-
-      // Enrollment-period access control for non-admin users targeting a future trimester
-      if (!isAdmin) {
-        const currentTrimester = await periodService.getCurrentTrimester();
-        if (currentTrimester && requestData.trimester !== currentTrimester) {
-          // Verify the enrollment table is available
-          const enrollmentTable = await periodService.getEnrollmentTrimesterTable();
-          if (!enrollmentTable) {
-            throw new ValidationError('Next trimester registration is not currently available');
-          }
-
-          // Check access permissions (priority enrollment = returning families only)
-          const registrationRepository = serviceContainer.get(ServiceKeys.registrationRepository);
-          const currentRegistrations = await registrationRepository.findAll();
-          const hasActiveRegistrations = currentRegistrations.some(
-            reg => reg.studentId === requestData.studentId
-          );
-
-          const canAccess = await periodService.canAccessNextTrimester(hasActiveRegistrations);
-          if (!canAccess) {
-            throw new UnauthorizedError(
-              'You do not have access to next trimester registration at this time. ' +
-                'Priority enrollment is for returning families only.'
-            );
-          }
-        }
-      }
 
       // Process registration through application service with authenticated user
       const result = await registrationService.processRegistration(
@@ -148,6 +120,10 @@ export class RegistrationController {
 
       if (!authenticatedUserEmail) {
         throw new UnauthorizedError('Authentication required for registration deletion');
+      }
+
+      if (req.currentUser?.userType !== UserType.ADMIN) {
+        throw new UnauthorizedError('Only administrators can delete registrations');
       }
 
       if (!registrationId) {

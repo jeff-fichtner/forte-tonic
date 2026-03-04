@@ -180,7 +180,7 @@
             "method": "DELETE",
             "url": "{{baseUrl}}/api/registrations/{{trimester}}/{{registrationId}}",
             "header": [
-              { "key": "x-access-code", "value": "{{adminAccessCode}}" },
+              { "key": "x-access-code", "value": "{{accessCode}}" },
               { "key": "x-login-type", "value": "employee" }
             ]
           }

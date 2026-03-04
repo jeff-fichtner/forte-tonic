@@ -180,9 +180,6 @@ const mockPeriodService = {
     startDate: new Date('2025-01-15'),
   }),
   isIntentPeriodActive: jest.fn().mockResolvedValue(true),
-  getCurrentTrimester: jest.fn().mockResolvedValue('fall'),
-  getEnrollmentTrimesterTable: jest.fn().mockResolvedValue('registrations_winter'),
-  canAccessNextTrimester: jest.fn().mockResolvedValue(true),
 };
 
 // Mock the service container
@@ -320,7 +317,7 @@ describe('RegistrationController Integration Tests', () => {
     });
   });
 
-  describe('POST /api/registrations (next trimester — enrollment access control)', () => {
+  describe('POST /api/registrations (next trimester)', () => {
     const nextTrimesterData = {
       studentId: 'STUDENT1',
       registrationType: 'private',
@@ -332,50 +329,6 @@ describe('RegistrationController Integration Tests', () => {
       instrument: 'Piano',
       transportationType: 'pickup',
     };
-
-    test('should create registration for returning family targeting next trimester', async () => {
-      const response = await request(app)
-        .post('/api/registrations')
-        .set('x-access-code', '123456')
-        .send(nextTrimesterData)
-        .expect(201);
-
-      expect(response.body.success).toBe(true);
-      expect(mockPeriodService.canAccessNextTrimester).toHaveBeenCalledWith(true);
-      expect(mockRegistrationService.processRegistration).toHaveBeenCalledWith(
-        expect.objectContaining(nextTrimesterData),
-        expect.any(String),
-        { isAdmin: false }
-      );
-    });
-
-    test('should reject when enrollment table not available for next trimester', async () => {
-      mockPeriodService.getEnrollmentTrimesterTable.mockResolvedValueOnce(null);
-
-      const response = await request(app)
-        .post('/api/registrations')
-        .set('x-access-code', '123456')
-        .send(nextTrimesterData)
-        .expect(400);
-
-      expect(response.body.success).toBe(false);
-    });
-
-    test('should reject non-returning families during priority enrollment', async () => {
-      mockRegistrationRepository.findAll.mockResolvedValueOnce([]); // No current registrations
-      mockPeriodService.canAccessNextTrimester.mockResolvedValueOnce(false);
-
-      const response = await request(app)
-        .post('/api/registrations')
-        .set('x-access-code', '123456')
-        .send(nextTrimesterData)
-        .expect(401);
-
-      expect(response.body.success).toBe(false);
-      expect(response.body.error.message).toContain(
-        'Priority enrollment is for returning families'
-      );
-    });
 
     test('should handle backward link when replacing registration', async () => {
       const dataWithLink = {
@@ -464,7 +417,12 @@ describe('RegistrationController Integration Tests', () => {
   });
 
   describe('DELETE /api/registrations/:trimester/:id', () => {
-    test('should delete registration', async () => {
+    test('should delete registration when user is admin', async () => {
+      mockUserRepository.getUserByAccessCode.mockResolvedValueOnce({
+        user: mockParent,
+        userType: 'admin',
+      });
+
       const registrationId = '123e4567-e89b-42d3-8456-426614174000';
       const response = await request(app)
         .delete(`/api/registrations/fall/${registrationId}`)
@@ -477,6 +435,17 @@ describe('RegistrationController Integration Tests', () => {
         expect.any(String),
         'fall'
       );
+    });
+
+    test('should reject deletion by non-admin user', async () => {
+      const registrationId = '123e4567-e89b-42d3-8456-426614174000';
+      const response = await request(app)
+        .delete(`/api/registrations/fall/${registrationId}`)
+        .set('x-access-code', '123456')
+        .expect(401);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.message).toContain('Only administrators can delete registrations');
     });
 
     test('should reject deletion without authentication', async () => {
