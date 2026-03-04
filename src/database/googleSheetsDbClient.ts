@@ -78,6 +78,10 @@ const classMappings: FieldMapping = {
   isRestricted: val => val === 'TRUE' || val === 'true',
 };
 
+/** Parse raw time string to normalised 24-hour "HH:MM" (or empty string if blank) */
+const parseTime = (raw: string): string =>
+  raw ? DateHelpers.parseTimeString(raw).to24Hour() : '';
+
 /** Instructors: isDeactivated→isActive inversion, flat fields→nested objects */
 const instructorMappings: FieldMapping = {
   isActive: (_val, row) => !row.isDeactivated || row.isDeactivated.toLowerCase() === 'false',
@@ -86,32 +90,32 @@ const instructorMappings: FieldMapping = {
   availability: (_val, row) => ({
     monday: {
       isAvailable: !!(row.mondayStartTime && row.mondayEndTime),
-      startTime: row.mondayStartTime,
-      endTime: row.mondayEndTime,
+      startTime: parseTime(row.mondayStartTime),
+      endTime: parseTime(row.mondayEndTime),
       roomId: row.mondayRoomId,
     },
     tuesday: {
       isAvailable: !!(row.tuesdayStartTime && row.tuesdayEndTime),
-      startTime: row.tuesdayStartTime,
-      endTime: row.tuesdayEndTime,
+      startTime: parseTime(row.tuesdayStartTime),
+      endTime: parseTime(row.tuesdayEndTime),
       roomId: row.tuesdayRoomId,
     },
     wednesday: {
       isAvailable: !!(row.wednesdayStartTime && row.wednesdayEndTime),
-      startTime: row.wednesdayStartTime,
-      endTime: row.wednesdayEndTime,
+      startTime: parseTime(row.wednesdayStartTime),
+      endTime: parseTime(row.wednesdayEndTime),
       roomId: row.wednesdayRoomId,
     },
     thursday: {
       isAvailable: !!(row.thursdayStartTime && row.thursdayEndTime),
-      startTime: row.thursdayStartTime,
-      endTime: row.thursdayEndTime,
+      startTime: parseTime(row.thursdayStartTime),
+      endTime: parseTime(row.thursdayEndTime),
       roomId: row.thursdayRoomId,
     },
     friday: {
       isAvailable: !!(row.fridayStartTime && row.fridayEndTime),
-      startTime: row.fridayStartTime,
-      endTime: row.fridayEndTime,
+      startTime: parseTime(row.fridayStartTime),
+      endTime: parseTime(row.fridayEndTime),
       roomId: row.fridayRoomId,
     },
   }),
