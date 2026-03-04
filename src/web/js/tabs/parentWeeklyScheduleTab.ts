@@ -456,7 +456,7 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
 
       intentCell = `<td>
         <div style="display: flex; align-items: center; gap: 8px;">
-          <select class="intent-dropdown" data-registration-id="${enrollmentId}">
+          <select class="intent-dropdown" data-registration-id="${enrollmentId}" data-trimester="${this.data!.currentTrimester.name}">
             <option value="" ${selectedNone}>Select intent...</option>
             <option value="keep" ${selectedKeep}>${INTENT_LABELS.keep}</option>
             <option value="drop" ${selectedDrop}>${INTENT_LABELS.drop}</option>
@@ -621,9 +621,10 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
   async #handleIntentChange(event: Event): Promise<void> {
     const dropdown = event.target as HTMLSelectElement;
     const registrationId = dropdown.getAttribute('data-registration-id');
+    const trimester = dropdown.getAttribute('data-trimester');
     const intent = dropdown.value;
 
-    if (!registrationId || !intent) {
+    if (!registrationId || !trimester || !intent) {
       // Don't send request for empty intent (placeholder option)
       return;
     }
@@ -633,7 +634,7 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
     );
 
     await withFeedback(
-      () => HttpService.patch(`registrations/${registrationId}/intent`, { intent }),
+      () => HttpService.patch(`registrations/${trimester}/${registrationId}/intent`, { intent }),
       {
         statusElement: statusIndicator,
         successToast: 'Intent updated successfully!',

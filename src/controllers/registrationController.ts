@@ -200,9 +200,17 @@ export class RegistrationController {
     const startTime = Date.now();
 
     try {
+      const trimester = asString(req.params.trimester);
       const id = asString(req.params.id);
       const { intent } = req.body;
       const authenticatedUserEmail = getAuthenticatedUserEmail(req);
+
+      // Validate trimester
+      if (!isValidTrimester(trimester)) {
+        throw new ValidationError(
+          `Invalid trimester: "${trimester}". Must be one of: ${TRIMESTER_SEQUENCE.join(', ')}`
+        );
+      }
 
       // Validate intent
       if (!Object.values(INTENT_TYPES).includes(intent)) {
@@ -213,15 +221,19 @@ export class RegistrationController {
       const registrationRepository = serviceContainer.get(ServiceKeys.registrationRepository);
       const periodService = serviceContainer.get(ServiceKeys.periodService);
 
-      // Check period is active
-      const isIntentActive = await periodService.isIntentPeriodActive();
-      if (!isIntentActive) {
-        throw new ValidationError('Intent collection is not currently active');
+      // Admins can update intent regardless of period; non-admins require active intent period
+      const isAdmin = req.currentUser?.userType === UserType.ADMIN;
+      if (!isAdmin) {
+        const isIntentActive = await periodService.isIntentPeriodActive();
+        if (!isIntentActive) {
+          throw new ValidationError('Intent collection is not currently active');
+        }
       }
 
       // Use helper method (includes authorization check)
       const registration = await registrationRepository.updateIntent(
         id,
+        trimester,
         intent,
         authenticatedUserEmail
       );

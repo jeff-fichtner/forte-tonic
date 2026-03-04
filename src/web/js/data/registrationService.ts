@@ -134,8 +134,14 @@ export class RegistrationService {
   /**
    * Submit an intent (keep/change/drop) for a registration.
    */
-  static async submitIntent(registrationId: string, intent: string): Promise<HttpResult<unknown>> {
-    const result = await HttpService.patch(`registrations/${registrationId}/intent`, { intent });
+  static async submitIntent(
+    registrationId: string,
+    trimester: string,
+    intent: string
+  ): Promise<HttpResult<unknown>> {
+    const result = await HttpService.patch(`registrations/${trimester}/${registrationId}/intent`, {
+      intent,
+    });
 
     if (result.ok) {
       M.toast({ html: 'Intent submitted successfully.' });

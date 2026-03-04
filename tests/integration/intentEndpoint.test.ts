@@ -75,7 +75,7 @@ const mockRegistration = {
   registrationType: 'private',
   roomId: 'ROOM1',
   instrument: 'Piano',
-  transportationType: 'parent',
+  transportationType: 'pickup',
   notes: '',
   classId: null,
   classTitle: null,
@@ -159,7 +159,7 @@ jest.unstable_mockModule('../../src/infrastructure/container/serviceContainer.js
 // Import app after all mocks are set up
 const { app } = await import('../../src/app.js');
 
-describe('Integration Test: PATCH /api/registrations/:id/intent', () => {
+describe('Integration Test: PATCH /api/registrations/:trimester/:id/intent', () => {
   beforeEach(() => {
     // Reset all mocks before each test
     jest.clearAllMocks();
@@ -170,7 +170,7 @@ describe('Integration Test: PATCH /api/registrations/:id/intent', () => {
   describe('Success Cases', () => {
     test('should successfully submit intent "keep"', async () => {
       const response = await request(app)
-        .patch('/api/registrations/123e4567-e89b-42d3-8456-426614174000/intent')
+        .patch('/api/registrations/fall/123e4567-e89b-42d3-8456-426614174000/intent')
         .set('x-access-code', '111111')
         .set('x-login-type', 'parent')
         .send({ intent: 'keep' })
@@ -181,6 +181,7 @@ describe('Integration Test: PATCH /api/registrations/:id/intent', () => {
       expect(response.body.data.reenrollmentIntent).toBe('keep');
       expect(mockRegistrationRepository.updateIntent).toHaveBeenCalledWith(
         '123e4567-e89b-42d3-8456-426614174000',
+        'fall',
         'keep',
         'parent@test.com'
       );
@@ -191,7 +192,7 @@ describe('Integration Test: PATCH /api/registrations/:id/intent', () => {
       mockRegistrationRepository.updateIntent.mockResolvedValue(dropUpdated);
 
       const response = await request(app)
-        .patch('/api/registrations/123e4567-e89b-42d3-8456-426614174000/intent')
+        .patch('/api/registrations/fall/123e4567-e89b-42d3-8456-426614174000/intent')
         .set('x-access-code', '111111')
         .set('x-login-type', 'parent')
         .send({ intent: 'drop' })
@@ -206,7 +207,7 @@ describe('Integration Test: PATCH /api/registrations/:id/intent', () => {
       mockRegistrationRepository.updateIntent.mockResolvedValue(changeUpdated);
 
       const response = await request(app)
-        .patch('/api/registrations/123e4567-e89b-42d3-8456-426614174000/intent')
+        .patch('/api/registrations/fall/123e4567-e89b-42d3-8456-426614174000/intent')
         .set('x-access-code', '111111')
         .set('x-login-type', 'parent')
         .send({ intent: 'change' })
@@ -220,7 +221,7 @@ describe('Integration Test: PATCH /api/registrations/:id/intent', () => {
   describe('Error Cases', () => {
     test('should return 400 for invalid intent value', async () => {
       const response = await request(app)
-        .patch('/api/registrations/123e4567-e89b-42d3-8456-426614174000/intent')
+        .patch('/api/registrations/fall/123e4567-e89b-42d3-8456-426614174000/intent')
         .set('x-access-code', '111111')
         .set('x-login-type', 'parent')
         .send({ intent: 'invalid' })
@@ -234,7 +235,7 @@ describe('Integration Test: PATCH /api/registrations/:id/intent', () => {
       mockPeriodService.isIntentPeriodActive.mockResolvedValue(false);
 
       const response = await request(app)
-        .patch('/api/registrations/123e4567-e89b-42d3-8456-426614174000/intent')
+        .patch('/api/registrations/fall/123e4567-e89b-42d3-8456-426614174000/intent')
         .set('x-access-code', '111111')
         .set('x-login-type', 'parent')
         .send({ intent: 'keep' })
@@ -250,7 +251,7 @@ describe('Integration Test: PATCH /api/registrations/:id/intent', () => {
       );
 
       const response = await request(app)
-        .patch('/api/registrations/123e4567-e89b-42d3-8456-426614174000/intent')
+        .patch('/api/registrations/fall/123e4567-e89b-42d3-8456-426614174000/intent')
         .set('x-access-code', '111111')
         .set('x-login-type', 'parent')
         .send({ intent: 'keep' })

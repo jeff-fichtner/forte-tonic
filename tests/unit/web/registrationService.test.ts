@@ -399,9 +399,9 @@ describe('RegistrationService.submitIntent()', () => {
   test('sends PATCH request with correct endpoint and payload', async () => {
     mockHttpPatch.mockResolvedValue({ ok: true, data: { success: true } });
 
-    await RegistrationService.submitIntent('reg-200', 'keep');
+    await RegistrationService.submitIntent('reg-200', 'fall', 'keep');
 
-    expect(mockHttpPatch).toHaveBeenCalledWith('registrations/reg-200/intent', {
+    expect(mockHttpPatch).toHaveBeenCalledWith('registrations/fall/reg-200/intent', {
       intent: 'keep',
     });
   });
@@ -409,7 +409,7 @@ describe('RegistrationService.submitIntent()', () => {
   test('shows success toast on completion', async () => {
     mockHttpPatch.mockResolvedValue({ ok: true, data: { success: true } });
 
-    await RegistrationService.submitIntent('reg-200', 'drop');
+    await RegistrationService.submitIntent('reg-200', 'fall', 'drop');
 
     expect(mockToast).toHaveBeenCalledWith({
       html: 'Intent submitted successfully.',
@@ -420,7 +420,7 @@ describe('RegistrationService.submitIntent()', () => {
     const responseData = { id: 'reg-200', reenrollmentIntent: 'change' };
     mockHttpPatch.mockResolvedValue({ ok: true, data: responseData });
 
-    const result = await RegistrationService.submitIntent('reg-200', 'change');
+    const result = await RegistrationService.submitIntent('reg-200', 'fall', 'change');
 
     expect(result).toEqual({ ok: true, data: responseData });
   });
@@ -431,7 +431,7 @@ describe('RegistrationService.submitIntent()', () => {
       error: { message: 'Server error' },
     });
 
-    const result = await RegistrationService.submitIntent('reg-200', 'keep');
+    const result = await RegistrationService.submitIntent('reg-200', 'fall', 'keep');
 
     expect(result).toEqual({ ok: false, error: { message: 'Server error' } });
     expect(mockToast).toHaveBeenCalledWith({ html: 'Server error' });
@@ -443,7 +443,7 @@ describe('RegistrationService.submitIntent()', () => {
       error: { message: 'intent failed' },
     });
 
-    const result = await RegistrationService.submitIntent('reg-200', 'drop');
+    const result = await RegistrationService.submitIntent('reg-200', 'fall', 'drop');
 
     expect(result.ok).toBe(false);
     expect((result as { ok: false; error: { message: string } }).error.message).toBe(
@@ -454,7 +454,7 @@ describe('RegistrationService.submitIntent()', () => {
   test('uses generic message when error has no message', async () => {
     mockHttpPatch.mockResolvedValue({ ok: false, error: { message: '' } });
 
-    const result = await RegistrationService.submitIntent('reg-200', 'keep');
+    const result = await RegistrationService.submitIntent('reg-200', 'fall', 'keep');
 
     expect(result.ok).toBe(false);
     expect(mockToast).toHaveBeenCalledWith({

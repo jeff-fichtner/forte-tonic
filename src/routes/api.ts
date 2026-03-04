@@ -31,7 +31,11 @@ router.delete(
   requireAuth,
   RegistrationController.deleteRegistration
 );
-router.patch('/registrations/:id/intent', requireAuth, RegistrationController.updateIntent);
+router.patch(
+  '/registrations/:trimester/:id/intent',
+  requireAuth,
+  RegistrationController.updateIntent
+);
 
 router.post('/attendance', requireAuth, AttendanceController.markAttendance);
 router.get(

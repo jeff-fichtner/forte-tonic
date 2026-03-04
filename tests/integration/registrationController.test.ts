@@ -74,7 +74,7 @@ const mockRegistration = {
   registrationType: 'private',
   roomId: 'ROOM1',
   instrument: 'Piano',
-  transportationType: 'parent',
+  transportationType: 'pickup',
   notes: '',
   classId: null,
   classTitle: null,
@@ -238,7 +238,7 @@ describe('RegistrationController Integration Tests', () => {
       startTime: '14:00',
       length: 30,
       instrument: 'Piano',
-      transportationType: 'parent',
+      transportationType: 'pickup',
     };
 
     test('should create registration successfully for current trimester', async () => {
@@ -330,7 +330,7 @@ describe('RegistrationController Integration Tests', () => {
       startTime: '14:00',
       length: 30,
       instrument: 'Piano',
-      transportationType: 'parent',
+      transportationType: 'pickup',
     };
 
     test('should create registration for returning family targeting next trimester', async () => {

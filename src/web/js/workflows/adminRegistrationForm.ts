@@ -327,9 +327,7 @@ export class AdminRegistrationForm {
       // Resolve roomId from instructor's availability for the selected day
       const selectedInstructor = this.instructors.find(i => i.id === instructorId);
       const dayKey = dayValue ? ALL_DAYS[parseInt(dayValue)] : undefined;
-      const dayAvailability = dayKey
-        ? selectedInstructor?.availability?.[dayKey]
-        : undefined;
+      const dayAvailability = dayKey ? selectedInstructor?.availability?.[dayKey] : undefined;
       const roomId = (dayAvailability as Record<string, unknown> | undefined)?.roomId as
         | string
         | undefined;

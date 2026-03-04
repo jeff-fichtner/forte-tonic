@@ -482,7 +482,17 @@ export class RegistrationService extends BaseService {
     // Core validation
     if (!registrationData.studentId) errors.push('Student ID is required');
     if (!registrationData.registrationType) errors.push('Registration type is required');
-    if (!registrationData.transportationType) errors.push('Transportation type is required');
+    if (!registrationData.transportationType) {
+      errors.push('Transportation type is required');
+    } else if (
+      !Object.values(TransportationType).includes(
+        registrationData.transportationType as (typeof TransportationType)[keyof typeof TransportationType]
+      )
+    ) {
+      errors.push(
+        `Invalid transportation type: "${registrationData.transportationType}". Must be one of: ${Object.values(TransportationType).join(', ')}`
+      );
+    }
 
     // Type-specific validation
     if (registrationData.registrationType === RegistrationType.GROUP) {

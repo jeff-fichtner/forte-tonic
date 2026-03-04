@@ -15,7 +15,7 @@ interface FeedbackOptions {
  *
  * Usage:
  *   const result = await withFeedback(
- *     () => HttpService.patch(`registrations/${id}/intent`, { intent }),
+ *     () => HttpService.patch(`registrations/${trimester}/${id}/intent`, { intent }),
  *     { statusElement: indicator, successToast: 'Intent updated!' }
  *   );
  *   if (result.ok) await this.reload();

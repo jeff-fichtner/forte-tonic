@@ -247,7 +247,7 @@ describe('Group Registration Service', () => {
         registrationType: 'group',
         classId: 'CLASS-001',
         trimester: 'spring', // Explicit trimester required
-        transportationType: 'both', // Already specified - should not be overridden
+        transportationType: 'bus', // Already specified - should not be overridden
         roomId: 'ROOM-003',
       };
 
@@ -268,7 +268,7 @@ describe('Group Registration Service', () => {
       // Assert
       expect(mockRegistrationRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          transportationType: 'both', // Should preserve existing value
+          transportationType: 'bus', // Should preserve existing value
         }),
         'spring' // targetTrimester parameter
       );

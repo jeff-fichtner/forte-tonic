@@ -140,7 +140,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"instructorId\": \"{{instructorId}}\",\n  \"registrationType\": \"private\",\n  \"day\": \"Monday\",\n  \"startTime\": \"14:00\",\n  \"length\": 30,\n  \"instrument\": \"Piano\",\n  \"roomId\": \"ROOM1\",\n  \"transportationType\": \"parent\",\n  \"trimester\": \"{{trimester}}\"\n}"
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"instructorId\": \"{{instructorId}}\",\n  \"registrationType\": \"private\",\n  \"day\": \"Monday\",\n  \"startTime\": \"14:00\",\n  \"length\": 30,\n  \"instrument\": \"Piano\",\n  \"roomId\": \"ROOM1\",\n  \"transportationType\": \"pickup\",\n  \"trimester\": \"{{trimester}}\"\n}"
             }
           }
         },
@@ -170,7 +170,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"registrationType\": \"group\",\n  \"classId\": \"G018\",\n  \"roomId\": \"ROOM1\",\n  \"transportationType\": \"parent\",\n  \"trimester\": \"{{trimester}}\"\n}"
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"registrationType\": \"group\",\n  \"classId\": \"G018\",\n  \"roomId\": \"ROOM1\",\n  \"transportationType\": \"pickup\",\n  \"trimester\": \"{{trimester}}\"\n}"
             }
           }
         },
@@ -189,7 +189,7 @@
           "name": "Update Reenrollment Intent",
           "request": {
             "method": "PATCH",
-            "url": "{{baseUrl}}/api/registrations/{{registrationId}}/intent",
+            "url": "{{baseUrl}}/api/registrations/{{trimester}}/{{registrationId}}/intent",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
               { "key": "x-access-code", "value": "{{parentPhone}}" },

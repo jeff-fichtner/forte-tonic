@@ -237,11 +237,11 @@ export class RegistrationRepository extends BaseRepository<Registration> {
    */
   async updateIntent(
     registrationId: string,
+    trimester: string,
     intent: string,
     submittedBy: string
   ): Promise<Registration> {
-    // Intent collection is always for the current trimester
-    const targetSheet = await this.periodService.getCurrentTrimesterTable();
+    const targetSheet = this._tableName(trimester);
     const registrations = await this._fetchRegistrations(targetSheet);
     const registration = registrations.find(r => r.id === registrationId);
 
