@@ -11,7 +11,7 @@ import { TransportationType } from '../utils/values/transportationType.js';
 import { isValidTrimester as validateTrimester } from '../utils/values/trimester.js';
 import { ConfigurationService } from './configurationService.js';
 import { Registration } from '../models/shared/registration.js';
-import { ConflictError } from '../common/errors.js';
+import { ConflictError, ValidationError } from '../common/errors.js';
 import { DEFAULT_REGISTRATION_CONFIG } from '../models/shared/responses/appConfigurationResponse.js';
 import { getLogger } from '../utils/logger.js';
 import type { Logger } from '../utils/logger.js';
@@ -228,14 +228,27 @@ export class RegistrationService extends BaseService {
         throw new Error(`Instructor not found: ${registrationData.instructorId}`);
       }
 
-      // Step 3.5: Validate room assignment
-      // The frontend is responsible for sending a valid roomId.
+      // Step 3.5: Validate instructor availability for the selected day
+      const dayKey = registrationData.day?.toLowerCase();
+      const dayAvailability = dayKey
+        ? (instructor.availability as Record<string, { isAvailable: boolean }> | null)?.[dayKey]
+        : undefined;
+
+      if (!dayAvailability?.isAvailable) {
+        throw new ValidationError(
+          `${instructor.firstName ?? ''} ${instructor.lastName ?? ''} is not available on ${registrationData.day}`.trim()
+        );
+      }
+
+      // Step 3.6: Validate room assignment
       if (!registrationData.roomId) {
-        throw new Error('Room ID is required');
+        throw new ValidationError('Room ID is required');
       }
       const room = await this.#userRepository.getRoomById(registrationData.roomId);
       if (!room) {
-        throw new Error(`Invalid room: "${registrationData.roomId}" does not match any known room`);
+        throw new ValidationError(
+          `Invalid room: "${registrationData.roomId}" does not match any known room`
+        );
       }
 
       this.logger.info(

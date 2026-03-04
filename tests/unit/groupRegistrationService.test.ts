@@ -79,6 +79,7 @@ describe('Group Registration Service', () => {
         email: 'jane.smith@email.com',
         availability: {
           monday: {
+            isAvailable: true,
             roomId: 'ROOM-001',
           },
         },
@@ -172,6 +173,7 @@ describe('Group Registration Service', () => {
         lastName: 'Teacher',
         availability: {
           tuesday: {
+            isAvailable: true,
             roomId: 'ROOM-002',
           },
         },
@@ -237,6 +239,7 @@ describe('Group Registration Service', () => {
         lastName: 'Teacher',
         availability: {
           wednesday: {
+            isAvailable: true,
             roomId: 'ROOM-003',
           },
         },

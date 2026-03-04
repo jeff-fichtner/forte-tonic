@@ -85,31 +85,31 @@ const instructorMappings: FieldMapping = {
     [row.instrument1, row.instrument2, row.instrument3, row.instrument4].filter(Boolean),
   availability: (_val, row) => ({
     monday: {
-      isAvailable: row.isAvailableMonday === 'TRUE' || row.isAvailableMonday === 'true',
+      isAvailable: !!(row.mondayStartTime && row.mondayEndTime),
       startTime: row.mondayStartTime,
       endTime: row.mondayEndTime,
       roomId: row.mondayRoomId,
     },
     tuesday: {
-      isAvailable: row.isAvailableTuesday === 'TRUE' || row.isAvailableTuesday === 'true',
+      isAvailable: !!(row.tuesdayStartTime && row.tuesdayEndTime),
       startTime: row.tuesdayStartTime,
       endTime: row.tuesdayEndTime,
       roomId: row.tuesdayRoomId,
     },
     wednesday: {
-      isAvailable: row.isAvailableWednesday === 'TRUE' || row.isAvailableWednesday === 'true',
+      isAvailable: !!(row.wednesdayStartTime && row.wednesdayEndTime),
       startTime: row.wednesdayStartTime,
       endTime: row.wednesdayEndTime,
       roomId: row.wednesdayRoomId,
     },
     thursday: {
-      isAvailable: row.isAvailableThursday === 'TRUE' || row.isAvailableThursday === 'true',
+      isAvailable: !!(row.thursdayStartTime && row.thursdayEndTime),
       startTime: row.thursdayStartTime,
       endTime: row.thursdayEndTime,
       roomId: row.thursdayRoomId,
     },
     friday: {
-      isAvailable: row.isAvailableFriday === 'TRUE' || row.isAvailableFriday === 'true',
+      isAvailable: !!(row.fridayStartTime && row.fridayEndTime),
       startTime: row.fridayStartTime,
       endTime: row.fridayEndTime,
       roomId: row.fridayRoomId,
