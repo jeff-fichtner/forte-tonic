@@ -15,9 +15,10 @@ const isDevelopment =
 
 // In production, serve from dist/web (built by Vite with hashed filenames)
 // In development/test, serve from src/web (source files with manual version injection)
+// Production uses process.cwd() since compiled JS lives under dist/server/
 const webPath = isDevelopment
   ? path.join(currentDir, '..', 'web')
-  : path.join(currentDir, '..', '..', 'dist', 'web');
+  : path.join(process.cwd(), 'dist', 'web');
 
 console.log(
   `🌐 Serving static files from: ${webPath} (${isDevelopment ? 'development' : 'production'})`

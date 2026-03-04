@@ -5,8 +5,8 @@
   "main": "src/server.ts",
   "type": "module",
   "scripts": {
-    "start": "tsx src/server.ts",
-    "start:direct": "tsx src/server.ts",
+    "start": "node start.js",
+    "start:dev": "tsx src/server.ts",
     "dev": "concurrently -n api,vite -c blue,green \"nodemon --exec tsx src/server.ts\" \"vite\"",
     "dev:api": "nodemon --exec tsx src/server.ts",
     "dev:frontend": "vite",
@@ -27,6 +27,7 @@
     "format:all": "npm run format && npm run lint:fix",
     "check:all": "npm run format:check && npm run lint && npm run typecheck && npm test",
     "build": "npm run check:all",
+    "build:backend": "tsc -p tsconfig.build.json",
     "build:frontend": "vite build",
     "build:production": "npm run build:frontend && npm run check:all",
     "build:staging": "npm run check:all && npm run build:frontend && ./scripts/version-manager.sh auto",

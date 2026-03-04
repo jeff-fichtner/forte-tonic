@@ -5,12 +5,10 @@
 
 import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
 import { createHash } from 'crypto';
 
-const utilDir: string = dirname(fileURLToPath(import.meta.url));
-const packageJsonPath: string = join(utilDir, '../../package.json');
+const packageJsonPath: string = join(process.cwd(), 'package.json');
 
 /**
  * Generate a frontend version hash for cache busting

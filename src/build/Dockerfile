@@ -18,6 +18,9 @@ COPY . .
 # Build frontend with Vite (generates dist/web with hashed files)
 RUN npm run build:frontend
 
+# Build backend with tsc (generates dist/server with compiled JS)
+RUN npm run build:backend
+
 # Production stage
 FROM node:20-alpine AS production
 
@@ -41,13 +44,12 @@ COPY package*.json ./
 # Install only production dependencies
 RUN npm ci --only=production && npm cache clean --force
 
-# Copy source code from builder stage
-COPY --from=builder --chown=nodejs:nodejs /app/src ./src
+# Copy entry point and build output from builder stage
+COPY --from=builder --chown=nodejs:nodejs /app/start.js ./
 COPY --from=builder --chown=nodejs:nodejs /app/config ./config
 COPY --from=builder --chown=nodejs:nodejs /app/scripts ./scripts
-COPY --from=builder --chown=nodejs:nodejs /app/start.js ./
 
-# Copy built frontend assets (dist/web contains Vite-built files with hashed names)
+# Copy compiled backend (dist/server) and built frontend (dist/web)
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 
 # Switch to non-root user

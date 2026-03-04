@@ -142,7 +142,9 @@ app.use(
 
 // Fallback: Serve other static files from web directory (images, etc)
 // This comes AFTER the static routes so version injection middleware runs first
-app.use(express.static(path.join(appDir, 'web'), developmentStaticOptions));
+// Production uses process.cwd() since compiled JS lives under dist/server/
+const webDir = isDevelopment ? path.join(appDir, 'web') : path.join(process.cwd(), 'dist', 'web');
+app.use(express.static(webDir, developmentStaticOptions));
 
 // 404 handler
 app.use('*', (_req: Request, res: Response) => {

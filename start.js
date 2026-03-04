@@ -31,7 +31,7 @@ try {
 
 // Import and start the server
 try {
-  await import('./src/server.js');
+  await import('./dist/server/server.js');
 } catch (error) {
   console.error('❌ Failed to start server:', error);
   process.exit(1);
