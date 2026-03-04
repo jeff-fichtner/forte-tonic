@@ -56,7 +56,7 @@ describe('AvailabilityService', () => {
   // =========================================================================
   describe('isGradeEligible', () => {
     it('should return true when student grade is null', () => {
-      expect(AvailabilityService.isGradeEligible({ minimum: '3', maximum: '8' }, null)).toBe(true);
+      expect(AvailabilityService.isGradeEligible({ minimum: 3, maximum: 8 }, null)).toBe(true);
     });
 
     it('should return true when gradeRange is null', () => {
@@ -64,20 +64,20 @@ describe('AvailabilityService', () => {
     });
 
     it('should return true when grade is within range', () => {
-      expect(AvailabilityService.isGradeEligible({ minimum: '3', maximum: '8' }, 5)).toBe(true);
+      expect(AvailabilityService.isGradeEligible({ minimum: 3, maximum: 8 }, 5)).toBe(true);
     });
 
     it('should return true at range boundaries', () => {
-      expect(AvailabilityService.isGradeEligible({ minimum: '3', maximum: '8' }, 3)).toBe(true);
-      expect(AvailabilityService.isGradeEligible({ minimum: '3', maximum: '8' }, 8)).toBe(true);
+      expect(AvailabilityService.isGradeEligible({ minimum: 3, maximum: 8 }, 3)).toBe(true);
+      expect(AvailabilityService.isGradeEligible({ minimum: 3, maximum: 8 }, 8)).toBe(true);
     });
 
     it('should return false when grade is below range', () => {
-      expect(AvailabilityService.isGradeEligible({ minimum: '3', maximum: '8' }, 2)).toBe(false);
+      expect(AvailabilityService.isGradeEligible({ minimum: 3, maximum: 8 }, 2)).toBe(false);
     });
 
     it('should return false when grade is above range', () => {
-      expect(AvailabilityService.isGradeEligible({ minimum: '3', maximum: '8' }, 9)).toBe(false);
+      expect(AvailabilityService.isGradeEligible({ minimum: 3, maximum: 8 }, 9)).toBe(false);
     });
   });
 
@@ -280,7 +280,7 @@ describe('AvailabilityService', () => {
     // =========================================================================
     it('should return separate slot arrays for different grades', () => {
       const instructor = makeInstructor({
-        gradeRange: { minimum: '3', maximum: '6' },
+        gradeRange: { minimum: 3, maximum: 6 },
       });
 
       const result = service.computeAvailableTimeSlots(
@@ -300,7 +300,7 @@ describe('AvailabilityService', () => {
 
     it('should use "null" key for null grades', () => {
       const instructor = makeInstructor({
-        gradeRange: { minimum: '3', maximum: '6' },
+        gradeRange: { minimum: 3, maximum: 6 },
       });
 
       const result = service.computeAvailableTimeSlots(
@@ -319,11 +319,11 @@ describe('AvailabilityService', () => {
     it('should filter instructors by grade for each grade key', () => {
       const instructorLower = makeInstructor({
         id: 'inst-lower',
-        gradeRange: { minimum: '1', maximum: '4' },
+        gradeRange: { minimum: 1, maximum: 4 },
       });
       const instructorUpper = makeInstructor({
         id: 'inst-upper',
-        gradeRange: { minimum: '5', maximum: '8' },
+        gradeRange: { minimum: 5, maximum: 8 },
       });
 
       const result = service.computeAvailableTimeSlots(

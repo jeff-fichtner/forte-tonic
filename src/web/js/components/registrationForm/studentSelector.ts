@@ -6,6 +6,7 @@
 import { RegistrationFormText } from '../../constants/registrationFormConstants.js';
 import type { StudentLike } from '../../types/registrationTypes.js';
 
+
 type StudentSelectCallback = (selectedStudent: StudentLike | undefined) => void;
 
 export class StudentSelector {
@@ -59,10 +60,7 @@ export class StudentSelector {
     // Build autocomplete data object
     const data: Record<string, null> = this.students.reduce(
       (acc: Record<string, null>, student: StudentLike) => {
-        const fullName = student.getFullName
-          ? student.getFullName()
-          : `${student.firstName || ''} ${student.lastName || ''}`.trim();
-        acc[fullName] = null; // Materialize autocomplete format
+        acc[student.fullName] = null; // Materialize autocomplete format
         return acc;
       },
       {}
@@ -70,10 +68,7 @@ export class StudentSelector {
 
     // Build student ID mapping
     this.studentMap = this.students.reduce((acc: Record<string, string>, student: StudentLike) => {
-      const fullName = student.getFullName
-        ? student.getFullName()
-        : `${student.firstName || ''} ${student.lastName || ''}`.trim();
-      acc[fullName] = student.id;
+      acc[student.fullName] = student.id;
       return acc;
     }, {});
 
@@ -119,11 +114,7 @@ export class StudentSelector {
    */
   setSelectedStudent(student: StudentLike | null): void {
     this.selectedStudent = student;
-    this.element.value = student
-      ? student.getFullName
-        ? student.getFullName()
-        : `${student.firstName || ''} ${student.lastName || ''}`.trim()
-      : '';
+    this.element.value = student ? student.fullName : '';
   }
 
   /**

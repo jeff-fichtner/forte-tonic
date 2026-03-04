@@ -4,7 +4,10 @@
 # Controls maintenance mode for staging and production Cloud Run services
 #
 # Usage:
-#   ./toggle-maintenance.sh [staging|production] [on|off] [optional-custom-message]
+#   ./toggle-maintenance.sh [staging|production] [on|off] [optional-custom-message] [--no-confirm]
+#
+# Options:
+#   --no-confirm    Skip interactive confirmation for production (used by GUI app)
 #
 # Examples:
 #   ./toggle-maintenance.sh staging on
@@ -70,6 +73,14 @@ ENVIRONMENT=$1
 MODE=$2
 CUSTOM_MESSAGE="$3"
 
+# Check for --no-confirm flag (used by GUI app which handles its own confirmation)
+NO_CONFIRM=false
+for arg in "$@"; do
+    if [ "$arg" == "--no-confirm" ]; then
+        NO_CONFIRM=true
+    fi
+done
+
 # Validate environment
 if [ "$ENVIRONMENT" != "staging" ] && [ "$ENVIRONMENT" != "production" ]; then
     print_error "Invalid environment: $ENVIRONMENT"
@@ -117,8 +128,8 @@ fi
 print_info "========================================"
 echo ""
 
-# Confirm action for production
-if [ "$ENVIRONMENT" == "production" ]; then
+# Confirm action for production (skipped when --no-confirm is passed)
+if [ "$ENVIRONMENT" == "production" ] && [ "$NO_CONFIRM" != "true" ]; then
     print_warning "You are about to modify PRODUCTION environment!"
     read -p "Are you sure you want to continue? (yes/no): " CONFIRM
     if [ "$CONFIRM" != "yes" ]; then

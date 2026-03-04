@@ -13,9 +13,7 @@ import type {
   GradeRange,
 } from '../models/shared/instructor.js';
 import { RegistrationService } from './registrationService.js';
-
-const ALL_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] as const;
-const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as const;
+import { ALL_DAYS, DAY_NAMES } from '../utils/values/days.js';
 const SLOT_STEP_MINUTES = 30;
 
 // ---------------------------------------------------------------------------
@@ -99,12 +97,7 @@ export class AvailabilityService {
     if (studentGrade === null || studentGrade === undefined) return true;
     if (!gradeRange) return true;
 
-    const min = gradeRange.minimum;
-    const max = gradeRange.maximum;
-    if (min === null || min === undefined || max === null || max === undefined) return true;
-
-    const gradeNum = Number(studentGrade);
-    return gradeNum >= Number(min) && gradeNum <= Number(max);
+    return studentGrade >= gradeRange.minimum && studentGrade <= gradeRange.maximum;
   }
 
   // ---------------------------------------------------------------------------

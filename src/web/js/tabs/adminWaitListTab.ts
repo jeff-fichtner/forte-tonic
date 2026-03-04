@@ -161,7 +161,7 @@ export class AdminWaitListTab extends AdminBaseTab<WaitListData> {
 
     return `
       ${recurringCell}
-      <td>${student.firstName} ${student.lastName}</td>
+      <td>${student.fullName}</td>
       <td>${formatGrade(student.grade) || 'N/A'}</td>
       <td>${registration.classTitle || 'N/A'}</td>
       <td>${formatDateTime(registration.createdAt) || 'N/A'}</td>

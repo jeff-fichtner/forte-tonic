@@ -2,6 +2,7 @@ import { BaseTab, SessionInfo, getParentId } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatPhone } from '../utilities/phoneHelpers.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
+
 import { resolveParentTrimesters } from '../utilities/trimesterHelpers.js';
 import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
@@ -189,9 +190,7 @@ export class ParentContactTab extends BaseTab<ContactData> {
 
     return {
       id: instructor.id as string,
-      fullName:
-        (instructor.fullName as string) ||
-        `${(instructor.firstName as string) || ''} ${(instructor.lastName as string) || ''}`.trim(),
+      fullName: instructor.fullName as string,
       email: displayEmail,
       phone: formatPhone(displayPhone),
       role: instrumentsText,

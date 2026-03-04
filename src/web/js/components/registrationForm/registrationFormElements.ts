@@ -9,6 +9,7 @@
 import type { InstructorLike } from '../../types/registrationTypes.js';
 import type { AvailableTimeSlot } from '../../../../models/shared/availableTimeSlot.js';
 
+
 /**
  * Create a filter chip element with availability-based styling
  */
@@ -130,7 +131,7 @@ export function createInstructorCard(
   const instrumentsDisplay =
     normalizedInstruments.length > 0 ? normalizedInstruments.join(', ') : 'Piano';
 
-  header.innerHTML = `<b>${instructor.firstName} ${instructor.lastName} - ${instrumentsDisplay}</b> <span style="margin-left: 10px; font-size: 12px; background: #e8f5e8; color: #4caf50; padding: 4px 8px; border-radius: 12px;">${timeSlots.length} available</span>`;
+  header.innerHTML = `<b>${instructor.fullName} - ${instrumentsDisplay}</b> <span style="margin-left: 10px; font-size: 12px; background: #e8f5e8; color: #4caf50; padding: 4px 8px; border-radius: 12px;">${timeSlots.length} available</span>`;
 
   const timeslotGrid = document.createElement('div');
   timeslotGrid.className = 'timeslot-grid';

@@ -18,17 +18,7 @@ export function isInstructorGradeEligible(
   studentGrade: number | null
 ): boolean {
   if (studentGrade === null || studentGrade === undefined) return true;
+  if (!instructor.gradeRange) return true;
 
-  const minGrade = instructor.gradeRange?.minimum;
-  const maxGrade = instructor.gradeRange?.maximum;
-
-  if (minGrade === null || minGrade === undefined || maxGrade === null || maxGrade === undefined) {
-    return true;
-  }
-
-  const gradeNum = Number(studentGrade);
-  const minNum = Number(minGrade);
-  const maxNum = Number(maxGrade);
-
-  return gradeNum >= minNum && gradeNum <= maxNum;
+  return studentGrade >= instructor.gradeRange.minimum && studentGrade <= instructor.gradeRange.maximum;
 }

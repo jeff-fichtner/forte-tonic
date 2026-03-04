@@ -272,7 +272,7 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
 
       // Add a student header for better organization
       const studentHeader = document.createElement('h5');
-      studentHeader.textContent = `${student.firstName} ${student.lastName} - Grade ${formatGrade(student.grade as number | string)}`;
+      studentHeader.textContent = `${student.fullName} - Grade ${formatGrade(student.grade as number | string)}`;
       studentHeader.style.cssText =
         'color: #2b68a4; margin-bottom: 15px; margin-top: 20px; font-weight: bold;';
       studentContainer.appendChild(studentHeader);
@@ -468,13 +468,11 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
     }
 
     // Display names - use placeholders for orphaned records
-    const studentName = student
-      ? `${student.firstName} ${student.lastName}`
-      : `<span class="red-text text-darken-2">⚠ Unknown Student</span>`;
+    const studentName = student?.fullName ||
+      `<span class="red-text text-darken-2">⚠ Unknown Student</span>`;
     const studentGrade = student ? formatGrade(student.grade as number | string) || 'N/A' : '—';
-    const instructorName = instructor
-      ? `${instructor.firstName} ${instructor.lastName}`
-      : `<span class="red-text text-darken-2">⚠ Unknown Instructor</span>`;
+    const instructorName = instructor?.fullName ||
+      `<span class="red-text text-darken-2">⚠ Unknown Instructor</span>`;
 
     // Add visual indicator for orphaned rows
     const rowStyle = isOrphaned ? 'background-color: #ffebee;' : '';
@@ -512,9 +510,8 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
       console.warn(`Student not found for wait list enrollment: ${enrollment.id}`, { studentId });
     }
 
-    const studentName = student
-      ? `${student.firstName} ${student.lastName}`
-      : `<span class="red-text text-darken-2">⚠ Unknown Student</span>`;
+    const studentName = student?.fullName ||
+      `<span class="red-text text-darken-2">⚠ Unknown Student</span>`;
     const studentGrade = student ? formatGrade(student.grade as number | string) || 'N/A' : '—';
     const rowStyle = !student ? 'background-color: #ffebee;' : '';
 

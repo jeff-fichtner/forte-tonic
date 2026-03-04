@@ -4,6 +4,7 @@ import { Table } from '../components/table.js';
 import { formatGrade, formatTime } from '../extensions/numberExtensions.js';
 import { RegistrationType } from '../constants.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
+
 import { isCurrentPeriodIntent } from '../utilities/periodHelpers.js';
 import { isDevelopment } from '../utilities/environmentHelpers.js';
 import { HttpService } from '../data/httpService.js';
@@ -309,13 +310,11 @@ export class AdminMasterScheduleTab extends AdminBaseTab<MasterScheduleData> {
         : registration.instrument || 'N/A';
 
     // Display names - use placeholders for orphaned records
-    const studentName = student
-      ? `${student.firstName} ${student.lastName}`
-      : `<span class="red-text text-darken-2" title="Student ID: ${studentIdToFind}">\u26A0 Unknown Student</span>`;
+    const studentName = student?.fullName ||
+      `<span class="red-text text-darken-2" title="Student ID: ${studentIdToFind}">\u26A0 Unknown Student</span>`;
     const studentGrade = student ? formatGrade(student.grade) || 'N/A' : '\u2014';
-    const instructorName = instructor
-      ? `${instructor.firstName} ${instructor.lastName}`
-      : `<span class="red-text text-darken-2" title="Instructor ID: ${instructorIdToFind}">\u26A0 Unknown Instructor</span>`;
+    const instructorName = instructor?.fullName ||
+      `<span class="red-text text-darken-2" title="Instructor ID: ${instructorIdToFind}">\u26A0 Unknown Instructor</span>`;
 
     // Add visual indicator for orphaned rows
     const rowStyle = isOrphaned ? 'background-color: #ffebee;' : '';
@@ -488,7 +487,7 @@ export class AdminMasterScheduleTab extends AdminBaseTab<MasterScheduleData> {
         .forEach(instructor => {
           const option = document.createElement('option');
           option.value = instructor.id;
-          option.textContent = `${instructor.firstName} ${instructor.lastName}`;
+          option.textContent = instructor.fullName;
           instructorSelect.appendChild(option);
         });
     }

@@ -14,6 +14,7 @@ import { TransportationType } from '/utils/values/transportationType.js';
 import { createFilterChip, createInstructorCard } from './registrationFormElements.js';
 import { isInstructorGradeEligible } from '../../utilities/registrationForm/availabilityEngine.js';
 import { formatDisplayTime } from '../../utilities/registrationForm/timeHelpers.js';
+
 import { ModalKeyboardHandler } from '../../utilities/modalKeyboardHandler.js';
 import type { AvailableTimeSlot } from '../../../../models/shared/availableTimeSlot.js';
 import type {
@@ -413,7 +414,7 @@ export class CascadingFilterChips {
 
     eligibleInstructors.forEach((instructor: InstructorLike) => {
       const count = counts.get(instructor.id) || 0;
-      const chipText = `${instructor.firstName} ${instructor.lastName} (${count} slots)`;
+      const chipText = `${instructor.fullName} (${count} slots)`;
       const availability = count > 3 ? 'available' : count > 0 ? 'limited' : 'unavailable';
       const chip = createFilterChip('instructor', instructor.id, chipText, false, availability);
       instructorContainer.appendChild(chip);
@@ -764,7 +765,9 @@ export class CascadingFilterChips {
       '#admin-selected-lesson-display'
     ) as HTMLElement | null;
     if (selectionDisplay) {
-      const instructor = slot.dataset.instructorId;
+      const instructorId = slot.dataset.instructorId;
+      const instructor = this.#instructors.find(i => i.id === instructorId);
+      const instructorName = instructor?.fullName || instructorId;
       const dayName =
         (slot.dataset.day || '').charAt(0).toUpperCase() + (slot.dataset.day || '').slice(1);
       const timeFormatted = formatDisplayTime(slot.dataset.time || '');
@@ -774,7 +777,7 @@ export class CascadingFilterChips {
       const detailsElement = selectionDisplay.querySelector('#admin-selected-lesson-details');
       if (detailsElement) {
         detailsElement.innerHTML = `
-          <div><strong>Instructor:</strong> ${instructor}</div>
+          <div><strong>Instructor:</strong> ${instructorName}</div>
           <div><strong>Day:</strong> ${dayName}</div>
           <div><strong>Time:</strong> ${timeFormatted}</div>
           <div><strong>Duration:</strong> ${length} minutes</div>

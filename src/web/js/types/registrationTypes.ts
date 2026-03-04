@@ -19,9 +19,10 @@ export interface InstructorLike {
   id: string;
   firstName: string | null;
   lastName: string | null;
+  fullName: string;
   specialties?: string[];
   primaryInstrument?: string;
-  gradeRange?: { minimum?: number; maximum?: number };
+  gradeRange?: { minimum: number; maximum: number } | null;
   availability?: Record<string, DaySchedule>;
   [key: string]: unknown;
 }
@@ -31,8 +32,8 @@ export interface StudentLike {
   id: string;
   firstName?: string;
   lastName?: string;
+  fullName: string;
   grade?: number | string | null;
-  getFullName?: () => string;
   [key: string]: unknown;
 }
 

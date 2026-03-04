@@ -4,7 +4,7 @@ import { DateHelpers } from '../../utils/nativeDateTimeHelpers.js';
  * Class model - unified for both backend and frontend use
  *
  * Database fields (persisted in Classes sheet):
- * - id, instructorId, day, startTime, length, endTime, instrument, title, size, minimumGrade, maximumGrade, isRestricted
+ * - id, instructorId, day, startTime, length, endTime, instrument, title, size, minimumGrade, maximumGrade, isRestricted, roomId
  */
 
 export interface ClassData {
@@ -17,9 +17,10 @@ export interface ClassData {
   instrument: string;
   title: string;
   size?: string | null;
-  minimumGrade?: string | null;
-  maximumGrade?: string | null;
+  minimumGrade?: number | null;
+  maximumGrade?: number | null;
   isRestricted?: boolean;
+  roomId?: string | null;
 }
 
 export interface ClassJSON {
@@ -32,9 +33,10 @@ export interface ClassJSON {
   instrument: string;
   title: string;
   size: string | null;
-  minimumGrade: string | null;
-  maximumGrade: string | null;
+  minimumGrade: number | null;
+  maximumGrade: number | null;
   isRestricted: boolean;
+  roomId: string | null;
   formattedStartTime: string;
   formattedEndTime: string;
   formattedMinimumGrade: string;
@@ -60,6 +62,7 @@ export class Class {
     'minimumGrade',
     'maximumGrade',
     'isRestricted',
+    'roomId',
   ] as const;
 
   id: string;
@@ -71,9 +74,10 @@ export class Class {
   instrument: string;
   title: string;
   size: string | null;
-  minimumGrade: string | null;
-  maximumGrade: string | null;
+  minimumGrade: number | null;
+  maximumGrade: number | null;
   isRestricted: boolean;
+  roomId: string | null;
 
   /**
    * Creates a Class instance
@@ -91,6 +95,7 @@ export class Class {
     this.minimumGrade = data.minimumGrade || null;
     this.maximumGrade = data.maximumGrade || null;
     this.isRestricted = data.isRestricted || false;
+    this.roomId = data.roomId || null;
   }
 
   /**
@@ -113,6 +118,7 @@ export class Class {
       minimumGrade: record.minimumGrade,
       maximumGrade: record.maximumGrade,
       isRestricted: record.isRestricted,
+      roomId: record.roomId,
     });
   }
 
@@ -215,10 +221,9 @@ export class Class {
    * Checks if the class is suitable for a specific grade
    */
   isGradeEligible(grade: number | string): boolean {
+    if (this.minimumGrade === null || this.maximumGrade === null) return false;
     const gradeNum = Number(grade);
-    const minNum = Number(this.minimumGrade);
-    const maxNum = Number(this.maximumGrade);
-    return gradeNum >= minNum && gradeNum <= maxNum;
+    return gradeNum >= this.minimumGrade && gradeNum <= this.maximumGrade;
   }
 
   /**
@@ -245,6 +250,7 @@ export class Class {
       minimumGrade: this.minimumGrade,
       maximumGrade: this.maximumGrade,
       isRestricted: this.isRestricted,
+      roomId: this.roomId,
       formattedStartTime: this.formattedStartTime,
       formattedEndTime: this.formattedEndTime,
       formattedMinimumGrade: this.formattedMinimumGrade,

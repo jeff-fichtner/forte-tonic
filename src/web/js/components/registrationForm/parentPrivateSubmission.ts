@@ -7,6 +7,7 @@
 import { RegistrationType } from '/utils/values/registrationType.js';
 import { TransportationType } from '/utils/values/transportationType.js';
 import { formatDisplayTime } from '../../utilities/registrationForm/timeHelpers.js';
+
 import { validateBusTimeRestrictions } from '../../utilities/registrationForm/registrationValidator.js';
 import { FORTE_PROGRAM_EMAIL } from '../../constants.js';
 import { UserSession } from '../../auth/session.js';
@@ -275,9 +276,7 @@ export class ParentPrivateSubmission {
     const instructor = this.config.instructors.find(
       (inst: InstructorLike) => inst.id === registrationData.instructorId
     );
-    const instructorName = instructor
-      ? `${instructor.firstName} ${instructor.lastName}`
-      : 'the instructor';
+    const instructorName = instructor?.fullName || 'the instructor';
 
     // Format time
     const timeFormatted = formatDisplayTime(registrationData.startTime || '');

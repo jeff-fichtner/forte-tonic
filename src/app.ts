@@ -11,6 +11,7 @@ import { createLogger } from './utils/logger.js';
 import { serviceContainer } from './infrastructure/container/serviceContainer.js';
 import { errorResponse } from './common/responseHelpers.js';
 import { ERROR_CODE, ERROR_TYPE } from './common/errorConstants.js';
+import { runPendingMigrations } from './infrastructure/migration/migrationRunner.js';
 
 const appDir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -166,6 +167,9 @@ app.use((error: Error, req: Request, res: Response, _next: NextFunction) => {
  */
 export async function initializeApp() {
   await serviceContainer.initialize();
+  if (serviceContainer.dbClient) {
+    await runPendingMigrations(serviceContainer.dbClient);
+  }
 }
 
 export { app, PORT };

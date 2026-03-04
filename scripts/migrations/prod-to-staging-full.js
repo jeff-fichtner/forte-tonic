@@ -135,6 +135,72 @@ class FullDatabaseMigration {
   }
 
   /**
+   * Verify that production and staging sheet schemas (column headers) match
+   * for all data sheets. Aborts if any mismatch is found — run pending
+   * migrations on staging first to bring schemas in sync.
+   */
+  async verifySchemaSync() {
+    this.logger.log('\n🔍 Verifying schema sync between production and staging...');
+
+    const dataSheets = this.sheetsToMigrate
+      .map(s => s.original)
+      .filter(name => !name.endsWith('_audit')); // Audit sheets follow their parent
+
+    const mismatches = [];
+
+    for (const sheetName of dataSheets) {
+      let prodHeaders, stagingHeaders;
+
+      try {
+        const prodResponse = await this.prodSheets.spreadsheets.values.get({
+          spreadsheetId: this.prodSpreadsheetId,
+          range: `${sheetName}!1:1`,
+        });
+        prodHeaders = prodResponse.data.values?.[0] ?? [];
+      } catch {
+        this.logger.log(`   ⚠️  Could not read prod headers for '${sheetName}' — skipping`);
+        continue;
+      }
+
+      try {
+        const stagingResponse = await this.stagingSheets.spreadsheets.values.get({
+          spreadsheetId: this.stagingSpreadsheetId,
+          range: `${sheetName}!1:1`,
+        });
+        stagingHeaders = stagingResponse.data.values?.[0] ?? [];
+      } catch {
+        this.logger.log(`   ⚠️  Could not read staging headers for '${sheetName}' — skipping`);
+        continue;
+      }
+
+      const prodSet = new Set(prodHeaders);
+      const stagingSet = new Set(stagingHeaders);
+      const inProdOnly = prodHeaders.filter(h => !stagingSet.has(h));
+      const inStagingOnly = stagingHeaders.filter(h => !prodSet.has(h));
+
+      if (inProdOnly.length > 0 || inStagingOnly.length > 0) {
+        mismatches.push({ sheetName, inProdOnly, inStagingOnly });
+      }
+    }
+
+    if (mismatches.length > 0) {
+      this.logger.log('\n❌ SCHEMA MISMATCH DETECTED — aborting migration');
+      for (const { sheetName, inProdOnly, inStagingOnly } of mismatches) {
+        if (inProdOnly.length > 0) {
+          this.logger.log(`   ${sheetName}: columns in prod but not staging: ${inProdOnly.join(', ')}`);
+        }
+        if (inStagingOnly.length > 0) {
+          this.logger.log(`   ${sheetName}: columns in staging but not prod: ${inStagingOnly.join(', ')}`);
+        }
+      }
+      this.logger.log('\n💡 Start the staging app to run pending migrations, then retry.');
+      throw new Error('Schema mismatch between production and staging. Run pending migrations on staging first.');
+    }
+
+    this.logger.log('   ✅ All sheet schemas match between production and staging');
+  }
+
+  /**
    * Step 1: RUN - Create ALL MIGRATION_* sheets in staging
    */
   async run() {
@@ -142,6 +208,9 @@ class FullDatabaseMigration {
     this.logger.log('==================================================');
 
     await this.initialize();
+
+    // Verify schemas match before proceeding
+    await this.verifySchemaSync();
 
     // Clean up any previous mapping files before starting
     await this.cleanupMappingFiles();

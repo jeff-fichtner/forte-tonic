@@ -7,6 +7,7 @@ import { Select } from '../select.js';
 import { RegistrationFormText } from '../../constants/registrationFormConstants.js';
 import type { InstructorLike } from '../../types/registrationTypes.js';
 
+
 interface SelectOption {
   value: string;
   label: string;
@@ -55,7 +56,7 @@ export class InstructorSelector {
   #buildInstructorOptions(instructors: InstructorLike[]): SelectOption[] {
     return instructors.map(instructor => ({
       value: instructor.id,
-      label: `${instructor.firstName} ${instructor.lastName}`,
+      label: instructor.fullName,
     }));
   }
 

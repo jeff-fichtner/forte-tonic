@@ -42,8 +42,8 @@ describe('isInstructorGradeEligible', () => {
     expect(isInstructorGradeEligible(instructor, 5)).toBe(true);
   });
 
-  test('returns true when gradeRange minimum/maximum are undefined', () => {
-    const instructor = makeInstructor({ gradeRange: {} });
+  test('returns true when gradeRange is null', () => {
+    const instructor = makeInstructor({ gradeRange: null });
     expect(isInstructorGradeEligible(instructor, 5)).toBe(true);
   });
 

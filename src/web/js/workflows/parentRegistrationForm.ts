@@ -7,6 +7,7 @@ import { RegistrationType } from '/utils/values/registrationType.js';
 import { TransportationType } from '/utils/values/transportationType.js';
 import { DomHelpers } from '../utilities/domHelpers.js';
 import { clearErrorMessage } from '../utilities/registrationForm/messageDisplay.js';
+
 import type {
   InstructorLike,
   StudentLike,
@@ -48,6 +49,9 @@ export class ParentRegistrationForm {
   cascadingFilterChips: CascadingFilterChips | null;
   groupRegistration: ParentGroupRegistration | null;
   privateSubmission: ParentPrivateSubmission | null;
+  #boundStudentChangeHandler: ((event: Event) => void) | null = null;
+  #boundRegistrationTypeHandler: ((event: Event) => void) | null = null;
+  #boundRegistrationSelectionHandler: ((event: Event) => void) | null = null;
 
   /**
    * Constructor
@@ -262,7 +266,7 @@ export class ParentRegistrationForm {
       // Create option and select it
       const option = document.createElement('option');
       option.value = student.id;
-      option.textContent = `${student.firstName} ${student.lastName}`;
+      option.textContent = student.fullName;
       option.selected = true;
       studentSelect.appendChild(option);
 
@@ -277,12 +281,17 @@ export class ParentRegistrationForm {
       this.parentChildren.forEach(student => {
         const option = document.createElement('option');
         option.value = student.id;
-        option.textContent = `${student.firstName} ${student.lastName}`;
+        option.textContent = student.fullName;
         studentSelect.appendChild(option);
       });
 
+      // Remove previous listener before adding new one
+      if (this.#boundStudentChangeHandler) {
+        studentSelect.removeEventListener('change', this.#boundStudentChangeHandler);
+      }
+
       // Add event listener for student selection changes
-      studentSelect.addEventListener('change', (event: Event) => {
+      this.#boundStudentChangeHandler = (event: Event) => {
         const selectedStudentId = (event.target as HTMLSelectElement).value;
         if (selectedStudentId) {
           // Clear any previously selected registration when switching students
@@ -325,7 +334,8 @@ export class ParentRegistrationForm {
         } else {
           this.#hideAllRegistrationContainers();
         }
-      });
+      };
+      studentSelect.addEventListener('change', this.#boundStudentChangeHandler);
     }
 
     // Reinitialize Materialize select
@@ -373,7 +383,12 @@ export class ParentRegistrationForm {
     const groupContainer = document.getElementById('parent-group-registration-container');
 
     if (registrationTypeSelect && privateContainer && groupContainer) {
-      registrationTypeSelect.addEventListener('change', (event: Event) => {
+      // Remove previous listener before adding new one
+      if (this.#boundRegistrationTypeHandler) {
+        registrationTypeSelect.removeEventListener('change', this.#boundRegistrationTypeHandler);
+      }
+
+      this.#boundRegistrationTypeHandler = (event: Event) => {
         const selectedType = (event.target as HTMLSelectElement).value;
 
         // Hide both containers first
@@ -402,7 +417,8 @@ export class ParentRegistrationForm {
             M.FormSelect.init(document.querySelectorAll('select'));
           }
         }, 100);
-      });
+      };
+      registrationTypeSelect.addEventListener('change', this.#boundRegistrationTypeHandler);
 
       // Initialize Materialize select
       if (typeof M !== 'undefined') {
@@ -631,7 +647,7 @@ export class ParentRegistrationForm {
         const instructor = this.instructors.find(
           (i: InstructorLike) => i.id === registration.instructorId
         );
-        const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : '';
+        const instructorName = instructor?.fullName || '';
         label = `Modify: ${instrument} - ${day} ${time} with ${instructorName}`;
       } else if (registration.registrationType === RegistrationType.GROUP) {
         const classTitle = registration.classTitle || 'Class';
@@ -642,9 +658,12 @@ export class ParentRegistrationForm {
       selectorDropdown.appendChild(option);
     });
 
-    // Attach change listener
-    selectorDropdown.removeEventListener('change', this._handleRegistrationSelection);
-    selectorDropdown.addEventListener('change', this._handleRegistrationSelection.bind(this));
+    // Attach change listener (store bound ref so it can be removed later)
+    if (this.#boundRegistrationSelectionHandler) {
+      selectorDropdown.removeEventListener('change', this.#boundRegistrationSelectionHandler);
+    }
+    this.#boundRegistrationSelectionHandler = this._handleRegistrationSelection.bind(this);
+    selectorDropdown.addEventListener('change', this.#boundRegistrationSelectionHandler);
 
     // Reinitialize Materialize select
     if (window.M && window.M.FormSelect) {

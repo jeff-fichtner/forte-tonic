@@ -12,7 +12,7 @@ touch src/migrations/001-add-room-to-registrations.ts
 2. Export an `id` string and a `migrate` function:
 
 ```typescript
-import { MigrationContext } from '../infrastructure/migration/migrationContext.js';
+import type { MigrationContext } from '../infrastructure/migration/types.js';
 
 export const id = '001-add-room-to-registrations';
 
@@ -50,9 +50,9 @@ static readonly columns = [
 
 On every startup:
 
-1. Runner reads the `_migrations` sheet to get already-executed migration IDs
+1. Runner reads the `_migrations` sheet to get already-executed migration filenames
 2. Runner scans `src/migrations/` for `.ts` files, sorted by numeric prefix
-3. Any migration whose `id` is NOT in `_migrations` is executed sequentially
+3. Any migration file not recorded in `_migrations` is imported and executed sequentially
 4. On success: migration `id`, filename, timestamp, and duration are recorded in `_migrations`
 5. On failure: error is logged via GCP structured logger, process exits with non-zero code
 

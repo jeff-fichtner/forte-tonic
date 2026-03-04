@@ -54,8 +54,8 @@ export const WeekDays = [
   { value: '4', label: 'Friday' },
 ];
 
-// Day Names - indexed array for conversion from numeric values
-export const DayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+// Day Names - re-exported from shared values
+export { DAY_NAMES as DayNames } from '/utils/values/days.js';
 
 // Transportation Types — re-exported from shared values
 export { TransportationType } from '/utils/values/transportationType.js';

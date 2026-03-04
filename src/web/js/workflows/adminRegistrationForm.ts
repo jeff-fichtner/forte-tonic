@@ -25,6 +25,7 @@ import type {
   RegistrationLike,
 } from '../types/registrationTypes.js';
 
+
 /** Registration data built for submission (admin form allows null for some fields) */
 interface RegistrationData {
   studentId: string | null;
@@ -506,7 +507,7 @@ export class AdminRegistrationForm {
         const instructor = this.instructors.find(
           (i: InstructorLike) => i.id === registration.instructorId
         );
-        const instructorName = instructor ? `${instructor.firstName} ${instructor.lastName}` : '';
+        const instructorName = instructor?.fullName || '';
         label = `${instrument} - ${day} ${time} with ${instructorName}`;
       } else if (regType === RegistrationType.GROUP) {
         const classTitle = registration.classTitle || 'Class';

@@ -62,10 +62,7 @@ export function sortEmployeesForDirectory(employees: EmployeeDisplay[]): Employe
  * Build a table row for an employee.
  */
 export function buildDirectoryTableRow(employee: EmployeeDisplay): string {
-  const fullName =
-    employee.fullName ||
-    `${employee.firstName || ''} ${employee.lastName || ''}`.trim() ||
-    'Unknown';
+  const fullName = employee.fullName || 'Unknown';
   const roles = Array.isArray(employee.roles)
     ? employee.roles.join(', ')
     : employee.roles || 'Unknown';

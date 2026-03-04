@@ -10,6 +10,7 @@ import { formatClassNameWithGradeCorrection } from '../../utilities/classNameFor
 import { ClassManager } from '../../utilities/classManager.js';
 import { formatTime } from '../../extensions/numberExtensions.js';
 import { formatDisplayTime } from '../../utilities/registrationForm/timeHelpers.js';
+
 import { validateBusTimeRestrictions } from '../../utilities/registrationForm/registrationValidator.js';
 import {
   getOrCreateErrorContainer,
@@ -102,10 +103,9 @@ export class ParentGroupRegistration {
       minGrade: number | undefined,
       maxGrade: number | undefined
     ): boolean => {
+      if (minGrade === undefined || maxGrade === undefined) return false;
       const gradeNum = Number(studentGrade);
-      const minNum = Number(minGrade);
-      const maxNum = Number(maxGrade);
-      return gradeNum >= minNum && gradeNum <= maxNum;
+      return gradeNum >= minGrade && gradeNum <= maxGrade;
     };
 
     // Filter classes where student is NOT already enrolled AND grade is eligible
@@ -550,9 +550,7 @@ export class ParentGroupRegistration {
     const instructor = this.config.instructors.find(
       (inst: InstructorLike) => inst.id === registrationData.instructorId
     );
-    const instructorName = instructor
-      ? `${instructor.firstName} ${instructor.lastName}`
-      : 'the instructor';
+    const instructorName = instructor?.fullName || 'the instructor';
 
     // Format time
     const timeFormatted = formatDisplayTime(registrationData.startTime || '');
@@ -609,9 +607,7 @@ export class ParentGroupRegistration {
     const instructor = this.config.instructors.find(
       (inst: InstructorLike) => inst.id === registrationData.instructorId
     );
-    const instructorName = instructor
-      ? `${instructor.firstName} ${instructor.lastName}`
-      : 'the instructor';
+    const instructorName = instructor?.fullName || 'the instructor';
 
     // Format time
     const timeFormatted = formatDisplayTime(registrationData.startTime || '');

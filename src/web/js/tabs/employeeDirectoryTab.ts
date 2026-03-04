@@ -2,6 +2,7 @@ import { BaseTab, SessionInfo } from '../core/baseTab.js';
 import { Table } from '../components/table.js';
 import { formatPhone } from '../utilities/phoneHelpers.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
+
 import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
 import { validateResponseFields } from '../data/responseValidation.js';
@@ -159,8 +160,7 @@ export class EmployeeDirectoryTab extends BaseTab<DirectoryData> {
 
     return {
       id: instructor.id,
-      fullName:
-        instructor.fullName || `${instructor.firstName || ''} ${instructor.lastName || ''}`.trim(),
+      fullName: instructor.fullName as string,
       email: instructor.email,
       phone: formattedPhone,
       role: instrumentsText,

@@ -9,10 +9,11 @@
 import { HttpService } from '../data/httpService.js';
 import { DropRequestStatus } from '/utils/values/dropRequestStatus.js';
 
+
 interface DropRegistration {
   id: string;
-  student?: { firstName?: string; lastName?: string };
-  instructor?: { firstName?: string; lastName?: string };
+  student?: { fullName?: string };
+  instructor?: { fullName?: string };
   instrument?: string;
   day?: string;
   startTime?: string;
@@ -265,14 +266,10 @@ export class DropRequestModal {
     const schedule = modal.querySelector<HTMLSpanElement>('#dropRequestSchedule')!;
 
     // Format student name
-    const student = this.registration.student || {};
-    studentName.textContent =
-      `${student.firstName || ''} ${student.lastName || ''}`.trim() || 'Unknown Student';
+    studentName.textContent = this.registration.student?.fullName || 'Unknown Student';
 
     // Format lesson details
-    const instructor = this.registration.instructor || {};
-    const instructorName =
-      `${instructor.firstName || ''} ${instructor.lastName || ''}`.trim() || 'Unknown Instructor';
+    const instructorName = this.registration.instructor?.fullName || 'Unknown Instructor';
     lessonDetails.textContent = `${this.registration.instrument || 'Unknown'} with ${instructorName}`;
 
     // Format schedule

@@ -73,6 +73,8 @@ const classMappings: FieldMapping = {
   startTime: val => DateHelpers.parseTimeString(val).to24Hour(),
   endTime: val => DateHelpers.parseTimeString(val).to24Hour(),
   length: val => parseInt(val) || 0,
+  minimumGrade: val => (val ? Number(val) : null),
+  maximumGrade: val => (val ? Number(val) : null),
   isRestricted: val => val === 'TRUE' || val === 'true',
 };
 
@@ -113,7 +115,12 @@ const instructorMappings: FieldMapping = {
       roomId: row.fridayRoomId,
     },
   }),
-  gradeRange: (_val, row) => ({ minimum: row.minimumGrade, maximum: row.maximumGrade }),
+  gradeRange: (_val, row) => {
+    const min = row.minimumGrade;
+    const max = row.maximumGrade;
+    if (!min && !max) return null;
+    return { minimum: Number(min), maximum: Number(max) };
+  },
 };
 
 /** Attendance: week to number, attended to boolean */
@@ -252,7 +259,7 @@ export class GoogleSheetsDbClient extends BaseService {
         columns: PERIOD_COLUMNS,
         mappings: periodMappings,
       },
-      drop_requests: { sheet: 'drop_requests', startRow: 2, columns: DropRequest.columns },
+      [Keys.DROP_REQUESTS]: { sheet: Keys.DROP_REQUESTS, startRow: 2, columns: DropRequest.columns },
       // Generate trimester-specific registration and audit sheets from shared schemas
       ...Object.fromEntries(
         trimesters.flatMap(t => [

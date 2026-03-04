@@ -17,8 +17,8 @@
 
 **Purpose**: Create migration infrastructure directory and type definitions
 
-- [ ] T001 Create migration types (`MigrationModule`, `DiscoveredMigration`, `MigrationRecord`, `MigrationContext` interface, `MIGRATION_COLUMNS`) in `src/infrastructure/migration/types.ts`
-- [ ] T002 Create empty `src/migrations/` directory with a `.gitkeep` file
+- [x] T001 Create migration types (`MigrationModule`, `DiscoveredMigration`, `MigrationRecord`, `MigrationContext` interface, `MIGRATION_COLUMNS`) in `src/infrastructure/migration/types.ts`
+- [x] T002 Create empty `src/migrations/` directory with a `.gitkeep` file
 
 ---
 
@@ -28,7 +28,7 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Expose `sheets` API client and `spreadsheetId` from `GoogleSheetsDbClient` as readonly properties (or getter methods) in `src/database/googleSheetsDbClient.ts` — the `MigrationContext` needs direct access to `sheets.spreadsheets.batchUpdate()`, `sheets.spreadsheets.get()`, and `sheets.spreadsheets.values.*` for structural operations that don't go through CRUD methods
+- [x] T003 Expose `sheets` API client and `spreadsheetId` from `GoogleSheetsDbClient` as readonly properties (or getter methods) in `src/database/googleSheetsDbClient.ts` — the `MigrationContext` needs direct access to `sheets.spreadsheets.batchUpdate()`, `sheets.spreadsheets.get()`, and `sheets.spreadsheets.values.*` for structural operations that don't go through CRUD methods
 
 **Checkpoint**: Foundation ready — user story implementation can begin
 
@@ -42,14 +42,14 @@
 
 ### Tests for User Story 1
 
-- [ ] T004 [P] [US1] Create unit tests for `MigrationRunner` in `tests/unit/infrastructure/migrationRunner.test.ts` — test: discover migration files from directory (mock `fs.readdir` + dynamic `import()`), diff discovered vs already-run IDs, execute pending migrations sequentially, record success in `_migrations` sheet (mock Sheets API `values.append`), auto-create `_migrations` sheet if missing (mock `spreadsheets.get` + `spreadsheets.batchUpdate` with `addSheet`), log and throw on migration failure (do NOT record), handle zero pending migrations (no-op), validate migration module exports (`id` string + `migrate` function)
-- [ ] T005 [P] [US1] Create integration test in `tests/integration/migration.test.ts` — test: `initializeApp()` runs pending migrations before returning (mock Sheets API, provide test migration file), failed migration prevents app startup (SC-003), all existing tests still pass with migration system present (SC-004)
+- [x] T004 [P] [US1] Create unit tests for `MigrationRunner` in `tests/unit/infrastructure/migrationRunner.test.ts` — test: discover migration files from directory (mock `fs.readdir` + dynamic `import()`), diff discovered vs already-run IDs, execute pending migrations sequentially, record success in `_migrations` sheet (mock Sheets API `values.append`), auto-create `_migrations` sheet if missing (mock `spreadsheets.get` + `spreadsheets.batchUpdate` with `addSheet`), log and throw on migration failure (do NOT record), handle zero pending migrations (no-op), validate migration module exports (`id` string + `migrate` function)
+- [x] T005 [P] [US1] Create integration test in `tests/integration/migration.test.ts` — test: `initializeApp()` runs pending migrations before returning (mock Sheets API, provide test migration file), failed migration prevents app startup (SC-003), all existing tests still pass with migration system present (SC-004)
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Implement `MigrationRunner` in `src/infrastructure/migration/migrationRunner.ts` — `runPendingMigrations(dbClient)` function that: (1) checks if `_migrations` sheet exists via `spreadsheets.get` with `fields: 'sheets.properties'`, (2) auto-creates it with `addSheet` + writes header row if missing, (3) reads existing migration records from `_migrations` to get set of already-run IDs, (4) scans `src/migrations/` with `fs.readdir` (resolve path relative to project root via `import.meta.url` — the app runs via `tsx` so source `.ts` files are loaded directly; note: concurrent migration execution is unsupported and assumes single-instance startup per Cloud Run cold start model), filters `.ts`/`.js` files with numeric prefix, sorts by filename, (5) dynamically `import()`s each file and validates it exports `id: string` and `migrate: Function`, (6) diffs discovered migrations against already-run set, (7) executes each pending migration sequentially — creates a `MigrationContext` instance, calls `migrate(ctx)`, times execution, (8) on success: appends record (`id`, `filename`, `executedAt`, `durationMs`, `success`) to `_migrations` via `values.append`, (9) on failure: logs error via GCP structured logger, throws (does NOT record), (10) logs each migration start/success/failure/duration via GCP structured logger
-- [ ] T007 [US1] Integrate migration runner into app startup in `src/app.ts` — add `await runPendingMigrations(serviceContainer.dbClient)` call inside `initializeApp()` after `serviceContainer.initialize()` completes. Import `runPendingMigrations` from `src/infrastructure/migration/migrationRunner.ts`. Error propagation to `server.ts` catch block handles `process.exit(1)`.
-- [ ] T008 [US1] Create barrel export in `src/infrastructure/migration/index.ts` — re-export `runPendingMigrations` from `migrationRunner.ts` and types from `types.ts`
+- [x] T006 [US1] Implement `MigrationRunner` in `src/infrastructure/migration/migrationRunner.ts` — `runPendingMigrations(dbClient)` function that: (1) checks if `_migrations` sheet exists via `spreadsheets.get` with `fields: 'sheets.properties'`, (2) auto-creates it with `addSheet` + writes header row if missing, (3) reads existing migration records from `_migrations` to get set of already-run IDs, (4) scans `src/migrations/` with `fs.readdir` (resolve path relative to project root via `import.meta.url` — the app runs via `tsx` so source `.ts` files are loaded directly; note: concurrent migration execution is unsupported and assumes single-instance startup per Cloud Run cold start model), filters `.ts`/`.js` files with numeric prefix, sorts by filename, (5) dynamically `import()`s each file and validates it exports `id: string` and `migrate: Function`, (6) diffs discovered migrations against already-run set, (7) executes each pending migration sequentially — creates a `MigrationContext` instance, calls `migrate(ctx)`, times execution, (8) on success: appends record (`id`, `filename`, `executedAt`, `durationMs`, `success`) to `_migrations` via `values.append`, (9) on failure: logs error via GCP structured logger, throws (does NOT record), (10) logs each migration start/success/failure/duration via GCP structured logger
+- [x] T007 [US1] Integrate migration runner into app startup in `src/app.ts` — add `await runPendingMigrations(serviceContainer.dbClient)` call inside `initializeApp()` after `serviceContainer.initialize()` completes. Import `runPendingMigrations` from `src/infrastructure/migration/migrationRunner.ts`. Error propagation to `server.ts` catch block handles `process.exit(1)`.
+- [x] T008 [US1] Create barrel export in `src/infrastructure/migration/index.ts` — re-export `runPendingMigrations` from `migrationRunner.ts` and types from `types.ts`
 
 **Checkpoint**: Migration runner works end-to-end. Pending migrations execute on startup, successes are recorded, failures block the app. `MigrationContext` at this point only needs a minimal stub (empty implementation or pass-through) since US1 acceptance scenarios don't require schema/data operations — they just need the runner to call `migrate(ctx)` and not throw.
 
@@ -63,12 +63,12 @@
 
 ### Tests for User Story 2
 
-- [ ] T009 [P] [US2] Create unit tests for `MigrationContext` schema operations in `tests/unit/infrastructure/migrationContext.test.ts` — test: `getSheetHeaders(sheetName)` reads row 1 via `values.get` and returns string array, `addColumn(sheetName, colName, { after })` resolves `after` column to index via `getSheetHeaders`, calls `insertDimension` with correct `sheetId`/`startIndex`/`endIndex`, writes header cell via `values.update`, returns new column 0-based index, `addColumn` without `after` option appends column at end, `readAllRows(sheetName)` reads all rows starting at row 2 and maps to `Record<string, string>` using headers, `batchUpdateColumn(sheetName, colIndex, values)` writes values down a column via `values.update` with correct range
+- [x] T009 [P] [US2] Create unit tests for `MigrationContext` schema operations in `tests/unit/infrastructure/migrationContext.test.ts` — test: `getSheetHeaders(sheetName)` reads row 1 via `values.get` and returns string array, `addColumn(sheetName, colName, { after })` resolves `after` column to index via `getSheetHeaders`, calls `insertDimension` with correct `sheetId`/`startIndex`/`endIndex`, writes header cell via `values.update`, returns new column 0-based index, `addColumn` without `after` option appends column at end, `readAllRows(sheetName)` reads all rows starting at row 2 and maps to `Record<string, string>` using headers, `batchUpdateColumn(sheetName, colIndex, values)` writes values down a column via `values.update` with correct range
 
 ### Implementation for User Story 2
 
-- [ ] T010 [US2] Implement `MigrationContext` class in `src/infrastructure/migration/migrationContext.ts` — constructor receives `sheets` API client and `spreadsheetId`. Implement: `getSheetHeaders(sheetName)` — `values.get` for range `{sheetName}!1:1`, return `values[0] ?? []`. `addColumn(sheetName, columnName, options?)` — call `getSheetHeaders` to find `after` column index, get numeric `sheetId` via `spreadsheets.get` with `fields: 'sheets.properties'`, call `batchUpdate` with `insertDimension` (COLUMNS, startIndex = afterIndex + 1), write header via `values.update` at the new column position row 1, return new column index. `readAllRows(sheetName)` — call `getSheetHeaders` then `values.get` for `{sheetName}!A2:{lastCol}`, map each row to `Record<string, string>` using header array. `batchUpdateColumn(sheetName, colIndex, values)` — convert colIndex to column letter, `values.update` for range `{sheetName}!{letter}2:{letter}{2+values.length-1}` with column data.
-- [ ] T011 [US2] Wire `MigrationContext` into `MigrationRunner` in `src/infrastructure/migration/migrationRunner.ts` — replace any stub/minimal context with the real `MigrationContext` class instantiation, passing `sheets` and `spreadsheetId` from `dbClient`
+- [x] T010 [US2] Implement `MigrationContext` class in `src/infrastructure/migration/migrationContext.ts` — constructor receives `sheets` API client and `spreadsheetId`. Implement: `getSheetHeaders(sheetName)` — `values.get` for range `{sheetName}!1:1`, return `values[0] ?? []`. `addColumn(sheetName, columnName, options?)` — call `getSheetHeaders` to find `after` column index, get numeric `sheetId` via `spreadsheets.get` with `fields: 'sheets.properties'`, call `batchUpdate` with `insertDimension` (COLUMNS, startIndex = afterIndex + 1), write header via `values.update` at the new column position row 1, return new column index. `readAllRows(sheetName)` — call `getSheetHeaders` then `values.get` for `{sheetName}!A2:{lastCol}`, map each row to `Record<string, string>` using header array. `batchUpdateColumn(sheetName, colIndex, values)` — convert colIndex to column letter, `values.update` for range `{sheetName}!{letter}2:{letter}{2+values.length-1}` with column data.
+- [x] T011 [US2] Wire `MigrationContext` into `MigrationRunner` in `src/infrastructure/migration/migrationRunner.ts` — replace any stub/minimal context with the real `MigrationContext` class instantiation, passing `sheets` and `spreadsheetId` from `dbClient`
 
 **Checkpoint**: Schema migration capability is fully functional. A migration file can call `addColumn` to insert a column at a specific position and `batchUpdateColumn` to seed it with values.
 
@@ -82,11 +82,11 @@
 
 ### Tests for User Story 3
 
-- [ ] T012 [P] [US3] Add `updateCell` tests to `tests/unit/infrastructure/migrationContext.test.ts` — test: `updateCell(sheetName, row, col, value)` converts row (1-based) and col (0-based) to A1 notation and calls `values.update` with correct range and value, verify correct cell address for edge cases (column > 25 = multi-letter)
+- [x] T012 [P] [US3] Add `updateCell` tests to `tests/unit/infrastructure/migrationContext.test.ts` — test: `updateCell(sheetName, row, col, value)` converts row (1-based) and col (0-based) to A1 notation and calls `values.update` with correct range and value, verify correct cell address for edge cases (column > 25 = multi-letter)
 
 ### Implementation for User Story 3
 
-- [ ] T013 [US3] Implement `updateCell` method in `src/infrastructure/migration/migrationContext.ts` — convert 0-based `col` to column letter (reuse `getColumnLetter` logic from `googleSheetsDbClient.ts` or import as utility), build range `{sheetName}!{letter}{row}`, call `values.update` with `valueInputOption: 'RAW'` and `requestBody: { values: [[value]] }`
+- [x] T013 [US3] Implement `updateCell` method in `src/infrastructure/migration/migrationContext.ts` — convert 0-based `col` to column letter (reuse `getColumnLetter` logic from `googleSheetsDbClient.ts` or import as utility), build range `{sheetName}!{letter}{row}`, call `values.update` with `valueInputOption: 'RAW'` and `requestBody: { values: [[value]] }`
 
 **Checkpoint**: All MigrationContext methods are implemented. Migration scripts can perform schema changes (add columns), seed data (batch write), and transform existing data (read + update cells).
 
@@ -96,9 +96,9 @@
 
 **Purpose**: Verify all success criteria and ensure no regressions
 
-- [ ] T014 Run all existing tests to verify no regressions (SC-004) — `npm test`
-- [ ] T015 Run `npm run build` to verify TypeScript compilation succeeds with new files
-- [ ] T016 Verify quickstart.md examples match the implemented API signatures in `src/infrastructure/migration/migrationContext.ts` and `src/infrastructure/migration/migrationRunner.ts`
+- [x] T014 Run all existing tests to verify no regressions (SC-004) — `npm test`
+- [x] T015 Run `npm run build` to verify TypeScript compilation succeeds with new files
+- [x] T016 Verify quickstart.md examples match the implemented API signatures in `src/infrastructure/migration/migrationContext.ts` and `src/infrastructure/migration/migrationRunner.ts`
 
 ---
 

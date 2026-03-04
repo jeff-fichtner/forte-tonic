@@ -19,8 +19,8 @@ export interface InstructorAvailability {
 }
 
 export interface GradeRange {
-  minimum: string;
-  maximum: string;
+  minimum: number;
+  maximum: number;
 }
 
 export interface InstructorData {

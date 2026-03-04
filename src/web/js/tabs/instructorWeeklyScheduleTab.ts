@@ -3,6 +3,7 @@ import { Table } from '../components/table.js';
 import { formatGrade, formatTime } from '../extensions/numberExtensions.js';
 import { RegistrationType } from '../constants.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
+
 import { resolveSelectedTrimester } from '../utilities/trimesterHelpers.js';
 import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
@@ -212,9 +213,9 @@ export class InstructorWeeklyScheduleTab extends BaseTab<InstructorScheduleData>
       <td>${enrollment.day}</td>
       <td>${formatTime(enrollment.startTime as string) || 'N/A'}</td>
       <td>${enrollment.length || 'N/A'} min</td>
-      <td>${student.firstName} ${student.lastName}</td>
+      <td>${student.fullName}</td>
       <td>${formatGrade(student.grade as number | string) || 'N/A'}</td>
-      <td>${instructor.firstName} ${instructor.lastName}</td>
+      <td>${instructor.fullName}</td>
       <td>${instrumentOrClass}</td>
       <td>
         <button type="button" class="btn-flat" style="padding: 0; min-width: 0; background: none; border: none; cursor: pointer;" data-registration-id="${enrollment.id}">
