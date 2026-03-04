@@ -255,6 +255,17 @@ export class BaseTab<TData = Record<string, unknown>> {
   }
 
   /**
+   * Remove the inline error banner if present
+   */
+  clearError(): void {
+    const container = this.getContainer();
+    const banner = container.querySelector('.tab-error-banner');
+    if (banner) {
+      banner.remove();
+    }
+  }
+
+  /**
    * Reload this tab's data
    */
   async reload(): Promise<void> {
@@ -264,6 +275,7 @@ export class BaseTab<TData = Record<string, unknown>> {
 
     this.abortController = new AbortController();
     this.isLoaded = false;
+    this.clearError();
     this.showLoadingState(true);
 
     const result = await this.fetchData(this.sessionInfo);
