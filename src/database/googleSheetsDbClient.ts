@@ -79,8 +79,7 @@ const classMappings: FieldMapping = {
 };
 
 /** Parse raw time string to normalised 24-hour "HH:MM" (or empty string if blank) */
-const parseTime = (raw: string): string =>
-  raw ? DateHelpers.parseTimeString(raw).to24Hour() : '';
+const parseTime = (raw: string): string => (raw ? DateHelpers.parseTimeString(raw).to24Hour() : '');
 
 /** Instructors: isDeactivated→isActive inversion, flat fields→nested objects */
 const instructorMappings: FieldMapping = {

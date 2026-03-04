@@ -43,143 +43,153 @@ export class NavTabs {
     this.#abortController = new AbortController();
     const signal = this.#abortController.signal;
 
-    tabsContainer.addEventListener('click', async (event: Event) => {
-      // return if not a tab link
-      const tabLink = (event.target as HTMLElement).closest<HTMLAnchorElement>('.tab a');
-      if (!tabLink) return;
-      event.preventDefault();
+    tabsContainer.addEventListener(
+      'click',
+      async (event: Event) => {
+        // return if not a tab link
+        const tabLink = (event.target as HTMLElement).closest<HTMLAnchorElement>('.tab a');
+        if (!tabLink) return;
+        event.preventDefault();
 
-      // Get the tab href and target content
-      const targetTab = tabLink.getAttribute('href');
-      const targetContent = document.querySelector<HTMLElement>(targetTab!);
+        // Get the tab href and target content
+        const targetTab = tabLink.getAttribute('href');
+        const targetContent = document.querySelector<HTMLElement>(targetTab!);
 
-      if (!targetContent) {
-        console.warn(`No content found for tab: ${targetTab}`);
-        return;
-      }
-
-      // Remove active class from all tabs and add it to the clicked tab
-      tabLinks.forEach((t: HTMLAnchorElement) => {
-        t.classList.toggle('active', t.getAttribute('href') === tabLink.getAttribute('href'));
-      });
-
-      // Phase 2: Check if this tab is registered with TabController
-      const tabId = targetContent.id;
-      const tc = getTabController();
-      const isTabControllerRegistered = tc && tc.isTabRegistered(tabId);
-
-      if (isTabControllerRegistered) {
-        try {
-          // Get session info from current user state
-          const currentUser = this.#currentUser;
-          const sessionInfo = currentUser
-            ? {
-                user: currentUser,
-                userType: currentUser.admin
-                  ? UserType.ADMIN
-                  : currentUser.instructor
-                    ? UserType.INSTRUCTOR
-                    : UserType.PARENT,
-              }
-            : null;
-
-          // Update TabController session if needed
-          if (sessionInfo) {
-            tc.updateSession(sessionInfo);
-          }
-
-          // Hide all tab contents first
-          tabContents.forEach((content: HTMLElement) => {
-            content.hidden = true;
-          });
-
-          // Show the target tab content (TabController will populate it)
-          targetContent.hidden = false;
-
-          // Activate the tab via TabController (fetches data and renders)
-          await tc.activateTab(tabId);
-        } catch (error) {
-          console.error(`Error activating tab ${tabId} via TabController:`, error);
-          // Fallback: just show the content without TabController
-          targetContent.hidden = false;
+        if (!targetContent) {
+          console.warn(`No content found for tab: ${targetTab}`);
+          return;
         }
-      } else {
-        // Old behavior for non-migrated tabs
-        tabContents.forEach((content: HTMLElement) => {
-          content.hidden = content.id !== targetContent.id;
+
+        // Remove active class from all tabs and add it to the clicked tab
+        tabLinks.forEach((t: HTMLAnchorElement) => {
+          t.classList.toggle('active', t.getAttribute('href') === tabLink.getAttribute('href'));
         });
-      }
 
-      // Show/hide admin trimester selector based on tab AND period type
-      // Trimester selector should only show for admin-specific tabs during enrollment periods
-      // Hide for directory tab, non-admin tabs, and non-enrollment periods
-      // CRITICAL: Trimester selector is ADMIN-ONLY and ENROLLMENT-PERIOD-ONLY
-      const adminTrimesterSelector = document.getElementById('admin-trimester-selector-container');
-      if (adminTrimesterSelector) {
-        const isAdmin = !!this.#currentUser?.admin;
-        const currentPeriod = UserSession?.getCurrentPeriod();
+        // Phase 2: Check if this tab is registered with TabController
+        const tabId = targetContent.id;
+        const tc = getTabController();
+        const isTabControllerRegistered = tc && tc.isTabRegistered(tabId);
 
-        const adminTrimesterTabs = [
-          '#admin-master-schedule',
-          '#admin-wait-list',
-          '#admin-registration',
-        ];
-        const shouldShowAdminTrimester =
-          adminTrimesterTabs.includes(targetTab!) && isAdmin && isEnrollmentPeriod(currentPeriod);
-        adminTrimesterSelector.hidden = !shouldShowAdminTrimester;
-      }
+        if (isTabControllerRegistered) {
+          try {
+            // Get session info from current user state
+            const currentUser = this.#currentUser;
+            const sessionInfo = currentUser
+              ? {
+                  user: currentUser,
+                  userType: currentUser.admin
+                    ? UserType.ADMIN
+                    : currentUser.instructor
+                      ? UserType.INSTRUCTOR
+                      : UserType.PARENT,
+                }
+              : null;
 
-      // Show/hide instructor trimester selector based on tab AND period type
-      // Trimester selector should only show for instructor-specific tabs during enrollment periods
-      const instructorTrimesterSelector = document.getElementById(
-        'instructor-trimester-selector-container'
-      );
-      if (instructorTrimesterSelector) {
-        const isInstructor = !!this.#currentUser?.instructor;
-        const currentPeriod = UserSession?.getCurrentPeriod();
+            // Update TabController session if needed
+            if (sessionInfo) {
+              tc.updateSession(sessionInfo);
+            }
 
-        const instructorTrimesterTabs = ['#instructor-weekly-schedule'];
-        const shouldShowInstructorTrimester =
-          instructorTrimesterTabs.includes(targetTab!) &&
-          isInstructor &&
-          isEnrollmentPeriod(currentPeriod);
-        instructorTrimesterSelector.hidden = !shouldShowInstructorTrimester;
-      }
+            // Hide all tab contents first
+            tabContents.forEach((content: HTMLElement) => {
+              content.hidden = true;
+            });
 
-      // Force layout refresh when switching tabs to fix scroll/rendering issues
-      setTimeout(() => {
-        this.#forceTabContentRefresh(targetContent);
-      }, 10);
-    }, { signal });
+            // Show the target tab content (TabController will populate it)
+            targetContent.hidden = false;
+
+            // Activate the tab via TabController (fetches data and renders)
+            await tc.activateTab(tabId);
+          } catch (error) {
+            console.error(`Error activating tab ${tabId} via TabController:`, error);
+            // Fallback: just show the content without TabController
+            targetContent.hidden = false;
+          }
+        } else {
+          // Old behavior for non-migrated tabs
+          tabContents.forEach((content: HTMLElement) => {
+            content.hidden = content.id !== targetContent.id;
+          });
+        }
+
+        // Show/hide admin trimester selector based on tab AND period type
+        // Trimester selector should only show for admin-specific tabs during enrollment periods
+        // Hide for directory tab, non-admin tabs, and non-enrollment periods
+        // CRITICAL: Trimester selector is ADMIN-ONLY and ENROLLMENT-PERIOD-ONLY
+        const adminTrimesterSelector = document.getElementById(
+          'admin-trimester-selector-container'
+        );
+        if (adminTrimesterSelector) {
+          const isAdmin = !!this.#currentUser?.admin;
+          const currentPeriod = UserSession?.getCurrentPeriod();
+
+          const adminTrimesterTabs = [
+            '#admin-master-schedule',
+            '#admin-wait-list',
+            '#admin-registration',
+          ];
+          const shouldShowAdminTrimester =
+            adminTrimesterTabs.includes(targetTab!) && isAdmin && isEnrollmentPeriod(currentPeriod);
+          adminTrimesterSelector.hidden = !shouldShowAdminTrimester;
+        }
+
+        // Show/hide instructor trimester selector based on tab AND period type
+        // Trimester selector should only show for instructor-specific tabs during enrollment periods
+        const instructorTrimesterSelector = document.getElementById(
+          'instructor-trimester-selector-container'
+        );
+        if (instructorTrimesterSelector) {
+          const isInstructor = !!this.#currentUser?.instructor;
+          const currentPeriod = UserSession?.getCurrentPeriod();
+
+          const instructorTrimesterTabs = ['#instructor-weekly-schedule'];
+          const shouldShowInstructorTrimester =
+            instructorTrimesterTabs.includes(targetTab!) &&
+            isInstructor &&
+            isEnrollmentPeriod(currentPeriod);
+          instructorTrimesterSelector.hidden = !shouldShowInstructorTrimester;
+        }
+
+        // Force layout refresh when switching tabs to fix scroll/rendering issues
+        setTimeout(() => {
+          this.#forceTabContentRefresh(targetContent);
+        }, 10);
+      },
+      { signal }
+    );
     if (links.length === 0) {
       console.warn(`No links found.`);
       return;
     }
     links.forEach((link: HTMLAnchorElement) => {
-      link.addEventListener('click', async (event: Event) => {
-        event.preventDefault();
-        const dataSection = link.getAttribute('data-section');
+      link.addEventListener(
+        'click',
+        async (event: Event) => {
+          event.preventDefault();
+          const dataSection = link.getAttribute('data-section');
 
-        // Show the main content when access is granted
-        this.#showContent();
+          // Show the main content when access is granted
+          this.#showContent();
 
-        // Show/hide tabs based on selected section
-        this.#showTabsForSection(dataSection!);
+          // Show/hide tabs based on selected section
+          this.#showTabsForSection(dataSection!);
 
-        // Initialize section-specific UI (trimester selector for admin)
-        this.#initializeSectionUI(dataSection!);
+          // Initialize section-specific UI (trimester selector for admin)
+          this.#initializeSectionUI(dataSection!);
 
-        // Auto-click the first tab within this section to show content
-        await this.#activateFirstTabInSection(dataSection!);
+          // Auto-click the first tab within this section to show content
+          await this.#activateFirstTabInSection(dataSection!);
 
-        // Force layout reflow and scroll reset to fix rendering issues
-        this.#forceLayoutRefresh(dataSection!);
+          // Force layout reflow and scroll reset to fix rendering issues
+          this.#forceLayoutRefresh(dataSection!);
 
-        // Keep the active state toggle functionality
-        links.forEach((l: HTMLAnchorElement) =>
-          l.classList.toggle('active', l.getAttribute('data-section') === dataSection)
-        );
-      }, { signal });
+          // Keep the active state toggle functionality
+          links.forEach((l: HTMLAnchorElement) =>
+            l.classList.toggle('active', l.getAttribute('data-section') === dataSection)
+          );
+        },
+        { signal }
+      );
     });
     // Initialize first nav link as active for visual consistency
     if (links.length > 0) {
