@@ -5,10 +5,10 @@ export default defineConfig({
   // Set root to src/web for clean output structure
   root: resolve(process.cwd(), 'src/web'),
 
-  // Disable publicDir — root IS the source directory, so setting publicDir
-  // to the same path causes Vite to serve .ts files as raw static assets
-  // instead of transpiling them through the module pipeline.
-  publicDir: false,
+  // Static assets (CSS, images) live in src/web/public/ and are copied as-is
+  // into the build output. Kept separate from root to avoid serving .ts files
+  // as raw static assets during dev.
+  publicDir: resolve(process.cwd(), 'src/web/public'),
 
   // Build configuration
   build: {

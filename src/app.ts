@@ -146,6 +146,13 @@ app.use(
 const webDir = isDevelopment ? path.join(appDir, 'web') : path.join(process.cwd(), 'dist', 'web');
 app.use(express.static(webDir, developmentStaticOptions));
 
+// In dev mode, also serve from src/web/public/ (css, images) since Vite's
+// publicDir copies these into dist/web/ for production but they need to be
+// served from their source location during development.
+if (isDevelopment) {
+  app.use(express.static(path.join(appDir, 'web', 'public'), developmentStaticOptions));
+}
+
 // 404 handler
 app.use('*', (_req: Request, res: Response) => {
   res.status(404).json({
