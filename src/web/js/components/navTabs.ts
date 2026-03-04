@@ -9,9 +9,20 @@ import { getTabController } from '../core/tabControllerInstance.js';
  */
 export class NavTabs {
   #currentUser: Record<string, unknown> | null = null;
+  #abortController: AbortController | null = null;
 
   setCurrentUser(user: Record<string, unknown> | null): void {
     this.#currentUser = user;
+  }
+
+  /**
+   * Remove all event listeners attached by this instance
+   */
+  destroy(): void {
+    if (this.#abortController) {
+      this.#abortController.abort();
+      this.#abortController = null;
+    }
   }
 
   /**
@@ -28,6 +39,10 @@ export class NavTabs {
       console.warn('No tabs container or tabs found - NavTabs not initialized');
       return;
     }
+
+    this.#abortController = new AbortController();
+    const signal = this.#abortController.signal;
+
     tabsContainer.addEventListener('click', async (event: Event) => {
       // return if not a tab link
       const tabLink = (event.target as HTMLElement).closest<HTMLAnchorElement>('.tab a');
@@ -135,7 +150,7 @@ export class NavTabs {
       setTimeout(() => {
         this.#forceTabContentRefresh(targetContent);
       }, 10);
-    });
+    }, { signal });
     if (links.length === 0) {
       console.warn(`No links found.`);
       return;
@@ -164,7 +179,7 @@ export class NavTabs {
         links.forEach((l: HTMLAnchorElement) =>
           l.classList.toggle('active', l.getAttribute('data-section') === dataSection)
         );
-      });
+      }, { signal });
     });
     // Initialize first nav link as active for visual consistency
     if (links.length > 0) {

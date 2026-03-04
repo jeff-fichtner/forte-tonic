@@ -249,6 +249,9 @@ async function loadUserData(
     defaultSection = Sections.PARENT;
   }
 
+  if (navTabs) {
+    navTabs.destroy();
+  }
   navTabs = new NavTabs(defaultSection as string);
   navTabs.setCurrentUser(currentUser as Record<string, unknown>);
   setPageLoading(false);
