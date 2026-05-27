@@ -1,0 +1,221 @@
+openapi: 3.0.0
+info:
+  title: Students endpoint contract change for 014-summer-registration
+  version: 1.0.0
+  description: |
+    Documents the contract amendment for endpoints that return student
+    data. The `period` parameter becomes required on every endpoint that
+    serves students directly or via a tab-data wrapper. See FR-003 in
+    spec.md.
+
+paths:
+  /api/parent/tabs/registration/{trimester}:
+    get:
+      summary: Parent registration tab data (includes students)
+      parameters:
+        - in: path
+          name: trimester
+          required: true
+          schema:
+            type: string
+            enum: [fall, winter, spring, summer]
+        - in: query
+          name: parentId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: |
+            Tab data including students, instructors, classes, and
+            registrations. When `trimester == 'summer'`, the
+            embedded `students` list has each student's `grade`
+            incremented by 1 (runtime transform, not persisted —
+            see FR-003).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponseWithRegistrationTabData'
+        '400':
+          $ref: '#/components/responses/InvalidPeriod'
+
+  /api/parent/tabs/weekly-schedule:
+    get:
+      summary: Parent weekly schedule tab data
+      parameters:
+        - in: query
+          name: parentId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: period
+          required: true
+          schema:
+            type: string
+            enum: [fall, winter, spring, summer]
+          description: |
+            Required. Determines which trimester the schedule shows
+            AND whether the embedded student list has the summer
+            grade-bump applied.
+      responses:
+        '200':
+          description: Tab data including students and schedule entries
+        '400':
+          $ref: '#/components/responses/InvalidPeriod'
+
+  /api/parent/tabs/contact:
+    get:
+      summary: Parent contact tab data
+      parameters:
+        - in: query
+          name: parentId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: period
+          required: true
+          schema:
+            type: string
+            enum: [fall, winter, spring, summer]
+      responses:
+        '200':
+          description: Tab data including students
+        '400':
+          $ref: '#/components/responses/InvalidPeriod'
+
+  /api/admin/tabs/registration:
+    get:
+      summary: Admin registration tab data
+      parameters:
+        - in: query
+          name: period
+          required: true
+          schema:
+            type: string
+            enum: [fall, winter, spring, summer]
+      responses:
+        '200':
+          description: Tab data including students, registrations, etc.
+        '400':
+          $ref: '#/components/responses/InvalidPeriod'
+
+  /api/admin/tabs/master-schedule:
+    get:
+      summary: Admin master schedule tab data
+      parameters:
+        - in: query
+          name: period
+          required: true
+          schema:
+            type: string
+            enum: [fall, winter, spring, summer]
+      responses:
+        '200':
+          description: Tab data including students
+        '400':
+          $ref: '#/components/responses/InvalidPeriod'
+
+  /api/admin/tabs/wait-list:
+    get:
+      summary: Admin wait list tab data
+      parameters:
+        - in: query
+          name: period
+          required: true
+          schema:
+            type: string
+            enum: [fall, winter, spring, summer]
+      responses:
+        '200':
+          description: Tab data including students
+        '400':
+          $ref: '#/components/responses/InvalidPeriod'
+
+  /api/instructor/tabs/weekly-schedule:
+    get:
+      summary: Instructor weekly schedule tab data
+      parameters:
+        - in: query
+          name: period
+          required: true
+          schema:
+            type: string
+            enum: [fall, winter, spring, summer]
+      responses:
+        '200':
+          description: Tab data including students
+        '400':
+          $ref: '#/components/responses/InvalidPeriod'
+
+components:
+  schemas:
+    Student:
+      type: object
+      properties:
+        id:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        grade:
+          type: integer
+          minimum: 0
+          description: |
+            For `period == 'summer'`, this value is the student's
+            currently-stored grade + 1. For all other periods, this
+            is the actual stored grade. The bumped value is NEVER
+            persisted; the grade column on the underlying
+            `students` sheet is unchanged.
+        parentId:
+          type: string
+    SuccessResponseWithRegistrationTabData:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          properties:
+            students:
+              type: array
+              items:
+                $ref: '#/components/schemas/Student'
+            instructors:
+              type: array
+              items:
+                type: object
+            classes:
+              type: array
+              items:
+                type: object
+            registrations:
+              type: array
+              items:
+                type: object
+  responses:
+    InvalidPeriod:
+      description: |
+        Returned when `period` is missing or not one of the four
+        valid trimester values. The error response uses the standard
+        envelope `{ success: false, error: { message, code, type } }`.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                enum: [false]
+              error:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  code:
+                    type: string
+                  type:
+                    type: string
