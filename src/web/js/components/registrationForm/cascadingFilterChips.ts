@@ -359,7 +359,7 @@ export class CascadingFilterChips {
       return;
     }
 
-    const instructorContainer = instructorSection.querySelector('.filter-chip-container');
+    const instructorContainer = instructorSection.querySelector('.chip-container');
     if (!instructorContainer) {
       console.warn('Parent instructor chip container not found');
       return;
@@ -480,7 +480,7 @@ export class CascadingFilterChips {
     if (!parentContainer) return;
 
     const chips = parentContainer.querySelectorAll(
-      '.filter-chip:not(.unavailable):not([data-listener-attached])'
+      '.chip:not(.unavailable):not([data-listener-attached])'
     );
     chips.forEach((_chip: Element) => {
       const chip = _chip as HTMLElement;
@@ -491,14 +491,18 @@ export class CascadingFilterChips {
         this.#clearDownstreamSelections(chipType);
 
         // Handle chip selection logic
-        const siblings = chip.parentElement!.querySelectorAll('.filter-chip');
+        const siblings = chip.parentElement!.querySelectorAll('.chip');
         siblings.forEach((_sibling: Element) => {
           const sibling = _sibling as HTMLElement;
           sibling.classList.remove('active', 'selected');
           if (!sibling.classList.contains('unavailable')) {
             const isAvailable = sibling.classList.contains('available');
             const isLimited = sibling.classList.contains('limited');
-            sibling.style.background = isAvailable ? '#e8f5e8' : isLimited ? '#fff3e0' : '#ffebee';
+            sibling.style.backgroundColor = isAvailable
+              ? '#e8f5e8'
+              : isLimited
+                ? '#fff3e0'
+                : '#ffebee';
             sibling.style.color = 'inherit';
             sibling.style.border = isAvailable
               ? '2px solid #4caf50'
@@ -510,7 +514,7 @@ export class CascadingFilterChips {
 
         // Activate this chip
         chip.classList.add('active', 'selected');
-        chip.style.background = '#2b68a4';
+        chip.style.backgroundColor = '#2b68a4';
         chip.style.color = 'white';
         chip.style.border = '2px solid #2b68a4';
 
@@ -542,7 +546,7 @@ export class CascadingFilterChips {
         chip.classList.remove('active', 'selected');
         const isAvailable = chip.classList.contains('available');
         const isLimited = chip.classList.contains('limited');
-        chip.style.background = isAvailable ? '#e8f5e8' : isLimited ? '#fff3e0' : '#ffebee';
+        chip.style.backgroundColor = isAvailable ? '#e8f5e8' : isLimited ? '#fff3e0' : '#ffebee';
         chip.style.color = 'inherit';
         chip.style.border = isAvailable
           ? '2px solid #4caf50'
@@ -557,7 +561,7 @@ export class CascadingFilterChips {
       ) as HTMLElement | null;
       if (allChip && !allChip.classList.contains('unavailable')) {
         allChip.classList.add('active', 'selected');
-        allChip.style.background = '#2b68a4';
+        allChip.style.backgroundColor = '#2b68a4';
         allChip.style.color = 'white';
         allChip.style.border = '2px solid #2b68a4';
       }
@@ -663,20 +667,20 @@ export class CascadingFilterChips {
           s.classList.remove('selected');
           if (s.classList.contains('available')) {
             s.style.border = '2px solid #4caf50';
-            s.style.background = '#e8f5e8';
+            s.style.backgroundColor = '#e8f5e8';
           } else if (s.classList.contains('limited')) {
             s.style.border = '2px solid #ff9800';
-            s.style.background = '#fff3e0';
+            s.style.backgroundColor = '#fff3e0';
           } else {
             s.style.border = '2px solid #f44336';
-            s.style.background = '#ffebee';
+            s.style.backgroundColor = '#ffebee';
           }
         });
 
         // Select this slot
         slot.classList.add('selected');
         slot.style.border = '3px solid #1976d2';
-        slot.style.background = '#e3f2fd';
+        slot.style.backgroundColor = '#e3f2fd';
 
         // Store the selected lesson data with validation
         const instructorId = slot.dataset.instructorId;
@@ -723,7 +727,7 @@ export class CascadingFilterChips {
     if (matchingSlot) {
       matchingSlot.classList.add('selected');
       matchingSlot.style.border = '3px solid #1976d2';
-      matchingSlot.style.background = '#e3f2fd';
+      matchingSlot.style.backgroundColor = '#e3f2fd';
 
       this.#selectedLesson = selectionData;
       this.#updateSelectionDisplay(matchingSlot);
@@ -741,7 +745,7 @@ export class CascadingFilterChips {
       } else {
         stillAvailableSlot.classList.add('selected');
         stillAvailableSlot.style.border = '3px solid #1976d2';
-        stillAvailableSlot.style.background = '#e3f2fd';
+        stillAvailableSlot.style.backgroundColor = '#e3f2fd';
         this.#updateSelectionDisplay(stillAvailableSlot);
       }
     }
@@ -816,12 +820,12 @@ export class CascadingFilterChips {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
-    const allChips = parentContainer.querySelectorAll('.filter-chip');
+    const allChips = parentContainer.querySelectorAll('.chip');
     allChips.forEach((_chip: Element) => {
       const chip = _chip as HTMLElement;
       chip.classList.remove('active');
       chip.style.cssText =
-        'padding: 8px 12px; border-radius: 16px; display: flex; align-items: center; border: 2px solid #ddd; background: #f5f5f5; color: #666; transition: all 0.3s; cursor: pointer;';
+        'padding: 8px 12px; border-radius: 16px; display: flex; align-items: center; height: auto; line-height: normal; font-size: 14px; border: 2px solid #ddd; background-color: #f5f5f5; color: #666; transition: all 0.3s; cursor: pointer;';
     });
 
     const allInstrumentChip = parentContainer.querySelector(
@@ -841,7 +845,7 @@ export class CascadingFilterChips {
       if (chip) {
         chip.classList.add('active');
         chip.style.cssText =
-          'padding: 8px 12px; border-radius: 16px; display: flex; align-items: center; border: 2px solid #2b68a4; background: #2b68a4; color: white; transition: all 0.3s; cursor: pointer;';
+          'padding: 8px 12px; border-radius: 16px; display: flex; align-items: center; height: auto; line-height: normal; font-size: 14px; border: 2px solid #2b68a4; background-color: #2b68a4; color: white; transition: all 0.3s; cursor: pointer;';
       }
     });
   }
@@ -881,13 +885,13 @@ export class CascadingFilterChips {
       slot.classList.remove('selected');
       if (slot.classList.contains('available')) {
         slot.style.border = '2px solid #4caf50';
-        slot.style.background = '#e8f5e8';
+        slot.style.backgroundColor = '#e8f5e8';
       } else if (slot.classList.contains('limited')) {
         slot.style.border = '2px solid #ff9800';
-        slot.style.background = '#fff3e0';
+        slot.style.backgroundColor = '#fff3e0';
       } else {
         slot.style.border = '2px solid #f44336';
-        slot.style.background = '#ffebee';
+        slot.style.backgroundColor = '#ffebee';
       }
     });
   }

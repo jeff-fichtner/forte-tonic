@@ -523,13 +523,15 @@ export class RegistrationController {
         queryService.getClasses(),
       ]);
 
-      // Extract unique grades from parent's children for grade-keyed availability
-      const uniqueGrades = [...new Set(parentStudents.map(s => s.grade ?? null))];
+      // Build student inputs for student-keyed availability
+      const studentInputs = parentStudents
+        .filter((s): s is typeof s & { id: string } => Boolean(s.id))
+        .map(s => ({ id: s.id!, grade: s.grade ?? null }));
 
       const availableTimeSlots = availabilityService.computeAvailableTimeSlots(
         instructors,
         registrations,
-        uniqueGrades,
+        studentInputs,
         DEFAULT_REGISTRATION_CONFIG.lessonLengths,
         excludeRegistrationId
       );

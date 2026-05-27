@@ -14,7 +14,7 @@ import type {
 } from '../models/shared/instructor.js';
 import { RegistrationService } from './registrationService.js';
 import { ALL_DAYS, DAY_NAMES } from '../utils/values/days.js';
-const SLOT_STEP_MINUTES = 30;
+const SLOT_STEP_MINUTES = 15;
 
 // ---------------------------------------------------------------------------
 // Input types — accept the shapes the controller already has
@@ -31,10 +31,17 @@ export interface InstructorInput {
 /** Minimal registration shape needed for conflict detection */
 export interface RegistrationInput {
   id?: string;
+  studentId?: string;
   instructorId?: string;
   day?: string;
   startTime?: string;
   length?: number | null;
+}
+
+/** Minimal student shape needed for per-student slot filtering */
+export interface StudentInput {
+  id: string;
+  grade: number | string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -43,45 +50,74 @@ export interface RegistrationInput {
 
 export class AvailabilityService {
   /**
-   * Compute all valid time slots, keyed by student grade.
+   * Compute all valid time slots, keyed by student ID.
+   *
+   * Two-phase approach:
+   * 1. Compute grade-keyed slots (instructor availability + instructor conflict filtering)
+   * 2. Per student: take their grade's slots and filter out any overlapping with
+   *    that student's existing registrations
    *
    * @param instructors - All active instructors
    * @param registrations - Registrations for the target trimester
-   * @param studentGrades - Unique grades of the parent's children
+   * @param students - Parent's children with id and grade
    * @param lessonLengths - Valid lesson lengths (e.g. [30, 45, 60])
    * @param excludeRegistrationId - Registration to exclude from conflicts (modify flow)
-   * @returns Record keyed by String(grade), each value an array of conflict-free slots
+   * @returns Record keyed by student ID, each value an array of conflict-free slots
    */
   computeAvailableTimeSlots(
     instructors: InstructorInput[],
     registrations: RegistrationInput[],
-    studentGrades: (number | string | null)[],
+    students: StudentInput[],
     lessonLengths: number[],
     excludeRegistrationId: string | null
   ): Record<string, AvailableTimeSlot[]> {
-    const result: Record<string, AvailableTimeSlot[]> = {};
-
     // Filter out the excluded registration once, up front
     const effectiveRegistrations = excludeRegistrationId
       ? registrations.filter(r => r.id !== excludeRegistrationId)
       : registrations;
 
-    // Compute slots for each unique grade
-    const uniqueGrades = [...new Set(studentGrades.map(g => String(g)))];
+    // Phase 1: Compute grade-keyed slots (instructor conflict filtering only)
+    const uniqueGrades = [...new Set(students.map(s => String(s.grade ?? 'null')))];
+    const gradeSlots: Record<string, AvailableTimeSlot[]> = {};
 
     for (const gradeKey of uniqueGrades) {
       const gradeNum = gradeKey === 'null' || gradeKey === 'undefined' ? null : Number(gradeKey);
 
-      // Filter instructors by grade eligibility
       const eligible = instructors.filter(inst =>
         AvailabilityService.isGradeEligible(inst.gradeRange, gradeNum)
       );
 
-      result[gradeKey] = this.#generateSlotsForInstructors(
+      gradeSlots[gradeKey] = this.#generateSlotsForInstructors(
         eligible,
         effectiveRegistrations,
         lessonLengths
       );
+    }
+
+    // Phase 2: Per-student filtering (remove slots that conflict with student's existing registrations)
+    const result: Record<string, AvailableTimeSlot[]> = {};
+
+    for (const student of students) {
+      const gradeKey = String(student.grade ?? 'null');
+      const baseSlots = gradeSlots[gradeKey] || [];
+
+      const studentRegs = effectiveRegistrations.filter(r => r.studentId === student.id);
+
+      if (studentRegs.length === 0) {
+        result[student.id] = baseSlots;
+      } else {
+        result[student.id] = baseSlots.filter(slot => {
+          const slotStart = RegistrationService.timeToMinutes(slot.time);
+          const slotEnd = slotStart + slot.length;
+          return !studentRegs.some(reg => {
+            if (!reg.startTime || !reg.day) return false;
+            if (reg.day !== slot.dayName) return false;
+            const regStart = RegistrationService.timeToMinutes(reg.startTime);
+            const regEnd = regStart + (reg.length || 30);
+            return slotStart < regEnd && slotEnd > regStart;
+          });
+        });
+      }
     }
 
     return result;
@@ -139,10 +175,7 @@ export class AvailabilityService {
               if (m + length > endMinutes) continue;
 
               // Skip if full-length slot has a conflict
-              if (
-                length !== SLOT_STEP_MINUTES &&
-                AvailabilityService.#hasConflict(m, length, dayRegistrations)
-              ) {
+              if (AvailabilityService.#hasConflict(m, length, dayRegistrations)) {
                 continue;
               }
 
@@ -167,9 +200,14 @@ export class AvailabilityService {
 
   static #getInstruments(instructor: InstructorInput): string[] {
     const raw = instructor.specialties;
-    if (!raw || !Array.isArray(raw) || raw.length === 0) return ['Piano'];
+    if (!raw || !Array.isArray(raw) || raw.length === 0) {
+      throw new Error(`Instructor ${instructor.id} has no specialties configured`);
+    }
     const filtered = raw.filter(s => s && s.trim());
-    return filtered.length > 0 ? filtered : ['Piano'];
+    if (filtered.length === 0) {
+      throw new Error(`Instructor ${instructor.id} has no valid specialties configured`);
+    }
+    return filtered;
   }
 
   static #hasConflict(

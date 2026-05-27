@@ -121,7 +121,7 @@ const instructorMappings: FieldMapping = {
   gradeRange: (_val, row) => {
     const min = row.minimumGrade;
     const max = row.maximumGrade;
-    if (!min && !max) return null;
+    if (!min || !max) return null;
     return { minimum: Number(min), maximum: Number(max) };
   },
 };

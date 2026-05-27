@@ -228,19 +228,6 @@ export class RegistrationService extends BaseService {
         throw new Error(`Instructor not found: ${registrationData.instructorId}`);
       }
 
-      // Step 3.5: Validate instructor availability for the selected day
-      // TODO: Re-enable once availability data is fully populated
-      // const dayKey = registrationData.day?.toLowerCase();
-      // const dayAvailability = dayKey
-      //   ? (instructor.availability as Record<string, { isAvailable: boolean }> | null)?.[dayKey]
-      //   : undefined;
-      //
-      // if (!dayAvailability?.isAvailable) {
-      //   throw new ValidationError(
-      //     `${instructor.firstName ?? ''} ${instructor.lastName ?? ''} is not available on ${registrationData.day}`.trim()
-      //   );
-      // }
-
       // Step 3.6: Validate room assignment (optional for now, validated if provided)
       // TODO: Make roomId required once all registration flows populate it
       if (registrationData.roomId) {
@@ -891,6 +878,7 @@ export class RegistrationService extends BaseService {
    * Checks if two time slots overlap
    */
   static timesOverlap(time1: string, duration1: number, time2: string, duration2: number): boolean {
+    if (!time1 || !time2) return false;
     const start1 = this.timeToMinutes(time1);
     const end1 = start1 + duration1;
     const start2 = this.timeToMinutes(time2);

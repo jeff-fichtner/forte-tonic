@@ -690,7 +690,9 @@ export class ParentRegistrationForm {
   }
 
   /**
-   * Get the pre-computed time slots for the currently selected student's grade.
+   * Get the pre-computed time slots for the currently selected student.
+   * Slots are keyed by student ID — each student's slots already exclude
+   * any times that conflict with their existing registrations.
    */
   getSlotsForSelectedStudent(): AvailableTimeSlot[] {
     const studentSelect = document.getElementById(
@@ -699,10 +701,7 @@ export class ParentRegistrationForm {
     const selectedStudentId = studentSelect?.value;
     if (!selectedStudentId) return [];
 
-    const student = this.parentChildren.find(s => s.id === selectedStudentId);
-    const grade = student?.grade;
-    const gradeKey = String(grade ?? 'null');
-    return this.availableTimeSlots[gradeKey] || [];
+    return this.availableTimeSlots[selectedStudentId] || [];
   }
 
   /**

@@ -20,20 +20,22 @@ export function createFilterChip(
   availability: string = 'available'
 ): HTMLDivElement {
   const chip = document.createElement('div');
-  chip.className = `filter-chip ${type}-chip`;
+  chip.className = `chip ${type}-chip`;
   chip.dataset.type = type;
   chip.dataset.value = value;
   chip.textContent = text;
 
-  // Apply base styles
-  const styles: Record<string, string> = {
-    padding: '8px 12px',
-    borderRadius: '16px',
-    display: 'flex',
-    alignItems: 'center',
-    border: '2px solid',
-    transition: 'all 0.3s',
-  };
+  // Apply base styles — set properties directly to reliably override
+  // MaterializeCSS .chip defaults (background-color, color, height, display)
+  const s = chip.style;
+  s.padding = '8px 12px';
+  s.borderRadius = '16px';
+  s.display = 'flex';
+  s.alignItems = 'center';
+  s.height = 'auto';
+  s.lineHeight = 'normal';
+  s.fontSize = '14px';
+  s.transition = 'all 0.3s';
 
   // Set active state for default chips
   if (isDefault) {
@@ -46,35 +48,30 @@ export function createFilterChip(
     } else if (availability === 'unavailable') {
       chip.classList.add('unavailable');
     }
-    styles.background = '#2b68a4';
-    styles.color = 'white';
-    styles.borderColor = '#2b68a4';
-    styles.cursor = 'pointer';
+    s.backgroundColor = '#2b68a4';
+    s.color = 'white';
+    s.border = '2px solid #2b68a4';
+    s.cursor = 'pointer';
   } else {
     // Apply availability-based styling
     if (availability === 'unavailable') {
       chip.classList.add('disabled', 'unavailable');
-      styles.background = '#ffebee';
-      styles.borderColor = '#f44336';
-      styles.cursor = 'not-allowed';
-      styles.opacity = '0.6';
+      s.backgroundColor = '#ffebee';
+      s.border = '2px solid #f44336';
+      s.cursor = 'not-allowed';
+      s.opacity = '0.6';
     } else if (availability === 'limited') {
       chip.classList.add('limited');
-      styles.background = '#fff3e0';
-      styles.borderColor = '#ff9800';
-      styles.cursor = 'pointer';
+      s.backgroundColor = '#fff3e0';
+      s.border = '2px solid #ff9800';
+      s.cursor = 'pointer';
     } else {
       chip.classList.add('available');
-      styles.background = '#e8f5e8';
-      styles.borderColor = '#4caf50';
-      styles.cursor = 'pointer';
+      s.backgroundColor = '#e8f5e8';
+      s.border = '2px solid #4caf50';
+      s.cursor = 'pointer';
     }
   }
-
-  // Apply inline styles
-  chip.style.cssText = Object.entries(styles)
-    .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
-    .join('; ');
 
   return chip;
 }
