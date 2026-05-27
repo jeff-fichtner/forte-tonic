@@ -2,7 +2,7 @@
 
 **Feature Branch**: `014-summer-registration`
 **Created**: 2026-05-27
-**Status**: Draft
+**Status**: Implemented
 **Part of**: School-year rollover initiative (Parts 1-3)
 **Next**: Part 2 — [015-school-year-rollover](../015-school-year-rollover/spec.md)
 
@@ -23,6 +23,16 @@
 > is the data: rows in `registrations_summer` get migrated into the next
 > year's `registrations_fall` and stop being "next year's" registrations
 > at that point.
+
+## Clarifications
+
+### Session 2026-05-27
+
+- Q: When the code with `'summer'` in the `trimesters` array ships, but `registrations_summer` and its audit sheet don't yet exist in the spreadsheet — what mechanism creates them? → A: The 013 auto-migration system (which runs before `app.listen()`), via a numbered 014 migration that uses a new `MigrationContext.createSheet()` primitive. GAS is reserved for manual operations like the turnover script; sheet creation is automated.
+- Q: What visual treatment should the new Registration tab empty-state message (FR-007) use? → A: Simplest / most out-of-the-box — a plain centered text message inside the Registration tab content area, no icon, using the app's existing default text styling. No new components or assets.
+- Q: When does the Registration tab period heading (FR-006) show? Inside enrollment windows the form targets the next trimester, but what about outside enrollment windows? → A: The form is always rendered — outside enrollment windows it falls back to the current trimester (verified at [parentRegistrationTab.ts:92-103](../../src/web/js/tabs/parentRegistrationTab.ts#L92-L103) where `nextTrimesterRegistrations = currentData.registrations` if no next trimester is active). So the heading is also always present, reflecting whichever trimester the form is currently targeting (next during enrollment, current otherwise).
+- Q: Should the FR-005 display-name helper be introduced incrementally (existing UI strings migrated as touched) or all-at-once (every existing render of a period name converted in the same change)? → A: All-at-once. The codebase should have been routing period strings through a single helper from the start; introducing it without completing the migration leaves SC-005 unverifiable and risks new hardcodes in any code shipped during the gap. The PR that introduces the helper also converts every existing hardcoded period string to use it.
+- Q: FR-003 requires every caller of the student-fetch chain to pass `period`. If a caller is missed and passes no `period` (or `undefined`), what should the backend do? → A: Throw an error at the lowest layer (`getStudents`). A missing `period` is a programming bug; failing fast at the entry point makes the bug instantly visible. No silent defaults, no fallback to "current trimester" — silent defaults could mask a forgotten caller returning wrong-period or wrong-grade students.
 
 ## Overview
 
@@ -218,26 +228,44 @@ the modify selector no longer shows that lesson.
   trail). Both share the same column schema as their fall / winter /
   spring counterparts, generated from the existing shared schemas
   (`Registration.columns` and `Registration.auditColumns`). **Sheet
-  creation** follows the established pattern in this codebase:
-  a new Google Apps Script migration (modeled after the archived
-  [Migration_REEN005_CreateTrimesterTables.js](../../gas/src/mig/archive/Migration_REEN005_CreateTrimesterTables.js)
-  that originally created the fall/winter/spring sheets) manually
-  creates `registrations_summer` and `registrations_summer_audit` with
-  the same column structure. The 013-style runtime migration system is
-  not used for creating new sheets — its `MigrationContext` only
-  supports column-level changes on existing sheets. **Code-side
-  registration** of the new sheets happens via the `trimesters` array
-  constant in
+  creation MUST be handled by the 013 auto-migration system**
+  ([013-migration-system](../013-migration-system/spec.md)), since 013
+  is the project's chosen runtime migration mechanism and GAS-side
+  migrations are being phased out for non-manual operations. This
+  requires extending the `MigrationContext` with a sheet-creation
+  primitive (e.g., `createSheet(name, columns)`) — today's
+  `MigrationContext` only supports column-level operations on existing
+  sheets. The numbered 014 migration file uses this new primitive to
+  create both sheets with the correct column structure at app startup,
+  before the data layer tries to read them. **Code-side registration**
+  of the new sheets happens via the `trimesters` array constant in
   [src/database/googleSheetsDbClient.ts](../../src/database/googleSheetsDbClient.ts):
   adding `'summer'` to that array is what surfaces both sheets
   (registration + audit) to the rest of the data layer. No other
-  location enumerates trimester-specific sheet names.
+  location enumerates trimester-specific sheet names. Because 013 runs
+  before `app.listen()`, the deployment ordering question is resolved
+  structurally: the sheets exist by the time the app accepts traffic.
 - **FR-003:** The base student-fetch operation (`getStudents` and its
   underlying repository call) MUST require a `period` parameter — not
   optional, not summer-only. **Every caller** of the student-fetch chain
   MUST pass `period`, including derivative or filtered calls (e.g.,
   "students for this parent," "students with these IDs," etc.). No call
-  path may resolve to a student fetch without specifying a period. When
+  path may resolve to a student fetch without specifying a period.
+  (*Naming note:* the parameter is named `period` because its value
+  is one of the four trimester values (`'fall' | 'winter' | 'spring' |
+  'summer'`) and the API contract calls it `period` for consistency
+  with how the frontend already passes trimester selectors. Elsewhere
+  in the codebase "period" sometimes refers to the time-window concept
+  governed by `periodType` (priority enrollment, open enrollment, etc.);
+  here it is just the trimester value. Implementers may also name the
+  underlying parameter `trimester` if clearer — what matters is the
+  required-parameter semantics, not the spelling.)
+  **Missing-`period` enforcement:** if `period` is `undefined`, `null`,
+  empty string, or otherwise falsy when `getStudents` is invoked, the
+  function MUST throw an error immediately. No silent default to the
+  current trimester or any other fallback — a missing `period` is a
+  programming bug and must surface as one. (Wrong-period or wrong-grade
+  data would otherwise silently leak from a forgotten caller.) When
   `period=summer`, the backend MUST return each student with `grade`
   incremented by 1. **This bump is purely a runtime transform on the
   served response** — it is NOT written back to the `students` sheet,
@@ -274,23 +302,32 @@ the modify selector no longer shows that lesson.
   uniformity, even though only `summer` has a non-identity mapping today
   (`fall → "Fall"`, `winter → "Winter"`, `spring → "Spring"`,
   `summer → "Next Fall"`). The rule applies to both parent-facing and
-  admin-facing website UI. Backend-generated text (reports, audit log
-  exports, log lines, raw API payload values) is **out of scope** — those
-  may continue to use the `summer` identifier directly, and none exist
+  admin-facing website UI. **The migration MUST be complete in the same
+  change that introduces the helper:** every existing UI render of a
+  period name (hardcoded "Fall," "Winter," "Spring" strings, ad-hoc
+  capitalization helpers, etc.) MUST be converted to use the helper in
+  the same PR. Partial conversion is not acceptable — SC-005 is only
+  verifiable as an all-or-nothing rule, and any gap creates risk of
+  new hardcoded strings being introduced before the conversion
+  finishes. Backend-generated text (reports, audit log exports, log
+  lines, raw API payload values) is **out of scope** — those may
+  continue to use the `summer` identifier directly, and none exist
   today that surface the raw identifier to end users.
 - **FR-006:** The Registration tab MUST display a period heading inside
-  its content, identifying which trimester the registration form targets.
-  The heading MUST be present for **all four** trimester periods (not
-  just `summer`) — same component, same placement, same styling — so the
-  Registration tab uniformly tells parents which period they're
-  registering for. The heading text MUST come from the display-name
-  helper (FR-005): "Fall," "Winter," "Spring," or "Next Fall." During
-  enrollment overlap windows where the Registration tab is scoped to
-  the next trimester (e.g., spring is current but the Registration tab
-  is enrolling into `summer`), the heading reflects the trimester the
-  form is enrolling into — there is no need for a "current vs. next"
-  toggle because the Registration tab only edits one trimester at a
-  time (consistent with today's behavior).
+  its content, identifying which trimester the registration form
+  targets. The heading MUST be present for **all four** trimester
+  periods (not just `summer`) — same component, same placement, same
+  styling — so the Registration tab uniformly tells parents which
+  period they're registering for. The heading text MUST come from the
+  display-name helper (FR-005): "Fall," "Winter," "Spring," or
+  "Next Fall." **The heading is always rendered**, because the
+  Registration tab always presents a form: during enrollment windows
+  the form targets the *next* trimester (and the heading reflects
+  that), and outside enrollment windows the form falls back to the
+  *current* trimester (and the heading reflects that). There is no
+  need for a "current vs. next" toggle because the Registration tab
+  only edits one trimester at a time (consistent with today's
+  behavior — see [parentRegistrationTab.ts:92-103](../../src/web/js/tabs/parentRegistrationTab.ts#L92-L103)).
 - **FR-007:** When the student-fetch returns an empty list for the
   active period (e.g., a parent's only child is in 8th grade and the
   active period is `summer`, so no students are returned), the
@@ -298,10 +335,13 @@ the modify selector no longer shows that lesson.
   message, same placement, same styling — for **all four** trimester
   periods. Today the Registration tab silently hides the form when no
   students are returned; that silent-hide behavior is replaced by an
-  explicit empty-state message. The message text is period-agnostic
-  (e.g., "No students available for registration") and is NOT routed
-  through the display-name helper. The dead constant `STUDENT_EMPTY`
-  in [src/web/js/constants/registrationFormConstants.ts](../../src/web/js/constants/registrationFormConstants.ts)
+  explicit empty-state message. **Visual treatment:** a plain centered
+  text message inside the Registration tab content area, no icon, using
+  the app's existing default text styling. No new components, no
+  styled banner/card, no new asset dependencies. The message text is
+  period-agnostic (e.g., "No students available for registration") and
+  is NOT routed through the display-name helper. The dead constant
+  `STUDENT_EMPTY` in [src/web/js/constants/registrationFormConstants.ts](../../src/web/js/constants/registrationFormConstants.ts)
   is the natural home for this string; the empty-state UI hooks into
   it where today no rendering occurs.
 - **FR-008:** The existing Google Apps Script turnover migration
@@ -317,6 +357,19 @@ the modify selector no longer shows that lesson.
   No other behavior change in this script. The script remains
   manually-run by admins from the GAS editor; this 014 work does not
   change *when* or *how* it's invoked.
+- **FR-009:** The project constitution
+  ([.specify/memory/constitution.md](../../.specify/memory/constitution.md))
+  MUST be updated in lockstep with the 014 implementation to reflect
+  the four-trimester reality. Today the constitution describes the
+  project as operating on "across three trimesters (fall, winter,
+  spring)" (preamble) and lists three per-trimester registration
+  sheets in Principle IX (`registrations_fall`, `registrations_winter`,
+  `registrations_spring`). When 014 ships, both references MUST be
+  updated to include `summer` (four trimesters total). This is a
+  PATCH-level constitution amendment (factual correction, no
+  principle change) bundled with the 014 implementation PR. The
+  constitution's sync impact report already notes this as a pending
+  follow-up tied to 014.
 
 ### Key Entities
 
@@ -325,8 +378,9 @@ the modify selector no longer shows that lesson.
 - **`registrations_summer_audit` sheet** — paired audit sheet for
   `registrations_summer`, same column structure as the other
   `registrations_*_audit` sheets. Created at the same time as
-  `registrations_summer` in the same GAS sheet-creation migration
-  (see FR-002).
+  `registrations_summer` by the 014 numbered migration in
+  [src/migrations/](../../src/migrations/), via the new
+  `MigrationContext.createSheet()` primitive (see FR-002).
 - **Turnover script (GAS, manually run)** —
   [Migration_REEN006_ChangeTrimester.js](../../gas/src/mig/recurring/Migration_REEN006_ChangeTrimester.js).
   Today supports `fall → winter` and `winter → spring`. This work
