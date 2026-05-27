@@ -2,7 +2,7 @@
 
 **Feature Branch**: `008-frontend-type-hardening`
 **Created**: 2026-02-23
-**Status**: Draft
+**Status**: Partial
 **Input**: User description: "draw up next spec to migrate frontend to typescript"
 
 ## Context

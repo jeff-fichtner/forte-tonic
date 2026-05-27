@@ -2,7 +2,7 @@
 
 **Feature Branch**: `009-frontend-decomposition`
 **Created**: 2026-02-23
-**Status**: Draft
+**Status**: Partial
 **Input**: Decompose the frontend parentRegistrationForm.ts monolith and clean up viewModel.ts registration orchestration. Extract concerns into separate modules, unify entity interfaces, extract registration service, remove vestigial state, and move hardcoded business configuration to backend-served config.
 
 ## User Scenarios & Testing *(mandatory)*

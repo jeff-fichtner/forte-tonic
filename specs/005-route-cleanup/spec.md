@@ -2,7 +2,7 @@
 
 **Feature Branch**: `005-route-cleanup`
 **Created**: 2026-02-21
-**Status**: Draft
+**Status**: Partial
 **Input**: Deferred from spec 004 — standardize route patterns, move parent tabs to explicit trimester params, consolidate duplicate endpoints
 
 ## Problem
