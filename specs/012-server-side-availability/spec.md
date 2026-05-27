@@ -2,7 +2,7 @@
 
 **Feature Branch**: `012-server-side-availability`
 **Created**: 2026-03-02
-**Status**: Draft
+**Status**: Implemented
 **Input**: User description: "Move the parent registration tab's availability computation (AvailabilityEngine) from the client to the server. The server pre-computes all valid time slots and returns them as a flat array keyed by student grade. The client stores this array and derives cascading filter chip counts via Array.filter() + counting — no server round-trip on chip taps. The only additional fetch occurs when a parent selects an existing registration to modify during enrollment periods, which re-fetches with an excludeRegistrationId query param."
 
 ## User Scenarios & Testing

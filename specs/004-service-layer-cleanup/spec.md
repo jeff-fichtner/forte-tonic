@@ -1,4 +1,8 @@
-# 004 — Service Layer Cleanup
+# Feature Specification: Service Layer Cleanup
+
+**Feature Branch**: `004-service-layer-cleanup`
+**Created**: 2026-02-21
+**Status**: Implemented
 
 ## Problem
 

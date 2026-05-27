@@ -2,7 +2,7 @@
 
 **Feature Branch**: `013-migration-system`
 **Created**: 2026-03-02
-**Status**: Draft
+**Status**: Implemented
 **Input**: User description: "A migration system for Google Sheets that runs on app startup, similar to SQL auto-migration. Tracks migrations in a dedicated sheet, runs unexecuted migrations in order, and blocks app startup on failure."
 
 ## User Scenarios & Testing *(mandatory)*

@@ -2,7 +2,7 @@
 
 **Feature Branch**: `011-dissolve-viewmodel`
 **Created**: 2026-02-27
-**Status**: Draft
+**Status**: Implemented
 
 ## Overview
 
