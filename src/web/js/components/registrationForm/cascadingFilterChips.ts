@@ -347,19 +347,13 @@ export class CascadingFilterChips {
     const parentContainer = document.getElementById('parent-registration');
     if (!parentContainer) return;
 
-    const instructorSection = Array.from(parentContainer.querySelectorAll('.filter-section')).find(
-      section => {
-        const label = section.querySelector('label');
-        return label && label.textContent!.includes('Instructors');
-      }
-    );
-
-    if (!instructorSection) {
-      console.warn('Parent instructor chip container not found');
-      return;
-    }
-
-    const instructorContainer = instructorSection.querySelector('.filter-chip-container');
+    // Look up by ID — same pattern as the other three chip generators
+    // (#instrument-chips-container / #day-chips-container / #length-chips-container).
+    // An older "fix" had switched this lookup to a `.filter-chip-container` class
+    // query, but the HTML uses `.chip-container` everywhere; that miss caused
+    // the warning "Parent instructor chip container not found" and the
+    // instructor section to render permanently empty.
+    const instructorContainer = parentContainer.querySelector('#instructor-chips-container');
     if (!instructorContainer) {
       console.warn('Parent instructor chip container not found');
       return;
