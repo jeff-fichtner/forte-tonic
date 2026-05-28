@@ -41,7 +41,9 @@ describe('EntityQueryService', () => {
 
   beforeEach(() => {
     mockUserRepository = {
-      getStudents: jest.fn<() => Promise<typeof mockStudents>>().mockResolvedValue(mockStudents),
+      getStudents: jest
+        .fn<(period: string) => Promise<typeof mockStudents>>()
+        .mockResolvedValue(mockStudents),
       getInstructors: jest
         .fn<() => Promise<typeof mockInstructors>>()
         .mockResolvedValue(mockInstructors),
@@ -72,31 +74,32 @@ describe('EntityQueryService', () => {
   });
 
   describe('getStudents', () => {
-    it('returns all students when no filters provided', async () => {
-      const result = await service.getStudents();
+    it('returns all students when no parentId filter', async () => {
+      const result = await service.getStudents({ period: 'fall' });
       expect(result).toEqual(mockStudents);
       expect(mockUserRepository.getStudents).toHaveBeenCalledTimes(1);
+      expect(mockUserRepository.getStudents).toHaveBeenCalledWith('fall');
     });
 
-    it('returns all students when empty filters provided', async () => {
-      const result = await service.getStudents({});
-      expect(result).toEqual(mockStudents);
+    it('forwards period to userRepository.getStudents', async () => {
+      await service.getStudents({ period: 'summer' });
+      expect(mockUserRepository.getStudents).toHaveBeenCalledWith('summer');
     });
 
     it('filters students by parentId matching parent1Id', async () => {
-      const result = await service.getStudents({ parentId: 'p1' });
+      const result = await service.getStudents({ period: 'fall', parentId: 'p1' });
       expect(result).toHaveLength(2);
       expect(result.map(s => s.id)).toEqual(['s1', 's2']);
     });
 
     it('filters students by parentId matching parent2Id', async () => {
-      const result = await service.getStudents({ parentId: 'p2' });
+      const result = await service.getStudents({ period: 'fall', parentId: 'p2' });
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('s1');
     });
 
     it('returns empty array when parentId matches no students', async () => {
-      const result = await service.getStudents({ parentId: 'nonexistent' });
+      const result = await service.getStudents({ period: 'fall', parentId: 'nonexistent' });
       expect(result).toHaveLength(0);
     });
   });

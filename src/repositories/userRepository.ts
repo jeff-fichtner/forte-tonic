@@ -1,7 +1,10 @@
 import { BaseRepository } from './baseRepository.js';
 import { Keys } from '../utils/values/keys.js';
+import { Trimester } from '../utils/values/trimester.js';
+import { MAX_GRADE } from '../utils/values/grade.js';
 import { Admin, Instructor, Student, Parent, Room } from '../models/shared/index.js';
 import { UserType } from '../config/constants.js';
+import { NotFoundError } from '../common/errors.js';
 import type { GoogleSheetsDbClient } from '../database/googleSheetsDbClient.js';
 import type { ConfigurationService } from '../services/configurationService.js';
 
@@ -58,10 +61,18 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
     return allInstructors.filter(x => x.isActive);
   }
 
-  /** Find instructor by ID */
-  async getInstructorById(id: string): Promise<Instructor | null> {
+  /**
+   * Find instructor by ID. Throws NotFoundError if the ID does not match an
+   * active instructor — "instructor missing" is a data-integrity bug for
+   * entity-lookup calls, not a normal user-facing case.
+   */
+  async getInstructorById(id: string): Promise<Instructor> {
     const instructors = await this.getInstructors();
-    return instructors.find(x => x.id === id) ?? null;
+    const instructor = instructors.find(x => x.id === id);
+    if (!instructor) {
+      throw new NotFoundError(`Instructor not found: ${id}`);
+    }
+    return instructor;
   }
 
   /** Find instructor by email address */
@@ -81,59 +92,115 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
   }
 
   /**
-   * Get all students with parent emails enriched
+   * Get all students with parent emails enriched.
+   *
+   * The `period` parameter is REQUIRED (per FR-003): every caller must pass
+   * the active trimester. When `period === 'summer'`, each student's `grade`
+   * is bumped by +1 in the returned data — this is a runtime display/filter
+   * transform, never persisted (FR-003).
+   *
    * Caching is handled at the GoogleSheetsDbClient layer for raw data,
-   * and in-memory for enriched data to avoid repeated enrichment operations
+   * and in-memory for enriched data. The grade-bump is applied AFTER the
+   * cache read (cache stores raw grade values), so the cache stays
+   * period-agnostic.
    */
-  async getStudents(): Promise<Student[]> {
+  async getStudents(period: string): Promise<Student[]> {
+    if (!period) {
+      throw new Error(
+        'getStudents requires a `period` parameter (FR-003). ' +
+          `Received: ${JSON.stringify(period)}. ` +
+          'Every caller must pass an active trimester value.'
+      );
+    }
+
     // Check if we have a valid cache (enriched students) — 5 min expiration matches dbClient
     const ENRICHED_CACHE_EXPIRATION = 5 * 60 * 1000;
+    let enrichedStudents: Student[];
+
     if (
       this._enrichedStudentsCache &&
       this._enrichedStudentsCacheTime &&
       Date.now() - this._enrichedStudentsCacheTime < ENRICHED_CACHE_EXPIRATION
     ) {
       this.logger.info(`📦 Cache hit for enriched students`);
-      return this._enrichedStudentsCache;
-    }
+      enrichedStudents = this._enrichedStudentsCache;
+    } else {
+      // First, get the basic student data
+      const students = await this.fetchAll(Keys.STUDENTS, record =>
+        Student.fromDatabaseRow(record)
+      );
 
-    // First, get the basic student data
-    const students = await this.fetchAll(Keys.STUDENTS, record => Student.fromDatabaseRow(record));
+      // Then, enrich with parent emails
+      const parents = await this.getParents();
 
-    // Then, enrich with parent emails
-    const parents = await this.getParents();
+      enrichedStudents = students.map(student => {
+        // Find parent emails for this student
+        const parent1 = parents.find(p => p.id === student.parent1Id);
+        const parent2 = parents.find(p => p.id === student.parent2Id);
 
-    const enrichedStudents = students.map(student => {
-      // Find parent emails for this student
-      const parent1 = parents.find(p => p.id === student.parent1Id);
-      const parent2 = parents.find(p => p.id === student.parent2Id);
+        const parentEmails = [parent1?.email, parent2?.email].filter(Boolean).join(', ');
 
-      const parentEmails = [parent1?.email, parent2?.email].filter(Boolean).join(', ');
-
-      // Create a new student with parent emails populated
-      const enrichedStudent = new Student({
-        ...student,
-        firstName: student.givenFirstName,
-        lastName: student.givenLastName,
-        parentEmails,
+        // Create a new student with parent emails populated
+        return new Student({
+          ...student,
+          firstName: student.givenFirstName,
+          lastName: student.givenLastName,
+          parentEmails,
+        });
       });
 
-      return enrichedStudent;
-    });
+      this.logger.info(`✅ Found ${enrichedStudents.length} ${Keys.STUDENTS}`);
 
-    this.logger.info(`✅ Found ${enrichedStudents.length} ${Keys.STUDENTS}`);
+      // Cache the enriched students
+      this._enrichedStudentsCache = enrichedStudents;
+      this._enrichedStudentsCacheTime = Date.now();
+    }
 
-    // Cache the enriched students
-    this._enrichedStudentsCache = enrichedStudents;
-    this._enrichedStudentsCacheTime = Date.now();
+    // Apply the summer grade-bump as a runtime transform (FR-003).
+    // The stored grade is unchanged; we return a new Student with grade + 1.
+    // Students whose bumped grade exceeds the program's max (graduating
+    // 8th-graders → "grade 9") are filtered out — they've aged out for
+    // next year and shouldn't appear in any summer enrollment view.
+    if (period === Trimester.SUMMER) {
+      return enrichedStudents.flatMap(student => {
+        const storedGrade = parseInt(student.grade, 10);
+        if (Number.isNaN(storedGrade)) {
+          // Non-numeric grade (e.g., blank) — leave as-is; no bump applies.
+          return [student];
+        }
+        const bumpedGrade = storedGrade + 1;
+        if (bumpedGrade > MAX_GRADE) {
+          // Aged out — drop from the summer view entirely.
+          return [];
+        }
+        return [
+          new Student({
+            ...student,
+            firstName: student.givenFirstName,
+            lastName: student.givenLastName,
+            grade: String(bumpedGrade),
+          }),
+        ];
+      });
+    }
 
     return enrichedStudents;
   }
 
-  /** Find student by ID */
-  async getStudentById(id: string): Promise<Student | null> {
-    const students = await this.getStudents();
-    return students.find(x => x.id === id) ?? null;
+  /**
+   * Find student by ID, returning the period-appropriate view. Forwards
+   * `period` to `getStudents()` so the grade-bump (when `period === 'summer'`)
+   * is applied to the returned student. Throws NotFoundError if the ID does
+   * not match a student — "student missing" is a data-integrity bug, not a
+   * normal lookup outcome.
+   */
+  async getStudentById(id: string, period: string): Promise<Student> {
+    const students = await this.getStudents(period);
+    const student = students.find(x => x.id === id);
+    if (!student) {
+      throw new NotFoundError(`Student not found: ${id}`);
+    }
+    return student;
   }
 
   /**
@@ -178,10 +245,18 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
     return this.fetchAll(Keys.ROOMS, record => Room.fromDatabaseRow(record));
   }
 
-  /** Find room by ID */
-  async getRoomById(id: string): Promise<Room | null> {
+  /**
+   * Find room by ID. Throws NotFoundError if the ID does not match a known
+   * room — caller is asking for a specific room and an absent record is a
+   * data-integrity bug, not a "room is optional" case.
+   */
+  async getRoomById(id: string): Promise<Room> {
     const rooms = await this.getRooms();
-    return rooms.find(x => x.id === id) ?? null;
+    const room = rooms.find(x => x.id === id);
+    if (!room) {
+      throw new NotFoundError(`Room not found: ${id}`);
+    }
+    return room;
   }
 
   /**
