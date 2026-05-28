@@ -237,8 +237,8 @@ describe('RegistrationRepository - Delete Functionality', () => {
     });
 
     test('should throw error for invalid trimester', async () => {
-      await expect(repository.getRegistrationsForTrimester('summer')).rejects.toThrow(
-        'Invalid trimester: summer'
+      await expect(repository.getRegistrationsForTrimester('autumn')).rejects.toThrow(
+        'Invalid trimester: autumn'
       );
     });
 

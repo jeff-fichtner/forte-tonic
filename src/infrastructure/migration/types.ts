@@ -44,6 +44,13 @@ export interface MigrationContext {
 
   /** Write values down a column starting at row 2. colIndex is 0-based. */
   batchUpdateColumn(sheetName: string, colIndex: number, values: string[]): Promise<void>;
+
+  /**
+   * Create a new sheet with the given name and column headers (row 1).
+   * Idempotent: if a sheet with that name already exists, the call returns
+   * without error (no overwrite, no error).
+   */
+  createSheet(sheetName: string, columns: readonly string[]): Promise<void>;
 }
 
 /** Dependencies needed to construct a MigrationContext */

@@ -22,6 +22,7 @@ import {
 } from '../../utilities/registrationForm/messageDisplay.js';
 import { FORTE_PROGRAM_EMAIL } from '../../constants.js';
 import { UserSession } from '../../auth/session.js';
+import { periodDisplayName } from '../../utilities/periodDisplayName.js';
 import type {
   InstructorLike,
   StudentLike,
@@ -571,7 +572,7 @@ export class ParentGroupRegistration {
       • <strong>Duration:</strong> ${registrationData.length} minutes<br>
       • <strong>Transportation:</strong> ${transportationDisplay}
       <br><br>
-      <p>If you need to change or cancel this class, please contact ${FORTE_PROGRAM_EMAIL}. The last day to cancel classes without charge is August 29th. After this date, all classes will be billed in full for the Fall Trimester.</p>
+      <p>If you need to change or cancel this class, please contact ${FORTE_PROGRAM_EMAIL}. The last day to cancel classes without charge is August 29th. After this date, all classes will be billed in full for the ${registrationData.trimester ? periodDisplayName(registrationData.trimester) : ''} Trimester.</p>
 
       <p><strong>Absence and Cancellation Policy:</strong></p>
 

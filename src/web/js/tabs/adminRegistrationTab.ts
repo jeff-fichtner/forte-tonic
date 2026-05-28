@@ -5,6 +5,7 @@ import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
 import { validateResponseFields } from '../data/responseValidation.js';
 import { RegistrationService } from '../data/registrationService.js';
+import { periodDisplayName } from '../utilities/periodDisplayName.js';
 import type {
   InstructorLike,
   StudentLike,
@@ -69,10 +70,38 @@ export class AdminRegistrationTab extends AdminBaseTab<RegistrationFormData> {
   }
 
   /**
+   * Render the period heading (FR-006) at the top of the admin Registration
+   * tab content. Same pattern as parentRegistrationTab: idempotent, uses the
+   * display-name helper (FR-005) so `summer` renders as "Next Fall."
+   */
+  #renderPeriodHeading(): void {
+    const tabContainer = document.getElementById('admin-registration');
+    if (!tabContainer) return;
+
+    const activePeriod = this.currentTrimester;
+    if (!activePeriod) return;
+
+    const HEADING_ID = 'admin-registration-period-heading';
+    let heading = document.getElementById(HEADING_ID) as HTMLHeadingElement | null;
+
+    if (!heading) {
+      heading = document.createElement('h4');
+      heading.id = HEADING_ID;
+      heading.style.cssText =
+        'margin: 0 0 20px 0; color: #2b68a4; text-align: center; font-weight: bold;';
+      tabContainer.insertBefore(heading, tabContainer.firstChild);
+    }
+    heading.textContent = `${periodDisplayName(activePeriod)} Registration`;
+  }
+
+  /**
    * Render the registration form
    */
   async render(): Promise<void> {
     const _container = this.getContainer();
+
+    // FR-006: render the period heading inline at the top of the Registration tab
+    this.#renderPeriodHeading();
 
     // If form already exists, update its data instead of recreating
     if (this.registrationForm) {

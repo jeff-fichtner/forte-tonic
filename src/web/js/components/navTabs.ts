@@ -1,6 +1,7 @@
 import { PeriodType } from '/utils/values/periodType.js';
 import { UserType } from '/utils/values/userType.js';
 import { isEnrollmentPeriod } from '../utilities/periodHelpers.js';
+import { periodDisplayName } from '../utilities/periodDisplayName.js';
 import { UserSession } from '../auth/session.js';
 import { getTabController } from '../core/tabControllerInstance.js';
 
@@ -345,7 +346,7 @@ export class NavTabs {
     });
 
     // Hide registration tab for parents during intent period
-    if (section === 'parent') {
+    if (section === UserType.PARENT) {
       const currentPeriod = UserSession?.getCurrentPeriod();
       const isIntentPeriod = currentPeriod?.periodType === PeriodType.INTENT;
 
@@ -372,7 +373,7 @@ export class NavTabs {
    * @param {string} section - The section that was selected ('admin', 'instructor', 'parent')
    */
   #initializeSectionUI(section: string): void {
-    if (section === 'admin') {
+    if (section === UserType.ADMIN) {
       const isAdmin = !!this.#currentUser?.admin;
       const currentPeriod = UserSession?.getCurrentPeriod();
       const appConfig = UserSession?.getAppConfig();
@@ -392,7 +393,7 @@ export class NavTabs {
               const button = document.createElement('button');
               button.className = 'trimester-btn';
               button.setAttribute('data-trimester', trimester);
-              button.textContent = trimester.charAt(0).toUpperCase() + trimester.slice(1);
+              button.textContent = periodDisplayName(trimester);
               trimesterButtons.appendChild(button);
             });
           }
@@ -414,7 +415,7 @@ export class NavTabs {
       }
     }
 
-    if (section === 'instructor') {
+    if (section === UserType.INSTRUCTOR) {
       const isInstructor = !!this.#currentUser?.instructor;
       const currentPeriod = UserSession?.getCurrentPeriod();
       const appConfig = UserSession?.getAppConfig();
@@ -434,7 +435,7 @@ export class NavTabs {
               const button = document.createElement('button');
               button.className = 'trimester-btn';
               button.setAttribute('data-trimester', trimester);
-              button.textContent = trimester.charAt(0).toUpperCase() + trimester.slice(1);
+              button.textContent = periodDisplayName(trimester);
               trimesterButtons.appendChild(button);
             });
           }

@@ -11,6 +11,8 @@ import type { Admin } from '../models/shared/admin.js';
 import type { Room } from '../models/shared/room.js';
 
 interface StudentFilters {
+  /** Active trimester (FR-003). Required: every call needs an explicit period. */
+  period: string;
   parentId?: string;
 }
 
@@ -42,9 +44,9 @@ export class EntityQueryService extends BaseService {
     this.#registrationRepository = registrationRepository;
   }
 
-  async getStudents(filters?: StudentFilters): Promise<Student[]> {
-    const students = await this.#userRepository.getStudents();
-    if (filters?.parentId) {
+  async getStudents(filters: StudentFilters): Promise<Student[]> {
+    const students = await this.#userRepository.getStudents(filters.period);
+    if (filters.parentId) {
       return students.filter(
         s => s.parent1Id === filters.parentId || s.parent2Id === filters.parentId
       );

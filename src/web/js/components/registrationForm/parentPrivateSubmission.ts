@@ -11,6 +11,7 @@ import { formatDisplayTime } from '../../utilities/registrationForm/timeHelpers.
 import { validateBusTimeRestrictions } from '../../utilities/registrationForm/registrationValidator.js';
 import { FORTE_PROGRAM_EMAIL } from '../../constants.js';
 import { UserSession } from '../../auth/session.js';
+import { periodDisplayName } from '../../utilities/periodDisplayName.js';
 import type {
   InstructorLike,
   RegistrationSubmitData,
@@ -298,7 +299,7 @@ export class ParentPrivateSubmission {
       • <strong>Duration:</strong> ${registrationData.length} minutes<br>
       • <strong>Transportation:</strong> ${transportationDisplay}
       <br><br>
-      <p>If you need to change or cancel this registration, please contact ${FORTE_PROGRAM_EMAIL}. The last day to cancel registrations without charge is August 29th. After this date, all registrations will be billed in full for the Fall Trimester.</p>
+      <p>If you need to change or cancel this registration, please contact ${FORTE_PROGRAM_EMAIL}. The last day to cancel registrations without charge is August 29th. After this date, all registrations will be billed in full for the ${registrationData.trimester ? periodDisplayName(registrationData.trimester) : ''} Trimester.</p>
 
       <p><strong>Absence and Cancellation Policy:</strong></p>
 

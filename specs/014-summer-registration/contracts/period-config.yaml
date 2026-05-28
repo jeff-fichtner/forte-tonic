@@ -1,0 +1,66 @@
+openapi: 3.0.0
+info:
+  title: Period configuration schema for 014-summer-registration
+  version: 1.0.0
+  description: |
+    The `periods` sheet's schema is unchanged. Adding `summer` is
+    operational: new rows can be inserted with `trimester: 'summer'`.
+    See data-model.md for details.
+
+components:
+  schemas:
+    Period:
+      type: object
+      description: |
+        Row in the `periods` sheet. Schema is unchanged in 014; only
+        the set of valid `trimester` values expands.
+      required:
+        - trimester
+        - periodType
+        - startDate
+      properties:
+        trimester:
+          type: string
+          enum: [fall, winter, spring, summer]
+          description: |
+            The trimester this period belongs to. `'summer'` is the
+            new fourth value.
+        periodType:
+          type: string
+          enum: [intent, priorityEnrollment, openEnrollment, registration]
+          description: |
+            Unchanged. Same four period types apply to `summer` as
+            to the other three trimesters. Per FR-004, no period-type
+            special-casing is introduced.
+        startDate:
+          type: string
+          format: date
+          description: |
+            When this period becomes active. Current period is the
+            row with the latest `startDate <= now()`. No end date.
+    AppConfiguration:
+      type: object
+      description: |
+        Response shape from the app-configuration endpoint. The
+        `availableTrimesters` array can now include `'summer'`.
+      properties:
+        currentTrimester:
+          type: string
+          enum: [fall, winter, spring, summer]
+        nextTrimester:
+          type: string
+          enum: [fall, winter, spring, summer, null]
+          nullable: true
+        availableTrimesters:
+          type: array
+          items:
+            type: string
+            enum: [fall, winter, spring, summer]
+          description: |
+            During enrollment overlaps: 2 entries (current + next).
+            Otherwise: 1 entry (current). Example: during spring
+            instruction with summer enrollment active, this is
+            `['spring', 'summer']`.
+        periodType:
+          type: string
+          enum: [intent, priorityEnrollment, openEnrollment, registration]

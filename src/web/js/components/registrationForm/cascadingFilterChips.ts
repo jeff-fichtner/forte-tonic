@@ -16,7 +16,7 @@ import { isInstructorGradeEligible } from '../../utilities/registrationForm/avai
 import { formatDisplayTime } from '../../utilities/registrationForm/timeHelpers.js';
 
 import { ModalKeyboardHandler } from '../../utilities/modalKeyboardHandler.js';
-import type { AvailableTimeSlot } from '../../../../models/shared/availableTimeSlot.js';
+import type { AvailableTimeSlot } from '/models/shared/availableTimeSlot.js';
 import type {
   InstructorLike,
   StudentLike,

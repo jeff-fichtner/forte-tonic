@@ -3,6 +3,7 @@ import { serviceContainer, ServiceKeys } from '../infrastructure/container/servi
 import { createLogger } from '../utils/logger.js';
 import { configService } from '../services/configurationService.js';
 import { UserType } from '../config/constants.js';
+import { LoginType } from '../utils/values/loginType.js';
 import type { UserRepository } from '../repositories/userRepository.js';
 import { UnauthorizedError } from '../common/errors.js';
 import { ERROR_CODE, ERROR_TYPE } from '../common/errorConstants.js';
@@ -98,7 +99,7 @@ async function extractAuthenticatedUser(
       const isPhoneNumber = accessCode.length === 10 && /^\d{10}$/.test(accessCode);
       const isAccessCode = accessCode.length === 6 && /^\d{6}$/.test(accessCode);
 
-      if (isPhoneNumber || loginType === 'parent') {
+      if (isPhoneNumber || loginType === LoginType.PARENT) {
         // For parent login, accessCode is actually a phone number
         const parent = await userRepository.getParentByPhone(accessCode);
         if (parent) {
@@ -106,19 +107,19 @@ async function extractAuthenticatedUser(
         }
       }
 
-      if (!userResult && (isAccessCode || loginType === 'employee')) {
+      if (!userResult && (isAccessCode || loginType === LoginType.EMPLOYEE)) {
         // For employee login (admin/instructor), use the standard access code method
         userResult = await userRepository.getUserByAccessCode(accessCode);
       }
 
       // Fallback: if no match yet, try the opposite method
       if (!userResult) {
-        if (isPhoneNumber && loginType !== 'parent') {
+        if (isPhoneNumber && loginType !== LoginType.PARENT) {
           const parent = await userRepository.getParentByPhone(accessCode);
           if (parent) {
             userResult = { user: parent, userType: UserType.PARENT };
           }
-        } else if (isAccessCode && loginType !== 'employee') {
+        } else if (isAccessCode && loginType !== LoginType.EMPLOYEE) {
           userResult = await userRepository.getUserByAccessCode(accessCode);
         }
       }

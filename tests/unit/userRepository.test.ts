@@ -206,7 +206,7 @@ describe('UserRepository', () => {
         .mockResolvedValueOnce(mockStudents)
         .mockResolvedValueOnce([]);
 
-      const result = await repository.getStudents();
+      const result = await repository.getStudents('fall');
 
       expect(mockGoogleSheetsDbClient.getAllRecords).toHaveBeenCalledWith(
         'students',
@@ -228,9 +228,110 @@ describe('UserRepository', () => {
     test('should handle empty result', async () => {
       mockGoogleSheetsDbClient.getAllRecords.mockResolvedValue([]);
 
-      const result = await repository.getStudents();
+      const result = await repository.getStudents('fall');
 
       expect(result).toEqual([]);
+    });
+
+    // FR-003: required `period` parameter
+    test('should throw when period is missing (undefined)', async () => {
+      await expect(repository.getStudents(undefined)).rejects.toThrow(
+        /getStudents requires a `period` parameter/
+      );
+    });
+
+    test('should throw when period is empty string', async () => {
+      await expect(repository.getStudents('')).rejects.toThrow(
+        /getStudents requires a `period` parameter/
+      );
+    });
+
+    test('should throw when period is null', async () => {
+      await expect(repository.getStudents(null)).rejects.toThrow(
+        /getStudents requires a `period` parameter/
+      );
+    });
+
+    // FR-003: grade-bump transform applies only for `summer`
+    test('should bump grade by 1 when period is summer', async () => {
+      const { Student } = await import('../../src/models/shared/student.js');
+
+      const mockStudents = [
+        new Student({
+          id: 'student-1',
+          lastName: 'Johnson',
+          firstName: 'Emma',
+          lastNickname: '',
+          firstNickname: '',
+          grade: '5',
+          parent1Id: 'parent-1',
+          parent2Id: '',
+        }),
+      ];
+
+      mockGoogleSheetsDbClient.getAllRecords
+        .mockResolvedValueOnce(mockStudents)
+        .mockResolvedValueOnce([]);
+
+      const result = await repository.getStudents('summer');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].grade).toBe('6');
+    });
+
+    test('should NOT bump grade for fall/winter/spring', async () => {
+      const { Student } = await import('../../src/models/shared/student.js');
+
+      const mockStudents = [
+        new Student({
+          id: 'student-1',
+          lastName: 'Johnson',
+          firstName: 'Emma',
+          lastNickname: '',
+          firstNickname: '',
+          grade: '5',
+          parent1Id: 'parent-1',
+          parent2Id: '',
+        }),
+      ];
+
+      // Three independent invocations; reset cache between calls
+      for (const period of ['fall', 'winter', 'spring']) {
+        repository._enrichedStudentsCache = null;
+        repository._enrichedStudentsCacheTime = null;
+        mockGoogleSheetsDbClient.getAllRecords
+          .mockResolvedValueOnce(mockStudents)
+          .mockResolvedValueOnce([]);
+
+        const result = await repository.getStudents(period);
+        expect(result[0].grade).toBe('5');
+      }
+    });
+
+    test('should leave non-numeric grade unchanged when bumping for summer', async () => {
+      const { Student } = await import('../../src/models/shared/student.js');
+
+      const mockStudents = [
+        new Student({
+          id: 'student-1',
+          lastName: 'Johnson',
+          firstName: 'Emma',
+          lastNickname: '',
+          firstNickname: '',
+          grade: '', // empty / non-numeric
+          parent1Id: 'parent-1',
+          parent2Id: '',
+        }),
+      ];
+
+      mockGoogleSheetsDbClient.getAllRecords
+        .mockResolvedValueOnce(mockStudents)
+        .mockResolvedValueOnce([]);
+
+      const result = await repository.getStudents('summer');
+
+      // Non-numeric grade is left as-is (no NaN propagation)
+      expect(result[0].grade).toBe('');
     });
   });
 
@@ -322,7 +423,7 @@ describe('UserRepository', () => {
         return [];
       });
 
-      const result = await repository.getStudentById('student-1');
+      const result = await repository.getStudentById('student-1', 'fall');
 
       // Check that result has the correct properties using getters
       expect(result.firstName).toBe('Emma');
@@ -332,15 +433,15 @@ describe('UserRepository', () => {
       expect(result.id.value || result.id).toBe('student-1');
     });
 
-    test('should return null when student not found', async () => {
+    test('should throw NotFoundError when student not found', async () => {
       // Mock empty students array
       mockGoogleSheetsDbClient.getAllRecords.mockImplementation(async (_key, _transformer) => {
         return [];
       });
 
-      const result = await repository.getStudentById('non-existent');
-
-      expect(result).toBeNull();
+      await expect(repository.getStudentById('non-existent', 'fall')).rejects.toThrow(
+        'Student not found: non-existent'
+      );
     });
   });
 

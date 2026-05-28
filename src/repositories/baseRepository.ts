@@ -10,6 +10,15 @@ import type { ConfigurationService } from '../services/configurationService.js';
 /** Function that converts a mapped DB record into a model instance */
 export type RecordMapper<T> = (record: Record<string, unknown>) => T | null;
 
+/** Audit event kinds emitted by repositories */
+export type AuditEvent = 'create' | 'update' | 'delete';
+
+/** Result of building an audit record — `null` skips the audit write */
+export type BuiltAuditRecord = {
+  sheet: string;
+  record: Record<string, unknown>;
+} | null;
+
 /**
  * Abstract base repository with standardized data access
  * Caching is handled at the GoogleSheetsDbClient layer
@@ -98,6 +107,37 @@ export class BaseRepository<T extends object> extends BaseService {
       this.logger.error(`❌ Error deleting ${this.entityName}:`, error);
       throw new Error(`Failed to delete ${this.entityName}: ${(error as Error).message}`);
     }
+  }
+
+  /**
+   * Build an audit record for an entity event. Subclasses override to define
+   * their audit sheet name and record shape. Returning `null` (the default)
+   * means the repository does not write audit records. `context` carries
+   * repo-specific data the audit shape needs but the entity does not — e.g.,
+   * the trimester that selects the per-trimester audit sheet.
+   */
+  protected buildAuditRecord(
+    _entity: T,
+    _performedBy: string,
+    _event: AuditEvent,
+    _context?: Record<string, unknown>
+  ): BuiltAuditRecord {
+    return null;
+  }
+
+  /**
+   * Write an audit record for an entity event. No-op for repositories whose
+   * `buildAuditRecord` returns `null`.
+   */
+  protected async writeAudit(
+    entity: T,
+    performedBy: string,
+    event: AuditEvent,
+    context?: Record<string, unknown>
+  ): Promise<void> {
+    const built = this.buildAuditRecord(entity, performedBy, event, context);
+    if (!built) return;
+    await this.dbClient.appendRecord(built.sheet, built.record);
   }
 
   /**

@@ -226,7 +226,7 @@ describe('UserController', () => {
       return mockSuccessResponse.mock.calls[0][1] as Record<string, unknown>;
     }
 
-    it('should return [spring, fall] for fall intent period', async () => {
+    it('should return [summer, fall] for fall intent period', async () => {
       setupPeriods({ trimester: Trimester.FALL, periodType: PeriodType.INTENT });
       const { req, res } = createMockReqRes();
 
@@ -234,7 +234,7 @@ describe('UserController', () => {
 
       expect(mockSuccessResponse).toHaveBeenCalledTimes(1);
       const data = getConfigData();
-      expect(data.availableTrimesters).toEqual([Trimester.SPRING, Trimester.FALL]);
+      expect(data.availableTrimesters).toEqual([Trimester.SUMMER, Trimester.FALL]);
     });
 
     it('should return [fall, winter] for fall priority enrollment', async () => {
@@ -302,7 +302,7 @@ describe('UserController', () => {
       expect(data.availableTrimesters).toEqual([Trimester.WINTER, Trimester.SPRING]);
     });
 
-    it('should return [spring, fall] for spring priority enrollment', async () => {
+    it('should return [spring, summer] for spring priority enrollment', async () => {
       setupPeriods({
         trimester: Trimester.SPRING,
         periodType: PeriodType.PRIORITY_ENROLLMENT,
@@ -312,17 +312,24 @@ describe('UserController', () => {
       await UserController.getAppConfiguration(req, res);
 
       const data = getConfigData();
-      expect(data.availableTrimesters).toEqual([Trimester.SPRING, Trimester.FALL]);
+      expect(data.availableTrimesters).toEqual([Trimester.SPRING, Trimester.SUMMER]);
     });
 
-    it('should return [fall] when no period is configured', async () => {
-      setupPeriods(null);
+    it('should call errorResponse when no period is configured', async () => {
+      // The periods table is human-maintained; getCurrentPeriod throws when
+      // no period covers "now". The controller surfaces that as an error
+      // response so the misconfiguration is visible immediately.
+      mockPeriodService.getCurrentPeriod.mockRejectedValue(
+        new Error('No active period found (no period has started yet)')
+      );
+      mockPeriodService.getNextPeriod.mockResolvedValue(null);
+      mockUserRepository.getAdmins.mockResolvedValue([]);
       const { req, res } = createMockReqRes();
 
       await UserController.getAppConfiguration(req, res);
 
-      const data = getConfigData();
-      expect(data.availableTrimesters).toEqual([Trimester.FALL]);
+      expect(mockErrorResponse).toHaveBeenCalledTimes(1);
+      expect(mockSuccessResponse).not.toHaveBeenCalled();
     });
 
     it('should derive nextTrimester from _getNextTrimester, not from next period', async () => {
@@ -473,9 +480,10 @@ describe('UserController', () => {
 
       await UserController.getParentContactTabData(req, res);
 
-      // Verify students were fetched for the parent
+      // Verify students were fetched for the parent with the right period (FR-003)
       expect(mockEntityQueryService.getStudents).toHaveBeenCalledWith({
         parentId: 'p1',
+        period: 'fall',
       });
 
       // Verify registrations scoped to student IDs and trimester

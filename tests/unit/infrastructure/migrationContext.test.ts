@@ -270,4 +270,87 @@ describe('SheetsMigrationContext', () => {
       });
     });
   });
+
+  describe('createSheet', () => {
+    test('should create a new sheet with header row when sheet does not exist', async () => {
+      // Sheet metadata: no sheet matching the name we will create
+      mockSheetsApi.spreadsheets.get.mockResolvedValueOnce({
+        data: {
+          sheets: [{ properties: { title: 'OtherSheet', sheetId: 1 } }],
+        },
+      });
+
+      await ctx.createSheet('NewSheet', ['id', 'name', 'createdAt']);
+
+      // Should issue an addSheet batchUpdate request
+      expect(mockSheetsApi.spreadsheets.batchUpdate).toHaveBeenCalledWith({
+        spreadsheetId: SPREADSHEET_ID,
+        requestBody: {
+          requests: [
+            {
+              addSheet: {
+                properties: {
+                  title: 'NewSheet',
+                },
+              },
+            },
+          ],
+        },
+      });
+
+      // Should write the header row at row 1 of the new sheet
+      expect(mockSheetsApi.spreadsheets.values.update).toHaveBeenCalledWith({
+        spreadsheetId: SPREADSHEET_ID,
+        range: 'NewSheet!A1:C1',
+        valueInputOption: 'RAW',
+        requestBody: { values: [['id', 'name', 'createdAt']] },
+      });
+    });
+
+    test('should be idempotent: return without error when sheet already exists', async () => {
+      // Sheet metadata: the sheet already exists
+      mockSheetsApi.spreadsheets.get.mockResolvedValueOnce({
+        data: {
+          sheets: [{ properties: { title: 'ExistingSheet', sheetId: 7 } }],
+        },
+      });
+
+      await ctx.createSheet('ExistingSheet', ['a', 'b']);
+
+      // Should NOT issue any addSheet or update requests
+      expect(mockSheetsApi.spreadsheets.batchUpdate).not.toHaveBeenCalled();
+      expect(mockSheetsApi.spreadsheets.values.update).not.toHaveBeenCalled();
+    });
+
+    test('should write columns in supplied order using correct A1 notation', async () => {
+      // Sheet does not exist yet
+      mockSheetsApi.spreadsheets.get.mockResolvedValueOnce({
+        data: { sheets: [] },
+      });
+
+      const columns = ['Id', 'StudentId', 'InstructorId', 'Day', 'StartTime'] as const;
+      await ctx.createSheet('registrations_summer', columns);
+
+      // 5 columns → A1:E1
+      expect(mockSheetsApi.spreadsheets.values.update).toHaveBeenCalledWith({
+        spreadsheetId: SPREADSHEET_ID,
+        range: 'registrations_summer!A1:E1',
+        valueInputOption: 'RAW',
+        requestBody: { values: [['Id', 'StudentId', 'InstructorId', 'Day', 'StartTime']] },
+      });
+    });
+
+    test('should not write header row when columns array is empty', async () => {
+      mockSheetsApi.spreadsheets.get.mockResolvedValueOnce({
+        data: { sheets: [] },
+      });
+
+      await ctx.createSheet('EmptyHeaderSheet', []);
+
+      // addSheet still happens
+      expect(mockSheetsApi.spreadsheets.batchUpdate).toHaveBeenCalled();
+      // But no update call (no header row to write)
+      expect(mockSheetsApi.spreadsheets.values.update).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -5,12 +5,16 @@
  * Repository for simplified registration model with UUID primary keys
  */
 
-import { BaseRepository } from './baseRepository.js';
+import { BaseRepository, type AuditEvent, type BuiltAuditRecord } from './baseRepository.js';
 import { Registration } from '../models/shared/registration.js';
 import type { RegistrationData } from '../models/shared/registration.js';
 import { UuidUtility } from '../utils/uuidUtility.js';
 import { isValidTrimester } from '../utils/values/trimester.js';
-import type { GoogleSheetsDbClient } from '../database/googleSheetsDbClient.js';
+import {
+  type GoogleSheetsDbClient,
+  dataSheetForTrimester,
+  auditSheetForTrimester,
+} from '../database/googleSheetsDbClient.js';
 import type { ConfigurationService } from '../services/configurationService.js';
 import type { PeriodService } from '../services/periodService.js';
 
@@ -47,13 +51,14 @@ export class RegistrationRepository extends BaseRepository<Registration> {
   }
 
   /**
-   * Derive the table name for a trimester
+   * Derive the table name for a trimester via the dbClient's mapping.
+   * Validation happens inside `dataSheetForTrimester` (throws on invalid).
    */
   private _tableName(trimester: string): string {
     if (!isValidTrimester(trimester)) {
       throw new Error(`Invalid trimester: ${trimester}`);
     }
-    return `registrations_${trimester.toLowerCase()}`;
+    return dataSheetForTrimester(trimester);
   }
 
   /**
@@ -76,7 +81,10 @@ export class RegistrationRepository extends BaseRepository<Registration> {
    */
   override async findAll(_options: Record<string, unknown> = {}): Promise<Registration[]> {
     try {
-      const currentTable = await this.periodService.getCurrentTrimesterTable();
+      // Ask the period service for the trimester identifier, then translate
+      // to a sheet name internally — sheet names are a data-layer concern.
+      const trimester = await this.periodService.getCurrentTrimester();
+      const currentTable = this._tableName(trimester);
       this.logger.info(`📋 Getting registrations from table: ${currentTable}`);
       const registrations = await this._fetchRegistrations(currentTable);
       this.logger.info(`✅ Found ${registrations.length} registrations`);
@@ -162,8 +170,9 @@ export class RegistrationRepository extends BaseRepository<Registration> {
 
       await this.dbClient.appendRecord(tableName, { ...registration.toJSON() });
 
-      const auditSheet = `${tableName}_audit`;
-      await this.#writeAuditRecord(registration, data.createdBy || '', auditSheet);
+      await this.writeAudit(registration, data.createdBy || '', 'create', {
+        trimester: targetTrimester,
+      });
 
       this.logger.info(`✅ Created registration: ${registration.id}`);
       return registration;
@@ -198,8 +207,7 @@ export class RegistrationRepository extends BaseRepository<Registration> {
 
       await this.dbClient.deleteRecord(tableName, id, userId);
 
-      const auditSheet = `${tableName}_audit`;
-      await this.#writeAuditRecord(registration, userId, auditSheet, true);
+      await this.writeAudit(registration, userId, 'delete', { trimester });
 
       return true;
     } catch (error) {
@@ -209,27 +217,35 @@ export class RegistrationRepository extends BaseRepository<Registration> {
   }
 
   /**
-   * Write a registration audit record to the corresponding audit sheet.
+   * Build the registration audit record. Audit sheet is per-trimester
+   * (`registrations_<trimester>_audit`), so the trimester must be threaded
+   * through `context` from the call site.
    */
-  async #writeAuditRecord(
+  protected override buildAuditRecord(
     registration: Registration,
     performedBy: string,
-    auditSheet: string,
-    isDeleted: boolean = false
-  ): Promise<void> {
+    event: AuditEvent,
+    context?: Record<string, unknown>
+  ): BuiltAuditRecord {
+    const trimester = context?.trimester;
+    if (typeof trimester !== 'string' || !trimester) {
+      throw new Error('Registration audit requires `trimester` in context');
+    }
+    const isDeleted = event === 'delete';
     const now = new Date().toISOString();
-    const json = registration.toJSON();
-    const auditRecord: Record<string, unknown> = {
-      ...json,
-      id: UuidUtility.generateUuid(),
-      registrationId: registration.id,
-      isDeleted,
-      deletedAt: isDeleted ? now : '',
-      deletedBy: isDeleted ? performedBy : '',
-      updatedAt: now,
-      updatedBy: performedBy,
+    return {
+      sheet: auditSheetForTrimester(trimester),
+      record: {
+        ...registration.toJSON(),
+        id: UuidUtility.generateUuid(),
+        registrationId: registration.id,
+        isDeleted,
+        deletedAt: isDeleted ? now : '',
+        deletedBy: isDeleted ? performedBy : '',
+        updatedAt: now,
+        updatedBy: performedBy,
+      },
     };
-    await this.dbClient.appendRecord(auditSheet, auditRecord);
   }
 
   /**
@@ -253,8 +269,7 @@ export class RegistrationRepository extends BaseRepository<Registration> {
 
     await this.dbClient.updateRecord(targetSheet, { ...registration.toJSON() }, submittedBy);
 
-    const auditSheet = `${targetSheet}_audit`;
-    await this.#writeAuditRecord(registration, submittedBy, auditSheet);
+    await this.writeAudit(registration, submittedBy, 'update', { trimester });
 
     return registration;
   }

@@ -1,0 +1,102 @@
+openapi: 3.0.0
+info:
+  title: Registrations endpoint contract change for 014-summer-registration
+  version: 1.0.0
+  description: |
+    Documents that `'summer'` is now a valid value everywhere a
+    trimester string is accepted. No endpoint shape changes; only the
+    enum of acceptable values expands. See FR-001 in spec.md.
+
+paths:
+  /api/registrations:
+    post:
+      summary: Create a registration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - trimester
+                - studentId
+                - instructorId
+              properties:
+                trimester:
+                  type: string
+                  enum: [fall, winter, spring, summer]
+                  description: |
+                    Now accepts `'summer'` (data-driven via
+                    `isValidTrimester()` and the `Trimester` enum).
+                studentId:
+                  type: string
+                instructorId:
+                  type: string
+                replaceRegistrationId:
+                  type: string
+                  description: |
+                    When provided, the backend deletes the named
+                    registration before creating this one — the
+                    existing modify-via-replace flow. For `summer`,
+                    only carried-forward registrations (those with
+                    `linkedPreviousRegistrationId` set) appear in the
+                    modify selector, so `replaceRegistrationId`
+                    values for `trimester: 'summer'` will reference
+                    carried-forward rows.
+      responses:
+        '201':
+          description: Registration created
+        '400':
+          description: Invalid trimester or other validation failure
+
+  /api/registrations/{trimester}/{id}:
+    delete:
+      summary: Delete a registration (admin only for parent-facing flow)
+      parameters:
+        - in: path
+          name: trimester
+          required: true
+          schema:
+            type: string
+            enum: [fall, winter, spring, summer]
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Registration deleted
+        '404':
+          description: Registration not found
+
+  /api/registrations/{trimester}/{id}/intent:
+    patch:
+      summary: Update reenrollment intent (INTENT period only)
+      parameters:
+        - in: path
+          name: trimester
+          required: true
+          schema:
+            type: string
+            enum: [fall, winter, spring, summer]
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                intent:
+                  type: string
+                  enum: [keep, change, drop]
+      responses:
+        '200':
+          description: Intent updated
+        '400':
+          description: Invalid intent value or not in INTENT period

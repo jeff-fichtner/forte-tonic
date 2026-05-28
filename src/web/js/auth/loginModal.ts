@@ -3,6 +3,7 @@ import { ServerFunctions } from '../constants.js';
 import { setPageLoading } from '../ui/pageLoading.js';
 import { ModalKeyboardHandler } from '../utilities/modalKeyboardHandler.js';
 import { AccessCodeManager } from './session.js';
+import { LoginType } from '/utils/values/loginType.js';
 import {
   formatPhoneAsTyped,
   isValidPhoneNumber,
@@ -228,13 +229,13 @@ function initParentPhoneInput(phoneInput: HTMLInputElement, _loginButton: HTMLEl
     const target = e.target as HTMLInputElement;
     target.value = formatPhoneAsTyped(target.value);
 
-    if (currentLoginType === 'parent') {
+    if (currentLoginType === LoginType.PARENT) {
       validateCurrentInput();
     }
   });
 
   phoneInput.addEventListener('focus', (_e: Event) => {
-    if (currentLoginType === 'parent') {
+    if (currentLoginType === LoginType.PARENT) {
       setTimeout(() => {
         validateCurrentInput();
       }, 50);
@@ -245,7 +246,7 @@ function initParentPhoneInput(phoneInput: HTMLInputElement, _loginButton: HTMLEl
     const target = e.target as HTMLInputElement;
     setTimeout(() => {
       target.value = formatPhoneAsTyped(target.value);
-      if (currentLoginType === 'parent') {
+      if (currentLoginType === LoginType.PARENT) {
         validateCurrentInput();
       }
     }, 0);
@@ -278,7 +279,7 @@ function validateCurrentInput(): void {
 
   let isValid = false;
 
-  if (currentLoginType === 'parent') {
+  if (currentLoginType === LoginType.PARENT) {
     const phoneInput = document.getElementById('parent-phone-input') as HTMLInputElement | null;
     if (!phoneInput) return;
     const phoneValue = phoneInput.value;
@@ -331,7 +332,7 @@ function validateCurrentInput(): void {
 }
 
 function focusCurrentInput(): void {
-  if (currentLoginType === 'parent') {
+  if (currentLoginType === LoginType.PARENT) {
     const phoneInput = document.getElementById('parent-phone-input') as HTMLInputElement | null;
     if (phoneInput) phoneInput.focus();
   } else {
@@ -388,7 +389,7 @@ async function handleLogin(): Promise<void> {
   let loginValue = '';
   const loginType = currentLoginType;
 
-  if (loginType === 'parent') {
+  if (loginType === LoginType.PARENT) {
     const phoneInput = document.getElementById('parent-phone-input') as HTMLInputElement | null;
     if (!phoneInput) return;
     const phoneValue = phoneInput.value.trim();

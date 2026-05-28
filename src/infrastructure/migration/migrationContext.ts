@@ -136,6 +136,56 @@ export class SheetsMigrationContext implements MigrationContext {
     });
   }
 
+  async createSheet(sheetName: string, columns: readonly string[]): Promise<void> {
+    // Idempotency: if the sheet already exists, return without error
+    const existing = await this.#findSheetId(sheetName);
+    if (existing !== null) {
+      return;
+    }
+
+    // Create the sheet via Sheets API addSheet request
+    await this.#sheets.spreadsheets.batchUpdate({
+      spreadsheetId: this.#spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            addSheet: {
+              properties: {
+                title: sheetName,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    // Write the header row at row 1
+    if (columns.length > 0) {
+      const endCol = getColumnLetter(columns.length - 1);
+      await this.#sheets.spreadsheets.values.update({
+        spreadsheetId: this.#spreadsheetId,
+        range: `${sheetName}!A1:${endCol}1`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [columns as string[]] },
+      });
+    }
+  }
+
+  /**
+   * Look up a sheet's numeric ID by name without throwing if it's missing.
+   * Returns null when the sheet is not found.
+   */
+  async #findSheetId(sheetName: string): Promise<number | null> {
+    const spreadsheet = await this.#sheets.spreadsheets.get({
+      spreadsheetId: this.#spreadsheetId,
+      fields: 'sheets.properties',
+    });
+
+    const sheet = spreadsheet.data.sheets?.find(s => s.properties?.title === sheetName);
+    if (!sheet?.properties) return null;
+    return sheet.properties.sheetId ?? null;
+  }
+
   /** Get the numeric sheetId for a named sheet tab */
   async #getSheetId(sheetName: string): Promise<number> {
     const spreadsheet = await this.#sheets.spreadsheets.get({

@@ -2,7 +2,7 @@
  * Attendance Repository - handles attendance-specific data operations
  */
 
-import { BaseRepository } from './baseRepository.js';
+import { BaseRepository, type AuditEvent, type BuiltAuditRecord } from './baseRepository.js';
 import { AttendanceRecord } from '../models/shared/attendanceRecord.js';
 import { UuidUtility } from '../utils/uuidUtility.js';
 import { Keys } from '../utils/values/keys.js';
@@ -53,26 +53,28 @@ export class AttendanceRepository extends BaseRepository<AttendanceRecord> {
   }
 
   /**
-   * Write an attendance audit record to the audit sheet.
-   * Moved from DB client to repository (US4) — domain logic belongs in the repository layer.
+   * Build an attendance audit record. Attendance uses a flat event-log shape
+   * with an `action` enum, distinct from registration's entity-shaped audit.
    */
-  async #writeAuditRecord(
+  protected override buildAuditRecord(
     attendanceRecord: AttendanceRecord,
     performedBy: string,
-    isDeleted: boolean = false
-  ): Promise<void> {
-    const auditRecord: Record<string, unknown> = {
-      id: UuidUtility.generateUuid(),
-      action: isDeleted ? 'DELETE' : 'CREATE',
-      attendanceId: attendanceRecord.id,
-      registrationId: attendanceRecord.registrationId,
-      week: attendanceRecord.week,
-      schoolYear: attendanceRecord.schoolYear,
-      trimester: attendanceRecord.trimester,
-      performedBy,
-      performedAt: new Date().toISOString(),
+    event: AuditEvent
+  ): BuiltAuditRecord {
+    return {
+      sheet: Keys.ATTENDANCEAUDIT,
+      record: {
+        id: UuidUtility.generateUuid(),
+        action: event === 'delete' ? 'DELETE' : 'CREATE',
+        attendanceId: attendanceRecord.id,
+        registrationId: attendanceRecord.registrationId,
+        week: attendanceRecord.week,
+        schoolYear: attendanceRecord.schoolYear,
+        trimester: attendanceRecord.trimester,
+        performedBy,
+        performedAt: new Date().toISOString(),
+      },
     };
-    await this.dbClient.appendRecord(Keys.ATTENDANCEAUDIT, auditRecord);
   }
 
   /**
@@ -116,8 +118,7 @@ export class AttendanceRepository extends BaseRepository<AttendanceRecord> {
       // Save via parent
       const created = await super.create(attendanceData, attendanceData.recordedBy);
 
-      // Write audit record
-      await this.#writeAuditRecord(created, attendanceData.recordedBy);
+      await this.writeAudit(created, attendanceData.recordedBy, 'create');
 
       this.logger.info('✅ Attendance recorded with ID:', created.id);
       return created;

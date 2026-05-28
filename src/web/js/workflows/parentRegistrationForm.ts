@@ -5,6 +5,7 @@
 
 import { RegistrationType } from '/utils/values/registrationType.js';
 import { TransportationType } from '/utils/values/transportationType.js';
+import { PeriodType } from '/utils/values/periodType.js';
 import { DomHelpers } from '../utilities/domHelpers.js';
 import { clearErrorMessage } from '../utilities/registrationForm/messageDisplay.js';
 
@@ -16,11 +17,12 @@ import type {
   RegistrationSubmitData,
   TimeSlot,
 } from '../types/registrationTypes.js';
-import type { AvailableTimeSlot } from '../../../models/shared/availableTimeSlot.js';
+import type { AvailableTimeSlot } from '/models/shared/availableTimeSlot.js';
 import { CascadingFilterChips } from '../components/registrationForm/cascadingFilterChips.js';
 import { ParentGroupRegistration } from '../components/registrationForm/parentGroupRegistration.js';
 import { ParentPrivateSubmission } from '../components/registrationForm/parentPrivateSubmission.js';
 import { UserSession } from '../auth/session.js';
+import { RegistrationFormText } from '../constants/registrationFormConstants.js';
 import {
   showConfirmationModal,
   showConflictModal,
@@ -252,11 +254,17 @@ export class ParentRegistrationForm {
       studentSelect.removeChild(studentSelect.lastChild!);
     }
 
+    // FR-007: ensure any previously-rendered empty-state is cleared before
+    // re-deciding visibility. The 0-students branch below re-renders it.
+    this.#clearEmptyStateMessage();
+
     // Handle based on number of students
     if (this.parentChildren.length === 0) {
-      // No students - hide section and all registration containers
+      // No students - hide section and all registration containers,
+      // then render the empty-state message in their place (FR-007).
       studentSection.style.display = 'none';
       this.#hideAllRegistrationContainers();
+      this.#renderEmptyStateMessage();
       console.warn('No students found for parent');
     } else if (this.parentChildren.length === 1) {
       // Single student - hide section and auto-select
@@ -367,6 +375,38 @@ export class ParentRegistrationForm {
     if (registrationTypeSection) registrationTypeSection.style.display = 'none';
     if (privateContainer) privateContainer.style.display = 'none';
     if (groupContainer) groupContainer.style.display = 'none';
+  }
+
+  /**
+   * Render the FR-007 empty-state message inside the Registration tab content
+   * when no eligible students are returned. Plain centered text, no icon,
+   * default styling — uses the existing `STUDENT_EMPTY` constant text.
+   * Idempotent: re-rendering re-creates the element only if absent.
+   */
+  #renderEmptyStateMessage(): void {
+    const tabContainer = document.getElementById('parent-registration');
+    if (!tabContainer) return;
+
+    const EMPTY_STATE_ID = 'parent-registration-empty-state';
+    let messageEl = document.getElementById(EMPTY_STATE_ID);
+    if (!messageEl) {
+      messageEl = document.createElement('div');
+      messageEl.id = EMPTY_STATE_ID;
+      messageEl.style.cssText =
+        'text-align: center; padding: 40px 20px; color: #616161; font-size: 16px;';
+      tabContainer.appendChild(messageEl);
+    }
+    messageEl.textContent = RegistrationFormText.STUDENT_EMPTY;
+  }
+
+  /**
+   * Remove the empty-state message if present (called when students reappear).
+   */
+  #clearEmptyStateMessage(): void {
+    const messageEl = document.getElementById('parent-registration-empty-state');
+    if (messageEl) {
+      messageEl.remove();
+    }
   }
 
   /**
@@ -713,8 +753,8 @@ export class ParentRegistrationForm {
     const currentPeriod = UserSession?.getCurrentPeriod?.();
     return !!(
       currentPeriod &&
-      (currentPeriod.periodType === 'priorityEnrollment' ||
-        currentPeriod.periodType === 'openEnrollment')
+      (currentPeriod.periodType === PeriodType.PRIORITY_ENROLLMENT ||
+        currentPeriod.periodType === PeriodType.OPEN_ENROLLMENT)
     );
   }
 
@@ -729,12 +769,12 @@ export class ParentRegistrationForm {
     if (!currentPeriod) return false;
 
     // Open enrollment: everyone can access
-    if (currentPeriod.periodType === 'openEnrollment') {
+    if (currentPeriod.periodType === PeriodType.OPEN_ENROLLMENT) {
       return true;
     }
 
     // Priority enrollment: only returning families (those with current registrations)
-    if (currentPeriod.periodType === 'priorityEnrollment') {
+    if (currentPeriod.periodType === PeriodType.PRIORITY_ENROLLMENT) {
       const currentRegistrations = this.currentTrimesterRegistrations || [];
       return currentRegistrations.length > 0;
     }

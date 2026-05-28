@@ -11,7 +11,12 @@ import type { Request, Response } from 'express';
 import { getLogger } from '../utils/logger.js';
 import { serviceContainer, ServiceKeys } from '../infrastructure/container/serviceContainer.js';
 import { successResponse, errorResponse, asString } from '../common/responseHelpers.js';
-import { ValidationError, UnauthorizedError, NotFoundError } from '../common/errors.js';
+import {
+  ValidationError,
+  UnauthorizedError,
+  NotFoundError,
+  ForbiddenError,
+} from '../common/errors.js';
 import { INTENT_TYPES } from '../constants/intentTypes.js';
 import { UserType } from '../config/constants.js';
 import { RegistrationService } from '../services/registrationService.js';
@@ -42,7 +47,7 @@ export class RegistrationController {
         hasAccessCode: !!requestData.accessCode,
       });
 
-      // Trimester is required — the service layer needs it to target the correct sheet
+      // Trimester is required — the service layer scopes the registration by trimester
       if (!requestData.trimester) {
         throw new ValidationError('Missing required field: trimester');
       }
@@ -65,6 +70,28 @@ export class RegistrationController {
       // Check if user is an admin (admins can bypass capacity restrictions)
       const isAdmin = req.currentUser?.userType === UserType.ADMIN;
 
+      // Modify-via-replace path (User Story 2): when the request carries a
+      // `replaceRegistrationId`, this is a "replace the old row with a new
+      // one" operation, not a plain create. Authorize parent eligibility
+      // BEFORE doing any writes — parents may only replace a registration
+      // that (a) belongs to one of their students AND (b) has
+      // `linkedPreviousRegistrationId` set (i.e., was carried forward by
+      // the turnover script). Admins may replace anything. The actual
+      // delete happens AFTER create succeeds so a failed create can't
+      // strand the parent with no lesson.
+      const replaceId = asString(requestData.replaceRegistrationId);
+      if (replaceId) {
+        await RegistrationController._authorizeReplace({
+          replaceRegistrationId: replaceId,
+          trimester: requestData.trimester,
+          isAdmin,
+          parentId: req.currentUser?.id,
+        });
+        // Strip the field before passing on — it's a controller-level concern,
+        // not part of the registration row itself.
+        delete requestData.replaceRegistrationId;
+      }
+
       // Process registration through application service with authenticated user
       const result = await registrationService.processRegistration(
         requestData,
@@ -72,8 +99,35 @@ export class RegistrationController {
         { isAdmin }
       );
 
+      // Replace path: now that create succeeded, delete the old row. If this
+      // fails the parent still has their new registration; an admin can
+      // clean up the orphan. (The reverse order — delete first — would risk
+      // losing the parent's lesson if create then failed.)
+      if (replaceId) {
+        try {
+          await registrationService.deleteRegistration(
+            replaceId,
+            authenticatedUserEmail,
+            requestData.trimester
+          );
+        } catch (deleteError) {
+          logger.error('Replace: new registration created but old delete failed', {
+            replaceRegistrationId: replaceId,
+            newRegistrationId: result.registration?.id,
+            error: (deleteError as Error).message,
+          });
+          // Surface as a 500 — the new row exists and an admin will need to
+          // tidy up; the parent should be told something is off.
+          throw new Error(
+            `Registration created but failed to remove previous registration ${replaceId}: ${(deleteError as Error).message}`
+          );
+        }
+      }
+
       successResponse(res, result.registration, {
-        message: 'Registration created successfully',
+        message: replaceId
+          ? 'Registration replaced successfully'
+          : 'Registration created successfully',
         statusCode: 201,
         req,
         startTime,
@@ -123,7 +177,11 @@ export class RegistrationController {
       }
 
       if (req.currentUser?.userType !== UserType.ADMIN) {
-        throw new UnauthorizedError('Only administrators can delete registrations');
+        // 403, not 401 — the caller IS authenticated; they just lack the
+        // admin role. A 401 here would (correctly) trip the frontend's
+        // session-expired interceptor and force a logout, even though
+        // the parent's session is perfectly valid.
+        throw new ForbiddenError('Only administrators can delete registrations');
       }
 
       if (!registrationId) {
@@ -276,7 +334,7 @@ export class RegistrationController {
 
       const [allRegistrations, students] = await Promise.all([
         queryService.getRegistrations({ trimester }),
-        queryService.getStudents(),
+        queryService.getStudents({ period: trimester }),
       ]);
 
       // Filter registrations to only include Rock Band classes (waitlist-specific)
@@ -345,9 +403,10 @@ export class RegistrationController {
       // Get student IDs from instructor's registrations
       const studentIdsInSchedule = new Set(registrations.map(reg => reg.studentId).filter(Boolean));
 
-      // Fetch remaining data in parallel
+      // Fetch remaining data in parallel.
+      // Pass the route's trimester as the period for student lookup (FR-003).
       const [allStudents, instructors, classes] = await Promise.all([
-        queryService.getStudents(),
+        queryService.getStudents({ period: trimester }),
         queryService.getInstructors(),
         queryService.getClasses(),
       ]);
@@ -404,8 +463,9 @@ export class RegistrationController {
 
       const queryService = serviceContainer.get(ServiceKeys.entityQueryService);
 
-      // Get parent's students first (needed to scope registrations)
-      const parentStudents = await queryService.getStudents({ parentId });
+      // Get parent's students first (needed to scope registrations).
+      // Pass the route's trimester as the period (FR-003).
+      const parentStudents = await queryService.getStudents({ parentId, period: trimester });
       const studentIds = parentStudents
         .map(student => student.id)
         .filter((id): id is string => Boolean(id));
@@ -463,7 +523,7 @@ export class RegistrationController {
 
       const [registrations, students, instructors, classes] = await Promise.all([
         queryService.getRegistrations({ trimester }),
-        queryService.getStudents(),
+        queryService.getStudents({ period: trimester }),
         queryService.getInstructors(),
         queryService.getClasses(),
       ]);
@@ -515,9 +575,11 @@ export class RegistrationController {
       const availabilityService = serviceContainer.get(ServiceKeys.availabilityService);
       const excludeRegistrationId = asString(req.query.excludeRegistrationId) || null;
 
-      // Fetch parent's students + registrations for the provided trimester + instructors + classes
+      // Fetch parent's students + registrations for the provided trimester + instructors + classes.
+      // Pass the route's trimester as the period for student lookup (FR-003);
+      // this is what triggers the grade-bump when `trimester === 'summer'`.
       const [parentStudents, registrations, instructors, classes] = await Promise.all([
-        queryService.getStudents({ parentId }),
+        queryService.getStudents({ parentId, period: trimester }),
         queryService.getRegistrations({ trimester }),
         queryService.getInstructors(),
         queryService.getClasses(),
@@ -579,7 +641,7 @@ export class RegistrationController {
 
       const [instructors, students, classes, registrations] = await Promise.all([
         queryService.getInstructors(),
-        queryService.getStudents(),
+        queryService.getStudents({ period: trimester }),
         queryService.getClasses(),
         queryService.getRegistrations({ trimester }),
       ]);
@@ -604,6 +666,58 @@ export class RegistrationController {
         startTime,
         context: { controller: 'RegistrationController', method: 'getAdminRegistrationTabData' },
       });
+    }
+  }
+
+  /**
+   * Authorize a "modify-via-replace" request. Admins may replace any
+   * registration. Parents may replace ONLY a registration that:
+   *  - exists in the target trimester
+   *  - has `linkedPreviousRegistrationId` set (it was carried forward by
+   *    the turnover script — that's the spec's only parent-modifiable shape)
+   *  - belongs to one of their own students (parent1Id or parent2Id matches
+   *    the authenticated parent's id)
+   * Throws on any failure; returns silently on success.
+   */
+  private static async _authorizeReplace(args: {
+    replaceRegistrationId: string;
+    trimester: string;
+    isAdmin: boolean;
+    parentId: string | undefined;
+  }): Promise<void> {
+    const { replaceRegistrationId, trimester, isAdmin, parentId } = args;
+
+    // Admins can replace anything — skip the ownership lookups entirely.
+    if (isAdmin) return;
+
+    if (!parentId) {
+      throw new UnauthorizedError('Authentication required to replace a registration');
+    }
+
+    const registrationRepository = serviceContainer.get(ServiceKeys.registrationRepository);
+    const existing = await registrationRepository.findByIdInTrimester(
+      replaceRegistrationId,
+      trimester
+    );
+    if (!existing) {
+      throw new NotFoundError(`Registration to replace not found: ${replaceRegistrationId}`);
+    }
+
+    // Parent-modifiable only if the row was carried forward by the turnover
+    // script — brand-new parent-created registrations have no linked previous.
+    if (!existing.linkedPreviousRegistrationId) {
+      throw new ForbiddenError(
+        'You may only modify a registration that was carried forward from the previous trimester'
+      );
+    }
+
+    // Ownership: find the student and confirm the authenticated parent is on it.
+    // The trimester is used as the period for the lookup (FR-003); the
+    // grade-bump is irrelevant here since we only need parent ids.
+    const userRepository = serviceContainer.get(ServiceKeys.userRepository);
+    const student = await userRepository.getStudentById(existing.studentId, trimester);
+    if (student.parent1Id !== parentId && student.parent2Id !== parentId) {
+      throw new ForbiddenError('You are not authorized to modify this registration');
     }
   }
 }

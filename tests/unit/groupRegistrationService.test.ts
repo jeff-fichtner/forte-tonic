@@ -138,7 +138,9 @@ describe('Group Registration Service', () => {
         classId: 'NON-EXISTENT-CLASS',
       };
 
-      mockProgramRepository.getClassById.mockResolvedValue(null);
+      mockProgramRepository.getClassById.mockImplementation(async () => {
+        throw new Error('Class not found: NON-EXISTENT-CLASS');
+      });
 
       // Act & Assert
       await expect(

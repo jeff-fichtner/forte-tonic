@@ -8,7 +8,7 @@ import type { Request, Response } from 'express';
 import { getLogger } from '../utils/logger.js';
 import { successResponse, errorResponse } from '../common/responseHelpers.js';
 import { HTTP_STATUS } from '../common/errorConstants.js';
-import { ValidationError, UnauthorizedError } from '../common/errors.js';
+import { ValidationError, ForbiddenError } from '../common/errors.js';
 import { serviceContainer, ServiceKeys } from '../infrastructure/container/serviceContainer.js';
 
 const logger = getLogger();
@@ -38,7 +38,10 @@ export class SystemController {
         features: {
           isProduction,
           isStaging,
-          spreadsheetConfigured: !!currentConfig.spreadsheetId,
+          // Boolean flag indicating whether the data-store connection is configured.
+          // Named generically (not `spreadsheetConfigured`) so the health endpoint
+          // remains storage-implementation-agnostic.
+          dataStoreConfigured: !!currentConfig.spreadsheetId,
         },
       };
 
@@ -90,19 +93,26 @@ export class SystemController {
       // Use dependency injection to get the same repository instances used throughout the app
       const userRepository = serviceContainer.get(ServiceKeys.userRepository);
 
-      // Validate the authenticated user is actually an admin
+      // Validate the authenticated user is actually an admin.
+      // 403 (not 401): by this point the user IS authenticated — they have
+      // a session and an access code that the auth middleware resolved.
+      // What they lack is the admin role. 401 would (incorrectly) trip the
+      // frontend's session-expired interceptor and force a logout.
       const validAdmin = await userRepository.getAdminByAccessCode(adminCode);
       if (!validAdmin) {
-        throw new UnauthorizedError('Invalid admin code');
+        throw new ForbiddenError('Admin role required to clear cache');
       }
 
-      // Clear cache at the database client level (single source of truth)
-      const dbClient = serviceContainer.get(ServiceKeys.databaseClient);
-      if (dbClient && typeof dbClient.clearAllCache === 'function') {
-        dbClient.clearAllCache();
-        logger.info('✅ All Google Sheets cache cleared');
+      // Clear the application-level cache. The cache service is the
+      // canonical entry point — the controller does not reach into the
+      // database client directly, so this code is unchanged if the
+      // underlying storage layer is later swapped (e.g., Sheets → SQL).
+      const cacheService = serviceContainer.get(ServiceKeys.cacheService);
+      if (cacheService && typeof cacheService.clear === 'function') {
+        cacheService.clear();
+        logger.info('✅ All application caches cleared');
       } else {
-        logger.warn('⚠️ Database client not available or does not support cache clearing');
+        logger.warn('⚠️ Cache service not available or does not support clearing');
       }
 
       const adminName = validAdmin.email || validAdmin.firstName + ' ' + validAdmin.lastName;

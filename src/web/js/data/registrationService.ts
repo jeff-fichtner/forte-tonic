@@ -11,10 +11,10 @@
 import { HttpService } from './httpService.js';
 import type { HttpResult } from './httpService.js';
 import { ServerFunctions } from '../constants.js';
-import { Registration } from '../../../models/shared/index.js';
+import { Registration } from '/models/shared/index.js';
 import { UserSession } from '../auth/session.js';
 
-import type { RegistrationData } from '../../../models/shared/registration.js';
+import type { RegistrationData } from '/models/shared/registration.js';
 
 /** Registration creation data */
 export interface RegistrationCreateData {
@@ -57,23 +57,11 @@ export class RegistrationService {
       }
     }
 
-    if (data.replaceRegistrationId) {
-      const deleteEndpoint = `registrations/${data.trimester}/${data.replaceRegistrationId}`;
-
-      const deleteResult = await HttpService.delete(deleteEndpoint);
-      if (!deleteResult.ok) {
-        return {
-          ok: false,
-          error: {
-            ...deleteResult.error,
-            message: `Failed to delete old registration: ${deleteResult.error.message}`,
-          },
-        };
-      }
-
-      delete data.replaceRegistrationId;
-    }
-
+    // Modify-via-replace: pass `replaceRegistrationId` through to the backend
+    // and let it handle authorization + create + delete in one request. The
+    // server enforces parent eligibility (must be a carried-forward row, must
+    // belong to the parent's student) so we don't need a separate DELETE call
+    // here — which previously triggered a 401 → forced logout for parents.
     const result = await HttpService.post(ServerFunctions.register, data);
     if (!result.ok) return result;
 

@@ -1,29 +1,68 @@
 <!--
   SYNC IMPACT REPORT
   ==================
-  Version change: 2.2.1 → 2.2.2
-  Bump rationale: PATCH — updated Principle X (Google Sheets Is the Database)
-    to reflect the addition of a migration system. Removed "no migrations"
-    language (was descriptive, not prescriptive) and added migration system
-    description as a bullet point.
-  Modified principles: X (Google Sheets Is the Database)
+  Version change: 2.3.0 → 2.3.1
+  Bump rationale: PATCH — factual update reflecting feature 014's addition of
+    a fourth trimester (`summer`). No principle changes; only the preamble's
+    "three trimesters" wording and Principle IX's per-trimester sheet list
+    are updated to include `summer` / `registrations_summer`.
+  Modified principles: IX (Trimester-Aware by Default)
+  Modified sections: Preamble
   Added sections: None
   Removed sections: None
-  Modified sections:
-    - Principle X — replaced "no migrations" with migration system description
   Templates requiring updates:
     - .specify/templates/plan-template.md ✅ no changes needed
     - .specify/templates/spec-template.md ✅ no changes needed
     - .specify/templates/tasks-template.md ✅ no changes needed
   Follow-up TODOs: None
+
+  ----- Previous version: 2.2.3 → 2.3.0 (carried-forward report below) -----
+  Version change: 2.2.3 → 2.3.0
+  Bump rationale: MINOR — acknowledges the TypeScript migration as the
+    project's primary language (formerly described as "Vanilla JavaScript").
+    Also cleans up several smaller drift items in the same change.
+
+  Changes in this version:
+    1. Technology Constraints: "Vanilla JavaScript, no framework" → explicit
+       TypeScript 5.x framing across backend (ESM via tsx) and frontend
+       (bundled by Vite). Acknowledges historical migration via specs 002
+       and 008.
+    2. Principle V: file extension corrected (`main.js` → `main.ts`); the
+       defunct `viewModel` reference is replaced with current frontend
+       module categories (tabs/workflows/components) and the dissolution
+       noted as historical context (spec 011).
+    3. Principle X: `googleSheetsDbClient.js` → `.ts`; method name corrected
+       from `clearCache()` to `googleSheetsDbClient.clearAllCache()` /
+       `cacheService.clear()`.
+    4. Technology Constraints: `serviceContainer.js` → `.ts`.
+    5. Versioning & Deployment: `gcpLogger.js` → `.ts`.
+
+  Carries forward from 2.2.3:
+    - Principle IX `targetTrimester` removal (the field does not exist; the
+      registration table is derived at runtime by
+      `PeriodService.getEnrollmentTrimesterTable()`).
+
+  Modified principles: V (Single Data Fetch Pattern), IX (already done in
+    2.2.3), X (Google Sheets Is the Database)
+  Modified sections: Technology Constraints, Versioning & Deployment
+  Added sections: None
+  Removed sections: None
+  Templates requiring updates:
+    - .specify/templates/plan-template.md ✅ no changes needed
+    - .specify/templates/spec-template.md ✅ no changes needed
+    - .specify/templates/tasks-template.md ✅ no changes needed
+  Follow-up TODOs:
+    - "Three trimesters" references at lines 25 and 116 will become four
+      when feature 014-summer-registration ships. The 014 spec includes
+      a task to update the constitution in lockstep with that change.
 -->
 
 # Tonic Constitution
 
 Tonic is the student registration management system for Forte, an after-school
 music program at MCDS. It manages students, parents, instructors, and admins
-across three trimesters (fall, winter, spring), handling lesson registrations,
-attendance tracking, and program scheduling.
+across four trimesters (fall, winter, spring, summer), handling lesson
+registrations, attendance tracking, and program scheduling.
 
 ## Core Principles
 
@@ -73,7 +112,7 @@ Every API endpoint MUST return `{ success: true, data: <payload> }` on success a
 
 All frontend API calls MUST go through `HttpService`.
 
-- No direct `fetch()` calls in tabs, viewModel, main.js, or any other frontend code
+- No direct `fetch()` calls in tabs, workflows, components, `main.ts`, or any other frontend code (the `viewModel` referenced in older docs was dissolved in spec 011)
 - No manual response envelope unwrapping (`result.data || result`)
 - `HttpService` handles auth headers, envelope unwrapping, and error handling in one place
 - If `HttpService` lacks a needed method (PATCH, DELETE, etc.), extend it — do not bypass it
@@ -113,13 +152,13 @@ The application serves three distinct user roles: admin, instructor, parent. Eac
 
 The application operates on a trimester cycle (fall → winter → spring → fall). Registration data is partitioned by trimester.
 
-- Each trimester has its own registration sheet (`registrations_fall`, `registrations_winter`, `registrations_spring`)
+- Each trimester has its own registration sheet (`registrations_fall`, `registrations_winter`, `registrations_spring`, `registrations_summer`)
 - `PeriodService` determines the current trimester and period type; four period types exist per trimester cycle:
   - `intent` — parents indicate keep/drop/change for existing lessons
   - `priorityEnrollment` — returning families get priority access to next trimester
   - `openEnrollment` — all families can register for next trimester
   - `registration` — normal active instruction period
-- The `periods` table uses `trimester` (when the period occurs) and `targetTrimester` (which registration table to write to) — this distinction matters for summer enrollment periods that target the fall table
+- The `periods` table has `trimester`, `periodType`, and `startDate`; the registration table to write to is derived at runtime from these by `PeriodService.getEnrollmentTrimesterTable()` (during enrollment periods, the next trimester in sequence; during instruction, the current trimester)
 - Current period is determined by the latest `startDate` <= now (no end dates, no `isActive` flag)
 - Enrollment operations target the next trimester's table during enrollment periods, the current trimester during instruction
 - New features that touch registration data MUST specify which trimester(s) they operate on
@@ -130,11 +169,11 @@ The application operates on a trimester cycle (fall → winter → spring → fa
 All persistence is through Google Sheets API v4. There is no ORM or external schema enforcement.
 
 - Schema evolution is managed through idempotent migration scripts (`src/migrations/`) that run on app startup and are tracked in a `_migrations` sheet
-- The column-index mapping in `googleSheetsDbClient.js` is the runtime schema — migrations keep it in sync with the spreadsheet
+- The column-index mapping in `googleSheetsDbClient.ts` is the runtime schema — migrations keep it in sync with the spreadsheet
 - All reads go through `getAllRecords()` with a 5-minute in-memory cache
 - Writes find the target row by scanning all records for a matching ID, then update that specific row
 - The database layer MUST return plain objects or model instances — no Sheets API artifacts leak to callers
-- Cache invalidation after writes is handled by `clearCache()` — new features that write data MUST invalidate relevant caches
+- Cache invalidation after writes is handled by `googleSheetsDbClient.clearAllCache()` (delegating to `cacheService.clear()`) — new features that write data MUST invalidate relevant caches
 - There is one spreadsheet per environment (production, staging) — do not assume multi-database support
 
 ### XI. Uniform CRUD Backend
@@ -154,12 +193,13 @@ The backend is a generic application server. Every entity flows through the same
 - **Runtime**: Node.js with ES modules
 - **Server**: Express v4
 - **Database**: Google Sheets API v4 (single spreadsheet, column-index mapped)
-- **Frontend**: Vanilla JavaScript, no framework — MaterializeCSS for UI components
+- **Language**: TypeScript 5.x targeting ES2022 across backend and frontend (the backend runs as ESM via `tsx`; the frontend is bundled by Vite). The codebase was historically vanilla JavaScript and was migrated to TypeScript in specs 002 (backend) and 008 (frontend); there is no transpilation step the developer hand-writes for runtime — `tsx` for the server, Vite for the browser
+- **Frontend**: No UI framework — MaterializeCSS for UI components, hand-written TypeScript
 - **Build**: Vite for frontend bundling, Nodemon for dev server
 - **Deployment**: Google Cloud Platform
 - **Auth**: Access-code based (6-digit for employees, 10-digit phone for parents; stored in localStorage, sent via `x-access-code` and `x-login-type` headers)
 - **Shared models**: `src/models/shared/` served to both Node.js and browser
-- **DI**: Homegrown service container with lazy singleton instantiation (`src/infrastructure/container/serviceContainer.js`)
+- **DI**: Homegrown service container with lazy singleton instantiation (`src/infrastructure/container/serviceContainer.ts`)
 - No framework migrations are planned — work within the existing stack
 
 ## Testing
@@ -178,7 +218,7 @@ The backend is a generic application server. Every entity flows through the same
 - Build pipeline: `npm run build:staging` (check:all + build:frontend + auto-version)
 - Frontend is bundled by Vite with hashed filenames for cache busting into `dist/web/`
 - The Express server serves both the API and the bundled frontend from a single process
-- Deployment targets GCP — structured logging via `gcpLogger.js` is required for production error visibility
+- Deployment targets GCP — structured logging via `gcpLogger.ts` is required for production error visibility
 
 ## Development Workflow
 
@@ -197,4 +237,4 @@ The backend is a generic application server. Every entity flows through the same
 - All implementation plans MUST include a Constitution Check section verifying compliance
 - Complexity added in violation of these principles MUST include a Complexity Tracking entry justifying the deviation
 
-**Version**: 2.2.2 | **Ratified**: 2026-02-18 | **Last Amended**: 2026-03-02
+**Version**: 2.3.1 | **Ratified**: 2026-02-18 | **Last Amended**: 2026-05-27

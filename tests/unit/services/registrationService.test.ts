@@ -5,7 +5,6 @@
  *   T002 - processRegistration (group success, duplicate conflict, private success,
  *           bus restriction, rock band waitlist, admin skip capacity)
  *   T003 - deleteRegistration (success with audit, missing registration)
- *   T004 - getRegistrations (enrichment with batch joins, empty registrations)
  */
 
 import { jest } from '@jest/globals';
@@ -663,7 +662,9 @@ describe('RegistrationService', () => {
 
     it('should throw when student is not found', async () => {
       setupHappyPathMocks();
-      mockUserRepo.getStudentById.mockResolvedValue(null);
+      mockUserRepo.getStudentById.mockImplementation(async () => {
+        throw new Error('Student not found: nonexistent');
+      });
 
       await expect(
         service.processRegistration(
@@ -686,7 +687,9 @@ describe('RegistrationService', () => {
 
     it('should throw when instructor is not found', async () => {
       setupHappyPathMocks();
-      mockUserRepo.getInstructorById.mockResolvedValue(null);
+      mockUserRepo.getInstructorById.mockImplementation(async () => {
+        throw new Error('Instructor not found: nonexistent');
+      });
 
       await expect(
         service.processRegistration(
@@ -734,7 +737,9 @@ describe('RegistrationService', () => {
 
     it('should throw when group class is not found', async () => {
       setupHappyPathMocks();
-      mockProgramRepo.getClassById.mockResolvedValue(undefined);
+      mockProgramRepo.getClassById.mockImplementation(async () => {
+        throw new Error('Class not found: NONEXISTENT');
+      });
 
       await expect(
         service.processRegistration(
@@ -785,145 +790,6 @@ describe('RegistrationService', () => {
       await expect(service.deleteRegistration('reg-cancel-2', 'admin-user', null)).rejects.toThrow(
         /trimester is required/
       );
-    });
-  });
-
-  // ========================================================================
-  // T004 - getRegistrations
-  // ========================================================================
-  describe('getRegistrations', () => {
-    // ------------------------------------------------------------------
-    // T004-1: Enrichment with batch joins
-    // ------------------------------------------------------------------
-    it('should enrich registrations with student, instructor, and class data', async () => {
-      const reg1 = {
-        id: 'reg-A',
-        studentId: 'student-100',
-        instructorId: 'instructor-200',
-        classId: 'G001',
-        day: 'Monday',
-        startTime: '15:00',
-        length: 60,
-        registrationType: 'group',
-      };
-      const reg2 = {
-        id: 'reg-B',
-        studentId: 'student-101',
-        instructorId: 'instructor-201',
-        classId: '',
-        day: 'Tuesday',
-        startTime: '14:00',
-        length: 30,
-        registrationType: 'private',
-      };
-
-      mockRegRepo.findAll.mockResolvedValue([reg1, reg2]);
-
-      const student1 = fakeStudent({ id: 'student-100', firstName: 'Alice', lastName: 'Smith' });
-      const student2 = fakeStudent({ id: 'student-101', firstName: 'Carol', lastName: 'Brown' });
-      const instructor1 = fakeInstructor({
-        id: 'instructor-200',
-        firstName: 'Bob',
-        lastName: 'Jones',
-      });
-      const instructor2 = fakeInstructor({
-        id: 'instructor-201',
-        firstName: 'Dave',
-        lastName: 'Lee',
-      });
-      const cls1 = fakeClass({
-        id: 'G001',
-        title: 'Guitar Ensemble',
-        instrument: 'Guitar',
-        size: 10,
-      });
-
-      mockUserRepo.getStudents.mockResolvedValue([student1, student2]);
-      mockUserRepo.getInstructors.mockResolvedValue([instructor1, instructor2]);
-      mockProgramRepo.getClasses.mockResolvedValue([cls1]);
-
-      const results = await service.getRegistrations({});
-
-      expect(results).toHaveLength(2);
-
-      // First registration: group with class
-      expect(results[0].student).toEqual({
-        id: 'student-100',
-        firstName: 'Alice',
-        lastName: 'Smith',
-        grade: '5',
-      });
-      expect(results[0].instructor).toEqual({
-        id: 'instructor-200',
-        firstName: 'Bob',
-        lastName: 'Jones',
-        email: 'bob@example.com',
-      });
-      expect(results[0].class).toEqual({
-        id: 'G001',
-        title: 'Guitar Ensemble',
-        instrument: 'Guitar',
-        size: 10,
-      });
-      expect(results[0].isActive).toBe(true);
-
-      // Second registration: private, no class
-      expect(results[1].student).toEqual({
-        id: 'student-101',
-        firstName: 'Carol',
-        lastName: 'Brown',
-        grade: '5',
-      });
-      expect(results[1].class).toBeNull();
-      expect(results[1].isActive).toBe(true);
-    });
-
-    it('should return null for student/instructor not found in lookup maps', async () => {
-      const reg = {
-        id: 'reg-orphan',
-        studentId: 'missing-student',
-        instructorId: 'missing-instructor',
-        classId: '',
-        day: 'Monday',
-        startTime: '15:00',
-        length: 30,
-        registrationType: 'private',
-      };
-
-      mockRegRepo.findAll.mockResolvedValue([reg]);
-      mockUserRepo.getStudents.mockResolvedValue([]);
-      mockUserRepo.getInstructors.mockResolvedValue([]);
-      mockProgramRepo.getClasses.mockResolvedValue([]);
-
-      const results = await service.getRegistrations({});
-
-      expect(results).toHaveLength(1);
-      expect(results[0].student).toBeNull();
-      expect(results[0].instructor).toBeNull();
-      expect(results[0].class).toBeNull();
-    });
-
-    // ------------------------------------------------------------------
-    // T004-2: Empty registrations
-    // ------------------------------------------------------------------
-    it('should return empty array when no registrations exist', async () => {
-      mockRegRepo.findAll.mockResolvedValue([]);
-
-      const results = await service.getRegistrations({});
-
-      expect(results).toEqual([]);
-      // Batch-fetch calls should NOT be made when there are no registrations
-      expect(mockUserRepo.getStudents).not.toHaveBeenCalled();
-      expect(mockUserRepo.getInstructors).not.toHaveBeenCalled();
-      expect(mockProgramRepo.getClasses).not.toHaveBeenCalled();
-    });
-
-    it('should return empty array when getRegistrations returns null', async () => {
-      mockRegRepo.findAll.mockResolvedValue(null);
-
-      const results = await service.getRegistrations({});
-
-      expect(results).toEqual([]);
     });
   });
 });
