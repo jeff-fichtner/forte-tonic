@@ -150,16 +150,16 @@ function getVersionNumber(): string {
 }
 
 /**
- * Get build date - only use current date on build server
+ * Get build date.
+ *
+ * On CI: build-time timestamp (frozen for the duration of the deployed
+ * artifact). Locally: process-start timestamp — each `npm run dev` restart
+ * advances the stamp, which is exactly what the version-chip "am I on the
+ * right day" check wants. Both paths use `new Date().toISOString()`; the
+ * difference is only when the module is evaluated.
  */
 function getBuildDate(): string {
-  // On CI/build server, use current timestamp
-  if (process.env.CI) {
-    return new Date().toISOString();
-  }
-
-  // For local development, use a static date
-  return '2025-01-01T00:00:00.000Z';
+  return new Date().toISOString();
 }
 
 /**

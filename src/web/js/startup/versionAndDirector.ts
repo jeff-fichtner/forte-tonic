@@ -19,6 +19,19 @@ const NodeEnv = {
   TEST: 'test',
 };
 
+/**
+ * Compact "when was this built" stamp for the version-display chip:
+ * just the calendar date (`YYYY-MM-DD`). The full timestamp + commit are
+ * already on the click-modal — the chip is for an at-a-glance "am I on
+ * the right day" check.
+ */
+function formatBuildStamp(buildDate: string): string {
+  const d = new Date(buildDate);
+  if (Number.isNaN(d.getTime())) return buildDate;
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export async function initializeVersionDisplay(): Promise<void> {
   try {
     const result = await HttpService.get<VersionInfo>('version');
@@ -43,12 +56,12 @@ export async function initializeVersionDisplay(): Promise<void> {
       const versionDisplay = document.getElementById('version-display');
       const versionNumber = document.getElementById('version-number-text');
       const versionEnv = document.getElementById('version-env');
-      const versionCommit = document.getElementById('version-commit');
+      const versionBuild = document.getElementById('version-build');
 
-      if (versionDisplay && versionNumber && versionEnv && versionCommit) {
+      if (versionDisplay && versionNumber && versionEnv && versionBuild) {
         versionNumber.textContent = versionInfo.number;
         versionEnv.textContent = versionInfo.environment.toUpperCase();
-        versionCommit.textContent = versionInfo.gitCommit.substring(0, 7);
+        versionBuild.textContent = formatBuildStamp(versionInfo.buildDate);
 
         versionDisplay.style.display = 'block';
 
