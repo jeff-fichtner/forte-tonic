@@ -191,15 +191,21 @@ export class TabController {
   }
 
   /**
-   * Cleanup all tabs (call before logout or page unload)
+   * Cleanup all tabs (call before logout, user switch, or page unload).
+   *
+   * Unloads EVERY registered tab, not just the currently-active one.
+   * Each tab's `onUnload()` is a no-op when `isLoaded === false`, so calling
+   * it on never-loaded tabs is safe. Without this, a user-switch would
+   * leave stale data on tabs that weren't active at the moment of switch —
+   * those tabs' `isLoaded` would remain true, and the next navigation
+   * would early-return from `onLoad` and render the previous user's data.
    */
   async cleanup(): Promise<void> {
-    // Unload current tab
-    if (this.currentTab) {
+    for (const [tabId, tab] of this.tabs) {
       try {
-        await this.currentTab.onUnload();
+        await tab.onUnload();
       } catch (error) {
-        console.error('Error during cleanup:', error);
+        console.error(`Error unloading tab "${tabId}" during cleanup:`, error);
       }
     }
 

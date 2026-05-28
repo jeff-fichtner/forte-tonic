@@ -262,14 +262,15 @@ async function loadUserData(
 
   roleToClick = roleToClickArg;
 
-  if (roleToClickArg && getTabController()) {
-    const navLink = document.querySelector<HTMLAnchorElement>(
-      `a[data-section="${roleToClickArg}"]`
-    );
-    if (navLink) {
-      navLink.click();
-    }
-  }
+  // Re-initialize the TabController so every tab is a fresh instance with
+  // no cached `isLoaded` state from the previous user. Without this, a
+  // user-switch that stays in the same role-section (parent → parent,
+  // employee → employee) would reuse the old controller; clicking the
+  // section's first tab would hit `activateTab`'s same-tab guard or
+  // `onLoad`'s `isLoaded` short-circuit and render the previous user's
+  // data. initTabController() also performs the post-login `navLink.click()`
+  // for `roleToClickArg`, so we don't duplicate that here.
+  initTabController();
 
   updateEnrollmentBanner();
 
@@ -313,7 +314,6 @@ async function attemptAutoLogin(accessCode: string, loginType: string): Promise<
     }
 
     await loadUserData(authenticatedUser, role);
-    initTabController();
   } else {
     if (authenticatedUser?.systemError && authenticatedUser?.error) {
       M.toast({
