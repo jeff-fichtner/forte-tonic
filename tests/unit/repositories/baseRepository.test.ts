@@ -33,6 +33,8 @@ jest.unstable_mockModule('../../../src/services/configurationService.js', () => 
 
 jest.unstable_mockModule('../../../src/database/googleSheetsDbClient.js', () => ({
   GoogleSheetsDbClient: jest.fn(),
+  dataSheetForTrimester: (trimester: string) => `registrations_${trimester}`,
+  auditSheetForTrimester: (trimester: string) => `registrations_${trimester}_audit`,
 }));
 
 const { BaseRepository } = await import('../../../src/repositories/baseRepository.js');

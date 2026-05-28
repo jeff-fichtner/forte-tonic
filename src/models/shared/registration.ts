@@ -10,7 +10,19 @@ import { RegistrationType } from '../../utils/values/registrationType.js';
 import type { RegistrationTypeValue } from '../../utils/values/registrationType.js';
 // Re-export the value type for consumers that imported `RegistrationType` as a type from here
 export type { RegistrationTypeValue };
-export type ReenrollmentIntent = 'keep' | 'drop' | 'change';
+
+/**
+ * Reenrollment intent values declared by a parent during the INTENT period
+ * for an existing registration. Drives the GAS turnover script's filtering
+ * (keep/change → copy forward to next trimester; drop → skip).
+ */
+export const ReenrollmentIntent = Object.freeze({
+  KEEP: 'keep',
+  CHANGE: 'change',
+  DROP: 'drop',
+} as const);
+
+export type ReenrollmentIntent = (typeof ReenrollmentIntent)[keyof typeof ReenrollmentIntent];
 
 export interface RegistrationData {
   [key: string]: unknown;
