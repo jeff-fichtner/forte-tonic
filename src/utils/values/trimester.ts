@@ -6,6 +6,7 @@ export const Trimester = {
   FALL: 'fall',
   WINTER: 'winter',
   SPRING: 'spring',
+  SUMMER: 'summer',
 } as const;
 
 export type TrimesterValue = (typeof Trimester)[keyof typeof Trimester];

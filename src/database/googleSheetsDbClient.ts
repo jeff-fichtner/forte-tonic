@@ -5,6 +5,9 @@ import { configService, ConfigurationService } from '../services/configurationSe
 import { BaseService } from '../infrastructure/base/baseService.js';
 import { CacheService } from '../cache/cacheService.js';
 import { DateHelpers } from '../utils/nativeDateTimeHelpers.js';
+import { normalizeEnumValue } from '../utils/enumNormalization.js';
+import { Trimester, TRIMESTER_SEQUENCE, type TrimesterValue } from '../utils/values/trimester.js';
+import { PeriodType } from '../utils/values/periodType.js';
 import { Admin } from '../models/shared/admin.js';
 import { Instructor } from '../models/shared/instructor.js';
 import { Parent } from '../models/shared/parent.js';
@@ -150,9 +153,82 @@ const registrationMappings: FieldMapping = {
   },
 };
 
-/** Periods: trimester to lowercase, startDate to Date */
+/**
+ * Trimester → data-sheet-name mapping.
+ *
+ * The relationship between a trimester identifier (`'fall'`) and its
+ * registration sheet name (`'registrations_fall'`) is conceptually
+ * arbitrary — the data layer happens to follow a convention today, but
+ * the rest of the codebase shouldn't depend on the string match.
+ *
+ * Every value of the `Trimester` enum MUST have an entry here. The
+ * `assertCompleteTrimesterMapping` integrity check below verifies this
+ * at module load — adding a new trimester without adding its mapping
+ * fails fast.
+ *
+ * Audit sheet names are derived from data sheet names via the `_audit`
+ * suffix convention (see `auditSheetForTrimester` below). If data and
+ * audit names ever need to diverge per-trimester, this is where the
+ * dual mapping would live.
+ */
+const TRIMESTER_DATA_SHEETS: Readonly<Record<TrimesterValue, string>> = Object.freeze({
+  [Trimester.FALL]: 'registrations_fall',
+  [Trimester.WINTER]: 'registrations_winter',
+  [Trimester.SPRING]: 'registrations_spring',
+  [Trimester.SUMMER]: 'registrations_summer',
+});
+
+/**
+ * Verify at module-load time that every Trimester has a sheet mapping.
+ * If anyone adds a value to the `Trimester` enum without updating the
+ * mapping above, this throws on import — caught before the app ever
+ * tries to read or write.
+ */
+(function assertCompleteTrimesterMapping(): void {
+  const missing = TRIMESTER_SEQUENCE.filter(t => !(t in TRIMESTER_DATA_SHEETS));
+  if (missing.length > 0) {
+    throw new Error(
+      `TRIMESTER_DATA_SHEETS is missing entries for: ${missing.join(', ')}. ` +
+        `Every Trimester enum value must have a corresponding data sheet name.`
+    );
+  }
+})();
+
+/**
+ * Resolve the data sheet name for a given trimester. Throws on unknown
+ * trimester values (defense against callers that bypass the type system).
+ */
+export function dataSheetForTrimester(trimester: string): string {
+  const normalized = normalizeEnumValue(trimester, TRIMESTER_SEQUENCE, 'trimester');
+  if (!normalized) {
+    throw new Error(
+      `dataSheetForTrimester: trimester is required, received ${JSON.stringify(trimester)}`
+    );
+  }
+  return TRIMESTER_DATA_SHEETS[normalized as TrimesterValue];
+}
+
+/**
+ * Resolve the audit sheet name for a given trimester. Derived from the
+ * data sheet name + the `_audit` suffix convention.
+ */
+export function auditSheetForTrimester(trimester: string): string {
+  return `${dataSheetForTrimester(trimester)}_audit`;
+}
+
+/**
+ * Periods: trimester + periodType normalized case-insensitively against
+ * their canonical enum values; startDate parsed to Date.
+ *
+ * Both `trimester` and `periodType` accept any casing in the spreadsheet
+ * (e.g., admins typing `Fall` or `PriorityEnrollment`) and are
+ * normalized to the canonical-cased value via `normalizeEnumValue`.
+ * An unknown value (typo, wrong vocabulary) throws — surfaces data bugs
+ * at app boot rather than as silent misbehavior later.
+ */
 const periodMappings: FieldMapping = {
-  trimester: val => (val ? val.toLowerCase() : null),
+  trimester: val => normalizeEnumValue(val, TRIMESTER_SEQUENCE, 'trimester'),
+  periodType: val => normalizeEnumValue(val, Object.values(PeriodType), 'periodType'),
   startDate: val => {
     if (!val) return null;
     const d = new Date(val);
@@ -217,7 +293,6 @@ export class GoogleSheetsDbClient extends BaseService {
     this.logger.log('GoogleSheetsDbClient initialized successfully');
 
     // Initialize sheet info — compact configs referencing model column schemas
-    const trimesters = ['fall', 'winter', 'spring'] as const;
     this.workingSheetInfo = {
       [Keys.ADMINS]: {
         sheet: Keys.ADMINS,
@@ -267,23 +342,26 @@ export class GoogleSheetsDbClient extends BaseService {
         startRow: 2,
         columns: DropRequest.columns,
       },
-      // Generate trimester-specific registration and audit sheets from shared schemas
+      // Generate trimester-specific registration and audit sheet configs.
+      // Sheet names are sourced from the TRIMESTER_DATA_SHEETS mapping above
+      // (decouples trimester identifier from sheet name; see comment there).
       ...Object.fromEntries(
-        trimesters.flatMap(t => [
-          [
-            `registrations_${t}`,
-            {
-              sheet: `registrations_${t}`,
-              startRow: 2,
-              columns: Registration.columns,
-              mappings: registrationMappings,
-            },
-          ],
-          [
-            `registrations_${t}_audit`,
-            { sheet: `registrations_${t}_audit`, startRow: 2, columns: Registration.auditColumns },
-          ],
-        ])
+        TRIMESTER_SEQUENCE.flatMap(t => {
+          const dataSheet = TRIMESTER_DATA_SHEETS[t];
+          const auditSheet = `${dataSheet}_audit`;
+          return [
+            [
+              dataSheet,
+              {
+                sheet: dataSheet,
+                startRow: 2,
+                columns: Registration.columns,
+                mappings: registrationMappings,
+              },
+            ],
+            [auditSheet, { sheet: auditSheet, startRow: 2, columns: Registration.auditColumns }],
+          ];
+        })
       ),
     };
   }

@@ -17,17 +17,19 @@ describe('Trimester Utilities', () => {
       expect(Trimester.FALL).toBe('fall');
       expect(Trimester.WINTER).toBe('winter');
       expect(Trimester.SPRING).toBe('spring');
+      expect(Trimester.SUMMER).toBe('summer');
     });
 
     test('should have all trimesters in sequence', () => {
-      expect(TRIMESTER_SEQUENCE).toEqual(['fall', 'winter', 'spring']);
-      expect(TRIMESTER_SEQUENCE).toHaveLength(3);
+      expect(TRIMESTER_SEQUENCE).toEqual(['fall', 'winter', 'spring', 'summer']);
+      expect(TRIMESTER_SEQUENCE).toHaveLength(4);
     });
 
     test('TRIMESTER_SEQUENCE should be in chronological order', () => {
       expect(TRIMESTER_SEQUENCE[0]).toBe('fall');
       expect(TRIMESTER_SEQUENCE[1]).toBe('winter');
       expect(TRIMESTER_SEQUENCE[2]).toBe('spring');
+      expect(TRIMESTER_SEQUENCE[3]).toBe('summer');
     });
   });
 
@@ -36,10 +38,10 @@ describe('Trimester Utilities', () => {
       expect(isValidTrimester('fall')).toBe(true);
       expect(isValidTrimester('winter')).toBe(true);
       expect(isValidTrimester('spring')).toBe(true);
+      expect(isValidTrimester('summer')).toBe(true);
     });
 
     test('should return false for invalid trimesters', () => {
-      expect(isValidTrimester('summer')).toBe(false);
       expect(isValidTrimester('Fall')).toBe(false); // Capitalized
       expect(isValidTrimester('FALL')).toBe(false); // Uppercase
       expect(isValidTrimester('invalid')).toBe(false);
@@ -66,6 +68,7 @@ describe('Trimester Utilities', () => {
       expect(isValidTrimester(Trimester.FALL)).toBe(true);
       expect(isValidTrimester(Trimester.WINTER)).toBe(true);
       expect(isValidTrimester(Trimester.SPRING)).toBe(true);
+      expect(isValidTrimester(Trimester.SUMMER)).toBe(true);
     });
 
     test('should be immutable (Object.values creates new array)', () => {

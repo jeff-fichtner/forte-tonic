@@ -1,9 +1,31 @@
+// =============================================================================
+// ⚠️  EDIT BEFORE RUNNING ⚠️
+// =============================================================================
+// Set TARGET_TRIMESTER to the trimester you want to copy INTO:
+//   "winter"  — copies from registrations_fall   → registrations_winter
+//   "spring"  — copies from registrations_winter → registrations_spring
+//   "summer"  — copies from registrations_spring → registrations_summer
+//
+// Leave blank to fail-loud (the script will throw an error rather than guess).
+// =============================================================================
+const TARGET_TRIMESTER = '';
+// =============================================================================
+
+// =============================================================================
+// Program grade ceiling — keep in sync with src/utils/values/grade.ts (MAX_GRADE).
+// When TARGET_TRIMESTER === 'summer', registrations belonging to students
+// currently at this grade are NOT copied — they're graduating and won't
+// continue at the school next year.
+// =============================================================================
+const MAX_GRADE = 8;
+// =============================================================================
 /**
  * Google Apps Script Migration REEN006: Change Trimester (Reenrollment)
  *
  * 🎯 PURPOSE:
  * Copy registrations from one trimester to another based on reenrollment intent.
- * Supports transitioning students marked "keep" or "change" from fall → winter or winter → spring.
+ * Supports transitioning students marked "keep" or "change" between trimester pairs:
+ * fall → winter, winter → spring, or spring → summer (the fourth trimester added in 014).
  *
  * 📋 CHANGES MADE:
  * 1. Reads registrations from source trimester (e.g., registrations_fall)
@@ -23,7 +45,7 @@
  * - apply(): Replaces original target table (DESTRUCTIVE)
  *
  * 🚀 TO USE:
- * 1. Set TARGET_TRIMESTER to "winter" or "spring" in the class constructor
+ * 1. Edit TARGET_TRIMESTER below to "winter", "spring", or "summer"
  * 2. Set spreadsheet ID in Config.js: const SPREADSHEET_ID = "your-id";
  * 3. Deploy with clasp push
  * 4. Run migration: runChangeTrimesterMigration()
@@ -65,18 +87,20 @@ class ChangeTrimesterMigration {
     this.spreadsheet = SpreadsheetApp.openById(spreadsheetId);
     this.migrationName = 'Migration_REEN006';
 
-    // ⚠️  CONFIGURE THIS: Set target trimester to "winter" or "spring"
-    this.TARGET_TRIMESTER = '';
-    if (!this.TARGET_TRIMESTER) {
-      throw new Error('TARGET_TRIMESTER is required');
+    // TARGET_TRIMESTER is set at the top of this file. Fail loud if it wasn't
+    // edited before running — guessing a default could destroy the wrong sheet.
+    if (!TARGET_TRIMESTER) {
+      throw new Error(
+        'TARGET_TRIMESTER is required — edit the constant at the top of this file before running'
+      );
     }
 
     // Determine source and target tables based on target trimester
     this.sourceTrimester = this._getSourceTrimester();
     this.sourceTable = `registrations_${this.sourceTrimester}`;
-    this.targetTable = `registrations_${this.TARGET_TRIMESTER}`;
+    this.targetTable = `registrations_${TARGET_TRIMESTER}`;
     this.workingTable = `MIGRATION_${this.targetTable}`;
-    this.targetAuditTable = `registrations_${this.TARGET_TRIMESTER}_audit`;
+    this.targetAuditTable = `registrations_${TARGET_TRIMESTER}_audit`;
     this.workingAuditTable = `MIGRATION_${this.targetAuditTable}`;
 
     // Intent values to copy: 'keep', 'change', or BLANK (null/empty string)
@@ -93,12 +117,14 @@ class ChangeTrimesterMigration {
    * @private
    */
   _getSourceTrimester() {
-    if (this.TARGET_TRIMESTER === 'winter') {
+    if (TARGET_TRIMESTER === 'winter') {
       return 'fall';
-    } else if (this.TARGET_TRIMESTER === 'spring') {
+    } else if (TARGET_TRIMESTER === 'spring') {
       return 'winter';
+    } else if (TARGET_TRIMESTER === 'summer') {
+      return 'spring';
     } else {
-      throw new Error(`Invalid TARGET_TRIMESTER: ${this.TARGET_TRIMESTER}. Must be "winter" or "spring"`);
+      throw new Error(`Invalid TARGET_TRIMESTER: ${TARGET_TRIMESTER}. Must be "winter", "spring", or "summer"`);
     }
   }
 
@@ -108,7 +134,7 @@ class ChangeTrimesterMigration {
   run() {
     Logger.log(`🚀 RUNNING MIGRATION: ${this.migrationName}`);
     Logger.log('='.repeat(42 + this.migrationName.length));
-    Logger.log(`📋 Target: ${this.sourceTrimester} → ${this.TARGET_TRIMESTER}`);
+    Logger.log(`📋 Target: ${this.sourceTrimester} → ${TARGET_TRIMESTER}`);
 
     try {
       // Get source sheet
@@ -206,6 +232,7 @@ class ChangeTrimesterMigration {
 
     return {
       id: findColumn('Id'),
+      studentId: findColumn('StudentId'),
       reenrollmentIntent: findColumn('reenrollmentIntent'),
       createdAt: findColumn('CreatedAt'),
       createdBy: findColumn('CreatedBy'),
@@ -248,6 +275,14 @@ class ChangeTrimesterMigration {
       return headers.findIndex(h => h && h.toLowerCase() === col.toLowerCase());
     }).filter(idx => idx !== -1);
 
+    // For spring → summer only: build a set of student IDs at the program's
+    // grade ceiling. Their registrations are NOT copied — those students
+    // graduate before next year and won't continue at the school.
+    const graduatingStudentIds =
+      TARGET_TRIMESTER === 'summer' ? this._buildGraduatingStudentIds() : new Set();
+
+    let graduatingSkipped = 0;
+
     // Read data in batches for efficiency (skip header row)
     if (lastRow > 1) {
       const dataRange = sourceSheet.getRange(2, 1, lastRow - 1, lastCol);
@@ -260,36 +295,90 @@ class ChangeTrimesterMigration {
         // Check if intent matches our criteria (blank/empty, 'keep', or 'change')
         // Skip if intent is 'drop'
         const intentValue = intent ? intent.toLowerCase() : '';
-        if (this.INTENTS_TO_COPY.includes(intentValue)) {
-          // Copy all columns from source row
-          const newRow = [...sourceRow];
-
-          // Transform specific fields
-          const oldId = sourceRow[columnIndices.id];
-          const newId = this._generateUuid();
-
-          // Update ID, timestamps, linking
-          newRow[columnIndices.id] = newId;
-          newRow[columnIndices.createdAt] = now;
-          newRow[columnIndices.createdBy] = 'system';
-          newRow[columnIndices.linkedPreviousRegistrationId] = oldId;
-
-          // Format StartTime to HH:mm if it exists
-          if (columnIndices.startTime !== -1) {
-            newRow[columnIndices.startTime] = this._formatTimeValue(sourceRow[columnIndices.startTime]);
-          }
-
-          // Clear intent columns
-          for (const clearIdx of clearIndices) {
-            newRow[clearIdx] = '';
-          }
-
-          transformedRows.push(newRow);
+        if (!this.INTENTS_TO_COPY.includes(intentValue)) {
+          continue;
         }
+
+        // Skip registrations whose student is graduating (summer-target only).
+        const studentId = columnIndices.studentId !== -1 ? sourceRow[columnIndices.studentId] : null;
+        if (studentId && graduatingStudentIds.has(studentId)) {
+          graduatingSkipped++;
+          continue;
+        }
+
+        // Copy all columns from source row
+        const newRow = [...sourceRow];
+
+        // Transform specific fields
+        const oldId = sourceRow[columnIndices.id];
+        const newId = this._generateUuid();
+
+        // Update ID, timestamps, linking
+        newRow[columnIndices.id] = newId;
+        newRow[columnIndices.createdAt] = now;
+        newRow[columnIndices.createdBy] = 'system';
+        newRow[columnIndices.linkedPreviousRegistrationId] = oldId;
+
+        // Format StartTime to HH:mm if it exists
+        if (columnIndices.startTime !== -1) {
+          newRow[columnIndices.startTime] = this._formatTimeValue(sourceRow[columnIndices.startTime]);
+        }
+
+        // Clear intent columns
+        for (const clearIdx of clearIndices) {
+          newRow[clearIdx] = '';
+        }
+
+        transformedRows.push(newRow);
       }
     }
 
+    if (graduatingSkipped > 0) {
+      Logger.log(`   🎓 Skipped ${graduatingSkipped} row(s) belonging to graduating students (grade ${MAX_GRADE})`);
+    }
+
     return transformedRows;
+  }
+
+  /**
+   * Build a Set of student IDs whose stored grade equals MAX_GRADE. Used
+   * (summer target only) to exclude graduating students' registrations from
+   * the spring → summer copy.
+   * @private
+   */
+  _buildGraduatingStudentIds() {
+    const studentsSheet = this.spreadsheet.getSheetByName('students');
+    if (!studentsSheet) {
+      Logger.log(`   ⚠️  No 'students' sheet found — graduating-student filter cannot run`);
+      return new Set();
+    }
+
+    const lastRow = studentsSheet.getLastRow();
+    const lastCol = studentsSheet.getLastColumn();
+    if (lastRow < 2) {
+      Logger.log(`   ⚠️  'students' sheet is empty — graduating-student filter has nothing to do`);
+      return new Set();
+    }
+
+    const headers = studentsSheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    const idIdx = headers.findIndex(h => h && h.toLowerCase() === 'id');
+    const gradeIdx = headers.findIndex(h => h && h.toLowerCase() === 'grade');
+
+    if (idIdx === -1 || gradeIdx === -1) {
+      Logger.log(`   ⚠️  'students' sheet missing Id or Grade column — graduating-student filter cannot run`);
+      return new Set();
+    }
+
+    const data = studentsSheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    const graduating = new Set();
+    for (const row of data) {
+      const grade = parseInt(row[gradeIdx], 10);
+      if (!Number.isNaN(grade) && grade === MAX_GRADE) {
+        graduating.add(row[idIdx]);
+      }
+    }
+    Logger.log(`   🎓 Identified ${graduating.size} graduating student(s) at grade ${MAX_GRADE}`);
+    return graduating;
   }
 
   /**
@@ -549,7 +638,7 @@ class ChangeTrimesterMigration {
       Logger.log(`   ${this.targetTable} now contains ${workingRowCount} registrations`);
       Logger.log(`   ${this.targetAuditTable} now contains ${workingAuditRowCount} audit records`);
       Logger.log(`   Source (${this.sourceTable}) remains unchanged`);
-      Logger.log(`   Students can now be scheduled in ${this.TARGET_TRIMESTER} trimester`);
+      Logger.log(`   Students can now be scheduled in ${TARGET_TRIMESTER} trimester`);
 
     } catch (error) {
       Logger.log(`\n❌ MIGRATION APPLY FAILED: ${error.message}`);
