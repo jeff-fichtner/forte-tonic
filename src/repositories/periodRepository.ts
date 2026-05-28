@@ -7,7 +7,7 @@ import type { ConfigurationService } from '../services/configurationService.js';
 export const PERIOD_COLUMNS = ['trimester', 'periodType', 'startDate'] as const;
 
 export interface Period {
-  trimester: string | null;
+  trimester: string;
   periodType: string;
   startDate: Date | null;
   isCurrentPeriod?: boolean;

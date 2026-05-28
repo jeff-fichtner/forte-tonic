@@ -19,11 +19,18 @@ export class PeriodService extends BaseService {
   }
 
   /**
-   * Get the currently active period
-   * @returns Period object {trimester, periodType, isCurrentPeriod, startDate} or null if none active
-   * @throws If database read fails
+   * Get the currently active period.
+   *
+   * The periods table is a human-maintained source of truth — admins are
+   * responsible for keeping it populated with periods spanning every point in
+   * time the application is active. If no period covers the current moment,
+   * the system has no coherent answer and downstream logic cannot proceed.
+   * Throwing is the contract: callers can rely on always receiving a period.
+   *
+   * @returns Period object {trimester, periodType, isCurrentPeriod, startDate}
+   * @throws If no active period found or database read fails
    */
-  async getCurrentPeriod(): Promise<(Period & { isCurrentPeriod: boolean }) | null> {
+  async getCurrentPeriod(): Promise<Period & { isCurrentPeriod: boolean }> {
     try {
       const allPeriods = await this.#periodRepository.getAll();
 
@@ -44,8 +51,7 @@ export class PeriodService extends BaseService {
       }, null);
 
       if (!currentPeriod) {
-        this.logger.warn('No current period found (no period has started yet)');
-        return null;
+        throw new Error('No active period found (no period has started yet)');
       }
 
       // Add isCurrentPeriod flag for backward compatibility
@@ -60,24 +66,23 @@ export class PeriodService extends BaseService {
   }
 
   /**
-   * Check if we're currently in the intent period
-   * @returns True if current period type is 'intent'
+   * Check if we're currently in the intent period.
+   * Throws (via getCurrentPeriod) if no period is active — see contract there.
    */
   async isIntentPeriodActive(): Promise<boolean> {
     const currentPeriod = await this.getCurrentPeriod();
-    return !!(currentPeriod && currentPeriod.periodType === PeriodType.INTENT);
+    return currentPeriod.periodType === PeriodType.INTENT;
   }
 
   /**
-   * Check if we're currently in an enrollment period (priority or open)
-   * @returns True if current period is priority or open enrollment
+   * Check if we're currently in an enrollment period (priority or open).
+   * Throws (via getCurrentPeriod) if no period is active — see contract there.
    */
   async isEnrollmentPeriodActive(): Promise<boolean> {
     const currentPeriod = await this.getCurrentPeriod();
-    return !!(
-      currentPeriod &&
-      (currentPeriod.periodType === PeriodType.PRIORITY_ENROLLMENT ||
-        currentPeriod.periodType === PeriodType.OPEN_ENROLLMENT)
+    return (
+      currentPeriod.periodType === PeriodType.PRIORITY_ENROLLMENT ||
+      currentPeriod.periodType === PeriodType.OPEN_ENROLLMENT
     );
   }
 
@@ -119,17 +124,17 @@ export class PeriodService extends BaseService {
   }
 
   /**
-   * Get the current trimester's registration table name based on active period
-   * Table names are derived from period.trimester, not stored in the periods table
-   * @returns Table name like "registrations_fall"
+   * Get the current trimester identifier from the active period.
+   * Throws (via getCurrentPeriod) if no period is active.
+   * Callers needing a storage-layer name (e.g., a sheet) translate via
+   * their own data-layer mapping — services do not return storage names.
+   *
+   * @returns Trimester identifier like "fall"
    * @throws If no active period found
    */
-  async getCurrentTrimesterTable(): Promise<string> {
+  async getCurrentTrimester(): Promise<string> {
     const period = await this.getCurrentPeriod();
-    if (!period || !period.trimester) {
-      throw new Error('No active period found');
-    }
-    return `registrations_${period.trimester}`;
+    return period.trimester;
   }
 
   /**
@@ -140,41 +145,6 @@ export class PeriodService extends BaseService {
   async getNextTrimester(): Promise<string | null> {
     const nextPeriod = await this.getNextPeriod();
     return nextPeriod?.trimester || null;
-  }
-
-  /**
-   * Get current trimester from current period
-   * @returns Trimester name like "fall" or null
-   */
-  async getCurrentTrimester(): Promise<string | null> {
-    const currentPeriod = await this.getCurrentPeriod();
-    return currentPeriod?.trimester || null;
-  }
-
-  /**
-   * Get the appropriate table for enrollment operations (read/write)
-   * During enrollment periods: uses next trimester (e.g., fall enrollment → winter table)
-   * During active instruction: uses current trimester
-   * @returns Table name like "registrations_fall"
-   * @throws If no active period found
-   */
-  async getEnrollmentTrimesterTable(): Promise<string> {
-    const period = await this.getCurrentPeriod();
-    if (!period || !period.trimester) {
-      throw new Error('No active period found');
-    }
-
-    // During enrollment periods, target the next trimester
-    if (
-      period.periodType === PeriodType.PRIORITY_ENROLLMENT ||
-      period.periodType === PeriodType.OPEN_ENROLLMENT
-    ) {
-      const nextTrimester = PeriodService.getNextTrimesterInSequence(period.trimester);
-      return `registrations_${nextTrimester}`;
-    }
-
-    // During instruction period, use current trimester
-    return `registrations_${period.trimester}`;
   }
 
   /**
@@ -228,9 +198,6 @@ export class PeriodService extends BaseService {
    */
   async canAccessNextTrimester(hasActiveRegistrations: boolean): Promise<boolean> {
     const period = await this.getCurrentPeriod();
-    if (!period) {
-      return false;
-    }
 
     // During open enrollment, ALL families can access
     if (period.periodType === PeriodType.OPEN_ENROLLMENT) {

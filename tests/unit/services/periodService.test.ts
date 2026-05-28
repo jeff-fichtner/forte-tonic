@@ -58,13 +58,11 @@ describe('PeriodService', () => {
   });
 
   describe('getCurrentPeriod', () => {
-    test('should return null when no period has started yet', async () => {
+    test('should throw when no period has started yet', async () => {
       mockCurrentDate('2025-01-01');
       const { service } = createPeriodService([PERIOD_FALL_INTENT, PERIOD_FALL_PRIORITY]);
 
-      const result = await service.getCurrentPeriod();
-
-      expect(result).toBeNull();
+      await expect(service.getCurrentPeriod()).rejects.toThrow('No active period found');
     });
 
     test('should return the period with the latest startDate that has already started', async () => {
@@ -120,13 +118,11 @@ describe('PeriodService', () => {
       expect(result.periodType).toBe('priorityEnrollment');
     });
 
-    test('should handle empty periods array', async () => {
+    test('should throw when periods array is empty', async () => {
       mockCurrentDate('2025-02-15');
       const { service } = createPeriodService([]);
 
-      const result = await service.getCurrentPeriod();
-
-      expect(result).toBeNull();
+      await expect(service.getCurrentPeriod()).rejects.toThrow('No active period found');
     });
 
     test('should handle periods with same startDate', async () => {
@@ -189,15 +185,13 @@ describe('PeriodService', () => {
       expect(result).toBe(false);
     });
 
-    test('should return false when no current period has started', async () => {
+    test('should throw when no period has started yet', async () => {
       mockCurrentDate('2025-01-01');
       const { service } = createPeriodService([
         { trimester: 'fall', periodType: 'intent', startDate: new Date('2025-12-15') },
       ]);
 
-      const result = await service.isIntentPeriodActive();
-
-      expect(result).toBe(false);
+      await expect(service.isIntentPeriodActive()).rejects.toThrow('No active period found');
     });
   });
 
@@ -280,26 +274,26 @@ describe('PeriodService', () => {
     });
   });
 
-  describe('getCurrentTrimesterTable', () => {
-    test('should return registrations_fall for Fall trimester', async () => {
+  describe('getCurrentTrimester', () => {
+    test("should return 'fall' for Fall trimester", async () => {
       mockCurrentDate('2025-02-15');
       const { service } = createPeriodService([PERIOD_FALL_PRIORITY]);
 
-      const result = await service.getCurrentTrimesterTable();
+      const result = await service.getCurrentTrimester();
 
-      expect(result).toBe('registrations_fall');
+      expect(result).toBe('fall');
     });
 
-    test('should return registrations_winter for Winter trimester', async () => {
+    test("should return 'winter' for Winter trimester", async () => {
       mockCurrentDate('2025-04-15');
       const { service } = createPeriodService([PERIOD_WINTER_PRIORITY]);
 
-      const result = await service.getCurrentTrimesterTable();
+      const result = await service.getCurrentTrimester();
 
-      expect(result).toBe('registrations_winter');
+      expect(result).toBe('winter');
     });
 
-    test('should return registrations_spring for Spring trimester', async () => {
+    test("should return 'spring' for Spring trimester", async () => {
       mockCurrentDate('2025-06-15');
       const { service } = createPeriodService([
         {
@@ -309,9 +303,9 @@ describe('PeriodService', () => {
         },
       ]);
 
-      const result = await service.getCurrentTrimesterTable();
+      const result = await service.getCurrentTrimester();
 
-      expect(result).toBe('registrations_spring');
+      expect(result).toBe('spring');
     });
 
     test('should throw error when no active period', async () => {
@@ -320,29 +314,7 @@ describe('PeriodService', () => {
         { trimester: 'fall', periodType: 'intent', startDate: new Date('2025-12-15') },
       ]);
 
-      await expect(service.getCurrentTrimesterTable()).rejects.toThrow('No active period found');
-    });
-
-    test('should lowercase trimester name in table name', async () => {
-      mockCurrentDate('2025-02-15');
-      const { service } = createPeriodService([
-        { trimester: 'fall', periodType: 'priorityEnrollment', startDate: new Date('2025-02-01') },
-      ]);
-
-      const result = await service.getCurrentTrimesterTable();
-
-      expect(result).toBe('registrations_fall');
-    });
-
-    test('should handle trimester with mixed case', async () => {
-      mockCurrentDate('2025-02-15');
-      const { service } = createPeriodService([
-        { trimester: 'fall', periodType: 'priorityEnrollment', startDate: new Date('2025-02-01') },
-      ]);
-
-      const result = await service.getCurrentTrimesterTable();
-
-      expect(result).toBe('registrations_fall');
+      await expect(service.getCurrentTrimester()).rejects.toThrow('No active period found');
     });
   });
 
@@ -397,28 +369,6 @@ describe('PeriodService', () => {
     });
   });
 
-  describe('getCurrentTrimester', () => {
-    test('should return current trimester from current period', async () => {
-      mockCurrentDate('2025-02-15');
-      const { service } = createPeriodService([PERIOD_FALL_PRIORITY]);
-
-      const result = await service.getCurrentTrimester();
-
-      expect(result).toBe('fall');
-    });
-
-    test('should return null when no current period', async () => {
-      mockCurrentDate('2025-01-01');
-      const { service } = createPeriodService([
-        { trimester: 'fall', periodType: 'intent', startDate: new Date('2025-12-15') },
-      ]);
-
-      const result = await service.getCurrentTrimester();
-
-      expect(result).toBeNull();
-    });
-  });
-
   describe('canAccessNextTrimester', () => {
     test('should return true during openEnrollment regardless of registrations', async () => {
       mockCurrentDate('2025-02-20');
@@ -460,15 +410,13 @@ describe('PeriodService', () => {
       expect(resultWithoutRegistrations).toBe(false);
     });
 
-    test('should return false when no current period', async () => {
+    test('should throw when no period has started yet', async () => {
       mockCurrentDate('2025-01-01');
       const { service } = createPeriodService([
         { trimester: 'fall', periodType: 'intent', startDate: new Date('2025-12-15') },
       ]);
 
-      const result = await service.canAccessNextTrimester(true);
-
-      expect(result).toBe(false);
+      await expect(service.canAccessNextTrimester(true)).rejects.toThrow('No active period found');
     });
 
     test('should return false during registration period', async () => {
@@ -492,8 +440,12 @@ describe('PeriodService', () => {
       expect(PeriodService.getNextTrimesterInSequence('winter')).toBe('spring');
     });
 
-    test('should cycle spring to fall', () => {
-      expect(PeriodService.getNextTrimesterInSequence('spring')).toBe('fall');
+    test('should cycle spring to summer', () => {
+      expect(PeriodService.getNextTrimesterInSequence('spring')).toBe('summer');
+    });
+
+    test('should cycle summer to fall', () => {
+      expect(PeriodService.getNextTrimesterInSequence('summer')).toBe('fall');
     });
 
     test('should be case-insensitive for input', () => {
@@ -503,8 +455,8 @@ describe('PeriodService', () => {
     });
 
     test('should throw error for invalid trimester', () => {
-      expect(() => PeriodService.getNextTrimesterInSequence('Summer')).toThrow(
-        'Invalid trimester: Summer'
+      expect(() => PeriodService.getNextTrimesterInSequence('Autumn')).toThrow(
+        'Invalid trimester: Autumn'
       );
       expect(() => PeriodService.getNextTrimesterInSequence('')).toThrow('Invalid trimester:');
       expect(() => PeriodService.getNextTrimesterInSequence(null as unknown as string)).toThrow(
@@ -514,8 +466,8 @@ describe('PeriodService', () => {
   });
 
   describe('getPreviousTrimesterInSequence (static)', () => {
-    test('should cycle fall to spring', () => {
-      expect(PeriodService.getPreviousTrimesterInSequence('fall')).toBe('spring');
+    test('should cycle fall to summer', () => {
+      expect(PeriodService.getPreviousTrimesterInSequence('fall')).toBe('summer');
     });
 
     test('should cycle winter to fall', () => {
@@ -526,9 +478,13 @@ describe('PeriodService', () => {
       expect(PeriodService.getPreviousTrimesterInSequence('spring')).toBe('winter');
     });
 
+    test('should cycle summer to spring', () => {
+      expect(PeriodService.getPreviousTrimesterInSequence('summer')).toBe('spring');
+    });
+
     test('should throw error for invalid trimester', () => {
-      expect(() => PeriodService.getPreviousTrimesterInSequence('Summer')).toThrow(
-        'Invalid trimester: Summer'
+      expect(() => PeriodService.getPreviousTrimesterInSequence('Autumn')).toThrow(
+        'Invalid trimester: Autumn'
       );
     });
   });
