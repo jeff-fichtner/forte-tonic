@@ -18,7 +18,6 @@ import { getLogger } from '../utils/logger.js';
 import { successResponse, errorResponse, asString } from '../common/responseHelpers.js';
 import { ValidationError } from '../common/errors.js';
 import { PeriodType } from '../utils/values/periodType.js';
-import { Trimester } from '../utils/values/trimester.js';
 import { PeriodService } from '../services/periodService.js';
 
 const logger = getLogger();
@@ -58,16 +57,14 @@ export class UserController {
         currentPeriod,
         nextPeriod,
         rockBandClassIds: configService.getRockBandClassIds(),
-        currentTrimester: currentPeriod?.trimester,
-        // Show the name of the next trimester in sequence, not the next period's trimester
-        // During enrollment, the next scheduled period (e.g., open enrollment) can be the same trimester
-        // Admins expect the label to reflect the upcoming trimester (e.g., winter → spring)
-        nextTrimester: currentPeriod?.trimester
-          ? PeriodService.getNextTrimesterInSequence(currentPeriod.trimester)
-          : nextPeriod?.trimester,
+        currentTrimester: currentPeriod.trimester,
+        // Show the name of the next trimester in sequence, not the next period's trimester.
+        // During enrollment, the next scheduled period (e.g., open enrollment) can be the same trimester.
+        // Admins expect the label to reflect the upcoming trimester (e.g., winter → spring).
+        nextTrimester: PeriodService.getNextTrimesterInSequence(currentPeriod.trimester),
         availableTrimesters: UserController._getAvailableTrimesters(currentPeriod),
         // Default trimester is always the current one (where active classes are happening)
-        defaultTrimester: currentPeriod?.trimester,
+        defaultTrimester: currentPeriod.trimester,
         maintenanceMode: appConfig.maintenanceMode,
         maintenanceMessage: appConfig.maintenanceMessage,
         director,
@@ -108,15 +105,11 @@ export class UserController {
    * - Spring Priority Enrollment → [spring, fall] - can view spring and enroll in fall (next year)
    *
    */
-  private static _getAvailableTrimesters(
-    currentPeriod: { trimester: string | null; periodType: string } | null
-  ): string[] {
-    if (!currentPeriod) {
-      // No period configured - show only fall as fallback
-      return [Trimester.FALL];
-    }
-
-    const currentTrimester = currentPeriod.trimester || Trimester.FALL;
+  private static _getAvailableTrimesters(currentPeriod: {
+    trimester: string;
+    periodType: string;
+  }): string[] {
+    const currentTrimester = currentPeriod.trimester;
     const currentPeriodType = currentPeriod.periodType;
 
     // During Intent period: show previous trimester + current trimester
@@ -298,8 +291,9 @@ export class UserController {
 
       const queryService = serviceContainer.get(ServiceKeys.entityQueryService);
 
-      // Get parent's students first (needed to scope registrations)
-      const parentStudents = await queryService.getStudents({ parentId });
+      // Get parent's students first (needed to scope registrations).
+      // Pass the route's trimester as the period (FR-003).
+      const parentStudents = await queryService.getStudents({ parentId, period: trimester });
       const parentStudentIds = parentStudents.map(s => s.id);
 
       // Fetch registrations for the provided trimester

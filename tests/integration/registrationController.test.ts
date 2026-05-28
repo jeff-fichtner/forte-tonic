@@ -54,6 +54,8 @@ jest.unstable_mockModule('../../src/database/googleSheetsDbClient.js', () => ({
     insertIntoSheet: jest.fn().mockResolvedValue({}),
     deleteRecord: jest.fn().mockResolvedValue({}),
   })),
+  dataSheetForTrimester: (trimester: string) => `registrations_${trimester}`,
+  auditSheetForTrimester: (trimester: string) => `registrations_${trimester}_audit`,
 }));
 
 // Mock the email client
@@ -269,11 +271,79 @@ describe('RegistrationController Integration Tests', () => {
       const response = await request(app)
         .post('/api/registrations')
         .set('x-access-code', '123456')
-        .send({ studentId: 'STUDENT1', registrationType: 'private', trimester: 'summer' })
+        .send({ studentId: 'STUDENT1', registrationType: 'private', trimester: 'autumn' })
         .expect(400);
 
       expect(response.body.success).toBe(false);
       expect(response.body.error.message).toContain('Invalid trimester');
+    });
+
+    // FR-001 / FR-002 / FR-003 / User Story 1 — integration test for summer registration
+    test('should accept summer as a valid trimester and create the registration (US1)', async () => {
+      const summerRegistrationData = {
+        ...validRegistrationData,
+        trimester: 'summer',
+      };
+
+      const response = await request(app)
+        .post('/api/registrations')
+        .set('x-access-code', '123456')
+        .send(summerRegistrationData)
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(mockRegistrationService.processRegistration).toHaveBeenCalledWith(
+        summerRegistrationData,
+        expect.any(String),
+        { isAdmin: false }
+      );
+    });
+
+    // FR-008 / User Story 2 — modify-via-replace flow for carried-forward summer registration.
+    // The controller handles replaceRegistrationId itself: authorizes parent
+    // eligibility, calls processRegistration (without the replace field),
+    // then calls deleteRegistration on the old row.
+    test('should accept replaceRegistrationId for a summer modify-via-replace (US2)', async () => {
+      // Old registration must be carried-forward (have linkedPreviousRegistrationId)
+      // and belong to the authenticated parent's student for the parent
+      // authorization to succeed.
+      mockRegistrationRepository.findByIdInTrimester.mockResolvedValueOnce({
+        ...mockRegistration,
+        id: 'PREVIOUS-SUMMER-REG-ID',
+        linkedPreviousRegistrationId: 'SPRING-REG-ID',
+        studentId: 'STUDENT1',
+      });
+      // mockUserRepository must respond to getStudentById with a student
+      // whose parent matches the authenticated parent's id (PARENT1).
+      (mockUserRepository as unknown as Record<string, jest.Mock>).getStudentById = jest
+        .fn()
+        .mockResolvedValueOnce({ id: 'STUDENT1', parent1Id: 'PARENT1', parent2Id: null });
+
+      const summerReplaceData = {
+        ...validRegistrationData,
+        trimester: 'summer',
+        replaceRegistrationId: 'PREVIOUS-SUMMER-REG-ID',
+      };
+
+      const response = await request(app)
+        .post('/api/registrations')
+        .set('x-access-code', '123456')
+        .send(summerReplaceData)
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      // Controller strips replaceRegistrationId before calling processRegistration.
+      expect(mockRegistrationService.processRegistration).toHaveBeenCalledWith(
+        expect.not.objectContaining({ replaceRegistrationId: expect.anything() }),
+        expect.any(String),
+        { isAdmin: false }
+      );
+      // After create succeeds, controller deletes the old row.
+      expect(mockRegistrationService.deleteRegistration).toHaveBeenCalledWith(
+        'PREVIOUS-SUMMER-REG-ID',
+        expect.any(String),
+        'summer'
+      );
     });
 
     test('should reject missing registrationType', async () => {
@@ -437,12 +507,15 @@ describe('RegistrationController Integration Tests', () => {
       );
     });
 
-    test('should reject deletion by non-admin user', async () => {
+    test('should reject deletion by non-admin user with 403 (not 401)', async () => {
+      // 403 not 401: the user IS authenticated; they just lack admin role.
+      // 401 would (correctly) trigger the frontend's session-expired logout,
+      // which is wrong for a permission denial.
       const registrationId = '123e4567-e89b-42d3-8456-426614174000';
       const response = await request(app)
         .delete(`/api/registrations/fall/${registrationId}`)
         .set('x-access-code', '123456')
-        .expect(401);
+        .expect(403);
 
       expect(response.body.success).toBe(false);
       expect(response.body.error.message).toContain('Only administrators can delete registrations');

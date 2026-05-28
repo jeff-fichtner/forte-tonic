@@ -55,6 +55,8 @@ jest.unstable_mockModule('../../src/database/googleSheetsDbClient.js', () => ({
     getAllRecords: jest.fn().mockResolvedValue([]),
     updateRecord: jest.fn().mockResolvedValue({}),
   })),
+  dataSheetForTrimester: (trimester: string) => `registrations_${trimester}`,
+  auditSheetForTrimester: (trimester: string) => `registrations_${trimester}_audit`,
 }));
 
 // Mock the email client
@@ -96,7 +98,6 @@ const mockUpdatedRegistration = {
 
 // Create mock repositories
 const mockRegistrationRepository = {
-  getRegistrations: jest.fn().mockResolvedValue([mockRegistration]),
   updateIntent: jest.fn().mockResolvedValue(mockUpdatedRegistration),
 };
 

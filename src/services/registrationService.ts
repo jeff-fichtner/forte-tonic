@@ -11,7 +11,7 @@ import { TransportationType } from '../utils/values/transportationType.js';
 import { isValidTrimester as validateTrimester } from '../utils/values/trimester.js';
 import { ConfigurationService } from './configurationService.js';
 import { Registration } from '../models/shared/registration.js';
-import { ConflictError, ValidationError } from '../common/errors.js';
+import { ConflictError } from '../common/errors.js';
 import { DEFAULT_REGISTRATION_CONFIG } from '../models/shared/responses/appConfigurationResponse.js';
 import { getLogger } from '../utils/logger.js';
 import type { Logger } from '../utils/logger.js';
@@ -82,12 +82,6 @@ interface ProcessRegistrationOptions {
   isAdmin?: boolean;
 }
 
-interface RegistrationsOptions {
-  page?: number;
-  pageSize?: number;
-  [key: string]: unknown;
-}
-
 interface BusValidationResult {
   isValid: boolean;
   errorMessage: string | null;
@@ -101,24 +95,6 @@ interface ScheduleLesson {
 }
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-interface EnrichedRegistration {
-  student: {
-    id: string | undefined;
-    firstName: string;
-    lastName: string;
-    grade: string | undefined;
-  } | null;
-  instructor: {
-    id: string;
-    firstName: string | null;
-    lastName: string | null;
-    email: string | null;
-  } | null;
-  class: { id: string; title: string; instrument: string; size: string | null } | null;
-  isActive: boolean;
-  [key: string]: unknown;
-}
 
 export class RegistrationService extends BaseService {
   #registrationRepository: RegistrationRepository;
@@ -163,11 +139,9 @@ export class RegistrationService extends BaseService {
         registrationData.registrationType === RegistrationType.GROUP &&
         registrationData.classId
       ) {
-        // For group registrations, populate missing fields from class data
+        // For group registrations, populate missing fields from class data.
+        // getClassById throws NotFoundError if classId does not resolve.
         const groupClass = await this.#programRepository.getClassById(registrationData.classId);
-        if (!groupClass) {
-          throw new Error(`Class not found: ${registrationData.classId}`);
-        }
 
         // Check if this is a Rock Band waitlist class
         const rockBandClassIds = this.configService.getRockBandClassIds();
@@ -211,22 +185,25 @@ export class RegistrationService extends BaseService {
         }
       }
 
-      // Step 3: Get related entities
-      const [student, instructor, groupClass] = await Promise.all([
-        this.#userRepository.getStudentById(registrationData.studentId),
+      // Step 3: Get related entities.
+      // Pass the registration's target trimester as the period for student
+      // lookup (FR-003). For a `summer` registration this surfaces the
+      // grade-bumped student; for other periods it's a no-op transform.
+      // getStudentById / getInstructorById throw NotFoundError on missing
+      // records — those are data-integrity bugs, not normal outcomes. The
+      // class lookup is conditional: private lessons have no `classId`, so
+      // the ternary yields `null` (correct) instead of calling the repo.
+      const studentPeriod = registrationData.trimester as string;
+      // Student lookup is called for its existence-check side effect — we
+      // don't use the returned student here, but the throw on a missing ID
+      // is the validation we want.
+      const [, instructor, groupClass] = await Promise.all([
+        this.#userRepository.getStudentById(registrationData.studentId, studentPeriod),
         this.#userRepository.getInstructorById(registrationData.instructorId),
         registrationData.classId
           ? this.#programRepository.getClassById(registrationData.classId)
           : Promise.resolve(null),
       ]);
-
-      if (!student) {
-        throw new Error(`Student not found: ${registrationData.studentId}`);
-      }
-
-      if (!instructor) {
-        throw new Error(`Instructor not found: ${registrationData.instructorId}`);
-      }
 
       // Step 3.5: Validate instructor availability for the selected day
       // TODO: Re-enable once availability data is fully populated
@@ -241,15 +218,11 @@ export class RegistrationService extends BaseService {
       //   );
       // }
 
-      // Step 3.6: Validate room assignment (optional for now, validated if provided)
-      // TODO: Make roomId required once all registration flows populate it
+      // Step 3.6: Validate room assignment (optional for now, validated if provided).
+      // getRoomById throws NotFoundError when the id doesn't resolve.
+      // TODO: Make roomId required once all registration flows populate it.
       if (registrationData.roomId) {
-        const room = await this.#userRepository.getRoomById(registrationData.roomId);
-        if (!room) {
-          throw new ValidationError(
-            `Invalid room: "${registrationData.roomId}" does not match any known room`
-          );
-        }
+        await this.#userRepository.getRoomById(registrationData.roomId);
 
         this.logger.info(
           `🏫 Room assignment for ${registrationData.registrationType} registration:`,
@@ -406,79 +379,6 @@ export class RegistrationService extends BaseService {
       return true;
     } catch (error) {
       this.logger.error('❌ Registration deletion failed:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get registrations enriched with student, instructor, and class data.
-   * Pagination is handled by the controller layer.
-   */
-  async getRegistrations(options: RegistrationsOptions = {}): Promise<EnrichedRegistration[]> {
-    try {
-      this.logger.info('📋 Getting registrations with options:', options);
-
-      // Get registrations from repository
-      const registrations = await this.#registrationRepository.findAll(options);
-
-      if (!registrations || registrations.length === 0) {
-        return [];
-      }
-
-      // Batch-fetch all related entities and build lookup maps
-      const [allStudents, allInstructors, allClasses] = await Promise.all([
-        this.#userRepository.getStudents(),
-        this.#userRepository.getInstructors(),
-        this.#programRepository.getClasses(),
-      ]);
-
-      const studentMap = new Map(allStudents.map(s => [s.id, s]));
-      const instructorMap = new Map(allInstructors.map(i => [i.id, i]));
-      const classMap = new Map(allClasses.map(c => [c.id, c]));
-
-      // Join in memory
-      const enrichedRegistrations = registrations.map(registration => {
-        const studentData = studentMap.get(registration.studentId);
-        const instructorData = instructorMap.get(registration.instructorId);
-        const groupClassData = registration.classId
-          ? classMap.get(registration.classId)
-          : undefined;
-
-        return {
-          ...registration,
-          student: studentData
-            ? {
-                id: studentData.id,
-                firstName: studentData.firstName,
-                lastName: studentData.lastName,
-                grade: studentData.grade,
-              }
-            : null,
-          instructor: instructorData
-            ? {
-                id: instructorData.id,
-                firstName: instructorData.firstName,
-                lastName: instructorData.lastName,
-                email: instructorData.email,
-              }
-            : null,
-          class: groupClassData
-            ? {
-                id: groupClassData.id,
-                title: groupClassData.title,
-                instrument: groupClassData.instrument,
-                size: groupClassData.size,
-              }
-            : null,
-          isActive: true,
-        };
-      });
-
-      this.logger.info(`📊 Found ${enrichedRegistrations.length} registrations`);
-
-      return enrichedRegistrations;
-    } catch (error) {
-      this.logger.error('❌ Error getting registrations:', error);
       throw error;
     }
   }

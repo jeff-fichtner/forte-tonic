@@ -61,6 +61,10 @@ jest.unstable_mockModule('../../src/database/googleSheetsDbClient.js', () => ({
     updateRecord: jest.fn().mockResolvedValue(true),
     deleteRecord: jest.fn().mockResolvedValue(true),
   })),
+  // Named exports from the dbClient module — used by services/repositories
+  // for the trimester → sheet-name mapping (added in the magic-string cleanup).
+  dataSheetForTrimester: (trimester: string) => `registrations_${trimester}`,
+  auditSheetForTrimester: (trimester: string) => `registrations_${trimester}_audit`,
 }));
 
 // Mock the repositories and client directly

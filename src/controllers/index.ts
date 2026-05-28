@@ -8,7 +8,7 @@
  * - RegistrationController — registration CRUD, enrollment access control, tab data endpoints
  * - UserController         — authentication, user lookups, app configuration, contact/directory tabs
  * - AttendanceController   — attendance recording and summary reporting
- * - SystemController       — health checks, Google Sheets diagnostics, cache management
+ * - SystemController       — health checks, data-store diagnostics, cache management
  * - FeedbackController     — user feedback submission (logged to Cloud Logging)
  */
 

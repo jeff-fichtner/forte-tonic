@@ -133,6 +133,8 @@ describe('Standardized Error Handling Integration Tests', () => {
         deleteRange: jest.fn().mockResolvedValue({}),
         clearCache: jest.fn(),
       })),
+      dataSheetForTrimester: (trimester: string) => `registrations_${trimester}`,
+      auditSheetForTrimester: (trimester: string) => `registrations_${trimester}_audit`,
     }));
 
     // Mock the email client
@@ -198,7 +200,7 @@ describe('Standardized Error Handling Integration Tests', () => {
       expect(response.body.data.features).toBeDefined();
       expect(response.body.data.features).toHaveProperty('isProduction');
       expect(response.body.data.features).toHaveProperty('isStaging');
-      expect(response.body.data.features).toHaveProperty('spreadsheetConfigured');
+      expect(response.body.data.features).toHaveProperty('dataStoreConfigured');
     });
   });
 

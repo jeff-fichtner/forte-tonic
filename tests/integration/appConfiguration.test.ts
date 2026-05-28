@@ -53,6 +53,8 @@ jest.unstable_mockModule('../../src/database/googleSheetsDbClient.js', () => ({
     spreadsheetId: 'test-sheet-id',
     getAllRecords: jest.fn().mockResolvedValue([]),
   })),
+  dataSheetForTrimester: (trimester: string) => `registrations_${trimester}`,
+  auditSheetForTrimester: (trimester: string) => `registrations_${trimester}_audit`,
 }));
 
 // Mock the email client
@@ -173,45 +175,24 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
     expect(mockPeriodService.getNextPeriod).toHaveBeenCalled();
   });
 
-  test('should return null currentPeriod when no period is active', async () => {
-    // Mock period service to return null (no active period)
-    mockPeriodService.getCurrentPeriod.mockResolvedValue(null);
+  test('should fail loud when no period is active (misconfigured admin)', async () => {
+    // The periods table is human-maintained; the system contract is that a
+    // period covers every active moment. When it doesn't, getCurrentPeriod
+    // throws and the controller returns an error — admins must fix the data.
+    mockPeriodService.getCurrentPeriod.mockRejectedValue(
+      new Error('No active period found (no period has started yet)')
+    );
     mockPeriodService.getNextPeriod.mockResolvedValue(null);
 
-    const response = await request(app).get('/api/configuration').expect(200);
+    const response = await request(app).get('/api/configuration').expect(500);
 
-    // Verify standardized response format
-    expect(response.body).toHaveProperty('success', true);
-    expect(response.body).toHaveProperty('data');
-    expect(response.body).toHaveProperty(
-      'message',
-      'Application configuration retrieved successfully'
-    );
-
-    // Verify currentPeriod is null in data
-    expect(response.body.data).toHaveProperty('currentPeriod');
-    expect(response.body.data.currentPeriod).toBeNull();
-
-    // Verify nextPeriod is null in data
-    expect(response.body.data).toHaveProperty('nextPeriod');
-    expect(response.body.data.nextPeriod).toBeNull();
-
-    // Verify rockBandClassIds is still included in data
-    expect(response.body.data).toHaveProperty('rockBandClassIds');
-    expect(response.body.data.rockBandClassIds).toEqual(['G015']);
-
-    // Verify maintenance mode fields are included
-    expect(response.body.data).toHaveProperty('maintenanceMode');
-    expect(response.body.data.maintenanceMode).toBe(false);
-
-    // Verify periodService methods were called
+    expect(response.body).toHaveProperty('success', false);
     expect(mockPeriodService.getCurrentPeriod).toHaveBeenCalled();
-    expect(mockPeriodService.getNextPeriod).toHaveBeenCalled();
   });
 
   test('should return previous and current trimester during intent period', async () => {
-    // During fall intent period, both spring (previous) and fall (current) should be available
-    // This allows viewing spring history while managing fall intent
+    // During fall intent period, both summer (previous) and fall (current) should be available
+    // This allows viewing summer history while managing fall intent
     mockPeriodService.getCurrentPeriod.mockResolvedValue({
       trimester: 'fall',
       periodType: PeriodType.INTENT,
@@ -227,7 +208,7 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
     const response = await request(app).get('/api/configuration').expect(200);
 
     expect(response.body.data).toHaveProperty('availableTrimesters');
-    expect(response.body.data.availableTrimesters).toEqual(['spring', 'fall']);
+    expect(response.body.data.availableTrimesters).toEqual(['summer', 'fall']);
     expect(response.body.data.defaultTrimester).toBe('fall');
   });
 
@@ -252,8 +233,10 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
     expect(response.body.data.defaultTrimester).toBe('fall');
   });
 
-  test('should cycle fall to next year during spring priority enrollment', async () => {
-    // During spring priority enrollment, both spring and fall should be available
+  test('should advance to summer during spring priority enrollment', async () => {
+    // During spring priority enrollment, both spring and summer should be available
+    // (summer is the new fourth trimester; spring → summer is the canonical
+    // current → next pairing during this window)
     mockPeriodService.getCurrentPeriod.mockResolvedValue({
       trimester: 'spring',
       periodType: PeriodType.PRIORITY_ENROLLMENT,
@@ -261,7 +244,7 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
       startDate: new Date('2025-06-01'),
     });
     mockPeriodService.getNextPeriod.mockResolvedValue({
-      trimester: 'fall',
+      trimester: 'summer',
       periodType: PeriodType.OPEN_ENROLLMENT,
       startDate: new Date('2025-07-01'),
     });
@@ -269,7 +252,7 @@ describe('Integration Test: POST /api/getAppConfiguration', () => {
     const response = await request(app).get('/api/configuration').expect(200);
 
     expect(response.body.data).toHaveProperty('availableTrimesters');
-    expect(response.body.data.availableTrimesters).toEqual(['spring', 'fall']);
+    expect(response.body.data.availableTrimesters).toEqual(['spring', 'summer']);
     expect(response.body.data.defaultTrimester).toBe('spring');
   });
 

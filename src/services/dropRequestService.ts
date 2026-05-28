@@ -9,6 +9,7 @@
 import { BaseService } from '../infrastructure/base/baseService.js';
 import { DropRequestStatus } from '../utils/values/dropRequestStatus.js';
 import { PeriodType } from '../utils/values/periodType.js';
+import { Trimester } from '../utils/values/trimester.js';
 import { NotFoundError, ValidationError, ForbiddenError, ConflictError } from '../common/errors.js';
 import type { ConfigurationService } from './configurationService.js';
 import type { DropRequest, DropRequestRepository } from '../repositories/dropRequestRepository.js';
@@ -69,11 +70,13 @@ export class DropRequestService extends BaseService {
         `📝 Creating drop request for registration ${registrationId} by parent ${parentId}`
       );
 
-      // 1. Validate current period (must be registration period)
+      // 1. Validate current period (must be registration period).
+      // getCurrentPeriod throws if no period is active — admins must keep the
+      // periods table populated. We only need to check the period TYPE here.
       const currentPeriod = await this.#periodService.getCurrentPeriod();
-      if (!currentPeriod || currentPeriod.periodType !== PeriodType.REGISTRATION) {
+      if (currentPeriod.periodType !== PeriodType.REGISTRATION) {
         this.logger.warn(
-          `Drop request rejected: Not in registration period (current: ${currentPeriod?.periodType})`
+          `Drop request rejected: Not in registration period (current: ${currentPeriod.periodType})`
         );
         throw new ValidationError(
           'Drop requests can only be submitted during active registration periods'
@@ -81,27 +84,24 @@ export class DropRequestService extends BaseService {
       }
 
       // 2. Verify registration exists in the current trimester
-      const trimester = currentPeriod.trimester;
-      if (!trimester) {
-        throw new ValidationError('Current period has no trimester configured');
-      }
       const registration = await this.#registrationRepository.findByIdInTrimester(
         registrationId,
-        trimester
+        currentPeriod.trimester
       );
       if (!registration) {
         this.logger.warn(`Drop request rejected: Registration not found ${registrationId}`);
         throw new NotFoundError(`Registration not found: ${registrationId}`);
       }
 
-      // 3. Verify parent owns the student
+      // 3. Verify parent owns the student.
+      // Drop requests target a specific registration in a specific trimester,
+      // so use that as the period for student lookup (FR-003).
+      // getStudentById throws NotFoundError if the student is missing.
       const studentId = registration.studentId;
-      const student = await this.#studentRepository.getStudentById(studentId);
-
-      if (!student) {
-        this.logger.error(`Student not found for registration: ${studentId}`);
-        throw new NotFoundError(`Student not found: ${studentId}`);
-      }
+      const student = await this.#studentRepository.getStudentById(
+        studentId,
+        currentPeriod.trimester
+      );
 
       // Check parent ownership - handle both parent1Id and parent2Id
       const parent1Id = student.parent1Id;
@@ -129,7 +129,7 @@ export class DropRequestService extends BaseService {
         {
           registrationId,
           parentId,
-          trimester,
+          trimester: currentPeriod.trimester,
           reason,
           status: DropRequestStatus.PENDING,
         },
@@ -280,8 +280,13 @@ export class DropRequestService extends BaseService {
         return [];
       }
 
-      // Batch-fetch all students and build a lookup map
-      const allStudents = await this.#studentRepository.getStudents();
+      // Batch-fetch all students and build a lookup map.
+      // Pending drop requests can span any trimester; the student grade
+      // shown in this admin-facing list is always the actual stored grade
+      // (no summer grade-bump applies in this context). Pass `'fall'`
+      // explicitly to satisfy FR-003's required-period contract — any
+      // non-`'summer'` trimester yields identical student data.
+      const allStudents = await this.#studentRepository.getStudents(Trimester.FALL);
       const studentMap = new Map(allStudents.map(s => [s.id, s]));
 
       // Batch-fetch registrations using each request's trimester

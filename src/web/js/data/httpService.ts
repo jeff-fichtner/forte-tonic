@@ -101,9 +101,19 @@ export class HttpService {
           code: (errorInfo?.code as string) || null,
         };
 
+        // 401: credentials are missing or no longer valid → session is dead.
+        //      Toast the user, fire the session-expired handler (logout).
+        // 403: credentials are valid but the user lacks permission for this
+        //      specific action. Surface the server's message but DO NOT log
+        //      the user out — they're still authenticated, just not allowed
+        //      to do this one thing. Leaving session-expired handling on 403
+        //      would, for example, log a parent out anytime they hit an
+        //      admin-only endpoint.
         if (response.status === 401) {
           M.toast({ html: 'Session expired. Please log in again.' });
           this.#onSessionExpired?.();
+        } else if (response.status === 403) {
+          M.toast({ html: httpError.message || 'You are not allowed to do that.' });
         }
 
         return { ok: false, error: httpError };

@@ -136,10 +136,14 @@ describe('RegistrationService.create()', () => {
 
   // -------------------------------------------------------------------------
   // 2. create() — replacement flow
+  //
+  // The frontend now passes replaceRegistrationId through to the backend in a
+  // single POST. The backend authorizes + creates + deletes atomically. The
+  // old two-call DELETE+POST flow was removed because parents got 401'd by
+  // the admin-only DELETE endpoint, which logged them out mid-flow.
   // -------------------------------------------------------------------------
   describe('replacement flow', () => {
-    test('deletes old registration before creating new one when replaceRegistrationId is set', async () => {
-      mockHttpDelete.mockResolvedValue({ ok: true, data: undefined });
+    test('forwards replaceRegistrationId through to the POST without a separate DELETE', async () => {
       mockHttpPost.mockResolvedValue({ ok: true, data: makeApiResponse() });
 
       await RegistrationService.create({
@@ -147,50 +151,19 @@ describe('RegistrationService.create()', () => {
         replaceRegistrationId: 'old-reg-1',
       });
 
-      expect(mockHttpDelete).toHaveBeenCalledWith('registrations/Fall/old-reg-1');
-      expect(mockHttpPost).toHaveBeenCalled();
+      expect(mockHttpDelete).not.toHaveBeenCalled();
+      const postPayload = mockHttpPost.mock.calls[0][1] as Record<string, unknown>;
+      expect(postPayload.replaceRegistrationId).toBe('old-reg-1');
     });
 
-    test('always uses trimester-based delete endpoint', async () => {
-      mockHttpDelete.mockResolvedValue({ ok: true, data: undefined });
-      mockHttpPost.mockResolvedValue({ ok: true, data: makeApiResponse() });
-
-      await RegistrationService.create({
-        trimester: 'Spring',
-        replaceRegistrationId: 'old-reg-2',
-      });
-
-      expect(mockHttpDelete).toHaveBeenCalledWith('registrations/Spring/old-reg-2');
-    });
-
-    test('returns error and does not create new registration when delete fails', async () => {
-      mockHttpDelete.mockResolvedValue({
-        ok: false,
-        error: { message: 'delete failed' },
-      });
-
-      const result = await RegistrationService.create({
-        trimester: 'Fall',
-        replaceRegistrationId: 'old-reg-4',
-      });
-
-      expect(result).toEqual({
-        ok: false,
-        error: { message: 'Failed to delete old registration: delete failed' },
-      });
-      expect(mockHttpPost).not.toHaveBeenCalled();
-    });
-
-    test('strips replaceRegistrationId from data before POST', async () => {
-      mockHttpDelete.mockResolvedValue({ ok: true, data: undefined });
+    test('does not strip replaceRegistrationId — backend needs it', async () => {
       mockHttpPost.mockResolvedValue({ ok: true, data: makeApiResponse() });
 
       const data = { trimester: 'Fall', replaceRegistrationId: 'old-reg-5' };
       await RegistrationService.create(data);
 
-      // The POST payload should not contain replaceRegistrationId
       const postPayload = mockHttpPost.mock.calls[0][1] as Record<string, unknown>;
-      expect(postPayload.replaceRegistrationId).toBeUndefined();
+      expect(postPayload.replaceRegistrationId).toBe('old-reg-5');
     });
   });
 

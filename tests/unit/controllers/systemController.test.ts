@@ -21,6 +21,10 @@ const mockDatabaseClient = {
   clearAllCache: jest.fn(),
 };
 
+const mockCacheService = {
+  clear: jest.fn(),
+};
+
 jest.unstable_mockModule('../../../src/infrastructure/container/serviceContainer.js', () => ({
   ServiceKeys: {
     databaseClient: 'databaseClient',
@@ -43,6 +47,7 @@ jest.unstable_mockModule('../../../src/infrastructure/container/serviceContainer
       const services = {
         userRepository: mockUserRepository,
         databaseClient: mockDatabaseClient,
+        cacheService: mockCacheService,
       };
       return services[name] ?? null;
     }),
@@ -98,11 +103,11 @@ jest.unstable_mockModule('../../../src/common/errors.js', () => ({
       this.name = 'ValidationError';
     }
   },
-  UnauthorizedError: class UnauthorizedError extends Error {
-    statusCode = 401;
+  ForbiddenError: class ForbiddenError extends Error {
+    statusCode = 403;
     constructor(m) {
       super(m);
-      this.name = 'UnauthorizedError';
+      this.name = 'ForbiddenError';
     }
   },
 }));
@@ -157,7 +162,7 @@ describe('SystemController', () => {
           features: expect.objectContaining({
             isProduction: false,
             isStaging: false,
-            spreadsheetConfigured: true,
+            dataStoreConfigured: true,
           }),
         }),
         expect.any(Object)
@@ -182,7 +187,7 @@ describe('SystemController', () => {
       await SystemController.clearCache(req, res);
 
       expect(mockUserRepository.getAdminByAccessCode).toHaveBeenCalledWith('123456');
-      expect(mockDatabaseClient.clearAllCache).toHaveBeenCalled();
+      expect(mockCacheService.clear).toHaveBeenCalled();
       expect(mockSuccessResponse).toHaveBeenCalledWith(
         res,
         expect.objectContaining({
@@ -193,7 +198,10 @@ describe('SystemController', () => {
       );
     });
 
-    it('should call errorResponse with UnauthorizedError for non-admin access code', async () => {
+    it('should call errorResponse with ForbiddenError for non-admin access code', async () => {
+      // 403 (not 401): the caller is authenticated; they just aren't an admin.
+      // A 401 would force the frontend to log them out — which is wrong for a
+      // role-based denial.
       const req = { currentUser: { accessCode: 'wrong-code' } } as unknown;
 
       mockUserRepository.getAdminByAccessCode.mockResolvedValue(null);
@@ -202,7 +210,7 @@ describe('SystemController', () => {
 
       expect(mockErrorResponse).toHaveBeenCalledWith(
         res,
-        expect.objectContaining({ name: 'UnauthorizedError' }),
+        expect.objectContaining({ name: 'ForbiddenError' }),
         expect.any(Object)
       );
     });
@@ -219,7 +227,7 @@ describe('SystemController', () => {
       );
     });
 
-    it('should succeed even when databaseClient lacks clearAllCache method', async () => {
+    it('should succeed even when cacheService lacks clear method', async () => {
       const req = { currentUser: { accessCode: '123456' } } as unknown;
 
       mockUserRepository.getAdminByAccessCode.mockResolvedValue({
@@ -228,10 +236,10 @@ describe('SystemController', () => {
         lastName: 'User',
       });
 
-      // Temporarily replace clearAllCache with a non-function to simulate
-      // a dbClient that does not support cache clearing
-      const original = mockDatabaseClient.clearAllCache;
-      (mockDatabaseClient as unknown as Record<string, unknown>).clearAllCache = undefined;
+      // Temporarily replace clear with a non-function to simulate
+      // a cacheService that does not support clearing
+      const original = mockCacheService.clear;
+      (mockCacheService as unknown as Record<string, unknown>).clear = undefined;
 
       await SystemController.clearCache(req, res);
 
@@ -245,7 +253,7 @@ describe('SystemController', () => {
       );
 
       // Restore for other tests
-      mockDatabaseClient.clearAllCache = original;
+      mockCacheService.clear = original;
     });
 
     it('should use firstName + lastName as clearedBy when email is absent', async () => {
