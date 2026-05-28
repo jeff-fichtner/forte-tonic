@@ -871,7 +871,11 @@
 
         <div class="nav-controls">
           <!-- Login Button - initially hidden -->
-          <div id="login-button-container" hidden>
+          <div
+            id="login-button-container"
+            hidden
+            style="display: flex; align-items: center; flex-direction: row-reverse; gap: 10px"
+          >
             <a
               class="btn waves-effect waves-light modal-trigger"
               href="#login-modal"
@@ -889,6 +893,15 @@
                 >vpn_key</i
               >Login
             </a>
+            <span
+              id="user-greeting"
+              style="
+                color: rgba(255, 255, 255, 0.9);
+                font-size: 14px;
+                white-space: nowrap;
+                display: none;
+              "
+            ></span>
           </div>
 
           <!-- Navigation Links - initially hidden -->

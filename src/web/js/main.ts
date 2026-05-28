@@ -298,7 +298,7 @@ async function attemptAutoLogin(accessCode: string, loginType: string): Promise<
 
   if (loginSuccess) {
     AccessCodeManager.saveAccessCodeSecurely(accessCode, loginType);
-    LoginModal.updateLoginButtonState();
+    LoginModal.updateLoginButtonState(LoginModal.extractFirstName(authenticatedUser));
 
     await resetInitializationFlags();
     currentUser = null;

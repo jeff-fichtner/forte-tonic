@@ -21,6 +21,17 @@ interface AuthenticatedUser {
   [key: string]: unknown;
 }
 
+/**
+ * Pull `firstName` off whichever role-record the auth response carries.
+ * Returns null when no name is available (no role, or no `firstName` field).
+ */
+export function extractFirstName(user: AuthenticatedUser | null): string | null {
+  if (!user) return null;
+  const record = user.admin ?? user.instructor ?? user.parent;
+  const firstName = (record as { firstName?: unknown } | null | undefined)?.firstName;
+  return typeof firstName === 'string' && firstName.length > 0 ? firstName : null;
+}
+
 // Module-level state
 let loginModal: MaterializeModalInstance | null = null;
 let currentLoginType: string = 'parent';
@@ -58,10 +69,13 @@ export function closeIfOpen(): void {
 }
 
 /**
- * Update the navbar login button text ("Login" vs "Change User") based on stored credentials.
- * Called by main.ts startup and after successful login.
+ * Update the navbar login button text ("Login" vs "Change User") based on
+ * stored credentials. When `firstName` is provided, also renders a
+ * "Hello, <firstName>" greeting next to the button. Pass null/undefined
+ * to clear the greeting (e.g. on logout).
+ * Called by main.ts startup, after successful login, and after logout.
  */
-export function updateLoginButtonState(): void {
+export function updateLoginButtonState(firstName?: string | null): void {
   const loginButton = document.querySelector('a[href="#login-modal"]');
   if (!loginButton) {
     console.warn('Login button not found');
@@ -73,6 +87,17 @@ export function updateLoginButtonState(): void {
   const buttonTextNode = loginButton.childNodes[loginButton.childNodes.length - 1];
   if (buttonTextNode && buttonTextNode.nodeType === Node.TEXT_NODE) {
     buttonTextNode.textContent = storedCode ? 'Change User' : 'Login';
+  }
+
+  const greeting = document.getElementById('user-greeting');
+  if (greeting) {
+    if (firstName && storedCode) {
+      greeting.textContent = `Hello, ${firstName}!`;
+      greeting.style.display = 'block';
+    } else {
+      greeting.textContent = '';
+      greeting.style.display = 'none';
+    }
   }
 }
 
@@ -466,7 +491,7 @@ async function attemptLoginWithCode(
 
   if (loginSuccess) {
     AccessCodeManager.saveAccessCodeSecurely(loginValue, loginType);
-    updateLoginButtonState();
+    updateLoginButtonState(extractFirstName(authenticatedUser));
     onSuccessfulLogin?.();
 
     let roleToClick: string | null = null;
