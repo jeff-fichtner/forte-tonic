@@ -7,7 +7,7 @@
 export const RegistrationFormText = {
   // Student selector
   STUDENT_PLACEHOLDER: 'Select a student',
-  STUDENT_EMPTY: 'No students available',
+  STUDENT_EMPTY: 'No students to register.',
 
   // Registration type
   REG_TYPE_PLACEHOLDER: 'Select registration type',

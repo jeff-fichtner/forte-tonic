@@ -3,10 +3,12 @@ import { Table } from '../components/table.js';
 import { formatGrade, formatTime } from '../extensions/numberExtensions.js';
 import { RegistrationType } from '../constants.js';
 import { copyToClipboard } from '../utilities/clipboardHelpers.js';
+import { periodDisplayName } from '../utilities/periodDisplayName.js';
 import { formatDateTime } from '../utilities/formatHelpers.js';
 import { ClassManager } from '../utilities/classManager.js';
 import { resolveParentTrimesters } from '../utilities/trimesterHelpers.js';
 import { isCurrentPeriodIntent } from '../utilities/periodHelpers.js';
+import { ReenrollmentIntent } from '/models/shared/registration.js';
 import { withFeedback } from '../utilities/actionFeedback.js';
 import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
@@ -178,10 +180,9 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
     const { name: trimesterName, data: trimesterData } = trimesterInfo;
     const registrations = trimesterData.registrations;
 
-    // Create trimester header
+    // Create trimester header — period display label via FR-005 helper
     const trimesterHeader = document.createElement('h4');
-    const capitalizedName = trimesterName.charAt(0).toUpperCase() + trimesterName.slice(1);
-    trimesterHeader.textContent = `${capitalizedName} Trimester Schedule`;
+    trimesterHeader.textContent = `${periodDisplayName(trimesterName)} Trimester Schedule`;
     trimesterHeader.style.cssText =
       'color: #1565c0; margin-top: 30px; margin-bottom: 20px; font-weight: bold; border-bottom: 2px solid #1565c0; padding-bottom: 10px;';
     container.appendChild(trimesterHeader);
@@ -234,10 +235,9 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
       const noRegistrationsMessage = document.createElement('div');
       noRegistrationsMessage.className = 'card-panel grey lighten-3';
       noRegistrationsMessage.style.cssText = 'text-align: center; padding: 20px; margin: 20px 0;';
-      const capitalizedName = trimesterName.charAt(0).toUpperCase() + trimesterName.slice(1);
       noRegistrationsMessage.innerHTML = `
         <p style="color: #616161; font-size: 14px; margin: 0;">
-          No scheduled lessons for ${capitalizedName} trimester
+          No scheduled lessons for ${periodDisplayName(trimesterName)} trimester
         </p>
       `;
       container.appendChild(noRegistrationsMessage);
@@ -449,9 +449,9 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
       const intentValue = enrollment.reenrollmentIntent as string | undefined;
 
       // Show dropdown for selecting intent
-      const selectedKeep = intentValue === 'keep' ? 'selected' : '';
-      const selectedDrop = intentValue === 'drop' ? 'selected' : '';
-      const selectedChange = intentValue === 'change' ? 'selected' : '';
+      const selectedKeep = intentValue === ReenrollmentIntent.KEEP ? 'selected' : '';
+      const selectedDrop = intentValue === ReenrollmentIntent.DROP ? 'selected' : '';
+      const selectedChange = intentValue === ReenrollmentIntent.CHANGE ? 'selected' : '';
       const selectedNone = !intentValue ? 'selected' : '';
 
       intentCell = `<td>

@@ -1,7 +1,8 @@
 import type {
   AppConfigurationResponse,
   Period,
-} from '../../../models/shared/responses/appConfigurationResponse.js';
+} from '/models/shared/responses/appConfigurationResponse.js';
+import { LoginType } from '/utils/values/loginType.js';
 
 interface AccessCodeManagerShape {
   _accessCodeCache: { accessCode: string; loginType: string } | null;
@@ -27,7 +28,7 @@ interface UserSessionShape {
 export const AccessCodeManager: AccessCodeManagerShape = {
   _accessCodeCache: null as { accessCode: string; loginType: string } | null,
 
-  saveAccessCodeSecurely(accessCode: string, loginType: string = 'employee'): void {
+  saveAccessCodeSecurely(accessCode: string, loginType: string = LoginType.EMPLOYEE): void {
     try {
       const secureData = {
         accessCode: accessCode,

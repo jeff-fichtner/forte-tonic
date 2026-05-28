@@ -11,8 +11,9 @@ import { HttpService } from '../data/httpService.js';
 import type { HttpResult } from '../data/httpService.js';
 import { validateResponseFields } from '../data/responseValidation.js';
 import { resolveParentTrimesters } from '../utilities/trimesterHelpers.js';
+import { periodDisplayName } from '../utilities/periodDisplayName.js';
 import { RegistrationService } from '../data/registrationService.js';
-import type { AvailableTimeSlot } from '../../../models/shared/availableTimeSlot.js';
+import type { AvailableTimeSlot } from '/models/shared/availableTimeSlot.js';
 
 interface RegistrationApiResponse {
   instructors: InstructorLike[];
@@ -88,6 +89,16 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
     const currentData = currentValidated.data;
 
     let nextTrimesterRegistrations: RegistrationLike[];
+    // The student list shown in the registration form (whom to register for)
+    // AND the precomputed availableTimeSlots map (keyed by student grade)
+    // must BOTH reflect the target trimester. When the form targets next fall
+    // (summer period), this is what makes the grade-bump + graduating-student
+    // filter take effect — without this, the form would show the current
+    // trimester's view and the slot lookup would key by stored grade instead
+    // of bumped grade, returning no slots for a student whose bumped grade
+    // doesn't match any current-stored grade in the parent's children.
+    let targetTrimesterStudents = currentData.students;
+    let targetTrimesterAvailableTimeSlots = currentData.availableTimeSlots;
 
     if (ctx.nextTrimester) {
       const nextResult = await HttpService.get<RegistrationApiResponse>(
@@ -95,9 +106,15 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
         { signal }
       );
       if (!nextResult.ok) return nextResult;
-      const nextValidated = validateResponseFields(nextResult, ['registrations']);
+      const nextValidated = validateResponseFields(nextResult, [
+        'registrations',
+        'students',
+        'availableTimeSlots',
+      ]);
       if (!nextValidated.ok) return nextValidated;
       nextTrimesterRegistrations = nextValidated.data.registrations;
+      targetTrimesterStudents = nextValidated.data.students;
+      targetTrimesterAvailableTimeSlots = nextValidated.data.availableTimeSlots;
     } else {
       nextTrimesterRegistrations = currentData.registrations;
     }
@@ -106,11 +123,11 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
       ok: true,
       data: {
         instructors: currentData.instructors,
-        students: currentData.students,
+        students: targetTrimesterStudents,
         classes: currentData.classes,
         nextTrimesterRegistrations,
         currentTrimesterRegistrations: currentData.registrations,
-        availableTimeSlots: currentData.availableTimeSlots,
+        availableTimeSlots: targetTrimesterAvailableTimeSlots,
       },
     };
   }
@@ -119,6 +136,12 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
    * Render the registration form
    */
   async render(): Promise<void> {
+    // FR-006: render the period heading inline at the top of the Registration
+    // tab content. The form targets nextTrimester during enrollment overlaps
+    // and falls back to currentTrimester otherwise — see parentRegistrationTab
+    // fetchData() lines 92-103.
+    this.#renderPeriodHeading();
+
     // If form already exists, update its data instead of recreating
     if (this.registrationForm) {
       // Update existing form with new data
@@ -147,6 +170,41 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
         (excludeId: string | null) => this.refetchAvailability(excludeId)
       );
     }
+  }
+
+  /**
+   * Render the period heading (FR-006) at the top of the Registration tab
+   * content. The heading reads the active trimester (next during enrollment
+   * overlap, current otherwise) and renders the user-facing label via the
+   * display-name helper (FR-005) — so for `summer` it reads "Next Fall."
+   *
+   * Idempotent: if the heading element already exists in the DOM, this
+   * just updates its text. Otherwise it creates and prepends the element
+   * inside the `parent-registration` tab container.
+   */
+  #renderPeriodHeading(): void {
+    const tabContainer = document.getElementById('parent-registration');
+    if (!tabContainer) return;
+
+    const ctx = resolveParentTrimesters();
+    if (!ctx) return;
+
+    // The form targets nextTrimester during enrollment, currentTrimester otherwise
+    const activePeriod = ctx.nextTrimester ?? ctx.currentTrimester;
+    if (!activePeriod) return;
+
+    const HEADING_ID = 'parent-registration-period-heading';
+    let heading = document.getElementById(HEADING_ID) as HTMLHeadingElement | null;
+
+    if (!heading) {
+      heading = document.createElement('h4');
+      heading.id = HEADING_ID;
+      heading.style.cssText =
+        'margin: 0 0 20px 0; color: #2b68a4; text-align: center; font-weight: bold;';
+      // Prepend so it appears at the top of the Registration tab content
+      tabContainer.insertBefore(heading, tabContainer.firstChild);
+    }
+    heading.textContent = `${periodDisplayName(activePeriod)} Registration`;
   }
 
   /**

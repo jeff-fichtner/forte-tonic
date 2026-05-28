@@ -6,8 +6,8 @@
  * business configuration that was previously hardcoded in constants.
  */
 
-import type { RegistrationConfig } from '../../../../models/shared/responses/appConfigurationResponse.js';
-import { DEFAULT_REGISTRATION_CONFIG } from '../../../../models/shared/responses/appConfigurationResponse.js';
+import type { RegistrationConfig } from '/models/shared/responses/appConfigurationResponse.js';
+import { DEFAULT_REGISTRATION_CONFIG } from '/models/shared/responses/appConfigurationResponse.js';
 import { UserSession } from '../../auth/session.js';
 
 const DEFAULTS: RegistrationConfig = DEFAULT_REGISTRATION_CONFIG;
