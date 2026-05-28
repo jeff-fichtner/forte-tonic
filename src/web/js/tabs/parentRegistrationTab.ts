@@ -218,8 +218,17 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
     const ctx = resolveParentTrimesters();
     if (!ctx) return;
 
+    // Hit whichever trimester the form is currently targeting. fetchData()
+    // sources `students` + `availableTimeSlots` from nextTrimester when an
+    // enrollment window is open; this refetch (triggered by selecting a
+    // registration to modify) MUST use the same trimester or the slot map
+    // will be keyed by stored grades while parentChildren carries bumped
+    // grades, causing the slot lookup to return [] and the form to
+    // permanently show no instructors.
+    const targetTrimester = ctx.nextTrimester ?? ctx.currentTrimester;
+
     const signal = this.getAbortSignal();
-    let url = `parent/tabs/registration/${ctx.currentTrimester}?parentId=${parentId}`;
+    let url = `parent/tabs/registration/${targetTrimester}?parentId=${parentId}`;
     if (excludeRegistrationId) {
       url += `&excludeRegistrationId=${excludeRegistrationId}`;
     }
