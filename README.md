@@ -93,7 +93,7 @@ See [docs/technical/ENVIRONMENT_VARIABLES.md](docs/technical/ENVIRONMENT_VARIABL
 
 All endpoints are defined in [src/routes/api.ts](src/routes/api.ts). Highlights:
 
-**Public** (no authentication): `GET /api/health`, `GET /api/version`, `GET /api/configuration`, `POST /api/auth/access-code`
+**Public** (no authentication): `GET /api/health`, `GET /api/version`, `GET /api/configuration`, `POST /api/auth/access-code`, `POST /api/client-error` (frontend error sink)
 
 **Registration**: `POST /api/registrations`, `DELETE /api/registrations/:trimester/:id`, `PATCH /api/registrations/:trimester/:id/intent`
 
@@ -103,7 +103,7 @@ All endpoints are defined in [src/routes/api.ts](src/routes/api.ts). Highlights:
 
 **Tab data**: `GET /api/{parent|instructor|admin}/tabs/{tab-name}/:trimester` — role-scoped tab endpoints return only what the tab needs.
 
-**Admin only**: `POST /api/admin/clear-cache`
+**Admin / debug**: `POST /api/admin/clear-cache`, `POST /api/debug/throw` (error-visibility verification, see [docs/technical/ARCHITECTURE.md](docs/technical/ARCHITECTURE.md) Error & log pipeline)
 
 Endpoint details (request/response shapes per endpoint) live in [docs/technical/API.md](docs/technical/API.md).
 

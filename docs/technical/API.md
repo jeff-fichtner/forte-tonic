@@ -54,7 +54,7 @@ The same access code can also be sent in the request body as `accessCode` or in 
 
 ## Public endpoints
 
-Four endpoints require no authentication. They are deliberately scoped so a fresh browser can bootstrap the SPA.
+Five endpoints require no authentication. Four of them are deliberately scoped so a fresh browser can bootstrap the SPA (`/health`, `/version`, `/configuration`, `/auth/access-code`); the fifth (`/client-error`) is the frontend error sink, public so login-screen crashes are still reportable.
 
 ### GET /api/health
 
