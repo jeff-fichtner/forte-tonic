@@ -135,54 +135,39 @@ export function buildErrorReportingFields(): {
 }
 
 /**
- * Get a Cloud Logging-compatible logger
- * Wraps the application logger to output structured JSON logs
- * that GCP Cloud Logging can parse and index.
+ * Write a structured log entry for Cloud Logging.
+ *
+ * Cloud Run captures stdout and parses lines that are valid JSON as
+ * jsonPayload. Lines written to stderr (or prefixed with emoji) arrive as
+ * textPayload — Cloud Error Reporting cannot read fields from textPayload.
+ *
+ * In development we also mirror to the emoji logger so local output stays
+ * readable, but the authoritative write is always process.stdout.
+ */
+function writeCloudEntry(data: string | LogData, severity: string): void {
+  const formatted = formatForCloudLogging(data, severity);
+  process.stdout.write(JSON.stringify(formatted) + '\n');
+
+  if (process.env.NODE_ENV === 'development') {
+    const appLogger = getAppLogger();
+    const preview = typeof data === 'string' ? data : (data.message ?? severity);
+    if (severity === LOG_SEVERITY.ERROR) appLogger.error(preview);
+    else if (severity === LOG_SEVERITY.WARNING) appLogger.warn(preview);
+    else appLogger.info(preview);
+  }
+}
+
+/**
+ * Get a Cloud Logging-compatible logger.
+ * All methods write structured JSON to stdout so Cloud Run stores entries
+ * as jsonPayload (required for Cloud Error Reporting aggregation).
  *
  * @returns Logger with info, warning, error methods
  */
 export function getCloudLogger(): CloudLogger {
-  const logger = getAppLogger();
-
   return {
-    /**
-     * Log informational message (INFO severity)
-     * Use for successful operations, request completion
-     */
-    info: (data: string | LogData): void => {
-      const formatted = formatForCloudLogging(data, LOG_SEVERITY.INFO);
-      // When the data is an object, stringify it for GCP to parse
-      if (typeof formatted === 'object') {
-        logger.info(JSON.stringify(formatted));
-      } else {
-        logger.info(formatted);
-      }
-    },
-
-    /**
-     * Log warning message (WARNING severity)
-     * Use for 4xx client errors, recoverable issues
-     */
-    warning: (data: string | LogData): void => {
-      const formatted = formatForCloudLogging(data, LOG_SEVERITY.WARNING);
-      if (typeof formatted === 'object') {
-        logger.warn(JSON.stringify(formatted));
-      } else {
-        logger.warn(formatted);
-      }
-    },
-
-    /**
-     * Log error message (ERROR severity)
-     * Use for 5xx server errors, critical issues
-     */
-    error: (data: string | LogData): void => {
-      const formatted = formatForCloudLogging(data, LOG_SEVERITY.ERROR);
-      if (typeof formatted === 'object') {
-        logger.error(JSON.stringify(formatted));
-      } else {
-        logger.error(formatted);
-      }
-    },
+    info: (data: string | LogData): void => writeCloudEntry(data, LOG_SEVERITY.INFO),
+    warning: (data: string | LogData): void => writeCloudEntry(data, LOG_SEVERITY.WARNING),
+    error: (data: string | LogData): void => writeCloudEntry(data, LOG_SEVERITY.ERROR),
   };
 }

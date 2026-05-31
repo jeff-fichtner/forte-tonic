@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 
-// Mock the logger before importing
+// Mock the underlying emoji logger (used only for dev mirroring)
 const mockLogger = {
   info: jest.fn(),
   warn: jest.fn(),
@@ -14,9 +14,16 @@ jest.unstable_mockModule('../../../src/utils/logger.js', () => ({
 const { buildHttpRequestLog, getCloudLogger } = await import('../../../src/common/gcpLogger.js');
 
 describe('gcpLogger', () => {
+  let stdoutSpy: ReturnType<typeof jest.spyOn>;
+
   beforeEach(() => {
     jest.clearAllMocks();
     delete process.env.GCP_PROJECT_ID;
+    stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    stdoutSpy.mockRestore();
   });
 
   describe('buildHttpRequestLog', () => {
@@ -147,59 +154,51 @@ describe('gcpLogger', () => {
       expect(typeof logger.error).toBe('function');
     });
 
-    test('should call underlying logger.info with JSON string for object data', () => {
+    test('should write INFO JSON to stdout for object data', () => {
       const logger = getCloudLogger();
 
       logger.info({ message: 'Test message', context: { userId: '123' } });
 
-      expect(mockLogger.info).toHaveBeenCalledTimes(1);
-      const loggedArg = mockLogger.info.mock.calls[0][0];
-      expect(typeof loggedArg).toBe('string');
-
-      const parsed = JSON.parse(loggedArg);
+      expect(stdoutSpy).toHaveBeenCalledTimes(1);
+      const written = stdoutSpy.mock.calls[0][0] as string;
+      const parsed = JSON.parse(written);
       expect(parsed).toHaveProperty('severity', 'INFO');
       expect(parsed).toHaveProperty('message', 'Test message');
       expect(parsed.context).toEqual({ userId: '123' });
     });
 
-    test('should call underlying logger.warn with JSON string for object data', () => {
+    test('should write WARNING JSON to stdout for object data', () => {
       const logger = getCloudLogger();
 
       logger.warning({ message: 'Warning message' });
 
-      expect(mockLogger.warn).toHaveBeenCalledTimes(1);
-      const loggedArg = mockLogger.warn.mock.calls[0][0];
-      expect(typeof loggedArg).toBe('string');
-
-      const parsed = JSON.parse(loggedArg);
+      expect(stdoutSpy).toHaveBeenCalledTimes(1);
+      const written = stdoutSpy.mock.calls[0][0] as string;
+      const parsed = JSON.parse(written);
       expect(parsed).toHaveProperty('severity', 'WARNING');
       expect(parsed).toHaveProperty('message', 'Warning message');
     });
 
-    test('should call underlying logger.error with JSON string for object data', () => {
+    test('should write ERROR JSON to stdout for object data', () => {
       const logger = getCloudLogger();
 
       logger.error({ message: 'Error message', error: { stack: '...' } });
 
-      expect(mockLogger.error).toHaveBeenCalledTimes(1);
-      const loggedArg = mockLogger.error.mock.calls[0][0];
-      expect(typeof loggedArg).toBe('string');
-
-      const parsed = JSON.parse(loggedArg);
+      expect(stdoutSpy).toHaveBeenCalledTimes(1);
+      const written = stdoutSpy.mock.calls[0][0] as string;
+      const parsed = JSON.parse(written);
       expect(parsed).toHaveProperty('severity', 'ERROR');
       expect(parsed).toHaveProperty('message', 'Error message');
     });
 
-    test('should handle string input', () => {
+    test('should write JSON to stdout for string input', () => {
       const logger = getCloudLogger();
 
       logger.info('Simple string message');
 
-      expect(mockLogger.info).toHaveBeenCalledTimes(1);
-      const loggedArg = mockLogger.info.mock.calls[0][0];
-      expect(typeof loggedArg).toBe('string');
-
-      const parsed = JSON.parse(loggedArg);
+      expect(stdoutSpy).toHaveBeenCalledTimes(1);
+      const written = stdoutSpy.mock.calls[0][0] as string;
+      const parsed = JSON.parse(written);
       expect(parsed).toHaveProperty('severity', 'INFO');
       expect(parsed).toHaveProperty('message', 'Simple string message');
     });
@@ -214,10 +213,9 @@ describe('gcpLogger', () => {
         traceId: 'trace-abc-123',
       });
 
-      expect(mockLogger.info).toHaveBeenCalledTimes(1);
-      const loggedArg = mockLogger.info.mock.calls[0][0];
-      const parsed = JSON.parse(loggedArg);
-
+      expect(stdoutSpy).toHaveBeenCalledTimes(1);
+      const written = stdoutSpy.mock.calls[0][0] as string;
+      const parsed = JSON.parse(written);
       expect(parsed['logging.googleapis.com/trace']).toBe(
         'projects/test-project-123/traces/trace-abc-123'
       );
@@ -231,10 +229,9 @@ describe('gcpLogger', () => {
         traceId: 'trace-abc-123',
       });
 
-      expect(mockLogger.info).toHaveBeenCalledTimes(1);
-      const loggedArg = mockLogger.info.mock.calls[0][0];
-      const parsed = JSON.parse(loggedArg);
-
+      expect(stdoutSpy).toHaveBeenCalledTimes(1);
+      const written = stdoutSpy.mock.calls[0][0] as string;
+      const parsed = JSON.parse(written);
       expect(parsed).not.toHaveProperty('logging.googleapis.com/trace');
     });
 
@@ -247,10 +244,9 @@ describe('gcpLogger', () => {
         message: 'Test without traceId',
       });
 
-      expect(mockLogger.info).toHaveBeenCalledTimes(1);
-      const loggedArg = mockLogger.info.mock.calls[0][0];
-      const parsed = JSON.parse(loggedArg);
-
+      expect(stdoutSpy).toHaveBeenCalledTimes(1);
+      const written = stdoutSpy.mock.calls[0][0] as string;
+      const parsed = JSON.parse(written);
       expect(parsed).not.toHaveProperty('logging.googleapis.com/trace');
     });
   });
