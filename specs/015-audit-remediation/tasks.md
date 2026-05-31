@@ -156,12 +156,12 @@ This phase is intentionally empty. Documenting it here so a fresh reader doesn't
 
 **Independent test criterion** (from spec): `/api/parent/tabs/registration/summer` returns students with grades incremented by one relative to their stored values; an 8th-grade student is dropped; `/api/parent/tabs/registration/fall` leaves grades unchanged.
 
-- [ ] T054 [US7] Author `tests/integration/summerGradeBump.test.ts` using Supertest against the Express app, mocking `googleSheetsDbClient` (per the existing convention in [tests/integration/registrationController.test.ts](../../tests/integration/registrationController.test.ts)). NOTE: test names, describe blocks, and comments must obey Constitution Principle XII — no speckit references.
-- [ ] T055 [US7] In `tests/integration/summerGradeBump.test.ts`, write fixture data: a parent with at least three students at grades 3, 6, and 8 (the current MAX_GRADE). Use mocked fixture data, NOT seeded prod-shape data.
-- [ ] T056 [US7] Add three test cases: (a) `GET /api/parent/tabs/registration/summer` for a parent with students at grades 3, 6, 8 → returns grades 4 and 7, the 8-grader is absent; (b) the same call for `/fall` → grades unchanged; (c) a defensive case clearly labeled as such (e.g., `'defensive: parent with no students'`): `GET /api/parent/tabs/registration/summer` for a parent with NO students → empty list, no errors.
-- [ ] T057 [US7] Run `npm run test:integration` (or `npm run test`) — verify the new test passes; run the full suite to confirm no regressions.
-- [ ] T058 [US7] Verify acceptance: all three test cases pass; assertions match the spec wording; behavior unchanged. Mark US7 ready for commit.
-- [ ] T059 [US7] Commit US7 changes as `test(integration): pin summer grade-bump end-to-end`.
+- [X] T054 [US7] Authored `tests/integration/summerGradeBump.test.ts`. Mocks ONLY the data layer (`googleSheetsDbClient`) + `configurationService` + `emailClient`; the real `EntityQueryService`, `UserRepository`, and controller code all run. That's the "end-to-end" pin: if a future change drops the `period` argument anywhere in the controller → service → repository chain, these tests catch it. The existing `registrationController.test.ts` mocks `entityQueryService` directly, which wouldn't have caught such a regression — this file complements that one.
+- [X] T055 [US7] Fixture data: parent `PARENT1` with phone `5551234567`, four students at grades 3, 6, 8 (`MAX_GRADE`), and `''` (blank/non-numeric). Four grades cover every branch of the bump: bump applies (3→4, 6→7), bump-and-drop (8→9 over MAX_GRADE), and non-numeric skip-bump.
+- [X] T056 [US7] Added three test cases: (a) summer → STUDENT-G3 surfaces with grade 4, STUDENT-G6 with grade 7, STUDENT-G8 dropped, STUDENT-BLANK surfaces with grade ''; (b) fall → all four students surface with stored grades unchanged; (c) defensive (clearly labeled `'defensive: parent with no students'`): summer with empty students fixture → empty list, no errors.
+- [X] T057 [US7] `npm run check:all`: 52 suites / 847 tests pass (was 51/844; +1 suite / +3 tests). Fixed two infrastructure gotchas along the way: (i) the test must call `serviceContainer.initialize()` to wire real services (the existing controller tests mock the container entirely; this file doesn't); (ii) the singleton `userRepository`'s 5-min enrichment cache leaks between tests, so `beforeEach` clears `_enrichedStudentsCache` directly.
+- [X] T058 [US7] Acceptance: all three tests pass; assertions match the spec wording; no regressions in the full suite. Implementation notes captured in the test file header.
+- [X] T059 [US7] Commit US7 changes as `test(integration): pin summer grade-bump end-to-end`. Committed.
 
 ---
 
