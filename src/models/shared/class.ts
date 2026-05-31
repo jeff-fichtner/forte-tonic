@@ -104,7 +104,6 @@ export class Class {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static fromDatabaseRow(record: Record<string, any>): Class {
-    // SC-005: mappings produce number/boolean
     return new Class({
       id: record.id,
       instructorId: record.instructorId,

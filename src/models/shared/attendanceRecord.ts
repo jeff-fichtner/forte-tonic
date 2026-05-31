@@ -110,7 +110,6 @@ export class AttendanceRecord {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static fromDatabaseRow(record: Record<string, any>): AttendanceRecord {
-    // SC-005: mappings produce number/boolean
     return new AttendanceRecord({
       id: record.id,
       registrationId: record.registrationId || '',

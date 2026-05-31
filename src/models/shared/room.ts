@@ -47,7 +47,6 @@ export class Room {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static fromDatabaseRow(record: Record<string, any>): Room {
-    // SC-005: mappings produce boolean
     return new Room({
       id: record.id,
       name: record.name,

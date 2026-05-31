@@ -137,7 +137,6 @@ export class Instructor {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static fromDatabaseRow(record: Record<string, any>): Instructor {
-    // SC-005: mappings produce nested objects
     return new Instructor({
       id: record.id,
       email: record.email,

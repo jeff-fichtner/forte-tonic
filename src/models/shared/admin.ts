@@ -83,7 +83,6 @@ export class Admin {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static fromDatabaseRow(record: Record<string, any>): Admin {
-    // SC-005: mappings produce boolean
     return new Admin({
       id: record.id,
       email: record.email,

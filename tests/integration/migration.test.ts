@@ -102,7 +102,7 @@ describe('Migration system integration', () => {
     await expect(runPendingMigrations(mockDbClient)).resolves.toBeUndefined();
   });
 
-  test('should fail startup when migration file cannot be loaded (SC-003)', async () => {
+  test('should fail startup when migration file cannot be loaded', async () => {
     mockReaddir.mockResolvedValue(['001-bad-migration.ts']);
 
     const { runPendingMigrations } = await import(
