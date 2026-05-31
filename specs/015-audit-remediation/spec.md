@@ -286,7 +286,7 @@ The verification has a checked-in source of truth. The audit findings are curate
 | Mixed not-found semantics (return `null` vs. throw `NotFoundError`) | [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md) |
 | Duplicate response logging (manual + auto) | [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md) |
 | `asString()` silently takes first array element | [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md) |
-| Audit-trail best-effort semantics | [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md) |
+| Audit-trail best-effort semantics | 015 US2 (document the current contract) + [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md) (decide whether to keep best-effort or introduce two-phase ordering) |
 | `authenticateByAccessCode` returns `{success:true, data:null}` on miss | 015 US3 (document the current frontend coupling) + [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md) (decide whether to redesign) |
 | Bus deadlines hardcoded | [018-business-rules-to-config](../018-business-rules-to-config/spec.md) |
 | 12-lessons-per-trimester literal | [018-business-rules-to-config](../018-business-rules-to-config/spec.md) |
@@ -300,7 +300,6 @@ The verification has a checked-in source of truth. The audit findings are curate
 | `.claude/CLAUDE.md` "Recent Changes" stale | [020-project-hygiene](../020-project-hygiene/spec.md) |
 | Postman collection currency unverified | [020-project-hygiene](../020-project-hygiene/spec.md) |
 | Multi-instance cache desync | 015 US2 (document; no code change) |
-| Audit log best-effort contract | 015 US2 (document) + [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md) (decide policy) |
 | Pre-existing speckit-lineage references in src/, tests/, docs/, README (Constitution Principle XII violation) | 015 US9 |
 | `AuthenticatedUser` interface carries response-level `systemError`/`error` fields that shouldn't be on a user shape (surfaced while implementing 015 US4 — the inline shapes already had this; US4 preserved them on the canonical interface) | [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md) |
 | Auth ladder fallback re-tries the SAME path, not the opposite (surfaced by 015 US6 auth middleware tests — the "fall back to opposite method" framing in the source comment is wrong) | [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md) |
