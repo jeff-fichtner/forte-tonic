@@ -507,6 +507,41 @@ describe('RegistrationController Integration Tests', () => {
       );
     });
 
+    test('should reject invalid trimester with the same response shape as POST /api/registrations', async () => {
+      mockUserRepository.getUserByAccessCode.mockResolvedValueOnce({
+        user: mockParent,
+        userType: 'admin',
+      });
+
+      const registrationId = '123e4567-e89b-42d3-8456-426614174000';
+      const deleteResponse = await request(app)
+        .delete(`/api/registrations/autumn/${registrationId}`)
+        .set('x-access-code', '123456')
+        .expect(400);
+
+      const createResponse = await request(app)
+        .post('/api/registrations')
+        .set('x-access-code', '123456')
+        .send({ studentId: 'STUDENT1', registrationType: 'private', trimester: 'autumn' })
+        .expect(400);
+
+      // Both endpoints must produce the same shape on invalid trimester:
+      // same HTTP status, same envelope, same error code/type.
+      expect(deleteResponse.status).toBe(createResponse.status);
+      expect(deleteResponse.body.success).toBe(false);
+      expect(createResponse.body.success).toBe(false);
+      expect(deleteResponse.body.error.code).toBe(createResponse.body.error.code);
+      expect(deleteResponse.body.error.type).toBe(createResponse.body.error.type);
+      expect(deleteResponse.body.error.message).toContain('Invalid trimester');
+      expect(deleteResponse.body.error.message).toContain('autumn');
+      // The service must not be called when the trimester fails validation.
+      expect(mockRegistrationService.deleteRegistration).not.toHaveBeenCalledWith(
+        registrationId,
+        expect.any(String),
+        'autumn'
+      );
+    });
+
     test('should reject deletion by non-admin user with 403 (not 401)', async () => {
       // 403 not 401: the user IS authenticated; they just lack admin role.
       // 401 would (correctly) trigger the frontend's session-expired logout,

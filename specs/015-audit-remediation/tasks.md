@@ -82,12 +82,12 @@ This phase is intentionally empty. Documenting it here so a fresh reader doesn't
 
 **Independent test criterion** (from spec): All three methods validate via the same helper; an invalid trimester on `DELETE /registrations/:trimester/:id` produces the same error envelope as on `POST /registrations`.
 
-- [ ] T020 [US5] Read [src/controllers/registrationController.ts](../../src/controllers/registrationController.ts) `createRegistration` and `updateIntent` to extract the exact `isValidTrimester()` invocation pattern, error class, and response shape they use today; this is the pattern `deleteRegistration` must match.
-- [ ] T021 [US5] Edit [src/controllers/registrationController.ts](../../src/controllers/registrationController.ts) `deleteRegistration` — add `isValidTrimester()` validation at the same point in the request handler that `createRegistration` validates, using the same error class and response shape.
-- [ ] T022 [US5] Add an integration test case in [tests/integration/registrationController.test.ts](../../tests/integration/registrationController.test.ts) that asserts `DELETE /registrations/not-a-real-trimester/abc-123` returns the same HTTP status, error envelope, and error code as `POST /registrations` with an invalid `trimester` in the body.
-- [ ] T023 [US5] Run `npm run check:all`; verify the new test passes and all existing tests still pass.
-- [ ] T024 [US5] Verify acceptance: grep the three trimester-accepting methods (`createRegistration`, `updateIntent`, `deleteRegistration`) — confirm the validation code paths look the same. Mark US5 ready for commit.
-- [ ] T025 [US5] Commit US5 changes as `fix(registration): validate trimester in deleteRegistration`.
+- [X] T020 [US5] Read [src/controllers/registrationController.ts](../../src/controllers/registrationController.ts) `createRegistration` and `updateIntent` to extract the exact `isValidTrimester()` invocation pattern, error class, and response shape they use today. Both use: `if (!isValidTrimester(...)) { throw new ValidationError(\`Invalid trimester: "${...}". Must be one of: ${TRIMESTER_SEQUENCE.join(', ')}\`); }`. Same `ValidationError`, same message format. `isValidTrimester` and `TRIMESTER_SEQUENCE` are already imported.
+- [X] T021 [US5] Added the identical validation block to `deleteRegistration`, immediately after the existing "Missing trimester" check (lines 192–194), using the same `ValidationError` and the same message format.
+- [X] T022 [US5] Added an integration test in [tests/integration/registrationController.test.ts](../../tests/integration/registrationController.test.ts) under the existing `DELETE /api/registrations/:trimester/:id` describe block: sends `DELETE /api/registrations/autumn/<id>` and `POST /api/registrations` with `trimester: 'autumn'`, then asserts both produce the same status, envelope, error code, and error type. Also verifies the service method is NOT called when validation fails.
+- [X] T023 [US5] `npm run check:all`: 46 suites / 775 tests pass (was 774; +1 for the new test).
+- [X] T024 [US5] Acceptance: grep `isValidTrimester` across the controller — all three call sites (`createRegistration` line 54, `updateIntent` line 243, `deleteRegistration` new) use the identical pattern with `ValidationError` and the same message format.
+- [X] T025 [US5] Commit US5 changes as `fix(registration): validate trimester in deleteRegistration`. Committed.
 
 ---
 

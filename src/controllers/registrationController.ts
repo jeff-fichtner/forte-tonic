@@ -192,6 +192,11 @@ export class RegistrationController {
       if (!trimester) {
         throw new ValidationError('Missing trimester');
       }
+      if (!isValidTrimester(trimester)) {
+        throw new ValidationError(
+          `Invalid trimester: "${trimester}". Must be one of: ${TRIMESTER_SEQUENCE.join(', ')}`
+        );
+      }
 
       const registrationService = serviceContainer.get(ServiceKeys.registrationService);
 
