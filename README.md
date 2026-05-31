@@ -1,7 +1,7 @@
 # Tonic Music Registration System
 
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
 [![Main Branch](https://github.com/jeff-fichtner/forte-tonic/actions/workflows/main-branch.yml/badge.svg)](https://github.com/jeff-fichtner/forte-tonic/actions/workflows/main-branch.yml)
 [![Dev Branch](https://github.com/jeff-fichtner/forte-tonic/actions/workflows/dev-branch.yml/badge.svg?branch=dev)](https://github.com/jeff-fichtner/forte-tonic/actions/workflows/dev-branch.yml)
 
@@ -51,7 +51,7 @@ Originally a Google Apps Script application, migrated to Node.js for improved pe
 - RESTful API with Express.js
 - Service container for dependency injection
 
-See [docs/technical/ARCHITECTURE_COMPLETE.md](docs/technical/ARCHITECTURE_COMPLETE.md) for detailed architecture information.
+See the documentation in [docs/](docs/) for additional details. (A consolidated architecture reference will land with spec 015 US2; see [specs/015-audit-remediation/spec.md](specs/015-audit-remediation/spec.md).)
 
 ## Getting Started
 
@@ -91,13 +91,21 @@ See [docs/technical/ENVIRONMENT_VARIABLES.md](docs/technical/ENVIRONMENT_VARIABL
 
 ## API Overview
 
-**Authentication**: `/api/authenticateByAccessCode`
-**Users**: `/api/getStudents`, `/api/getInstructors`, `/api/getAdmins`
-**Registration**: `/api/registrations` (POST, DELETE), `/api/getClasses`
-**Attendance**: `/api/attendance`, `/api/attendance/summary/:id`
-**System**: `/api/health`, `/api/version`
+All endpoints are defined in [src/routes/api.ts](src/routes/api.ts). Highlights:
 
-Full API docs in `docs/generated/`.
+**Public** (no authentication): `GET /api/health`, `GET /api/version`, `GET /api/configuration`, `POST /api/auth/access-code`
+
+**Registration**: `POST /api/registrations`, `DELETE /api/registrations/:trimester/:id`, `PATCH /api/registrations/:trimester/:id/intent`
+
+**Attendance**: `POST /api/attendance`, `GET /api/attendance/summary/:registrationId`
+
+**Feedback**: `POST /api/feedback`
+
+**Tab data**: `GET /api/{parent|instructor|admin}/tabs/{tab-name}/:trimester` (per Constitution Principle VIII)
+
+**Admin only**: `POST /api/admin/clear-cache`
+
+A consolidated API reference (request/response shapes) lands with spec 015 US2.
 
 ## Development
 
@@ -186,15 +194,15 @@ config/                # ESLint, Prettier, Jest
 
 ## Documentation
 
-**Business**: [Hosting Proposal](docs/business/TECHNICAL_HOSTING_PROPOSAL.md) | [Privacy Policy](docs/business/PRIVACY_POLICY.md)  
-**Technical**: [Architecture](docs/technical/ARCHITECTURE.md) | [Environment Setup](docs/technical/ENVIRONMENT_VARIABLES.md) | [Migration Guide](docs/technical/MIGRATION_SUMMARY.md)
+**Business**: [Privacy Policy](docs/business/PRIVACY_POLICY.md) | [Local Setup](docs/business/NODE_SETUP.md)
+**Technical**: [Environment Variables](docs/technical/ENVIRONMENT_VARIABLES.md) | [Version Display](docs/technical/VERSION_DISPLAY.md) | [Branch Protection](docs/technical/BRANCH_PROTECTION.md)
+
+(Consolidated architecture, API, and frontend reference docs land with spec 015 US2.)
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License. (LICENSE file currently missing; tracked in [020-project-hygiene](specs/020-project-hygiene/spec.md).)
 
 ---
 
-**Version**: 1.1.15
-**Last Updated**: October 15, 2025  
-**Node.js**: 18+
+**Node.js**: 18+ — see `package.json` for the current version.

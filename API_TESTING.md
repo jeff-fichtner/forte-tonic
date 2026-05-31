@@ -1,71 +1,26 @@
-# API Testing Instructions
+# API Testing
 
-## Server
+The canonical API testing artifacts are:
 
-- **Port**: 3000 (default)
-- **Base URL**: `http://localhost:3000`
+- **Postman collection**: [scripts/postman/tonic-api.postman_collection.json](scripts/postman/tonic-api.postman_collection.json) — import into Postman alongside one of the environment files in [scripts/postman/](scripts/postman/) (`local.postman_environment.json`, `staging.postman_environment.json`, or `production.postman_environment.json`).
+- **Route definitions**: [src/routes/api.ts](src/routes/api.ts) — the source of truth for every endpoint, method, path, and auth requirement.
+- **Consolidated API reference**: lands with spec 015 US2 as `docs/technical/API.md` (request/response shapes per endpoint).
 
-## Start Server
+## Local server
 
 ```bash
 npm run dev
 ```
 
-## API Endpoints
+Server runs on `http://localhost:3000` by default. See [docs/technical/ENVIRONMENT_VARIABLES.md](docs/technical/ENVIRONMENT_VARIABLES.md) for configurable settings.
 
-### Get All Classes
+## Authentication
 
-```bash
-curl http://localhost:3000/api/classes
-```
+Every endpoint except the four public ones (`/health`, `/version`, `/configuration`, `/auth/access-code`) requires the `x-access-code` and `x-login-type` request headers. The Postman collection's `local` environment includes a test access code; or sign in through the running UI at `http://localhost:3000` and copy the `forte_auth_session` localStorage value to construct headers manually.
 
-Filter response:
+## Response envelope
 
-```bash
-curl -s http://localhost:3000/api/classes | jq '[.data[] | {id, title, isRestricted, minimumGrade, maximumGrade}]'
-```
+All responses follow Constitution Principle IV:
 
-### Get All Instructors
-
-```bash
-curl http://localhost:3000/api/instructors
-```
-
-Filter response:
-
-```bash
-curl -s http://localhost:3000/api/instructors | jq '[.data[] | {id, firstName, lastName, gradeRange}]'
-```
-
-### Get Parent Registration Data
-
-```bash
-curl "http://localhost:3000/api/parent/tabs/registration?parentId=P001"
-```
-
-## Response Format
-
-All endpoints return:
-
-```json
-{
-  "success": true,
-  "data": [...]
-}
-```
-
-## Key Fields
-
-### Classes
-
-- `isRestricted`: `"TRUE"` or `null` - restricted classes hidden from parent registration
-- `minimumGrade`, `maximumGrade`: `"0"` to `"8"` (0 = Kindergarten)
-
-### Instructors
-
-- `gradeRange`: `{ "minimum": "0", "maximum": "8" }` - grades instructor can teach
-
-## Notes
-
-- No authentication required for local development
-- Grade 0 = Kindergarten, 1-8 = grades 1-8
+- Success: `{ "success": true, "data": ... }`
+- Error: `{ "success": false, "error": { "message": "...", "code": "...", "type": "..." } }`
