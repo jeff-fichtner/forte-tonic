@@ -126,8 +126,9 @@ This is the largest User Story. Tasks are grouped per doc; the three docs can be
 - [ ] T041 [US2] Edit [CONTRIBUTING.md](../../CONTRIBUTING.md) — add a Pre-Commit Checklist item: "Did your change affect anything documented in `docs/technical/ARCHITECTURE.md`, `API.md`, or `FRONTEND.md`? If yes, update the relevant doc in this PR."
 - [ ] T042 [US2] Verify FR-003 topic coverage: for each of the three new docs, walk its `##` heading list against the corresponding "Concretely" bullet list in [spec.md](spec.md) US2 (ARCHITECTURE.md against the ARCHITECTURE Concretely list; API.md against the API Concretely list; FRONTEND.md against the FRONTEND Concretely list). Every Concretely bullet MUST have a matching `##` heading. If any bullet has no heading, the default action is to author the missing section. Dropping a topic is a spec-level change and requires editing [spec.md](spec.md) US2's Concretely list AND adding a Clarifications-session bullet documenting the decision — NOT just a PR-description note. Defer the merge until both edits land.
 - [ ] T043 [US2] Verify acceptance: hand a fresh reader (human or AI in a clean session) only the three new docs and ask the eight US2 acceptance-scenario questions. All eight answered correctly. If any fails, edit the relevant doc and re-test.
-- [ ] T044 [US2] Verify FR-010: each doc carries a "Maintenance contract" header naming its code surface area; `CONTRIBUTING.md` checklist line is present. Mark US2 ready for PR.
-- [ ] T045 [US2] Commit US2 changes as `docs: add ARCHITECTURE, API, FRONTEND reference docs + CONTRIBUTING maintenance contract` and open PR.
+- [ ] T044 [US2] Verify FR-010: each doc carries a "Maintenance contract" header naming its code surface area; `CONTRIBUTING.md` checklist line is present.
+- [ ] T045 [US2] Replace the "lands with spec 015 US2" forward-references introduced by US1 with real links to the now-existing docs. Specifically: (a) [README.md](../../README.md) — the System Architecture pointer (replace "A consolidated architecture reference will land with spec 015 US2" with a link to `docs/technical/ARCHITECTURE.md`); the API Overview footer ("A consolidated API reference (request/response shapes) lands with spec 015 US2" → link to `docs/technical/API.md`); the Documentation section footer ("Consolidated architecture, API, and frontend reference docs land with spec 015 US2" → links to all three new files). (b) [API_TESTING.md](../../API_TESTING.md) — the "Consolidated API reference" bullet (replace "lands with spec 015 US2" with a real link to `docs/technical/API.md`). (c) [docs/README.md](../../docs/README.md) — the `generated/` bullet ("A consolidated API reference lands with spec 015 US2" → link to `docs/technical/API.md`). Grep for the literal string `spec 015 US2` to find each occurrence. Mark US2 ready for PR.
+- [ ] T046 [US2] Commit US2 changes as `docs: add ARCHITECTURE, API, FRONTEND reference docs + CONTRIBUTING maintenance contract` and open PR.
 
 ---
 
@@ -139,15 +140,15 @@ This is the largest User Story. Tasks are grouped per doc; the three docs can be
 
 **Defer-always policy**: If a test reveals an apparent bug, pin the actual behavior in the test (with a comment explaining the discrepancy and a severity assessment) and open a new spec for the fix. US6 ships on coverage, not on fixes. Critical findings may be escalated out of band, but the default is defer.
 
-- [ ] T046 [P] [US6] Create new directory `tests/unit/middleware/`. Author `tests/unit/middleware/auth.test.ts` exercising [src/middleware/auth.ts](../../src/middleware/auth.ts). Mock `googleSheetsDbClient`. Cover the auth ladder: (a) 10-digit numeric `accessCode` → parent phone lookup; (b) 6-digit numeric → employee access code; (c) explicit `x-login-type` header overrides the heuristic (pin whichever behavior the code actually exhibits and explain in a comment per the defer-always policy); (d) invalid code → `req.currentUser` ends `null`. **Default action on any discovered bug is defer** — pin the actual behavior in the test with a comment, route the fix to a new spec, and merge US6. The Edge Cases section's escalate-out-of-band hatch exists for findings the implementer judges critical at the moment of discovery; it does NOT override the defer-always policy automatically. Escalation triggers human review of the policy carve-out, not an in-PR fix.
-- [ ] T047 [P] [US6] Create new directory `tests/unit/cache/`. Author `tests/unit/cache/cacheService.test.ts` exercising [src/cache/cacheService.ts](../../src/cache/cacheService.ts). Cover: (a) read after TTL expires returns `undefined`; (b) `maxSize` exceeded → oldest entry evicted; (c) explicit clear empties the cache.
-- [ ] T048 [P] [US6] Author `tests/unit/repositories/periodRepository.test.ts` exercising [src/repositories/periodRepository.ts](../../src/repositories/periodRepository.ts). Mock `googleSheetsDbClient`. Cover: (a) `getAll()` returns the rows the mock provides; (b) cache-skip behavior — periods are read live every call.
-- [ ] T049 [P] [US6] Author `tests/unit/repositories/programRepository.test.ts` exercising [src/repositories/programRepository.ts](../../src/repositories/programRepository.ts). Mock `googleSheetsDbClient`. Cover its public methods (`getClasses`, `getClassById` per the audit map).
-- [ ] T050 [P] [US6] Author `tests/unit/utils/logger.test.ts` exercising [src/utils/logger.ts](../../src/utils/logger.ts). Cover log-level routing logic — at minimum, `info` vs `warn` vs `error` vs `debug` get routed to the corresponding console method or short-circuit per configured level.
-- [ ] T051 [US6] Run `npm run test:unit`; verify all new and existing tests pass.
-- [ ] T052 [US6] Run `npm run test:coverage` and confirm nonzero coverage for each of the five files added in T046–T050.
-- [ ] T053 [US6] Verify acceptance: tests follow the existing mocking convention (mock `googleSheetsDbClient`, never hit the real Sheets API). If T046 surfaced an apparent auth-ladder bug, confirm it's pinned-with-comment per the defer-always policy and a successor spec has been opened (or noted for opening). Mark US6 ready for PR.
-- [ ] T054 [US6] Commit US6 changes as `test: cover auth middleware, cacheService, periodRepository, programRepository, logger` and open PR.
+- [ ] T047 [P] [US6] Create new directory `tests/unit/middleware/`. Author `tests/unit/middleware/auth.test.ts` exercising [src/middleware/auth.ts](../../src/middleware/auth.ts). Mock `googleSheetsDbClient`. Cover the auth ladder: (a) 10-digit numeric `accessCode` → parent phone lookup; (b) 6-digit numeric → employee access code; (c) explicit `x-login-type` header overrides the heuristic (pin whichever behavior the code actually exhibits and explain in a comment per the defer-always policy); (d) invalid code → `req.currentUser` ends `null`. **Default action on any discovered bug is defer** — pin the actual behavior in the test with a comment, route the fix to a new spec, and merge US6. The Edge Cases section's escalate-out-of-band hatch exists for findings the implementer judges critical at the moment of discovery; it does NOT override the defer-always policy automatically. Escalation triggers human review of the policy carve-out, not an in-PR fix.
+- [ ] T048 [P] [US6] Create new directory `tests/unit/cache/`. Author `tests/unit/cache/cacheService.test.ts` exercising [src/cache/cacheService.ts](../../src/cache/cacheService.ts). Cover: (a) read after TTL expires returns `undefined`; (b) `maxSize` exceeded → oldest entry evicted; (c) explicit clear empties the cache.
+- [ ] T049 [P] [US6] Author `tests/unit/repositories/periodRepository.test.ts` exercising [src/repositories/periodRepository.ts](../../src/repositories/periodRepository.ts). Mock `googleSheetsDbClient`. Cover: (a) `getAll()` returns the rows the mock provides; (b) cache-skip behavior — periods are read live every call.
+- [ ] T050 [P] [US6] Author `tests/unit/repositories/programRepository.test.ts` exercising [src/repositories/programRepository.ts](../../src/repositories/programRepository.ts). Mock `googleSheetsDbClient`. Cover its public methods (`getClasses`, `getClassById` per the audit map).
+- [ ] T051 [P] [US6] Author `tests/unit/utils/logger.test.ts` exercising [src/utils/logger.ts](../../src/utils/logger.ts). Cover log-level routing logic — at minimum, `info` vs `warn` vs `error` vs `debug` get routed to the corresponding console method or short-circuit per configured level.
+- [ ] T052 [US6] Run `npm run test:unit`; verify all new and existing tests pass.
+- [ ] T053 [US6] Run `npm run test:coverage` and confirm nonzero coverage for each of the five files added in T047–T051.
+- [ ] T054 [US6] Verify acceptance: tests follow the existing mocking convention (mock `googleSheetsDbClient`, never hit the real Sheets API). If T047 surfaced an apparent auth-ladder bug, confirm it's pinned-with-comment per the defer-always policy and a successor spec has been opened (or noted for opening). Mark US6 ready for PR.
+- [ ] T055 [US6] Commit US6 changes as `test: cover auth middleware, cacheService, periodRepository, programRepository, logger` and open PR.
 
 ---
 
@@ -157,12 +158,12 @@ This is the largest User Story. Tasks are grouped per doc; the three docs can be
 
 **Independent test criterion** (from spec): `/api/parent/tabs/registration/summer` returns students with grades incremented by one relative to their stored values; an 8th-grade student (`MAX_GRADE`) is dropped; `/api/parent/tabs/registration/fall` leaves grades unchanged.
 
-- [ ] T055 [US7] Author `tests/integration/summerGradeBump.test.ts` using Supertest against the Express app, mocking `googleSheetsDbClient` (per the existing convention in [tests/integration/registrationController.test.ts](../../tests/integration/registrationController.test.ts)).
-- [ ] T056 [US7] In `tests/integration/summerGradeBump.test.ts`, write fixture data: a parent with at least three students at grades 3, 6, and 8 (`MAX_GRADE`). Use mocked fixture data, NOT seeded prod-shape data.
-- [ ] T057 [US7] Add three test cases — two from the spec's US7 acceptance scenarios and one defensive case (clearly labeled as such in the test name, e.g., `'defensive: parent with no students'`): (a) `GET /api/parent/tabs/registration/summer` for a parent with students at grades 3, 6, 8 → returns grades 4 and 7, the 8-grader is absent (spec AS#1 + AS#2 combined); (b) the same call for `/fall` → grades unchanged (spec AS#3); (c) defensive-beyond-spec: `GET /api/parent/tabs/registration/summer` for a parent with NO students → empty list, no errors. The defensive case is an editorial addition; it doesn't change the spec's contract but it does guard against a null-handling regression.
-- [ ] T058 [US7] Run `npm run test:integration` (or `npm run test`) — verify the new test passes; run the full suite to confirm no regressions.
-- [ ] T059 [US7] Verify acceptance: all three test cases pass; assertions match the spec wording; behavior unchanged. Mark US7 ready for PR.
-- [ ] T060 [US7] Commit US7 changes as `test(integration): pin summer grade-bump end-to-end` and open PR.
+- [ ] T056 [US7] Author `tests/integration/summerGradeBump.test.ts` using Supertest against the Express app, mocking `googleSheetsDbClient` (per the existing convention in [tests/integration/registrationController.test.ts](../../tests/integration/registrationController.test.ts)).
+- [ ] T057 [US7] In `tests/integration/summerGradeBump.test.ts`, write fixture data: a parent with at least three students at grades 3, 6, and 8 (`MAX_GRADE`). Use mocked fixture data, NOT seeded prod-shape data.
+- [ ] T058 [US7] Add three test cases — two from the spec's US7 acceptance scenarios and one defensive case (clearly labeled as such in the test name, e.g., `'defensive: parent with no students'`): (a) `GET /api/parent/tabs/registration/summer` for a parent with students at grades 3, 6, 8 → returns grades 4 and 7, the 8-grader is absent (spec AS#1 + AS#2 combined); (b) the same call for `/fall` → grades unchanged (spec AS#3); (c) defensive-beyond-spec: `GET /api/parent/tabs/registration/summer` for a parent with NO students → empty list, no errors. The defensive case is an editorial addition; it doesn't change the spec's contract but it does guard against a null-handling regression.
+- [ ] T059 [US7] Run `npm run test:integration` (or `npm run test`) — verify the new test passes; run the full suite to confirm no regressions.
+- [ ] T060 [US7] Verify acceptance: all three test cases pass; assertions match the spec wording; behavior unchanged. Mark US7 ready for PR.
+- [ ] T061 [US7] Commit US7 changes as `test(integration): pin summer grade-bump end-to-end` and open PR.
 
 ---
 
@@ -172,12 +173,12 @@ This is the largest User Story. Tasks are grouped per doc; the three docs can be
 
 **Independent test criterion** (from spec/FR-009): `findings.md` exists; every finding in it has a row in the US8 routing table; every routing-table target spec addresses the routed item with enough context that a reader unfamiliar with the audit can act on it.
 
-- [ ] T061 [US8] Author `specs/015-audit-remediation/findings.md`. Format: one short heading per finding (e.g., `### Bus deadlines hardcoded`), one-sentence summary, file:line reference. Curated and deduplicated — NOT a verbatim chat paste. Silently correct any errors from the original audit conversation (notably the test-coverage subagent missed the nested test directories under `tests/unit/{controllers,services,common,infrastructure}/`).
-- [ ] T062 [US8] Cross-walk `findings.md` against the US8 routing table in [spec.md](spec.md): every finding heading must have a matching routing-table row, and every routing-table row must correspond to a finding heading. Edit either artifact to bring them into lockstep.
-- [ ] T063 [US8] For each routing-table target spec, open it and verify the routed item appears as a dedicated heading or bullet in its "Findings to address" section with enough context that a reader unfamiliar with the audit can act on it. Specs to check: [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md), [017-uniform-crud-completion](../017-uniform-crud-completion/spec.md), [018-business-rules-to-config](../018-business-rules-to-config/spec.md), [019-frontend-test-infrastructure](../019-frontend-test-infrastructure/spec.md), [020-project-hygiene](../020-project-hygiene/spec.md).
-- [ ] T064 [US8] If T063 found any successor stub missing a routed item, edit that stub's "Findings to address" section to add the item per the heading-or-bullet bar.
-- [ ] T065 [US8] Verify acceptance: re-walk T062 and T063 once more after any T064 edits; confirm zero gaps. Mark US8 ready for PR.
-- [ ] T066 [US8] Commit US8 changes as `docs(specs): add findings.md and verify audit routing across 015-020` and open PR. If T064 edited any successor stub, include those edits in the same PR (they are scoped to closing the routing-table contract).
+- [ ] T062 [US8] Author `specs/015-audit-remediation/findings.md`. Format: one short heading per finding (e.g., `### Bus deadlines hardcoded`), one-sentence summary, file:line reference. Curated and deduplicated — NOT a verbatim chat paste. Silently correct any errors from the original audit conversation (notably the test-coverage subagent missed the nested test directories under `tests/unit/{controllers,services,common,infrastructure}/`).
+- [ ] T063 [US8] Cross-walk `findings.md` against the US8 routing table in [spec.md](spec.md): every finding heading must have a matching routing-table row, and every routing-table row must correspond to a finding heading. Edit either artifact to bring them into lockstep.
+- [ ] T064 [US8] For each routing-table target spec, open it and verify the routed item appears as a dedicated heading or bullet in its "Findings to address" section with enough context that a reader unfamiliar with the audit can act on it. Specs to check: [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md), [017-uniform-crud-completion](../017-uniform-crud-completion/spec.md), [018-business-rules-to-config](../018-business-rules-to-config/spec.md), [019-frontend-test-infrastructure](../019-frontend-test-infrastructure/spec.md), [020-project-hygiene](../020-project-hygiene/spec.md).
+- [ ] T065 [US8] If T064 found any successor stub missing a routed item, edit that stub's "Findings to address" section to add the item per the heading-or-bullet bar.
+- [ ] T066 [US8] Verify acceptance: re-walk T063 and T064 once more after any T065 edits; confirm zero gaps. Mark US8 ready for PR.
+- [ ] T067 [US8] Commit US8 changes as `docs(specs): add findings.md and verify audit routing across 015-020` and open PR. If T065 edited any successor stub, include those edits in the same PR (they are scoped to closing the routing-table contract).
 
 ---
 
@@ -185,10 +186,10 @@ This is the largest User Story. Tasks are grouped per doc; the three docs can be
 
 **Purpose**: Once all eight User Stories have shipped, confirm the spec's overall success condition.
 
-- [ ] T067 Run the "fresh AI agent" test from the spec's Success Criteria: hand a new agent (clean session) the project, the constitution, and the three new reference docs (`docs/technical/ARCHITECTURE.md`, `API.md`, `FRONTEND.md`). Ask the eight questions from US2's acceptance scenarios. All eight must be answered correctly using only the docs (no source code lookup). If any fails, open a follow-up doc-fix PR — do NOT mark 015 closed.
-- [ ] T068 Confirm `npm run check:all` passes on the merged branch after all eight User Stories have landed.
-- [ ] T069 Update [.claude/CLAUDE.md](../../.claude/CLAUDE.md) `## Recent Changes` section specifically (NOT the `## Active Technologies` section, which was auto-maintained by `update-agent-context.sh` during `/speckit.plan`) to add a one-line `015-audit-remediation:` entry. The section is currently stale (only 002 listed); this top-up scopes to 015's own visibility, with the broader staleness fix routed to 020.
-- [ ] T070 Mark [spec.md](spec.md) status `Implemented` (from `Draft`) when all User Story PRs have merged.
+- [ ] T068 Run the "fresh AI agent" test from the spec's Success Criteria: hand a new agent (clean session) the project, the constitution, and the three new reference docs (`docs/technical/ARCHITECTURE.md`, `API.md`, `FRONTEND.md`). Ask the eight questions from US2's acceptance scenarios. All eight must be answered correctly using only the docs (no source code lookup). If any fails, open a follow-up doc-fix PR — do NOT mark 015 closed.
+- [ ] T069 Confirm `npm run check:all` passes on the merged branch after all eight User Stories have landed.
+- [ ] T070 Update [.claude/CLAUDE.md](../../.claude/CLAUDE.md) `## Recent Changes` section specifically (NOT the `## Active Technologies` section, which was auto-maintained by `update-agent-context.sh` during `/speckit.plan`) to add a one-line `015-audit-remediation:` entry. The section is currently stale (only 002 listed); this top-up scopes to 015's own visibility, with the broader staleness fix routed to 020.
+- [ ] T071 Mark [spec.md](spec.md) status `Implemented` (from `Draft`) when all User Story PRs have merged.
 
 ---
 
@@ -210,7 +211,7 @@ Within each User Story phase, tasks marked `[P]` can run in parallel:
 - **US3**: T013, T014, T015, T016 can run in parallel (four independent file edits).
 - **US4**: T028, T029, T030 can run in parallel after T027.
 - **US2**: T037, T038, T039 (three doc authoring tasks) can run in parallel after T036; T040 follows T039.
-- **US6**: T046, T047, T048, T049, T050 (five test files) can run in parallel.
+- **US6**: T047, T048, T049, T050, T051 (five test files) can run in parallel.
 
 Across User Stories: All eight User Story phases (3 through 10) are themselves parallel candidates if multiple contributors are working concurrently — they touch disjoint files in nearly every case (the only overlap is potential US2/US1 coordination on README links, handled by the soft coupling above).
 
@@ -243,15 +244,15 @@ Across User Stories: All eight User Story phases (3 through 10) are themselves p
 - Doc-only PRs (US1, US2's Markdown deliverables, US8) MUST be reviewable as rendered Markdown (NFR-004) — no images, no external assets.
 - If any User Story turns out to need a constitution amendment, stop and amend the constitution in a separate PR first (NFR-002).
 
-**Total task count**: 70 tasks across 11 phases.
+**Total task count**: 71 tasks across 11 phases.
 
 **Task count per User Story**:
 - US1 (Phase 3): 10 tasks
 - US3 (Phase 4): 7 tasks
 - US5 (Phase 5): 6 tasks
 - US4 (Phase 6): 10 tasks
-- US2 (Phase 7): 10 tasks
+- US2 (Phase 7): 11 tasks
 - US6 (Phase 8): 9 tasks
 - US7 (Phase 9): 6 tasks
 - US8 (Phase 10): 6 tasks
-- Setup + Foundational + Polish: 6 tasks (T001–T002, T067–T070)
+- Setup + Foundational + Polish: 6 tasks (T001–T002, T068–T071)
