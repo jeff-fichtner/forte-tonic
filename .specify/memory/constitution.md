@@ -1,6 +1,43 @@
 <!--
   SYNC IMPACT REPORT
   ==================
+  Version change: 2.3.1 → 2.4.0
+  Bump rationale: MINOR — adds new Principle XII (Speckit Stays in Speckit
+    Spaces). Codifies a rule that was previously implicit: the shipped
+    artifact must stand on its own without the speckit workflow. If the
+    `specs/` and `.specify/` folders were deleted, every other file in the
+    repo must still make sense. Source code, tests, README, CONTRIBUTING.md,
+    and docs/ must not cite speckit artifacts (specs, FRs, Principles,
+    User Stories) by name or number — they describe what the code does in
+    terms of the code itself. Constitutional principles are referenced
+    from speckit artifacts (specs/plans/tasks) but never into the shipped
+    artifact. `.claude/` is an explicit exception (AI-instruction space).
+
+  Carried forward from 2.3.1: factual update reflecting feature 014's
+    addition of a fourth trimester (`summer`). No principle changes; only
+    the preamble's "three trimesters" wording and Principle IX's
+    per-trimester sheet list updated to include `summer` /
+    `registrations_summer`.
+
+  Modified principles: None modified in 2.4.0
+  Added principles: XII (Speckit Stays in Speckit Spaces)
+  Modified sections: Versioning footer
+  Removed sections: None
+  Templates requiring updates:
+    - .specify/templates/plan-template.md ✅ no changes needed (existing
+      Constitution Check section already covers any new principle)
+    - .specify/templates/spec-template.md ✅ no changes needed
+    - .specify/templates/tasks-template.md ✅ no changes needed
+  Follow-up TODOs:
+    - The current codebase has pre-existing references to FR-XXX,
+      Constitution Principles, and spec numbers in src/, tests/,
+      README.md, docs/, and elsewhere (introduced under prior specs,
+      notably 014). These are tech debt with respect to Principle XII
+      and must be swept. The sweep is scoped to 015-audit-remediation
+      User Story 9, which exists specifically to bring the codebase
+      into Principle XII compliance.
+
+  ----- Previous version: 2.3.0 → 2.3.1 (carried-forward report below) -----
   Version change: 2.3.0 → 2.3.1
   Bump rationale: PATCH — factual update reflecting feature 014's addition of
     a fourth trimester (`summer`). No principle changes; only the preamble's
@@ -188,6 +225,17 @@ The backend is a generic application server. Every entity flows through the same
 - No layer may skip its adjacent layer to "help" a specific feature — controllers call services, services call repositories, repositories call the database client
 - The backend MUST NOT model itself around frontend feature names, screen names, or user-facing workflows — it serves data through uniform resource endpoints that any client could consume
 
+### XII. Speckit Stays in Speckit Spaces
+
+The speckit workflow (`specs/`, `.specify/`, `.claude/`) is AI-assist scaffolding. The shipped artifact MUST stand on its own without it.
+
+- If `specs/` and `.specify/` were deleted, every other file in the repository MUST still make sense to a reader.
+- Source code (`src/`, `tests/`) MUST NOT reference specs, FRs, NFRs, Constitution Principles, User Stories, or any other speckit artifact by name or number. Comments describe what the code does and why in terms of the code itself.
+- Shipped documentation (`README.md`, `CONTRIBUTING.md`, `docs/`, build/CI files, scripts) MUST NOT reference speckit either. The `docs/` tree is the shipped reference; it describes the system, not how the system came to be specified.
+- When a comment or doc previously said "(per FR-003)" or "routed to spec 017," it MUST be rewritten to state the underlying rule directly, or removed if the citation was the only meaning.
+- The constitution itself (`.specify/memory/constitution.md`) is the source of truth for these principles and SHOULD be referenced from speckit artifacts (specs, plans, tasks). It MUST NOT be cited from `src/`, `tests/`, `README.md`, or `docs/`.
+- Exceptions: `.claude/CLAUDE.md` MAY reference speckit because it is AI-instruction space. Tests that exist specifically to verify speckit machinery (if any ever exist) MAY reference it.
+
 ## Technology Constraints
 
 - **Runtime**: Node.js with ES modules
@@ -237,4 +285,4 @@ The backend is a generic application server. Every entity flows through the same
 - All implementation plans MUST include a Constitution Check section verifying compliance
 - Complexity added in violation of these principles MUST include a Complexity Tracking entry justifying the deviation
 
-**Version**: 2.3.1 | **Ratified**: 2026-02-18 | **Last Amended**: 2026-05-27
+**Version**: 2.4.0 | **Ratified**: 2026-02-18 | **Last Amended**: 2026-05-31
