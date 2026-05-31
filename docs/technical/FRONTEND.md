@@ -9,6 +9,7 @@ This document MUST be updated in the same PR as any change to:
 - `src/web/js/main.ts` — bootstrap order or top-level state.
 - `src/web/js/core/baseTab.ts`, `src/web/js/core/tabController.ts` — tab lifecycle, registration, or switching behavior.
 - `src/web/js/data/httpService.ts` — the HTTP contract, headers, or error categorization.
+- `src/web/js/debug/errorReporting.ts`, `src/web/js/debug/debugThrows.ts` — global error handlers, the `window.throw*` console helpers, and the `/api/client-error` payload shape.
 - `src/web/js/auth/session.ts`, `src/web/js/auth/loginModal.ts` — credential storage, login flow, or the canonical `AuthenticatedUser` shape.
 - `src/web/js/data/registrationService.ts` — frontend orchestration of registration submissions.
 - `vite.config.ts` — bundling, path aliases, or dev-server serving rules.
@@ -74,6 +75,24 @@ Methods never throw. Callers always get a result; they branch on `ok`. There is 
 - **403 Forbidden** — surfaces as an error result. The session is preserved; the user is logged in but lacks permission for this specific action.
 
 This is why backend controllers throw `ForbiddenError` (403) for role failures instead of `UnauthorizedError` (401) — a 401 would force a logout on an otherwise-valid session.
+
+## Error visibility
+
+Two global handlers installed at the very top of [src/web/js/main.ts](../../src/web/js/main.ts) (before anything else can throw) catch uncaught browser errors and POST them to the backend so they land in Cloud Logging:
+
+- `window.addEventListener('error', ...)` catches synchronous throws and runtime errors.
+- `window.addEventListener('unhandledrejection', ...)` catches promise rejections nobody awaited.
+
+Both fire into [src/web/js/debug/errorReporting.ts](../../src/web/js/debug/errorReporting.ts) which builds a payload of `{ message, stack, source, url, userAgent, path, userType }` and POSTs to `/api/client-error`. The POST uses `fetch()` directly — not `HttpService` — so a report still goes out if `HttpService` itself is the source of the error being reported. Failures inside the report path are swallowed: there is nowhere else to report them and we must not create a loop.
+
+The endpoint is **unauthenticated** so login-screen crashes (the user is not yet logged in) still reach Cloud Logging. The backend logs the payload through `gcpLogger.error` with the 5xx `@type` field so client errors aggregate in Cloud Error Reporting alongside backend errors. See [docs/technical/ARCHITECTURE.md](ARCHITECTURE.md) Error & log pipeline for the full picture.
+
+**Verifying the pipeline.** Two console-callable helpers are attached to `window` in [src/web/js/debug/debugThrows.ts](../../src/web/js/debug/debugThrows.ts), also installed at the top of `main.ts`. They are available in every environment.
+
+- `window.throwUIError()` schedules a frontend throw via `setTimeout`. The `setTimeout` is critical: a `throw` typed directly into the DevTools console is caught by the console's eval wrapper and never fires `window.error`. Throwing inside a setTimeout escapes that wrapper.
+- `window.throwBackendError()` calls `HttpService.post('debug/throw', ...)` — so the request carries the user's `x-access-code` / `x-login-type` headers automatically. The endpoint is **authenticated**, so you have to be logged in to call it. Sync mode exercises the standard `errorResponse` pipeline; pass `'async'` to exercise the process-level `uncaughtException` handler instead (the backend schedules a throw via `setImmediate` so it escapes Express).
+
+Both helpers return a Promise. In console use you call them and ignore the return.
 
 ## Session & Change-User flow
 

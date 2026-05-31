@@ -102,9 +102,30 @@ Exactly one of `admin` / `instructor` / `parent` is populated; the other two are
 
 **Response on no match:** `{ "success": true, "data": null }`. Note: this is NOT a 401. The endpoint behaves as a lookup probe, not authenticate-or-fail — returning 401 would trigger the frontend's session-expired logout flow, which is wrong for a failed login attempt by someone who isn't logged in yet. See [FRONTEND.md](FRONTEND.md) HttpService section for the full 401-vs-403 contract.
 
+### POST /api/client-error
+
+Sink for uncaught errors in the frontend. The SPA's `window.error` and `window.unhandledrejection` handlers POST here so client-side errors land in Cloud Logging alongside backend errors. Unauthenticated by design — login-screen crashes (user not yet logged in) must still be reportable. See [docs/technical/FRONTEND.md](FRONTEND.md) Error visibility for the full context.
+
+**Request:** all fields optional except `message`.
+```json
+{
+  "message": "Cannot read properties of undefined (reading 'foo')",
+  "stack": "...",
+  "source": "window.error",
+  "url": "https://...",
+  "userAgent": "...",
+  "path": "/parent",
+  "userType": "parent"
+}
+```
+
+**Response:** `204 No Content` on success.
+
+Controller: `DebugController.reportClientError`.
+
 ## Authenticated endpoints
 
-The remaining 15 endpoints require `requireAuth` middleware to pass. Each one's controller method is listed alongside the route for source-of-truth lookup.
+The remaining 16 endpoints require `requireAuth` middleware to pass. Each one's controller method is listed alongside the route for source-of-truth lookup.
 
 ### Admin
 
@@ -280,3 +301,25 @@ Controller: `RegistrationController.getAdminMasterScheduleTabData`.
 The Registration tab for admins. Same shape as the parent variant but scoped to all students rather than one parent's children.
 
 Controller: `RegistrationController.getAdminRegistrationTabData`.
+
+### Debug
+
+#### POST /api/debug/throw
+
+Verification endpoint for the error pipeline. Deliberately throws an error so you can confirm Cloud Logging and Cloud Error Reporting are receiving entries. Active in every environment so post-deploy checks are possible.
+
+**Query params:** `async=1` (or `async=true`) switches from synchronous-throw mode to async-throw mode.
+
+**Sync mode** (default): the route handler throws inside its try/catch. The error flows through the standard `errorResponse` → `gcpLogger` pipeline. Response is a `500` with the standard error envelope.
+
+**Async mode** (`?async=1`): the route handler schedules a throw via `setImmediate` so the error escapes the Express stack, then responds `202 Accepted` immediately. The throw fires after the response is sent and is caught by the process-level `uncaughtException` handler in [src/server.ts](../../src/server.ts). Used to verify the escape-Express path.
+
+**Request body:** none required (`{}` is fine).
+
+**Response:**
+- Sync mode: `500 Internal Server Error` with `{ "success": false, "error": { ... } }`.
+- Async mode: `202 Accepted` with `{ "success": true, "data": { "triggered": true, "mode": "async", "message": "..." } }`. The actual throw fires server-side after the response.
+
+Frontend helper: `window.throwBackendError()` for sync mode, `window.throwBackendError('async')` for async mode. See [docs/technical/FRONTEND.md](FRONTEND.md) Error visibility.
+
+Controller: `DebugController.throwError`.

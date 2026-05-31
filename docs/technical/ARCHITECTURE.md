@@ -7,7 +7,8 @@ How the Tonic backend is wired and what happens to a request as it travels from 
 This document MUST be updated in the same PR as any change to:
 
 - `src/controllers/`, `src/services/`, `src/repositories/` — the layer flow.
-- `src/common/errors.ts`, `src/common/errorConstants.ts`, `src/common/responseHelpers.ts`, `src/common/gcpLogger.ts` — error pipeline + response envelope + logging.
+- `src/common/errors.ts`, `src/common/errorConstants.ts`, `src/common/responseHelpers.ts`, `src/common/gcpLogger.ts`, `src/common/processErrorHandlers.ts` — error pipeline + response envelope + logging.
+- `src/controllers/debugController.ts` and `src/server.ts` (process-handler installation) — error-visibility verification path.
 - `src/cache/` — cache TTL, eviction, or invalidation rules.
 - `src/middleware/auth.ts` — authentication flow.
 - `src/database/googleSheetsDbClient.ts` — read/write semantics, per-sheet field mappings, cache exclusions.
@@ -66,6 +67,17 @@ throw → controller catch (or global handler) → errorResponse(res, error, ...
 `gcpLogger` ([src/common/gcpLogger.ts](../../src/common/gcpLogger.ts)) writes structured JSON to stdout. On Cloud Run, stdout is auto-ingested into Cloud Logging. There is no separate log shipper. Errors are NOT written to Google Sheets — the data store and the error sink are different systems.
 
 Frontend code branches on `error.type`, not `error.code`. The two fields exist for different audiences: `type` is a coarse category for client logic (e.g., `AUTHENTICATION`, `VALIDATION`, `CONFLICT`); `code` is a specific identifier for support / debugging.
+
+**Errors that escape Express.** The Express path catches everything thrown inside a route handler. Errors that escape it — `uncaughtException` (synchronous throws outside a route handler, e.g., from a timer callback) and `unhandledRejection` (top-level promise rejections nobody awaited) — are caught by process-level handlers installed in [src/server.ts](../../src/server.ts) via [src/common/processErrorHandlers.ts](../../src/common/processErrorHandlers.ts). Both handlers route through `gcpLogger.error` with the 5xx `@type` field so they aggregate in Cloud Error Reporting alongside Express-routed errors. On `uncaughtException` the process exits with code 1 so Cloud Run can respawn (process state may be corrupted); on `unhandledRejection` the process keeps running.
+
+**Errors from the frontend.** The SPA's global handlers (`window.error`, `window.unhandledrejection` — see [docs/technical/FRONTEND.md](FRONTEND.md)) POST their payload to `POST /api/client-error` ([src/controllers/debugController.ts](../../src/controllers/debugController.ts) `reportClientError`). The endpoint is unauthenticated so login-screen crashes are reportable. It logs through `gcpLogger.error` with the 5xx `@type` field. Net effect: an error anywhere in the system — Express route, escaped to the process, or in the user's browser — ends up in the same Cloud Logging stream.
+
+**Verifying the pipeline.** Two console-callable helpers attached to `window` exercise both error paths on demand:
+
+- `window.throwUIError()` schedules a frontend throw via `setTimeout` so it escapes the DevTools console's eval wrapper and fires `window.error`.
+- `window.throwBackendError()` POSTs to `/api/debug/throw` (sync mode, exercises `errorResponse`); `window.throwBackendError('async')` POSTs to `/api/debug/throw?async=1` which schedules a throw via `setImmediate` so it escapes Express and exercises the process-level handler.
+
+`/api/debug/throw` is authenticated (you have to be logged in to call it); `/api/client-error` is not. Both are active in every environment so you can confirm visibility on a live deploy. Both controllers live at [src/controllers/debugController.ts](../../src/controllers/debugController.ts).
 
 ## Cache strategy
 

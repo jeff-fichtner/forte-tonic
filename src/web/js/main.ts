@@ -26,6 +26,14 @@ import './utilities/modalKeyboardHandler.js';
 import './utilities/classManager.js';
 import './extensions/numberExtensions.js';
 import './extensions/stringExtensions.js';
+import { installBrowserErrorHandlers } from './debug/errorReporting.js';
+import { installDebugThrows } from './debug/debugThrows.js';
+
+// Install global error handlers FIRST so any error during the rest of
+// bootstrap is reported. Also attach window.throwUIError /
+// window.throwBackendError for console-driven verification.
+installBrowserErrorHandlers();
+installDebugThrows();
 import { NavTabs } from './components/navTabs.js';
 import { FeedbackManager } from './feedback.js';
 import * as LoginModal from './auth/loginModal.js';

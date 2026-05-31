@@ -9,6 +9,7 @@ import { RegistrationController } from '../controllers/registrationController.js
 import { SystemController } from '../controllers/systemController.js';
 import { AttendanceController } from '../controllers/attendanceController.js';
 import { FeedbackController } from '../controllers/feedbackController.js';
+import { DebugController } from '../controllers/debugController.js';
 
 const router = express.Router();
 
@@ -21,9 +22,19 @@ router.get('/version', (_req: Request, res: Response) => {
 router.get('/configuration', UserController.getAppConfiguration);
 router.post('/auth/access-code', UserController.authenticateByAccessCode);
 
+// Frontend error sink — public so login-screen crashes (user not yet
+// authenticated) are still reportable. Active in every environment.
+router.post('/client-error', DebugController.reportClientError);
+
 // ===== AUTHENTICATED ROUTES =====
 
 router.post('/admin/clear-cache', requireAuth, SystemController.clearCache);
+
+// Error visibility verification — authenticated so casual visitors can't
+// hit it, but available in every environment so we can verify the live
+// error pipeline post-deploy. Sync mode exercises errorResponse → gcpLogger;
+// ?async=1 exercises the process-level uncaughtException handler.
+router.post('/debug/throw', requireAuth, DebugController.throwError);
 
 router.post('/registrations', requireAuth, RegistrationController.createRegistration);
 router.delete(

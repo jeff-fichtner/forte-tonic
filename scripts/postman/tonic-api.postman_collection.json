@@ -108,6 +108,18 @@
               "raw": "{\n  \"accessCode\": \"{{parentPhone}}\",\n  \"loginType\": \"parent\"\n}"
             }
           }
+        },
+        {
+          "name": "Client Error (frontend error sink)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/client-error",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Test client error from Postman\",\n  \"stack\": \"Error: Test client error\\n    at Postman\",\n  \"source\": \"postman\",\n  \"url\": \"http://localhost:3000/\",\n  \"userAgent\": \"PostmanRuntime\",\n  \"path\": \"/\"\n}"
+            }
+          }
         }
       ]
     },
@@ -447,6 +459,43 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"message\": \"Test feedback message\",\n  \"state\": {\n    \"currentUser\": { \"email\": \"test@forte.edu\" },\n    \"timestamp\": \"2025-01-01T00:00:00Z\",\n    \"url\": \"/\",\n    \"currentSection\": \"registration\",\n    \"selectedTrimester\": \"fall\"\n  }\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Debug",
+      "item": [
+        {
+          "name": "Throw (sync — exercises errorResponse pipeline)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/debug/throw",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-access-code", "value": "{{accessCode}}" },
+              { "key": "x-login-type", "value": "employee" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "Throw (async — exercises uncaughtException handler)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/debug/throw?async=1",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-access-code", "value": "{{accessCode}}" },
+              { "key": "x-login-type", "value": "employee" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
             }
           }
         }
