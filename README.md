@@ -169,7 +169,7 @@ src/
 ├── repositories/       # Data access (all extend baseRepository)
 ├── services/           # Business logic
 ├── models/             # Domain models
-│   └── shared/         # Models that run in both Node.js and browser (Constitution VII)
+│   └── shared/         # Models that run in both Node.js and browser
 ├── middleware/         # Auth, etc.
 ├── routes/             # API routes (api.ts is the source of truth)
 ├── database/           # googleSheetsDbClient.ts — Sheets API wrapper + cache

@@ -17,7 +17,7 @@ This document MUST be updated in the same PR as any change to:
 - `src/config/` — environment-variable contract.
 - `src/build/Dockerfile`, `src/build/cloudbuild.yaml`, `scripts/version-manager.sh`, `.github/workflows/*` — build/deploy.
 
-If your PR touches one of those surfaces and you didn't update this file, you're shipping documentation drift. Same enforcement model the Constitution already uses for the Postman collection.
+If your PR touches one of those surfaces and you didn't update this file, you're shipping documentation drift.
 
 ## Layer flow
 
