@@ -34,6 +34,8 @@ Today's date is 2026-02-18.
 - Google Sheets (single spreadsheet, column-index mapped) — new `_migrations` sheet for tracking (013-migration-system)
 - TypeScript 5.x targeting ES2022, Node.js (ESM) for backend; TypeScript 5.x targeting ES2022 for browser code + Express 4, Google Sheets API v4 (googleapis), Vite 7 (frontend build), MaterializeCSS 1.0 (UI), tsx (runtime), Jest 29 with ts-jest (ESM preset) (014-summer-registration)
 - Google Sheets (single spreadsheet, column-index mapped, 5-minute in-memory cache); two new sheets — `registrations_summer` and `registrations_summer_audit` — created via 013-style runtime migration at app startup (014-summer-registration)
+- TypeScript 5.x targeting ES2022, Node.js (ESM) for backend; TypeScript 5.x targeting ES2022 for browser code + Express 4, Google Sheets API v4 (googleapis), Vite 7 (frontend build), MaterializeCSS 1.0 (UI), tsx (runtime), Jest 29 with ts-jest (ESM preset), Supertest 7 (015-audit-remediation)
+- N/A — docs, inline JSDoc comments, tests with mocked `googleSheetsDbClient`, one TypeScript interface relocation; no schema or migration changes (015-audit-remediation)
 
 ## Recent Changes
 - 002-typescript-migration: Added TypeScript 5.x targeting ES2022, running on Node.js (ESM) + Express 4, Google Sheets API v4, tsx (runtime), ts-jest (testing), typescript-eslint (linting)
