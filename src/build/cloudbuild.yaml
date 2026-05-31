@@ -82,7 +82,14 @@ steps:
         MAINT_MODE=$$(cat /workspace/maintenance_mode.txt)
         MAINT_MSG=$$(cat /workspace/maintenance_message.txt)
 
+        # Resolve SERVICE_URL here so it can be included in the single deploy call,
+        # avoiding the separate `gcloud run services update` that would create a
+        # second revision on every push.
+        PROJECT_NUMBER=$$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")
+        SERVICE_URL="https://tonic-${_ENV_TYPE}-$$PROJECT_NUMBER.${_DEPLOY_REGION}.run.app"
+
         echo "🚀 Deploying with maintenance mode: $$MAINT_MODE"
+        echo "🔗 Service URL: $$SERVICE_URL"
 
         gcloud run deploy tonic-${_ENV_TYPE} \
           --image=gcr.io/$PROJECT_ID/tonic:${_ENV_TYPE}-${SHORT_SHA} \
@@ -94,6 +101,7 @@ steps:
           --set-env-vars=BUILD_GIT_TAG=${TAG_NAME} \
           --set-env-vars=MAINTENANCE_MODE="$$MAINT_MODE" \
           --set-env-vars=MAINTENANCE_MESSAGE="$$MAINT_MSG" \
+          --set-env-vars=SERVICE_URL="$$SERVICE_URL" \
           --set-secrets=WORKING_SPREADSHEET_ID=working-spreadsheet-id:latest \
           --set-secrets=GOOGLE_SERVICE_ACCOUNT_EMAIL=google-service-account-email:latest \
           --set-secrets=GOOGLE_PRIVATE_KEY=google-private-key:latest \
@@ -103,38 +111,18 @@ steps:
           --memory=512Mi \
           --cpu=1 \
           --port=3000
+
+        # Save SERVICE_URL for downstream steps
+        echo "$$SERVICE_URL" > /workspace/service_url.txt
     id: 'deploy-service'
     waitFor: ['get-maintenance-settings']
 
-  # Step 5: Set SERVICE_URL after deployment completes
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        # Construct the stable project-based URL format
-        # Format: https://{service-name}-{project-number}.{region}.run.app
-        SERVICE_URL="https://tonic-${_ENV_TYPE}-${PROJECT_NUMBER}.${_DEPLOY_REGION}.run.app"
-
-        echo "🔗 Service URL: $$SERVICE_URL"
-        echo "🔧 Updating SERVICE_URL environment variable..."
-
-        # Update only the SERVICE_URL env var without redeploying
-        gcloud run services update tonic-${_ENV_TYPE} \
-          --region=${_DEPLOY_REGION} \
-          --update-env-vars=SERVICE_URL="$$SERVICE_URL"
-
-        echo "✅ SERVICE_URL set to: $$SERVICE_URL"
-    id: 'set-service-url'
-    waitFor: ['deploy-service']
-
-  - name: 'gcr.io/cloud-builders/gcloud'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        # Use the same project-based URL format
-        SERVICE_URL="https://tonic-${_ENV_TYPE}-${PROJECT_NUMBER}.${_DEPLOY_REGION}.run.app"
+        SERVICE_URL=$$(cat /workspace/service_url.txt)
 
         echo "⏳ Waiting for deployment to be ready..."
         echo "🔗 Service URL: $$SERVICE_URL"
@@ -149,7 +137,7 @@ steps:
           sleep 5
         done
     id: 'health-check'
-    waitFor: ['set-service-url']
+    waitFor: ['deploy-service']
 
   # Step 7: Final summary
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -157,8 +145,7 @@ steps:
     args:
       - '-c'
       - |
-        # Use the same project-based URL format
-        SERVICE_URL="https://tonic-${_ENV_TYPE}-${PROJECT_NUMBER}.${_DEPLOY_REGION}.run.app"
+        SERVICE_URL=$$(cat /workspace/service_url.txt)
 
         echo ""
         echo "🎉 CI/CD PIPELINE COMPLETED SUCCESSFULLY!"
