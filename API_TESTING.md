@@ -4,7 +4,6 @@ The canonical API testing artifacts are:
 
 - **Postman collection**: [scripts/postman/tonic-api.postman_collection.json](scripts/postman/tonic-api.postman_collection.json) — import into Postman alongside one of the environment files in [scripts/postman/](scripts/postman/) (`local.postman_environment.json`, `staging.postman_environment.json`, or `production.postman_environment.json`).
 - **Route definitions**: [src/routes/api.ts](src/routes/api.ts) — the source of truth for every endpoint, method, path, and auth requirement.
-- **Consolidated API reference**: lands with spec 015 US2 as `docs/technical/API.md` (request/response shapes per endpoint).
 
 ## Local server
 
@@ -20,7 +19,7 @@ Every endpoint except the four public ones (`/health`, `/version`, `/configurati
 
 ## Response envelope
 
-All responses follow Constitution Principle IV:
+All responses follow the standard envelope:
 
 - Success: `{ "success": true, "data": ... }`
 - Error: `{ "success": false, "error": { "message": "...", "code": "...", "type": "..." } }`

@@ -136,10 +136,9 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
    * Render the registration form
    */
   async render(): Promise<void> {
-    // FR-006: render the period heading inline at the top of the Registration
-    // tab content. The form targets nextTrimester during enrollment overlaps
-    // and falls back to currentTrimester otherwise — see parentRegistrationTab
-    // fetchData() lines 92-103.
+    // Render the period heading inline at the top of the Registration tab
+    // content. The form targets nextTrimester during enrollment overlaps
+    // and falls back to currentTrimester otherwise — see fetchData() above.
     this.#renderPeriodHeading();
 
     // If form already exists, update its data instead of recreating
@@ -173,10 +172,10 @@ export class ParentRegistrationTab extends BaseTab<RegistrationTabData> {
   }
 
   /**
-   * Render the period heading (FR-006) at the top of the Registration tab
-   * content. The heading reads the active trimester (next during enrollment
-   * overlap, current otherwise) and renders the user-facing label via the
-   * display-name helper (FR-005) — so for `summer` it reads "Next Fall."
+   * Render the period heading at the top of the Registration tab content.
+   * The heading reads the active trimester (next during enrollment overlap,
+   * current otherwise) and renders the user-facing label via the period
+   * display-name helper — so for `summer` it reads "Next Fall."
    *
    * Idempotent: if the heading element already exists in the DOM, this
    * just updates its text. Otherwise it creates and prepends the element

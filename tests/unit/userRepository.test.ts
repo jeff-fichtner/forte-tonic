@@ -233,7 +233,7 @@ describe('UserRepository', () => {
       expect(result).toEqual([]);
     });
 
-    // FR-003: required `period` parameter
+    // Required `period` parameter — every caller must specify the active trimester
     test('should throw when period is missing (undefined)', async () => {
       await expect(repository.getStudents(undefined)).rejects.toThrow(
         /getStudents requires a `period` parameter/
@@ -252,7 +252,7 @@ describe('UserRepository', () => {
       );
     });
 
-    // FR-003: grade-bump transform applies only for `summer`
+    // Grade-bump transform applies only for `summer`
     test('should bump grade by 1 when period is summer', async () => {
       const { Student } = await import('../../src/models/shared/student.js');
 

@@ -4,8 +4,7 @@
  * Registration Service Unit Tests
  * ================================
  *
- * Tests for the RegistrationService static methods extracted from the viewModel
- * (009-frontend-decomposition, Step US3).
+ * Tests for the RegistrationService static methods.
  *
  * Covers delete-then-create replacement flow, response enrichment, delete with
  * confirmation, and intent submission. All registrations use a single endpoint;

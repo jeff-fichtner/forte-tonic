@@ -480,7 +480,7 @@ describe('UserController', () => {
 
       await UserController.getParentContactTabData(req, res);
 
-      // Verify students were fetched for the parent with the right period (FR-003)
+      // Verify students were fetched for the parent with the right period.
       expect(mockEntityQueryService.getStudents).toHaveBeenCalledWith({
         parentId: 'p1',
         period: 'fall',

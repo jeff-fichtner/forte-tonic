@@ -70,9 +70,9 @@ export class AdminRegistrationTab extends AdminBaseTab<RegistrationFormData> {
   }
 
   /**
-   * Render the period heading (FR-006) at the top of the admin Registration
-   * tab content. Same pattern as parentRegistrationTab: idempotent, uses the
-   * display-name helper (FR-005) so `summer` renders as "Next Fall."
+   * Render the period heading at the top of the admin Registration tab
+   * content. Same pattern as parentRegistrationTab: idempotent, uses the
+   * period display-name helper so `summer` renders as "Next Fall."
    */
   #renderPeriodHeading(): void {
     const tabContainer = document.getElementById('admin-registration');
@@ -100,7 +100,7 @@ export class AdminRegistrationTab extends AdminBaseTab<RegistrationFormData> {
   async render(): Promise<void> {
     const _container = this.getContainer();
 
-    // FR-006: render the period heading inline at the top of the Registration tab
+    // Render the period heading inline at the top of the Registration tab.
     this.#renderPeriodHeading();
 
     // If form already exists, update its data instead of recreating

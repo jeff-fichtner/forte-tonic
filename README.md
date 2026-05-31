@@ -27,7 +27,7 @@ A Node.js web application for automated student registration in after-school mus
 - **Modern Stack**: TypeScript on Node.js (ESM) with Express.js API + TypeScript SPA bundled by Vite (MaterializeCSS for UI)
 - **Platform-Agnostic**: Containerized deployment on any Docker-compatible host
 
-Originally a Google Apps Script application, migrated to Node.js for improved performance and maintainability. The legacy `gas/` directory's status is being reviewed in [020-project-hygiene](specs/020-project-hygiene/spec.md).
+Originally a Google Apps Script application, migrated to Node.js for improved performance and maintainability. A legacy `gas/` directory remains in the repo for reference.
 
 ## Key Features
 
@@ -40,18 +40,18 @@ Originally a Google Apps Script application, migrated to Node.js for improved pe
 ## System Architecture
 
 **Backend**: Controller → Service → Repository pattern with Express.js (TypeScript on Node.js, ESM via `tsx`)
-**Frontend**: TypeScript SPA bundled by Vite; MaterializeCSS for UI; all HTTP goes through `HttpService` (Constitution Principle V)
+**Frontend**: TypeScript SPA bundled by Vite; MaterializeCSS for UI; all HTTP goes through `HttpService` (the single chokepoint for API calls)
 **Database**: Google Sheets API v4 with service account authentication; one spreadsheet per environment
 **Auth**: Phone number (parents) or 6-digit AccessCode (staff); sent via `x-access-code` + `x-login-type` headers
 
 **Key Components**:
 
 - 6 Services in [src/services/](src/services/) (availability, configuration, dropRequest, entityQuery, period, registration)
-- 6 entity Repositories in [src/repositories/](src/repositories/), all extending `BaseRepository` — note that `periodRepository` is deliberately uncached for time-sensitive routing (see Constitution Principle X)
+- 6 entity Repositories in [src/repositories/](src/repositories/), all extending `BaseRepository` — note that `periodRepository` is deliberately uncached for time-sensitive routing
 - 5-minute in-memory cache per pod ([src/cache/cacheService.ts](src/cache/cacheService.ts)); writes invalidate via `clearAllCache()`
 - Homegrown lazy-singleton DI container ([src/infrastructure/container/serviceContainer.ts](src/infrastructure/container/serviceContainer.ts))
 
-See the documentation in [docs/](docs/) for additional details. (A consolidated architecture reference will land with spec 015 US2; see [specs/015-audit-remediation/spec.md](specs/015-audit-remediation/spec.md).)
+See the documentation in [docs/](docs/) for additional details.
 
 ## Getting Started
 
@@ -101,11 +101,11 @@ All endpoints are defined in [src/routes/api.ts](src/routes/api.ts). Highlights:
 
 **Feedback**: `POST /api/feedback`
 
-**Tab data**: `GET /api/{parent|instructor|admin}/tabs/{tab-name}/:trimester` (per Constitution Principle VIII)
+**Tab data**: `GET /api/{parent|instructor|admin}/tabs/{tab-name}/:trimester` — role-scoped tab endpoints return only what the tab needs.
 
 **Admin only**: `POST /api/admin/clear-cache`
 
-A consolidated API reference (request/response shapes) lands with spec 015 US2.
+Endpoint details (request/response shapes) live in [docs/technical/](docs/technical/).
 
 ## Development
 
@@ -176,41 +176,37 @@ src/
 ├── cache/              # 5-min in-memory cache (per pod)
 ├── common/             # errors, responseHelpers, gcpLogger, errorConstants
 ├── infrastructure/     # DI container, migration runner
-├── migrations/         # Numbered, idempotent runtime migrations (see spec 013)
+├── migrations/         # Numbered, idempotent runtime migrations (auto-run on startup)
 ├── utils/              # Helpers
 └── web/                # Frontend TypeScript SPA (Vite-bundled in prod)
 
-gas/                    # Legacy Google Apps Script source (predecessor codebase; status under review in spec 020)
+gas/                    # Legacy Google Apps Script source (predecessor codebase, reference only)
 tests/                  # Unit & integration tests (mock googleSheetsDbClient)
 docs/                   # Documentation
 config/                 # ESLint, Prettier, Jest, .env templates
 scripts/                # Build, deploy, migration, Postman collection
-specs/                  # speckit feature specs
 ```
 
 ## Contributing
 
-This project uses the [speckit](https://github.com/github/spec-kit) workflow. Feature work follows the `specify → plan → tasks → implement` pipeline; see the [constitution](.specify/memory/constitution.md) Development Workflow section.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for code standards, commit practices, and the pre-commit checklist.
 
-1. Create a numbered feature branch via `/speckit.specify` (the convention is `###-feature-name`, e.g., `015-audit-remediation`)
-2. Follow [CONTRIBUTING.md](CONTRIBUTING.md) for code standards, commit practices, and AI-assistant rules
-3. Include tests for business logic (Constitution Testing section)
-4. Run `npm run check:all` before every commit
-5. Use conventional commit format
-6. Open a PR to `dev`
+1. Create a feature branch off `dev`
+2. Make changes; include tests for business logic
+3. Run `npm run check:all` before every commit
+4. Use conventional commit format
+5. Open a PR to `dev`
 
-**Branch Strategy**: `main` (production) ← `dev` (integration) ← `###-feature-name` (per-feature speckit branches)
+**Branch Strategy**: `main` (production) ← `dev` (integration) ← feature branches
 
 ## Documentation
 
 **Business**: [Privacy Policy](docs/business/PRIVACY_POLICY.md) | [Local Setup](docs/business/NODE_SETUP.md)
 **Technical**: [Environment Variables](docs/technical/ENVIRONMENT_VARIABLES.md) | [Version Display](docs/technical/VERSION_DISPLAY.md) | [Branch Protection](docs/technical/BRANCH_PROTECTION.md)
 
-(Consolidated architecture, API, and frontend reference docs land with spec 015 US2.)
-
 ## License
 
-MIT License. (LICENSE file currently missing; tracked in [020-project-hygiene](specs/020-project-hygiene/spec.md).)
+MIT License.
 
 ---
 

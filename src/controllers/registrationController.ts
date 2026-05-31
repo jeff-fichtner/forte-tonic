@@ -70,7 +70,7 @@ export class RegistrationController {
       // Check if user is an admin (admins can bypass capacity restrictions)
       const isAdmin = req.currentUser?.userType === UserType.ADMIN;
 
-      // Modify-via-replace path (User Story 2): when the request carries a
+      // Modify-via-replace path: when the request carries a
       // `replaceRegistrationId`, this is a "replace the old row with a new
       // one" operation, not a plain create. Authorize parent eligibility
       // BEFORE doing any writes — parents may only replace a registration
@@ -409,7 +409,8 @@ export class RegistrationController {
       const studentIdsInSchedule = new Set(registrations.map(reg => reg.studentId).filter(Boolean));
 
       // Fetch remaining data in parallel.
-      // Pass the route's trimester as the period for student lookup (FR-003).
+      // The route's trimester IS the period passed to the student lookup —
+      // they must stay in sync so the summer grade-bump fires correctly.
       const [allStudents, instructors, classes] = await Promise.all([
         queryService.getStudents({ period: trimester }),
         queryService.getInstructors(),
@@ -469,7 +470,7 @@ export class RegistrationController {
       const queryService = serviceContainer.get(ServiceKeys.entityQueryService);
 
       // Get parent's students first (needed to scope registrations).
-      // Pass the route's trimester as the period (FR-003).
+      // The route's trimester IS the active period for the lookup.
       const parentStudents = await queryService.getStudents({ parentId, period: trimester });
       const studentIds = parentStudents
         .map(student => student.id)
@@ -581,7 +582,7 @@ export class RegistrationController {
       const excludeRegistrationId = asString(req.query.excludeRegistrationId) || null;
 
       // Fetch parent's students + registrations for the provided trimester + instructors + classes.
-      // Pass the route's trimester as the period for student lookup (FR-003);
+      // The route's trimester IS the period passed to the student lookup —
       // this is what triggers the grade-bump when `trimester === 'summer'`.
       const [parentStudents, registrations, instructors, classes] = await Promise.all([
         queryService.getStudents({ parentId, period: trimester }),
@@ -717,8 +718,8 @@ export class RegistrationController {
     }
 
     // Ownership: find the student and confirm the authenticated parent is on it.
-    // The trimester is used as the period for the lookup (FR-003); the
-    // grade-bump is irrelevant here since we only need parent ids.
+    // The trimester is used as the period for the lookup; the grade-bump is
+    // irrelevant here since we only need parent ids.
     const userRepository = serviceContainer.get(ServiceKeys.userRepository);
     const student = await userRepository.getStudentById(existing.studentId, trimester);
     if (student.parent1Id !== parentId && student.parent2Id !== parentId) {

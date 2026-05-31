@@ -193,10 +193,6 @@ export class RegistrationRepository extends BaseRepository<Registration> {
    * If you remove it, the type checker will reject this override; if you remove
    * the override, callers will silently fail to find rows because the base
    * implementation has no trimester context.
-   *
-   * A cleaner fix (introducing a `TrimesteredRepository` base or moving trimester
-   * into a parameter object) is routed to spec 017-uniform-crud-completion.
-   * Until then, this is the canonical pattern for trimester-scoped CRUD.
    */
   // @ts-expect-error -- extended signature: base is (id, deletedBy), this adds required trimester
   override async delete(id: string, userId: string, trimester: string): Promise<boolean> {

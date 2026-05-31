@@ -151,10 +151,8 @@ export class UserController {
    * loop the login modal on every failed attempt. So the miss must look like
    * a successful lookup with a null result.
    *
-   * Whether this coupling is the right design at all (the frontend's 401
-   * semantics could be tightened to avoid this) is routed to spec
-   * 016-error-contract-uniformization. Until then, do NOT change the return
-   * shape here without also updating `HttpService`.
+   * Do NOT change the return shape here without also updating `HttpService`
+   * — the two sides of this contract must stay in sync.
    *
    * @param req - Express request object
    * @param res - Express response object
@@ -311,7 +309,7 @@ export class UserController {
       const queryService = serviceContainer.get(ServiceKeys.entityQueryService);
 
       // Get parent's students first (needed to scope registrations).
-      // Pass the route's trimester as the period (FR-003).
+      // The route's trimester IS the active period for the lookup — keep them in sync.
       const parentStudents = await queryService.getStudents({ parentId, period: trimester });
       const parentStudentIds = parentStudents.map(s => s.id);
 

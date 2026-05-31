@@ -278,8 +278,8 @@ describe('RegistrationController Integration Tests', () => {
       expect(response.body.error.message).toContain('Invalid trimester');
     });
 
-    // FR-001 / FR-002 / FR-003 / User Story 1 — integration test for summer registration
-    test('should accept summer as a valid trimester and create the registration (US1)', async () => {
+    // Summer is a valid registration trimester just like fall/winter/spring.
+    test('should accept summer as a valid trimester and create the registration', async () => {
       const summerRegistrationData = {
         ...validRegistrationData,
         trimester: 'summer',
@@ -299,11 +299,11 @@ describe('RegistrationController Integration Tests', () => {
       );
     });
 
-    // FR-008 / User Story 2 — modify-via-replace flow for carried-forward summer registration.
+    // Modify-via-replace flow for carried-forward summer registration.
     // The controller handles replaceRegistrationId itself: authorizes parent
     // eligibility, calls processRegistration (without the replace field),
     // then calls deleteRegistration on the old row.
-    test('should accept replaceRegistrationId for a summer modify-via-replace (US2)', async () => {
+    test('should accept replaceRegistrationId for a summer modify-via-replace', async () => {
       // Old registration must be carried-forward (have linkedPreviousRegistrationId)
       // and belong to the authenticated parent's student for the parent
       // authorization to succeed.

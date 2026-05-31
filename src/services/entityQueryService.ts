@@ -11,7 +11,7 @@ import type { Admin } from '../models/shared/admin.js';
 import type { Room } from '../models/shared/room.js';
 
 interface StudentFilters {
-  /** Active trimester (FR-003). Required: every call needs an explicit period. */
+  /** Active trimester. Required: every call needs an explicit period. */
   period: string;
   parentId?: string;
 }

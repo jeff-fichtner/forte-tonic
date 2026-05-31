@@ -180,7 +180,7 @@ export class ParentWeeklyScheduleTab extends BaseTab<WeeklyScheduleData> {
     const { name: trimesterName, data: trimesterData } = trimesterInfo;
     const registrations = trimesterData.registrations;
 
-    // Create trimester header — period display label via FR-005 helper
+    // Create trimester header — period display label via the periodDisplayName helper
     const trimesterHeader = document.createElement('h4');
     trimesterHeader.textContent = `${periodDisplayName(trimesterName)} Trimester Schedule`;
     trimesterHeader.style.cssText =

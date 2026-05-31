@@ -1,8 +1,5 @@
 /**
- * Registration Service - Standalone registration orchestration
- *
- * Extracted from viewModel.createRegistrationWithEnrichment, requestDeleteRegistrationAsync,
- * and submitIntent (Step US3 of 009-frontend-decomposition).
+ * Registration Service - Standalone registration orchestration.
  *
  * Handles delete-then-create replacement flow and response enrichment.
  * All registrations go through a single endpoint; trimester is always required.

@@ -1,5 +1,5 @@
 /**
- * Unit tests for the period display-name helper (FR-005)
+ * Unit tests for the period display-name helper.
  */
 
 import { periodDisplayName } from '../../../src/web/js/utilities/periodDisplayName.js';

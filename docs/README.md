@@ -1,8 +1,6 @@
 # Documentation
 
-Reference documents that live outside the speckit pipeline. For architecture,
-principles, and development workflow, see the
-[constitution](../.specify/memory/constitution.md).
+Reference documents for the Tonic Music Registration System.
 
 ## Business
 
@@ -17,4 +15,4 @@ principles, and development workflow, see the
 
 ## Generated
 
-- [generated/](generated/) — Placeholder for auto-generated docs from `npm run docs`; not currently populated. A consolidated API reference lands with spec 015 US2.
+- [generated/](generated/) — Placeholder for auto-generated docs from `npm run docs`; not currently populated.

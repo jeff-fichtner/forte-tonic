@@ -95,7 +95,7 @@ export class DropRequestService extends BaseService {
 
       // 3. Verify parent owns the student.
       // Drop requests target a specific registration in a specific trimester,
-      // so use that as the period for student lookup (FR-003).
+      // so use that as the period for student lookup.
       // getStudentById throws NotFoundError if the student is missing.
       const studentId = registration.studentId;
       const student = await this.#studentRepository.getStudentById(
@@ -284,7 +284,7 @@ export class DropRequestService extends BaseService {
       // Pending drop requests can span any trimester; the student grade
       // shown in this admin-facing list is always the actual stored grade
       // (no summer grade-bump applies in this context). Pass `'fall'`
-      // explicitly to satisfy FR-003's required-period contract — any
+      // explicitly to satisfy the required-period parameter — any
       // non-`'summer'` trimester yields identical student data.
       const allStudents = await this.#studentRepository.getStudents(Trimester.FALL);
       const studentMap = new Map(allStudents.map(s => [s.id, s]));

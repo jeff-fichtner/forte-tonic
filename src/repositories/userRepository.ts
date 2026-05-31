@@ -94,8 +94,10 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
   /**
    * Get all students with parent emails enriched.
    *
-   * The `period` parameter is REQUIRED (per FR-003): every caller must pass
-   * the active trimester.
+   * The `period` parameter is REQUIRED: every caller must pass the active
+   * trimester. Passing `null`/`undefined`/empty throws — the period is the
+   * only safe place to make the summer-vs-other decision below, and a missing
+   * value would silently default to non-summer behavior for a summer caller.
    *
    * **Summer grade-bump.** When `period === 'summer'`, each student's `grade`
    * is bumped by +1 in the returned data, and any student whose bumped grade
@@ -103,8 +105,7 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    * not appear in summer views). This is a runtime display/filter transform —
    * the bump is NEVER persisted to the underlying sheet. It exists because
    * summer registration is logically "next fall," so students see the lessons
-   * available to them at their post-summer grade. See Constitution Principle IX
-   * (Trimester-Aware by Default).
+   * available to them at their post-summer grade.
    *
    * **Cache.** Raw rows are cached at the GoogleSheetsDbClient layer; this
    * method adds a second enriched-students cache (5-min TTL, matches dbClient).
@@ -114,7 +115,7 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
   async getStudents(period: string): Promise<Student[]> {
     if (!period) {
       throw new Error(
-        'getStudents requires a `period` parameter (FR-003). ' +
+        'getStudents requires a `period` parameter (the active trimester). ' +
           `Received: ${JSON.stringify(period)}. ` +
           'Every caller must pass an active trimester value.'
       );
@@ -163,7 +164,7 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
       this._enrichedStudentsCacheTime = Date.now();
     }
 
-    // Apply the summer grade-bump as a runtime transform (FR-003).
+    // Apply the summer grade-bump as a runtime transform.
     // The stored grade is unchanged; we return a new Student with grade + 1.
     // Students whose bumped grade exceeds the program's max (graduating
     // 8th-graders → "grade 9") are filtered out — they've aged out for

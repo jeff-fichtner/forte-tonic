@@ -254,14 +254,14 @@ export class ParentRegistrationForm {
       studentSelect.removeChild(studentSelect.lastChild!);
     }
 
-    // FR-007: ensure any previously-rendered empty-state is cleared before
-    // re-deciding visibility. The 0-students branch below re-renders it.
+    // Clear any previously-rendered empty-state before re-deciding visibility.
+    // The 0-students branch below re-renders it.
     this.#clearEmptyStateMessage();
 
     // Handle based on number of students
     if (this.parentChildren.length === 0) {
       // No students - hide section and all registration containers,
-      // then render the empty-state message in their place (FR-007).
+      // then render the empty-state message in their place.
       studentSection.style.display = 'none';
       this.#hideAllRegistrationContainers();
       this.#renderEmptyStateMessage();
@@ -378,9 +378,9 @@ export class ParentRegistrationForm {
   }
 
   /**
-   * Render the FR-007 empty-state message inside the Registration tab content
-   * when no eligible students are returned. Plain centered text, no icon,
-   * default styling — uses the existing `STUDENT_EMPTY` constant text.
+   * Render the empty-state message inside the Registration tab content when
+   * no eligible students are returned. Plain centered text, no icon, default
+   * styling — uses the existing `STUDENT_EMPTY` constant text.
    * Idempotent: re-rendering re-creates the element only if absent.
    */
   #renderEmptyStateMessage(): void {

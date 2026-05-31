@@ -187,7 +187,7 @@ export class RegistrationService extends BaseService {
 
       // Step 3: Get related entities.
       // Pass the registration's target trimester as the period for student
-      // lookup (FR-003). For a `summer` registration this surfaces the
+      // lookup. For a `summer` registration this surfaces the
       // grade-bumped student; for other periods it's a no-op transform.
       // getStudentById / getInstructorById throw NotFoundError on missing
       // records — those are data-integrity bugs, not normal outcomes. The
