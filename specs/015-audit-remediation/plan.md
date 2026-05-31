@@ -5,7 +5,7 @@
 
 ## Summary
 
-015 closes the 2026-05-30 full-project audit by shipping eight independent, narrowly-scoped User Stories. The work is primarily **documentation** (three new reference docs + four inline JSDoc comment blocks + fixes to README/API_TESTING/docs README), with a small amount of **code-consistency cleanup** (one canonical `AuthenticatedUser` interface; one missing `isValidTrimester()` call) and a small set of **test gap fills** (auth middleware, cache service, two thin repositories, logger, plus one end-to-end summer-grade-bump assertion). The eighth User Story produces a checked-in `findings.md` that captures the audit's findings as a durable artifact and verifies that every finding is routed either inside this spec or to one of the five successor stubs (016–020).
+015 closes the 2026-05-30 full-project audit by shipping nine independent, narrowly-scoped User Stories. The work spans **documentation** (three new reference docs + four inline JSDoc comment blocks + fixes to README/API_TESTING/docs README), **code-consistency cleanup** (one canonical `AuthenticatedUser` interface; one missing `isValidTrimester()` call), **test gap fills** (auth middleware, cache service, two thin repositories, logger, plus one end-to-end summer-grade-bump assertion), and a **speckit-lineage sweep** (US9) that brings the codebase into compliance with the newly-added Constitution Principle XII (the shipped artifact must stand alone without the speckit workflow). The final User Story (US8) produces a checked-in `findings.md` that captures the audit's findings as a durable artifact and verifies that every finding is routed either inside this spec or to one of the five successor stubs (016–020).
 
 There is no new entity, no new endpoint, no behavior change visible to end users, and no new external dependency. Per Constitution Principle I ("Simplicity First"), this plan deliberately omits `data-model.md` and `contracts/` — they would be empty files documenting zero entities and zero new contracts, which is the kind of speculative artifact the constitution explicitly forbids.
 
@@ -18,8 +18,8 @@ There is no new entity, no new endpoint, no behavior change visible to end users
 **Target Platform**: GCP Cloud Run (production), local Node for dev — unchanged.
 **Project Type**: Web application — Express backend + Vite-bundled vanilla TypeScript SPA. The existing `src/` ↔ `tests/` layout described in the structure section applies as-is.
 **Performance Goals**: N/A — no runtime behavior change.
-**Constraints**: NFR-001 (no user-facing behavior change), NFR-002 (no constitution amendments), NFR-003 (`npm run check:all` passes for code-touching stories), NFR-004 (doc PRs reviewable as rendered Markdown).
-**Scale/Scope**: 1 spec, 8 User Stories, ~15 file additions, ~10 file edits, 1 new `findings.md` artifact, 1 `CONTRIBUTING.md` checklist update.
+**Constraints**: NFR-001 (no user-facing behavior change), NFR-002 (`npm run check:all` passes for code-touching stories), NFR-003 (doc PRs reviewable as rendered Markdown).
+**Scale/Scope**: 1 spec, 9 User Stories, ~10 file additions (3 new reference docs + 5 new test files + 1 new `findings.md` + 1 `CONTRIBUTING.md` checklist update), ~10 narrowly-scoped file edits for code/doc User Stories, plus the broader US9 sweep across `src/`, `tests/`, `docs/`, root-level shipped Markdown, build/CI, and scripts.
 
 No NEEDS CLARIFICATION items. The two `/speckit.clarify` sessions and the recursive review resolved every spec-level ambiguity.
 
@@ -164,9 +164,7 @@ The API.md produced by US2 is itself the documented contract for all 16 existing
 
 ### Agent context update
 
-Run `.specify/scripts/bash/update-agent-context.sh claude` per the workflow template. This script updates `.claude/CLAUDE.md` to reflect the spec's metadata. Per the audit (routed to 020), the "Recent Changes" section in CLAUDE.md is currently stale (only spec 002 listed) — running the script here will *also* surface that staleness, which is the right outcome. The 020 cleanup spec resolves the structural issue; 015's run simply does what it does.
-
-(I am not running the script as part of writing this plan — that's an implementation action that happens when 015 starts shipping. The plan flags that it must be run.)
+Run `.specify/scripts/bash/update-agent-context.sh claude` per the workflow template. This script updates `.claude/CLAUDE.md` to reflect the spec's metadata. The script was run during `/speckit.plan` and added 015 entries to `## Active Technologies`; the entries were then normalized to match the existing style. The `## Recent Changes` section is separately maintained and gets touched in the Polish phase (T079).
 
 ## Post-Design Constitution Re-Check
 
@@ -176,6 +174,7 @@ After Phase 1 (such as it is), re-evaluating:
 - **Principle II (Data Consistency)** — US4 collapses three inline interface declarations into one canonical `AuthenticatedUser`. Stronger compliance after 015 than before.
 - **Principle IV (Uniform API Responses)** — US5 brings `deleteRegistration` into uniformity with `createRegistration` for invalid trimester. Stronger compliance.
 - **Principle XI (Uniform CRUD Backend)** — US5 reinforces uniform validation. The `RegistrationRepository.delete()` LSP violation remains *flagged* for 017; this is the explicitly-documented out-of-scope item and is not a violation introduced by 015.
+- **Principle XII (Speckit Stays in Speckit Spaces)** — US9 is the dedicated cleanup that brings the codebase into XII compliance. The constitution amendment landed first as its own commit; US9 sweeps every non-speckit file. The doc User Stories (US2, US8) are authored after US9 in the recommended order, so they land XII-compliant from the start.
 
 All gates pass. No Complexity Tracking entry needed.
 
@@ -197,7 +196,7 @@ This order is a recommendation, not a binding requirement. The spec's Dependenci
 
 ## Stop
 
-`/speckit.plan` ends here. Next step: `/speckit.tasks` to produce `tasks.md` (the per-User-Story task breakdown). Tasks should *not* be created by `/speckit.plan` per the workflow template.
+`/speckit.plan` ended at the original commit (`0ac5522d`). Tasks now live at [tasks.md](tasks.md) (created later by `/speckit.tasks`).
 
 **Branch**: `015-audit-remediation`
 **Plan**: [plan.md](plan.md)

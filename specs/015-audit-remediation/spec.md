@@ -32,7 +32,7 @@
 - Q: Policy when US6 auth-middleware tests reveal a bug in the auth ladder? → A: Always defer — document the actual behavior in the test (with a comment explaining what's wrong) and route the fix to a new spec, regardless of severity. US6 ships on test coverage, not on bug fixes.
 - Q: How is FR-009 ("no audit finding may be unrouted") enforced? → A: Manual but checked-in — the audit findings get copied into `specs/015-audit-remediation/findings.md` so US8's routing-table verification is a mechanical diff against a real artifact, not against chat context. No CI script.
 - Q: What should `findings.md` actually contain? → A: A curated, deduplicated list authored on this branch (not a verbatim chat paste). One short heading per finding, one-sentence summary, file:line reference. Errors in the original audit (e.g., the test-coverage agent missing nested test directories) are silently corrected before commit. Mirrors the structure of US8's routing table.
-- Q: When can 015 ship without all 8 User Stories merged? → A: Never. The "OR remaining stories moved to a successor spec" escape hatch is removed. 015 ships only when all 8 User Stories merge.
+- Q: When can 015 ship without all 9 User Stories merged? → A: Never. The "OR remaining stories moved to a successor spec" escape hatch is removed. 015 ships only when all 9 User Stories merge.
 - Q: What counts as a "mention" for the routing-table acceptance bar (FR-009)? → A: Each routed item must appear as a dedicated heading or bullet in the target spec's "Findings to address" section with enough context that a reader unfamiliar with the audit can act on it. Matches the existing pattern in the successor stubs.
 
 ## Scope & Non-Goals
@@ -76,11 +76,12 @@ A new contributor reads [README.md](../../README.md) and clicks through to learn
 3. **Given** [README.md](../../README.md), **When** the version string is compared to [package.json](../../package.json) `version`, **Then** they match (or the README no longer carries a static version stamp at all — see "Concretely" for the choice).
 4. **Given** [docs/README.md](../../docs/README.md), **When** the constitution link is followed, **Then** it resolves to [.specify/memory/constitution.md](../../.specify/memory/constitution.md).
 
-**Concretely**
-- Remove or repoint dead references to `docs/technical/ARCHITECTURE_COMPLETE.md`, `docs/technical/ARCHITECTURE.md`, `docs/technical/MIGRATION_SUMMARY.md` in [README.md](../../README.md). If US2 is shipping concurrently and creating `ARCHITECTURE.md`, point at the new file; otherwise remove the link entirely.
-- Replace the "API Overview" section of [README.md](../../README.md) (lines ~92–100) with the actual endpoint list from [src/routes/api.ts](../../src/routes/api.ts), or with a pointer to the API reference (US2). Do not list endpoints that don't exist.
-- Replace the fabricated endpoint examples in [API_TESTING.md](../../API_TESTING.md) (`/api/classes`, `/api/instructors`, `/api/parent/tabs/registration?parentId=P001`) with real endpoints, or replace the whole file with a pointer to the Postman collection.
-- Update the static version stamp in [README.md](../../README.md) ("Version: 1.1.15 | Last Updated: October 15, 2025" — line numbers approximate, the stamp is in the footer): either remove it entirely (the build pipeline auto-increments `package.json`, so any static stamp will drift) or replace it with a one-liner that says "see `package.json` for current version."
+**Concretely** (Per the recommended execution order, US2 ships AFTER US1, so US1 never points at not-yet-existing US2 deliverables; it removes dead references rather than redirecting them.)
+
+- Remove dead references to `docs/technical/ARCHITECTURE_COMPLETE.md`, `docs/technical/ARCHITECTURE.md`, `docs/technical/MIGRATION_SUMMARY.md` in [README.md](../../README.md). US2 (later) writes the real architecture/API/frontend docs and sweeps in the appropriate replacement links.
+- Replace the "API Overview" section of [README.md](../../README.md) with the actual endpoint list from [src/routes/api.ts](../../src/routes/api.ts). Do not list endpoints that don't exist. Do not add forward-references to docs that don't yet exist.
+- Replace the fabricated endpoint examples in [API_TESTING.md](../../API_TESTING.md) (`/api/classes`, `/api/instructors`, `/api/parent/tabs/registration?parentId=P001`) with real endpoints, OR replace the whole file with a pointer to the Postman collection.
+- Update the static version stamp in [README.md](../../README.md) (e.g., "Version: 1.1.15 | Last Updated: October 15, 2025" in the footer): either remove it entirely (the build pipeline auto-increments `package.json`, so any static stamp will drift) or replace it with a one-liner that says "see `package.json` for current version."
 
 ---
 
@@ -100,7 +101,7 @@ The audit found that no single document explains end-to-end how a request flows,
 5. **Given** `docs/technical/API.md`, **When** a reader is asked to list every endpoint with auth requirements, **Then** they can produce a list that matches [src/routes/api.ts](../../src/routes/api.ts) exactly.
 6. **Given** `docs/technical/FRONTEND.md`, **When** a reader is asked how a tab loads data, **Then** they can describe the `BaseTab` lifecycle (`onLoad → fetchData → render → attachEventListeners`), the `HttpResult` discriminated union, and why `TabController.cleanup()` is called on user switch.
 7. **Given** `docs/technical/FRONTEND.md`, **When** a reader is asked how shared models reach the browser, **Then** they can describe both the prod path (Express static serving at `/models/shared` and `/utils/values`) and the dev path (Vite path aliases in [vite.config.ts](../../vite.config.ts)).
-8. **Given** all three docs, **When** a reader is asked "what's the single source of truth on the current logged-in user," **Then** they can point at the canonical `AuthenticatedUser` interface produced by US4. (US2's docs name the interface; US4 creates it. If US2 ships before US4, the doc names the planned interface and links to US4.)
+8. **Given** all three docs, **When** a reader is asked "what's the single source of truth on the current logged-in user," **Then** they can point at the canonical `AuthenticatedUser` interface in [src/web/js/auth/session.ts](../../src/web/js/auth/session.ts) (created by US4, which ships before US2 in the recommended order).
 
 **Concretely — `docs/technical/ARCHITECTURE.md`**
 Cover, in this order:
@@ -141,7 +142,7 @@ Cover, in this order:
 
 Four spots in the codebase will surprise a reader. The audit identified these as places where a comment block at the top of the function or class is the single highest-leverage doc.
 
-**Why this priority**: Very small effort, lasts as long as the code does. Ships independently of US2.
+**Why this priority**: Very small effort, lasts as long as the code does.
 
 **Independent Test**: Each of the four sites has a doc comment that a reader can use to answer the listed question without reading the rest of the function.
 
@@ -172,7 +173,7 @@ These three are real candidates for "move to configurable storage" but each is i
 
 The audit found three different inline interface declarations describing the same concept ([main.ts:61–69](../../src/web/js/main.ts), [loginModal.ts:14–22](../../src/web/js/auth/loginModal.ts), and the `SessionInfo` shape in [baseTab.ts:30–42](../../src/web/js/core/baseTab.ts)). Today they all happen to describe the same data, but nothing keeps them in sync.
 
-**Why this priority**: Real consistency fix, small surface, high leverage for future frontend work. The interface this User Story produces is what US2's acceptance scenario 8 points at — the two stories support each other but neither blocks the other (US2 can describe the planned interface and link forward to US4 if US4 hasn't merged yet).
+**Why this priority**: Real consistency fix, small surface, high leverage for future frontend work. The interface this User Story produces is what US2's acceptance scenario 8 points at — by the recommended execution order, US4 ships before US2, so US2 names a real existing interface.
 
 **Independent Test**: A single TypeScript interface (e.g., `AuthenticatedUser`) is exported from one file and imported by `main.ts`, `loginModal.ts`, and `baseTab.ts`. The inline declarations are removed. TypeScript still compiles with `npm run typecheck`. The frontend still runs without runtime errors.
 
@@ -345,8 +346,7 @@ The 2026-05-31 amendment introduced Constitution Principle XII: the shipped arti
 
 ### Edge Cases
 
-- **Doc PRs vs. code PRs.** US1 and US8 touch only Markdown. US2 touches Markdown plus [CONTRIBUTING.md](../../CONTRIBUTING.md). US3 edits `.ts` source files (inline doc comments only — no behavior change). US4, US5, US6, US7, US9 touch executable code. Doc-only PRs go through normal review; PRs that touch `.ts` files (US3, US4, US5, US6, US7, US9) MUST pass `npm run check:all` per NFR-002.
-- **US2 + US1 collision.** If US2 ships before US1, then US1 just points at the new docs. If US1 ships first and the new docs don't exist yet, US1 should remove the dead links rather than leave them dangling — US2 can re-add them later.
+- **Doc PRs vs. code PRs.** US1 and US8 touch only Markdown. US2 touches Markdown (the three new docs) plus [README.md](../../README.md) + [API_TESTING.md](../../API_TESTING.md) + [docs/README.md](../../docs/README.md) (sweep step) plus [CONTRIBUTING.md](../../CONTRIBUTING.md) (maintenance contract). US3 edits `.ts` source files (inline doc comments only — no behavior change). US4, US5, US6, US7, US9 touch executable code or test files. Commits that touch `.ts` files (US3, US4, US5, US6, US7, US9) MUST pass `npm run check:all` per NFR-002.
 - **US3 vs. 016.** US3 documents `userController.authenticateByAccessCode`'s `data: null` behavior. The clarifications session settled that this is a real frontend coupling (logout-on-401 contract in `HttpService`) — so US3 just writes that down. Whether the coupling is the right design at all is routed to [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md).
 - **US6 auth tests revealing actual bugs.** Policy is defer-always: if a middleware test reveals that the auth ladder behaves differently from what the code looks like it should, pin the actual behavior in the test (with a comment explaining the discrepancy and any severity assessment) and open a new spec for the fix. US6 ships on coverage, not on fixes. If a finding feels critical at the moment of discovery, escalate it out of band — but the default is defer.
 - **US7 fixture data.** The summer test needs students at multiple grades to verify both the bump and the `MAX_GRADE` drop. Use mocked fixture data, not seeded prod-shape data.
