@@ -56,6 +56,24 @@
 - ❌ Never commit without running format/lint/tests
 - ❌ Never commit "all changes" without reviewing each file
 
+## Versioning
+
+This project uses [semantic versioning](https://semver.org/). Use the npm scripts — they bump `package.json`, update `package-lock.json`, and commit atomically:
+
+```bash
+npm run version:increment          # patch — bug fixes (1.4.x → 1.4.x+1)
+npm run version:increment:minor    # minor — new features / new behavior (1.4.x → 1.5.0)
+npm run version:increment:major    # major — breaking changes (1.x.x → 2.0.0)
+```
+
+**When to bump:**
+
+- **Patch**: bug fixes, dependency updates, internal refactors with no observable behavior change
+- **Minor**: new user-facing behavior, new endpoints, new capabilities (e.g. error visibility pipeline)
+- **Major**: breaking API changes, auth contract changes, schema migrations requiring manual intervention
+
+Do not call `scripts/version-manager.sh` directly — the npm scripts wrap it and handle the commit.
+
 ## Commit Message Format
 
 ```
