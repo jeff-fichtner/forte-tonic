@@ -27,7 +27,7 @@ A Node.js web application for automated student registration in after-school mus
 - **Modern Stack**: TypeScript on Node.js (ESM) with Express.js API + TypeScript SPA bundled by Vite (MaterializeCSS for UI)
 - **Platform-Agnostic**: Containerized deployment on any Docker-compatible host
 
-Originally a Google Apps Script application, migrated to Node.js for improved performance and maintainability. A legacy `gas/` directory remains in the repo for reference.
+Originally a Google Apps Script application, migrated to Node.js for improved performance and maintainability. The `gas/` directory still hosts a small set of manually-run migrations and is slated for deprecation.
 
 ## Key Features
 
