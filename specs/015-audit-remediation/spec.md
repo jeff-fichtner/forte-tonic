@@ -116,7 +116,7 @@ Cover, in this order:
 
 **Concretely — `docs/technical/API.md`**
 - Hand-authored by reading [src/routes/api.ts](../../src/routes/api.ts) — no auto-generation in scope here (an automation pass would be its own spec).
-- For each of the 16 endpoints: method, path, auth requirement (public / `requireAuth`), request shape, response shape.
+- For each endpoint (19 total — 4 public + 15 authenticated): method, path, auth requirement (public / `requireAuth`), request shape, response shape.
 - Public endpoints called out as such: `/health`, `/version`, `/configuration`, `/auth/access-code`.
 - Error envelope spec (the `{success: false, error: {message, code, type}}` shape from Constitution Principle IV).
 
