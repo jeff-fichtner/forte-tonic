@@ -95,14 +95,21 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
    * Get all students with parent emails enriched.
    *
    * The `period` parameter is REQUIRED (per FR-003): every caller must pass
-   * the active trimester. When `period === 'summer'`, each student's `grade`
-   * is bumped by +1 in the returned data — this is a runtime display/filter
-   * transform, never persisted (FR-003).
+   * the active trimester.
    *
-   * Caching is handled at the GoogleSheetsDbClient layer for raw data,
-   * and in-memory for enriched data. The grade-bump is applied AFTER the
-   * cache read (cache stores raw grade values), so the cache stays
-   * period-agnostic.
+   * **Summer grade-bump.** When `period === 'summer'`, each student's `grade`
+   * is bumped by +1 in the returned data, and any student whose bumped grade
+   * exceeds `MAX_GRADE` is dropped from the result (graduating students do
+   * not appear in summer views). This is a runtime display/filter transform —
+   * the bump is NEVER persisted to the underlying sheet. It exists because
+   * summer registration is logically "next fall," so students see the lessons
+   * available to them at their post-summer grade. See Constitution Principle IX
+   * (Trimester-Aware by Default).
+   *
+   * **Cache.** Raw rows are cached at the GoogleSheetsDbClient layer; this
+   * method adds a second enriched-students cache (5-min TTL, matches dbClient).
+   * The grade-bump is applied AFTER the cache read so the cache stays
+   * period-agnostic — a single enriched cache serves all periods.
    */
   async getStudents(period: string): Promise<Student[]> {
     if (!period) {
@@ -189,10 +196,12 @@ export class UserRepository extends BaseRepository<Record<string, unknown>> {
 
   /**
    * Find student by ID, returning the period-appropriate view. Forwards
-   * `period` to `getStudents()` so the grade-bump (when `period === 'summer'`)
-   * is applied to the returned student. Throws NotFoundError if the ID does
-   * not match a student — "student missing" is a data-integrity bug, not a
-   * normal lookup outcome.
+   * `period` to `getStudents()` so the summer grade-bump (when
+   * `period === 'summer'`: +1 to grade, drop anyone over `MAX_GRADE`) is
+   * applied to the returned student — see `getStudents` for full details.
+   * Throws NotFoundError if the ID does not match a student in the
+   * period-filtered result set ("student missing" is a data-integrity bug
+   * or, for summer, the student has graduated past `MAX_GRADE`).
    */
   async getStudentById(id: string, period: string): Promise<Student> {
     const students = await this.getStudents(period);

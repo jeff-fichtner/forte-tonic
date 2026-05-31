@@ -135,8 +135,27 @@ export class UserController {
   }
 
   /**
-   * Authenticate user by access code
-   * NOTE: Returns null for failed authentication (required for frontend compatibility)
+   * Authenticate user by access code.
+   *
+   * **`{ success: true, data: null }` on miss — not 401.** This endpoint
+   * behaves as a *lookup probe*, not an authenticate-or-fail endpoint. On a
+   * missed lookup it returns the standard success envelope with `data: null`
+   * (HTTP 200), NOT a 401.
+   *
+   * Why this matters: the frontend's `HttpService` treats 401 as a session-
+   * expiration signal — it clears `localStorage` (`forte_auth_session`) and
+   * fires `#onSessionExpired`, which logs the user out and re-shows the login
+   * modal (see [src/web/js/data/httpService.ts](../web/js/data/httpService.ts)
+   * line 84 onward). If THIS endpoint returned 401, an unsuccessful login
+   * attempt would clear the session of a user who isn't logged in yet and
+   * loop the login modal on every failed attempt. So the miss must look like
+   * a successful lookup with a null result.
+   *
+   * Whether this coupling is the right design at all (the frontend's 401
+   * semantics could be tightened to avoid this) is routed to spec
+   * 016-error-contract-uniformization. Until then, do NOT change the return
+   * shape here without also updating `HttpService`.
+   *
    * @param req - Express request object
    * @param res - Express response object
    */

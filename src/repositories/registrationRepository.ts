@@ -184,7 +184,19 @@ export class RegistrationRepository extends BaseRepository<Registration> {
 
   /**
    * Delete a registration by ID from the specified trimester table.
-   * Overrides base delete because registrations are stored in trimester-specific tables.
+   *
+   * **Signature note.** This method intentionally extends `BaseRepository.delete(id, deletedBy)`
+   * by adding a required `trimester` parameter — registrations live in per-trimester
+   * sheets (`registrations_fall`, `registrations_winter`, `registrations_spring`,
+   * `registrations_summer`), so the caller must specify which sheet to delete from.
+   * The `@ts-expect-error` below is a deliberate LSP carve-out, NOT a bug to fix.
+   * If you remove it, the type checker will reject this override; if you remove
+   * the override, callers will silently fail to find rows because the base
+   * implementation has no trimester context.
+   *
+   * A cleaner fix (introducing a `TrimesteredRepository` base or moving trimester
+   * into a parameter object) is routed to spec 017-uniform-crud-completion.
+   * Until then, this is the canonical pattern for trimester-scoped CRUD.
    */
   // @ts-expect-error -- extended signature: base is (id, deletedBy), this adds required trimester
   override async delete(id: string, userId: string, trimester: string): Promise<boolean> {

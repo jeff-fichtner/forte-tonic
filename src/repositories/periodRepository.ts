@@ -43,7 +43,16 @@ export class PeriodRepository extends BaseRepository<Period> {
   }
 
   /**
-   * Get all periods
+   * Get all periods. Always fetched live — the `periods` sheet is deliberately
+   * excluded from the 5-minute in-memory cache in `googleSheetsDbClient`
+   * (see [src/database/googleSheetsDbClient.ts](../database/googleSheetsDbClient.ts)
+   * around the cache-skip check for the `periods` sheet name).
+   *
+   * Periods govern which trimester is active and which registrations table
+   * writes target (`PeriodService.getEnrollmentTrimesterTable()`). A stale
+   * period — even by 5 minutes at a boundary — would cause writes to land
+   * in the wrong trimester's sheet. The cost of one live Sheets read per call
+   * is acceptable; the cost of a misrouted write is not.
    */
   async getAll(): Promise<Period[]> {
     return this.findAll();
