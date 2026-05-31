@@ -5,10 +5,7 @@
  * Tests for TonicDuration, TonicDateTime, and TonicDateTimeHelpers (DateHelpers).
  * Pure functions/classes with no external dependencies (Pattern 1: direct imports).
  *
- * Covers:
- *   T019 - TonicDuration
- *   T020 - TonicDateTime
- *   T021 - TonicDateTimeHelpers (DateHelpers)
+ * Covers TonicDuration, TonicDateTime, and TonicDateTimeHelpers (DateHelpers).
  */
 
 import {
@@ -18,7 +15,7 @@ import {
 } from '../../../src/utils/nativeDateTimeHelpers.js';
 
 // ---------------------------------------------------------------------------
-// T019: TonicDuration
+// TonicDuration
 // ---------------------------------------------------------------------------
 describe('TonicDuration', () => {
   describe('constructor & clamping', () => {
@@ -149,7 +146,7 @@ describe('TonicDuration', () => {
 });
 
 // ---------------------------------------------------------------------------
-// T020: TonicDateTime
+// TonicDateTime
 // ---------------------------------------------------------------------------
 describe('TonicDateTime', () => {
   describe('constructor & factories', () => {
@@ -258,7 +255,7 @@ describe('TonicDateTime', () => {
 });
 
 // ---------------------------------------------------------------------------
-// T021: TonicDateTimeHelpers (DateHelpers)
+// TonicDateTimeHelpers (DateHelpers)
 // ---------------------------------------------------------------------------
 describe('DateHelpers (TonicDateTimeHelpers)', () => {
   describe('parseTimeString', () => {

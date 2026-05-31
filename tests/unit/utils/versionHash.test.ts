@@ -1,5 +1,5 @@
 /**
- * Version Hash Unit Tests (T025)
+ * Version Hash Unit Tests
  * ===============================
  *
  * Tests for version hash generation with git/env/package.json fallbacks.

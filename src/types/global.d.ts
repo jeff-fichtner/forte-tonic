@@ -19,7 +19,7 @@ interface TonicEnv {
 }
 
 declare global {
-  // Prototype extension declarations (T003)
+  // Prototype extension declarations
   interface String {
     capitalize(): string;
   }

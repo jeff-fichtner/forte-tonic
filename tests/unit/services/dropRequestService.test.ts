@@ -85,7 +85,7 @@ describe('DropRequestService', () => {
   });
 
   // =========================================================================
-  // T005: createDropRequest
+  // createDropRequest
   // =========================================================================
   describe('createDropRequest', () => {
     const registrationId = 'reg-001';
@@ -200,7 +200,7 @@ describe('DropRequestService', () => {
   });
 
   // =========================================================================
-  // T006: approveDropRequest / rejectDropRequest
+  // approveDropRequest / rejectDropRequest
   // =========================================================================
   describe('approveDropRequest', () => {
     const requestId = 'dr-001';
@@ -313,7 +313,7 @@ describe('DropRequestService', () => {
   });
 
   // =========================================================================
-  // T007: getPendingDropRequests, getDropRequestsByParent, getDropRequestById
+  // getPendingDropRequests, getDropRequestsByParent, getDropRequestById
   // =========================================================================
   describe('getPendingDropRequests', () => {
     test('should return enriched pending requests with student and registration data', async () => {

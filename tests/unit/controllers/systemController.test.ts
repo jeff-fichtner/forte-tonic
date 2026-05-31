@@ -1,5 +1,5 @@
 /**
- * System Controller Tests (T013)
+ * System Controller Tests
  * ================================
  *
  * Tests for SystemController static methods:

@@ -1,5 +1,5 @@
 /**
- * Attendance Controller Tests (T012)
+ * Attendance Controller Tests
  * ====================================
  *
  * Tests for AttendanceController static methods:
