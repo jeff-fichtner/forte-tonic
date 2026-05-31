@@ -108,13 +108,14 @@ export class DebugController {
         userType,
       } = (req.body ?? {}) as Record<string, unknown>;
 
+      const clientStack = typeof stack === 'string' ? stack : undefined;
       const cloudLogger = getCloudLogger();
       cloudLogger.error({
-        message: `Client error: ${String(message)}`,
+        message: clientStack || `ClientError: ${String(message)}`,
         error: {
           name: 'ClientError',
           message: String(message),
-          stack: typeof stack === 'string' ? stack : undefined,
+          stack: clientStack,
           code: ERROR_CODE.INTERNAL_ERROR,
         },
         ...buildErrorReportingFields(),

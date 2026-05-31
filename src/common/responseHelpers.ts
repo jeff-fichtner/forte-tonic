@@ -143,9 +143,17 @@ export function errorResponse(
   // Determine log severity: 4xx = WARNING, 5xx = ERROR
   const severity = statusCode >= 500 ? LOG_SEVERITY.ERROR : LOG_SEVERITY.WARNING;
 
-  // Build structured log entry for GCP Cloud Logging
+  // Build structured log entry for GCP Cloud Logging.
+  // For 5xx errors the message field must contain the full stack trace so
+  // Cloud Error Reporting can parse and group the entry — it looks for
+  // "Error: ...\n    at ..." in message, not in a nested field.
+  const stackOrMessage =
+    normalizedError.stack || normalizedError.message || 'An unexpected error occurred';
   const logEntry: Record<string, unknown> = {
-    message: normalizedError.message || 'An unexpected error occurred',
+    message:
+      statusCode >= 500
+        ? stackOrMessage
+        : normalizedError.message || 'An unexpected error occurred',
     severity,
     error: {
       name: normalizedError.name,

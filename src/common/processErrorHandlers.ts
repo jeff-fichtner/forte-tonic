@@ -29,7 +29,7 @@ export function installProcessErrorHandlers(): void {
 
   process.on('uncaughtException', (error: Error) => {
     logger.error({
-      message: `Uncaught exception: ${error.message}`,
+      message: error.stack || `Uncaught exception: ${error.message}`,
       error: {
         name: error.name,
         message: error.message,
@@ -50,7 +50,7 @@ export function installProcessErrorHandlers(): void {
         ? reason
         : new Error(typeof reason === 'string' ? reason : JSON.stringify(reason));
     logger.error({
-      message: `Unhandled promise rejection: ${error.message}`,
+      message: error.stack || `Unhandled promise rejection: ${error.message}`,
       error: {
         name: error.name,
         message: error.message,
