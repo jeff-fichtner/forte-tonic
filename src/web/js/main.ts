@@ -30,7 +30,7 @@ import { NavTabs } from './components/navTabs.js';
 import { FeedbackManager } from './feedback.js';
 import * as LoginModal from './auth/loginModal.js';
 import * as TermsModal from './auth/termsModal.js';
-import { AccessCodeManager, UserSession } from './auth/session.js';
+import { AccessCodeManager, UserSession, type AuthenticatedUser } from './auth/session.js';
 import { initializeVersionDisplay, loadDirectorInfo } from './startup/versionAndDirector.js';
 import { DomHelpers } from './utilities/domHelpers.js';
 import { Sections, ServerFunctions } from './constants.js';
@@ -56,17 +56,6 @@ import { AdminRegistrationTab } from './tabs/adminRegistrationTab.js';
 // ---------------------------------------------------------------------------
 // Local type aliases
 // ---------------------------------------------------------------------------
-
-/** Authenticated user shape returned from HttpService.post (raw JSON, not model class) */
-interface AuthenticatedUser {
-  email?: string;
-  admin?: Record<string, unknown> | null;
-  instructor?: Record<string, unknown> | null;
-  parent?: Record<string, unknown> | null;
-  systemError?: boolean;
-  error?: string;
-  [key: string]: unknown;
-}
 
 /** Shape of the /api/admin/clear-cache response */
 interface ClearCacheResponse {

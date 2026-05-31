@@ -26,17 +26,10 @@
  */
 
 import type { HttpResult } from '../data/httpService.js';
-
-export interface SessionUser {
-  email?: string;
-  admin?: { id: string; [key: string]: unknown } | null;
-  instructor?: { id: string; [key: string]: unknown } | null;
-  parent?: { id: string; [key: string]: unknown } | null;
-  [key: string]: unknown;
-}
+import type { AuthenticatedUser } from '../auth/session.js';
 
 export interface SessionInfo {
-  user?: SessionUser;
+  user?: AuthenticatedUser;
   userType?: string;
   [key: string]: unknown;
 }

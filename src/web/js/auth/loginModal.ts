@@ -2,24 +2,13 @@ import { HttpService } from '../data/httpService.js';
 import { ServerFunctions } from '../constants.js';
 import { setPageLoading } from '../ui/pageLoading.js';
 import { ModalKeyboardHandler } from '../utilities/modalKeyboardHandler.js';
-import { AccessCodeManager } from './session.js';
+import { AccessCodeManager, type AuthenticatedUser } from './session.js';
 import { LoginType } from '/utils/values/loginType.js';
 import {
   formatPhoneAsTyped,
   isValidPhoneNumber,
   stripPhoneFormatting,
 } from '../utilities/phoneHelpers.js';
-
-/** Authenticated user shape returned from HttpService.post (raw JSON, not model class) */
-interface AuthenticatedUser {
-  email?: string;
-  admin?: Record<string, unknown> | null;
-  instructor?: Record<string, unknown> | null;
-  parent?: Record<string, unknown> | null;
-  systemError?: boolean;
-  error?: string;
-  [key: string]: unknown;
-}
 
 /**
  * Pull `firstName` off whichever role-record the auth response carries.

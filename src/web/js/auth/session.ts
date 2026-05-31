@@ -4,6 +4,29 @@ import type {
 } from '/models/shared/responses/appConfigurationResponse.js';
 import { LoginType } from '/utils/values/loginType.js';
 
+/**
+ * The authenticated-user shape returned by HttpService after a successful
+ * access-code lookup. Carries the email and at most one populated role
+ * record (admin / instructor / parent) depending on what the access code
+ * matched. The role records always include an `id: string` and may carry
+ * additional fields; the open-ended index signature keeps the type
+ * permissive against the raw JSON payload.
+ *
+ * Two failure-mode fields are also present: `systemError` is set when the
+ * server returned an envelope-level success but the lookup itself
+ * surfaced an internal error, and `error` carries a human-readable note
+ * for that case. Successful authentications leave both undefined.
+ */
+export interface AuthenticatedUser {
+  email?: string;
+  admin?: { id: string; [key: string]: unknown } | null;
+  instructor?: { id: string; [key: string]: unknown } | null;
+  parent?: { id: string; [key: string]: unknown } | null;
+  systemError?: boolean;
+  error?: string;
+  [key: string]: unknown;
+}
+
 interface AccessCodeManagerShape {
   _accessCodeCache: { accessCode: string; loginType: string } | null;
   saveAccessCodeSecurely(accessCode: string, loginType?: string): void;
