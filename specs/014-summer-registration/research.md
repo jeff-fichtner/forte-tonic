@@ -207,10 +207,10 @@ column that did not actually exist.)
 **Alternatives considered:**
 - **Add a `targetTrimester` column to the periods table in 014.**
   Rejected — derivation handles every Part 1 case. If Part 2's August
-  rollover migration ([015-school-year-rollover](../015-school-year-rollover/spec.md))
+  rollover migration ([021-school-year-rollover](../021-school-year-rollover/spec.md))
   ever needs an arbitrary write-target (e.g., a period that lives in
   spring but writes directly to next year's fall, skipping summer
-  entirely), that's a 015 scope decision, not a 014 task.
+  entirely), that's a 021 scope decision, not a 014 task.
 
 ---
 

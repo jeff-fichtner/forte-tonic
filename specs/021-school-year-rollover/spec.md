@@ -1,11 +1,11 @@
 # Feature Specification: School-Year Rollover Migration
 
-**Feature Branch**: `015-school-year-rollover`
+**Feature Branch**: `021-school-year-rollover`
 **Created**: 2026-05-27
 **Status**: Stub
 **Part of**: School-year rollover initiative (Parts 1-3)
 **Previous**: Part 1 — [014-summer-registration](../014-summer-registration/spec.md)
-**Next**: Part 3 — [016-intent-phase-reduction](../016-intent-phase-reduction/spec.md)
+**Next**: Part 3 — [022-intent-phase-reduction](../022-intent-phase-reduction/spec.md)
 
 > **This is a stub, not a spec.** Captures intent only. The real spec will be
 > authored on the `014-summer-registration` branch once Part 1 ships, since

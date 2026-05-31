@@ -340,7 +340,7 @@ The following data concerns are **not** addressed by 014:
 
 - **Migrating spring data into summer.** Handled by the GAS turnover
   script (FR-008), not the 013 migration.
-- **Cleanup of summer rows after August migration.** Part 2 / 015.
+- **Cleanup of summer rows after August migration.** Part 2 / 021.
 - **Stored write-target field on the periods table.** Not added in
   014 — derivation by `PeriodService.getEnrollmentTrimesterTable()`
   handles all current and Part-1 cases (see [research.md](research.md)

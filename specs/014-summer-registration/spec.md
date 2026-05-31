@@ -4,7 +4,7 @@
 **Created**: 2026-05-27
 **Status**: Implemented
 **Part of**: School-year rollover initiative (Parts 1-3)
-**Next**: Part 2 — [015-school-year-rollover](../015-school-year-rollover/spec.md)
+**Next**: Part 2 — [021-school-year-rollover](../021-school-year-rollover/spec.md)
 
 > **Naming note.** Internally — in code, in the spreadsheet (`registrations_summer`),
 > in API payloads, in logs — this period is called `summer`. **In any UI
@@ -19,7 +19,7 @@
 > **Forward note.** This spec treats `summer` as a stable fourth trimester
 > for the duration of this school year. The `summer` period itself persists
 > as a recurring fourth-trimester registration window in subsequent years —
-> what changes in Part 2 ([015-school-year-rollover](../015-school-year-rollover/spec.md))
+> what changes in Part 2 ([021-school-year-rollover](../021-school-year-rollover/spec.md))
 > is the data: rows in `registrations_summer` get migrated into the next
 > year's `registrations_fall` and stop being "next year's" registrations
 > at that point.
@@ -451,10 +451,10 @@ the modify selector no longer shows that lesson.
   only carried-forward registrations (those with
   `linkedPreviousRegistrationId` set) appear in the modify selector
   is inherited as-is.
-- **The August migration itself.** Part 2 ([015-school-year-rollover](../015-school-year-rollover/spec.md))
+- **The August migration itself.** Part 2 ([021-school-year-rollover](../021-school-year-rollover/spec.md))
   handles copying `registrations_summer` into the next year's
   `registrations_fall` sheet and re-pairing with students at their new grades.
-- **Intent phase changes.** Part 3 ([016-intent-phase-reduction](../016-intent-phase-reduction/spec.md)).
+- **Intent phase changes.** Part 3 ([022-intent-phase-reduction](../022-intent-phase-reduction/spec.md)).
   (014 *does* extend the existing turnover script to handle
   `spring → summer`, but it does not change *how* intent works or
   *whether* the intent phase is invoked — only adds the new pair to

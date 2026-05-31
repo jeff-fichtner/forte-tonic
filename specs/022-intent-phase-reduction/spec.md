@@ -1,10 +1,10 @@
 # Feature Specification: Intent Phase Reduction
 
-**Feature Branch**: `016-intent-phase-reduction`
+**Feature Branch**: `022-intent-phase-reduction`
 **Created**: 2026-05-27
 **Status**: Stub
 **Part of**: School-year rollover initiative (Parts 1-3)
-**Previous**: Part 2 — [015-school-year-rollover](../015-school-year-rollover/spec.md)
+**Previous**: Part 2 — [021-school-year-rollover](../021-school-year-rollover/spec.md)
 
 > **This is a stub, not a spec.** Captures intent only. The real spec will be
 > authored on the `014-summer-registration` branch once Parts 1 and 2 have
