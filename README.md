@@ -5,7 +5,7 @@
 [![Main Branch](https://github.com/jeff-fichtner/forte-tonic/actions/workflows/main-branch.yml/badge.svg)](https://github.com/jeff-fichtner/forte-tonic/actions/workflows/main-branch.yml)
 [![Dev Branch](https://github.com/jeff-fichtner/forte-tonic/actions/workflows/dev-branch.yml/badge.svg?branch=dev)](https://github.com/jeff-fichtner/forte-tonic/actions/workflows/dev-branch.yml)
 
-A Node.js web application for automated student registration in after-school music programs. Features role-based access control, Google Sheets integration, and a responsive single-page frontend.
+A Node.js web application for automated student registration in after-school music programs. Features role-based access control, Google Sheets integration, and a TypeScript single-page frontend bundled by Vite.
 
 ## Table of Contents
 
@@ -24,10 +24,10 @@ A Node.js web application for automated student registration in after-school mus
 - **AccessCode Authentication**: Secure login for parents (phone), instructors, and admins (6-digit codes)
 - **Role-Based Access**: Tailored functionality for parents, instructors, and administrators
 - **Google Sheets Backend**: All data persisted via Google Sheets API
-- **Modern Stack**: Express.js API + Vanilla JavaScript SPA with ViewModel pattern
+- **Modern Stack**: TypeScript on Node.js (ESM) with Express.js API + TypeScript SPA bundled by Vite (MaterializeCSS for UI)
 - **Platform-Agnostic**: Containerized deployment on any Docker-compatible host
 
-Originally a Google Apps Script application, migrated to Node.js for improved performance and maintainability.
+Originally a Google Apps Script application, migrated to Node.js for improved performance and maintainability. The legacy `gas/` directory's status is being reviewed in [020-project-hygiene](specs/020-project-hygiene/spec.md).
 
 ## Key Features
 
@@ -39,17 +39,17 @@ Originally a Google Apps Script application, migrated to Node.js for improved pe
 
 ## System Architecture
 
-**Backend**: Controller → Service → Repository pattern with Express.js
-**Frontend**: Vanilla JavaScript SPA with ViewModel pattern
-**Database**: Google Sheets via API with service account authentication
-**Auth**: Phone number (parents) or 6-digit AccessCode (staff)
+**Backend**: Controller → Service → Repository pattern with Express.js (TypeScript on Node.js, ESM via `tsx`)
+**Frontend**: TypeScript SPA bundled by Vite; MaterializeCSS for UI; all HTTP goes through `HttpService` (Constitution Principle V)
+**Database**: Google Sheets API v4 with service account authentication; one spreadsheet per environment
+**Auth**: Phone number (parents) or 6-digit AccessCode (staff); sent via `x-access-code` + `x-login-type` headers
 
 **Key Components**:
 
-- 9 Services (1 application, 4 domain, 4 supporting)
-- 4 Repositories (all extend BaseRepository with consistent caching)
-- RESTful API with Express.js
-- Service container for dependency injection
+- 6 Services in [src/services/](src/services/) (availability, configuration, dropRequest, entityQuery, period, registration)
+- 6 entity Repositories in [src/repositories/](src/repositories/), all extending `BaseRepository` — note that `periodRepository` is deliberately uncached for time-sensitive routing (see Constitution Principle X)
+- 5-minute in-memory cache per pod ([src/cache/cacheService.ts](src/cache/cacheService.ts)); writes invalidate via `clearAllCache()`
+- Homegrown lazy-singleton DI container ([src/infrastructure/container/serviceContainer.ts](src/infrastructure/container/serviceContainer.ts))
 
 See the documentation in [docs/](docs/) for additional details. (A consolidated architecture reference will land with spec 015 US2; see [specs/015-audit-remediation/spec.md](specs/015-audit-remediation/spec.md).)
 
@@ -130,10 +130,10 @@ npm run check:all           # Format + lint check
 ### Pre-Commit Checklist
 
 ```bash
-npm run format && npm run lint && npm test
+npm run check:all
 ```
 
-All checks must pass for GitHub Actions to succeed.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the authoritative checklist. All checks must pass for GitHub Actions to succeed.
 
 ## Deployment
 
@@ -166,31 +166,40 @@ Example pipeline in `src/build/cloudbuild.yaml` demonstrates automated Docker bu
 ```
 src/
 ├── controllers/        # HTTP handlers
-├── repositories/       # Data access
-├── services/          # Business logic
-├── models/            # Domain models
-├── middleware/        # Auth, validation
-├── routes/            # API routes
-├── database/          # Google Sheets client
-├── utils/             # Helpers
-└── web/               # Frontend SPA
+├── repositories/       # Data access (all extend baseRepository)
+├── services/           # Business logic
+├── models/             # Domain models
+│   └── shared/         # Models that run in both Node.js and browser (Constitution VII)
+├── middleware/         # Auth, etc.
+├── routes/             # API routes (api.ts is the source of truth)
+├── database/           # googleSheetsDbClient.ts — Sheets API wrapper + cache
+├── cache/              # 5-min in-memory cache (per pod)
+├── common/             # errors, responseHelpers, gcpLogger, errorConstants
+├── infrastructure/     # DI container, migration runner
+├── migrations/         # Numbered, idempotent runtime migrations (see spec 013)
+├── utils/              # Helpers
+└── web/                # Frontend TypeScript SPA (Vite-bundled in prod)
 
-gas/                   # Google Apps Script migrations
-tests/                 # Unit & integration tests
-docs/                  # Documentation
-config/                # ESLint, Prettier, Jest
+gas/                    # Legacy Google Apps Script source (predecessor codebase; status under review in spec 020)
+tests/                  # Unit & integration tests (mock googleSheetsDbClient)
+docs/                   # Documentation
+config/                 # ESLint, Prettier, Jest, .env templates
+scripts/                # Build, deploy, migration, Postman collection
+specs/                  # speckit feature specs
 ```
 
 ## Contributing
 
-1. Fork and create feature branch (`feature/amazing-feature`)
-2. Make changes following code standards
-3. Add tests for new functionality
-4. Run `npm run format && npm run lint && npm test`
-5. Commit with conventional commit format
-6. Create Pull Request
+This project uses the [speckit](https://github.com/github/spec-kit) workflow. Feature work follows the `specify → plan → tasks → implement` pipeline; see the [constitution](.specify/memory/constitution.md) Development Workflow section.
 
-**Branch Strategy**: `main` (production) ← `dev` (integration) ← `feature/*`
+1. Create a numbered feature branch via `/speckit.specify` (the convention is `###-feature-name`, e.g., `015-audit-remediation`)
+2. Follow [CONTRIBUTING.md](CONTRIBUTING.md) for code standards, commit practices, and AI-assistant rules
+3. Include tests for business logic (Constitution Testing section)
+4. Run `npm run check:all` before every commit
+5. Use conventional commit format
+6. Open a PR to `dev`
+
+**Branch Strategy**: `main` (production) ← `dev` (integration) ← `###-feature-name` (per-feature speckit branches)
 
 ## Documentation
 

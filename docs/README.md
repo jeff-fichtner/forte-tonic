@@ -17,4 +17,4 @@ principles, and development workflow, see the
 
 ## Generated
 
-- [generated/](generated/) — Auto-generated API documentation
+- [generated/](generated/) — Placeholder for auto-generated docs from `npm run docs`; not currently populated. A consolidated API reference lands with spec 015 US2.

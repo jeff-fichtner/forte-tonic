@@ -56,6 +56,7 @@ This phase is intentionally empty. Documenting it here so a fresh reader doesn't
 - [X] T009 [P] [US1] Edit [API_TESTING.md](../../API_TESTING.md) to replace the fabricated endpoint examples with either real endpoints from [src/routes/api.ts](../../src/routes/api.ts) OR replace the whole file with a one-paragraph pointer to the Postman collection at [scripts/postman/tonic-api.postman_collection.json](../../scripts/postman/tonic-api.postman_collection.json). Replaced the whole file with a pointer to the Postman collection + route definitions + future API.md, plus a note about the auth headers (the original file's "No authentication required for local development" claim was also false — auth middleware runs locally too).
 - [X] T010 [P] [US1] If T004 found dead links in [docs/README.md](../../docs/README.md), edit to fix or remove them. No-op — all links resolved.
 - [X] T011 [US1] Verify acceptance: re-walk every link in the three edited files; confirm zero 404s; grep every documented endpoint against [src/routes/api.ts](../../src/routes/api.ts); confirm every match. Mark US1 ready for PR. Zero dead links remaining; every endpoint mentioned in README matches a route definition in [src/routes/api.ts](../../src/routes/api.ts).
+- [X] T012 [US1] Commit US1 changes as `docs: fix dead links in README, API_TESTING, docs/README` and open PR. Committed as `3201699d` with commit message `docs: fix dead links and fabricated endpoints in entry-point docs` (no PR opened — session mode is one commit per User Story, no PRs).
 
 ---
 
