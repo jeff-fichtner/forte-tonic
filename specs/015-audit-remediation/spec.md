@@ -8,7 +8,7 @@
 > **What this spec is.** A working checklist that turns the 2026-05-30 audit
 > into independently-shippable batches. Each User Story below is one
 > self-contained PR; each PR leaves the project in a better state than it
-> found it. The full spec ships only when all eight User Stories merge (see
+> found it. The full spec ships only when all nine User Stories merge (see
 > Success Criteria — no escape hatch).
 >
 > **What this spec is not.** A behavior change for end users. Parents,
@@ -43,6 +43,7 @@
 - A small set of inline doc comments at the four "you will be surprised" hotspots.
 - The handful of real test gaps the audit identified — authentication middleware, cache service, and one end-to-end summer-grade-bump assertion. Most of the audit's "untested" list turned out to be tested in nested directories (see `tests/unit/controllers/`, `services/`, `common/`, `infrastructure/`); only the actually-zero-coverage files are in scope here.
 - Two small code-consistency fixes that take less than the doc work to write up: uniform trimester validation in the registration controller, and one canonical TypeScript interface for "the authenticated user" on the frontend.
+- A sweep of all non-speckit files (`src/`, `tests/`, `README.md`, `CONTRIBUTING.md`, `docs/`, build/CI, scripts) for speckit references — Constitution Principle XII compliance. The audit surfaced this drift indirectly; the sweep closes it.
 
 **Out of scope**
 - Any behavior change visible to end users.
@@ -51,6 +52,10 @@
 - Moving hardcoded business rules (bus deadlines, 12-lesson assumption, `FORTE_PROGRAM_EMAIL`) into configurable storage. These are real tech debt but each is its own decision; they are routed to [018-business-rules-to-config](../018-business-rules-to-config/spec.md) and flagged in US3's "do not move" block so the doc-comment PR doesn't accidentally pick them up.
 - The `specs/` archival problem and the `dev/plans/` status-marking problem. Project-management hygiene, routed to [020-project-hygiene](../020-project-hygiene/spec.md).
 - Anything in `gas/` — its legacy/active status is itself an open question routed to [020-project-hygiene](../020-project-hygiene/spec.md).
+
+## Execution Ordering Note
+
+User Stories remain logically independent. However, the *recommended execution order* puts US2 (the three reference docs) and US8 (findings.md) **last** so they document the project's actual state after all source/test changes have landed. Forward-references like "lands with future work" are avoided entirely: the doc User Stories write the final state in one pass. The recommended order is US1 → US3 → US5 → US4 → US9 → US6 → US7 → US2 → US8. Polish runs after.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -295,6 +300,7 @@ The verification has a checked-in source of truth. The audit findings are curate
 | Postman collection currency unverified | [020-project-hygiene](../020-project-hygiene/spec.md) |
 | Multi-instance cache desync | 015 US2 (document; no code change) |
 | Audit log best-effort contract | 015 US2 (document) + [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md) (decide policy) |
+| Pre-existing speckit-lineage references in src/, tests/, docs/, README (Constitution Principle XII violation) | 015 US9 |
 
 **Concretely**
 - Create [findings.md](findings.md) in this spec directory. It is a curated, deduplicated list authored on this branch — NOT a verbatim chat paste. Format: one short heading per finding (e.g., `### Bus deadlines hardcoded`), a one-sentence summary, and a file:line reference. Errors in the original audit (notably the test-coverage subagent missing the nested test directories under `tests/unit/controllers/`, `tests/unit/services/`, `tests/unit/common/`, `tests/unit/infrastructure/`) are silently corrected before commit — `findings.md` reflects ground truth as of when it is written, not the chat artifact.
@@ -305,9 +311,41 @@ The verification has a checked-in source of truth. The audit findings are curate
 
 ---
 
+### User Story 9 — Speckit-lineage sweep (Constitution Principle XII compliance) (Priority: P2)
+
+The 2026-05-31 amendment introduced Constitution Principle XII: the shipped artifact MUST stand alone if speckit (`specs/`, `.specify/`) were deleted. Source code, tests, README, CONTRIBUTING.md, docs, build/CI files, and scripts MUST NOT cite specs, FRs, NFRs, Constitution Principles, or User Stories by name or number. The current codebase has pre-existing violations (introduced primarily by 014-summer-registration's implementation, and additionally by in-flight 015 work in commits `d83de99e` and `d55d0312`). This User Story sweeps them all.
+
+**Story goal**: Bring every non-speckit file into Principle XII compliance. After this ships, the four greps below return zero matches outside `specs/`, `.specify/`, and `.claude/`.
+
+**Independent test criterion**: Each of the following grep patterns returns zero hits in `src/`, `tests/`, `docs/`, and root-level files (`README.md`, `CONTRIBUTING.md`, `package.json`, etc.):
+
+- `FR-[0-9]`
+- `NFR-[0-9]`
+- `Principle [IVX]+` (when adjacent to "Constitution" or used as a constitutional citation)
+- `spec [0-9]{3}` / `specs/[0-9]{3}` (excluding `.claude/CLAUDE.md`)
+- `User Story [0-9]+` / `US[0-9]+` (where it refers to a speckit User Story, not a generic phrase)
+
+**Acceptance Scenarios**:
+1. **Given** the swept codebase, **When** `grep -rn "FR-[0-9]" src/ tests/ docs/ README.md CONTRIBUTING.md API_TESTING.md` runs, **Then** zero matches.
+2. **Given** the swept codebase, **When** `grep -rn "Constitution Principle" src/ tests/ docs/ README.md CONTRIBUTING.md API_TESTING.md` runs, **Then** zero matches.
+3. **Given** the swept codebase, **When** `grep -rn "spec [0-9]\|specs/[0-9]" src/ tests/ docs/ README.md CONTRIBUTING.md API_TESTING.md` runs, **Then** zero matches (excluding the constitution itself, which is in `.specify/`).
+4. **Given** any comment that previously cited a speckit artifact (e.g., "(per FR-003)" or "routed to spec 017"), **When** read after the sweep, **Then** the comment either states the underlying rule directly OR has been removed because the citation was the only meaning.
+5. **Given** `npm run check:all` after the sweep, **Then** lint + typecheck + tests all pass — the rewrite is comment/string-only and preserves behavior.
+
+**Concretely**
+- Pre-sweep audit: produce a grep-based inventory of every violation site. Each is one of three cases:
+  - **(a) Citation adjacent to a meaningful statement** — drop the citation, keep the statement. Example: `// every caller must pass an active trimester (per FR-003)` → `// every caller must pass an active trimester`.
+  - **(b) Citation IS the statement** — replace with the underlying rule stated directly. Example: `// FR-003: required period parameter` → `// the period parameter is required: every caller must specify the active trimester`.
+  - **(c) Forward-pointer to future work** — drop entirely. Example: `// routed to spec 017-uniform-crud-completion` → (deleted; code shouldn't promise future work).
+- Runtime-visible strings that cite speckit (e.g., the `throw new Error(...FR-003...)` message in `userRepository.getStudents`) get rewritten too. NFR-001 covers user-facing behavior; developer-facing error logs are in scope here.
+- After the sweep, run `npm run check:all` and the four acceptance grep patterns to verify.
+- `.claude/CLAUDE.md` is explicitly exempt (AI-instruction space per Principle XII).
+
+---
+
 ### Edge Cases
 
-- **Doc PRs vs. code PRs.** US1 and US8 touch only Markdown. US2 touches Markdown plus [CONTRIBUTING.md](../../CONTRIBUTING.md). US3 edits `.ts` source files (inline doc comments only — no behavior change). US4, US5, US6, US7 touch executable code. Doc-only PRs go through normal review; PRs that touch `.ts` files (US3, US4, US5, US6, US7) MUST pass `npm run check:all` per NFR-003.
+- **Doc PRs vs. code PRs.** US1 and US8 touch only Markdown. US2 touches Markdown plus [CONTRIBUTING.md](../../CONTRIBUTING.md). US3 edits `.ts` source files (inline doc comments only — no behavior change). US4, US5, US6, US7, US9 touch executable code. Doc-only PRs go through normal review; PRs that touch `.ts` files (US3, US4, US5, US6, US7, US9) MUST pass `npm run check:all` per NFR-002.
 - **US2 + US1 collision.** If US2 ships before US1, then US1 just points at the new docs. If US1 ships first and the new docs don't exist yet, US1 should remove the dead links rather than leave them dangling — US2 can re-add them later.
 - **US3 vs. 016.** US3 documents `userController.authenticateByAccessCode`'s `data: null` behavior. The clarifications session settled that this is a real frontend coupling (logout-on-401 contract in `HttpService`) — so US3 just writes that down. Whether the coupling is the right design at all is routed to [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md).
 - **US6 auth tests revealing actual bugs.** Policy is defer-always: if a middleware test reveals that the auth ladder behaves differently from what the code looks like it should, pin the actual behavior in the test (with a comment explaining the discrepancy and any severity assessment) and open a new spec for the fix. US6 ships on coverage, not on fixes. If a finding feels critical at the moment of discovery, escalate it out of band — but the default is defer.
@@ -326,16 +364,16 @@ The verification has a checked-in source of truth. The audit findings are curate
 - **FR-008** — After US7 ships, at least one integration test MUST exercise the full summer-grade-bump path from controller to response.
 - **FR-009** — After US8 ships, [findings.md](findings.md) MUST exist in this spec directory and contain every audit finding from the 2026-05-30 audit; every finding in `findings.md` MUST have a row in the US8 routing table; every routing-table target spec MUST address the routed item as a dedicated heading or bullet in its "Findings to address" section, with enough context that a reader unfamiliar with the audit can act on it. No audit finding may be unrouted, and no chat-context dependency may survive.
 - **FR-010** — After US2 ships, each of the three new docs MUST carry a "Maintenance contract" header naming the code surface area whose changes require updating the doc, and [CONTRIBUTING.md](../../CONTRIBUTING.md) MUST gain a Pre-Commit Checklist item enforcing that contract. This binds future PRs to keep the docs current without requiring tooling.
+- **FR-011** — After US9 ships, the four acceptance grep patterns (`FR-[0-9]`, `Constitution Principle`, `spec [0-9]\|specs/[0-9]`, speckit `User Story` citations) MUST return zero matches in `src/`, `tests/`, `docs/`, and root-level shipped files. The constitution itself (`.specify/memory/constitution.md`) and `.claude/CLAUDE.md` are exempt.
 
 ### Non-Functional Requirements
 - **NFR-001** — No user-facing behavior change. Manual smoke test before each PR merge: log in as parent, log in as employee, switch users, register one lesson.
-- **NFR-002** — No constitution amendments required. If the work in any User Story turns out to need one, stop and amend the constitution as a separate PR first.
-- **NFR-003** — Every code-touching User Story MUST pass `npm run check:all` before merge (lint, typecheck, tests).
-- **NFR-004** — Every doc-touching User Story MUST be reviewable by reading the rendered Markdown — no images, no external assets that aren't already in `docs/`.
+- **NFR-002** — Every code-touching User Story MUST pass `npm run check:all` before merge (lint, typecheck, tests).
+- **NFR-003** — Every doc-touching User Story MUST be reviewable by reading the rendered Markdown — no images, no external assets that aren't already in `docs/`.
 
 ## Success Criteria *(mandatory)*
 
-This spec ships when all eight User Stories are merged. No escape hatch — User Stories cannot be moved to a successor spec to ship 015 early. The User Stories are deliberately small and independent so finishing all eight is achievable; if one becomes stuck, fix the blocker rather than carve it out.
+This spec ships when all nine User Stories are merged. No escape hatch — User Stories cannot be moved to a successor spec to ship 015 early. The User Stories are deliberately small and independent so finishing all nine is achievable; if one becomes stuck, fix the blocker rather than carve it out.
 
 The "fresh AI agent" test for the overall spec: hand a new agent the project with no chat context, the constitution, and the three new reference docs (US2). Ask the eight questions from US2's acceptance scenarios. They answer all eight correctly. That is the success condition.
 

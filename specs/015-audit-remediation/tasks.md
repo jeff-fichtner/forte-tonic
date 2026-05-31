@@ -5,12 +5,12 @@
 
 **Tests**: This spec explicitly includes test work (US6 fills zero-coverage gaps; US7 adds one E2E test). Test tasks appear only in those phases — they are not generated for stories whose deliverables are documentation or interface relocation, per Constitution Principle I (no speculative scaffolding).
 
-**Organization**: Tasks are grouped by user story. The spec's Dependencies section establishes that all eight User Stories are independent; the order in which their phases appear here matches the plan's recommended implementation order (US1 → US3 → US5 → US4 → US2 → US6 → US7 → US8) — a recommendation, not a requirement.
+**Organization**: Tasks are grouped by user story. The spec's Dependencies section establishes that all nine User Stories are independent; the order in which their phases appear here matches the plan's recommended implementation order (US1 → US3 → US5 → US4 → US9 → US6 → US7 → US2 → US8) — a recommendation, not a requirement. The recommended order puts source/test work first and documentation work last so the docs converge on the project's actual final state in one pass.
 
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies on incomplete tasks)
-- **[Story]**: Which User Story this task belongs to (US1–US8) — present on User Story phase tasks only
+- **[Story]**: Which User Story this task belongs to (US1–US9) — present on User Story phase tasks only
 - All file paths are repo-root-relative
 
 ## Path Conventions
@@ -35,7 +35,7 @@ This is a web app with co-located backend and frontend under `src/`:
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: There are no shared blocking prerequisites for this spec. The eight User Stories are independent by design; nothing built in one is required by another (the recommended order is for *efficiency* of doc references, not correctness).
+**Purpose**: There are no shared blocking prerequisites for this spec. The nine User Stories are independent by design; nothing built in one is required by another (the recommended order is for *coherence of documentation*, not correctness).
 
 This phase is intentionally empty. Documenting it here so a fresh reader doesn't assume something is missing.
 
@@ -47,16 +47,16 @@ This phase is intentionally empty. Documenting it here so a fresh reader doesn't
 
 **Independent test criterion** (from spec): Every link resolves; every documented endpoint exists in [src/routes/api.ts](../../src/routes/api.ts); the README's version stamp matches `package.json` *or* has been removed.
 
-- [X] T003 [US1] Audit every relative link in [README.md](../../README.md) and verify each target file exists; record which links are dead (expected: `docs/technical/ARCHITECTURE_COMPLETE.md`, `docs/technical/ARCHITECTURE.md`, `docs/technical/MIGRATION_SUMMARY.md`). Found 5 dead targets: the 3 spec-named architecture docs plus `docs/business/TECHNICAL_HOSTING_PROPOSAL.md` and `LICENSE` (root file claimed by the MIT license footer + badge but missing from the repo).
-- [X] T004 [P] [US1] Audit every link in [docs/README.md](../../docs/README.md) and verify each target resolves (notably the constitution link → [.specify/memory/constitution.md](../../.specify/memory/constitution.md)). All links resolve; no edit needed.
-- [X] T005 [P] [US1] Audit every endpoint mentioned in [API_TESTING.md](../../API_TESTING.md) against [src/routes/api.ts](../../src/routes/api.ts); record which are fabricated (expected: `/api/classes`, `/api/instructors`, `/api/parent/tabs/registration?parentId=P001`). All three confirmed fabricated.
-- [X] T006 [US1] Edit [README.md](../../README.md) "API Overview" section to either list the real endpoints from [src/routes/api.ts](../../src/routes/api.ts) or replace it with a single pointer line ("see `docs/technical/API.md` for the API reference" — even if US2 hasn't shipped yet, the pointer is correct as soon as US2 lands). NOTE: T006 and T007 touch overlapping regions of README.md (the API Overview section sometimes contains the dead architecture-doc links T007 handles). Do T007 first OR fold T007's link removal into the same editing pass as T006 to avoid re-editing the same lines. Listed real endpoints by category (Public, Registration, Attendance, Feedback, Tab data, Admin only); the prior list pointed at six fabricated endpoints (`/api/authenticateByAccessCode`, `/api/getStudents`, `/api/getInstructors`, `/api/getAdmins`, `/api/getClasses`, `/api/attendance/summary/:id`) plus the dead `docs/generated/` pointer line — all gone.
-- [X] T007 [US1] Edit [README.md](../../README.md) to remove or repoint the three dead architecture-doc references identified in T003. If US2 has shipped concurrently, point at `docs/technical/ARCHITECTURE.md`; otherwise remove the links. May be folded into T006's editing pass per the note above. Removed all three (since US2 hasn't shipped yet), plus the `TECHNICAL_HOSTING_PROPOSAL.md` link and the `LICENSE` click-through; replaced the System Architecture line and Documentation footer with forward-pointers to spec 015 US2 and the docs/ files that DO exist (NODE_SETUP, ENVIRONMENT_VARIABLES, VERSION_DISPLAY, BRANCH_PROTECTION, PRIVACY_POLICY). LICENSE file absence routed to [020-project-hygiene](../020-project-hygiene/spec.md) in a footnote.
-- [X] T008 [US1] Edit [README.md](../../README.md) static version stamp ("Version: 1.1.15 | Last Updated: October 15, 2025"): either delete it entirely or replace with "see `package.json` for current version" (the build pipeline auto-increments `package.json`, so any static stamp will drift). Deleted the stamp; kept the `Node.js: 18+` line with a pointer to `package.json` for the current app version.
-- [X] T009 [P] [US1] Edit [API_TESTING.md](../../API_TESTING.md) to replace the fabricated endpoint examples with either real endpoints from [src/routes/api.ts](../../src/routes/api.ts) OR replace the whole file with a one-paragraph pointer to the Postman collection at [scripts/postman/tonic-api.postman_collection.json](../../scripts/postman/tonic-api.postman_collection.json). Replaced the whole file with a pointer to the Postman collection + route definitions + future API.md, plus a note about the auth headers (the original file's "No authentication required for local development" claim was also false — auth middleware runs locally too).
-- [X] T010 [P] [US1] If T004 found dead links in [docs/README.md](../../docs/README.md), edit to fix or remove them. No-op — all links resolved.
-- [X] T011 [US1] Verify acceptance: re-walk every link in the three edited files; confirm zero 404s; grep every documented endpoint against [src/routes/api.ts](../../src/routes/api.ts); confirm every match. Mark US1 ready for PR. Zero dead links remaining; every endpoint mentioned in README matches a route definition in [src/routes/api.ts](../../src/routes/api.ts).
-- [X] T012 [US1] Commit US1 changes as `docs: fix dead links in README, API_TESTING, docs/README` and open PR. Committed as `3201699d` with commit message `docs: fix dead links and fabricated endpoints in entry-point docs` (no PR opened — session mode is one commit per User Story, no PRs).
+- [X] T003 [US1] Audit every relative link in [README.md](../../README.md) and verify each target file exists; record which links are dead. Found 5 dead targets: three architecture docs that don't exist, plus `docs/business/TECHNICAL_HOSTING_PROPOSAL.md` and `LICENSE` (root file claimed by the MIT license footer + badge but missing from the repo).
+- [X] T004 [P] [US1] Audit every link in [docs/README.md](../../docs/README.md) and verify each target resolves. All links resolve; no edit needed.
+- [X] T005 [P] [US1] Audit every endpoint mentioned in [API_TESTING.md](../../API_TESTING.md) against [src/routes/api.ts](../../src/routes/api.ts); record which are fabricated. All three (`/api/classes`, `/api/instructors`, `/api/parent/tabs/registration?parentId=P001`) confirmed fabricated.
+- [X] T006 [US1] Edit [README.md](../../README.md) "API Overview" section: replaced six fabricated endpoints with the real endpoint catalog from [src/routes/api.ts](../../src/routes/api.ts), organized by category.
+- [X] T007 [US1] Edit [README.md](../../README.md) to remove dead architecture-doc references. Removed all five dead links plus the dead `LICENSE` click-through. Forward-references to future work were added in the original implementation; those are speckit-lineage violations that US9 will sweep.
+- [X] T008 [US1] Edit [README.md](../../README.md) static version stamp: deleted ("Version: 1.1.15 | Last Updated: October 15, 2025"); kept the `Node.js: 18+` line with a pointer to `package.json`.
+- [X] T009 [P] [US1] Edit [API_TESTING.md](../../API_TESTING.md): replaced the whole file with a pointer to the Postman collection + route definitions + future API.md, plus a note about auth headers (corrects the original false "No authentication required for local development" claim).
+- [X] T010 [P] [US1] No-op — `docs/README.md` had no dead links.
+- [X] T011 [US1] Verify acceptance: zero dead relative links remaining; every endpoint mentioned in README matches a route definition in [src/routes/api.ts](../../src/routes/api.ts).
+- [X] T012 [US1] Commit US1 changes. Committed as `3201699d` with a follow-up `d55d0312` covering factual drift fixes (vanilla JS → TypeScript, ViewModel removal, service/repo counts). The README forward-references and routed-to-spec mentions introduced here are speckit-lineage tech debt that US9 sweeps.
 
 ---
 
@@ -66,13 +66,13 @@ This phase is intentionally empty. Documenting it here so a fresh reader doesn't
 
 **Independent test criterion** (from spec): Each of the four sites has a doc comment answering its listed question; behavior unchanged (per NFR-001).
 
-- [X] T013 [P] [US3] Edit [src/repositories/userRepository.ts](../../src/repositories/userRepository.ts) — add JSDoc block on `getStudents(period)` and `getStudentById(id, period)` explaining that `period === 'summer'` triggers a runtime grade-bump (+1 to every student's grade, drops anyone over `MAX_GRADE`) and that the bump is never persisted; link to Constitution Principle IX. Extended the existing doc block on `getStudents` (was partial — mentioned the +1 bump but not the MAX_GRADE drop or the "next fall" rationale); extended `getStudentById`'s existing doc with the MAX_GRADE drop case.
-- [X] T014 [P] [US3] Edit [src/repositories/registrationRepository.ts](../../src/repositories/registrationRepository.ts) — add JSDoc block on `delete(id, deletedBy, trimester)` explaining that registrations live in per-trimester sheets so the base CRUD signature is intentionally extended, and that the `@ts-expect-error` is a deliberate LSP carve-out (not a bug) routed to [017-uniform-crud-completion](../017-uniform-crud-completion/spec.md) for the proper fix. Replaced the existing two-line comment with a detailed block that names the four trimester sheets, explains why removing the `@ts-expect-error` or the override would break things, and routes the proper fix to 017.
-- [X] T015 [P] [US3] Edit [src/controllers/userController.ts](../../src/controllers/userController.ts) — add JSDoc block on `authenticateByAccessCode` explaining the `{ success: true, data: null }`-on-miss contract: returning 401 would trigger `HttpService`'s logout-on-401 path ([src/web/js/data/httpService.ts](../../src/web/js/data/httpService.ts) `#onSessionExpired`), clearing localStorage and looping the login modal for a user who isn't logged in yet. Note the endpoint behaves as a lookup probe, not authenticate-or-fail, and that the redesign decision is routed to [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md). Replaced the misleading "required for frontend compatibility" comment with the actual coupling explanation.
-- [X] T016 [P] [US3] Edit [src/repositories/periodRepository.ts](../../src/repositories/periodRepository.ts) — add JSDoc block on the `getAll()` method (or wherever the read happens) explaining that the `periods` sheet is deliberately excluded from the 5-min cache in `googleSheetsDbClient` (see [src/database/googleSheetsDbClient.ts](../../src/database/googleSheetsDbClient.ts) lines 404–406) because a stale period would mis-route writes between trimesters. Replaced the single-line "Get all periods" comment with the cache-skip explanation + write-routing rationale.
-- [X] T017 [US3] Run `npm run check:all` and verify zero failures (the JSDoc edits are TypeScript-parsed; ESLint and TypeScript both validate). 46 suites / 774 tests pass; no lint or typecheck errors.
-- [X] T018 [US3] Verify acceptance: read each of the four edited files; confirm the doc block answers the listed acceptance-scenario question on its own without requiring the reader to step through the function body. Mark US3 ready for PR. All four blocks answer their acceptance-scenario question standalone.
-- [X] T019 [US3] Commit US3 changes as `docs(code): JSDoc the four audit-flagged hotspots` and open PR. Committed; no PR opened per session mode.
+- [X] T013 [P] [US3] Edit [src/repositories/userRepository.ts](../../src/repositories/userRepository.ts) `getStudents(period)` and `getStudentById(id, period)` doc blocks: extended both with the +1 summer grade-bump, MAX_GRADE drop, persist-no rule, and cache ordering rationale.
+- [X] T014 [P] [US3] Edit [src/repositories/registrationRepository.ts](../../src/repositories/registrationRepository.ts) `delete()` doc block: replaced existing two-line comment with a detailed block explaining the four per-trimester sheets and why the `@ts-expect-error` is intentional.
+- [X] T015 [P] [US3] Edit [src/controllers/userController.ts](../../src/controllers/userController.ts) `authenticateByAccessCode` doc block: replaced misleading "required for frontend compatibility" comment with the actual coupling (`HttpService` logout-on-401 path would loop the login modal).
+- [X] T016 [P] [US3] Edit [src/repositories/periodRepository.ts](../../src/repositories/periodRepository.ts) `getAll()` doc block: replaced "Get all periods" one-liner with the cache-skip + write-routing rationale.
+- [X] T017 [US3] `npm run check:all` after edits: 46 suites / 774 tests pass; no lint or typecheck errors.
+- [X] T018 [US3] Acceptance verified: all four blocks answer their question standalone.
+- [X] T019 [US3] Commit US3 changes. Committed as `d83de99e`. The blocks contain spec-number and Constitution-Principle references that are speckit-lineage tech debt — US9 sweeps them.
 
 ---
 
@@ -86,8 +86,8 @@ This phase is intentionally empty. Documenting it here so a fresh reader doesn't
 - [ ] T021 [US5] Edit [src/controllers/registrationController.ts](../../src/controllers/registrationController.ts) `deleteRegistration` — add `isValidTrimester()` validation at the same point in the request handler that `createRegistration` validates, using the same error class and response shape.
 - [ ] T022 [US5] Add an integration test case in [tests/integration/registrationController.test.ts](../../tests/integration/registrationController.test.ts) that asserts `DELETE /registrations/not-a-real-trimester/abc-123` returns the same HTTP status, error envelope, and error code as `POST /registrations` with an invalid `trimester` in the body.
 - [ ] T023 [US5] Run `npm run check:all`; verify the new test passes and all existing tests still pass.
-- [ ] T024 [US5] Verify acceptance: grep the three trimester-accepting methods (`createRegistration`, `updateIntent`, `deleteRegistration`) — confirm the validation code paths look the same. Mark US5 ready for PR.
-- [ ] T025 [US5] Commit US5 changes as `fix(registration): validate trimester in deleteRegistration` and open PR.
+- [ ] T024 [US5] Verify acceptance: grep the three trimester-accepting methods (`createRegistration`, `updateIntent`, `deleteRegistration`) — confirm the validation code paths look the same. Mark US5 ready for commit.
+- [ ] T025 [US5] Commit US5 changes as `fix(registration): validate trimester in deleteRegistration`.
 
 ---
 
@@ -105,30 +105,28 @@ This phase is intentionally empty. Documenting it here so a fresh reader doesn't
 - [ ] T031 [US4] Run `npm run typecheck` (both `tsc --noEmit` and `tsc --noEmit -p tsconfig.web.json`); verify zero new errors.
 - [ ] T032 [US4] Run `npm run check:all`; verify lint + tests still pass.
 - [ ] T033 [US4] Manual smoke test in a local dev server (`npm run dev`): (a) log in as a parent and confirm the parent tabs load; (b) click "Change User", log in as an employee, confirm tab swap; (c) confirm no console errors. Behavior is identical to before.
-- [ ] T034 [US4] Verify acceptance: (a) grep `interface AuthenticatedUser` — exactly one definition exists in [src/web/js/auth/session.ts](../../src/web/js/auth/session.ts); (b) grep across `src/web/js/` for the field combination `accessCode` + `loginType` (the discriminating field combination of the audit-flagged inline shapes) and confirm every match is on the canonical interface or its imports, NOT on a parallel inline structural type. The audit-flagged shapes were anonymous/differently-named inline types, so the literal name grep alone is not sufficient. Mark US4 ready for PR.
-- [ ] T035 [US4] Commit US4 changes as `refactor(frontend): one canonical AuthenticatedUser interface` and open PR.
+- [ ] T034 [US4] Verify acceptance: (a) grep `interface AuthenticatedUser` — exactly one definition exists in [src/web/js/auth/session.ts](../../src/web/js/auth/session.ts); (b) grep across `src/web/js/` for the field combination `accessCode` + `loginType` (the discriminating field combination of the audit-flagged inline shapes) and confirm every match is on the canonical interface or its imports, NOT on a parallel inline structural type. Mark US4 ready for commit.
+- [ ] T035 [US4] Commit US4 changes as `refactor(frontend): one canonical AuthenticatedUser interface`.
 
 ---
 
-## Phase 7: User Story 2 — Three reference docs that explain how the system actually works (Priority: P1)
+## Phase 7: User Story 9 — Speckit-lineage sweep (Constitution Principle XII compliance) (Priority: P2)
 
-**Story goal**: Produce `docs/technical/ARCHITECTURE.md`, `API.md`, and `FRONTEND.md`, plus a `CONTRIBUTING.md` checklist line enforcing their per-PR maintenance contract. After this ships, a fresh AI agent can answer all eight US2 acceptance-scenario questions from the docs alone.
+**Story goal**: Sweep every non-speckit file for references to specs, FRs, NFRs, Constitution Principles, and User Stories. After this ships, the four acceptance grep patterns return zero matches outside `specs/`, `.specify/`, and `.claude/`.
 
-**Independent test criterion** (from spec): A fresh AI agent given only the three new docs answers all eight US2 acceptance scenarios correctly.
+**Independent test criterion** (from spec): The four grep patterns return zero hits in `src/`, `tests/`, `docs/`, and root-level shipped files.
 
-This is the largest User Story. Tasks are grouped per doc; the three docs can be authored in parallel, but T036 (the routes-file walkthrough) feeds T040 (API.md), and the maintenance-contract addition is shared.
+**Approach**: Each violation falls into one of three buckets. (a) Citation adjacent to a meaningful statement → drop the citation, keep the statement. (b) Citation IS the statement → replace with the underlying rule stated directly. (c) Forward-pointer to future work → drop entirely.
 
-- [ ] T036 [US2] Walk [src/routes/api.ts](../../src/routes/api.ts) end-to-end and assemble a scratch list of the 16 endpoints (method, path, controller method called, `requireAuth`-or-public status). No durable artifact required — the list lives in the implementer's working memory or PR description scratchpad and is consumed by T040.
-- [ ] T037 [P] [US2] Author `docs/technical/ARCHITECTURE.md`. Each topic below MUST be its own `##` heading (in this order), so future PRs can reference sections by heading and the maintenance contract has stable anchors: Maintenance contract (per FR-010); Layer flow (controller → service → repository → `googleSheetsDbClient`); Error & log pipeline (throw → `errorResponse` → `gcpLogger` → stdout JSON → Cloud Logging → 5xx Error Reporting via `@type`); Cache strategy (5-min in-memory, per-pod, periods excluded, full-flush on write); Authentication flow (localStorage `forte_auth_session` → `x-access-code`/`x-login-type` headers → ladder in [src/middleware/auth.ts](../../src/middleware/auth.ts) → logout-on-401/no-logout-on-403); Trimester & period model (four trimesters, four period types, `PeriodService.getEnrollmentTrimesterTable()`, summer grade-bump); DI container ([src/infrastructure/container/serviceContainer.ts](../../src/infrastructure/container/serviceContainer.ts), `ServiceKeys`); Build & deploy (Dockerfile, cloudbuild.yaml, version-manager, GitHub workflows); Migrations ([src/infrastructure/migration/migrationRunner.ts](../../src/infrastructure/migration/migrationRunner.ts)).
-- [ ] T038 [P] [US2] Author `docs/technical/FRONTEND.md`. Each topic below MUST be its own `##` heading (in this order): Maintenance contract (per FR-010); Bootstrap order ([src/web/js/main.ts](../../src/web/js/main.ts) — version → config → auto-login → TabController → tab registration); `BaseTab<TData>` lifecycle (`onLoad → fetchData → render → attachEventListeners`, `AbortController`, `isLoaded`); `HttpService` contract (returns `HttpResult<T>`, never throws, single `fetch()` at line 84); Session & Change-User flow (`AccessCodeManager`, `UserSession`, `TabController.cleanup()` on every tab); Shared model serving (prod Express static; dev Vite aliases in [vite.config.ts](../../vite.config.ts)); Registration form architecture (parent cascading-filter-chips vs admin linear); reference to the canonical `AuthenticatedUser` interface produced by US4 (link forward to [src/web/js/auth/session.ts](../../src/web/js/auth/session.ts) if US4 has shipped, or link forward to US4 in the spec if not).
-- [ ] T039 [P] [US2] Author the `docs/technical/API.md` skeleton. Each topic below MUST be its own `##` heading (in this order): Maintenance contract (per FR-010); Request/response envelope (Constitution Principle IV); Public endpoints (`/health`, `/version`, `/configuration`, `/auth/access-code`); Authenticated endpoints — body filled by T040 with one `###` heading per endpoint.
-- [ ] T040 [US2] Fill in `docs/technical/API.md` body — one `###` subsection per endpoint under the appropriate `##` (Public endpoints / Authenticated endpoints) per T036's list. For each endpoint: method, path, auth requirement, request shape, response shape (use the controller's actual response payload).
-- [ ] T041 [US2] Edit [CONTRIBUTING.md](../../CONTRIBUTING.md) — add a Pre-Commit Checklist item: "Did your change affect anything documented in `docs/technical/ARCHITECTURE.md`, `API.md`, or `FRONTEND.md`? If yes, update the relevant doc in this PR."
-- [ ] T042 [US2] Verify FR-003 topic coverage: for each of the three new docs, walk its `##` heading list against the corresponding "Concretely" bullet list in [spec.md](spec.md) US2 (ARCHITECTURE.md against the ARCHITECTURE Concretely list; API.md against the API Concretely list; FRONTEND.md against the FRONTEND Concretely list). Every Concretely bullet MUST have a matching `##` heading. If any bullet has no heading, the default action is to author the missing section. Dropping a topic is a spec-level change and requires editing [spec.md](spec.md) US2's Concretely list AND adding a Clarifications-session bullet documenting the decision — NOT just a PR-description note. Defer the merge until both edits land.
-- [ ] T043 [US2] Verify acceptance: hand a fresh reader (human or AI in a clean session) only the three new docs and ask the eight US2 acceptance-scenario questions. All eight answered correctly. If any fails, edit the relevant doc and re-test.
-- [ ] T044 [US2] Verify FR-010: each doc carries a "Maintenance contract" header naming its code surface area; `CONTRIBUTING.md` checklist line is present.
-- [ ] T045 [US2] Replace the "lands with spec 015 US2" forward-references introduced by US1 with real links to the now-existing docs. Specifically: (a) [README.md](../../README.md) — the System Architecture pointer (replace "A consolidated architecture reference will land with spec 015 US2" with a link to `docs/technical/ARCHITECTURE.md`); the API Overview footer ("A consolidated API reference (request/response shapes) lands with spec 015 US2" → link to `docs/technical/API.md`); the Documentation section footer ("Consolidated architecture, API, and frontend reference docs land with spec 015 US2" → links to all three new files). (b) [API_TESTING.md](../../API_TESTING.md) — the "Consolidated API reference" bullet (replace "lands with spec 015 US2" with a real link to `docs/technical/API.md`). (c) [docs/README.md](../../docs/README.md) — the `generated/` bullet ("A consolidated API reference lands with spec 015 US2" → link to `docs/technical/API.md`). Grep for the literal string `spec 015 US2` to find each occurrence. Mark US2 ready for PR.
-- [ ] T046 [US2] Commit US2 changes as `docs: add ARCHITECTURE, API, FRONTEND reference docs + CONTRIBUTING maintenance contract` and open PR.
+- [ ] T036 [US9] Pre-sweep audit: produce a grep-based inventory of every violation site. Run each of: `grep -rn "FR-[0-9]" src/ tests/ docs/ README.md CONTRIBUTING.md API_TESTING.md`, `grep -rn "Constitution Principle" src/ tests/ docs/ README.md CONTRIBUTING.md API_TESTING.md`, `grep -rn "spec [0-9]\|specs/[0-9]" src/ tests/ docs/ README.md CONTRIBUTING.md API_TESTING.md`, `grep -rn "User Story\b" src/ tests/ docs/ README.md CONTRIBUTING.md API_TESTING.md`. Capture the union as a working scratch list.
+- [ ] T037 [US9] Sweep `src/**/*.ts` for speckit references — including pre-existing FR-XXX from 014's implementation work, and the spec 016 / spec 017 / Constitution Principle IX references introduced by 015's US3 commit (`d83de99e`). Rewrite each per the (a)/(b)/(c) approach above. Pay particular attention to runtime-visible strings (e.g., the `throw new Error('...FR-003...')` message in `userRepository.getStudents`) — those get rewritten too. NFR-001 covers user-facing behavior; developer-facing error messages are in scope here.
+- [ ] T038 [US9] Sweep `tests/**/*.ts` for speckit references — test names, describe blocks, comments.
+- [ ] T039 [US9] Sweep `docs/**/*.md` for speckit references — strip from existing files (does not include US2's not-yet-written docs).
+- [ ] T040 [US9] Sweep root-level shipped Markdown — [README.md](../../README.md), [CONTRIBUTING.md](../../CONTRIBUTING.md), [API_TESTING.md](../../API_TESTING.md). Includes the forward-references and routed-to-spec mentions that US1 left in README.md and API_TESTING.md (commit `d55d0312`) — drop them entirely; US2 writes the real replacements later.
+- [ ] T041 [US9] Sweep build/CI files and scripts: `src/build/*`, `.github/workflows/*`, `scripts/**`, `package.json` (the scripts section, if any cite specs). Most likely clean but verify.
+- [ ] T042 [US9] Run `npm run check:all`; verify all 46 suites and 774 tests still pass. The sweep is comment/string-only and must not change behavior.
+- [ ] T043 [US9] Verify acceptance: re-run the four grep patterns from T036 — every one returns zero matches in the swept directories. The constitution itself (`.specify/memory/constitution.md`) and `.claude/CLAUDE.md` are exempt.
+- [ ] T044 [US9] Commit US9 changes as `refactor: sweep speckit lineage from shipped artifact (Constitution Principle XII)`.
 
 ---
 
@@ -140,15 +138,15 @@ This is the largest User Story. Tasks are grouped per doc; the three docs can be
 
 **Defer-always policy**: If a test reveals an apparent bug, pin the actual behavior in the test (with a comment explaining the discrepancy and a severity assessment) and open a new spec for the fix. US6 ships on coverage, not on fixes. Critical findings may be escalated out of band, but the default is defer.
 
-- [ ] T047 [P] [US6] Create new directory `tests/unit/middleware/`. Author `tests/unit/middleware/auth.test.ts` exercising [src/middleware/auth.ts](../../src/middleware/auth.ts). Mock `googleSheetsDbClient`. Cover the auth ladder: (a) 10-digit numeric `accessCode` → parent phone lookup; (b) 6-digit numeric → employee access code; (c) explicit `x-login-type` header overrides the heuristic (pin whichever behavior the code actually exhibits and explain in a comment per the defer-always policy); (d) invalid code → `req.currentUser` ends `null`. **Default action on any discovered bug is defer** — pin the actual behavior in the test with a comment, route the fix to a new spec, and merge US6. The Edge Cases section's escalate-out-of-band hatch exists for findings the implementer judges critical at the moment of discovery; it does NOT override the defer-always policy automatically. Escalation triggers human review of the policy carve-out, not an in-PR fix.
-- [ ] T048 [P] [US6] Create new directory `tests/unit/cache/`. Author `tests/unit/cache/cacheService.test.ts` exercising [src/cache/cacheService.ts](../../src/cache/cacheService.ts). Cover: (a) read after TTL expires returns `undefined`; (b) `maxSize` exceeded → oldest entry evicted; (c) explicit clear empties the cache.
-- [ ] T049 [P] [US6] Author `tests/unit/repositories/periodRepository.test.ts` exercising [src/repositories/periodRepository.ts](../../src/repositories/periodRepository.ts). Mock `googleSheetsDbClient`. Cover: (a) `getAll()` returns the rows the mock provides; (b) cache-skip behavior — periods are read live every call.
-- [ ] T050 [P] [US6] Author `tests/unit/repositories/programRepository.test.ts` exercising [src/repositories/programRepository.ts](../../src/repositories/programRepository.ts). Mock `googleSheetsDbClient`. Cover its public methods (`getClasses`, `getClassById` per the audit map).
-- [ ] T051 [P] [US6] Author `tests/unit/utils/logger.test.ts` exercising [src/utils/logger.ts](../../src/utils/logger.ts). Cover log-level routing logic — at minimum, `info` vs `warn` vs `error` vs `debug` get routed to the corresponding console method or short-circuit per configured level.
-- [ ] T052 [US6] Run `npm run test:unit`; verify all new and existing tests pass.
-- [ ] T053 [US6] Run `npm run test:coverage` and confirm nonzero coverage for each of the five files added in T047–T051.
-- [ ] T054 [US6] Verify acceptance: tests follow the existing mocking convention (mock `googleSheetsDbClient`, never hit the real Sheets API). If T047 surfaced an apparent auth-ladder bug, confirm it's pinned-with-comment per the defer-always policy and a successor spec has been opened (or noted for opening). Mark US6 ready for PR.
-- [ ] T055 [US6] Commit US6 changes as `test: cover auth middleware, cacheService, periodRepository, programRepository, logger` and open PR.
+- [ ] T045 [P] [US6] Create new directory `tests/unit/middleware/`. Author `tests/unit/middleware/auth.test.ts` exercising [src/middleware/auth.ts](../../src/middleware/auth.ts). Mock `googleSheetsDbClient`. Cover the auth ladder: (a) 10-digit numeric access code → parent phone lookup; (b) 6-digit numeric → employee access code; (c) explicit `x-login-type` header override behavior (pin whichever behavior the code actually exhibits and explain in a comment per the defer-always policy); (d) invalid code → `req.currentUser` ends `null`. **Default action on any discovered bug is defer** — pin the actual behavior in the test with a comment, route the fix to a new spec, and merge US6. The Edge Cases section's escalate-out-of-band hatch exists for findings the implementer judges critical at the moment of discovery; it does NOT override the defer-always policy automatically. Escalation triggers human review of the policy carve-out, not an in-PR fix.
+- [ ] T046 [P] [US6] Create new directory `tests/unit/cache/`. Author `tests/unit/cache/cacheService.test.ts` exercising [src/cache/cacheService.ts](../../src/cache/cacheService.ts). Cover: (a) read after TTL expires returns `undefined`; (b) `maxSize` exceeded → oldest entry evicted; (c) explicit clear empties the cache.
+- [ ] T047 [P] [US6] Author `tests/unit/repositories/periodRepository.test.ts` exercising [src/repositories/periodRepository.ts](../../src/repositories/periodRepository.ts). Mock `googleSheetsDbClient`. Cover: (a) `getAll()` returns the rows the mock provides; (b) cache-skip behavior — periods are read live every call.
+- [ ] T048 [P] [US6] Author `tests/unit/repositories/programRepository.test.ts` exercising [src/repositories/programRepository.ts](../../src/repositories/programRepository.ts). Mock `googleSheetsDbClient`. Cover its public methods (`getClasses`, `getClassById` per the audit map).
+- [ ] T049 [P] [US6] Author `tests/unit/utils/logger.test.ts` exercising [src/utils/logger.ts](../../src/utils/logger.ts). Cover log-level routing logic — at minimum, `info` vs `warn` vs `error` vs `debug` get routed to the corresponding console method or short-circuit per configured level.
+- [ ] T050 [US6] Run `npm run test:unit`; verify all new and existing tests pass.
+- [ ] T051 [US6] Run `npm run test:coverage` and confirm nonzero coverage for each of the five files added in T045–T049.
+- [ ] T052 [US6] Verify acceptance: tests follow the existing mocking convention (mock `googleSheetsDbClient`, never hit the real Sheets API). If T045 surfaced an apparent auth-ladder bug, confirm it's pinned-with-comment per the defer-always policy and a successor spec has been opened (or noted for opening). Mark US6 ready for commit. NOTE: test names and describe blocks must obey Constitution Principle XII — no speckit references in test code.
+- [ ] T053 [US6] Commit US6 changes as `test: cover auth middleware, cacheService, periodRepository, programRepository, logger`.
 
 ---
 
@@ -156,40 +154,66 @@ This is the largest User Story. Tasks are grouped per doc; the three docs can be
 
 **Story goal**: Add one integration test that confirms the summer grade-bump flows from controller through service through repository to the parent-facing tab response, so that future deletions of the `period` argument in the middle of the chain are caught.
 
-**Independent test criterion** (from spec): `/api/parent/tabs/registration/summer` returns students with grades incremented by one relative to their stored values; an 8th-grade student (`MAX_GRADE`) is dropped; `/api/parent/tabs/registration/fall` leaves grades unchanged.
+**Independent test criterion** (from spec): `/api/parent/tabs/registration/summer` returns students with grades incremented by one relative to their stored values; an 8th-grade student is dropped; `/api/parent/tabs/registration/fall` leaves grades unchanged.
 
-- [ ] T056 [US7] Author `tests/integration/summerGradeBump.test.ts` using Supertest against the Express app, mocking `googleSheetsDbClient` (per the existing convention in [tests/integration/registrationController.test.ts](../../tests/integration/registrationController.test.ts)).
-- [ ] T057 [US7] In `tests/integration/summerGradeBump.test.ts`, write fixture data: a parent with at least three students at grades 3, 6, and 8 (`MAX_GRADE`). Use mocked fixture data, NOT seeded prod-shape data.
-- [ ] T058 [US7] Add three test cases — two from the spec's US7 acceptance scenarios and one defensive case (clearly labeled as such in the test name, e.g., `'defensive: parent with no students'`): (a) `GET /api/parent/tabs/registration/summer` for a parent with students at grades 3, 6, 8 → returns grades 4 and 7, the 8-grader is absent (spec AS#1 + AS#2 combined); (b) the same call for `/fall` → grades unchanged (spec AS#3); (c) defensive-beyond-spec: `GET /api/parent/tabs/registration/summer` for a parent with NO students → empty list, no errors. The defensive case is an editorial addition; it doesn't change the spec's contract but it does guard against a null-handling regression.
-- [ ] T059 [US7] Run `npm run test:integration` (or `npm run test`) — verify the new test passes; run the full suite to confirm no regressions.
-- [ ] T060 [US7] Verify acceptance: all three test cases pass; assertions match the spec wording; behavior unchanged. Mark US7 ready for PR.
-- [ ] T061 [US7] Commit US7 changes as `test(integration): pin summer grade-bump end-to-end` and open PR.
-
----
-
-## Phase 10: User Story 8 — Confirm the successor-spec handoff (Priority: P3)
-
-**Story goal**: Produce a checked-in `specs/015-audit-remediation/findings.md` listing every audit finding, then verify that the routing table in [spec.md](spec.md) matches `findings.md` row-for-row and that every routed-to successor stub addresses its routed item as a dedicated heading or bullet in its "Findings to address" section.
-
-**Independent test criterion** (from spec/FR-009): `findings.md` exists; every finding in it has a row in the US8 routing table; every routing-table target spec addresses the routed item with enough context that a reader unfamiliar with the audit can act on it.
-
-- [ ] T062 [US8] Author `specs/015-audit-remediation/findings.md`. Format: one short heading per finding (e.g., `### Bus deadlines hardcoded`), one-sentence summary, file:line reference. Curated and deduplicated — NOT a verbatim chat paste. Silently correct any errors from the original audit conversation (notably the test-coverage subagent missed the nested test directories under `tests/unit/{controllers,services,common,infrastructure}/`).
-- [ ] T063 [US8] Cross-walk `findings.md` against the US8 routing table in [spec.md](spec.md): every finding heading must have a matching routing-table row, and every routing-table row must correspond to a finding heading. Edit either artifact to bring them into lockstep.
-- [ ] T064 [US8] For each routing-table target spec, open it and verify the routed item appears as a dedicated heading or bullet in its "Findings to address" section with enough context that a reader unfamiliar with the audit can act on it. Specs to check: [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md), [017-uniform-crud-completion](../017-uniform-crud-completion/spec.md), [018-business-rules-to-config](../018-business-rules-to-config/spec.md), [019-frontend-test-infrastructure](../019-frontend-test-infrastructure/spec.md), [020-project-hygiene](../020-project-hygiene/spec.md).
-- [ ] T065 [US8] If T064 found any successor stub missing a routed item, edit that stub's "Findings to address" section to add the item per the heading-or-bullet bar.
-- [ ] T066 [US8] Verify acceptance: re-walk T063 and T064 once more after any T065 edits; confirm zero gaps. Mark US8 ready for PR.
-- [ ] T067 [US8] Commit US8 changes as `docs(specs): add findings.md and verify audit routing across 015-020` and open PR. If T065 edited any successor stub, include those edits in the same PR (they are scoped to closing the routing-table contract).
+- [ ] T054 [US7] Author `tests/integration/summerGradeBump.test.ts` using Supertest against the Express app, mocking `googleSheetsDbClient` (per the existing convention in [tests/integration/registrationController.test.ts](../../tests/integration/registrationController.test.ts)). NOTE: test names, describe blocks, and comments must obey Constitution Principle XII — no speckit references.
+- [ ] T055 [US7] In `tests/integration/summerGradeBump.test.ts`, write fixture data: a parent with at least three students at grades 3, 6, and 8 (the current MAX_GRADE). Use mocked fixture data, NOT seeded prod-shape data.
+- [ ] T056 [US7] Add three test cases: (a) `GET /api/parent/tabs/registration/summer` for a parent with students at grades 3, 6, 8 → returns grades 4 and 7, the 8-grader is absent; (b) the same call for `/fall` → grades unchanged; (c) a defensive case clearly labeled as such (e.g., `'defensive: parent with no students'`): `GET /api/parent/tabs/registration/summer` for a parent with NO students → empty list, no errors.
+- [ ] T057 [US7] Run `npm run test:integration` (or `npm run test`) — verify the new test passes; run the full suite to confirm no regressions.
+- [ ] T058 [US7] Verify acceptance: all three test cases pass; assertions match the spec wording; behavior unchanged. Mark US7 ready for commit.
+- [ ] T059 [US7] Commit US7 changes as `test(integration): pin summer grade-bump end-to-end`.
 
 ---
 
-## Phase 11: Polish & Cross-Cutting Concerns
+## Phase 10: User Story 2 — Three reference docs that explain how the system actually works (Priority: P1)
 
-**Purpose**: Once all eight User Stories have shipped, confirm the spec's overall success condition.
+**Story goal**: Produce `docs/technical/ARCHITECTURE.md`, `API.md`, and `FRONTEND.md`, plus a `CONTRIBUTING.md` checklist line enforcing their per-PR maintenance contract. Also clean up the entry-point doc forward-references US1 left behind. After this ships, a fresh AI agent can answer all eight US2 acceptance-scenario questions from the docs alone, and the entry-point docs (README.md, API_TESTING.md, docs/README.md) point at real existing docs.
 
-- [ ] T068 Run the "fresh AI agent" test from the spec's Success Criteria: hand a new agent (clean session) the project, the constitution, and the three new reference docs (`docs/technical/ARCHITECTURE.md`, `API.md`, `FRONTEND.md`). Ask the eight questions from US2's acceptance scenarios. All eight must be answered correctly using only the docs (no source code lookup). If any fails, open a follow-up doc-fix PR — do NOT mark 015 closed.
-- [ ] T069 Confirm `npm run check:all` passes on the merged branch after all eight User Stories have landed.
-- [ ] T070 Update [.claude/CLAUDE.md](../../.claude/CLAUDE.md) `## Recent Changes` section specifically (NOT the `## Active Technologies` section, which was auto-maintained by `update-agent-context.sh` during `/speckit.plan`) to add a one-line `015-audit-remediation:` entry. The section is currently stale (only 002 listed); this top-up scopes to 015's own visibility, with the broader staleness fix routed to 020.
-- [ ] T071 Mark [spec.md](spec.md) status `Implemented` (from `Draft`) when all User Story PRs have merged.
+**Independent test criterion** (from spec): A fresh AI agent given only the three new docs answers all eight US2 acceptance scenarios correctly.
+
+**Order rationale**: US2 runs *after* US1/US3/US4/US5/US6/US7/US9 so the docs describe the project's actual final state. By this point: code cleanup has landed (US3, US5), the canonical `AuthenticatedUser` exists (US4), speckit-lineage has been swept (US9), and test coverage is in place (US6, US7). The docs reference real existing artifacts without forward-references.
+
+NOTE: per Constitution Principle XII, the three new docs must NOT cite the spec/FRs/Constitution that motivated them. They describe what the system does in terms of itself.
+
+- [ ] T060 [US2] Walk [src/routes/api.ts](../../src/routes/api.ts) end-to-end and assemble a scratch list of the 16 endpoints (method, path, controller method called, `requireAuth`-or-public status). No durable artifact required — the list lives in the implementer's working memory or PR description scratchpad and is consumed by T064.
+- [ ] T061 [P] [US2] Author `docs/technical/ARCHITECTURE.md`. Each topic below MUST be its own `##` heading (in this order): Maintenance contract (lists the code surface area whose changes require updating this doc); Layer flow (controller → service → repository → `googleSheetsDbClient`); Error & log pipeline (throw → `errorResponse` → `gcpLogger` → stdout JSON → Cloud Logging → 5xx Error Reporting via `@type`); Cache strategy (5-min in-memory, per-pod, `periods` excluded, full-flush on write); Authentication flow (localStorage `forte_auth_session` → `x-access-code`/`x-login-type` headers → ladder in [src/middleware/auth.ts](../../src/middleware/auth.ts) → logout-on-401/no-logout-on-403); Trimester & period model (four trimesters, four period types, `PeriodService.getEnrollmentTrimesterTable()`, summer grade-bump); DI container ([src/infrastructure/container/serviceContainer.ts](../../src/infrastructure/container/serviceContainer.ts), `ServiceKeys`); Build & deploy (Dockerfile, cloudbuild.yaml, version-manager, GitHub workflows); Migrations ([src/infrastructure/migration/migrationRunner.ts](../../src/infrastructure/migration/migrationRunner.ts)).
+- [ ] T062 [P] [US2] Author `docs/technical/FRONTEND.md`. Each topic below MUST be its own `##` heading (in this order): Maintenance contract; Bootstrap order ([src/web/js/main.ts](../../src/web/js/main.ts) — version → config → auto-login → TabController → tab registration); `BaseTab<TData>` lifecycle (`onLoad → fetchData → render → attachEventListeners`, `AbortController`, `isLoaded`); `HttpService` contract (returns `HttpResult<T>`, never throws, single `fetch()` call); Session & Change-User flow (`AccessCodeManager`, `UserSession`, `TabController.cleanup()` on every tab); Shared model serving (prod Express static; dev Vite aliases in [vite.config.ts](../../vite.config.ts)); Registration form architecture (parent cascading-filter-chips vs admin linear); reference to the canonical `AuthenticatedUser` interface in [src/web/js/auth/session.ts](../../src/web/js/auth/session.ts).
+- [ ] T063 [P] [US2] Author the `docs/technical/API.md` skeleton. Each topic below MUST be its own `##` heading (in this order): Maintenance contract; Request/response envelope (the `{success, data}` / `{success: false, error}` shape from `responseHelpers.ts`); Public endpoints (`/health`, `/version`, `/configuration`, `/auth/access-code`); Authenticated endpoints — body filled by T064 with one `###` heading per endpoint.
+- [ ] T064 [US2] Fill in `docs/technical/API.md` body — one `###` subsection per endpoint under the appropriate `##` (Public endpoints / Authenticated endpoints) per T060's list. For each endpoint: method, path, auth requirement, request shape, response shape (use the controller's actual response payload).
+- [ ] T065 [US2] Edit [CONTRIBUTING.md](../../CONTRIBUTING.md) — add a Pre-Commit Checklist item: "Did your change affect anything documented in `docs/technical/ARCHITECTURE.md`, `API.md`, or `FRONTEND.md`? If yes, update the relevant doc in this PR."
+- [ ] T066 [US2] Sweep [README.md](../../README.md), [API_TESTING.md](../../API_TESTING.md), and [docs/README.md](../../docs/README.md) for any remaining forward-references or stale text. Replace with real links to the now-existing `docs/technical/ARCHITECTURE.md`, `API.md`, `FRONTEND.md`. Add a top-line "Documentation" pointer in README that surfaces the three new docs.
+- [ ] T067 [US2] Verify each new doc's `##` heading list against its required topic list above. Every required topic MUST have a matching heading. If any topic doesn't apply, document why in a one-line comment in this task's check-off note.
+- [ ] T068 [US2] Verify acceptance: hand a fresh reader (human or AI in a clean session) only the three new docs and ask the eight US2 acceptance-scenario questions from spec.md. All eight answered correctly. If any fails, edit the relevant doc and re-test.
+- [ ] T069 [US2] Verify the maintenance contract: each of the three new docs carries the contract header naming its code surface area; CONTRIBUTING.md has the checklist line. Mark US2 ready for commit.
+- [ ] T070 [US2] Commit US2 changes as `docs: add ARCHITECTURE, API, FRONTEND reference docs + CONTRIBUTING maintenance contract`.
+
+---
+
+## Phase 11: User Story 8 — Confirm the successor-spec handoff (Priority: P3)
+
+**Story goal**: Produce a checked-in `specs/015-audit-remediation/findings.md` listing every audit finding, then verify that the routing table in [spec.md](spec.md) matches `findings.md` row-for-row and that every routed-to successor stub addresses its routed item.
+
+**Independent test criterion**: `findings.md` exists; every finding in it has a row in the US8 routing table; every routing-table target spec addresses the routed item as a dedicated heading or bullet in its "Findings to address" section.
+
+**Order rationale**: US8 runs last because findings.md is the durable record of the audit AND of how each finding was handled — by this point every code/test/doc User Story has landed, so findings.md captures the truly-final state. findings.md itself lives under `specs/015-audit-remediation/` so speckit references are allowed; it can name the routing target specs (016–020) freely.
+
+- [ ] T071 [US8] Author `specs/015-audit-remediation/findings.md`. Format: one short heading per finding (e.g., `### Bus deadlines hardcoded`), one-sentence summary, file:line reference. Curated and deduplicated — NOT a verbatim chat paste. Silently correct any errors from the original audit conversation (notably the test-coverage subagent missed the nested test directories under `tests/unit/{controllers,services,common,infrastructure}/`).
+- [ ] T072 [US8] Cross-walk `findings.md` against the US8 routing table in [spec.md](spec.md): every finding heading must have a matching routing-table row, and every routing-table row must correspond to a finding heading. Edit either artifact to bring them into lockstep.
+- [ ] T073 [US8] For each routing-table target spec, open it and verify the routed item appears as a dedicated heading or bullet in its "Findings to address" section with enough context that a reader unfamiliar with the audit can act on it. Specs to check: [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md), [017-uniform-crud-completion](../017-uniform-crud-completion/spec.md), [018-business-rules-to-config](../018-business-rules-to-config/spec.md), [019-frontend-test-infrastructure](../019-frontend-test-infrastructure/spec.md), [020-project-hygiene](../020-project-hygiene/spec.md).
+- [ ] T074 [US8] If T073 found any successor stub missing a routed item, edit that stub's "Findings to address" section to add the item per the heading-or-bullet bar.
+- [ ] T075 [US8] Verify acceptance: re-walk T072 and T073 once more after any T074 edits; confirm zero gaps. Mark US8 ready for commit.
+- [ ] T076 [US8] Commit US8 changes as `docs(specs): add findings.md and verify audit routing across 015-020`. If T074 edited any successor stub, include those edits in the same commit.
+
+---
+
+## Phase 12: Polish & Cross-Cutting Concerns
+
+**Purpose**: Once all nine User Stories have shipped, confirm the spec's overall success condition.
+
+- [ ] T077 Run the "fresh AI agent" test from the spec's Success Criteria: hand a new agent (clean session) the project, the constitution, and the three new reference docs (`docs/technical/ARCHITECTURE.md`, `API.md`, `FRONTEND.md`). Ask the eight questions from US2's acceptance scenarios. All eight must be answered correctly using only the docs (no source code lookup). If any fails, open a follow-up doc-fix commit — do NOT mark 015 closed.
+- [ ] T078 Confirm `npm run check:all` passes on the merged branch after all nine User Stories have landed.
+- [ ] T079 Update [.claude/CLAUDE.md](../../.claude/CLAUDE.md) `## Recent Changes` section to add a one-line `015-audit-remediation:` entry. (The section is currently stale; this top-up scopes to 015's own visibility, with the broader staleness fix routed to 020-project-hygiene.) CLAUDE.md is in `.claude/` so it MAY reference speckit per Constitution Principle XII's exception clause.
+- [ ] T080 Mark [spec.md](spec.md) status `Implemented` (from `Draft`) when all User Story commits have landed.
 
 ---
 
@@ -197,23 +221,26 @@ This is the largest User Story. Tasks are grouped per doc; the three docs can be
 
 ### User Story dependencies
 
-All eight User Stories are **independent** per the spec's Dependencies section. None blocks another for correctness. The recommended execution order (US1 → US3 → US5 → US4 → US2 → US6 → US7 → US8) is for *efficiency* of doc references — e.g., US2 benefits from US1, US3, US4 having landed first so the docs reference the cleaned-up code — but is not a binding requirement.
+All nine User Stories are **independent** per the spec's Dependencies section. None blocks another for correctness. The recommended execution order (US1 → US3 → US5 → US4 → US9 → US6 → US7 → US2 → US8) puts source/test work first and doc work last so the doc User Stories describe the actual final state in one pass.
 
-Two soft couplings worth noting (covered by the spec's Edge Cases):
+Soft couplings:
 
-- **US2 ↔ US1**: If US1 ships first, US1 removes dead links; if US2 ships first, US1 repoints to the new docs. Neither blocks the other.
-- **US2 ↔ US4**: US2's acceptance scenario 8 ("what's the single source of truth on the current user") points at US4's `AuthenticatedUser`. If US2 ships first, the doc names the planned interface and links forward to US4.
+- **US2 follows US9**: US9 sweeps speckit lineage from all non-speckit files. US2 then authors the three reference docs in a Principle-XII-compliant state from the start.
+- **US2 follows US4**: US2's FRONTEND.md references the canonical `AuthenticatedUser` interface that US4 creates. If US4 hasn't shipped, FRONTEND.md describes a not-yet-existing artifact.
+- **US2 follows US6/US7**: US2's ARCHITECTURE.md may reference test coverage that US6/US7 establish.
+- **US8 follows US2**: US8's findings.md references the now-existing reference docs by file path.
 
 ### Parallel execution opportunities
 
 Within each User Story phase, tasks marked `[P]` can run in parallel:
-- **US1**: T004, T005, T009, T010 can run in parallel after T003.
-- **US3**: T013, T014, T015, T016 can run in parallel (four independent file edits).
+- **US1**: T004, T005, T009, T010 can run in parallel after T003 (already complete).
+- **US3**: T013, T014, T015, T016 (already complete).
 - **US4**: T028, T029, T030 can run in parallel after T027.
-- **US2**: T037, T038, T039 (three doc authoring tasks) can run in parallel after T036; T040 follows T039.
-- **US6**: T047, T048, T049, T050, T051 (five test files) can run in parallel.
+- **US9**: T037, T038, T039, T040, T041 (five sweep targets) can run in parallel after T036.
+- **US6**: T045, T046, T047, T048, T049 (five test files) can run in parallel.
+- **US2**: T061, T062, T063 (three doc authoring tasks) can run in parallel after T060; T064 follows T063.
 
-Across User Stories: All eight User Story phases (3 through 10) are themselves parallel candidates if multiple contributors are working concurrently — they touch disjoint files in nearly every case (the only overlap is potential US2/US1 coordination on README links, handled by the soft coupling above).
+Across User Stories: many of the nine User Story phases are themselves parallel candidates if multiple contributors are working concurrently — they touch disjoint files in most cases. US9 is the exception: it's a sweep, so it serializes naturally against the source/test User Stories that precede it.
 
 ---
 
@@ -229,30 +256,31 @@ Across User Stories: All eight User Story phases (3 through 10) are themselves p
 | US6 | Each of the five zero-coverage files has a test; `npm run test:unit` passes; `npm run test:coverage` shows nonzero per file. |
 | US7 | Summer grade-bump verified end-to-end; 8th-grader dropped; fall unchanged. |
 | US8 | `findings.md` exists; every finding has a routing-table row; every successor stub addresses its routed item. |
+| US9 | The four grep patterns (FR-, Constitution Principle, spec [0-9]\|specs/[0-9], speckit User Story citations) return zero matches in src/, tests/, docs/, root-level shipped files. |
 
 ---
 
 ## Implementation Strategy
 
-**MVP scope**: The spec explicitly forbids partial shipping (Success Criteria: "No escape hatch — User Stories cannot be moved to a successor spec to ship 015 early"). There is no MVP-vs-extended split — all eight User Stories must merge for 015 to close.
+**MVP scope**: The spec explicitly forbids partial shipping. All nine User Stories must merge for 015 to close.
 
-**Incremental delivery**: Each User Story is its own PR; each PR leaves the project better than it found it. The recommended order (above) lets the cheapest, lowest-risk PRs (US1, US3, US5) ship first, building trust before US2 (the largest single PR).
+**Incremental delivery**: Each User Story is its own commit; each commit leaves the project better than it found it. The recommended order puts code/test work first (US1, US3, US5, US4, US9, US6, US7) and doc work last (US2, US8) so the docs converge on the project's actual final state in a single authoring pass — no forward-references, no rewrite cycles.
 
-**Per-PR gates**:
-- All PRs that touch `.ts` files (US3, US4, US5, US6, US7) MUST pass `npm run check:all` (NFR-003).
-- All PRs MUST preserve user-facing behavior (NFR-001) — verified via the manual smoke test enumerated in NFR-001 (login parent, login employee, switch users, register one lesson).
-- Doc-only PRs (US1, US2's Markdown deliverables, US8) MUST be reviewable as rendered Markdown (NFR-004) — no images, no external assets.
-- If any User Story turns out to need a constitution amendment, stop and amend the constitution in a separate PR first (NFR-002).
+**Per-commit gates**:
+- All commits that touch `.ts` files (US3, US4, US5, US6, US7, US9) MUST pass `npm run check:all` (NFR-002).
+- All commits MUST preserve user-facing behavior (NFR-001) — verified via the manual smoke test enumerated in NFR-001 (login parent, login employee, switch users, register one lesson).
+- Doc-only commits (US1, US2, US8) MUST be reviewable as rendered Markdown (NFR-003) — no images, no external assets.
 
-**Total task count**: 71 tasks across 11 phases.
+**Total task count**: 80 tasks across 12 phases.
 
 **Task count per User Story**:
 - US1 (Phase 3): 10 tasks
 - US3 (Phase 4): 7 tasks
 - US5 (Phase 5): 6 tasks
 - US4 (Phase 6): 10 tasks
-- US2 (Phase 7): 11 tasks
+- US9 (Phase 7): 9 tasks
 - US6 (Phase 8): 9 tasks
 - US7 (Phase 9): 6 tasks
-- US8 (Phase 10): 6 tasks
-- Setup + Foundational + Polish: 6 tasks (T001–T002, T068–T071)
+- US2 (Phase 10): 11 tasks
+- US8 (Phase 11): 6 tasks
+- Setup + Foundational + Polish: 6 tasks (T001–T002, T077–T080)

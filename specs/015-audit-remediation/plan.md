@@ -41,14 +41,17 @@ The constitution applies primarily to behavior-changing code. Most principles ar
 | VIII. Role-Based Architecture | No | N/A | No new endpoints, no new role-scoped logic. |
 | IX. Trimester-Aware by Default | Yes | ✅ Pass | US5 adds trimester validation to `deleteRegistration` using the existing `isValidTrimester()` helper — the same helper `createRegistration` already uses. US7 verifies the summer grade-bump end-to-end. Both *reinforce* trimester-awareness; neither introduces new trimester routing. |
 | X. Google Sheets Is the Database | Yes (indirectly) | ✅ Pass | US6 follows the existing convention: all tests mock `googleSheetsDbClient`; none hit the real Sheets API (Constitution Testing section). The architecture doc produced by US2 documents the existing cache strategy (5-min in-memory, full-flush on writes, periods uncached) — it does not change it. |
-| XI. Uniform CRUD Backend | Yes (lightly) | ✅ Pass | US5 enforces uniform CRUD validation on `deleteRegistration`, aligning it with `createRegistration` and `updateIntent`. The `RegistrationRepository.delete()` LSP violation is *flagged* in the routing table for 017, not fixed here — this is the simplest choice (don't expand 015's scope) and is consistent with NFR-002 (no constitution amendments). |
+| XI. Uniform CRUD Backend | Yes (lightly) | ✅ Pass | US5 enforces uniform CRUD validation on `deleteRegistration`, aligning it with `createRegistration` and `updateIntent`. The `RegistrationRepository.delete()` LSP violation is *flagged* in the routing table for 017, not fixed here — this is the simplest choice (don't expand 015's scope). |
+| XII. Speckit Stays in Speckit Spaces | Yes | ✅ Pass after US9 | US9 is the dedicated User Story that brings the codebase into XII compliance. The constitution amendment landed first (separate commit on this branch); US9 then sweeps every non-speckit file. US1, US3, US4, US5, US6, US7 may transiently introduce speckit references during their implementation (e.g., US3's hotspot doc blocks initially cited spec numbers and Principle IX) — those are accepted as dirty intermediate state and cleaned by US9. US2's three reference docs and US8's findings.md are authored AFTER US9 in the recommended order, so they land clean. |
 
 **Testing section (constitution)**: ✅ Pass.
 - Tests mock `googleSheetsDbClient` (US6 acceptance + Concretely).
 - Tests are not disabled to work around failures (US6 policy: defer-always, document, route to a new spec).
 - The Postman collection is *flagged* for currency verification but routed to 020 — outside 015 scope.
 
-**FR-010 / CONTRIBUTING.md update**: This is a process change, not a code change. It introduces a checklist line; it does not amend the constitution. No constitution amendment is required because the maintenance contract is operationally equivalent to the existing "Postman collection MUST be updated" rule that the Testing section already establishes.
+**FR-010 / CONTRIBUTING.md update**: This is a process change, not a code change. It introduces a checklist line. The maintenance contract is operationally equivalent to the existing "Postman collection MUST be updated" rule that the Testing section already establishes.
+
+**Constitution amendment**: This spec required a constitution amendment (Principle XII, version 2.3.1 → 2.4.0) to formalize the rule that speckit lineage stays out of the shipped artifact. The amendment landed first as its own commit; the rest of the spec follows.
 
 **Complexity Tracking**: No violations. No Complexity Tracking entry required.
 
@@ -126,6 +129,8 @@ specs/020-project-hygiene/spec.md
 
 **Structure Decision**: Option 2 (Web application), but using the existing co-located `src/{controllers,repositories,services,web/js,...}` layout. No new top-level directories. New subdirectories are limited to two: `tests/unit/middleware/` and `tests/unit/cache/`.
 
+**US9 reach**: US9 (speckit-lineage sweep) touches files broadly — not just the ones enumerated above. It rewrites comments and strings across `src/`, `tests/`, `docs/`, root-level Markdown (`README.md`, `CONTRIBUTING.md`, `API_TESTING.md`), build/CI files (`src/build/*`, `.github/workflows/*`), and `scripts/`. The exact reach is determined by the four acceptance grep patterns at the time US9 runs; an explicit file enumeration in this plan would go stale before implementation. `.claude/` and `specs/` are exempt.
+
 ## Phase 0 — Outline & Research
 
 **Skipped — and that is the right call.**
@@ -176,18 +181,19 @@ All gates pass. No Complexity Tracking entry needed.
 
 ## Implementation Order Recommendation
 
-Not part of the spec or the plan template, but worth recording: User Stories are independent and can ship in any order. A pragmatic order based on risk and unblocking value:
+User Stories are independent and can ship in any order. The recommended execution order puts source/test work first and documentation work last, so the docs converge on the project's *actual final state* in a single pass — no forward-references, no immediate-rewrite cycles.
 
-1. **US1** (dead links) — smallest, fastest, removes false claims from entry-point docs before US2 is built on top.
-2. **US3** (inline JSDoc comments) — small, source-of-truth for hotspot reasoning that US2 will reference.
+1. **US1** (dead links) — remove dead links and fabricated endpoints from entry-point docs. Does NOT add forward-references to future work; US2 writes the replacements later. Smallest, fastest, removes false claims first.
+2. **US3** (inline JSDoc comments) — small, source-of-truth for hotspot reasoning.
 3. **US5** (uniform trimester validation) — small code-consistency fix; lands a real bug-shaped finding early.
-4. **US4** (canonical `AuthenticatedUser`) — unblocks US2 acceptance scenario 8.
-5. **US2** (three reference docs) — the largest unit; benefits from US1/3/4 having landed so the docs can reference the cleaned-up code.
-6. **US6** (test gap fills) — independent; ship in parallel with anything above.
+4. **US4** (canonical `AuthenticatedUser`) — refactor that US2 will then reference.
+5. **US9** (speckit-lineage sweep) — Principle XII compliance. Sweeps every non-speckit file so subsequent doc User Stories never need to relitigate.
+6. **US6** (test gap fills) — independent; ship in parallel.
 7. **US7** (summer grade-bump E2E test) — independent; ship in parallel.
-8. **US8** (findings.md + routing-table verification) — last; verifies that everything routed properly.
+8. **US2** (three reference docs) — the largest doc-writing unit. Authored last so it describes the project's actual final state and never needs forward-references.
+9. **US8** (findings.md + routing-table verification) — truly last; verifies that everything routed properly and produces the durable artifact pointing at all the now-existing reference docs.
 
-This order is a recommendation, not a binding requirement. The spec's Dependencies section is the authoritative independence statement.
+This order is a recommendation, not a binding requirement. The spec's Dependencies section is the authoritative independence statement. The rationale for putting doc work last: by the time US2 and US8 are authored, every code change has landed, every speckit reference has been swept, and every successor stub has been touched up — so the docs they produce describe the real state and never need to be rewritten.
 
 ## Stop
 
