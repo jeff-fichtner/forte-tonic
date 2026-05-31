@@ -96,9 +96,11 @@ This is the same path used on 401, just initiated by the user instead of by an H
 
 Shared TypeScript models live in [src/models/shared/](../../src/models/shared/). They run in both Node.js (server-side) and the browser (frontend). One canonical entity shape is used everywhere — comparing IDs is always plain `===` string comparison, and there are no parallel "API shape" vs "DB shape" definitions.
 
-**Production**: the Express server in [src/app.ts](../../src/app.ts) serves the entire `dist/web/` directory plus the shared models tree. Browser code imports from `/models/shared/...` and the server resolves it.
+There are actually two such trees: the shared models at [src/models/shared/](../../src/models/shared/) and the shared value constants (enums, helpers) at [src/utils/values/](../../src/utils/values/). Both are served to the browser through the same mechanism.
 
-**Development**: Vite's dev server intercepts these imports via path aliases configured in [vite.config.ts](../../vite.config.ts). The browser still asks for `/models/shared/...` but Vite serves them directly from the `src/models/shared/` source files (with HMR).
+**Production**: the Express server in [src/app.ts](../../src/app.ts) serves the entire `dist/web/` directory plus two additional static mounts at `/models/shared` and `/utils/values`. Browser code imports from `/models/shared/...` or `/utils/values/...` and the server resolves it.
+
+**Development**: Vite's dev server intercepts these imports via path aliases configured in [vite.config.ts](../../vite.config.ts). The browser still asks for `/models/shared/...` or `/utils/values/...` but Vite serves them directly from their source locations under `src/` (with HMR).
 
 The result is the same import statement works in both environments without code changes.
 

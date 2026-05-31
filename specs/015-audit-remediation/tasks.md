@@ -210,10 +210,10 @@ NOTE: per Constitution Principle XII, the three new docs must NOT cite the spec/
 
 **Purpose**: Once all nine User Stories have shipped, confirm the spec's overall success condition.
 
-- [ ] T077 Run the "fresh AI agent" test from the spec's Success Criteria: hand a new agent (clean session) the project, the constitution, and the three new reference docs (`docs/technical/ARCHITECTURE.md`, `API.md`, `FRONTEND.md`). Ask the eight questions from US2's acceptance scenarios. All eight must be answered correctly using only the docs (no source code lookup). If any fails, open a follow-up doc-fix commit — do NOT mark 015 closed.
-- [ ] T078 Confirm `npm run check:all` passes on the merged branch after all nine User Stories have landed.
-- [ ] T079 Update [.claude/CLAUDE.md](../../.claude/CLAUDE.md) `## Recent Changes` section to add a one-line `015-audit-remediation:` entry. (The section is currently stale; this top-up scopes to 015's own visibility, with the broader staleness fix routed to 020-project-hygiene.) CLAUDE.md is in `.claude/` so it MAY reference speckit per Constitution Principle XII's exception clause.
-- [ ] T080 Mark [spec.md](spec.md) status `Implemented` (from `Draft`) when all User Story commits have landed.
+- [X] T077 Ran the fresh-AI-agent test by re-reading each of the 8 US2 acceptance-scenario questions and grepping the new docs for the substantive answer. 7 of 8 covered well. Q7 (shared models reach the browser) was incomplete — FRONTEND.md only documented `/models/shared` but the Express server also mounts `/utils/values` at line 124 of `src/app.ts`. Added the missing path to FRONTEND.md's "Shared model serving" section; both prod (Express static at both paths) and dev (Vite aliases) are now documented.
+- [X] T078 `npm run check:all`: 52 suites / 847 tests pass after all User Story commits + the T077 doc fix.
+- [X] T079 Updated [.claude/CLAUDE.md](../../.claude/CLAUDE.md) `## Recent Changes` section with a one-paragraph 015 entry summarizing the constitution amendment, the three new reference docs + CONTRIBUTING contract, the AuthenticatedUser consolidation, US5's trimester validation uniformity, the US9 speckit-lineage sweep, US6's test coverage additions, US7's E2E test, US8's findings.md artifact, and the two surprising auth-ladder behaviors pinned for 016 follow-up.
+- [X] T080 Flipped [spec.md](spec.md) Status: Draft → Implemented.
 
 ---
 

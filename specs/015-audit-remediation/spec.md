@@ -2,7 +2,7 @@
 
 **Feature Branch**: `015-audit-remediation`
 **Created**: 2026-05-30
-**Status**: Draft
+**Status**: Implemented
 **Input**: User description: "Knock out the findings from the 2026-05-30 full-project audit one by one — broken doc links, missing architecture docs, inconsistencies that bite fresh contributors, and the handful of real test gaps."
 
 > **What this spec is.** A working checklist that turns the 2026-05-30 audit
