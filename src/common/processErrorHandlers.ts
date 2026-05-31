@@ -11,7 +11,7 @@
  * state may be corrupted. Cloud Run respawns the instance.
  */
 
-import { getCloudLogger } from './gcpLogger.js';
+import { getCloudLogger, buildErrorReportingFields } from './gcpLogger.js';
 import { ERROR_CODE } from './errorConstants.js';
 
 /**
@@ -36,7 +36,7 @@ export function installProcessErrorHandlers(): void {
         stack: error.stack,
         code: ERROR_CODE.INTERNAL_ERROR,
       },
-      '@type': 'type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent',
+      ...buildErrorReportingFields(),
       context: { source: 'uncaughtException' },
     });
     // Process state may be corrupted. Exit so Cloud Run can respawn.
@@ -57,7 +57,7 @@ export function installProcessErrorHandlers(): void {
         stack: error.stack,
         code: ERROR_CODE.INTERNAL_ERROR,
       },
-      '@type': 'type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent',
+      ...buildErrorReportingFields(),
       context: { source: 'unhandledRejection' },
     });
     // Do NOT exit on unhandledRejection — process state is usually fine.

@@ -28,7 +28,7 @@
 import { getLogger } from '../utils/logger.js';
 import type { Request, Response } from 'express';
 import { successResponse, errorResponse } from '../common/responseHelpers.js';
-import { getCloudLogger } from '../common/gcpLogger.js';
+import { getCloudLogger, buildErrorReportingFields } from '../common/gcpLogger.js';
 import { ERROR_CODE } from '../common/errorConstants.js';
 
 const logger = getLogger();
@@ -117,8 +117,7 @@ export class DebugController {
           stack: typeof stack === 'string' ? stack : undefined,
           code: ERROR_CODE.INTERNAL_ERROR,
         },
-        '@type':
-          'type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent',
+        ...buildErrorReportingFields(),
         context: {
           source: typeof source === 'string' ? source : 'window',
           url: typeof url === 'string' ? url : undefined,

@@ -118,6 +118,23 @@ function formatForCloudLogging(data: string | LogData, severity: string): CloudL
 }
 
 /**
+ * Fields required for Cloud Error Reporting aggregation.
+ * Both @type and serviceContext must be present or Error Reporting ignores the entry.
+ * @see https://cloud.google.com/error-reporting/docs/formatting-error-messages
+ */
+export function buildErrorReportingFields(): {
+  '@type': string;
+  serviceContext: { service: string; version: string };
+} {
+  const service = process.env.NODE_ENV === 'production' ? 'tonic-production' : 'tonic-staging';
+  const version = process.env.BUILD_GIT_TAG ?? process.env.npm_package_version ?? 'unknown';
+  return {
+    '@type': 'type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent',
+    serviceContext: { service, version },
+  };
+}
+
+/**
  * Get a Cloud Logging-compatible logger
  * Wraps the application logger to output structured JSON logs
  * that GCP Cloud Logging can parse and index.

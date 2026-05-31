@@ -23,6 +23,10 @@ jest.unstable_mockModule('../../../src/common/gcpLogger.js', () => ({
     status: 200,
     latency: '0.123s',
   })),
+  buildErrorReportingFields: jest.fn(() => ({
+    '@type': 'type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent',
+    serviceContext: { service: 'tonic-staging', version: 'unknown' },
+  })),
 }));
 
 const { successResponse, errorResponse, determineStatusCode } = await import(

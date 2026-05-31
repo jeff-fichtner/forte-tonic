@@ -4,7 +4,7 @@
  */
 
 import type { Request, Response } from 'express';
-import { getCloudLogger, buildHttpRequestLog } from './gcpLogger.js';
+import { getCloudLogger, buildHttpRequestLog, buildErrorReportingFields } from './gcpLogger.js';
 import { HTTP_STATUS, ERROR_TYPE, ERROR_CODE, LOG_SEVERITY } from './errorConstants.js';
 
 // --- API Response Types (from contracts/api-responses.ts) ---
@@ -161,10 +161,11 @@ export function errorResponse(
     logEntry.httpRequest = buildHttpRequestLog(req, res, startTime, statusCode);
   }
 
-  // Add Error Reporting type for 5xx errors (automatic aggregation in GCP)
+  // Add Error Reporting fields for 5xx errors (automatic aggregation in GCP).
+  // Both @type and serviceContext are required — without serviceContext the
+  // entry has the right type but Error Reporting silently drops it.
   if (statusCode >= 500) {
-    logEntry['@type'] =
-      'type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent';
+    Object.assign(logEntry, buildErrorReportingFields());
   }
 
   // Log to GCP Cloud Logging
