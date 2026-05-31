@@ -302,6 +302,7 @@ The verification has a checked-in source of truth. The audit findings are curate
 | Multi-instance cache desync | 015 US2 (document; no code change) |
 | Audit log best-effort contract | 015 US2 (document) + [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md) (decide policy) |
 | Pre-existing speckit-lineage references in src/, tests/, docs/, README (Constitution Principle XII violation) | 015 US9 |
+| `AuthenticatedUser` interface carries response-level `systemError`/`error` fields that shouldn't be on a user shape (surfaced while implementing 015 US4 — the inline shapes already had this; US4 preserved them on the canonical interface) | [016-error-contract-uniformization](../016-error-contract-uniformization/spec.md) |
 
 **Concretely**
 - Create [findings.md](findings.md) in this spec directory. It is a curated, deduplicated list authored on this branch — NOT a verbatim chat paste. Format: one short heading per finding (e.g., `### Bus deadlines hardcoded`), a one-sentence summary, and a file:line reference. Errors in the original audit (notably the test-coverage subagent missing the nested test directories under `tests/unit/controllers/`, `tests/unit/services/`, `tests/unit/common/`, `tests/unit/infrastructure/`) are silently corrected before commit — `findings.md` reflects ground truth as of when it is written, not the chat artifact.
