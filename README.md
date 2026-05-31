@@ -51,7 +51,7 @@ Originally a Google Apps Script application, migrated to Node.js for improved pe
 - 5-minute in-memory cache per pod ([src/cache/cacheService.ts](src/cache/cacheService.ts)); writes invalidate via `clearAllCache()`
 - Homegrown lazy-singleton DI container ([src/infrastructure/container/serviceContainer.ts](src/infrastructure/container/serviceContainer.ts))
 
-See the documentation in [docs/](docs/) for additional details.
+See [docs/technical/ARCHITECTURE.md](docs/technical/ARCHITECTURE.md) for the layer flow, error pipeline, cache strategy, auth flow, trimester/period model, DI container, build/deploy, and migrations.
 
 ## Getting Started
 
@@ -105,7 +105,7 @@ All endpoints are defined in [src/routes/api.ts](src/routes/api.ts). Highlights:
 
 **Admin only**: `POST /api/admin/clear-cache`
 
-Endpoint details (request/response shapes) live in [docs/technical/](docs/technical/).
+Endpoint details (request/response shapes per endpoint) live in [docs/technical/API.md](docs/technical/API.md).
 
 ## Development
 
@@ -202,7 +202,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for code standards, commit practices, and
 ## Documentation
 
 **Business**: [Privacy Policy](docs/business/PRIVACY_POLICY.md) | [Local Setup](docs/business/NODE_SETUP.md)
-**Technical**: [Environment Variables](docs/technical/ENVIRONMENT_VARIABLES.md) | [Version Display](docs/technical/VERSION_DISPLAY.md) | [Branch Protection](docs/technical/BRANCH_PROTECTION.md)
+**Technical**: [Architecture](docs/technical/ARCHITECTURE.md) | [API Reference](docs/technical/API.md) | [Frontend](docs/technical/FRONTEND.md) | [Environment Variables](docs/technical/ENVIRONMENT_VARIABLES.md) | [Version Display](docs/technical/VERSION_DISPLAY.md) | [Branch Protection](docs/technical/BRANCH_PROTECTION.md)
 
 ## License
 

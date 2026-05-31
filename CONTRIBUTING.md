@@ -26,6 +26,10 @@
 
    - All tests must pass
 
+4. **Update affected reference docs:**
+
+   If your change affects anything documented in [docs/technical/ARCHITECTURE.md](docs/technical/ARCHITECTURE.md), [docs/technical/API.md](docs/technical/API.md), or [docs/technical/FRONTEND.md](docs/technical/FRONTEND.md), update the relevant document in the same PR. Each of those docs opens with a maintenance-contract header listing the code surface area whose changes trigger an update.
+
 ## Commit Practices
 
 ### ✅ DO:

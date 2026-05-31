@@ -2,6 +2,7 @@
 
 The canonical API testing artifacts are:
 
+- **API reference**: [docs/technical/API.md](docs/technical/API.md) — every endpoint with request/response shapes, status codes, and the authentication contract.
 - **Postman collection**: [scripts/postman/tonic-api.postman_collection.json](scripts/postman/tonic-api.postman_collection.json) — import into Postman alongside one of the environment files in [scripts/postman/](scripts/postman/) (`local.postman_environment.json`, `staging.postman_environment.json`, or `production.postman_environment.json`).
 - **Route definitions**: [src/routes/api.ts](src/routes/api.ts) — the source of truth for every endpoint, method, path, and auth requirement.
 
